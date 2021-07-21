@@ -127,10 +127,10 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithExports, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable main = (Executable) instance.exports().readMember("main");
-                int result = (int) main.executeFunction(new Object[0]);
-                Assert.assertEquals("Should return 42 from main.", 42, result);
-            } catch (UnknownIdentifierException e) {
+                final Object main = instance.exports().readMember("main");
+                final Object result = InteropLibrary.getUncached(main).execute(main);
+                Assert.assertEquals("Should return 42 from main.", 42, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -148,10 +148,10 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithImportsAndExports, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable addPlusOne = (Executable) instance.exports().readMember("addPlusOne");
-                int result = (int) addPlusOne.executeFunction(new Object[]{17, 3});
-                Assert.assertEquals("17 + 3 + 1 = 21.", 21, result);
-            } catch (UnknownIdentifierException e) {
+                final Object addPlusOne = instance.exports().readMember("addPlusOne");
+                final Object result = InteropLibrary.getUncached(addPlusOne).execute(addPlusOne, 17, 3);
+                Assert.assertEquals("17 + 3 + 1 = 21.", 21, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -170,11 +170,11 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMemoryImport, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable initZero = (Executable) instance.exports().readMember("initZero");
+                final Object initZero = instance.exports().readMember("initZero");
                 Assert.assertEquals("Must be zero initially.", 0, memory.wasmMemory().load_i32(null, 0));
-                initZero.executeFunction(new Object[0]);
+                InteropLibrary.getUncached(initZero).execute(initZero);
                 Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0));
-            } catch (UnknownIdentifierException e) {
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -188,11 +188,11 @@ public class WasmJsApiSuite {
             final Instance instance = instantiatedSource.instance();
             try {
                 final Memory memory = (Memory) instance.exports().readMember("memory");
-                final Executable readZero = (Executable) instance.exports().readMember("readZero");
+                final Object readZero = instance.exports().readMember("readZero");
                 memory.wasmMemory().store_i32(null, 0, 174);
-                final Object result = readZero.executeFunction(new Object[0]);
-                Assert.assertEquals("Must be 174.", 174, result);
-            } catch (UnknownIdentifierException e) {
+                final Object result = InteropLibrary.getUncached(readZero).execute(readZero);
+                Assert.assertEquals("Must be 174.", 174, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -208,14 +208,20 @@ public class WasmJsApiSuite {
                                             "defaultTable", table
                             }),
             });
-            table.set(0, new Executable(args -> 210));
+            table.set(0, new WasmFunctionInstance(context, null,
+                            Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                                @Override
+                                public Object execute(VirtualFrame frame) {
+                                    return 210;
+                                }
+                            })));
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithTableImport, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable callFirst = (Executable) instance.exports().readMember("callFirst");
-                Object result = callFirst.executeFunction(new Object[0]);
-                Assert.assertEquals("Must return 210.", 210, result);
-            } catch (UnknownIdentifierException e) {
+                final Object callFirst = instance.exports().readMember("callFirst");
+                Object result = InteropLibrary.getUncached(callFirst).execute(callFirst);
+                Assert.assertEquals("Must return 210.", 210, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -249,11 +255,14 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithGlobalImport, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable readGlobal1 = (Executable) instance.exports().readMember("readGlobal1");
-                final Executable readGlobal2 = (Executable) instance.exports().readMember("readGlobal2");
-                Assert.assertEquals("Must be " + globalValue + " initially.", globalValue, readGlobal1.executeFunction(new Object[0]));
-                Assert.assertEquals("Must be " + globalValue + " initially.", globalValue, readGlobal2.executeFunction(new Object[0]));
-            } catch (UnknownIdentifierException e) {
+                InteropLibrary interop = InteropLibrary.getUncached();
+                final Object readGlobal1 = instance.exports().readMember("readGlobal1");
+                final Object readGlobal2 = instance.exports().readMember("readGlobal2");
+                final Object result1 = interop.execute(readGlobal1);
+                final Object result2 = interop.execute(readGlobal2);
+                Assert.assertEquals("Must be " + globalValue + " initially.", globalValue, result1);
+                Assert.assertEquals("Must be " + globalValue + " initially.", globalValue, result2);
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -288,12 +297,15 @@ public class WasmJsApiSuite {
             try {
                 final ProxyGlobal global = (ProxyGlobal) instance.exports().readMember("exportedGlobal");
                 Assert.assertEquals("Exported global must be 1096.", 1096, global.get());
-                final Executable setGlobal = (Executable) instance.exports().readMember("setGlobal");
-                final Executable getGlobal = (Executable) instance.exports().readMember("getGlobal");
-                Assert.assertEquals("Must be 2345 initially.", 2345, getGlobal.executeFunction(new Object[0]));
-                setGlobal.executeFunction(new Object[]{25});
-                Assert.assertEquals("Must be 25 later.", 25, getGlobal.executeFunction(new Object[0]));
-            } catch (UnknownIdentifierException e) {
+                final Object setGlobal = instance.exports().readMember("setGlobal");
+                final Object getGlobal = instance.exports().readMember("getGlobal");
+                InteropLibrary interop = InteropLibrary.getUncached();
+                final Object result1 = interop.execute(getGlobal);
+                Assert.assertEquals("Must be 2345 initially.", 2345, interop.asInt(result1));
+                interop.execute(setGlobal, 25);
+                final Object result2 = interop.execute(getGlobal);
+                Assert.assertEquals("Must be 25 later.", 25, interop.asInt(result2));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -317,9 +329,10 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithUnicodeExport, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable euroSignFn = (Executable) instance.exports().readMember("\u20AC");
-                Assert.assertEquals("Result should be 42", 42, euroSignFn.executeFunction(new Object[0]));
-            } catch (UnknownIdentifierException e) {
+                final Object euroSignFn = instance.exports().readMember("\u20AC");
+                final Object result = InteropLibrary.getUncached(euroSignFn).execute(euroSignFn);
+                Assert.assertEquals("Result should be 42", 42, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -380,7 +393,13 @@ public class WasmJsApiSuite {
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                final Object f = new Executable(args -> 42);
+                final Object f = new WasmFunctionInstance(context, null,
+                                Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                                    @Override
+                                    public Object execute(VirtualFrame frame) {
+                                        return 42;
+                                    }
+                                }));
                 lib.execute(lib.readMember(lib.readMember(exports, "a"), "set"), 0, f);
                 final Object readValue = lib.execute(lib.readMember(lib.readMember(exports, "b"), "get"), 0);
                 Assert.assertEquals("Written function should correspond ro read function", 42, lib.asInt(lib.execute(readValue)));
@@ -792,6 +811,44 @@ public class WasmJsApiSuite {
         } catch (AbstractTruffleException ex) {
             Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));
         }
+    }
+
+    @Test
+    public void testFuncTypeTable() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithTableExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Object funcType = wasm.readMember("func_type");
+                final Table table = (Table) instance.exports().readMember("defaultTable");
+                final Object fn = table.get(0);
+                InteropLibrary interop = InteropLibrary.getUncached(funcType);
+                Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fn));
+                // set + get should not break func_type()
+                table.set(0, fn);
+                final Object fnAgain = table.get(0);
+                Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fnAgain));
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testFuncTypeExport() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMemoryExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Object funcType = wasm.readMember("func_type");
+                final Object fn = instance.exports().readMember("readZero");
+                Assert.assertEquals("func_type", "0()i32", InteropLibrary.getUncached(funcType).execute(funcType, fn));
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {

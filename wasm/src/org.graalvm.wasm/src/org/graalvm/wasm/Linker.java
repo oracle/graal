@@ -480,7 +480,7 @@ public class Linker {
             final int functionIndex = functionsIndices[index];
             final WasmFunction function = instance.module().function(functionIndex);
             final CallTarget target = instance.target(function.index());
-            table.initialize(baseAddress + index, new WasmFunctionInstance(context.uid(), function, target));
+            table.initialize(baseAddress + index, new WasmFunctionInstance(context, function, target));
         }
     }
 

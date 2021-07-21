@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -51,7 +52,7 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmFunctionInstance implements TruffleObject {
-    private final WasmContext.Uid contextUid;
+    private final WasmContext context;
     private final WasmFunction function;
     private final CallTarget target;
 
@@ -60,9 +61,9 @@ public class WasmFunctionInstance implements TruffleObject {
      *
      * If the function is imported, then context UID and the function are set to {@code null}.
      */
-    public WasmFunctionInstance(WasmContext.Uid contextUid, WasmFunction function, CallTarget target) {
+    public WasmFunctionInstance(WasmContext context, WasmFunction function, CallTarget target) {
         Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
-        this.contextUid = contextUid;
+        this.context = context;
         this.function = function;
         this.target = target;
     }
@@ -72,8 +73,8 @@ public class WasmFunctionInstance implements TruffleObject {
         return name();
     }
 
-    public WasmContext.Uid contextUid() {
-        return contextUid;
+    public WasmContext context() {
+        return context;
     }
 
     public String name() {
@@ -98,6 +99,12 @@ public class WasmFunctionInstance implements TruffleObject {
 
     @ExportMessage
     Object execute(Object[] arguments, @Cached WasmIndirectCallNode callNode) {
-        return callNode.execute(target, arguments);
+        TruffleContext truffleContext = context.environment().getContext();
+        Object prev = truffleContext.enter(null);
+        try {
+            return callNode.execute(target, arguments);
+        } finally {
+            truffleContext.leave(null, prev);
+        }
     }
 }
