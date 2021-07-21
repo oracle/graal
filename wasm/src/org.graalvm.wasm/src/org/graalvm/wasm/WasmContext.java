@@ -51,7 +51,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class WasmContext {
-    private final Uid uid;
     private final Env env;
     private final WasmLanguage language;
     private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
@@ -69,7 +68,6 @@ public final class WasmContext {
     }
 
     public WasmContext(Env env, WasmLanguage language) {
-        this.uid = new Uid();
         this.env = env;
         this.language = language;
         this.equivalenceClasses = new HashMap<>();
@@ -82,10 +80,6 @@ public final class WasmContext {
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
         instantiateBuiltinInstances();
-    }
-
-    public Uid uid() {
-        return uid;
     }
 
     public Env environment() {
@@ -204,6 +198,4 @@ public final class WasmContext {
         }
     }
 
-    public class Uid {
-    }
 }
