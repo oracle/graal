@@ -55,8 +55,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * {@code byte[]}, ARRAYLENGTH is mapped to {@link InteropLibrary#getBufferSize(Object)}.
  * </ul>
  *
- * <h3>Exceptions</h3>
- * <li>Throws guest {@link ClassCastException} if the length does not fit in an int.
+ * <p>
+ * If the size of the foreign array does NOT fit in an int, {@link Integer#MAX_VALUE} is returned.
  */
 @ImportStatic(Utils.class)
 public abstract class ArrayLengthNode extends QuickNode {
