@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.lang.reflect.Array;
+import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -43,6 +44,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorag
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
+
+    public abstract ByteOrder getPlatformByteOrder();
 
     public abstract Path getSulongLibrariesPath();
 
