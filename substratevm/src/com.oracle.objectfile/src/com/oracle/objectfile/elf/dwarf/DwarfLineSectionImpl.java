@@ -203,14 +203,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private static int computeDirTableSize(ClassEntry classEntry) {
         /*
-         * Table contains a sequence of 'nul'-terminated dir name bytes followed by an extra 'nul'
-         * and then a sequence of 'nul'-terminated file name bytes followed by an extra 'nul'.
+         * Table contains a sequence of 'nul'-terminated UTF8 dir name bytes followed by an extra
+         * 'nul'.
          *
          * For now we assume dir and file names are ASCII byte strings.
          */
         int dirSize = 0;
         for (DirEntry dir : classEntry.getLocalDirs()) {
-            dirSize += dir.getPathString().length() + 1;
+            dirSize += countUTF8Bytes(dir.getPathString()) + 1;
         }
         /*
          * Allow for separator nul.
@@ -221,10 +221,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private int computeFileTableSize(ClassEntry classEntry) {
         /*
-         * Table contains a sequence of 'nul'-terminated dir name bytes followed by an extra 'nul'
-         * and then a sequence of 'nul'-terminated file name bytes followed by an extra 'nul'.
-         * 
-         * For now we assume dir and file names are ASCII byte strings.
+         * Table contains a sequence of file entries followed by an extra 'nul'
+         *
+         * each file entry consists of a 'nul'-terminated UTF8 file name, a dir entry idx and two 0
+         * time stamps
          */
         int fileSize = 0;
         for (FileEntry localEntry : classEntry.getLocalFiles()) {
@@ -232,7 +232,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * We want the file base name excluding path.
              */
             String baseName = localEntry.getFileName();
-            int length = baseName.length();
+            int length = countUTF8Bytes(baseName);
             /* We should never have a null or zero length entry in local files. */
             assert length > 0;
             fileSize += length + 1;
@@ -385,7 +385,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * write nul terminated string text.
              */
             verboseLog(context, "  [0x%08x] %-4d %s", pos, dirIdx, dir.getPath());
-            pos = putAsciiStringBytes(dir.getPathString(), buffer, pos);
+            pos = putUTF8StringBytes(dir.getPathString(), buffer, pos);
             dirIdx++;
         }
         /*
@@ -407,7 +407,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             DirEntry dirEntry = localEntry.getDirEntry();
             int dirIdx = classEntry.localDirsIdx(dirEntry);
             verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
-            pos = putAsciiStringBytes(baseName, buffer, pos);
+            pos = putUTF8StringBytes(baseName, buffer, pos);
             pos = putULEB(dirIdx, buffer, pos);
             pos = putULEB(0, buffer, pos);
             pos = putULEB(0, buffer, pos);
@@ -813,7 +813,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Calculate bytes needed for opcode + args.
          */
-        int fileBytes = file.length() + 1;
+        int fileBytes = countUTF8Bytes(file) + 1;
         long insnBytes = 1;
         insnBytes += fileBytes;
         insnBytes += putULEB(uleb1, scratch, 0);
@@ -837,7 +837,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * Insert opcode and args.
              */
             pos = putByte(opcode, buffer, pos);
-            pos = putAsciiStringBytes(file, buffer, pos);
+            pos = putUTF8StringBytes(file, buffer, pos);
             pos = putULEB(uleb1, buffer, pos);
             pos = putULEB(uleb2, buffer, pos);
             return putULEB(uleb3, buffer, pos);

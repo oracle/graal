@@ -34,6 +34,10 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.code.DataSection.Data;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
 
 import jdk.vm.ci.code.site.DataSectionReference;
@@ -41,6 +45,18 @@ import jdk.vm.ci.meta.SerializableConstant;
 import jdk.vm.ci.meta.VMConstant;
 
 public final class DataSection implements Iterable<Data> {
+
+    static class Options {
+        // @formatter:off
+        @Option(help = "Place N-byte constants in the data section such that they are misaligned with respect to N*2. " +
+                "For example, place 4 byte constants at offset 4, 12 or 20, etc. " +
+                "This layout is used to detect instructions that load constants with alignment smaller " +
+                "than the fetch size. For instance, an XORPS instruction that does a 16-byte fetch of a " +
+                "4-byte float not aligned to 16 bytes will cause a segfault.",
+                type = OptionType.Debug)
+        static final OptionKey<Boolean> ForceAdversarialLayout = new OptionKey<>(false);
+        // @formatter:on
+    }
 
     public interface Patches {
 
@@ -276,7 +292,7 @@ public final class DataSection implements Iterable<Data> {
     }
 
     /**
-     * Determines if this object has been {@link #close() closed}.
+     * Determines if this object has been {@link #close(OptionValues) closed}.
      */
     public boolean closed() {
         return closed;
@@ -287,7 +303,7 @@ public final class DataSection implements Iterable<Data> {
      *
      * This must be called exactly once.
      */
-    public void close() {
+    public void close(OptionValues option) {
         checkOpen();
         closed = true;
 
@@ -299,7 +315,12 @@ public final class DataSection implements Iterable<Data> {
         for (Data d : dataItems) {
             alignment = lcm(alignment, d.alignment);
             position = align(position, d.alignment);
-
+            if (Options.ForceAdversarialLayout.getValue(option)) {
+                if (position % (d.alignment * 2) == 0) {
+                    position = position + d.alignment;
+                    assert position % d.alignment == 0;
+                }
+            }
             d.ref.setOffset(position);
             position += d.size;
         }

@@ -251,6 +251,7 @@ import java.util.Arrays;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -612,6 +613,10 @@ public final class MethodVerifier implements ContextAccess {
         throw new VerifierError(s, VerifierError.Kind.ClassFormat);
     }
 
+    static VerifierError failFormatNoFallback(String s) {
+        throw new VerifierError(s, VerifierError.Kind.ClassFormat, false);
+    }
+
     static VerifierError failVerify(String s) {
         throw new VerifierError(s, VerifierError.Kind.Verify);
     }
@@ -674,6 +679,7 @@ public final class MethodVerifier implements ContextAccess {
         while (bci < code.endBCI()) {
             opcode = code.currentBC(bci);
             verifyGuarantee(opcode < QUICK, "invalid bytecode: " + opcode);
+            verifyEnoughBytecodes(opcode, bci);
             bciStates[bci] = setStatus(bciStates[bci], UNSEEN);
             bci = code.nextBCI(bci);
             // Check instruction has enough bytes after it
@@ -702,12 +708,38 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    /**
+     * Verifies that there is enough bytecodes left in the code array to compute the size of
+     * variable-length instructions.
+     */
+    private void verifyEnoughBytecodes(int opcode, int curBCI) {
+        switch (opcode) {
+            case Bytecodes.TABLESWITCH:
+                verifyGuarantee(BytecodeSwitch.getAlignedBci(curBCI)  //
+                                + 8 /* To kigh key */
+                                + 4 /* To read an int */ < code.endBCI(),
+                                "SWITCH instruction does not have enough follow-up bytes to be valid.");
+                return;
+            case Bytecodes.LOOKUPSWITCH:
+                verifyGuarantee(BytecodeSwitch.getAlignedBci(curBCI)  //
+                                + 4 /* To number of cases */
+                                + 4 /* To read an int */ < code.endBCI(),
+                                "SWITCH instruction does not have enough follow-up bytes to be valid.");
+                return;
+            case Bytecodes.WIDE:
+                verifyGuarantee(curBCI + 1 < code.endBCI(), "WIDE bytecode does not have a follow up instruction.");
+                return;
+            default:
+        }
+    }
+
     // Traverses the switch to mark jump targets. Also checks that lookup switch keys are sorted.
     private void initSwitch(int bci, int opCode) {
         if (opCode == LOOKUPSWITCH) {
             BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
             int low = 0;
             int high = switchHelper.numberOfCases(code, bci);
+            verifyGuarantee(high >= 0, "number of keys in LOOKUPSWITCH less than 0");
             int oldKey = 0;
             boolean init = false;
             int target;
@@ -729,6 +761,8 @@ public final class MethodVerifier implements ContextAccess {
             BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
             int low = switchHelper.lowKey(code, bci);
             int high = switchHelper.highKey(code, bci);
+            verifyGuarantee(low <= high, "low must be less than or equal to high in TABLESWITCH.");
+            verifyGuarantee(high - low + 1 >= 0, "too many keys in tableswitch");
             int target;
             // if high == MAX_INT, i < high will always be true. This loop condition is to avoid
             // an infinite loop in this case.
@@ -976,12 +1010,12 @@ public final class MethodVerifier implements ContextAccess {
         // Marks BCIs in-between opcodes, and marks jump targets.
         initVerifier();
 
-        // Check that BCIs in exception handlers are legal.
-        validateExceptionHandlers();
-
         // Extract the initial stack frame, and extract stack maps if available.
         initStackFrames();
         stackMapInitialized = true;
+
+        // Check that BCIs in exception handlers are legal.
+        validateExceptionHandlers();
 
         // Check that unconditional jumps have stack maps following them.
         validateUnconditionalJumps();
@@ -1820,7 +1854,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
         // Padding checks
         if (version51OrEarlier()) {
-            for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
+            for (int j = bci + 1; j < BytecodeSwitch.getAlignedBci(bci); j++) {
                 verifyGuarantee(code.readUByte(j) == 0, "non-zero padding for LOOKUPSWITCH");
             }
         }
@@ -1850,7 +1884,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
         // Padding checks
         if (version51OrEarlier()) {
-            for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
+            for (int j = bci + 1; j < BytecodeSwitch.getAlignedBci(bci); j++) {
                 verifyGuarantee(code.readUByte(j) == 0, "non-zero padding for TABLESWITCH");
             }
         }

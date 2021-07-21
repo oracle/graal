@@ -131,12 +131,32 @@ public final class AVXKind {
         throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %s x %s", size, base));
     }
 
+    /**
+     * Returns the smallest kind that is able to hold a value of the specified base and vector
+     * length.
+     *
+     * When a length is specified that results a total data size that is not an exact match for a
+     * kind, the smallest kind that can hold the specified value will be returned. As an example, if
+     * a base kind of {@code DWORD} and a length of 3 is specified the function will return
+     * {@code V128_DWORD} since it is the smallest kind (4 x {@code DWORD}) that can hold the
+     * requested data.
+     *
+     * Calling this function with a length that exceeds the largest supported register is an error.
+     *
+     * @param base the kind of each element of the vector
+     * @param length the length of the vector
+     * @return the kind representing the smallest vector register that can hold the requested data
+     */
     public static AMD64Kind getAVXKind(AMD64Kind base, int length) {
+        AMD64Kind toReturn = null;
         for (AMD64Kind ret : AMD64Kind.values()) {
-            if (ret.getScalar() == base && ret.getVectorLength() == length) {
-                return ret;
+            if (ret.getScalar() == base && ret.getVectorLength() >= length && (toReturn == null || ret.getVectorLength() < toReturn.getVectorLength())) {
+                toReturn = ret;
             }
         }
-        throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %d x %s", length, base));
+        if (toReturn == null) {
+            throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %d x %s", length, base));
+        }
+        return toReturn;
     }
 }

@@ -42,6 +42,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -73,6 +74,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import java.lang.ref.WeakReference;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -135,6 +137,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private ContextExtensionKey<?>[] contextExtensions;
 
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
+    @CompilationFinal private ByteArraySupport cachedByteArraySupport;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
 
@@ -266,6 +269,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return cachedLLVMMemory;
     }
 
+    public ByteArraySupport getByteArraySupport() {
+        assert cachedByteArraySupport != null;
+        return cachedByteArraySupport;
+    }
+
     public LLVMScope getInternalFileScopes(String libraryName) {
         return internalFileScopes.get(libraryName);
     }
@@ -316,6 +324,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             activeConfiguration = Configurations.createConfiguration(this, r, env.getOptions());
 
             cachedLLVMMemory = activeConfiguration.getCapability(LLVMMemory.class);
+            ByteOrder order = activeConfiguration.getCapability(PlatformCapability.class).getPlatformByteOrder();
+            if (order == ByteOrder.LITTLE_ENDIAN) {
+                cachedByteArraySupport = ByteArraySupport.littleEndian();
+            } else if (order == ByteOrder.BIG_ENDIAN) {
+                cachedByteArraySupport = ByteArraySupport.bigEndian();
+            } else {
+                throw new IllegalStateException("unexpected byte order " + order);
+            }
             contextExtensions = ctxExts.toArray(ContextExtensionKey.EMPTY);
         }
     }

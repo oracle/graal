@@ -24,9 +24,17 @@
 package com.oracle.truffle.espresso.classfile.attributes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class RecordAttribute extends Attribute {
     public static final Symbol<Name> NAME = Name.Record;
@@ -50,5 +58,51 @@ public class RecordAttribute extends Attribute {
             this.descriptor = (char) descriptor;
             this.attributes = attributes;
         }
+
+        public StaticObject toGuestComponent(Meta meta, ObjectKlass klass) {
+            assert meta.getJavaVersion().java16OrLater();
+            RuntimeConstantPool pool = klass.getConstantPool();
+            StaticObject component = meta.java_lang_reflect_RecordComponent.allocateInstance();
+            Symbol<Name> nameSymbol = pool.symbolAt(name);
+            Symbol<Type> typeSymbol = pool.symbolAt(descriptor);
+            Symbol<Signature> signature = meta.getSignatures().makeRaw(Type._void, typeSymbol);
+            meta.java_lang_reflect_RecordComponent_clazz.setObject(component, klass.mirror());
+            meta.java_lang_reflect_RecordComponent_name.setObject(component, meta.toGuestString(nameSymbol));
+            meta.java_lang_reflect_RecordComponent_type.setObject(component, meta.resolveSymbolAndAccessCheck(typeSymbol, klass).mirror());
+
+            // Find and set accessor
+            Method m = klass.lookupMethod(nameSymbol, signature);
+            boolean validMethod = m != null && !m.isStatic() && !m.isConstructor();
+            meta.java_lang_reflect_RecordComponent_accessor.setObject(component, validMethod ? m.makeMirror() : StaticObject.NULL);
+
+            // Find and set generic signature
+            SignatureAttribute genericSignatureAttribute = (SignatureAttribute) getAttribute(SignatureAttribute.NAME);
+            meta.java_lang_reflect_RecordComponent_signature.setObject(component,
+                            genericSignatureAttribute != null ? meta.toGuestString(pool.symbolAt(genericSignatureAttribute.getSignatureIndex())) : StaticObject.NULL);
+
+            // Find and set annotations
+            doAnnotation(component, Name.RuntimeVisibleAnnotations, meta.java_lang_reflect_RecordComponent_annotations, meta);
+            doAnnotation(component, Name.RuntimeVisibleTypeAnnotations, meta.java_lang_reflect_RecordComponent_typeAnnotations, meta);
+
+            return component;
+        }
+
+        private void doAnnotation(StaticObject component, Symbol<Name> attrName, Field f, Meta meta) {
+            Attribute attr = getAttribute(attrName);
+            f.setObject(component, attr == null ? StaticObject.NULL : StaticObject.wrap(attr.getData(), meta));
+        }
+
+        public Attribute getAttribute(Symbol<Name> attributeName) {
+            for (Attribute attr : attributes) {
+                if (attr.getName().equals(attributeName)) {
+                    return attr;
+                }
+            }
+            return null;
+        }
+    }
+
+    public RecordComponentInfo[] getComponents() {
+        return components;
     }
 }

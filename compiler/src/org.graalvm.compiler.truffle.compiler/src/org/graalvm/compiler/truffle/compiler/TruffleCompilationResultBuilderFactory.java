@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 
 /**
  * A mechanism for Truffle to update a {@link CompilationResult} before it is
- * {@linkplain CompilationResult#close() closed} by the compiler.
+ * {@linkplain CompilationResult#close(OptionValues) closed} by the compiler.
  */
 class TruffleCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
 

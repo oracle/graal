@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
@@ -45,6 +46,11 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     public static final int RTLD_LAZY = 1;
     public static final int RTLD_GLOBAL = 256;
     public static final long RTLD_DEFAULT = 0;
+
+    @Override
+    public ByteOrder getPlatformByteOrder() {
+        return ByteOrder.nativeOrder();
+    }
 
     @Override
     public boolean isGlobalDLOpenFlagSet(int flag) {
