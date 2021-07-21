@@ -152,16 +152,16 @@ class CPUSamplerCLI extends ProfilerCLI {
         if (sampler.hasStackOverflowed()) {
             printDiv(out);
             out.println("Warning: Shadow stack has overflowed its capacity of " + sampler.getStackLimit() + " during execution!");
-            out.println("The gathered data is incomplete or incorrect!");
-            out.println("Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
+            out.println("         The printed data is incomplete or incorrect!");
+            out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
             printDiv(out);
         }
         if (sampler.getSampleDuration().getAverage() > 0.2 * sampler.getPeriod()) {
             printDiv(out);
             out.println("Warning: Average sample duration took over 20% of the sampling period.");
-            out.println("The gathered data is incomplete or incorrect!");
-            out.println("Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to reduce the number of frames sampled,");
-            out.println("or use --" + CPUSamplerInstrument.ID + ".Period=<" + SAMPLE_PERIOD.getType().getName() + "> to increase the sampling period.");
+            out.println("         The printed data is incomplete or incorrect!");
+            out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to reduce the number of frames sampled,");
+            out.println("         or use --" + CPUSamplerInstrument.ID + ".Period=<" + SAMPLE_PERIOD.getType().getName() + "> to increase the sampling period.");
             printDiv(out);
         }
     }
