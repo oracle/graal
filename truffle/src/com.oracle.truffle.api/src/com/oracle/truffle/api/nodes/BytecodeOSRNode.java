@@ -60,6 +60,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * be non-materializable.</li>
  * </ol>
  *
+ * The node may optionally override {@link BytecodeOSRNode#prepareOSR} to perform any necessary
+ * initialization. This method will be called before compilation.
+ *
  * @since 21.3
  */
 public interface BytecodeOSRNode extends NodeInterface {
@@ -110,6 +113,34 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     void setOSRMetadata(Object osrMetadata);
+
+    /**
+     * Optional hook which will be invoked before OSR compilation. This hook can be used to perform
+     * any necessary initialization before compilation happens.
+     *
+     * <p>
+     * For example, fields which must be initialized in the interpreter can be initialized this way:
+     * 
+     * <pre>
+     * {@code
+     *     &#64;CompilationFinal Object field;
+     *     Object getField() {
+     *         if (field == null) {
+     *             CompilerDirectives.transferToInterpreterAndInvalidate();
+     *             field = new Object();
+     *         }
+     *         return field;
+     *     }
+     * }
+     * </pre>
+     * 
+     * If the field is accessed from compiled OSR code, it may trigger a deoptimization in order to
+     * initialize the field. Using {@link BytecodeOSRNode#prepareOSR} to initialize the field can
+     * prevent this.
+     */
+    default void prepareOSR() {
+        // do nothing
+    }
 
     /**
      * Reports a back edge to the target location. This information may be used to trigger on-stack

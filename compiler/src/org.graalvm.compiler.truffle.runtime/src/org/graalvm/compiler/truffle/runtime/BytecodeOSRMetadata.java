@@ -146,6 +146,7 @@ public final class BytecodeOSRMetadata {
     }
 
     private synchronized void requestOSRCompilation(OptimizedCallTarget osrTarget) {
+        osrNode.prepareOSR();
         updateFrameSlots();
         osrTarget.compile(false);
         if (osrTarget.isCompilationFailed()) {

@@ -439,6 +439,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
     }
 
+    @Override
+    public void prepareOSR() {
+        getRoot(); // force initialization of root node since we need it in OSR
+    }
+
     public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor) {
         super(method);
         CompilerAsserts.neverPartOfCompilation();
