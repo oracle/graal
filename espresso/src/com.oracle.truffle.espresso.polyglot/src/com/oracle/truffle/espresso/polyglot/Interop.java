@@ -1673,62 +1673,6 @@ public final class Interop {
      * Returns {@code true} if the receiver is an iterator which has more elements, else
      * {@code false}. Multiple calls to the {@link #hasIteratorNextElement(Object)} might lead to
      * different results if the underlying data structure is modified.
-     * <p>
-     * The following example shows how the {@link #hasIteratorNextElement(Object)
-     * hasIteratorNextElement} message can be emulated in languages where iterators only have a next
-     * method and throw an exception if there are no further elements.
-     *
-     * <pre>
-     * &#64;ExportLibrary(InteropLibrary.class)
-     * abstract class InteropIterator implements TruffleObject {
-     *
-     *     &#64;SuppressWarnings("serial")
-     *     public static final class Stop extends AbstractTruffleException {
-     *     }
-     *
-     *     private static final Object STOP = new Object();
-     *     private Object next;
-     *
-     *     protected InteropIterator() {
-     *     }
-     *
-     *     protected abstract Object next() throws Stop;
-     *
-     *     &#64;ExportMessage
-     *     &#64;SuppressWarnings("static-method")
-     *     boolean isIterator() {
-     *         return true;
-     *     }
-     *
-     *     &#64;ExportMessage
-     *     boolean hasIteratorNextElement() {
-     *         fetchNext();
-     *         return next != STOP;
-     *     }
-     *
-     *     &#64;ExportMessage
-     *     Object getIteratorNextElement() throws StopIterationException {
-     *         fetchNext();
-     *         Object res = next;
-     *         if (res == STOP) {
-     *             throw StopIterationException.create();
-     *         } else {
-     *             next = null;
-     *         }
-     *         return res;
-     *     }
-     *
-     *     private void fetchNext() {
-     *         if (next == null) {
-     *             try {
-     *                 next = next();
-     *             } catch (Stop stop) {
-     *                 next = STOP;
-     *             }
-     *         }
-     *     }
-     * }
-     * </pre>
      *
      * @throws UnsupportedMessageException if and only if {@link #isIterator(Object)} returns
      *             {@code false} for the same receiver.
