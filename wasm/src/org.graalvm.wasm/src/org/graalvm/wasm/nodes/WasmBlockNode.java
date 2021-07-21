@@ -637,12 +637,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         final WasmFunctionInstance functionInstance;
                         final WasmFunction function;
                         final CallTarget target;
-                        final WasmContext.Uid functionInstanceContextUid;
+                        final WasmContext functionInstanceContext;
                         if (element instanceof WasmFunctionInstance) {
                             functionInstance = (WasmFunctionInstance) element;
                             function = functionInstance.function();
                             target = functionInstance.target();
-                            functionInstanceContextUid = functionInstance.context().uid();
+                            functionInstanceContext = functionInstance.context();
                         } else {
                             CompilerDirectives.transferToInterpreter();
                             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
@@ -663,7 +663,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += 1;
 
                         // Validate that the function type matches the expected type.
-                        if (functionInstanceContextUid == context.uid()) {
+                        boolean functionFromCurrentContext = (functionInstanceContext == context);
+                        if (functionFromCurrentContext) {
                             // We can do a quick equivalence-class check.
                             if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
                                 CompilerDirectives.transferToInterpreter();
@@ -685,13 +686,25 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         Object[] args = createArgumentsForCall(stacklocals, expectedFunctionTypeIndex, numArgs, stackPointer);
                         stackPointer -= args.length;
 
-                        TruffleContext truffleContext = functionInstance.context().environment().getContext();
-                        Object prev = truffleContext.enter(this);
+                        // Enter function's context when it is not from the current one
+                        final boolean enterContext = !functionFromCurrentContext;
+                        TruffleContext truffleContext;
+                        Object prev;
+                        if (enterContext) {
+                            truffleContext = functionInstanceContext.environment().getContext();
+                            prev = truffleContext.enter(this);
+                        } else {
+                            truffleContext = null;
+                            prev = null;
+                        }
+
                         final Object result;
                         try {
                             result = executeIndirectCallNode(childrenOffset, target, args);
                         } finally {
-                            truffleContext.leave(this, prev);
+                            if (enterContext) {
+                                truffleContext.leave(this, prev);
+                            }
                         }
 
                         childrenOffset++;
