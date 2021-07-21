@@ -206,6 +206,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 }
             }
         };
+        runnable.run();
         Runnable recursiveRunnable = new Runnable() {
             @Override
             public void run() {
@@ -214,7 +215,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 }
             }
         };
-        runnable.run();
         recursiveRunnable.run();
         sampler.setCollecting(true);
         Thread first = new Thread(runnable);
@@ -232,6 +232,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         } catch (InterruptedException e) {
             Assert.fail("Thread interrupted");
         }
+        sampler.setCollecting(false);
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
         traverseAndCompareForDifferentSources(rootNodes, threadToNodesMap.get(first));
