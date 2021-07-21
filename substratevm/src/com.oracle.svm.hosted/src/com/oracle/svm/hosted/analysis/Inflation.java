@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,7 +86,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class Inflation extends BigBang {
+public class Inflation extends BigBang implements NativeImageStaticAnalysisEngine {
     private Set<AnalysisField> handledUnknownValueFields;
     private Map<GenericInterfacesEncodingKey, Type[]> genericInterfacesMap;
     private Map<AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap;
@@ -249,6 +249,7 @@ public class Inflation extends BigBang {
         }
     }
 
+    @Override
     public AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor() {
         return annotationSubstitutionProcessor;
     }

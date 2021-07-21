@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto;
 import static com.oracle.graal.pointsto.meta.AnalysisUniverse.ESTIMATED_NUMBER_OF_TYPES;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
+import java.io.PrintWriter;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -43,6 +44,8 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 
+import com.oracle.graal.pointsto.flow.FieldTypeFlow;
+import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -82,12 +85,11 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 
-public abstract class BigBang {
+public abstract class BigBang implements StaticAnalysisEngine {
 
     private final OptionValues options;
     private final List<DebugHandlersFactory> debugHandlerFactories;
@@ -176,10 +178,38 @@ public abstract class BigBang {
                         : HeapScanningPolicy.skipTypes(skippedHeapTypes());
     }
 
+    @Override
+    public Timer getAnalysisTimer() {
+        return analysisTimer;
+    }
+
+    @Override
+    public Timer getProcessFeaturesTimer() {
+        return processFeaturesTimer;
+    }
+
+    @Override
+    public void printTimers() {
+        typeFlowTimer.print();
+        checkObjectsTimer.print();
+        processFeaturesTimer.print();
+    }
+
+    @Override
+    public void printTimerStatistics(PrintWriter out) {
+        StatisticsPrinter.print(out, "typeflow_time_ms", typeFlowTimer.getTotalTime());
+        StatisticsPrinter.print(out, "objects_time_ms", checkObjectsTimer.getTotalTime());
+        StatisticsPrinter.print(out, "features_time_ms", processFeaturesTimer.getTotalTime());
+        StatisticsPrinter.print(out, "total_analysis_time_ms", analysisTimer.getTotalTime());
+
+        StatisticsPrinter.printLast(out, "total_memory_bytes", analysisTimer.getTotalMemory());
+    }
+
     public boolean strengthenGraalGraphs() {
         return strengthenGraalGraphs;
     }
 
+    @Override
     public AnalysisType[] skippedHeapTypes() {
         return new AnalysisType[]{metaAccess.lookupJavaType(String.class)};
     }
@@ -200,14 +230,17 @@ public abstract class BigBang {
         return extendedAsserts;
     }
 
+    @Override
     public OptionValues getOptions() {
         return options;
     }
 
+    @Override
     public List<DebugHandlersFactory> getDebugHandlerFactories() {
         return debugHandlerFactories;
     }
 
+    @Override
     public DebugContext getDebug() {
         return debug;
     }
@@ -224,13 +257,7 @@ public abstract class BigBang {
         unsafeStores.putIfAbsent(unsafeStore, true);
     }
 
-    /**
-     * Force update of the unsafe loads and unsafe store type flows when a field is registered as
-     * unsafe accessed 'on the fly', i.e., during the analysis.
-     *
-     * @param field the newly unsafe registered field. We use its declaring type to filter the
-     *            unsafe access flows that need to be updated.
-     */
+    @Override
     public void forceUnsafeUpdate(AnalysisField field) {
         /*
          * It is cheaper to post the flows of all loads and stores even if they are not related to
@@ -279,6 +306,7 @@ public abstract class BigBang {
         return true;
     }
 
+    @Override
     public void cleanupAfterAnalysis() {
         allSynchronizedTypeFlow = null;
         unsafeLoads = null;
@@ -292,6 +320,7 @@ public abstract class BigBang {
         universe.getMethods().forEach(AnalysisMethod::cleanupAfterAnalysis);
     }
 
+    @Override
     public AnalysisPolicy analysisPolicy() {
         return universe.analysisPolicy();
     }
@@ -300,14 +329,17 @@ public abstract class BigBang {
         return universe.analysisPolicy().getContextPolicy();
     }
 
+    @Override
     public AnalysisUniverse getUniverse() {
         return universe;
     }
 
+    @Override
     public HostedProviders getProviders() {
         return providers;
     }
 
+    @Override
     public AnalysisMetaAccess getMetaAccess() {
         return metaAccess;
     }
@@ -316,6 +348,7 @@ public abstract class BigBang {
         return replacements;
     }
 
+    @Override
     public UnsupportedFeatures getUnsupportedFeatures() {
         return unsupportedFeatures;
     }
@@ -372,6 +405,7 @@ public abstract class BigBang {
         return allSynchronizedTypeFlow;
     }
 
+    @Override
     public TypeState getAllSynchronizedTypeState() {
         /*
          * If all-synchrnonized type flow, i.e., the type flow that keeps track of the types of all
@@ -388,12 +422,14 @@ public abstract class BigBang {
         return executor.isStarted();
     }
 
+    @Override
     public AnalysisMethod addRootMethod(Executable method) {
         AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
         addRootMethod(aMethod);
         return aMethod;
     }
 
+    @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod) {
         if (aMethod.isRootMethod()) {
@@ -434,15 +470,16 @@ public abstract class BigBang {
         return aMethod;
     }
 
-    public AnalysisType addSystemClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
+    @Override
+    public AnalysisType addRootClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
         AnalysisType type = metaAccess.lookupJavaType(clazz);
         type.registerAsReachable();
-        return addSystemClass(type, addFields, addArrayClass);
+        return addRootClass(type, addFields, addArrayClass);
     }
 
     @SuppressWarnings({"try"})
-    private AnalysisType addSystemClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
-        try (Indent indent = debug.logAndIndent("add system class %s", type.getName())) {
+    private AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
+        try (Indent indent = debug.logAndIndent("add root class %s", type.getName())) {
             for (AnalysisField field : type.getInstanceFields(false)) {
                 if (addFields) {
                     field.registerAsAccessed();
@@ -455,21 +492,22 @@ public abstract class BigBang {
                 fieldDeclaredTypeFlow.addUse(this, type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, true));
             }
             if (type.getSuperclass() != null) {
-                addSystemClass(type.getSuperclass(), addFields, addArrayClass);
+                addRootClass(type.getSuperclass(), addFields, addArrayClass);
             }
             if (addArrayClass) {
-                addSystemClass(type.getArrayClass(), false, false);
+                addRootClass(type.getArrayClass(), false, false);
             }
         }
         return type;
     }
 
+    @Override
     @SuppressWarnings("try")
-    public AnalysisType addSystemField(Class<?> clazz, String fieldName) {
-        AnalysisType type = addSystemClass(clazz, false, false);
+    public AnalysisType addRootField(Class<?> clazz, String fieldName) {
+        AnalysisType type = addRootClass(clazz, false, false);
         for (AnalysisField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
-                try (Indent indent = debug.logAndIndent("add system field %s in class %s", fieldName, clazz.getName())) {
+                try (Indent indent = debug.logAndIndent("add root field %s in class %s", fieldName, clazz.getName())) {
                     field.registerAsAccessed();
                     /*
                      * For system classes any instantiated (sub)type of the declared field type can
@@ -485,8 +523,8 @@ public abstract class BigBang {
     }
 
     @SuppressWarnings("try")
-    public AnalysisType addSystemStaticField(Class<?> clazz, String fieldName) {
-        addSystemClass(clazz, false, false);
+    public AnalysisType addRootStaticField(Class<?> clazz, String fieldName) {
+        addRootClass(clazz, false, false);
         Field reflectField;
         try {
             try (Indent indent = debug.logAndIndent("add system static field %s in class %s", fieldName, clazz.getName())) {
@@ -502,19 +540,22 @@ public abstract class BigBang {
         }
     }
 
-    public void addSystemMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+    @Override
+    public AnalysisMethod addRootMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
         try {
             Method method = clazz.getDeclaredMethod(methodName, parameterTypes);
-            addRootMethod(method);
+            return addRootMethod(method);
         } catch (NoSuchMethodException ex) {
             throw shouldNotReachHere(ex);
         }
     }
 
+    @Override
     public final SnippetReflectionProvider getSnippetReflectionProvider() {
         return providers.getSnippetReflection();
     }
 
+    @Override
     public final ConstantReflectionProvider getConstantReflectionProvider() {
         return providers.getConstantReflection();
     }
@@ -527,6 +568,7 @@ public abstract class BigBang {
         return executor;
     }
 
+    @Override
     public void checkUserLimitations() {
     }
 
@@ -578,6 +620,7 @@ public abstract class BigBang {
      * @return Returns true if any changes are made, i.e. if any type flows are updated
      */
     @SuppressWarnings("try")
+    @Override
     public boolean finish() throws InterruptedException {
         try (Indent indent = debug.logAndIndent("starting analysis in BigBang.finish")) {
             universe.setAnalysisDataValid(false);
@@ -639,6 +682,7 @@ public abstract class BigBang {
         }
     }
 
+    @Override
     public HeapScanningPolicy scanningPolicy() {
         return heapScanningPolicy;
     }
@@ -651,6 +695,7 @@ public abstract class BigBang {
     protected void checkObjectGraph(ObjectScanner objectScanner) {
     }
 
+    @Override
     public HostVM getHostVM() {
         return hostVM;
     }
