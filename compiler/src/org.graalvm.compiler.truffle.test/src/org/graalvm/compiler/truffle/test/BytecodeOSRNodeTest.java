@@ -151,6 +151,30 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
+     * Test that a deoptimized OSR target can recompile.
+     */
+    @Test
+    public void testDeoptimizeAndRecompile() {
+        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        DeoptimizingFixedIterationLoop osrNode = new DeoptimizingFixedIterationLoop(frameDescriptor);
+        RootNode rootNode = new Program(osrNode, frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        // After osrThreshold+1 iterations, it should trigger OSR and deoptimize. OSR should not be
+        // disabled, but the target should be invalid pending recompilation.
+        Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
+        Assert.assertNotEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
+        BytecodeOSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
+        OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
+        Assert.assertFalse(target.isValid());
+        // If we call it again, it should recompile, and the same call target should be used.
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
+        Assert.assertNotEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
+        OptimizedCallTarget newOSRTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
+        Assert.assertTrue(osrTarget.isValid());
+        Assert.assertEquals(newOSRTarget, osrTarget);
+    }
+
+    /*
      * Test that node replacement in the base node invalidates the OSR target.
      */
     @Test
@@ -169,15 +193,16 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         childToReplace.replace(new Node() {
         });
-        Assert.assertTrue(osrMetadata.getOSRCompilations().isEmpty());
         Assert.assertFalse(osrTarget.isValid());
-        // Invalidating a target on node replace should not disable compilation.
+        // Invalidating a target on node replace should not disable compilation or remove the target
         Assert.assertNotEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
-        // Calling the node will eventually trigger OSR again (after OSR_POLL_INTERVAL back-edges)
-        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(BytecodeOSRMetadata.OSR_POLL_INTERVAL + 1));
-        osrTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
-        Assert.assertNotNull(osrTarget);
-        Assert.assertTrue(osrTarget.isValid());
+        Assert.assertFalse(osrMetadata.getOSRCompilations().isEmpty());
+        // Calling the node will eventually trigger OSR again.
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
+        Assert.assertNotEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
+        OptimizedCallTarget newOSRTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
+        Assert.assertTrue(newOSRTarget.isValid());
+        Assert.assertEquals(osrTarget, newOSRTarget);
     }
 
     /*
@@ -299,7 +324,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
-     * Test that when the frame is updated after OSR compilation, OSR will deopt and eventually retry.
+     * Test that when the frame is updated after OSR compilation, OSR will deopt and eventually
+     * retry.
      */
     @Test
     public void testFrameChanges() {
@@ -582,6 +608,49 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 }
             }
             return CompilerDirectives.inCompiledCode() ? OSR_RESULT : NORMAL_RESULT;
+        }
+    }
+
+    public static class DeoptimizingFixedIterationLoop extends FixedIterationLoop {
+        @CompilationFinal boolean loaded;
+
+        public DeoptimizingFixedIterationLoop(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+            loaded = false;
+        }
+
+        @Override
+        protected Object executeLoop(VirtualFrame frame, int numIterations) {
+            checkField();
+            try {
+                for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                    frame.setInt(indexSlot, i);
+                    if (i + 1 < numIterations) { // back-edge will be taken
+                        Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+                }
+                return CompilerDirectives.inCompiledCode() ? OSR_RESULT : NORMAL_RESULT;
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        @TruffleBoundary
+        void boundaryCall() {
+        }
+
+        void checkField() {
+            if (CompilerDirectives.inCompiledCode() && !loaded) {
+                // the boundary call prevents Truffle from moving the deopt earlier,
+                // which ensures this branch is taken.
+                boundaryCall();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                loaded = true;
+            }
         }
     }
 

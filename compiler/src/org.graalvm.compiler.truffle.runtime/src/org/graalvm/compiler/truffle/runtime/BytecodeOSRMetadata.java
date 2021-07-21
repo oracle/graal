@@ -59,7 +59,7 @@ public final class BytecodeOSRMetadata {
 
     private final BytecodeOSRNode osrNode;
     private final FrameDescriptor frameDescriptor;
-    private volatile Map<Integer, OptimizedCallTarget> osrCompilations;
+    private volatile Map<Integer, OptimizedCallTarget> compilationMap;
     private final int osrThreshold;
     private int backEdgeCount;
 
@@ -74,7 +74,7 @@ public final class BytecodeOSRMetadata {
             throw new IllegalArgumentException("Cannot perform OSR on a frame which can be materialized.");
         }
         this.frameDescriptor = frameDescriptor;
-        this.osrCompilations = null;
+        this.compilationMap = null;
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
     }
@@ -84,36 +84,43 @@ public final class BytecodeOSRMetadata {
             return null;
         }
 
-        OptimizedCallTarget osrTarget;
+        Map<Integer, OptimizedCallTarget> osrCompilations = compilationMap;
         if (osrCompilations == null) {
-            ((Node) osrNode).atomic(() -> {
-                if (osrCompilations == null) {
-                    osrCompilations = new ConcurrentHashMap<>();
+            osrCompilations = ((Node) osrNode).atomic(() -> {
+                Map<Integer, OptimizedCallTarget> lockedOSRCompilations = compilationMap;
+                if (lockedOSRCompilations == null) {
+                    compilationMap = lockedOSRCompilations = new ConcurrentHashMap<>();
                 }
+                return lockedOSRCompilations;
             });
         }
 
-        osrTarget = osrCompilations.get(target);
+        OptimizedCallTarget osrTarget = osrCompilations.get(target);
         if (osrTarget == null) {
-            // Lock to request compilation.
+            Map<Integer, OptimizedCallTarget> finalOSRCompilations = osrCompilations; // effectively-final
             osrTarget = ((Node) osrNode).atomic(() -> {
-                OptimizedCallTarget lockedTarget = osrCompilations.get(target);
+                OptimizedCallTarget lockedTarget = finalOSRCompilations.get(target);
                 if (lockedTarget == null) {
-                    lockedTarget = requestOSR(target);
-                    if (lockedTarget != null) {
-                        osrCompilations.put(target, lockedTarget);
-                    }
+                    lockedTarget = createOSRTarget(target);
+                    finalOSRCompilations.put(target, lockedTarget);
                 }
                 return lockedTarget;
             });
         }
 
-        if (osrTarget != null && !osrTarget.isCompiling()) {
-            if (!osrTarget.isValid()) {
-                invalidateOSRTarget(target, "OSR compilation failed or cancelled");
-                return null;
-            }
+        // Case 1: code is still being compiled
+        if (osrTarget.isCompiling()) {
+            return null;
+        }
+        // Case 2: code is compiled and valid
+        if (osrTarget.isValid()) {
             return osrTarget.callOSR(parentFrame);
+        }
+        // Case 3: code is invalid; either give up or reschedule compilation
+        if (osrTarget.isCompilationFailed()) {
+            markCompilationFailed();
+        } else {
+            requestOSRCompilation(osrTarget);
         }
         return null;
     }
@@ -130,18 +137,20 @@ public final class BytecodeOSRMetadata {
         return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
     }
 
-    private synchronized OptimizedCallTarget requestOSR(int target) {
-        assert osrCompilations != null && !osrCompilations.containsKey(target);
+    private synchronized OptimizedCallTarget createOSRTarget(int target) {
+        assert compilationMap != null && !compilationMap.containsKey(target);
         TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
+        OptimizedCallTarget osrTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
+        requestOSRCompilation(osrTarget); // queue it up for compilation
+        return osrTarget;
+    }
+
+    private synchronized void requestOSRCompilation(OptimizedCallTarget osrTarget) {
         updateFrameSlots();
-        OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
-        callTarget.compile(false);
-        if (callTarget.isCompilationFailed()) {
+        osrTarget.compile(false);
+        if (osrTarget.isCompilationFailed()) {
             markCompilationFailed();
-            return null;
         }
-        osrCompilations.put(target, callTarget);
-        return callTarget;
     }
 
     private synchronized void updateFrameSlots() {
@@ -225,21 +234,9 @@ public final class BytecodeOSRMetadata {
         }
     }
 
-    private synchronized void invalidateOSRTarget(int target, CharSequence reason) {
-        if (osrCompilations != null) {
-            OptimizedCallTarget callTarget = osrCompilations.remove(target);
-            if (callTarget != null) {
-                if (callTarget.isCompilationFailed()) {
-                    markCompilationFailed();
-                }
-                callTarget.invalidate(reason);
-            }
-        }
-    }
-
     synchronized void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
-        if (osrCompilations != null) {
-            for (OptimizedCallTarget callTarget : osrCompilations.values()) {
+        if (compilationMap != null) {
+            for (OptimizedCallTarget callTarget : compilationMap.values()) {
                 if (callTarget != null) {
                     if (callTarget.isCompilationFailed()) {
                         markCompilationFailed();
@@ -247,17 +244,20 @@ public final class BytecodeOSRMetadata {
                     callTarget.nodeReplaced(oldNode, newNode, reason);
                 }
             }
-            osrCompilations.clear();
         }
     }
 
-    private void markCompilationFailed() {
+    private synchronized void markCompilationFailed() {
         osrNode.setOSRMetadata(DISABLED);
+        if (compilationMap != null) {
+            compilationMap.clear();
+            compilationMap = null;
+        }
     }
 
     // for testing
     public Map<Integer, OptimizedCallTarget> getOSRCompilations() {
-        return osrCompilations;
+        return compilationMap;
     }
 
     public int getBackEdgeCount() {

@@ -218,7 +218,7 @@ public class FrameTest {
                 try {
                     frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
                     Assert.fail("materializing a non-materializable frame should fail");
-                } catch (IllegalArgumentException ex) {
+                } catch (UnsupportedOperationException ex) {
                     // fall through
                 }
                 return this;
