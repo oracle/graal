@@ -24,6 +24,8 @@ package com.oracle.truffle.espresso.classfile.attributes;
 
 import java.util.Objects;
 
+import org.graalvm.collections.Equivalence;
+
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.jdwp.api.LocalRef;
 
@@ -31,6 +33,24 @@ import com.oracle.truffle.espresso.jdwp.api.LocalRef;
  * Describes the type and bytecode index range in which a local variable is live.
  */
 public final class Local implements LocalRef {
+
+    public static final Equivalence localEquivalence = new Equivalence() {
+        @Override
+        public boolean equals(Object a, Object b) {
+            if (a instanceof Local && b instanceof Local) {
+                return ((Local) a).sameLocal((Local) b);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode(Object o) {
+            if (o instanceof Local) {
+                return ((Local) o).sameLocalHash();
+            }
+            return o.hashCode();
+        }
+    };
 
     public static final Local[] EMPTY_ARRAY = new Local[0];
 
@@ -66,6 +86,14 @@ public final class Local implements LocalRef {
 
     public int getSlot() {
         return slot;
+    }
+
+    public boolean sameLocal(Local other) {
+        return this.startBci == other.startBci && this.endBci == other.endBci && this.slot == other.slot && this.name.equals(other.name);
+    }
+
+    public int sameLocalHash() {
+        return Objects.hash(startBci, endBci, slot, name);
     }
 
     @Override

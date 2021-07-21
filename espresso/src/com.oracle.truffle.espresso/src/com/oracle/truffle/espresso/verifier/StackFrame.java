@@ -341,7 +341,7 @@ final class OperandStack {
         boolean b1 = isType2(v1);
         boolean b2 = isType2(v2);
 
-        verifyGuarantee(!v1.isTopOperand() || !v2.isTopOperand(), "dup2x2 of Top type.");
+        verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "dup2x2 of Top type.");
 
         if (b1 && b2) {
             System.arraycopy(stack, top - 2, stack, top - 1, 2);
