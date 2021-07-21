@@ -40,8 +40,6 @@
  */
 package org.graalvm.wasm.memory;
 
-import static java.lang.Math.toIntExact;
-
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
@@ -456,11 +454,11 @@ public abstract class WasmMemory implements TruffleObject {
     @ExportMessage
     public Object readArrayElement(long address,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(toIntExact(address))) {
+        if (!isArrayElementReadable(address)) {
             errorBranch.enter();
             throw InvalidArrayIndexException.create(address);
         }
-        return load_i32_8u(null, toIntExact(address));
+        return load_i32_8u(null, (int) address);
     }
 
     @ExportMessage
@@ -468,7 +466,7 @@ public abstract class WasmMemory implements TruffleObject {
                     @CachedLibrary(limit = "3") InteropLibrary valueLib,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch)
                     throws InvalidArrayIndexException, UnsupportedMessageException, UnsupportedTypeException {
-        if (!isArrayElementReadable(toIntExact(address))) {
+        if (!isArrayElementReadable(address)) {
             errorBranch.enter();
             throw InvalidArrayIndexException.create(address);
         }
@@ -479,6 +477,6 @@ public abstract class WasmMemory implements TruffleObject {
             errorBranch.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, "Only bytes can be stored into WebAssembly memory.");
         }
-        store_i32_8(null, toIntExact(address), rawValue);
+        store_i32_8(null, (int) address, rawValue);
     }
 }
