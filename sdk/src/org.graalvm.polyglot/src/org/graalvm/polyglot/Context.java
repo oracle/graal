@@ -791,18 +791,8 @@ public final class Context implements AutoCloseable {
      * methods will throw an {@link IllegalStateException} when invoked. If an attempt to close a
      * context was successful, then consecutive calls to close have no effect.
      * <p>
-     * In case <code>cancelIfExecuting</code> is <code>false</code>, for convenience, before the
-     * actual closing process begins, the close method leaves the context on the current thread, if
-     * it was entered {@link #enter() explicitly}.
-     * <p>
-     * In case <code>cancelIfExecuting</code> is <code>true</code>, the automatic leave is not
-     * performed. As a consequence, if <code>close(true)</code> is to be used instead of
-     * <code>close()</code> or <code>close(false)</code>, it is required that the context is not
-     * entered on the current thread when <code>close(true)</code> is called.
-     * <code>close(true)</code> can still be used to cancel a context even from a thread where the
-     * context is entered, but in that case <code>close(true)</code> may need to spawn a separate
-     * thread and close the context in that thread, so it is not guaranteed that the context is
-     * closed after <code>close(true)</code> returns.
+     * For convenience, before the actual closing process begins, the close method leaves the
+     * context on the current thread, if it was entered {@link #enter() explicitly}.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            {@link PolyglotException#isCancelled() cancelled}, else an
