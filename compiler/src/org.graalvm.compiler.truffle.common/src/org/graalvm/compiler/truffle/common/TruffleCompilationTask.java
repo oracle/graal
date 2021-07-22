@@ -51,7 +51,5 @@ public interface TruffleCompilationTask {
 
     TruffleInliningData inliningData();
 
-    default boolean hasNextTier() {
-        return isFirstTier();
-    }
+    boolean hasNextTier();
 }

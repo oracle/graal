@@ -15,7 +15,7 @@ This allows you to install GraalVM for the current user into any location, witho
 
 1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html?selected_tab=21).
 2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **11** or **16** for the Java version, **Linux** for the operating system, and **aarch64** for the architecture.
-3. Click on the **Oracle GraalVM Enterprise Edition Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
+3. Click on the **GraalVM Enterprise Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 4. When the download button becomes active, press it to start downloading **graalvm-ee-java11-linux-aarch64-<version>.tar.gz**.
 5. Change the directory to the location where you want to install GraalVM Enterprise, then move the _.tar.gz_ archive to it.
 6. Unzip the archive:
@@ -32,6 +32,7 @@ tar -xzf graalvm-ee-java11-linux-aarch64-<version>.tar.gz
   export JAVA_HOME=/path/to/<graalvm>
   ```
 8. To check whether the installation was successful, enter the `java -version` command.
+
 Optionally, you can specify GraalVM Enterprise as the default JRE or JDK installation in your Java IDE.
 
 ## Supported Functionalities

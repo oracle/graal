@@ -170,11 +170,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                         Collections.singletonList(String.class), mimeType);
     }
 
-    private static Collection<Class<?>> getLanguageClasses() {
-        return invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getLanguageClasses",
-                        Collections.emptyList());
-    }
-
     @SuppressWarnings("unchecked")
     static <T> T invokeStaticMethod(String className, String methodName, Collection<Class<?>> parameterTypes,
                     Object... args) {
@@ -311,8 +306,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         StaticObjectSupport.beforeAnalysis(access);
 
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
-
-        getLanguageClasses().forEach(RuntimeReflection::registerForReflectiveInstantiation);
 
         config.registerHierarchyForReflectiveInstantiation(DefaultExportProvider.class);
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);

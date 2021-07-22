@@ -1702,7 +1702,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         } else if (constant instanceof DynamicConstant) {
             DynamicConstant.Resolved dynamicConstant = pool.resolvedDynamicConstantAt(getMethod().getDeclaringKlass(), cpi);
             dynamicConstant.putResolved(primitives, refs, top, this);
-
         } else {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.unimplemented(constant.toString());

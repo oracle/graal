@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestMembersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.descriptors.Names;
@@ -589,6 +590,11 @@ public final class ObjectKlass extends Klass {
         return false;
     }
 
+    public boolean isSealed() {
+        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) getAttribute(PermittedSubclassesAttribute.NAME);
+        return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
+    }
+
     public boolean permittedSubclassCheck(ObjectKlass k) {
         CompilerAsserts.neverPartOfCompilation();
         if (!getContext().getJavaVersion().java17OrLater()) {
@@ -899,13 +905,14 @@ public final class ObjectKlass extends Klass {
                 try {
                     MethodVerifier.verify(m);
                 } catch (MethodVerifier.VerifierError e) {
+                    String message = String.format("Verification for class `%s` failed for method `%s`: \n\t%s", getExternalName(), m.getNameAsString(), e.getMessage());
                     switch (e.kind()) {
                         case Verify:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
+                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
                         case ClassFormat:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
                         case NoClassDefFound:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
+                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
                     }
                 }
             }
@@ -1098,10 +1105,8 @@ public final class ObjectKlass extends Klass {
         getConstantPool().setKlassAt(getLinkedKlass().getParserKlass().getThisKlassIndex(), this);
     }
 
-    @SuppressWarnings("static-method")
     public boolean isRecord() {
-        // TODO:
-        return false;
+        return isFinalFlagSet() && getSuperKlass() == getMeta().java_lang_Record && getAttribute(RecordAttribute.NAME) != null;
     }
 
     @Override

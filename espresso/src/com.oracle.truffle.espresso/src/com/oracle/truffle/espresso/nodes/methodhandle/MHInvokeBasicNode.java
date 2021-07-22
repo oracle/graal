@@ -49,17 +49,25 @@ public abstract class MHInvokeBasicNode extends MethodHandleIntrinsicNode {
         return target.identity() == cachedTarget.identity();
     }
 
+    private void sanitizeSignature(Method payload) {
+        if (payload.getArgumentCount() != getMethod().getArgumentCount()) {
+            getMeta().throwException(getMeta().java_lang_UnsupportedOperationException);
+        }
+    }
+
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"inliningEnabled()", "canInline(target, cachedTarget)"})
     Object executeCallDirect(Object[] args, Method target,
                     @Cached("target") Method cachedTarget,
                     @Cached("create(target.getCallTarget())") DirectCallNode directCallNode) {
+        sanitizeSignature(cachedTarget);
         return directCallNode.call(args);
     }
 
     @Specialization(replaces = "executeCallDirect")
     Object executeCallIndirect(Object[] args, Method target,
                     @Cached("create()") IndirectCallNode callNode) {
+        sanitizeSignature(target);
         return callNode.call(target.getCallTarget(), args);
     }
 

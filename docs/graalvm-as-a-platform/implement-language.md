@@ -178,7 +178,7 @@ Skipping the native image build because SL_BUILD_NATIVE is set to false.
 ...
 ```
 
-## Run SimpleLanguage with the Newest Compiler 21.1.0
+## Run SimpleLanguage with the Newest Compiler 21.2.0
 
 In the outstanding case that you need to execute SimpleLanguage with the newest
 version of the GraalVM compiler, please follow these instructions:
@@ -210,7 +210,7 @@ mx build
 ```
 7. Run SimpleLanguage using the mx command:
 ```shell
-mx -v --jdk=jvmci vm -cp /path/to/simplelanguage/launcher/target/launcher-21.1.0-SNAPSHOT.jar:/path/to/simplelanguage/language/target/simplelanguage.jar com.oracle.truffle.sl.launcher.SLMain  /path/to/simplelanguage/language/tests/SlScript.sl
+mx -v --jdk=jvmci vm -cp /path/to/simplelanguage/launcher/target/launcher-21.2.0-SNAPSHOT.jar:/path/to/simplelanguage/language/target/simplelanguage.jar com.oracle.truffle.sl.launcher.SLMain  /path/to/simplelanguage/language/tests/SlScript.sl
 ```
 
 ## Run SimpleLanguage Using Command Line
@@ -228,7 +228,7 @@ should execute the following command:
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp launcher/target/launcher-21.1.0-SNAPSHOT.jar \
+    -cp launcher/target/launcher-21.2.0-SNAPSHOT.jar \
     -Dtruffle.class.path.append=language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```
@@ -256,7 +256,7 @@ be as follows:
 ```shell
 $JAVA_HOME/bin/java \
     -XX:-UseJVMCIClassLoader -Dgraalvm.locatorDisabled=true \
-    -cp launcher/target/launcher-21.1.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
+    -cp launcher/target/launcher-21.2.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```
 
@@ -285,6 +285,6 @@ with the following command:
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp graal-sdk-21.1.0.jar:truffle-api-21.1.0.jar:launcher/target/launcher-21.1.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
+    -cp graal-sdk-21.2.0.jar:truffle-api-21.2.0.jar:launcher/target/launcher-21.2.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```

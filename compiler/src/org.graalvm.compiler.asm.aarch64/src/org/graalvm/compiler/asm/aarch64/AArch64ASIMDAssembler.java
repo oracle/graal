@@ -612,6 +612,8 @@ public abstract class AArch64ASIMDAssembler {
         FDIV(UBit | 0b11111 << 11),
         /* UBit 1, size 00 */
         EOR(UBit | 0b00011 << 11),
+        /* UBit 1, size 01 */
+        BSL(UBit | 0b00011 << 11),
         /* UBit 1, size 1x */
         FCMGT(UBit | 0b11100 << 11),
         FACGT(UBit | 0b11101 << 11),
@@ -697,6 +699,14 @@ public abstract class AArch64ASIMDAssembler {
         emitInt(instr.encoding | baseEncoding | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
     }
 
+    public void scalarShiftByImmEncoding(ASIMDInstruction instr, int imm7, Register dst, Register src) {
+        assert (imm7 & 0b1111_111) == imm7;
+        assert (imm7 & 0b1111_111) != 0;
+        assert (imm7 & 0b0000_111) != imm7;
+        int baseEncoding = 0b01_0_111110_0000_000_00000_1_00000_00000;
+        emitInt(instr.encoding | baseEncoding | imm7 << 16 | rd(dst) | rs1(src));
+    }
+
     private void copyEncoding(ASIMDInstruction instr, boolean setQBit, ElementSize eSize, Register dst, Register src, int index) {
         assert index >= 0 && index < ASIMDSize.FullReg.bytes() / eSize.bytes();
         int baseEncoding = 0b0_0_0_01110000_00000_0_0000_1_00000_00000;
@@ -742,6 +752,7 @@ public abstract class AArch64ASIMDAssembler {
     public void shiftByImmEncoding(ASIMDInstruction instr, boolean setQBit, int imm7, Register dst, Register src) {
         assert (imm7 & 0b1111_111) == imm7;
         assert (imm7 & 0b1111_111) != 0;
+        assert (imm7 & 0b0000_111) != imm7;
         int baseEncoding = 0b0_0_0_011110_0000_000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(setQBit) | imm7 << 16 | rd(dst) | rs1(src));
     }
@@ -926,6 +937,24 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.BIC, size, elemSize01, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.24 Bitwise select.<br>
+     * This instruction performs a bitwise select. For each bit, whether the corresponding bit in
+     * the first or second source register is chosen is based on the current value of the
+     * corresponding bit within the destination register; if set -> first register, else second
+     * register.
+     *
+     * <code>for i in 0..n-1 do dst[i] = dst[i] == 1 ? src1[i] : src2[i]</code>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void bslVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
+        threeSameEncoding(ASIMDInstruction.BSL, size, elemSize01, dst, src1, src2);
     }
 
     /**
@@ -1282,6 +1311,25 @@ public abstract class AArch64ASIMDAssembler {
         assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
 
         threeSameEncoding(ASIMDInstruction.FACGT, size, elemSize1X(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.48 Floating-point absolute compare greater than.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code> dst = fp_abs(src1) > fp_abs(src2) > -1 : 0</code>
+     *
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void facgtSSS(ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        scalarThreeSameEncoding(ASIMDInstruction.FACGT, elemSize1X(eSize), dst, src1, src2);
     }
 
     /**
@@ -2259,9 +2307,33 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.392 unsigned shift right (immediate).<br>
+     * C7.2.392 unsigned shift right (immediate) scalar.<br>
      *
      * <code>for i in 0..n-1 do dst[i] = src[i] >>> imm</code>
+     *
+     * @param eSize element size. Must be ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shiftAmt shift right amount.
+     */
+    public void ushrSSI(ElementSize eSize, Register dst, Register src, int shiftAmt) {
+        assert eSize == ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        /* Accepted shift range */
+        assert shiftAmt > 0 && shiftAmt <= eSize.nbits;
+
+        /* shift = eSize.nbits * 2 - imm7 */
+        int imm7 = eSize.nbits * 2 - shiftAmt;
+
+        scalarShiftByImmEncoding(ASIMDInstruction.USHR, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.392 unsigned shift right (immediate) vector.<br>
+     *
+     * <code>dst = src >>> imm</code>
      *
      * @param size register size.
      * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note

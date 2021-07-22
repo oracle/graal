@@ -40,6 +40,7 @@ To verify if the move is successful and to get a list of all installed JDKs, run
     export JAVA_HOME=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home
     ```
 5. To check whether the installation was successful, run the `java -version` command.
+
 Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.
 
 For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/21/docs/getting-started/installation-macos/).

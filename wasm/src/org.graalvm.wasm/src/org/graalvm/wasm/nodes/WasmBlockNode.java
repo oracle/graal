@@ -49,6 +49,7 @@ import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -633,14 +634,15 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             CompilerDirectives.transferToInterpreter();
                             throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
                         }
+                        final WasmFunctionInstance functionInstance;
                         final WasmFunction function;
                         final CallTarget target;
-                        final WasmContext.Uid functionInstanceContextUid;
+                        final WasmContext functionInstanceContext;
                         if (element instanceof WasmFunctionInstance) {
-                            final WasmFunctionInstance functionInstance = (WasmFunctionInstance) element;
+                            functionInstance = (WasmFunctionInstance) element;
                             function = functionInstance.function();
                             target = functionInstance.target();
-                            functionInstanceContextUid = functionInstance.contextUid();
+                            functionInstanceContext = functionInstance.context();
                         } else {
                             CompilerDirectives.transferToInterpreter();
                             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
@@ -661,7 +663,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += 1;
 
                         // Validate that the function type matches the expected type.
-                        if (functionInstanceContextUid == context.uid()) {
+                        boolean functionFromCurrentContext = (functionInstanceContext == context);
+                        if (functionFromCurrentContext) {
                             // We can do a quick equivalence-class check.
                             if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
                                 CompilerDirectives.transferToInterpreter();
@@ -683,7 +686,27 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         Object[] args = createArgumentsForCall(stacklocals, expectedFunctionTypeIndex, numArgs, stackPointer);
                         stackPointer -= args.length;
 
-                        final Object result = executeIndirectCallNode(childrenOffset, target, args);
+                        // Enter function's context when it is not from the current one
+                        final boolean enterContext = !functionFromCurrentContext;
+                        TruffleContext truffleContext;
+                        Object prev;
+                        if (enterContext) {
+                            truffleContext = functionInstanceContext.environment().getContext();
+                            prev = truffleContext.enter(this);
+                        } else {
+                            truffleContext = null;
+                            prev = null;
+                        }
+
+                        final Object result;
+                        try {
+                            result = executeIndirectCallNode(childrenOffset, target, args);
+                        } finally {
+                            if (enterContext) {
+                                truffleContext.leave(this, prev);
+                            }
+                        }
+
                         childrenOffset++;
 
                         // At the moment, WebAssembly functions may return up to one value.
