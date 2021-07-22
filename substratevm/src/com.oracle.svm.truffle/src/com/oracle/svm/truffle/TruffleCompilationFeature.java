@@ -166,7 +166,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Feature that enables compilation of Truffle AST to machine code. This feature requires
  * {@link SubstrateTruffleRuntime} to be set as {@link TruffleRuntime}.
  */
-public class TruffleCompilerFeature implements com.oracle.svm.core.graal.GraalFeature {
+public class TruffleCompilationFeature implements com.oracle.svm.core.graal.GraalFeature {
 
     public static class Options {
         @Option(help = "Check that CompilerAsserts.neverPartOfCompilation is not reachable for runtime compilation")//
@@ -188,7 +188,7 @@ public class TruffleCompilerFeature implements com.oracle.svm.core.graal.GraalFe
     public static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(TruffleCompilerFeature.class);
+            return ImageSingletons.contains(TruffleCompilationFeature.class);
         }
     }
 
@@ -199,12 +199,12 @@ public class TruffleCompilerFeature implements com.oracle.svm.core.graal.GraalFe
     private final Set<GraalFeature.CallTreeNode> neverPartOfCompilationViolations;
     private boolean profilingEnabled;
 
-    public TruffleCompilerFeature() {
+    public TruffleCompilationFeature() {
         blocklistMethods = new HashSet<>();
-        blocklistViolations = new TreeSet<>(TruffleCompilerFeature::blocklistViolationComparator);
+        blocklistViolations = new TreeSet<>(TruffleCompilationFeature::blocklistViolationComparator);
         warnMethods = new HashSet<>();
-        warnViolations = new TreeSet<>(TruffleCompilerFeature::blocklistViolationComparator);
-        neverPartOfCompilationViolations = new TreeSet<>(TruffleCompilerFeature::blocklistViolationComparator);
+        warnViolations = new TreeSet<>(TruffleCompilationFeature::blocklistViolationComparator);
+        neverPartOfCompilationViolations = new TreeSet<>(TruffleCompilationFeature::blocklistViolationComparator);
     }
 
     @Override
@@ -227,7 +227,7 @@ public class TruffleCompilerFeature implements com.oracle.svm.core.graal.GraalFe
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime,
-                        "TruffleCompilerFeature requires SubstrateTruffleRuntime");
+                        "TruffleCompilationFeature requires SubstrateTruffleRuntime");
         ((SubstrateTruffleRuntime) Truffle.getRuntime()).resetHosted();
     }
 
@@ -248,9 +248,7 @@ public class TruffleCompilerFeature implements com.oracle.svm.core.graal.GraalFe
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         /*
-         * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so
-         * that we get exact types for fields that store profiles. TruffleBaseFeature does this
-         * also, so we need to override its registered plugin.
+         * See TruffleBaseFeature's registerInvocationPlugins method.
          */
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), Profile.class);
         r.setAllowOverwrite(true);
@@ -761,7 +759,7 @@ public class TruffleCompilerFeature implements com.oracle.svm.core.graal.GraalFe
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", onlyWith = TruffleCompilerFeature.IsEnabled.class)
+@TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", onlyWith = TruffleCompilationFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_truffle_runtime_OptimizedCallTarget {
 
     /*

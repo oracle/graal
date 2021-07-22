@@ -110,7 +110,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
- * {@link TruffleCompilerFeature}'s dependency), then {@link TruffleRuntime} <b>must</b> be set to
+ * {@link TruffleCompilationFeature}'s dependency), then {@link TruffleRuntime} <b>must</b> be set to
  * the {@link DefaultTruffleRuntime}.
  */
 public final class TruffleBaseFeature implements com.oracle.svm.core.graal.GraalFeature {
@@ -269,8 +269,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(TruffleCompilerFeature.class) && (Truffle.getRuntime() instanceof SubstrateTruffleRuntime)) {
-            VMError.shouldNotReachHere("TruffleCompilerFeature is required for SubstrateTruffleRuntime.");
+        if (!ImageSingletons.contains(TruffleCompilationFeature.class) && (Truffle.getRuntime() instanceof SubstrateTruffleRuntime)) {
+            VMError.shouldNotReachHere("TruffleCompilationFeature is required for SubstrateTruffleRuntime.");
         }
 
         FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) access;

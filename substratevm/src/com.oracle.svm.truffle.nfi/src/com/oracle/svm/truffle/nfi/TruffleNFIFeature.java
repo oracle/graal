@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.truffle.TruffleBaseFeature;
 
 /**
