@@ -218,7 +218,7 @@ public final class CPUSampler implements Closeable {
      *
      * @param mode the new mode for the sampler.
      * @since 0.30
-     * @deprecated Is now a noop.
+     * @deprecated Will be removed without replacement. Has now no effect.
      */
     @SuppressWarnings("unused")
     @Deprecated
@@ -292,7 +292,7 @@ public final class CPUSampler implements Closeable {
      *
      * @param delaySamplingUntilNonInternalLangInit Enable or disable this option.
      * @since 0.31
-     * @deprecated Is now a noop.
+     * @deprecated Will be removed without replacement. Has now no effect.
      */
     @Deprecated
     @SuppressWarnings("unused")
