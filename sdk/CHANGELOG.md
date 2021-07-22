@@ -3,7 +3,7 @@
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
 ## Version 21.3.0
-* Added the ability to share values between contexts. Please note the limitations and restrictions in the [Context](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#Isolation) javadoc. Also added `Context.Builder.allowValueSharing(boolean)` to disable value sharing between multiple 
+* Added the ability to share values between contexts. Please see  `Context.Builder.allowValueSharing(boolean)` for further details. 
 
 ## Version 21.2.0
 * `AllowVMInspection` is enabled in the native launchers, `SIGQUIT` can be used to generate thread dumps. Performance counters are disabled by default, they can be enabled in the graalvm enterprise by the `--vm.XX:+UsePerfData` option.
