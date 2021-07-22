@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -290,6 +290,12 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("language: " + evalResult.languageId);
             log("type:     " + (evalResult.isBinarySource ? "binary" : "source code"));
             log("length:   " + evalResult.sourceLength + (evalResult.isBinarySource ? " bytes" : " characters"));
+            log("");
+
+            log("::: Bench specific options :::");
+            config.parseBenchSpecificDefaults(evalResult.value);
+            config.metric.parseBenchSpecificOptions(evalResult.value);
+            log(config.toString());
 
             log("Initialization completed.");
             log("");
@@ -339,7 +345,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
                 final Optional<Double> value = config.metric.reportAfterIteration(config);
                 if (value.isPresent()) {
-                    log("[" + name + "] iteration " + i + ": " + round(value.get()) + " " + config.metric.unit());
+                    log("[" + name + "] " + (warmup ? "warmup" : "run") + " iteration " + i + ": " + round(value.get()) + " " + config.metric.unit());
                 }
             }
 
@@ -355,20 +361,32 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     private Value lookup(Context context, String languageId, Value evalSource, String memberName) {
         Value result;
-        switch (languageId) {
-            case "llvm":
-                if (!evalSource.canExecute()) {
-                    throw abort("No main function found: " + evalSource);
-                }
-                return evalSource;
-            case "wasm":
-                result = context.getBindings(languageId).getMember("main").getMember(memberName);
-                break;
-            case "java":
-                throw abort("Espresso doesn't provide methods as executable values. It can only invoke methods from the declaring class or receiver.");
-            default:
-                result = context.getBindings(languageId).getMember(memberName);
-                break;
+        if (evalSource.hasMember(memberName)) {
+            // first try the memberName directly
+            result = evalSource.getMember(memberName);
+        } else {
+            // language-specific lookup
+            switch (languageId) {
+                case "llvm":
+                    if (evalSource.canExecute()) {
+                        result = evalSource;
+                    } else {
+                        // In LLVM, !evalsource.canExecute() means it's a shared library.
+                        // Benchmarks must be executables.
+                        throw abort("No main function found: " + evalSource);
+                    }
+                    break;
+                case "wasm":
+                    // Special case for WASM: Lookup main module and get 'memberName' from there.
+                    result = context.getBindings(languageId).getMember("main").getMember(memberName);
+                    break;
+                case "java":
+                    throw abort("Espresso doesn't provide methods as executable values. It can only invoke methods from the declaring class or receiver.");
+                default:
+                    // Fallback for other languages: Look for 'memberName' in global scope.
+                    result = context.getBindings(languageId).getMember(memberName);
+                    break;
+            }
         }
         if (result == null) {
             throw abort("Cannot find target '" + memberName + "'. Please check that the specified program is a benchmark.");
