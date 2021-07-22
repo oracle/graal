@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -61,7 +62,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -187,27 +187,27 @@ public class PermissionsFeature implements Feature {
         DebugContext debugContext = accessImpl.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
             BigBang bb = accessImpl.getBigBang();
-            WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
+            WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), analysis);
             ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
                             accessImpl.getImageClassLoader(),
                             ClassUtil.getUnqualifiedName(getClass()),
                             Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
-            reflectionProxy = bb.forClass("com.oracle.svm.reflect.helpers.ReflectionProxy");
-            reflectionFieldAccessorFactory = bb.forClass(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory");
+            reflectionProxy = analysis.getMetaAccess().lookupJavaType(loadOrFail("com.oracle.svm.reflect.helpers.ReflectionProxy"));
+            reflectionFieldAccessorFactory = analysis.getMetaAccess().lookupJavaType(loadOrFail(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory"));
             VMError.guarantee(reflectionProxy != null && reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
             Set<AnalysisMethod> deniedMethods = new HashSet<>();
-            deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
-            deniedMethods.addAll(findMethods(bb, sun.misc.Unsafe.class, (m) -> m.isPublic()));
+            deniedMethods.addAll(findMethods(analysis, SecurityManager.class, (m) -> m.getName().startsWith("check")));
+            deniedMethods.addAll(findMethods(analysis, sun.misc.Unsafe.class, (m) -> m.isPublic()));
             // The type of the host Java NIO FileSystem.
             // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
             // package but
             // can be directly used by a language. We need to include it into deniedMethods.
-            deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
+            deniedMethods.addAll(findMethods(analysis, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
             if (!deniedMethods.isEmpty()) {
-                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bb, deniedMethods, debugContext);
+                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(analysis, deniedMethods, debugContext);
                 List<List<AnalysisMethod>> report = new ArrayList<>();
                 Set<CallGraphFilter> contextFilters = new HashSet<>();
                 Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
@@ -239,6 +239,14 @@ public class PermissionsFeature implements Feature {
                                     });
                 }
             }
+        }
+    }
+
+    public Class<?> loadOrFail(String className) {
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw JVMCIError.shouldNotReachHere(e);
         }
     }
 

@@ -394,18 +394,6 @@ public abstract class BigBang implements StaticAnalysisEngine {
         return metaAccess.lookupJavaType(Thread.class);
     }
 
-    public AnalysisType forClass(Class<?> clazz) {
-        return metaAccess.lookupJavaType(clazz);
-    }
-
-    public AnalysisType forClass(String className) {
-        try {
-            return forClass(Class.forName(className));
-        } catch (ClassNotFoundException e) {
-            throw JVMCIError.shouldNotReachHere(e);
-        }
-    }
-
     public TypeFlow<?> getAllInstantiatedTypeFlow() {
         return objectType.getTypeFlow(this, true);
     }
