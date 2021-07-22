@@ -259,6 +259,28 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         return getInvokeLocations().stream().map(location -> (AnalysisMethod) location.getMethod()).collect(Collectors.toSet());
     }
 
+    public static class CallContext {
+        public final AnalysisMethod callee;
+        public final boolean isDirect;
+        public final BytecodePosition position;
+
+        public CallContext(AnalysisMethod callee, boolean isDirect, BytecodePosition position) {
+            this.callee = callee;
+            this.isDirect = isDirect;
+            this.position = position;
+        }
+    }
+
+    public List<CallContext> getCallees() {
+        return getTypeFlow()
+                        .getInvokes()
+                        .stream()
+                        .flatMap(invoke -> invoke.getCallees()
+                                        .stream()
+                                        .map(callee -> new CallContext(callee, invoke.isDirectInvoke(), invoke.getSource())))
+                        .collect(Collectors.toList());
+    }
+
     /** Get the list of all invoke locations for this method, as inferred by the static analysis. */
     public List<BytecodePosition> getInvokeLocations() {
         List<BytecodePosition> locations = new ArrayList<>();
