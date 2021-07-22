@@ -63,6 +63,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -457,7 +458,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         // regualar context must not be used
         TruffleContext currentContext = languageEnv.getContext();
-        assertFails(() -> currentContext.eval(null, newTruffleSource()), IllegalStateException.class, (e) -> {
+        assertFails(() -> currentContext.evalInternal(null, newTruffleSource()), IllegalStateException.class, (e) -> {
             assertEquals("Only created inner contexts can be used to evaluate sources. " +
                             "Use TruffleLanguage.Env.parseInternal(Source) or TruffleInstrument.Env.parse(Source) instead.", e.getMessage());
         });
@@ -466,13 +467,13 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         // inner context must not be entered for eval
         Object prev = innerContext.enter(null);
-        assertFails(() -> innerContext.eval(null, newTruffleSource()), IllegalStateException.class, (e) -> {
+        assertFails(() -> innerContext.evalInternal(null, newTruffleSource()), IllegalStateException.class, (e) -> {
             assertEquals("Invalid parent context entered. " +
                             "The parent creator context or no context must be entered to evaluate code in an inner context.", e.getMessage());
         });
         innerContext.leave(null, prev);
 
-        assertFails(() -> innerContext.eval(null, com.oracle.truffle.api.source.Source.newBuilder("foobarbazz$_", "", "").build()), IllegalArgumentException.class, (e) -> {
+        assertFails(() -> innerContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder("foobarbazz$_", "", "").build()), IllegalArgumentException.class, (e) -> {
             assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id 'foobarbazz$_' is not installed. Installed languages are:"));
         });
     }
@@ -490,7 +491,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         outerObject.expectedContext = languageEnv.getContext();
 
         try {
-            innerContext.eval(null, newTruffleSource());
+            innerContext.evalInternal(null, newTruffleSource());
             fail();
         } catch (AbstractTruffleException e) {
 
@@ -560,7 +561,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         // test that primitive values can just be passed through
         setupLanguageThatReturns(() -> 42);
         TruffleContext innerContext = languageEnv.newContextBuilder().build();
-        Object result = innerContext.eval(null, newTruffleSource());
+        Object result = innerContext.evalInternal(null, newTruffleSource());
         assertEquals(42, result);
 
         // test that objects that cross the boundary are entered in the inner context
@@ -571,7 +572,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         innerObject.expectedContext = innerContext;
         outerObject.expectedContext = this.languageEnv.getContext();
 
-        result = innerContext.eval(null, newTruffleSource());
+        result = innerContext.evalInternal(null, newTruffleSource());
         assertNotEquals("must be wrapped", result, innerObject);
 
         // arguments of the parent context are entered in the outer context

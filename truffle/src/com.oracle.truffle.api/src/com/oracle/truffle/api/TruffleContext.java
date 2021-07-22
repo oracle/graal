@@ -220,7 +220,9 @@ public final class TruffleContext implements AutoCloseable {
      * language is not yet initialized in the inner context, it will get automatically initialized.
      * <p>
      * This method is designed to be used in compiled code paths. This method may be used from
-     * multiple threads at the same time.
+     * multiple threads at the same time. The result of this method must not be cached, instead the
+     * {@link Source} object should be cached.
+     * <p>
      *
      * @throws IllegalArgumentException if the given language of the source cannot be accessed.
      * @throws IllegalStateException if an invalid context is entered or the context is already
@@ -230,7 +232,7 @@ public final class TruffleContext implements AutoCloseable {
      * @param source the source to evaluate
      * @since 21.3
      */
-    public Object eval(Node node, Source source) {
+    public Object evalInternal(Node node, Source source) {
         CompilerAsserts.partialEvaluationConstant(node);
         try {
             return LanguageAccessor.engineAccess().evalInternalContext(node, polyglotContext, source);
