@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
-import com.oracle.truffle.espresso.meta.Meta;
 
 public abstract class CallableFromNative extends SubstitutionProfiler {
 

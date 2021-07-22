@@ -481,7 +481,7 @@ public final class Target_sun_misc_Unsafe {
      * @see #allocateMemory
      */
     @Substitution(hasReceiver = true)
-    public static byte getByte(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static byte getByte(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getByte(unwrapNullOrArray(holder), offset);
         }

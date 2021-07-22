@@ -3952,7 +3952,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         "arguments.isEspressoObject()"
         })
         Object[] doEspressoNoUnwrap(
-                        boolean unwrapArguments,
+                        @SuppressWarnings("unused") boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments) {
             return arguments.<Object[]> unwrap();
         }
@@ -3962,7 +3962,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         "arguments.isEspressoObject()",
         })
         Object[] doEspressoUnwrap(
-                        boolean unwrapArguments,
+                        @SuppressWarnings("unused") boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments) {
             Object[] rawArgs = arguments.unwrap();
             Object[] hostArgs = new Object[rawArgs.length];
