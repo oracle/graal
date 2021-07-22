@@ -74,8 +74,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    @SuppressWarnings("deprecation")
-    static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
+    @SuppressWarnings("deprecation") static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
                     new Function<String, CPUSampler.Mode>() {
                         @Override
                         public CPUSampler.Mode apply(String s) {

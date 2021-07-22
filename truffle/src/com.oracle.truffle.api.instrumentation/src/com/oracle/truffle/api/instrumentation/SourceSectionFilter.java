@@ -78,7 +78,6 @@ public final class SourceSectionFilter {
     public static final SourceSectionFilter ANY = newBuilder().build();
     private static final ConcurrentHashMap<Set<Class<?>>, TaggedNode> TAGGED_NODE_CACHE = new ConcurrentHashMap<>();
 
-
     private final EventFilterExpression[] expressions;
 
     private SourceSectionFilter(EventFilterExpression[] expressions) {

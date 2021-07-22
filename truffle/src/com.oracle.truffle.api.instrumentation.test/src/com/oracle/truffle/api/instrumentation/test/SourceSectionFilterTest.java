@@ -1001,7 +1001,7 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
         Source source = Source.newBuilder("", "asdf", "").build();
         // Source section is "sd"
         SourceSection section = source.createSection(1, 2);
-        SourceSectionRootNode rootNode = new SourceSectionRootNode(Source.newBuilder("","random string\n12312", "").internal(true).build().createSection(2), null);
+        SourceSectionRootNode rootNode = new SourceSectionRootNode(Source.newBuilder("", "random string\n12312", "").internal(true).build().createSection(2), null);
         Assert.assertTrue(SourceSectionFilter.ANY.includes(rootNode, section, null));
         Assert.assertTrue(SourceSectionFilter.newBuilder().includeInternal(false).build().includes(rootNode, section, null));
         Assert.assertFalse(SourceSectionFilter.newBuilder().includeInternal(false).build().includes(rootNode, rootNode.getSourceSection(), null));
