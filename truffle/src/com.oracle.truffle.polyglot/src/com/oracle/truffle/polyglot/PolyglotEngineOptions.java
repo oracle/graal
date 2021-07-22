@@ -106,7 +106,7 @@ final class PolyglotEngineOptions {
 
     @Option(category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Enable Multithreading (UNSAFE)")//
-    static final OptionKey<Boolean> EnableMultithreading = new OptionKey<>(true);
+    static final OptionKey<Boolean> EnableMultithreading = new OptionKey<>(false);
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts")//
