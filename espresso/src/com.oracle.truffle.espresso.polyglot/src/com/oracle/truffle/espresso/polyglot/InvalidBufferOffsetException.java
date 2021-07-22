@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,61 +42,74 @@
 package com.oracle.truffle.espresso.polyglot;
 
 /**
- * An exception thrown if an interop {@link Object} does not support the type of one ore more
- * arguments.
+ * An exception thrown if a buffer access if out of bounds.
  *
- * @since 21.0
+ * @see #getByteOffset()
+ * @see #getLength()
+ * @since 21.1
  */
-public final class UnsupportedTypeException extends InteropException {
+public final class InvalidBufferOffsetException extends InteropException {
 
-    private static final long serialVersionUID = 1857745390734085182L;
+    private static final long serialVersionUID = 2710415479029780200L;
 
-    private final Object[] suppliedValues;
+    private final long byteOffset;
+    private final long length;
 
-    private UnsupportedTypeException(String message, Object[] suppliedValues) {
-        super(message, null);
-        this.suppliedValues = suppliedValues;
+    private InvalidBufferOffsetException(long byteOffset, long length) {
+        super(null);
+        this.byteOffset = byteOffset;
+        this.length = length;
     }
 
-    private UnsupportedTypeException(String message, Object[] suppliedValues, Throwable cause) {
-        super(message, cause);
-        this.suppliedValues = suppliedValues;
+    private InvalidBufferOffsetException(long byteOffset, long length, Throwable cause) {
+        super(null, cause);
+        this.byteOffset = byteOffset;
+        this.length = length;
     }
 
     /**
-     * Returns the arguments of the foreign object access that were not supported by the foreign
-     * {@link Object}.
+     * Returns the start byte offset of the invalid access from the start of the buffer.
      *
-     * @return the unsupported arguments
-     * @since 21.0
+     * @since 21.1
      */
-    public Object[] getSuppliedValues() {
-        return suppliedValues;
+    public long getByteOffset() {
+        return byteOffset;
     }
 
     /**
-     * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
-     * supported.
+     * Returns the length of the accessed memory region in bytes starting from {@link #getByteOffset
+     * the start byte offset}.
      *
-     * @since 21.0
+     * @since 21.1
      */
-    public static UnsupportedTypeException create(Object[] suppliedValues) {
-        return new UnsupportedTypeException((String) null, suppliedValues);
+    public long getLength() {
+        return length;
     }
 
     /**
-     * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
-     * supported.
+     * {@inheritDoc}
      *
-     * @since 21.0
+     * @since 21.1
      */
-    public static UnsupportedTypeException create(Object[] suppliedValues, String hint) {
-        return new UnsupportedTypeException(hint, suppliedValues);
+    @Override
+    public String getMessage() {
+        return "Invalid buffer access of length " + length + " at byteOffset " + byteOffset + ".";
     }
 
     /**
-     * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
-     * supported.
+     * Creates an {@link InvalidBufferOffsetException} to indicate that a buffer access is invalid.
+     *
+     * @param byteOffset the start byteOffset of the invalid access
+     * @param length the length of the accessed memory region in bytes starting from
+     *            {@code byteOffset}
+     * @since 21.1
+     */
+    public static InvalidBufferOffsetException create(long byteOffset, long length) {
+        return new InvalidBufferOffsetException(byteOffset, length);
+    }
+
+    /**
+     * Creates an {@link InvalidBufferOffsetException} to indicate that a buffer access is invalid.
      * <p>
      * In addition a cause may be provided. The cause should only be set if the guest language code
      * caused this problem. An example for this is a language specific proxy mechanism that invokes
@@ -104,12 +117,14 @@ public final class UnsupportedTypeException extends InteropException {
      * this interop exception is a valid interpretation of the error, then the error should be
      * provided as cause.
      *
+     * @param byteOffset the start byteOffset of the invalid access
+     * @param length the length of the accessed memory region in bytes starting from
+     *            {@code byteOffset}.
      * @param cause the guest language exception that caused the error.
-     * 
-     * @since 21.0
+     * @since 21.1
      */
-    public static UnsupportedTypeException create(Object[] suppliedValues, String hint, Throwable cause) {
-        return new UnsupportedTypeException(hint, suppliedValues, cause);
+    public static InvalidBufferOffsetException create(long byteOffset, long length, Throwable cause) {
+        return new InvalidBufferOffsetException(byteOffset, length, cause);
     }
 
 }

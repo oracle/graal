@@ -1614,11 +1614,11 @@ public final class BytecodeNode extends EspressoMethodNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 if (refArrayStoreNode == null) {
-                    refArrayStoreNode = insert(new EspressoReferenceArrayStoreNode(getContext()));
+                    refArrayStoreNode = insert(new EspressoReferenceArrayStoreNode());
                 }
             }
         }
-        refArrayStoreNode.arrayStore(EspressoFrame.popObject(refs, top - 1), index, array);
+        refArrayStoreNode.arrayStore(getContext(), EspressoFrame.popObject(refs, top - 1), index, array);
     }
 
     private int beforeJumpChecks(long[] primitives, Object[] refs, int curBCI, int targetBCI, int statementIndex, InstrumentationSupport instrument, int[] loopCount) {

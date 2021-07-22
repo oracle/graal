@@ -179,6 +179,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         boolean prependEnvValue = getAnnotationValue(genIntrisification, "prependEnv", Boolean.class);
         boolean prependEnv = prependEnvValue || isJni(element, implAnnotation);
         String className = envClassName;
+
         // Obtain the name of the method to be substituted in.
         String substitutedMethodName = getSubstutitutedMethodName(element);
 
@@ -190,7 +191,8 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         List<Boolean> referenceTypes = new ArrayList<>();
         boolean needsHandlify = getEspressoTypes(targetMethod, espressoTypes, referenceTypes);
         // Spawn the name of the Substitutor we will create.
-        String substitutorName = getSubstitutorClassName(className, substitutedMethodName, espressoTypes);
+        String substitutorName = getSubstitutorClassName(className, element.getSimpleName().toString(), espressoTypes);
+
         // Obtain the jniNativeSignature
         NativeType[] jniNativeSignature = jniNativeSignature(targetMethod, prependEnv);
         // Check if we need to call an instance method
@@ -199,6 +201,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         IntrinsincsHelper h = new IntrinsincsHelper(this, element, implAnnotation, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify);
         // Create the contents of the source file
         String classFile = spawnSubstitutor(
+                        substitutorName,
                         targetPackage,
                         className,
                         substitutedMethodName,
@@ -295,27 +298,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         return decl + castTo(obj, clazz) + ";\n";
     }
 
-    String extractInvocation(String className, String methodName, String nodeMethodName, int nParameters, boolean isStatic, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
-        if (helper.isNodeTarget()) {
-            str.append("this.node.").append(nodeMethodName).append("(");
-        } else {
-            if (isStatic) {
-                str.append(className).append(".").append(methodName).append("(");
-            } else {
-                str.append(envName).append(".").append(methodName).append("(");
-            }
-        }
-        boolean first = true;
-        for (int i = 0; i < nParameters; i++) {
-            first = checkFirst(str, first);
-            str.append(ARG_NAME).append(i);
-        }
-        first = appendInvocationMetaInformation(str, first, helper);
-        str.append(")"); // ;\n");
-        return str.toString();
-    }
-
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
@@ -349,6 +331,30 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         return expectedImports;
     }
 
+    String extractInvocation(String className, int nParameters, boolean isStatic, SubstitutionHelper helper) {
+        StringBuilder str = new StringBuilder();
+        if (helper.isNodeTarget()) {
+            ExecutableElement nodeExecute = findNodeExecute(helper.getNodeTarget());
+            String nodeMethodName = nodeExecute.getSimpleName().toString();
+            str.append("this.node.").append(nodeMethodName).append("(");
+        } else {
+            String methodName = helper.getMethodTarget().getSimpleName().toString();
+            if (isStatic) {
+                str.append(className).append(".").append(methodName).append("(");
+            } else {
+                str.append(envName).append(".").append(methodName).append("(");
+            }
+        }
+        boolean first = true;
+        for (int i = 0; i < nParameters; i++) {
+            first = checkFirst(str, first);
+            str.append(ARG_NAME).append(i);
+        }
+        first = appendInvocationMetaInformation(str, first, helper);
+        str.append(")"); // ;\n");
+        return str.toString();
+    }
+
     @Override
     String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
@@ -376,22 +382,17 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             boolean isNonPrimitive = h.referenceTypes.get(argIndex);
             str.append(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0, TAB_2));
         }
-        String nodeMethodName = null;
-        if (helper.isNodeTarget()) {
-            ExecutableElement nodeExecute = findNodeExecute(helper.getNodeTarget());
-            nodeMethodName = nodeExecute.getSimpleName().toString();
-        }
         switch (h.jniNativeSignature[0]) {
             case VOID:
-                str.append(TAB_2).append(extractInvocation(className, targetMethodName, nodeMethodName, argIndex, h.isStatic, helper)).append(";\n");
+                str.append(TAB_2).append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
                 str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
                 break;
             case OBJECT:
                 str.append(TAB_2).append("return ").append(
-                                "(long) " + envName + ".getHandles().createLocal(" + extractInvocation(className, targetMethodName, nodeMethodName, argIndex, h.isStatic, helper) + ")").append(";\n");
+                                "(long) " + envName + ".getHandles().createLocal(" + extractInvocation(className, argIndex, h.isStatic, helper) + ")").append(";\n");
                 break;
             default:
-                str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, nodeMethodName, argIndex, h.isStatic, helper)).append(";\n");
+                str.append(TAB_2).append("return ").append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
         }
         str.append(TAB_1).append("}\n");
         str.append("}");

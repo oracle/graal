@@ -30,6 +30,9 @@ import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_9_O
 import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VersionRange.higher;
 import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VersionRange.lower;
 
+import java.util.Arrays;
+import java.util.HashSet;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -80,6 +83,11 @@ public final class Meta implements ContextAccess {
         java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
+        java_lang_Object_array = java_lang_Object.array();
+
+        EspressoError.guarantee(
+                        new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES)).equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
+                        "arrays super interfaces must contain java.lang.Cloneable and java.io.Serializable");
 
         java_lang_Class = knownKlass(Type.java_lang_Class);
         HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
@@ -92,8 +100,6 @@ public final class Meta implements ContextAccess {
         java_lang_Class_forName_String = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
         HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
-
-        java_lang_Object_array = java_lang_Object.array();
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
@@ -342,6 +348,8 @@ public final class Meta implements ContextAccess {
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
         java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.requireDeclaredMethod(Name._init_, Signature._void_long_int);
+        java_nio_ByteOrder = knownKlass(Type.java_nio_ByteOrder);
+        java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
@@ -1122,6 +1130,8 @@ public final class Meta implements ContextAccess {
     public final Method java_nio_ByteBuffer_wrap;
     public final ObjectKlass java_nio_DirectByteBuffer;
     public final Method java_nio_DirectByteBuffer_init_long_int;
+    public final ObjectKlass java_nio_ByteOrder;
+    public final Field java_nio_ByteOrder_LITTLE_ENDIAN;
 
     public final ObjectKlass java_lang_ThreadGroup;
     public final Method java_lang_ThreadGroup_add;
@@ -1396,6 +1406,10 @@ public final class Meta implements ContextAccess {
         public final Method InvalidArrayIndexException_create_long;
         public final Method InvalidArrayIndexException_create_long_Throwable;
 
+        public final ObjectKlass InvalidBufferOffsetException;
+        public final Method InvalidBufferOffsetException_create_long_long;
+        public final Method InvalidBufferOffsetException_create_long_long_Throwable;
+
         public final ObjectKlass ForeignException;
         public final ObjectKlass ExceptionType;
         public final Field ExceptionType_EXIT;
@@ -1436,6 +1450,10 @@ public final class Meta implements ContextAccess {
             InvalidArrayIndexException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
             InvalidArrayIndexException_create_long = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long);
             InvalidArrayIndexException_create_long_Throwable = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long_Throwable);
+
+            InvalidBufferOffsetException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException);
+            InvalidBufferOffsetException_create_long_long = InvalidBufferOffsetException.requireDeclaredMethod(Name.create, Signature.InvalidBufferOffsetException_long_long);
+            InvalidBufferOffsetException_create_long_long_Throwable = InvalidBufferOffsetException.requireDeclaredMethod(Name.create, Signature.InvalidBufferOffsetException_long_long_Throwable);
 
             ForeignException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
             ExceptionType = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
