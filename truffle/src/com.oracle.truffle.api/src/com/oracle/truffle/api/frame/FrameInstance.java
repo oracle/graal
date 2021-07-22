@@ -106,17 +106,17 @@ public interface FrameInstance {
      * indicate interpreted, 1 indicates first tier and 2 indicates last tier compilation. It is
      * best to not interpret this number and just print it for the user.
      *
-     * @since 21.2
+     * @since 21.3.0
      */
     default int getCompilationTier() {
         return 0;
     }
 
     /**
-     * TODO: Write javadoc.
+     * Returns whether or not the current frame is a compilation root. A compilation root is a
+     * compiled {@link CallTarget} which was itself compiled i.e. not inlined into another target.
      * 
-     * @return false.
-     * @since todo
+     * @since 21.3.0
      */
     default boolean isCompilationRoot() {
         return true;

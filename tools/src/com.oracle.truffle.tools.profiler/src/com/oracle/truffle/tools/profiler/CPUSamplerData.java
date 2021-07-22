@@ -35,7 +35,7 @@ import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
 /**
  * Execution profile of a particular context.
  *
- * @see CPUSampler#getContextData()
+ * @see CPUSampler#getData()
  * @since 21.3.0
  */
 public final class CPUSamplerData {

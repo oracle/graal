@@ -49,6 +49,7 @@ public class ProfilerCLITest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testSamplerJson() {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();

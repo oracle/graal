@@ -76,6 +76,8 @@ public final class SourceSectionFilter {
      * @since 0.18
      */
     public static final SourceSectionFilter ANY = newBuilder().build();
+    private static final ConcurrentHashMap<Set<Class<?>>, TaggedNode> TAGGED_NODE_CACHE = new ConcurrentHashMap<>();
+
 
     private final EventFilterExpression[] expressions;
 
@@ -172,8 +174,6 @@ public final class SourceSectionFilter {
         }
         return true;
     }
-
-    private static final ConcurrentHashMap<Set<Class<?>>, TaggedNode> TAGGED_NODE_CACHE = new ConcurrentHashMap<>();
 
     private boolean isTagExpression(EventFilterExpression exp) {
         if (exp instanceof Not) {

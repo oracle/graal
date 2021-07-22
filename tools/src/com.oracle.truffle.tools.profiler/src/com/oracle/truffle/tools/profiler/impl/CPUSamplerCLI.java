@@ -53,6 +53,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 @Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
 
+    public static final double MAX_OVERHEAD_WARNING_THRESHOLD = 0.2;
+
     enum Output {
         HISTOGRAM,
         CALLTREE,
@@ -71,6 +73,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
+    @SuppressWarnings("deprecation")
     static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
                     new Function<String, CPUSampler.Mode>() {
                         @Override
@@ -87,6 +90,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
     // @formatter:off
+    @SuppressWarnings("deprecation")
     @Option(name = "Mode", help = "Deprecated. Has no effect.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.EXCLUDE_INLINED_ROOTS, CLI_MODE_TYPE);
     // @formatter:om
@@ -156,10 +160,10 @@ class CPUSamplerCLI extends ProfilerCLI {
             out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
             printDiv(out);
         }
-        if (sampler.getSampleDuration().getAverage() > 0.2 * sampler.getPeriod()) {
+        if (sampler.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod()) {
             printDiv(out);
             out.println("Warning: Average sample duration took over 20% of the sampling period.");
-            out.println("         The printed data is incomplete or incorrect!");
+            out.println("         An overhead above 20% can severely impact the reliability of the sampling data. Use one of these approaches to reduce the overhead:");
             out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to reduce the number of frames sampled,");
             out.println("         or use --" + CPUSamplerInstrument.ID + ".Period=<" + SAMPLE_PERIOD.getType().getName() + "> to increase the sampling period.");
             printDiv(out);
@@ -170,6 +174,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println("-------------------------------------------------------------------------------- ");
     }
 
+    @SuppressWarnings("deprecation")
     private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
         JSONObject output = new JSONObject();
         output.put("tool", CPUSamplerInstrument.ID);
@@ -230,6 +235,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static void printSamplingHistogram(PrintStream out, CPUSampler sampler, boolean summariseThreads, Integer minSamples) {
         int maxLength = 10;
         Map<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> linesPerThread = new HashMap<>();
@@ -277,12 +283,14 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> makeOneEntryMap(CPUSampler sampler) {
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> oneElementMap = new HashMap<>(1);
         oneElementMap.put(new Thread("Summary"), sampler.getRootNodes());
         return oneElementMap;
     }
 
+    @SuppressWarnings("deprecation")
     private static void printSamplingCallTree(PrintStream out, CPUSampler sampler, Boolean summariseThreads, Integer minSamples) {
         Collection<ProfilerNode<CPUSampler.Payload>> actualRoots = new ArrayList<>();
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = summariseThreads ? makeOneEntryMap(sampler) : sampler.getThreadToNodesMap();
@@ -353,6 +361,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         return x2 >= y1 && y2 >= x1;
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength, boolean callTree, Integer minSamples) {
         long samplePeriod = sampler.getPeriod();
         long samples = sampler.getSampleCount();

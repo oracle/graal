@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.profiler.test;
 import java.io.IOException;
 import java.util.Collection;
 
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -59,7 +60,8 @@ public class NoTagSamplingTest {
             Assert.fail();
         }
         sampler.setCollecting(false);
-        Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = sampler.getThreadToNodesMap().values().iterator().next();
+        final CPUSamplerData data = sampler.getData().values().iterator().next();
+        final Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = data.getThreadData().values().iterator().next();
         Assert.assertEquals(1, profilerNodes.size());
 
     }

@@ -56,6 +56,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testCollectingAndHasData() {
 
         sampler.setCollecting(true);
@@ -92,6 +93,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                     ")");
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testCorrectRootStructure() {
 
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
@@ -140,6 +142,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     @Test
     @Ignore("non-deterministic failures on spark")
+    @SuppressWarnings("deprecation")
     public void testCorrectRootStructureRecursive() {
 
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
@@ -196,6 +199,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testMultiThreadedRecursive() {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         Runnable runnable = new Runnable() {
@@ -261,6 +265,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testMultiThreaded() {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         Runnable runnable = new Runnable() {
@@ -310,6 +315,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testThreadSafe() throws InterruptedException {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
