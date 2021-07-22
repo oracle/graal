@@ -360,10 +360,9 @@ final class HostClassLoader extends ClassLoader implements Closeable {
 
                     @Override
                     URL getURL() {
-                        StringBuilder url = new StringBuilder(root.toUri().toString());
-                        if (url.charAt(url.length() - 1) != '/') {
-                            url.append('/');
-                        }
+                        StringBuilder url = new StringBuilder("jar:");
+                        url.append(root.toUri());
+                        url.append("!/");
                         url.append(name);
                         try {
                             return new URL(url.toString());
