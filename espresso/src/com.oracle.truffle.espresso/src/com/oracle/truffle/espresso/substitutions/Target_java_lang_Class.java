@@ -522,7 +522,7 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     @TruffleBoundary
     public static @JavaType(internalName = "[Ljava/lang/reflect/RecordComponent;") StaticObject getRecordComponents0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass k = self.getMirrorKlass();
         if (!(k instanceof ObjectKlass)) {
             return StaticObject.NULL;
@@ -539,7 +539,7 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     @TruffleBoundary
     public static @JavaType(Class[].class) StaticObject getPermittedSubclasses0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass k = self.getMirrorKlass();
         if (!(k instanceof ObjectKlass)) {
             return StaticObject.NULL;
