@@ -27,7 +27,7 @@ Once a GraalVM installation is set as active, the Command Palette contains the f
 
 3&#46; Invoke Start Debugging or Run Without Debugging action to start a project.
 
-4&#46; Use the actions available in the **Gr activity | VisualVM pane** to monitor and analyze the project process.
+4&#46; Use the actions available in the **Gr activity -> VisualVM pane** to monitor and analyze the project process.
 
 ## VisualVM Pane
 
