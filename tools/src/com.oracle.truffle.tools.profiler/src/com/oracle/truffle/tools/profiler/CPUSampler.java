@@ -378,7 +378,12 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Get per-context profiling data.
+     * Get per-context profiling data. The profiling data is an unmodifiable map from
+     * {@link TruffleContext} to {@link CPUSamplerData}. It is collected based on the configuration
+     * of the {@link CPUSampler} (e.g. {@link #setFilter(SourceSectionFilter)},
+     * {@link #setPeriod(long)}, etc.) and collecting can be controlled by the
+     * {@link #setCollecting(boolean)}. The collected data can be cleared from the cpusampler using
+     * {@link #clearData()}
      *
      * @return a map from {@link TruffleContext} to {@link CPUSamplerData}.
      * @since 21.3.0
@@ -401,7 +406,7 @@ public final class CPUSampler implements Closeable {
                             new CPUSamplerData(context, threads, mutableSamplerData.biasStatistic, mutableSamplerData.durationStatistic, mutableSamplerData.samplesTaken.get(), period,
                                             mutableSamplerData.missedSamples.get()));
         }
-        return contextToData;
+        return Collections.unmodifiableMap(contextToData);
     }
 
     /**
