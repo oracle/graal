@@ -291,6 +291,19 @@ public abstract class BigBang implements StaticAnalysisEngine {
         }
     }
 
+    @Override
+    public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
+        // Same as addRootField() and addRootStaticField():
+        // create type flows for any subtype of the field's declared type
+        TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(this, true);
+        if (field.isStatic()) {
+            declaredTypeFlow.addUse(this, field.getStaticFieldFlow());
+        } else {
+            FieldTypeFlow instanceFieldFlow = field.getDeclaringClass().getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, writable);
+            declaredTypeFlow.addUse(this, instanceFieldFlow);
+        }
+    }
+
     /**
      * By default the analysis tracks all concrete objects for all types (if the analysis is context
      * sensitive). However, the client of the analysis can opt that some types should be analyzed
