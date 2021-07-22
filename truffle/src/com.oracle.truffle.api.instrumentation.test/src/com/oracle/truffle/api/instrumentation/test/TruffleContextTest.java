@@ -60,6 +60,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -613,6 +614,56 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             return this;
         }
 
+    }
+
+    @Test
+    public void testNoInitializeMultiContextForInnerContext() {
+        AtomicBoolean multiContextInitialized = new AtomicBoolean(false);
+        setupEnv(Context.create(), new ProxyLanguage() {
+
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            }
+
+            @Override
+            protected void initializeMultipleContexts() {
+                multiContextInitialized.set(true);
+            }
+
+            @Override
+            protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+                return true;
+            }
+        });
+        TruffleContext internalContext = languageEnv.newContextBuilder().initializeCreatorContext(false).build();
+        assertFalse(multiContextInitialized.get());
+        internalContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").build());
+        assertTrue(multiContextInitialized.get());
+    }
+
+    @Test
+    public void testInitializeMultiContextForInnerContext() {
+        AtomicBoolean multiContextInitialized = new AtomicBoolean(false);
+        setupEnv(Context.create(), new ProxyLanguage() {
+
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            }
+
+            @Override
+            protected void initializeMultipleContexts() {
+                multiContextInitialized.set(true);
+            }
+
+            @Override
+            protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+                return true;
+            }
+        });
+        languageEnv.newContextBuilder().initializeCreatorContext(true).build();
+        assertTrue(multiContextInitialized.get());
     }
 
     private void setupLanguageThatReturns(Supplier<Object> supplier) {

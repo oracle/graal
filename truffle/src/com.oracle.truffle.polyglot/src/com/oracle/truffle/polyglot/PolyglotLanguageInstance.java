@@ -175,7 +175,7 @@ final class PolyglotLanguageInstance implements VMObject {
         if (!language.engine.singleContext.isValid() && language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
             if (!multiContextInitialized) {
                 multiContextInitialized = true;
-                language.engine.initializeMultiContext(null);
+                language.engine.initializeMultiContext();
                 this.singleContext.invalidate();
                 LANGUAGE.initializeMultiContext(spi);
             }

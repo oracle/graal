@@ -821,7 +821,7 @@ final class EngineAccessor extends Accessor {
             }
             synchronized (impl) {
                 impl.initializeContextLocals();
-                impl.engine.initializeMultiContext(creator.context);
+                impl.engine.initializeMultiContext();
                 impl.notifyContextCreated();
                 if (initializeCreatorContext) {
                     impl.initializeInnerContextLanguage(creator.language.getId());

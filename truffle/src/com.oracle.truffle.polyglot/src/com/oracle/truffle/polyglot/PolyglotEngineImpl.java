@@ -288,7 +288,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in, messageInterceptor, storeEngine);
 
         if (!boundEngine) {
-            initializeMultiContext(null);
+            initializeMultiContext();
         }
         intitializeStore(false, this.storeEngine);
 
@@ -400,7 +400,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.conservativeContextReferences = engineOptionValues.get(PolyglotEngineOptions.UseConservativeContextReferences);
 
         if (!boundEngine) {
-            initializeMultiContext(null);
+            initializeMultiContext();
         }
         intitializeStore(false, prototype.storeEngine);
 
@@ -489,7 +489,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         intitializeStore(wasStore, storeEngine);
 
         if (wasBound && !newBoundEngine) {
-            initializeMultiContext(null);
+            initializeMultiContext();
         }
 
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
@@ -549,17 +549,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    void initializeMultiContext(PolyglotContextImpl existingContext) {
+    void initializeMultiContext() {
         synchronized (this.lock) {
             if (singleContext.isValid()) {
                 singleContext.invalidate("More than one context introduced.");
-                if (existingContext != null) {
-                    for (PolyglotLanguageContext context : existingContext.contexts) {
-                        if (context.isInitialized()) {
-                            context.getLanguageInstance().ensureMultiContextInitialized();
-                        }
-                    }
-                }
                 for (PolyglotLanguage lang : idToLanguage.values()) {
                     lang.profile.prepareForMultiContext();
                 }
@@ -1261,7 +1254,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 // finalizeStore
                 singleContext.invalidate();
             } else {
-                initializeMultiContext(null);
+                initializeMultiContext();
             }
 
             PolyglotContextImpl.singleContextState.getContextThreadLocal().enableStore();
