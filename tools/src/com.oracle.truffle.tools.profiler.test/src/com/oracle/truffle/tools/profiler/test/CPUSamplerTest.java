@@ -150,6 +150,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         for (int i = 0; i < executionCount; i++) {
             eval(defaultRecursiveSourceForSampling);
         }
+        sampler.setCollecting(false);
 
         Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
         Assert.assertEquals(1, children.size());
@@ -190,6 +191,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         for (int i = 0; i < executionCount; i++) {
             eval(defaultSourceForSampling);
         }
+        sampler.setCollecting(false);
         Assert.assertTrue(sampler.hasData());
         Assert.assertTrue(sampler.hasStackOverflowed());
     }
@@ -293,6 +295,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         } catch (InterruptedException e) {
             Assert.fail("Thread interrupted");
         }
+        sampler.setCollecting(false);
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
         traverseAndCompareForSameSource(rootNodes, threadToNodesMap.get(first), threadToNodesMap.get(second));
@@ -333,6 +336,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Thread execThread = new Thread(runnable);
         execThread.start();
         ensureIterations(iterations, 2);
+        sampler.setCollecting(false);
         Collection<ProfilerNode<CPUSampler.Payload>> oldNodes = sampler.getRootNodes();
         try {
             // NOTE: Execution is still running in a separate thread.

@@ -997,6 +997,21 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testRootNodeWithDifferentSourceSection() {
+        Source source = Source.newBuilder("", "asdf", "").build();
+        // Source section is "sd"
+        SourceSection section = source.createSection(1, 2);
+        SourceSectionRootNode rootNode = new SourceSectionRootNode(Source.newBuilder("","random string\n12312", "").internal(true).build().createSection(2), null);
+        Assert.assertTrue(SourceSectionFilter.ANY.includes(rootNode, section, null));
+        Assert.assertTrue(SourceSectionFilter.newBuilder().includeInternal(false).build().includes(rootNode, section, null));
+        Assert.assertFalse(SourceSectionFilter.newBuilder().includeInternal(false).build().includes(rootNode, rootNode.getSourceSection(), null));
+        Assert.assertTrue(SourceSectionFilter.newBuilder().lineIs(1).build().includes(rootNode, section, null));
+        Assert.assertFalse(SourceSectionFilter.newBuilder().lineIs(1).build().includes(rootNode, rootNode.getSourceSection(), null));
+        Assert.assertTrue(SourceSectionFilter.newBuilder().lineIs(1).columnIn(IndexRange.between(2, 3)).build().includes(rootNode, section, null));
+        Assert.assertFalse(SourceSectionFilter.newBuilder().lineIs(1).columnIn(IndexRange.between(20, 30)).build().includes(rootNode, section, null));
+    }
+
+    @Test
     public void testRootNodeInternal() {
         final String characters = "asdf";
         // Source section is "sd"

@@ -24,10 +24,8 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import java.io.IOException;
 import java.util.Collection;
 
-import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -43,6 +41,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 public class NoTagSamplingTest {
@@ -52,13 +51,10 @@ public class NoTagSamplingTest {
         Context context = Context.create(NoTagLanguage.ID);
         CPUSampler sampler = CPUSampler.find(context.getEngine());
         sampler.setCollecting(true);
-        try {
-            Source source = Source.newBuilder(NoTagLanguage.ID, "", "").build();
-            context.eval(source);
-            context.eval(source);
-        } catch (IOException e) {
-            Assert.fail();
-        }
+        Source source = Source.newBuilder(NoTagLanguage.ID, "", "").buildLiteral();
+        // Eval twice so that we compile on first call when running with compile immediately.
+        context.eval(source);
+        context.eval(source);
         sampler.setCollecting(false);
         final CPUSamplerData data = sampler.getData().values().iterator().next();
         final Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = data.getThreadData().values().iterator().next();
