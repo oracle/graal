@@ -273,7 +273,7 @@ public class WebAssembly extends Dictionary {
         if (Integer.compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min table size exceeds implementation limit");
         }
-        final int maxAllowedSize = WasmMath.minUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit());
+        final int maxAllowedSize = WasmMath.minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
         return new WasmTable(initial, maximum, maxAllowedSize);
     }
 
