@@ -61,7 +61,6 @@ final class SafepointStackSampler {
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
     private final long period;
     private boolean overflowed;
-    private int missedSamples;
 
     SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter, long period) {
         this.stackLimit = stackLimit;
@@ -77,7 +76,7 @@ final class SafepointStackSampler {
         return visitor;
     }
 
-    List<StackSample> sample(Env env, TruffleContext context) {
+    List<StackSample> sample(Env env, TruffleContext context, CPUSampler.MutableSamplerData mutableSamplerData) {
         if (context.isActive()) {
             throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
         }
@@ -103,7 +102,7 @@ final class SafepointStackSampler {
             return null;
         } catch (TimeoutException e) {
             future.cancel(false);
-            missedSamples++;
+            mutableSamplerData.missedSamples.incrementAndGet();
         }
         // we compute the time to find out how accurate this sample is.
         List<StackSample> perThreadSamples = new ArrayList<>();
@@ -124,10 +123,6 @@ final class SafepointStackSampler {
 
     boolean hasOverflowed() {
         return overflowed;
-    }
-
-    public int missedSamples() {
-        return missedSamples;
     }
 
     private void stackOverflowed(boolean visitorOverflowed) {

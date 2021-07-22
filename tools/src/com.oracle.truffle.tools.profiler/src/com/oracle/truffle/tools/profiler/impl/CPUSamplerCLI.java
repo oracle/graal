@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
@@ -160,7 +161,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
             printDiv(out);
         }
-        if (sampler.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod()) {
+        if (sampleDurationTooLong(sampler)) {
             printDiv(out);
             out.println("Warning: Average sample duration took over 20% of the sampling period.");
             out.println("         An overhead above 20% can severely impact the reliability of the sampling data. Use one of these approaches to reduce the overhead:");
@@ -168,6 +169,15 @@ class CPUSamplerCLI extends ProfilerCLI {
             out.println("         or use --" + CPUSamplerInstrument.ID + ".Period=<" + SAMPLE_PERIOD.getType().getName() + "> to increase the sampling period.");
             printDiv(out);
         }
+    }
+
+    private static boolean sampleDurationTooLong(CPUSampler sampler) {
+        for (CPUSamplerData value : sampler.getData().values()) {
+            if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void printDiv(PrintStream out) {
@@ -182,7 +192,6 @@ class CPUSamplerCLI extends ProfilerCLI {
         output.put("sample_count", sampler.getSampleCount());
         output.put("period", sampler.getPeriod());
         output.put("gathered_hit_times", sampler.isGatherSelfHitTimes());
-        output.put("average_sample_duration", sampler.getSampleDuration().getAverage());
         JSONArray profile = new JSONArray();
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
         for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadToNodesMap.entrySet()) {

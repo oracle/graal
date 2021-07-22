@@ -46,16 +46,18 @@ public final class CPUSamplerData {
     final LongSummaryStatistics durationStatistics;
     final long samplesTaken;
     final long intervalMs;
+    final long missedSamples;
 
     CPUSamplerData(TruffleContext context, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
                     long samplesTaken,
-                    long intervalMs) {
+                    long intervalMs, long missedSamples) {
         this.context = context;
         this.threadData = threadData;
         this.biasStatistics = biasStatistics;
         this.durationStatistics = durationStatistics;
         this.samplesTaken = samplesTaken;
         this.intervalMs = intervalMs;
+        this.missedSamples = missedSamples;
     }
 
     /**
@@ -119,4 +121,14 @@ public final class CPUSamplerData {
         return statistics;
     }
 
+    /**
+     * Returns how may samples were missed, i.e. how many times taking a stack sample was requested
+     * but was not provided by the runtime in a timely manner.
+     *
+     * @return The number of missed samples.
+     * @since 21.3.0
+     */
+    public long missedSamples() {
+        return missedSamples;
+    }
 }
