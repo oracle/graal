@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,13 +143,13 @@ public abstract class AnalysisPolicy {
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
 
     @SuppressWarnings("unused")
-    public int makePoperties(BigBang bb, AnalysisObject... objects) {
+    public int makeProperties(StaticAnalysisEngine analysis, AnalysisObject... objects) {
         /* The default analysis policy doesn't use properties. */
         return 0;
     }
 
     @SuppressWarnings("unused")
-    public int makePopertiesForUnion(TypeState s1, TypeState s2) {
+    public int makePropertiesForUnion(TypeState s1, TypeState s2) {
         /* The default analysis policy doesn't use properties. */
         return 0;
     }

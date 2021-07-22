@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.StaticAnalysisEngine;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
@@ -51,15 +51,15 @@ public final class ShortestInvokeChainPrinter {
         }
     }
 
-    public static void print(BigBang bb, AnalysisMethod target) {
-        print(bb, target, System.out);
+    public static void print(StaticAnalysisEngine analysis, AnalysisMethod target) {
+        print(analysis, target, System.out);
     }
 
-    public static void print(BigBang bb, AnalysisMethod target, PrintStream out) {
+    public static void print(StaticAnalysisEngine analysis, AnalysisMethod target, PrintStream out) {
         Deque<AnalysisMethod> workList = new LinkedList<>();
         Map<AnalysisMethod, Element> visited = new HashMap<>();
 
-        for (AnalysisMethod m : bb.getUniverse().getMethods()) {
+        for (AnalysisMethod m : analysis.getUniverse().getMethods()) {
             if (m.isEntryPoint()) {
                 workList.addLast(m);
                 visited.put(m, new Element(m, null, null));

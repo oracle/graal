@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.StaticAnalysisEngine;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -585,7 +586,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
      * Ensures that the method has been parsed, i.e., that the {@link StructuredGraph Graal IR} for
      * the method is available.
      */
-    public AnalysisParsedGraph ensureGraphParsed(BigBang bb) {
+    public AnalysisParsedGraph ensureGraphParsed(StaticAnalysisEngine analysis) {
         while (true) {
             Object curState = parsedGraphCacheState.get();
 
@@ -612,7 +613,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
                         continue;
                     }
 
-                    AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
+                    AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(analysis, this);
 
                     /*
                      * Since we still hold the parsing lock, the transition form "parsing" to

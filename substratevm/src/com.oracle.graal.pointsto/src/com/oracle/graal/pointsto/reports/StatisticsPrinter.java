@@ -80,12 +80,7 @@ public final class StatisticsPrinter {
         print(out, "app_type_checks", typeChecksStats[2]);
         print(out, "app_removable_type_checks", typeChecksStats[3]);
 
-        print(out, "typeflow_time_ms", bb.typeFlowTimer.getTotalTime());
-        print(out, "objects_time_ms", bb.checkObjectsTimer.getTotalTime());
-        print(out, "features_time_ms", bb.processFeaturesTimer.getTotalTime());
-        print(out, "total_analysis_time_ms", bb.analysisTimer.getTotalTime());
-
-        printLast(out, "total_memory_bytes", bb.analysisTimer.getTotalMemory());
+        bb.printTimerStatistics(out);
 
         endObject(out);
     }
@@ -100,15 +95,15 @@ public final class StatisticsPrinter {
         return out.format("{%n");
     }
 
-    private static void print(PrintWriter out, String key, long value) {
+    public static void print(PrintWriter out, String key, long value) {
         out.format("%s\"%s\": %d,%n", INDENT, key, value);
     }
 
-    private static void print(PrintWriter out, String key, double value) {
+    public static void print(PrintWriter out, String key, double value) {
         out.format("%s\"%s\": %.2f,%n", INDENT, key, value);
     }
 
-    private static void printLast(PrintWriter out, String key, long value) {
+    public static void printLast(PrintWriter out, String key, long value) {
         out.format("%s\"%s\": %d%n", INDENT, key, value);
     }
 

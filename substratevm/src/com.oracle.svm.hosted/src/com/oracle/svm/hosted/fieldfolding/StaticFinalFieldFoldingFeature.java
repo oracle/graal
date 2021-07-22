@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.graal.pointsto.StaticAnalysisEngine;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -66,7 +67,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
@@ -134,7 +134,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
         public static final HostedOptionKey<Boolean> OptStaticFinalFieldFolding = new HostedOptionKey<>(true);
     }
 
-    BigBang bb;
+    StaticAnalysisEngine analysis;
     final Map<AnalysisField, JavaConstant> foldedFieldValues = new ConcurrentHashMap<>();
     Map<AnalysisField, Integer> fieldCheckIndexMap;
     boolean[] fieldInitializationStatus;
@@ -171,7 +171,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
-        bb = access.getBigBang();
+        analysis = access.getStaticAnalysisEngine();
     }
 
     /**
@@ -180,7 +180,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
      */
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        bb = null;
+        analysis = null;
 
         List<AnalysisField> foldedFields = new ArrayList<>(foldedFieldValues.keySet());
         /* Make the fieldCheckIndex deterministic by using an (arbitrary) sort order. */
@@ -281,7 +281,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
              * the order in which graphs are parsed during static analysis does not affect the
              * outcome of the optimizable check below.
              */
-            field.getDeclaringClass().getClassInitializer().ensureGraphParsed(bb);
+            field.getDeclaringClass().getClassInitializer().ensureGraphParsed(analysis);
         }
 
         if (foldedFieldValues.containsKey(field)) {
@@ -346,7 +346,7 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
          * StaticFinalFieldFoldingFeature#onAnalysisMethodParsed} determines which fields can be
          * optimized.
          */
-        classInitializer.ensureGraphParsed(feature.bb);
+        classInitializer.ensureGraphParsed(feature.analysis);
 
         JavaConstant initializedValue = feature.foldedFieldValues.get(aField);
         if (initializedValue == null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.phases.util.Providers;
@@ -52,7 +53,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -66,7 +66,6 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
@@ -182,23 +181,23 @@ public class FeatureImpl {
 
     abstract static class AnalysisAccessBase extends FeatureAccessImpl {
 
-        protected final Inflation bb;
+        protected final NativeImageStaticAnalysisEngine analysis;
 
-        AnalysisAccessBase(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
+        AnalysisAccessBase(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
-            this.bb = bb;
+            this.analysis = analysis;
         }
 
-        public BigBang getBigBang() {
-            return bb;
+        public NativeImageStaticAnalysisEngine getStaticAnalysisEngine() {
+            return analysis;
         }
 
         public AnalysisUniverse getUniverse() {
-            return bb.getUniverse();
+            return analysis.getUniverse();
         }
 
         public AnalysisMetaAccess getMetaAccess() {
-            return bb.getMetaAccess();
+            return analysis.getMetaAccess();
         }
 
         public boolean isReachable(Class<?> clazz) {
@@ -242,14 +241,14 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod);
+            return AnalysisUniverse.getMethodImplementations(getStaticAnalysisEngine(), baseMethod);
         }
     }
 
     public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess {
 
-        public DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, bb, debugContext);
+        public DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, analysis, debugContext);
         }
 
         @Override
@@ -283,7 +282,7 @@ public class FeatureImpl {
         }
 
         public SVMHost getHostVM() {
-            return bb.getHostVM();
+            return analysis.getHostVM();
         }
     }
 
@@ -291,8 +290,9 @@ public class FeatureImpl {
 
         private final NativeLibraries nativeLibraries;
 
-        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, bb, debugContext);
+        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, NativeLibraries nativeLibraries,
+                        DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, analysis, debugContext);
             this.nativeLibraries = nativeLibraries;
         }
 
@@ -347,9 +347,9 @@ public class FeatureImpl {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(bb.getUniverse());
+                aField.registerAsUnsafeAccessed(analysis.getUniverse());
                 /* Force the update of registered unsafe loads and stores. */
-                bb.forceUnsafeUpdate(aField);
+                analysis.forceUnsafeUpdate(aField);
                 return true;
             }
             return false;
@@ -373,9 +373,9 @@ public class FeatureImpl {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(bb.getUniverse(), partitionKind);
+                aField.registerAsUnsafeAccessed(analysis.getUniverse(), partitionKind);
                 /* Force the update of registered unsafe loads and stores. */
-                bb.forceUnsafeUpdate(aField);
+                analysis.forceUnsafeUpdate(aField);
             }
         }
 
@@ -384,7 +384,7 @@ public class FeatureImpl {
         }
 
         public void registerAsInvoked(AnalysisMethod aMethod) {
-            bb.addRootMethod(aMethod).registerAsImplementationInvoked(null);
+            analysis.addRootMethod(aMethod).registerAsImplementationInvoked(null);
         }
 
         public void registerAsCompiled(Executable method) {
@@ -401,7 +401,7 @@ public class FeatureImpl {
         }
 
         public SVMHost getHostVM() {
-            return bb.getHostVM();
+            return analysis.getHostVM();
         }
 
         public void registerHierarchyForReflectiveInstantiation(Class<?> c) {
@@ -433,8 +433,9 @@ public class FeatureImpl {
 
         private boolean requireAnalysisIteration;
 
-        public DuringAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, bb, nativeLibraries, debugContext);
+        public DuringAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, NativeLibraries nativeLibraries,
+                        DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, analysis, nativeLibraries, debugContext);
         }
 
         @Override
@@ -450,14 +451,14 @@ public class FeatureImpl {
     }
 
     public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess {
-        public AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, bb, debugContext);
+        public AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, analysis, debugContext);
         }
     }
 
     public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements Feature.OnAnalysisExitAccess {
-        public OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, bb, debugContext);
+        public OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, analysis, debugContext);
         }
     }
 

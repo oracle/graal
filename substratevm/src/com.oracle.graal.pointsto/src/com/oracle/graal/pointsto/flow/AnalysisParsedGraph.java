@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
+import com.oracle.graal.pointsto.StaticAnalysisEngine;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
@@ -43,7 +44,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -85,28 +85,28 @@ public final class AnalysisParsedGraph {
     }
 
     @SuppressWarnings("try")
-    public static AnalysisParsedGraph parseBytecode(BigBang bb, AnalysisMethod method) {
-        if (bb == null) {
+    public static AnalysisParsedGraph parseBytecode(StaticAnalysisEngine analysis, AnalysisMethod method) {
+        if (analysis == null) {
             throw AnalysisError.shouldNotReachHere("BigBang object required for parsing method " + method.format("%H.%p(%n)"));
         }
 
-        OptionValues options = bb.getOptions();
+        OptionValues options = analysis.getOptions();
         Description description = new Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
-        DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
+        DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(analysis.getProviders().getSnippetReflection())).description(description).build();
 
         try (Indent indent = debug.logAndIndent("parse graph %s", method)) {
 
-            StructuredGraph graph = method.buildGraph(debug, method, bb.getProviders(), Purpose.ANALYSIS);
+            StructuredGraph graph = method.buildGraph(debug, method, analysis.getProviders(), Purpose.ANALYSIS);
             if (graph != null) {
-                return optimizeAndEncode(bb, method, graph, false);
+                return optimizeAndEncode(analysis, method, graph, false);
             }
 
-            InvocationPlugin plugin = bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
+            InvocationPlugin plugin = analysis.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
             if (plugin != null && !plugin.inlineOnly()) {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
-                graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders(), code).buildGraph(plugin);
+                graph = new SubstrateIntrinsicGraphBuilder(options, debug, analysis.getProviders(), code).buildGraph(plugin);
                 if (graph != null) {
-                    return optimizeAndEncode(bb, method, graph, true);
+                    return optimizeAndEncode(analysis, method, graph, true);
                 }
             }
 
@@ -120,33 +120,33 @@ public final class AnalysisParsedGraph {
                 // enable this logging to get log output in compilation passes
                 try (Indent indent2 = debug.logAndIndent("parse graph phases")) {
 
-                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(bb.getProviders().getGraphBuilderPlugins())
+                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(analysis.getProviders().getGraphBuilderPlugins())
                                     .withEagerResolving(true)
-                                    .withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()))
+                                    .withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(analysis.getOptions()))
                                     .withNodeSourcePosition(true)
                                     .withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll)
                                     .withRetainLocalVariables(true);
 
-                    config = bb.getHostVM().updateGraphBuilderConfiguration(config, method);
+                    config = analysis.getHostVM().updateGraphBuilderConfiguration(config, method);
 
-                    bb.getHostVM().createGraphBuilderPhase(bb.getProviders(), config, OptimisticOptimizations.NONE, null).apply(graph);
+                    analysis.getHostVM().createGraphBuilderPhase(analysis.getProviders(), config, OptimisticOptimizations.NONE, null).apply(graph);
                 } catch (PermanentBailoutException ex) {
-                    bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
+                    analysis.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
                     return EMPTY;
                 }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
-            return optimizeAndEncode(bb, method, graph, false);
+            return optimizeAndEncode(analysis, method, graph, false);
         }
     }
 
-    private static AnalysisParsedGraph optimizeAndEncode(BigBang bb, AnalysisMethod method, StructuredGraph graph, boolean isIntrinsic) {
+    private static AnalysisParsedGraph optimizeAndEncode(StaticAnalysisEngine analysis, AnalysisMethod method, StructuredGraph graph, boolean isIntrinsic) {
         /*
          * Must be called before any other thread can access the graph, i.e., before the graph is
          * published.
          */
-        bb.getHostVM().methodAfterParsingHook(bb, method, graph);
+        analysis.getHostVM().methodAfterParsingHook(analysis, method, graph);
 
         EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HOST_ARCHITECTURE);
         return new AnalysisParsedGraph(encodedGraph, isIntrinsic);

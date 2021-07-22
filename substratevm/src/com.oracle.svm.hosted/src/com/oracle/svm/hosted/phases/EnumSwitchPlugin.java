@@ -28,6 +28,7 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -39,7 +40,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -99,7 +99,7 @@ final class EnumSwitchPlugin implements NodePlugin {
              */
             AnalysisMethod aMethod = (AnalysisMethod) method;
             EnumSwitchFeature feature = ImageSingletons.lookup(EnumSwitchFeature.class);
-            aMethod.ensureGraphParsed(feature.bb);
+            aMethod.ensureGraphParsed(feature.analysis);
             Boolean methodSafeForExecution = feature.methodsSafeForExecution.get(aMethod);
             assert methodSafeForExecution != null : "after-parsing hook not executed for method " + aMethod.format("%H.%n(%p)");
             if (!methodSafeForExecution.booleanValue()) {
@@ -132,7 +132,7 @@ final class EnumSwitchPluginRegistry extends IntrinsificationPluginRegistry {
 @AutomaticFeature
 final class EnumSwitchFeature implements GraalFeature {
 
-    BigBang bb;
+    NativeImageStaticAnalysisEngine analysis;
 
     final ConcurrentMap<AnalysisMethod, Boolean> methodsSafeForExecution = new ConcurrentHashMap<>();
 
@@ -140,7 +140,7 @@ final class EnumSwitchFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(EnumSwitchPluginRegistry.class, new EnumSwitchPluginRegistry());
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        bb = access.getBigBang();
+        analysis = access.getStaticAnalysisEngine();
         access.getHostVM().addMethodAfterParsingHook(this::onMethodParsed);
     }
 
@@ -153,7 +153,7 @@ final class EnumSwitchFeature implements GraalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        bb = null;
+        analysis = null;
     }
 
     @Override

@@ -40,6 +40,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
 import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
@@ -51,7 +52,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.code.CodeInfo;
@@ -141,7 +141,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public abstract void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool);
+    public abstract void layoutMethods(DebugContext debug, String imageName, NativeImageStaticAnalysisEngine analysis, ForkJoinPool threadPool);
 
     public void layoutConstants() {
         for (CompilationResult compilation : compilations.values()) {

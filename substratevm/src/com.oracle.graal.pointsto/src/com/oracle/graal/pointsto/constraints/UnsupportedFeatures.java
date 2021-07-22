@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.StaticAnalysisEngine;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
 public class UnsupportedFeatures {
@@ -86,10 +86,10 @@ public class UnsupportedFeatures {
      * Report the unsupported features. Throws {@code UnsupportedFeatureException} if unsupported
      * features are found.
      *
-     * @param bb the bigbang object
+     * @param analysis the core analysis object
      * @throws UnsupportedFeatureException if unsupported features are found
      */
-    public void report(BigBang bb) {
+    public void report(StaticAnalysisEngine analysis) {
         if (exist()) {
             List<Data> entries = new ArrayList<>(messages.values());
             Collections.sort(entries);
@@ -108,7 +108,7 @@ public class UnsupportedFeatures {
                 }
                 if (entry.method != null) {
                     printStream.println("Call path from entry point to " + entry.method.format("%H.%n(%p)") + ": ");
-                    ShortestInvokeChainPrinter.print(bb, entry.method, printStream);
+                    ShortestInvokeChainPrinter.print(analysis, entry.method, printStream);
                     printStream.println();
                 }
                 if (!singleEntry) {

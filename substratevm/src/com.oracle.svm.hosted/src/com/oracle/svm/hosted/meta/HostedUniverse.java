@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -42,7 +43,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.Signature;
  * Nothing is added later on during compilation of methods.
  */
 public class HostedUniverse implements Universe {
-    protected final Inflation bb;
+    protected final NativeImageStaticAnalysisEngine analysis;
 
     protected final Map<AnalysisType, HostedType> types = new HashMap<>();
     protected final Map<AnalysisField, HostedField> fields = new HashMap<>();
@@ -75,8 +75,8 @@ public class HostedUniverse implements Universe {
     protected List<HostedMethod> orderedMethods;
     protected List<HostedField> orderedFields;
 
-    public HostedUniverse(Inflation bb) {
-        this.bb = bb;
+    public HostedUniverse(NativeImageStaticAnalysisEngine analysis) {
+        this.analysis = analysis;
     }
 
     public HostedType getType(JavaKind kind) {
@@ -105,12 +105,12 @@ public class HostedUniverse implements Universe {
 
     @Override
     public SVMHost hostVM() {
-        return bb.getHostVM();
+        return analysis.getHostVM();
     }
 
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
-        return bb.getProviders().getSnippetReflection();
+        return analysis.getProviders().getSnippetReflection();
     }
 
     @Override
@@ -217,12 +217,12 @@ public class HostedUniverse implements Universe {
         return orderedMethods;
     }
 
-    public Inflation getBigBang() {
-        return bb;
+    public NativeImageStaticAnalysisEngine getStaticAnalysis() {
+        return analysis;
     }
 
     public AnalysisConstantReflectionProvider getConstantReflectionProvider() {
-        return (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
+        return (AnalysisConstantReflectionProvider) analysis.getConstantReflectionProvider();
     }
 
     @Override
@@ -232,6 +232,6 @@ public class HostedUniverse implements Universe {
 
     @Override
     public HostedType objectType() {
-        return types.get(bb.getUniverse().objectType());
+        return types.get(analysis.getUniverse().objectType());
     }
 }

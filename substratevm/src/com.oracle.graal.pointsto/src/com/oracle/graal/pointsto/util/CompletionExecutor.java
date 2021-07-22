@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
+import com.oracle.graal.pointsto.StaticAnalysisEngine;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -41,8 +42,6 @@ import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.options.OptionValues;
-
-import com.oracle.graal.pointsto.BigBang;
 
 import jdk.vm.ci.common.JVMCIError;
 
@@ -67,7 +66,7 @@ public class CompletionExecutor {
     public ExecutorService executorService;
     private final Runnable heartbeatCallback;
 
-    private BigBang bb;
+    private StaticAnalysisEngine analysis;
     private Timing timing;
     private Object vmConfig;
 
@@ -83,8 +82,8 @@ public class CompletionExecutor {
         void print();
     }
 
-    public CompletionExecutor(BigBang bb, ForkJoinPool forkJoin, Runnable heartbeatCallback) {
-        this.bb = bb;
+    public CompletionExecutor(StaticAnalysisEngine analysis, ForkJoinPool forkJoin, Runnable heartbeatCallback) {
+        this.analysis = analysis;
         this.heartbeatCallback = heartbeatCallback;
         executorService = forkJoin;
         state = new AtomicReference<>(State.UNUSED);
@@ -103,7 +102,7 @@ public class CompletionExecutor {
         postedOperations.reset();
         completedOperations.reset();
         postedBeforeStart.clear();
-        vmConfig = bb.getHostVM().getConfiguration();
+        vmConfig = analysis.getHostVM().getConfiguration();
     }
 
     /**
@@ -152,7 +151,7 @@ public class CompletionExecutor {
 
                 if (isSequential()) {
                     heartbeatCallback.run();
-                    try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
+                    try (DebugContext debug = command.getDebug(analysis.getOptions(), analysis.getDebugHandlerFactories());
                                     Scope s = debug.scope("Operation")) {
                         command.run(debug);
                     }
@@ -175,21 +174,21 @@ public class CompletionExecutor {
 
     @SuppressWarnings("try")
     public void executeCommand(DebugContextRunnable command) {
-        bb.getHostVM().installInThread(vmConfig);
+        analysis.getHostVM().installInThread(vmConfig);
         long startTime = 0L;
         if (timing != null) {
             startTime = System.nanoTime();
         }
         heartbeatCallback.run();
         Throwable thrown = null;
-        try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
+        try (DebugContext debug = command.getDebug(analysis.getOptions(), analysis.getDebugHandlerFactories());
                         Scope s = debug.scope("Operation");
                         Activation a = debug.activate()) {
             command.run(debug);
         } catch (Throwable x) {
             thrown = x;
         } finally {
-            bb.getHostVM().clearInThread();
+            analysis.getHostVM().clearInThread();
             if (timing != null) {
                 long taskTime = System.nanoTime() - startTime;
                 timing.addCompleted(command, taskTime);

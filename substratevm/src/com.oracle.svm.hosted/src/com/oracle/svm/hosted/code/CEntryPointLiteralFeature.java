@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,12 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
+import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -89,14 +89,14 @@ public class CEntryPointLiteralFeature implements Feature {
     }
 
     protected UniverseMetaAccess metaAccess;
-    protected BigBang bb;
+    protected NativeImageStaticAnalysisEngine analysis;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) a;
 
         metaAccess = config.getMetaAccess();
-        bb = config.getBigBang();
+        analysis = config.getStaticAnalysisEngine();
         config.registerObjectReplacer(new CEntryPointLiteralObjectReplacer());
     }
 
@@ -105,6 +105,6 @@ public class CEntryPointLiteralFeature implements Feature {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
 
         metaAccess = config.getMetaAccess();
-        bb = null;
+        analysis = null;
     }
 }

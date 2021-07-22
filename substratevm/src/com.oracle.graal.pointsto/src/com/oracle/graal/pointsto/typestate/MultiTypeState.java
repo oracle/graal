@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -205,7 +205,7 @@ public class MultiTypeState extends TypeState {
     public TypeState exactTypeState(BigBang unused, AnalysisType exactType) {
         if (containsType(exactType)) {
             AnalysisObject[] resultObjects = objectsArray(exactType);
-            return new SingleTypeState(bb, canBeNull, bb.analysisPolicy().makePoperties(bb, resultObjects), resultObjects);
+            return new SingleTypeState(bb, canBeNull, bb.analysisPolicy().makeProperties(bb, resultObjects), resultObjects);
         } else {
             return EmptyTypeState.SINGLETON;
         }
@@ -328,8 +328,12 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public boolean closeToAllInstantiated(BigBang unused) {
-        if (typesCount > 200 && bb != null) {
+    public boolean closeToAllInstantiated(StaticAnalysisEngine analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        BigBang bb = (BigBang) analysis;
+        if (typesCount > 200) {
             MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypes();
             return typesCount * 100L / allInstState.typesCount > 75;
         }
