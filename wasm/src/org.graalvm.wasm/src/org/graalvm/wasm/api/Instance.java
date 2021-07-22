@@ -125,11 +125,11 @@ public class Instance extends Dictionary {
                         ensureImportModule(importModules, d.module()).addFunction(d.name(), Pair.create(f, member));
                         break;
                     case memory:
-                        if (!isMemory(lib, member)) {
+                        if (!(member instanceof WasmMemory)) {
                             throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not a valid memory.");
                         }
                         // TODO: Use the Interop API to access the memory.
-                        ensureImportModule(importModules, d.module()).addMemory(d.name(), (Memory) member);
+                        ensureImportModule(importModules, d.module()).addMemory(d.name(), (WasmMemory) member);
                         break;
                     case table:
                         if (!(member instanceof WasmTable)) {
@@ -231,7 +231,7 @@ public class Instance extends Dictionary {
                 }
             } else if (instance.module().exportedMemoryNames().contains(name)) {
                 final WasmMemory memory = instance.memory();
-                e.addMember(name, new Memory(memory));
+                e.addMember(name, memory);
             } else if (instance.module().exportedTableNames().contains(name)) {
                 final WasmTable table = instance.table();
                 e.addMember(name, table);
