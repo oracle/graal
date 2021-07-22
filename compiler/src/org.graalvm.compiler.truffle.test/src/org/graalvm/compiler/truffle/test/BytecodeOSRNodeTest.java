@@ -374,7 +374,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         BytecodeNode bytecodeNode = new BytecodeNode(3, frameDescriptor, tripleInput1);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-        Assert.assertEquals(3 * (osrThreshold + 1), target.call(osrThreshold + 1, 0));
+        // note: requires an extra iteration due to an awkward interaction with enterprise loop
+        // peeling.
+        Assert.assertEquals(3 * (osrThreshold + 2), target.call(osrThreshold + 2, 0));
         Assert.assertTrue(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
         Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
