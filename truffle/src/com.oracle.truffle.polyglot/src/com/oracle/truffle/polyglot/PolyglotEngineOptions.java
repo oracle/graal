@@ -101,4 +101,8 @@ final class PolyglotEngineOptions {
                     "Use pre-initialized context when it's available.")//
     static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
 
+    @Option(category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Enable Multithreading (UNSAFE)")//
+    static final OptionKey<Boolean> EnableMultithreading = new OptionKey<>(true);
+
 }

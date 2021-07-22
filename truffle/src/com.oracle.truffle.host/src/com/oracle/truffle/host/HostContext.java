@@ -51,7 +51,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.RuntimeNameMapper;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -87,6 +89,7 @@ final class HostContext {
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
     private boolean hostLookupAllowed;
+    RuntimeNameMapper nameMapper;
 
     final AbstractHostAccess access;
 
@@ -115,7 +118,7 @@ final class HostContext {
      * preinitialization.
      */
     @SuppressWarnings("hiding")
-    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed, RuntimeNameMapper nameMapper) {
         if (classloader != null && this.classFilter != null || this.hostClassLoadingAllowed || this.hostLookupAllowed) {
             throw new AssertionError("must not be used during context preinitialization");
         }
@@ -124,6 +127,7 @@ final class HostContext {
         this.classFilter = clFilter;
         this.hostClassLoadingAllowed = hostCLAllowed;
         this.hostLookupAllowed = hostLookupAllowed;
+        this.nameMapper = nameMapper;
     }
 
     public HostClassCache getHostClassCache() {
@@ -162,6 +166,11 @@ final class HostContext {
     }
 
     private Class<?> findClassImpl(String className) {
+        if (className.endsWith("[]")) {
+            className = nameMapper.getClass(className.substring(0, className.length() - 2)) + "[]";
+        }
+        else
+            nameMapper.getClass(className);
         validateClass(className);
         if (className.endsWith("[]")) {
             Class<?> componentType = findClass(className.substring(0, className.length() - 2));

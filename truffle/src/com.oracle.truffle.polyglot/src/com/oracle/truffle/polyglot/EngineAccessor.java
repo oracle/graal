@@ -73,6 +73,7 @@ import java.util.logging.LogRecord;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.DefaultRuntimeNameMapper;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
@@ -787,7 +788,7 @@ final class EngineAccessor extends Accessor {
                 creator.context.engine.noInnerContexts.invalidate();
                 creator.context.addChildContext(impl);
                 PolyglotContextImpl.initializeStaticContext(impl);
-                impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().contextDispatch, impl, creator.context.engine.api);
+                impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().contextDispatch, impl, creator.context.engine.api, new DefaultRuntimeNameMapper());
             }
             synchronized (impl) {
                 impl.initializeContextLocals();

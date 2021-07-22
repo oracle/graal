@@ -41,17 +41,20 @@
 package com.oracle.truffle.api.test.wrapper;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.RuntimeNameMapper;
 
 public final class HostContext {
 
     final HostEngine engine;
     final long remoteContext;
     final Context localContext;
+    final RuntimeNameMapper nameMapper;
 
-    HostContext(HostEngine engine, long id, Context localContext) {
+    HostContext(HostEngine engine, long id, Context localContext, RuntimeNameMapper nameMapper) {
         this.engine = engine;
         this.remoteContext = id;
         this.localContext = localContext;
+        this.nameMapper = nameMapper;
     }
 
 }

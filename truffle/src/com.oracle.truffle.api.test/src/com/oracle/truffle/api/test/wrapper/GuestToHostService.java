@@ -44,6 +44,7 @@ import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.RuntimeNameMapper;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 
@@ -54,7 +55,7 @@ public class GuestToHostService extends AbstractHostService {
     }
 
     @Override
-    public void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    public void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed, RuntimeNameMapper nameMapper) {
         // we can just ignore the configuration of the host language
     }
 

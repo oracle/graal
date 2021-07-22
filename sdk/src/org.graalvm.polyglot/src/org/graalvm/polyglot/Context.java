@@ -311,14 +311,16 @@ public final class Context implements AutoCloseable {
     final Object receiver;
     final Context currentAPI;
     final Engine engine;
+    final RuntimeNameMapper runtimeNameMapper;
 
     @SuppressWarnings("unchecked")
-    <T> Context(AbstractContextDispatch dispatch, T receiver, Engine engine) {
+    <T> Context(AbstractContextDispatch dispatch, T receiver, Engine engine, RuntimeNameMapper nameMapper) {
         this.dispatch = dispatch;
         this.receiver = receiver;
         this.engine = engine;
         this.currentAPI = new Context(this);
         dispatch.setAPI(receiver, this);
+        this.runtimeNameMapper = nameMapper;
     }
 
     private Context() {
@@ -326,6 +328,7 @@ public final class Context implements AutoCloseable {
         this.receiver = null;
         this.engine = null;
         this.currentAPI = null;
+        this.runtimeNameMapper = null;
     }
 
     private <T> Context(Context creatorAPI) {
@@ -333,6 +336,7 @@ public final class Context implements AutoCloseable {
         this.receiver = creatorAPI.receiver;
         this.engine = creatorAPI.engine.currentAPI;
         this.currentAPI = null;
+        this.runtimeNameMapper = null;
     }
 
     /**
@@ -343,6 +347,14 @@ public final class Context implements AutoCloseable {
      */
     public Engine getEngine() {
         return engine;
+    }
+
+    /**
+     * Provides access to the NameMapper used in this context.
+     * @return The NameMapper
+     */
+    public RuntimeNameMapper getRuntimeNameMapper() {
+        return runtimeNameMapper;
     }
 
     /**
@@ -1013,6 +1025,7 @@ public final class Context implements AutoCloseable {
         private ZoneId zone;
         private Path currentWorkingDirectory;
         private ClassLoader hostClassLoader;
+        private RuntimeNameMapper runtimeNameMapper;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -1626,6 +1639,24 @@ public final class Context implements AutoCloseable {
          * set during code execution. Setting the hostClassLoader has a negative effect on enter and
          * leave performance.
          *
+         * @param mapper the host class loader
+         * @since 20.1.0
+         */
+        public Builder runtimeNameMapper(RuntimeNameMapper mapper) {
+            Objects.requireNonNull(mapper, "ClassLoader must be non null.");
+            this.runtimeNameMapper = mapper;
+            return this;
+        }
+
+        /**
+         * Sets a host class loader. If set the given {@code classLoader} is used to load host
+         * classes and it's also set as a {@link Thread#setContextClassLoader(java.lang.ClassLoader)
+         * context ClassLoader} during code execution. Otherwise the ClassLoader that was captured
+         * when the context was {@link #build() built} is used to to load host classes and the
+         * {@link Thread#setContextClassLoader(java.lang.ClassLoader) context ClassLoader} is not
+         * set during code execution. Setting the hostClassLoader has a negative effect on enter and
+         * leave performance.
+         *
          * @param classLoader the host class loader
          * @since 20.1.0
          */
@@ -1727,7 +1758,7 @@ public final class Context implements AutoCloseable {
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
-                                localCurrentWorkingDirectory, hostClassLoader);
+                                localCurrentWorkingDirectory, hostClassLoader, runtimeNameMapper == null ? new DefaultRuntimeNameMapper() : runtimeNameMapper);
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
@@ -1736,7 +1767,7 @@ public final class Context implements AutoCloseable {
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
-                                localCurrentWorkingDirectory, hostClassLoader);
+                                localCurrentWorkingDirectory, hostClassLoader, runtimeNameMapper == null ? new DefaultRuntimeNameMapper() : runtimeNameMapper);
             }
             return ctx;
         }

@@ -59,6 +59,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.RuntimeNameMapper;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -115,6 +117,12 @@ final class HostObject implements TruffleObject {
      * the object is an instance of Throwable.
      */
     private final Object extraInfo;
+    private RuntimeNameMapper nameMapper;
+
+    private void ensureNameMapperLoaded() {
+        if(nameMapper == null)
+            nameMapper = context.nameMapper;
+    }
 
     private HostObject(Object obj, HostContext context, Object extraInfo) {
         this.obj = obj;
@@ -288,16 +296,24 @@ final class HostObject implements TruffleObject {
             error.enter();
             throw UnsupportedMessageException.create();
         }
+        ensureNameMapperLoaded();
+
         boolean isStatic = isStaticClass();
         Class<?> lookupClass = getLookupClass();
+        String originalName = name;
+        name = nameMapper.getField(lookupClass, originalName);
         HostFieldDesc foundField = lookupField.execute(this, lookupClass, name, isStatic);
         if (foundField != null) {
             return readField.execute(foundField, this);
         }
+        // no else needed!
+        name = nameMapper.getMethod(lookupClass, originalName);
         HostMethodDesc foundMethod = lookupMethod.execute(this, lookupClass, name, isStatic);
         if (foundMethod != null) {
             return new HostFunction(foundMethod, this.obj, this.context);
         }
+        // no else needed!
+        name = nameMapper.getClass(lookupClass, originalName);
 
         if (isStatic) {
             LookupInnerClassNode lookupInnerClassNode = lookupInnerClass;
@@ -335,7 +351,8 @@ final class HostObject implements TruffleObject {
             if (receiver.isNull()) {
                 return false;
             }
-            return HostInteropReflect.isModifiable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+            receiver.ensureNameMapperLoaded();
+            return HostInteropReflect.isModifiable(receiver, receiver.getLookupClass(), receiver.nameMapper.getField(receiver.getLookupClass(), name), receiver.isStaticClass());
         }
 
     }
@@ -358,7 +375,8 @@ final class HostObject implements TruffleObject {
             if (receiver.isNull()) {
                 return false;
             }
-            return HostInteropReflect.isInternal(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+            receiver.ensureNameMapperLoaded();
+            return HostInteropReflect.isInternal(receiver, receiver.getLookupClass(), receiver.nameMapper.getField(receiver.getLookupClass(), name), receiver.isStaticClass());
         }
     }
 
@@ -378,6 +396,9 @@ final class HostObject implements TruffleObject {
             error.enter();
             throw UnsupportedMessageException.create();
         }
+        ensureNameMapperLoaded();
+
+        member = nameMapper.getField(getLookupClass(), member);
         HostFieldDesc f = lookupField.execute(this, getLookupClass(), member, isStaticClass());
         if (f == null) {
             error.enter();
@@ -415,7 +436,8 @@ final class HostObject implements TruffleObject {
             if (receiver.isNull()) {
                 return false;
             }
-            return HostInteropReflect.isInvokable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+            receiver.ensureNameMapperLoaded();
+            return HostInteropReflect.isInvokable(receiver, receiver.getLookupClass(), receiver.nameMapper.getMethod(receiver.getLookupClass(), name), receiver.isStaticClass());
         }
     }
 
@@ -431,15 +453,20 @@ final class HostObject implements TruffleObject {
             error.enter();
             throw UnsupportedMessageException.create();
         }
+        ensureNameMapperLoaded();
 
         boolean isStatic = isStaticClass();
         Class<?> lookupClass = getLookupClass();
+        String originalName = name;
+        name = nameMapper.getMethod(lookupClass, originalName);
 
         // (1) look for a method; if found, invoke it on obj.
         HostMethodDesc foundMethod = lookupMethod.execute(this, lookupClass, name, isStatic);
         if (foundMethod != null) {
             return executeMethod.execute(foundMethod, obj, args, context);
         }
+
+        name = nameMapper.getField(lookupClass, originalName);
 
         // (2) look for a field; if found, read its value and if that IsExecutable, Execute it.
         HostFieldDesc foundField = lookupField.execute(this, lookupClass, name, isStatic);

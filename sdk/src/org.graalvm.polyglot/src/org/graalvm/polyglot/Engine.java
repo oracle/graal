@@ -575,8 +575,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine) {
-            return new Context(dispatch, receiver, engine);
+        public Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine, RuntimeNameMapper nameMapper) {
+            return new Context(dispatch, receiver, engine, nameMapper);
         }
 
         @Override

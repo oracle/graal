@@ -43,7 +43,9 @@ package com.oracle.truffle.host;
 import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.RuntimeNameMapper;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -65,14 +67,14 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public void initializeHostContext(Object internalContext, Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    public void initializeHostContext(Object internalContext, Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed, RuntimeNameMapper nameMapper) {
         HostContext context = (HostContext) receiver;
         ClassLoader useCl = cl;
         if (useCl == null) {
             useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
         }
         language.initializeHostAccess(hostAccess, useCl);
-        context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed);
+        context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed, nameMapper);
     }
 
     @Override

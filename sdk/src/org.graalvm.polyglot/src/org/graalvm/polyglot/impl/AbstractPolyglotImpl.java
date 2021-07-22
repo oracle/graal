@@ -71,22 +71,9 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.*;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
-import org.graalvm.polyglot.ResourceLimitEvent;
-import org.graalvm.polyglot.ResourceLimits;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.TypeLiteral;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -142,7 +129,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver);
 
-        public abstract Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine);
+        public abstract Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine, RuntimeNameMapper nameMapper);
 
         public abstract Language newLanguage(AbstractLanguageDispatch dispatch, Object receiver);
 
@@ -501,7 +488,8 @@ public abstract class AbstractPolyglotImpl {
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader);
+                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
+                        RuntimeNameMapper nameMapper);
 
         public abstract String getImplementationName(Object receiver);
 
@@ -668,7 +656,7 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
-                        boolean hostLookupAllowed);
+                        boolean hostLookupAllowed, RuntimeNameMapper nameMapper);
 
         public abstract void addToHostClassPath(Object context, Object truffleFile);
 

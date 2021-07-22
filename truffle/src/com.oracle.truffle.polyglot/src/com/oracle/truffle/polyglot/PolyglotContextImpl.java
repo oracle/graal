@@ -80,10 +80,7 @@ import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.*;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 
 import com.oracle.truffle.api.Assumption;
@@ -929,6 +926,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 deniedLanguages.add(context.language);
             }
         }
+        if(PolyglotEngineOptions.EnableMultithreading.getValue(getEngine().engineOptionValues))
+            return;
         if (deniedLanguages != null) {
             throw throwDeniedThreadAccess(enteringThread, singleThread, deniedLanguages);
         }
@@ -1050,6 +1049,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 }
             }
         }
+
+        if(PolyglotEngineOptions.EnableMultithreading.getValue(getEngine().engineOptionValues))
+            return threadInfo;
 
         if (deniedLanguages != null) {
             throw throwDeniedThreadAccess(current, singleThread, deniedLanguages);
@@ -2614,7 +2616,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 throw new AssertionError("Host service must not change per engine.");
             }
             newHost.initializeHostContext(this, contextImpl, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed,
-                            newConfig.hostLookupAllowed);
+                            newConfig.hostLookupAllowed, newConfig.nameMapper);
         } catch (IllegalStateException e) {
             throw PolyglotEngineException.illegalState(e.getMessage());
         }
@@ -2668,7 +2670,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         allowedLanguages,
                         Collections.emptyMap(),
                         fs, internalFs, engine.logHandler, false, null,
-                        EnvironmentAccess.INHERIT, null, null, null, null, null);
+                        EnvironmentAccess.INHERIT, null, null, null, null, null, null);
 
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         synchronized (engine.lock) {

@@ -48,14 +48,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.*;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.io.FileSystem;
@@ -81,18 +74,18 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
-                    ClassLoader hostClassLoader) {
+                    ClassLoader hostClassLoader, RuntimeNameMapper nameMapper) {
         HostEngine engine = (HostEngine) receiver;
         Engine localEngine = engine.localEngine;
         AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
         Object engineReceiver = api.getReceiver(localEngine);
         Context localContext = dispatch.createContext(engineReceiver, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO,
                         allowHostClassLoading, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler,
-                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, hostClassLoader);
+                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, hostClassLoader, nameMapper);
         long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine);
-        HostContext context = new HostContext(engine, guestContextId, localContext);
+        HostContext context = new HostContext(engine, guestContextId, localContext, nameMapper);
         hostToGuest.registerHostContext(guestContextId, context);
-        return polyglot.getAPIAccess().newContext(remoteContext, context, engine.api);
+        return polyglot.getAPIAccess().newContext(remoteContext, context, engine.api, nameMapper);
     }
 
     @Override

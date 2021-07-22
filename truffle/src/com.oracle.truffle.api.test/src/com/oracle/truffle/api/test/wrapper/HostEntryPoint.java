@@ -45,11 +45,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.*;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
@@ -123,7 +119,7 @@ final class HostEntryPoint {
                         false, false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], null, null,
                         false, null, EnvironmentAccess.NONE,
-                        null, null, null, null, null);
+                        null, null, null, null, null, new DefaultRuntimeNameMapper());
         return guestToHost(remoteContext);
     }
 

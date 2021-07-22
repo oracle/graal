@@ -48,14 +48,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.*;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -141,13 +134,13 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
-                    ClassLoader hostClassLoader) {
+                    ClassLoader hostClassLoader, RuntimeNameMapper nameMapper) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         PolyglotContextImpl context = receiver.createContext(out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO, allowHostClassLoading,
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
-                        currentWorkingDirectory, hostClassLoader);
-        return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, context.engine.api);
+                        currentWorkingDirectory, hostClassLoader, nameMapper);
+        return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, context.engine.api, nameMapper);
     }
 
     @Override
