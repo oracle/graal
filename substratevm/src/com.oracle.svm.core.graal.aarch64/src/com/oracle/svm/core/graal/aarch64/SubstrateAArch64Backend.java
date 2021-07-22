@@ -291,9 +291,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 Register statusValueRegister = scratch1.getRegister();
                 Register statusAddressRegister = scratch2.getRegister();
                 masm.mov(statusValueRegister, newThreadStatus);
-                AArch64Address statusAddress = AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, ReservedRegisters.singleton().getThreadRegister(),
-                                runtimeConfiguration.getVMThreadStatusOffset());
-                masm.loadAddress(statusAddressRegister, statusAddress, 4);
+                masm.loadAlignedAddress(32, statusAddressRegister, ReservedRegisters.singleton().getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset());
                 masm.stlr(32, statusValueRegister, statusAddressRegister);
             }
         }
@@ -726,7 +724,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             AArch64MacroAssembler asm = (AArch64MacroAssembler) tasm.asm;
 
             // Move the DeoptimizedFrame into r1
-            asm.ldr(64, r1, AArch64Address.createBaseRegisterOnlyAddress(sp));
+            asm.ldr(64, r1, AArch64Address.createBaseRegisterOnlyAddress(64, sp));
 
             // Store the original return value registers
             int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();

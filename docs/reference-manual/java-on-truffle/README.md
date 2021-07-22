@@ -90,13 +90,13 @@ This might be important for options such as `MaxDirectMemorySize` which can be s
 
 #### From Command Line
 
-For the purpose of this guide, GraalVM Enterprise 21.1.0 distribution, based on Java 11 for macOS, is used.
+For the purpose of this guide, GraalVM Enterprise 21.2.0 distribution, based on Java 11 for macOS, is used.
 To ensure you have successfully installed Java on Truffle, verify its version:
 ```shell
 java -truffle -version
-java version "11.0.11" 2021-04-20 LTS
-Java(TM) SE Runtime Environment GraalVM EE 21.1.0 (build 11.0.11+8-LTS-jvmci-21.1-b03)
-Espresso 64-Bit VM GraalVM EE 21.1.0 (build 11-espresso-21.1.0, mixed mode)
+java version "11.0.12" 2021-07-20 LTS
+Java(TM) SE Runtime Environment GraalVM EE 21.2.0 (build 11.0.12+8-LTS-jvmci-21.2-b06)
+Espresso 64-Bit VM GraalVM EE 21.2.0 (build 11-espresso-21.2.0, mixed mode)
 ```
 
 Taking this `HelloWorld.java` example, compile it and run from the command line:

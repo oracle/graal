@@ -51,6 +51,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 /**
  * The singleton holder of runtime options.
@@ -93,7 +94,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             if (desc.getOptionValueType().isAssignableFrom(valueType)) {
                 RuntimeOptionValues.singleton().update(desc.getOptionKey(), value);
             } else {
-                throw new RuntimeException("Invalid type of option '" + optionName + "': required " + desc.getOptionValueType().getSimpleName() + ", provided " + valueType);
+                throw new RuntimeException("Invalid type of option '" + optionName + "': required " + ClassUtil.getUnqualifiedName(desc.getOptionValueType()) + ", provided " + valueType);
             }
         }
     }
@@ -143,7 +144,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         Class<T> clazz = (Class<T>) descriptor.getOptionValueType();
         OptionType<T> type;
         if (clazz.isEnum()) {
-            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(c.getSimpleName(), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
+            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(ClassUtil.getUnqualifiedName(c), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
         } else if (clazz == Long.class) {
             type = (OptionType<T>) LONG_OPTION_TYPE;
         } else {

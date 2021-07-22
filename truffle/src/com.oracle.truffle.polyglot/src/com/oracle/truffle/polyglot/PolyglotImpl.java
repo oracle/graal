@@ -138,6 +138,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return polyglotImpl;
     }
 
+    PolyglotEngineImpl getPreinitializedEngine() {
+        return preInitializedEngineRef.get();
+    }
+
     @Override
     protected void initialize() {
         this.hostNull = getAPIAccess().newValue(PolyglotValueDispatch.createHostNull(this), null, EngineAccessor.HOST.getHostNull());
@@ -300,6 +304,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             LanguageCache.resetNativeImageCacheLanguageHomes();
             // Clear logger settings
             engine.logLevels.clear();
+            engine.logHandler.close();
             engine.logHandler = null;
         }
         preInitializedEngineRef.set(engine);

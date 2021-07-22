@@ -47,12 +47,14 @@ gateTestMaxVS : ${gateTest} {
 gateTestAVX0 : ${gateTest} {
   environment : {
     JVM_CONFIG    : ${jvm-config.default}"-avx0"
+    EXTRA_VM_ARGS : "-Dgraal.ForceAdversarialLayout=true"
   }
 }
 
 gateTestAVX1 : ${gateTest} {
   environment : {
     JVM_CONFIG    : ${jvm-config.default}"-avx1"
+    EXTRA_VM_ARGS : "-Dgraal.ForceAdversarialLayout=true"
   }
 }
 

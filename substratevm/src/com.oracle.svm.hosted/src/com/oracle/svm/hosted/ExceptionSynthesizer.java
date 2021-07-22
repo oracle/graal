@@ -43,6 +43,7 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -81,15 +82,15 @@ public final class ExceptionSynthesizer {
 
     private static void registerMethod(Class<?> exceptionClass) {
         try {
-            exceptionMethods.put(Key.from(exceptionClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getSimpleName()));
+            exceptionMethods.put(Key.from(exceptionClass), ImplicitExceptions.class.getDeclaredMethod("throw" + ClassUtil.getUnqualifiedName(exceptionClass)));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }
 
-    private static void registerMethod(Class<?> exceptionClass, Class<?> paramterClass) {
+    private static void registerMethod(Class<?> exceptionClass, Class<?> parameterClass) {
         try {
-            exceptionMethods.put(Key.from(exceptionClass, paramterClass), ImplicitExceptions.class.getDeclaredMethod("throw" + exceptionClass.getSimpleName(), paramterClass));
+            exceptionMethods.put(Key.from(exceptionClass, parameterClass), ImplicitExceptions.class.getDeclaredMethod("throw" + ClassUtil.getUnqualifiedName(exceptionClass), parameterClass));
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

@@ -102,7 +102,7 @@ public class AArch64HotSpotMove {
                 Register scratch = sc.getRegister();
                 masm.adrp(scratch);
                 masm.add(64, scratch, scratch, 1);
-                masm.ldr(64, asRegister(result), AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                masm.ldr(64, asRegister(result), AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
                 masm.nop();
                 crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);
             }
@@ -241,7 +241,7 @@ public class AArch64HotSpotMove {
             if (pic || encoding.hasBase() || encoding.getShift() != 0) {
                 if (pic) {
                     masm.adrpAdd(scratch);
-                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
                     masm.add(64, result, scratch, ptr, AArch64Assembler.ExtendType.UXTX, encoding.getShift());
                     crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);
                 } else {

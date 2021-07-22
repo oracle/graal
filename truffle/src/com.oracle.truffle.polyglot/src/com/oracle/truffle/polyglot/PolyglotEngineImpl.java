@@ -1221,6 +1221,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return allOptions;
     }
 
+    PolyglotContextImpl getPreInitializedContext() {
+        return preInitializedContext.get();
+    }
+
     void preInitialize() {
         synchronized (this.lock) {
             this.preInitializedContext.set(PolyglotContextImpl.preInitialize(this));
@@ -1959,7 +1963,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      */
     static void resetFallbackEngine() {
         synchronized (PolyglotImpl.class) {
-            fallbackEngine = null;
+            if (fallbackEngine != null) {
+                fallbackEngine.ensureClosed(false, false);
+                fallbackEngine = null;
+            }
         }
     }
 

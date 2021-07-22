@@ -33,9 +33,10 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormat;
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormatNoFallback;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 
 final class StackMapFrameParser {
@@ -68,7 +69,7 @@ final class StackMapFrameParser {
         // either VerifyError or ClassFormatError only if verified. Here the
         // attribute is marked for the verifier.
         if (!stream.isAtEndOfFile()) {
-            throw new ClassFormatError("Truncated StackMap attribute in " + verifier.getThisKlass().getExternalName() + "." + verifier.getMethodName());
+            throw failFormatNoFallback("Truncated StackMap attribute in " + verifier.getThisKlass().getExternalName() + "." + verifier.getMethodName());
         }
     }
 
@@ -83,7 +84,7 @@ final class StackMapFrameParser {
         }
         if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
             // [128, 246] is reserved and still unused
-            throw ConstantPool.classFormatError("Encountered reserved StackMapFrame tag: " + frameType);
+            throw failFormatNoFallback("Encountered reserved StackMapFrame tag: " + frameType);
         }
         if (frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
             int offsetDelta = stream.readU2();
@@ -121,7 +122,7 @@ final class StackMapFrameParser {
             }
             return new FullFrame(frameType, offsetDelta, locals, stack);
         }
-        throw ConstantPool.classFormatError("Unrecognized StackMapFrame tag: " + frameType);
+        throw failFormat("Unrecognized StackMapFrame tag: " + frameType);
     }
 
     private VerificationTypeInfo parseVerificationTypeInfo() {
@@ -137,7 +138,7 @@ final class StackMapFrameParser {
             case ITEM_NewObject:
                 return new UninitializedVariable(stream.readU2());
             default:
-                throw ConstantPool.classFormatError("Unrecognized verification type info tag: " + tag);
+                throw failFormatNoFallback("Unrecognized verification type info tag: " + tag);
         }
     }
 }

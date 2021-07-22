@@ -933,7 +933,6 @@ public class CompileQueue {
                 }
 
                 method.compilationInfo.graph = graph;
-
                 afterParse(method);
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
                 afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));

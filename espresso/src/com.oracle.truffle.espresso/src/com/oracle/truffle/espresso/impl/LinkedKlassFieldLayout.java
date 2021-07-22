@@ -26,13 +26,13 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
-import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
-import com.oracle.truffle.espresso.staticobject.StaticShape;
 
 final class LinkedKlassFieldLayout {
     final StaticShape<StaticObjectFactory> instanceShape;
@@ -47,9 +47,9 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(ClassLoaderCache clc, ParserKlass parserKlass, LinkedKlass superKlass) {
-        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(clc);
-        StaticShape.Builder staticBuilder = StaticShape.newBuilder(clc);
+    LinkedKlassFieldLayout(TruffleLanguage<?> lang, ParserKlass parserKlass, LinkedKlass superKlass) {
+        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(lang);
+        StaticShape.Builder staticBuilder = StaticShape.newBuilder(lang);
 
         FieldCounter fieldCounter = new FieldCounter(parserKlass);
         int nextInstanceFieldIndex = 0;
@@ -63,19 +63,19 @@ final class LinkedKlassFieldLayout {
 
         for (ParserField parserField : parserKlass.getFields()) {
             if (parserField.isStatic()) {
-                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, storeAsFinal(parserKlass, parserField), idMode);
-                staticBuilder.property(field);
+                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, idMode);
+                staticBuilder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
                 staticFields[nextStaticFieldIndex++] = field;
             } else {
-                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, parserField), idMode);
-                instanceBuilder.property(field);
+                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, idMode);
+                instanceBuilder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
                 instanceFields[nextInstanceFieldIndex++] = field;
             }
         }
         for (Symbol<Name> hiddenFieldName : fieldCounter.hiddenFieldNames) {
             ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenFieldName, Type.java_lang_Object, null);
-            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, hiddenParserField), idMode);
-            instanceBuilder.property(field);
+            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, idMode);
+            instanceBuilder.property(field, hiddenParserField.getPropertyType(), storeAsFinal(parserKlass, hiddenParserField));
             instanceFields[nextInstanceFieldIndex++] = field;
         }
         if (superKlass == null) {

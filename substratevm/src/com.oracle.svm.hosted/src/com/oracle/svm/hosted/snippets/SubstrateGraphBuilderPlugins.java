@@ -141,6 +141,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
@@ -366,9 +367,9 @@ public class SubstrateGraphBuilderPlugins {
             List<Class<?>> classList = new ArrayList<>();
             FixedNode successor = unwrapNode(newArray.next());
             /*
-             * In a case when we are creating a proxy, which contains a method with a class as a
-             * parameter, a successor node will not be StoreIndexNode, so we need to skip
-             * initialization nodes.
+             * In a case when we are creating a proxy, which contains a method with a class
+             * (initialized at runtime) as a parameter, a successor node will not be StoreIndexNode,
+             * so we need to skip initialization nodes.
              */
             if (successor instanceof EnsureClassInitializedNode) {
                 AbstractBeginNode classInitializedNode = ((EnsureClassInitializedNode) successor).next();
@@ -924,7 +925,7 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerEdgesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Edges.class).setAllowOverwrite(true);
         for (Class<?> c : new Class<?>[]{Node.class, NodeList.class}) {
-            r.register2("get" + c.getSimpleName() + "Unsafe", Node.class, long.class, new InvocationPlugin() {
+            r.register2("get" + ClassUtil.getUnqualifiedName(c) + "Unsafe", Node.class, long.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset) {
                     b.addPush(JavaKind.Object, new UnsafePartitionLoadNode(node, offset, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
@@ -932,7 +933,7 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
 
-            r.register3("put" + c.getSimpleName() + "Unsafe", Node.class, long.class, c, new InvocationPlugin() {
+            r.register3("put" + ClassUtil.getUnqualifiedName(c) + "Unsafe", Node.class, long.class, c, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset, ValueNode value) {
                     b.add(new UnsafePartitionStoreNode(node, offset, value, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
@@ -1103,7 +1104,7 @@ public class SubstrateGraphBuilderPlugins {
         return result;
     }
 
-    private static void checkParameterUsage(boolean condition, GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, String message) {
+    public static void checkParameterUsage(boolean condition, GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, String message) {
         if (condition) {
             return;
         }

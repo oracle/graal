@@ -450,9 +450,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     private void moveValueToThread(Value value, int offset) {
         LIRKind wordKind = LIRKind.value(target().arch.getWordKind());
-        int size = value.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
+        int bitMemoryTransferSize = value.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-        AArch64AddressValue address = AArch64AddressValue.makeAddress(wordKind, size, thread, offset);
+        AArch64AddressValue address = AArch64AddressValue.makeAddress(wordKind, bitMemoryTransferSize, thread, offset);
         append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, loadReg(value), null));
     }
 

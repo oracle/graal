@@ -614,6 +614,5 @@ final class LanguageAccessor extends Accessor {
         public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
             action.perform(access);
         }
-
     }
 }

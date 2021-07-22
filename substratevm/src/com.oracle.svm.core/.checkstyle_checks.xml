@@ -20,14 +20,14 @@
       <property name="id" value="annotationAccess"/>
       <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to AnnotatedElement.get(Declared)Annotation(s)."/>
       <property name="severity" value="error"/>
-      <property name="format" value="\b(?&lt;!AnnotationAccess)\.(getAnnotation|getAnnotations|getDeclaredAnnotation|getDeclaredAnnotations|isAnnotationPresent)\b"/>
+      <property name="format" value="(?&lt;!AnnotationAccess)\.(getAnnotation|getAnnotations|getDeclaredAnnotation|getDeclaredAnnotations|isAnnotationPresent)\b"/>
       <property name="message" value="Direct calls to java.lang.reflect.AnnotatedElement.get(Declared)Annotation(s) are restricted. Use either org.graalvm.util.GuardedAnnotationAccess or org.graalvm.util.DirectAnnotationAccess methods. (Use &quot;// Checkstyle: allow direct annotation access... // Checkstyle: disallow direct annotation access&quot; to disable this check.)"/>
       <property name="ignoreComments" value="true"/>
     </module>
     <module name="SuppressionCommentFilter">
       <property name="offCommentFormat" value="Checkstyle: allow direct annotation access"/>
       <property name="onCommentFormat" value="Checkstyle: disallow direct annotation access"/>
-      <property name="checkFormat" value="annotationAccess"/>
+      <property name="idFormat" value="annotationAccess"/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable annotation access checks"/>
     </module>
 
@@ -44,6 +44,21 @@
       <property name="onCommentFormat" value="Checkstyle: disallow Thread.isInterrupted"/>
       <property name="idFormat" value="threadIsInterruptedCall"/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Thread.isInterrupted calls"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="getSimpleNameCall"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to Class.getSimpleName."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="(?&lt;!(\.class|ClassUtil))\.getSimpleName\b"/>
+      <property name="message" value="Calls to Class.getSimpleName are restricted because it loads the enclosing class, which might not be possible. Instead, use com.oracle.svm.util.ClassUtil.getUnqualifiedName. (Use &quot;// Checkstyle: allow Class.getSimpleName ... // Checkstyle: disallow Class.getSimpleName&quot; to disable this check.)"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow Class.getSimpleName"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow Class.getSimpleName"/>
+      <property name="idFormat" value="getSimpleNameCall"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Class.getSimpleName calls"/>
     </module>
 
     <module name="AvoidStarImport">

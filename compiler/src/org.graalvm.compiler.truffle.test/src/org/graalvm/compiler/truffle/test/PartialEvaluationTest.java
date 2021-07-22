@@ -101,6 +101,20 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return compilable;
     }
 
+    @FunctionalInterface
+    protected interface FrameFunction {
+        Object execute(VirtualFrame frame);
+    }
+
+    protected RootNode toRootNode(FrameFunction f) {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return f.execute(frame);
+            }
+        };
+    }
+
     protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments) {
         return assertPartialEvalEquals(expected, actual, arguments, true);
     }
@@ -156,6 +170,11 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             @Override
             public TruffleInliningData inliningData() {
                 return inlining;
+            }
+
+            @Override
+            public boolean hasNextTier() {
+                return false;
             }
         };
     }

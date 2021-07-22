@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -201,6 +202,18 @@ public class ClassInitializationFeature implements GraalFeature {
 
             if (SubstrateOptions.TraceClassInitialization.hasBeenSet()) {
                 reportTrackedClassInitializationTraces(path);
+            }
+
+            if (ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses.getValue()) {
+                List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
+                                .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
+                                .map(Class::getTypeName)
+                                .collect(Collectors.toList());
+                if (!unspecifiedClasses.isEmpty()) {
+                    System.err.println("The following classes have unspecified initialization policy:" + System.lineSeparator() + String.join(System.lineSeparator(), unspecifiedClasses));
+                    UserError.abort("To fix the error either specify the initialization policy for given classes or set %s",
+                                    SubstrateOptionsParser.commandArgument(ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses, "-"));
+                }
             }
         }
     }

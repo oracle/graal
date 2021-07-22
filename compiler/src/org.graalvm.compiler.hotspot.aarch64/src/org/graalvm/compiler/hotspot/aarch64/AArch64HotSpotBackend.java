@@ -358,7 +358,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
                     masm.adrpAdd(scratch);
-                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
                     Label noCall = new Label();
                     masm.cbz(64, scratch, noCall);
                     AArch64Call.directJmp(crb, masm, getForeignCalls().lookupForeignCall(WRONG_METHOD_HANDLER));

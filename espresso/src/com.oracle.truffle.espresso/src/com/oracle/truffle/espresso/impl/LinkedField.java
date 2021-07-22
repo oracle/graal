@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -36,7 +37,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.staticobject.StaticProperty;
 
 final class LinkedField extends StaticProperty {
     enum IdMode {
@@ -48,8 +48,7 @@ final class LinkedField extends StaticProperty {
     @CompilationFinal private ParserField parserField;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot, boolean storeAsFinal, IdMode mode) {
-        super(parserField.getPropertyKind(), storeAsFinal);
+    LinkedField(ParserField parserField, int slot, IdMode mode) {
         this.parserField = maybeCorrectParserField(parserField, mode);
         this.slot = slot;
     }

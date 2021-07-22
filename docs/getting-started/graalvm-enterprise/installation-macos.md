@@ -16,22 +16,23 @@ the JDK installation path is:
 
 Follow these steps to install Oracle GraalVM Enterprise Edition on the macOS operating system:
 
-1. Navigate to[ Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html). Depending on the workload, select **Oracle GraalVM Enterprise Edition based on JDK8 for macOS** or **Oracle GraalVM Enterprise Edition based on JDK11 for macOS**.
-2. Click on the **Oracle GraalVM Enterprise Edition Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
-3. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-darvin-amd64-<version>.tar.gz**.
-4. Unzip the archive:
+1. Navigate to[ Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
+2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **8**, **11**, or **16** for the Java version, and **macOS** for the operating system.
+3. Click on the **GraalVM Enterprise Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
+4. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-darvin-amd64-<version>.tar.gz**.
+5. Unzip the archive:
   ```shell
   tar -xzf graalvm-ee-java<version>-darvin-amd64-<version>.tar.gz
   ```
   Alternatively, open the file in Finder.
   > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute. See [Installation Notes](#installation-notes) below.
 
-5.  Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
+6. Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
   ```shell
   sudo mv graalvm-ee-java<version>-<version> /Library/Java/JavaVirtualMachines
   ```
 To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
-6. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
+7. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Point the `PATH` environment variable to the GraalVM Enterprise `bin` directory:
     ```shell
     export PATH=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home/bin:$PATH
@@ -40,7 +41,8 @@ To verify if the move is successful and to get a list of all installed JDKs, run
     ```shell
     export JAVA_HOME=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home
     ```
-7. To check whether the installation was successful, run the `java -version` command.
+8. To check whether the installation was successful, run the `java -version` command.
+
 Optionally, you can specify GraalVM Enterprise as the default JRE or JDK installation in your Java IDE.
 
 ## Installation Notes
@@ -71,7 +73,7 @@ Tools/Utilities:
 Runtimes:
 * [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible
 * [Python](/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.2 compatible
+* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.3 compatible
 * [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
 * [Wasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
 ​

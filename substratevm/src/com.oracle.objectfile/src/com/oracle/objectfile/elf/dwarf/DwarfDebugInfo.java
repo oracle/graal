@@ -145,6 +145,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_AT_specification = 0x47;
     public static final int DW_AT_type = 0x49;
     public static final int DW_AT_data_location = 0x50;
+    public static final int DW_AT_use_UTF8 = 0x53;
     public static final int DW_AT_object_pointer = 0x64;
 
     /*

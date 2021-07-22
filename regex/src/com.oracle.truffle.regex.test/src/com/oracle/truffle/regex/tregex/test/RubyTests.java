@@ -48,7 +48,7 @@ public class RubyTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=Ruby";
+        return "Flavor=Ruby,IgnoreAtomicGroups=true";
     }
 
     void testUTF8(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
@@ -320,5 +320,27 @@ public class RubyTests extends RegexTestBase {
         test("[\u00e9]", "i", "CAF\u00c9", 0, true, 3, 4);
         test("[x\u00e9]", "i", "CAF\u00c9", 0, true, 3, 4);
         test("[x\u00c9]", "i", "CAF\u00c9", 0, true, 3, 4);
+    }
+
+    @Test
+    public void inverseOfUnicodeCharClassInSmallerEncoding() {
+        // check(eval('/\A[[:^alpha:]0]\z/'), %w(0 1 .), "a") from test_posix_bracket in
+        // test/mri/tests/ruby/test_regexp.rb
+        testLatin1("\\A[[:^alpha:]0]\\z", "", "0", 0, true, 0, 1);
+        testLatin1("\\A[[:^alpha:]0]\\z", "", "1", 0, true, 0, 1);
+        testLatin1("\\A[[:^alpha:]0]\\z", "", "a", 0, false);
+    }
+
+    @Test
+    public void treatLeadingClosingBracketsInCharClassesAsLiteralCharacters() {
+        // check('\A[]]\z', "]", "") from test_char_class in test/mri/tests/ruby/test_regexp.rb
+        test("\\A[]]\\z", "", "]", 0, true, 0, 1);
+
+        // also test in negative char class
+        test("\\A[^]]\\z", "", "a", 0, true, 0, 1);
+    }
+
+    public void ignoreAtomicGroups() {
+        test("(?>foo)", "", "foo", 0, true, 0, 3);
     }
 }

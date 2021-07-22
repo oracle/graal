@@ -77,6 +77,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -162,7 +163,7 @@ public class PermissionsFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
-            UserError.abort("%s requires -H:-FoldSecurityManagerGetter option.", getClass().getSimpleName());
+            UserError.abort("%s requires -H:-FoldSecurityManagerGetter option.", ClassUtil.getUnqualifiedName(getClass()));
         }
         String reportFile = Options.TruffleTCKPermissionsReportFile.getValue();
         if (reportFile == null) {
@@ -184,12 +185,12 @@ public class PermissionsFeature implements Feature {
         }
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         DebugContext debugContext = accessImpl.getDebugContext();
-        try (DebugContext.Scope s = debugContext.scope(getClass().getSimpleName())) {
+        try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
             BigBang bigbang = accessImpl.getBigBang();
             WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bigbang);
             ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
                             accessImpl.getImageClassLoader(),
-                            getClass().getSimpleName(),
+                            ClassUtil.getUnqualifiedName(getClass()),
                             Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);

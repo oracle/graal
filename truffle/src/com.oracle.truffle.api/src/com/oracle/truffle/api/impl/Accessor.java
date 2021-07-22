@@ -56,6 +56,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -66,6 +67,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -603,6 +605,16 @@ public abstract class Accessor {
         public abstract Future<Void> submitThreadLocal(Object polyglotLanguageContext, Object sourcePolyglotObject, Thread[] threads, ThreadLocalAction action, boolean needsEnter);
 
         public abstract Object getContext(Object polyglotLanguageContext);
+
+        public abstract ClassLoader getStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass);
+
+        public abstract void setStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl);
+
+        public abstract ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> getGeneratorCache(Object polyglotLanguageInstance);
+
+        public abstract boolean areStaticObjectSafetyChecksRelaxed(Object polyglotLanguageInstance);
+
+        public abstract String getStaticObjectStorageStrategy(Object polyglotLanguageInstance);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -926,6 +938,16 @@ public abstract class Accessor {
         public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
     }
 
+    public abstract static class SomSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.staticobject.SomAccessor";
+
+        protected SomSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+    }
+
     public abstract static class RuntimeSupport {
 
         static final Object PERMISSION = new Object();
@@ -1140,7 +1162,8 @@ public abstract class Accessor {
                         "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName)) {
+                        "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName)) {
             // OK, classes allowed to use accessors
         } else {
             throw new IllegalStateException(thisClassName);

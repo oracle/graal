@@ -108,6 +108,8 @@ public final class RegexOptions {
     public static final String UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME = "UTF16ExplodeAstralSymbols";
     private static final int VALIDATE = 1 << 6;
     public static final String VALIDATE_NAME = "Validate";
+    private static final int IGNORE_ATOMIC_GROUPS = 1 << 7;
+    public static final String IGNORE_ATOMIC_GROUPS_NAME = "IgnoreAtomicGroups";
 
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
@@ -184,6 +186,13 @@ public final class RegexOptions {
         return isBitSet(VALIDATE);
     }
 
+    /**
+     * Ignore atomic groups (found e.g. in Ruby regular expressions), treat them as regular groups.
+     */
+    public boolean isIgnoreAtomicGroups() {
+        return isBitSet(IGNORE_ATOMIC_GROUPS);
+    }
+
     public RegexFlavor getFlavor() {
         return flavor;
     }
@@ -235,6 +244,15 @@ public final class RegexOptions {
         if (isAlwaysEager()) {
             sb.append(ALWAYS_EAGER_NAME + "=true,");
         }
+        if (isUTF16ExplodeAstralSymbols()) {
+            sb.append(UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME + "=true,");
+        }
+        if (isValidate()) {
+            sb.append(VALIDATE_NAME + "=true,");
+        }
+        if (isIgnoreAtomicGroups()) {
+            sb.append(IGNORE_ATOMIC_GROUPS_NAME + "=true,");
+        }
         if (flavor == PythonFlavor.STR_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_STR + ",");
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
@@ -276,6 +294,9 @@ public final class RegexOptions {
                         break;
                     case 'F':
                         i = parseFlavor(i);
+                        break;
+                    case 'I':
+                        i = parseBooleanOption(i, IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
                         break;
                     case 'R':
                         i = parseBooleanOption(i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
@@ -458,6 +479,16 @@ public final class RegexOptions {
 
         public boolean isUtf16ExplodeAstralSymbols() {
             return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
+        }
+
+        public Builder validate(boolean enabled) {
+            updateOption(enabled, VALIDATE);
+            return this;
+        }
+
+        public Builder ignoreAtomicGroups(boolean enabled) {
+            updateOption(enabled, IGNORE_ATOMIC_GROUPS);
+            return this;
         }
 
         public Builder flavor(@SuppressWarnings("hiding") RegexFlavor flavor) {

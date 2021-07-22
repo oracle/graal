@@ -358,6 +358,7 @@ def svm_gate_body(args, tasks):
                 # See class javadoc for details.
                 native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args)
                 native_unittest(['com.oracle.truffle.api.test.TruffleSafepointTest'] + truffle_args)
+                native_unittest(['com.oracle.truffle.api.staticobject.test'] + truffle_args)
 
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
@@ -457,7 +458,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         with open(unittest_file, 'r') as f:
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-        unittest_image = native_image(build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_test_dir])
+        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_test_dir])
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:
@@ -972,7 +973,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             jar_distributions=jar_distributions,
             build_args=[
                 '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
-                '--initialize-at-build-time',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowFoldMethods',
                 '-H:+ReportExceptionStackTraces',

@@ -20,6 +20,7 @@ It also provides security researchers with information on GraalVM's security mod
 * [GraalVM Enterprise to GraalVM Community Downgrade](#graalvm-enterprise-to-graalvm-community-downgrade)
 
 ## Security Model
+
 GraalVM is a shared runtime. It accepts instructions in a higher-level
 programming language (or an intermediate representation thereof) as input, which is executed later.
 Developers that implement security controls for their applications (such as access control) in code that is being run by GraalVM can rely on the correct execution of instructions.
@@ -49,6 +50,7 @@ This mechanism is only fully supported for Javascript.
 By default, access to all managed resources is denied and needs to be granted explicitly, following the principle of least privilege.
 
 ### Host Interoperability
+
 GraalVM allows exchanging objects between the host and the guest application.
 By default only methods of host classes that are explicitly annotated by the embedder are exposed to guest applications.
 
@@ -57,6 +59,7 @@ For example, a guest application in a context that is created with `allowIO=fals
 However, exposing a host method to the context that allows writing to arbitrary files effectively bypasses this restriction.
 
 ### Sharing Execution Engines
+
 Application developers may choose to share execution engines among execution contexts for performance reasons.
 While the context holds the state of the executed code, the engine holds the code itself.
 Sharing of an execution engine among multiple contexts needs to be set up explicitly and can increase performance in scenarios where a number of contexts execute the same code. In scenarios where contexts that share an execution engine for common code also execute sensitive (i.e., private) code, the corresponding source objects can opt out from code sharing with:
@@ -72,6 +75,7 @@ GraalVM Enterprise allows restricting certain computational resources used by gu
 These [sandboxing options](/reference-manual/embedding/sandbox-options.md) are also available via the Polyglot embedding API.
 
 ### ScriptEngine Compatibility
+
 For reasons of backward compatibility, certain guest languages also support Java's ScriptEngine interface.
 For example, this allows GraalVM JavaScript to be used as a drop-in replacement for Nashorn.
 However, to maintain compatibility, the Nashorn GraalVM JavaScript ScriptEngine interface will create a context with **all privileges** granted to the script and **should be used with extreme caution** and only for trusted code.
@@ -95,6 +99,7 @@ The set of currently supported system calls is very limited -- only syscalls tha
 Managed mode can be selected when creating a context `(Context.create())` or when calling the `bin/lli` binary by specifying the `--llvm.managed` option. A "managed" context will adhere to any restrictions (e.g., `allowIO`) passed during context creation and does not need the `allowNativeAccess` privilege.
 
 ## Native Image
+
 The native image builder generates a snapshot of an application after startup and bundles it in a binary executable.
 
 By default, the native image builder executes the static initializers of classes at build time and persists the state in the native image heap.

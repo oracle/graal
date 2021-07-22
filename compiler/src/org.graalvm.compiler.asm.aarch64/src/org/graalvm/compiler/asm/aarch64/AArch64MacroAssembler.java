@@ -31,10 +31,8 @@ import static jdk.vm.ci.aarch64.AArch64.rscratch1;
 import static jdk.vm.ci.aarch64.AArch64.rscratch2;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
-import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
-import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.REGISTER_OFFSET;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
 
@@ -100,13 +98,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     private static class AArch64MemoryEncoding {
         private AArch64Address address;
         private Register result;
-        private int sizeInBytes;
+        private int byteMemoryTransferSize;
         private boolean isStore;
         private boolean isFP;
         private int position;
 
-        AArch64MemoryEncoding(int sizeInBytes, Register result, AArch64Address address, boolean isStore, boolean isFP, int position) {
-            this.sizeInBytes = sizeInBytes;
+        AArch64MemoryEncoding(int byteMemoryTransferSize, Register result, AArch64Address address, boolean isStore, boolean isFP, int position) {
+            this.byteMemoryTransferSize = byteMemoryTransferSize;
             this.result = result;
             this.address = address;
             this.isStore = isStore;
@@ -125,7 +123,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             if (address.getAddressingMode() == IMMEDIATE_SIGNED_UNSCALED) {
                 return address.getImmediateRaw();
             }
-            return address.getImmediate() * sizeInBytes;
+            return address.getImmediate() * byteMemoryTransferSize;
         }
     }
 
@@ -138,28 +136,26 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * immediate addressing mode, and then resorting to using the scratch register and a register
      * offset addressing mode. If it is unable to create an address then it will return null.
      *
-     * @param transferSize bit size of memory operation this address will be used in.
+     * @param bitMemoryTransferSize bit size of memory operation this address will be used in.
      * @param scratchReg scratch register to use if immediate addressing mode cannot be used. Should
      *            be set to zero-register if scratch register is not available.
      */
-    private AArch64Address tryMakeAddress(int transferSize, Register base, long displacement, Register scratchReg) {
-        assert transferSize == 8 || transferSize == 16 || transferSize == 32 || transferSize == 64 || transferSize == 128;
+    private AArch64Address tryMakeAddress(int bitMemoryTransferSize, Register base, long displacement, Register scratchReg) {
+        assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
         if (displacement == 0) {
-            return AArch64Address.createBaseRegisterOnlyAddress(base);
-
+            return AArch64Address.createBaseRegisterOnlyAddress(bitMemoryTransferSize, base);
         } else {
             /* Addresses using IMMEDIATE_UNSIGNED_SCALED must be non-negative and shiftable. */
-            boolean canScale = displacement >= 0 &&
-                            (displacement & (NumUtil.getNbitNumberInt(getLog2TransferSize(transferSize)))) == 0;
+            boolean canScale = displacement >= 0 && AArch64Address.isOffsetAligned(bitMemoryTransferSize, displacement);
             AArch64Address.AddressingMode mode = canScale ? IMMEDIATE_UNSIGNED_SCALED : IMMEDIATE_SIGNED_UNSCALED;
-            if (NumUtil.is32bit(displacement) && AArch64Address.isValidImmediateAddress(transferSize, mode, NumUtil.safeToInt(displacement))) {
-                return AArch64Address.createImmediateAddress(transferSize, mode, base, NumUtil.safeToInt(displacement));
+            if (NumUtil.isInt(displacement) && AArch64Address.isValidImmediateAddress(bitMemoryTransferSize, mode, NumUtil.safeToInt(displacement))) {
+                return AArch64Address.createImmediateAddress(bitMemoryTransferSize, mode, base, NumUtil.safeToInt(displacement));
             } else if (scratchReg.equals(zr)) {
                 /* Address generation requires scratch register, but one was not provided. */
                 return null;
             } else {
                 mov(scratchReg, displacement);
-                return AArch64Address.createRegisterOffsetAddress(base, scratchReg, false);
+                return AArch64Address.createRegisterOffsetAddress(bitMemoryTransferSize, base, scratchReg, false);
             }
         }
     }
@@ -169,13 +165,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * Will return null if displacement cannot be represented directly as an immediate address.
      *
-     * @param transferSize bit size of memory operation this address will be used in.
+     * @param bitMemoryTransferSize bit size of memory operation this address will be used in.
      * @param base general purpose register. May not be null or the zero register.
      * @param displacement arbitrary displacement added to base.
      * @return AArch64Address referencing memory at {@code base + displacement}.
      */
-    public AArch64Address tryMakeAddress(int transferSize, Register base, long displacement) {
-        return tryMakeAddress(transferSize, base, displacement, zr);
+    public AArch64Address tryMakeAddress(int bitMemoryTransferSize, Register base, long displacement) {
+        return tryMakeAddress(bitMemoryTransferSize, base, displacement, zr);
     }
 
     /**
@@ -185,12 +181,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * Will fail if displacement cannot be represented directly as an immediate address and a
      * scratch register is not provided.
      *
-     * @param transferSize bit size of memory operation this address will be used in.
+     * @param bitMemoryTransferSize bit size of memory operation this address will be used in.
      * @param scratchReg scratch register to use if immediate addressing mode cannot be used. Should
      *            be set to zero-register if scratch register is not available.
      */
-    public AArch64Address makeAddress(int transferSize, Register base, long displacement, Register scratchReg) {
-        AArch64Address address = tryMakeAddress(transferSize, base, displacement, scratchReg);
+    public AArch64Address makeAddress(int bitMemoryTransferSize, Register base, long displacement, Register scratchReg) {
+        AArch64Address address = tryMakeAddress(bitMemoryTransferSize, base, displacement, scratchReg);
         GraalError.guarantee(address != null, "Address generation requires scratch register.");
         return address;
     }
@@ -200,13 +196,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * Will fail if displacement cannot be represented directly as an immediate address.
      *
-     * @param transferSize bit size of memory operation this address will be used in.
+     * @param bitMemoryTransferSize bit size of memory operation this address will be used in.
      * @param base general purpose register. May not be null or the zero register.
      * @param displacement arbitrary displacement added to base.
      * @return AArch64Address referencing memory at {@code base + displacement}.
      */
-    public AArch64Address makeAddress(int transferSize, Register base, long displacement) {
-        return makeAddress(transferSize, base, displacement, zr);
+    public AArch64Address makeAddress(int bitMemoryTransferSize, Register base, long displacement) {
+        return makeAddress(bitMemoryTransferSize, base, displacement, zr);
     }
 
     /**
@@ -214,14 +210,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * Will fail if displacement cannot be represented directly as an immediate address.
      *
-     * @param transferSize bit size of memory operation this address will be used in.
+     * @param bitMemoryTransferSize bit size of memory operation this address will be used in.
      * @param base general purpose register. May not be null or the zero register.
      * @param displacement arbitrary displacement added to base.
      * @return AArch64Address referencing memory at {@code base + displacement}.
      */
     @Override
-    public AArch64Address makeAddress(int transferSize, Register base, int displacement) {
-        return makeAddress(transferSize, base, displacement, zr);
+    public AArch64Address makeAddress(int bitMemoryTransferSize, Register base, int displacement) {
+        return makeAddress(bitMemoryTransferSize, base, displacement, zr);
     }
 
     /**
@@ -239,16 +235,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *            PAIR_POST_INDEXED}, or
      *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PAIR_PRE_INDEXED
      *            PAIR PRE_INDEXED}.
-     * @param transferSize the memory transfer size in bytes. The log2 of this specifies how much
-     *            the index register is scaled. Can be 1, 2, 4, 8, or 16.
      */
-    public void loadAddress(Register dst, AArch64Address address, int transferSize) {
-        assert transferSize == 1 || transferSize == 2 || transferSize == 4 || transferSize == 8 || transferSize == 16;
+    public void loadAddress(Register dst, AArch64Address address) {
         assert dst.getRegisterCategory().equals(CPU);
-        int shiftAmt = NumUtil.log2Ceil(transferSize);
+
+        int size = address.getBitMemoryTransferSize();
         switch (address.getAddressingMode()) {
             case IMMEDIATE_UNSIGNED_SCALED:
-                int scaledImmediate = address.getImmediateRaw() << shiftAmt;
+                assert size != AArch64Address.ANY_SIZE;
+                int scaledImmediate = address.getImmediateRaw() << getLog2TransferSize(size);
                 add(64, dst, address.getBase(), scaledImmediate);
                 break;
             case IMMEDIATE_SIGNED_UNSCALED:
@@ -256,10 +251,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 add(64, dst, address.getBase(), immediate);
                 break;
             case REGISTER_OFFSET:
-                add(64, dst, address.getBase(), address.getOffset(), ShiftType.LSL, address.isRegisterOffsetScaled() ? shiftAmt : 0);
+                assert !(address.isRegisterOffsetScaled() && size == AArch64Address.ANY_SIZE);
+                add(64, dst, address.getBase(), address.getOffset(), ShiftType.LSL, address.isRegisterOffsetScaled() ? getLog2TransferSize(size) : 0);
                 break;
             case EXTENDED_REGISTER_OFFSET:
-                add(64, dst, address.getBase(), address.getOffset(), address.getExtendType(), address.isRegisterOffsetScaled() ? shiftAmt : 0);
+                assert !(address.isRegisterOffsetScaled() && size == AArch64Address.ANY_SIZE);
+                add(64, dst, address.getBase(), address.getOffset(), address.getExtendType(), address.isRegisterOffsetScaled() ? getLog2TransferSize(size) : 0);
                 break;
             case BASE_REGISTER_ONLY:
                 mov(64, dst, address.getBase());
@@ -270,19 +267,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Helper method for loadAddress which can be called when the transfer size does not matter.
+     * Loads requested base + displacement into destination register while also confirming the
+     * displacement is properly aligned for the provided transfer size.
      */
-    public void loadAddress(Register dst, AArch64Address address) {
-        AArch64Address.AddressingMode mode = address.getAddressingMode();
-        boolean scaled = address.isRegisterOffsetScaled();
-        assert (mode == IMMEDIATE_SIGNED_UNSCALED) ||
-                        (mode == REGISTER_OFFSET && !scaled) ||
-                        (mode == EXTENDED_REGISTER_OFFSET && !scaled);
-
-        loadAddress(dst, address, 8);
+    public void loadAlignedAddress(int bitMemoryTransferSize, Register dst, Register base, long displacement) {
+        GraalError.guarantee(AArch64Address.isOffsetAligned(bitMemoryTransferSize, displacement), "Displacement must be aligned.");
+        add(64, dst, base, displacement);
     }
 
-    private boolean tryMerge(int sizeInBytes, Register rt, AArch64Address address, boolean isStore, boolean isFP) {
+    private boolean tryMerge(int byteMemoryTransferSize, Register rt, AArch64Address address, boolean isStore, boolean isFP) {
         isImmLoadStoreMerged = false;
         if (lastImmLoadStoreEncoding == null) {
             return false;
@@ -306,7 +299,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         // Only merge ldr/str with the same size of 32, 64, or 128 (for FP) bits
-        if (sizeInBytes != lastImmLoadStoreEncoding.sizeInBytes || (sizeInBytes != 4 && sizeInBytes != 8 && (!isFP || sizeInBytes != 16))) {
+        if (byteMemoryTransferSize != lastImmLoadStoreEncoding.byteMemoryTransferSize || (byteMemoryTransferSize != 4 && byteMemoryTransferSize != 8 && (!isFP || byteMemoryTransferSize != 16))) {
             return false;
         }
 
@@ -328,10 +321,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         // Offset checking. Offsets of the two ldrs/strs must be continuous.
         int curOffset = address.getImmediateRaw();
         if (addressMode == IMMEDIATE_UNSIGNED_SCALED) {
-            curOffset = curOffset * sizeInBytes;
+            curOffset = curOffset * byteMemoryTransferSize;
         }
         int preOffset = lastImmLoadStoreEncoding.getOffset();
-        if (Math.abs(curOffset - preOffset) != sizeInBytes) {
+        if (Math.abs(curOffset - preOffset) != byteMemoryTransferSize) {
             return false;
         }
 
@@ -340,8 +333,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
          * for the offset and hence can represent the values [-64, 63].
          */
         int offset = Math.min(curOffset, preOffset);
-        int minOffset = -64 * sizeInBytes;
-        int maxOffset = 63 * sizeInBytes;
+        int minOffset = -64 * byteMemoryTransferSize;
+        int maxOffset = 63 * byteMemoryTransferSize;
         if (offset < minOffset || offset > maxOffset) {
             return false;
         }
@@ -350,7 +343,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         if (isFlagSet(AArch64.Flag.AvoidUnalignedAccesses)) {
             // AArch64 sp is 16-bytes aligned.
             if (curBase.equals(sp)) {
-                long pairMask = sizeInBytes * 2 - 1;
+                long pairMask = byteMemoryTransferSize * 2 - 1;
                 if ((offset & pairMask) != 0) {
                     return false;
                 }
@@ -360,7 +353,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             }
         } else {
             // ldp/stp only supports sizeInBytes aligned offset.
-            long mask = sizeInBytes - 1;
+            long mask = byteMemoryTransferSize - 1;
             if ((curOffset & mask) != 0 || (preOffset & mask) != 0) {
                 return false;
             }
@@ -377,10 +370,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             rt2 = preRt;
         }
 
-        int size = sizeInBytes * Byte.SIZE;
-        AArch64Address pairAddress = AArch64Address.createImmediateAddress(size, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, curBase, offset);
+        int bitMemoryTransferSize = byteMemoryTransferSize * Byte.SIZE;
+        AArch64Address pairAddress = AArch64Address.createImmediateAddress(bitMemoryTransferSize, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, curBase, offset);
         Instruction instruction = isStore ? STP : LDP;
-        insertLdpStp(lastPosition, size, instruction, isFP, rt1, rt2, pairAddress);
+        insertLdpStp(lastPosition, bitMemoryTransferSize, instruction, isFP, rt1, rt2, pairAddress);
         lastImmLoadStoreEncoding = null;
         isImmLoadStoreMerged = true;
         return true;
@@ -391,8 +384,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * save it as the last ldr/str.
      */
     private boolean tryMergeLoadStore(int srcSize, Register rt, AArch64Address address, boolean isStore, boolean isFP) {
-        int sizeInBytes = srcSize / Byte.SIZE;
-        if (tryMerge(sizeInBytes, rt, address, isStore, isFP)) {
+        int byteMemoryTransferSize = srcSize / Byte.SIZE;
+        if (tryMerge(byteMemoryTransferSize, rt, address, isStore, isFP)) {
             return true;
         }
 
@@ -400,13 +393,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         AArch64Address.AddressingMode addressMode = address.getAddressingMode();
         if (addressMode == IMMEDIATE_UNSIGNED_SCALED || addressMode == IMMEDIATE_SIGNED_UNSCALED) {
             if (addressMode == IMMEDIATE_SIGNED_UNSCALED) {
-                long mask = sizeInBytes - 1;
+                long mask = byteMemoryTransferSize - 1;
                 int offset = address.getImmediateRaw();
                 if ((offset & mask) != 0) {
                     return false;
                 }
             }
-            lastImmLoadStoreEncoding = new AArch64MemoryEncoding(sizeInBytes, rt, address, isStore, isFP, position());
+            lastImmLoadStoreEncoding = new AArch64MemoryEncoding(byteMemoryTransferSize, rt, address, isStore, isFP, position());
         }
         return false;
     }

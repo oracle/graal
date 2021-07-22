@@ -71,7 +71,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 if (!interopLibrary.hasArrayElements(value.rawForeignObject())) {
                     throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-array value to an array type");
                 }
-                return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
+                return StaticObject.createForeign(meta.getEspressoLanguage(), targetKlass, value.rawForeignObject(), interopLibrary);
             }
 
             if (targetKlass instanceof ObjectKlass) {
@@ -113,7 +113,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 } catch (ClassCastException e) {
                     throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast foreign object to " + targetKlass.getNameAsString() + ": " + e.getMessage());
                 }
-                return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
+                return StaticObject.createForeign(meta.getEspressoLanguage(), targetKlass, value.rawForeignObject(), interopLibrary);
             }
 
             throw EspressoError.shouldNotReachHere("Klass is either Primitive, Object or Array");
@@ -241,6 +241,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     protected static StaticObject createForeignObject(Object object, Meta meta, InteropLibrary interopLibrary) {
-        return StaticObject.createForeign(meta.java_lang_Object, object, interopLibrary);
+        return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, object, interopLibrary);
     }
 }

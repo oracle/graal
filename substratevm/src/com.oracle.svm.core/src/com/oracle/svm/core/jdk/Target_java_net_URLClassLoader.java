@@ -30,7 +30,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.util.VMError;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -77,6 +76,12 @@ final class Target_jdk_internal_loader_URLClassPath {
     private static native boolean knownToNotExist0(ClassLoader loader, String className);
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    boolean knownToNotExist(String className) {
+        return false;
+    }
+
+    @Substitute
     @TargetElement(name = "getResource", onlyWith = JDK11OrLater.class)
     public Target_jdk_internal_loader_Resource_JDK11OrLater getResourceJDK11OrLater(String name, boolean check) {
         return ResourcesHelper.nameToResource(name);
@@ -113,11 +118,5 @@ final class Target_java_net_URLClassLoader {
     @Substitute
     public InputStream getResourceAsStream(String name) throws IOException {
         return Resources.createInputStream(name);
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    protected Class<?> findClass(final String name) {
-        throw VMError.unsupportedFeature("Loading bytecodes.");
     }
 }

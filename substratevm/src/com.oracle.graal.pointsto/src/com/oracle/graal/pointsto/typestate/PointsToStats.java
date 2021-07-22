@@ -88,6 +88,7 @@ import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -154,7 +155,7 @@ public class PointsToStats {
 
         typeFlowBuilders.stream().filter(Objects::nonNull).filter(b -> !b.isMaterialized()).collect(Collectors.groupingBy(TypeFlowBuilder::getFlowClass)).forEach((flowClass, providers) -> {
             doWrite(out, String.format("%-35s\t%-10d\n",
-                            flowClass.getSimpleName(), providers.size()));
+                            ClassUtil.getUnqualifiedName(flowClass), providers.size()));
         });
 
         doWrite(out, String.format("\n%-35s\n", "Removed flows"));
@@ -175,7 +176,7 @@ public class PointsToStats {
                 sourceStr = source.toString();
             }
             doWrite(out, String.format("%-35s\t%-10s\n",
-                            provider.getFlowClass().getSimpleName(), sourceStr));
+                            ClassUtil.getUnqualifiedName(provider.getFlowClass()), sourceStr));
         });
 
     }
@@ -587,7 +588,7 @@ public class PointsToStats {
             MonitorEnterTypeFlow monitor = (MonitorEnterTypeFlow) flow;
             return "MonitorEnter @ " + formatMethod(monitor.getMethod());
         } else {
-            return flow.getClass().getSimpleName() + "@" + formatSource(flow);
+            return ClassUtil.getUnqualifiedName(flow.getClass()) + "@" + formatSource(flow);
         }
     }
 
@@ -605,7 +606,7 @@ public class PointsToStats {
         } else if (source == null) {
             return "<no-source>";
         } else {
-            return source.getClass().getSimpleName();
+            return ClassUtil.getUnqualifiedName(source.getClass());
         }
     }
 

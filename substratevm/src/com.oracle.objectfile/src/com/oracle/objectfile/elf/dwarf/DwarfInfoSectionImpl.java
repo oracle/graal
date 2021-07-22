@@ -365,6 +365,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrData1(DwarfDebugInfo.DW_LANG_Java, buffer, pos);
+        log(context, "  [0x%08x]     use_UTF8", pos);
+        pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeAttrStrp(classEntry.getFileName(), buffer, pos);
         String compilationDirectory = classEntry.getCachePath();
@@ -435,6 +437,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrData1(DwarfDebugInfo.DW_LANG_Java, buffer, pos);
+        log(context, "  [0x%08x]     use_UTF8", pos);
+        pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fileName), fileName);
         pos = writeAttrStrp(fileName, buffer, pos);
         String compilationDirectory = classEntry.getCachePath();
@@ -1327,7 +1331,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (buffer == null) {
             return pos + value.length() + 1;
         } else {
-            return putAsciiStringBytes(value, buffer, pos);
+            return putUTF8StringBytes(value, buffer, pos);
         }
     }
 

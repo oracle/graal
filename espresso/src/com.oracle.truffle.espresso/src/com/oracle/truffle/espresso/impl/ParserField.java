@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
-
-import java.lang.reflect.Modifier;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -35,7 +31,10 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
+
+import java.lang.reflect.Modifier;
+
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 
 public final class ParserField {
 
@@ -101,30 +100,30 @@ public final class ParserField {
         return Types.getJavaKind(type);
     }
 
-    public StaticPropertyKind getPropertyKind() {
+    public Class<?> getPropertyType() {
         if (type.length() == 1) {
             char ch = (char) type.byteAt(0);
             switch (ch) {
                 case 'Z':
-                    return StaticPropertyKind.Boolean;
+                    return boolean.class;
                 case 'C':
-                    return StaticPropertyKind.Char;
+                    return char.class;
                 case 'F':
-                    return StaticPropertyKind.Float;
+                    return float.class;
                 case 'D':
-                    return StaticPropertyKind.Double;
+                    return double.class;
                 case 'B':
-                    return StaticPropertyKind.Byte;
+                    return byte.class;
                 case 'S':
-                    return StaticPropertyKind.Short;
+                    return short.class;
                 case 'I':
-                    return StaticPropertyKind.Int;
+                    return int.class;
                 case 'J':
-                    return StaticPropertyKind.Long;
+                    return long.class;
                 default:
                     throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
             }
         }
-        return StaticPropertyKind.Object;
+        return Object.class;
     }
 }
