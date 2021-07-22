@@ -36,16 +36,6 @@ public class SubstitutionProfiler extends Node {
     @CompilationFinal //
     private long profiles = 0;
 
-    @CompilationFinal ContextReference<EspressoContext> contextRef;
-
-    protected final ContextReference<EspressoContext> getContextRef() {
-        if (contextRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            contextRef = lookupContextReference(EspressoLanguage.class);
-        }
-        return contextRef;
-    }
-
     /**
      * Profiles whether a branch was hit or not. Current implementation only allows 16 branches per
      * substitution.

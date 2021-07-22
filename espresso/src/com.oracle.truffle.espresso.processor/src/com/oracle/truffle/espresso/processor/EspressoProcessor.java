@@ -248,6 +248,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
 
     static final String PUBLIC_FINAL = "public final";
+    static final String PRIVATE_FINAL = "private final";
     static final String OVERRIDE = "@Override";
 
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
@@ -262,13 +263,15 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static final String META_CLASS = "Meta ";
     static final String META_VAR = "meta";
-    static final String META_ARG_CALL = "getContextRef().get().getMeta()";
+    static final String META_ARG = META_CLASS + META_VAR;
+    static final String META_ARG_CALL = "meta";
+    private static final String SET_META = "this." + META_VAR + " = " + META_VAR + ";";
 
     static final String PROFILE_CLASS = "SubstitutionProfiler ";
     static final String PROFILE_ARG_CALL = "this";
 
     static final String ESPRESSO_CONTEXT_CLASS = "EspressoContext ";
-    static final String ESPRESSO_CONTEXT_ARG_CALL = "getContextRef().get()";
+    static final String ESPRESSO_CONTEXT_ARG_CALL = "meta.getContext()";
 
     static final String CREATE = "create";
 
@@ -585,8 +588,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
         str.append(TAB_2).append("public ").append(FACTORY).append("() {\n");
         str.append(generateFactoryConstructorAndBody(className, targetMethodName, parameterTypeName, helper)).append("\n");
         str.append(TAB_2).append(OVERRIDE).append("\n");
-        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append(substitutor).append(" ").append(CREATE).append("() {\n");
-        str.append(TAB_3).append("return new ").append(className).append("();\n");
+        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append(substitutor).append(" ").append(CREATE).append("(");
+        str.append(META_CLASS).append(META_VAR).append(") {\n");
+        str.append(TAB_3).append("return new ").append(className).append("(").append(META_VAR).append(");\n");
         str.append(TAB_2).append("}\n");
         str.append(TAB_1).append("}\n");
         return str.toString();
@@ -597,10 +601,13 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * invocation.
      */
     private static String generateInstanceFields(SubstitutionHelper helper) {
-        if (!helper.isNodeTarget() && !helper.hasMetaInjection && !helper.hasProfileInjection) {
+        if (!helper.isNodeTarget() && !helper.hasMetaInjection && !helper.hasProfileInjection && !helper.hasContextInjection) {
             return "";
         }
         StringBuilder str = new StringBuilder();
+        if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
+            str.append(TAB_1).append(PRIVATE_FINAL).append(" ").append(META_ARG).append(";\n");
+        }
         if (helper.isNodeTarget()) {
             str.append(TAB_1).append(PRIVATE).append(" @Child ").append(helper.getNodeTarget().getSimpleName()).append(" ").append("node").append(";\n");
         }
@@ -613,7 +620,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
      */
     private static String generateConstructor(String substitutorName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
-        str.append(TAB_1).append("private ").append(substitutorName).append("() {\n");
+        str.append(TAB_1).append("private ").append(substitutorName).append("(").append(META_ARG).append(") {\n");
+        if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
+            str.append(TAB_2).append(SET_META).append("\n");
+        }
         if (helper.isNodeTarget()) {
             TypeElement enclosing = (TypeElement) helper.getNodeTarget().getEnclosingElement();
             str.append(TAB_2).append("this.node = " + enclosing.getQualifiedName() + "Factory." + helper.getNodeTarget().getSimpleName() + "NodeGen" + ".create();").append("\n");
@@ -657,9 +667,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
-        if (helper.hasMetaInjection) {
-            expectedImports.add(IMPORT_META);
-        }
+        expectedImports.add(IMPORT_META);
         if (helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
@@ -731,7 +739,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         StringBuilder str = new StringBuilder();
 
         str.append(TAB_1).append(PUBLIC_FINAL).append(" ").append(substitutor).append(" ").append(SPLIT).append("() {\n");
-        str.append(TAB_2).append("return new ").append(FACTORY).append("()").append(".").append(CREATE).append("();\n");
+        str.append(TAB_2).append("return new ").append(FACTORY).append("()").append(".").append(CREATE).append("(").append(META_VAR).append(");\n");
         str.append(TAB_1).append("}\n");
 
         return str.toString();

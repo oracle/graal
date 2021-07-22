@@ -24,12 +24,13 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 public abstract class JavaSubstitution extends SubstitutionProfiler {
 
     public abstract static class Factory {
-        public abstract JavaSubstitution create();
+        public abstract JavaSubstitution create(Meta meta);
 
         private final String[] methodName;
         private final String[] substitutionClassName;
