@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Represents the metadata required to perform OSR compilation on Graal. An instance of this class
  * is stored in the metadata field of a {@link BytecodeOSRNode}.
- * 
+ *
  * <p>
  * Performance note: We do not require the metadata field to be {@code volatile}. As long as the
  * field is initialized under double-checked locking (as is done in
@@ -148,7 +148,7 @@ public final class BytecodeOSRMetadata {
     private synchronized void requestOSRCompilation(OptimizedCallTarget osrTarget) {
         osrNode.prepareOSR();
         updateFrameSlots();
-        osrTarget.compile(false);
+        osrTarget.compile(true);
         if (osrTarget.isCompilationFailed()) {
             markCompilationFailed();
         }

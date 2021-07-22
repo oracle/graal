@@ -48,6 +48,6 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
 
     @Override
     public String toString() {
-        return bytecodeOSRNode.toString() + "<OSR@" + target + ">" + hashCode();
+        return bytecodeOSRNode.toString() + "<OSR@" + target + ">";
     }
 }

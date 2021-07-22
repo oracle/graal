@@ -60,6 +60,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * be non-materializable.</li>
  * </ol>
  *
+ * <p>
  * The node may optionally override {@link BytecodeOSRNode#prepareOSR} to perform any necessary
  * initialization. This method will be called before compilation.
  *
@@ -93,8 +94,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      *
      * The metadata must be stored on a
      * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal} instance
-     * field. Refer to the documentation for {@link BytecodeOSRNode this interface} for a more
-     * complete description.
+     * field. Refer to the documentation for this interface for a more complete description.
      *
      * @return the OSR metadata.
      * @since 21.3
@@ -106,8 +106,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      *
      * The metadata must be stored on a
      * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal} instance
-     * field. Refer to the documentation for {@link BytecodeOSRNode this interface} for a more
-     * complete description.
+     * field. Refer to the documentation for this interface for a more complete description.
      *
      * @param osrMetadata the OSR metadata.
      * @since 21.3
@@ -119,36 +118,36 @@ public interface BytecodeOSRNode extends NodeInterface {
      * any necessary initialization before compilation happens.
      *
      * <p>
-     * For example, fields which must be initialized in the interpreter can be initialized this way:
-     * 
+     * For example, consider a field which must be initialized in the interpreter:
+     *
      * <pre>
-     * {@code
-     *     &#64;CompilationFinal Object field;
-     *     Object getField() {
-     *         if (field == null) {
-     *             CompilerDirectives.transferToInterpreterAndInvalidate();
-     *             field = new Object();
-     *         }
-     *         return field;
+     * {@literal @}CompilationFinal Object field;
+     * Object getField() {
+     *     if (field == null) {
+     *         CompilerDirectives.transferToInterpreterAndInvalidate();
+     *         field = new Object();
      *     }
+     *     return field;
      * }
      * </pre>
-     * 
+     *
      * If the field is accessed from compiled OSR code, it may trigger a deoptimization in order to
      * initialize the field. Using {@link BytecodeOSRNode#prepareOSR} to initialize the field can
      * prevent this.
+     *
+     * @since 21.3
      */
     default void prepareOSR() {
         // do nothing
     }
 
     /**
-     * Reports a back edge to the target location. This information may be used to trigger on-stack
-     * replacement (OSR), if the Truffle runtime supports it.
+     * Reports a back edge to the target location, which may trigger on-stack replacement (OSR) if
+     * the Truffle runtime supports it.
      *
      * <p>
      * If OSR occurs, this method returns the result of OSR execution. The caller of this method can
-     * forward this result back to its caller rather than continuing execution from the
+     * forward the result back to its caller rather than continuing execution from the
      * {@code target}.
      *
      * @param osrNode the node for which to report a back-edge.
@@ -177,8 +176,8 @@ public interface BytecodeOSRNode extends NodeInterface {
      * used inside the compiled code to perform the state transfer.
      *
      * @param osrNode the node being on-stack replaced.
-     * @param source the frame to transfer state from
-     * @param target the frame to transfer state into
+     * @param source the frame to transfer state from.
+     * @param target the frame to transfer state into.
      * @throws IllegalArgumentException if either frame has a different descriptor from the frame
      *             used to execute this node.
      * @throws IllegalStateException if a slot in the source frame has not been initialized using

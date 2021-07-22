@@ -570,16 +570,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
          * {@link Node call node}. These objects are spread across multiple native
          * {@link InspectedFrame InspectedFrames}, so this visitor remembers previously-seen native
          * frames (as necessary) in order to construct Truffle {@link FrameInstance FrameInstances}.
-         * 
+         *
          * For example, consider this sample stack trace:
-         * 
+         *
          * <pre>
          *  ... -> executeRootNode(A) -> callDirect -> executeRootNode(B) -> callDirect -> executeRootNode(C)
          *        (call target, frame)  (call node)   (call target, frame)  (call node)   (call target, frame)
          *                |__________________|                |__________________|                |
          *                  FrameInstance(A)                    FrameInstance(B)           FrameInstance(C)
          * </pre>
-         * 
+         *
          * Method C is at the top of the stack (it has not called another guest method). Thus, it
          * does not have a call node. Its call target and frame are the first two parameters of
          * executeRootNode(C) {@link InspectedFrame}, so we can construct a {@link FrameInstance}
@@ -590,9 +590,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
          * construct a {@link FrameInstance} when we reach executeRootNode(B). We construct a
          * {@link FrameInstance} for A the same way.
          *
-         * 
+         *
          * OSR complicates things. Consider this sample stack trace:
-         * 
+         *
          * <pre>
          *  ... -> executeRootNode(A) -> callOSR -> executeRootNode(A_OSR) -> callDirect -> ...
          *      (non-OSR call target, _)               (_, new frame)         (call node)

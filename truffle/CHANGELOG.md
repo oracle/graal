@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added a new `FrameDescriptor` constructor which takes a `canMaterialize` parameter (`true` by default).
     * Added `FrameDescriptor#canMaterialize()`, which returns whether a frame can be materialized.
     * Calls to `Frame#materialize()` will now throw an `UnsupportedOperationException` if the descriptor is marked non-materializable.
+* Added `BytecodeOSRNode` interface to support on-stack replacement (OSR) for bytecode interpreters. OSR can improve start-up performance by switching from interpreted code to compiled code in the middle of execution. It is especially effective for targets with long-running loops, which can get "stuck" running in the interpreter without OSR. Refer to the [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BytecodeOSRNode.html) and the [OSR guide](https://github.com/oracle/graal/blob/master/truffle/docs/OnStackReplacement.md) for more details.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.

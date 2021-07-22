@@ -29,7 +29,7 @@ import jdk.vm.ci.code.stack.InspectedFrame;
 
 /**
  * Represents a Truffle {@link com.oracle.truffle.api.frame.FrameInstance} where OSR occurred.
- * 
+ *
  * Contains a separate field for the {@link InspectedFrame} containing the most up-to-date Frame.
  */
 public final class GraalOSRFrameInstance extends GraalFrameInstance {
