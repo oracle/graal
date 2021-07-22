@@ -40,6 +40,20 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.polyglot.Source;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -53,19 +67,6 @@ import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import org.graalvm.collections.Pair;
-import org.graalvm.polyglot.Source;
-
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 final class PolyglotLanguageInstance implements VMObject {
 
@@ -264,7 +265,7 @@ final class PolyglotLanguageInstance implements VMObject {
     }
 
     /*
-     * Called from TruffleFeature.StaticObjectSupport.
+     * Called from TruffleBaseFeature.StaticObjectSupport.
      */
     static Collection<PolyglotLanguageInstance> getActiveInstances() {
         Set<PolyglotLanguageInstance> instances = new HashSet<>();

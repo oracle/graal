@@ -46,19 +46,27 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateRuntimeGraalSetup implements RuntimeGraalSetup {
 
+    protected GraalProviderObjectReplacements providerObjectReplacements;
+
     @Override
     public GraalProviderObjectReplacements getProviderObjectReplacements(AnalysisMetaAccess aMetaAccess) {
-        if (SubstrateOptions.supportCompileInIsolates()) {
-            return new IsolateAwareProviderObjectReplacements(aMetaAccess);
+        if (providerObjectReplacements != null) {
+            return providerObjectReplacements;
         }
-        return new GraalProviderObjectReplacements(aMetaAccess);
+
+        if (SubstrateOptions.supportCompileInIsolates()) {
+            providerObjectReplacements = new IsolateAwareProviderObjectReplacements(aMetaAccess);
+        } else {
+            providerObjectReplacements = new GraalProviderObjectReplacements(aMetaAccess);
+        }
+        return providerObjectReplacements;
     }
 
     @Override
     public SharedRuntimeConfigurationBuilder createRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
-                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
-                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
+                                                                               ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
+                                                                               NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
         return new SubstrateRuntimeConfigurationBuilder(options, hostVM, aUniverse, metaAccess, originalReflectionProvider, backendProvider, nativeLibraries, classInitializationSupport,
-                        loopsDataProvider);
+                loopsDataProvider);
     }
 }

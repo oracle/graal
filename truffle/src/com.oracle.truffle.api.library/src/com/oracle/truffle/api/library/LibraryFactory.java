@@ -952,7 +952,7 @@ public abstract class LibraryFactory<T extends Library> {
             if (libs == null && hasExports(dispatchClass)) {
                 /*
                  * We can omit loading classes in AOT mode as they are resolved eagerly using the
-                 * TruffleFeature. We can also omit if the type was already resolved.
+                 * TruffleBaseFeature. We can also omit if the type was already resolved.
                  */
                 loadGeneratedClass(dispatchClass);
                 libs = REGISTRY.get(dispatchClass);

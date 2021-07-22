@@ -40,25 +40,6 @@
  */
 package com.oracle.truffle.api.staticobject;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.impl.asm.ClassVisitor;
-import com.oracle.truffle.api.impl.asm.ClassWriter;
-import com.oracle.truffle.api.impl.asm.Label;
-import com.oracle.truffle.api.impl.asm.MethodVisitor;
-import com.oracle.truffle.api.impl.asm.Opcodes;
-import com.oracle.truffle.api.impl.asm.Type;
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageInfo;
-
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_SUPER;
@@ -88,6 +69,26 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.PUTFIELD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.T_BYTE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.impl.asm.ClassVisitor;
+import com.oracle.truffle.api.impl.asm.ClassWriter;
+import com.oracle.truffle.api.impl.asm.Label;
+import com.oracle.truffle.api.impl.asm.MethodVisitor;
+import com.oracle.truffle.api.impl.asm.Opcodes;
+import com.oracle.truffle.api.impl.asm.Type;
 
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = TruffleOptions.AOT ? new ConcurrentHashMap<>() : null;
@@ -129,7 +130,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return shapeOffset;
     }
 
-    // Invoked also from TruffleFeature.StaticObjectSupport
+    // Invoked also from TruffleBaseFeature.StaticObjectSupport
     @SuppressWarnings("unchecked")
     static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
         ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> cache;
@@ -168,7 +169,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return ArrayBasedStaticShape.create(this, generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties.values(), safetyChecks);
     }
 
-    // Invoked from TruffleFeature.StaticObjectSupport
+    // Invoked from TruffleBaseFeature.StaticObjectSupport
     void patchOffsets(int nativeByteArrayOffset, int nativeObjectArrayOffset, int nativeShapeOffset) {
         assert TruffleOptions.AOT;
         CompilerAsserts.neverPartOfCompilation();
