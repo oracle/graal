@@ -45,7 +45,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -79,8 +78,8 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
     @SuppressWarnings("deprecation")
     @Override
     boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror) {
-        if (!annotatedElement.getModifiers().contains(Modifier.PUBLIC)) {
-            emitError("Registered language class must be public", annotatedElement);
+        if (annotatedElement.getModifiers().contains(Modifier.PRIVATE)) {
+            emitError("Registered language class must be at least package protected", annotatedElement);
             return false;
         }
         if (annotatedElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !annotatedElement.getModifiers().contains(Modifier.STATIC)) {
@@ -101,7 +100,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
         }
         boolean foundConstructor = false;
         for (ExecutableElement constructor : ElementFilter.constructorsIn(annotatedElement.getEnclosedElements())) {
-            if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+            if (constructor.getModifiers().contains(Modifier.PRIVATE)) {
                 continue;
             }
             if (!constructor.getParameters().isEmpty()) {
@@ -137,7 +136,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             valid = false;
         } else {
             if (!foundConstructor) {
-                emitError("A TruffleLanguage subclass must have a public no argument constructor.", annotatedElement);
+                emitError("A TruffleLanguage subclass must have at least package protected no argument constructor.", annotatedElement);
                 return false;
             }
         }
@@ -273,72 +272,6 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             }
             default:
                 throw new IllegalStateException("Unsupported method: " + methodToImplement.getSimpleName());
-        }
-    }
-
-    @Override
-    String getRegistrationFileName() {
-        return "META-INF/truffle/language";
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    void storeRegistrations(Properties into, Iterable<? extends TypeElement> annotatedElements) {
-        int cnt = 0;
-        TruffleTypes types = ProcessorContext.getInstance().getTypes();
-        for (TypeElement annotatedElement : annotatedElements) {
-            String prefix = "language" + ++cnt + ".";
-            AnnotationMirror annotation = ElementUtils.findAnnotationMirror(annotatedElement, types.TruffleLanguage_Registration);
-            if (annotation == null) {
-                return;
-            }
-            String className = processingEnv.getElementUtils().getBinaryName(annotatedElement).toString();
-            String id = ElementUtils.getAnnotationValue(String.class, annotation, "id");
-            if (id != null && !id.isEmpty()) {
-                into.setProperty(prefix + "id", id);
-            }
-            into.setProperty(prefix + "name", ElementUtils.getAnnotationValue(String.class, annotation, "name"));
-            into.setProperty(prefix + "implementationName", ElementUtils.getAnnotationValue(String.class, annotation, "implementationName"));
-            into.setProperty(prefix + "version", ElementUtils.getAnnotationValue(String.class, annotation, "version"));
-            into.setProperty(prefix + "className", className);
-
-            String defaultMimeType = ElementUtils.getAnnotationValue(String.class, annotation, "defaultMimeType");
-            if (!defaultMimeType.equals("")) {
-                into.setProperty(prefix + "defaultMimeType", defaultMimeType);
-            }
-
-            List<String> mimes = ElementUtils.getAnnotationValueList(String.class, annotation, "mimeType");
-            for (int i = 0; i < mimes.size(); i++) {
-                into.setProperty(prefix + "mimeType." + i, mimes.get(i));
-            }
-            List<String> charMimes = ElementUtils.getAnnotationValueList(String.class, annotation, "characterMimeTypes");
-            Collections.sort(charMimes);
-            for (int i = 0; i < charMimes.size(); i++) {
-                into.setProperty(prefix + "characterMimeType." + i, charMimes.get(i));
-            }
-            List<String> byteMimes = ElementUtils.getAnnotationValueList(String.class, annotation, "byteMimeTypes");
-            Collections.sort(byteMimes);
-            for (int i = 0; i < byteMimes.size(); i++) {
-                into.setProperty(prefix + "byteMimeType." + i, byteMimes.get(i));
-            }
-
-            List<String> dependencies = ElementUtils.getAnnotationValueList(String.class, annotation, "dependentLanguages");
-            Collections.sort(dependencies);
-            for (int i = 0; i < dependencies.size(); i++) {
-                into.setProperty(prefix + "dependentLanguage." + i, dependencies.get(i));
-            }
-            into.setProperty(prefix + "interactive", Boolean.toString(ElementUtils.getAnnotationValue(Boolean.class, annotation, "interactive")));
-            into.setProperty(prefix + "internal", Boolean.toString(ElementUtils.getAnnotationValue(Boolean.class, annotation, "internal")));
-
-            int serviceCounter = 0;
-            for (TypeMirror serviceTypeMirror : ElementUtils.getAnnotationValueList(TypeMirror.class, annotation, "services")) {
-                into.setProperty(prefix + "service" + serviceCounter++, processingEnv.getElementUtils().getBinaryName(ElementUtils.fromTypeMirror(serviceTypeMirror)).toString());
-            }
-            int fileTypeDetectorCounter = 0;
-            for (TypeMirror fileTypeDetectorTypeMirror : ElementUtils.getAnnotationValueList(TypeMirror.class, annotation, "fileTypeDetectors")) {
-                into.setProperty(prefix + "fileTypeDetector" + fileTypeDetectorCounter++,
-                                processingEnv.getElementUtils().getBinaryName(ElementUtils.fromTypeMirror(fileTypeDetectorTypeMirror)).toString());
-            }
         }
     }
 

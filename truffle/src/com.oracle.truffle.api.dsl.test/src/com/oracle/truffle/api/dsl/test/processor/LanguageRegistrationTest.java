@@ -50,15 +50,10 @@ import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import java.nio.charset.Charset;
-import java.util.Collections;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Language;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class LanguageRegistrationTest {
 
-    @ExpectError("Registered language class must be public")
+    @ExpectError("Registered language class must be at least package protected")
     @TruffleLanguage.Registration(id = "myLang", name = "", version = "0")
     private static final class MyLang {
     }
@@ -74,7 +69,7 @@ public class LanguageRegistrationTest {
     }
 
     @TruffleLanguage.Registration(id = "myLangNoCnstr", name = "", version = "0")
-    @ExpectError("A TruffleLanguage subclass must have a public no argument constructor.")
+    @ExpectError("A TruffleLanguage subclass must have at least package protected no argument constructor.")
     public static final class MyLangWrongConstr extends TruffleLanguage<Object> {
 
         private MyLangWrongConstr() {
@@ -168,19 +163,6 @@ public class LanguageRegistrationTest {
         }
     }
 
-    @interface GenerateLegacyRegistration {
-    }
-
-    @GenerateLegacyRegistration
-    @Registration(id = "legacyregistration1", name = "LegacyRegistration1", implementationName = "legacy.registration1", version = "1.0.0", characterMimeTypes = "text/x-legacyregistration1")
-    public static class LegacyRegistration1 extends ProxyLanguage {
-    }
-
-    @GenerateLegacyRegistration
-    @Registration(id = "legacyregistration2", name = "LegacyRegistration2", implementationName = "legacy.registration2", version = "2.0.0", byteMimeTypes = "binary/x-legacyregistration2")
-    public static class LegacyRegistration2 extends ProxyLanguage {
-    }
-
     static class ProxyFileTypeDetector implements FileTypeDetector {
 
         @Override
@@ -193,24 +175,6 @@ public class LanguageRegistrationTest {
         @SuppressWarnings("unused")
         public Charset findEncoding(TruffleFile file) throws IOException {
             return null;
-        }
-    }
-
-    @Test
-    public void testLoadLegacyRegistrations() {
-        try (Engine eng = Engine.create()) {
-            Language language = eng.getLanguages().get("legacyregistration1");
-            Assert.assertNotNull(language);
-            Assert.assertEquals("LegacyRegistration1", language.getName());
-            Assert.assertEquals("legacy.registration1", language.getImplementationName());
-            Assert.assertEquals("1.0.0", language.getVersion());
-            Assert.assertEquals(Collections.singleton("text/x-legacyregistration1"), language.getMimeTypes());
-            language = eng.getLanguages().get("legacyregistration2");
-            Assert.assertNotNull(language);
-            Assert.assertEquals("LegacyRegistration2", language.getName());
-            Assert.assertEquals("legacy.registration2", language.getImplementationName());
-            Assert.assertEquals("2.0.0", language.getVersion());
-            Assert.assertEquals(Collections.singleton("binary/x-legacyregistration2"), language.getMimeTypes());
         }
     }
 }
