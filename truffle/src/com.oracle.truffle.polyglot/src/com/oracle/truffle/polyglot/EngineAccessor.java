@@ -733,7 +733,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object evalInternalContext(Node location, Object polyglotContext, Source source) {
+        public Object evalInternalContext(Node location, Object polyglotContext, Source source, boolean allowInternal) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
             if (context.parent == null) {
                 throw PolyglotEngineException.illegalState("Only created inner contexts can be used to evaluate sources. " +
@@ -742,19 +742,19 @@ final class EngineAccessor extends Accessor {
             PolyglotEngineImpl engine = resolveEngine(location, context);
             PolyglotContextImpl prev = engine.enter(context);
             try {
-                return evalBoundary(source, prev, context);
+                return evalBoundary(source, prev, context, allowInternal);
             } finally {
                 engine.leave(prev, context);
             }
         }
 
         @TruffleBoundary
-        private static Object evalBoundary(Source source, PolyglotContextImpl parentEnteredContext, PolyglotContextImpl context) {
+        private static Object evalBoundary(Source source, PolyglotContextImpl parentEnteredContext, PolyglotContextImpl context, boolean allowInternal) {
             if (parentEnteredContext != null && parentEnteredContext != context.parent && parentEnteredContext.engine == context.engine) {
                 throw PolyglotEngineException.illegalState("Invalid parent context entered. " +
                                 "The parent creator context or no context must be entered to evaluate code in an inner context.");
             }
-            PolyglotLanguageContext targetContext = context.getContext(context.engine.requireLanguage(source.getLanguage()));
+            PolyglotLanguageContext targetContext = context.getContext(context.engine.requireLanguage(source.getLanguage(), allowInternal));
             PolyglotLanguage accessingLanguage = context.creator;
             targetContext.checkAccess(accessingLanguage);
             Object result;

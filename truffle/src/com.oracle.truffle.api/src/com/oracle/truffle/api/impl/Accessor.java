@@ -371,7 +371,7 @@ public abstract class Accessor {
 
         public abstract void leaveInternalContext(Node node, Object polyglotContext, Object prev);
 
-        public abstract Object evalInternalContext(Node node, Object polyglotContext, Source source);
+        public abstract Object evalInternalContext(Node node, Object polyglotContext, Source source, boolean allowInternal);
 
         public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
 

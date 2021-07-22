@@ -964,10 +964,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    PolyglotLanguage requireLanguage(String id) {
+    PolyglotLanguage requireLanguage(String id, boolean allowInternal) {
         checkState();
         PolyglotLanguage language = idToLanguage.get(id);
-        if (language == null) {
+        if (language == null || (!allowInternal && !idToPublicLanguage.containsKey(id))) {
             throw throwNotInstalled(id, idToLanguage.keySet());
         }
         return language;

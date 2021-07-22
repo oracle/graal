@@ -235,7 +235,27 @@ public final class TruffleContext implements AutoCloseable {
     public Object evalInternal(Node node, Source source) {
         CompilerAsserts.partialEvaluationConstant(node);
         try {
-            return LanguageAccessor.engineAccess().evalInternalContext(node, polyglotContext, source);
+            return LanguageAccessor.engineAccess().evalInternalContext(node, polyglotContext, source, true);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * The same as {@link #evalInternal(Node, Source)}, but only public languages are accessible.
+     *
+     * @throws IllegalArgumentException if the given language of the source cannot be accessed.
+     * @throws IllegalStateException if an invalid context is entered or the context is already
+     *             closed.
+     * @param node a partial evaluation constant node context used to optimize this operation. Can
+     *            be <code>null</code> if not available.
+     * @param source the source to evaluate
+     * @since 21.3
+     */
+    public Object evalPublic(Node node, Source source) {
+        CompilerAsserts.partialEvaluationConstant(node);
+        try {
+            return LanguageAccessor.engineAccess().evalInternalContext(node, polyglotContext, source, false);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }

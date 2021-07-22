@@ -99,6 +99,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.LanguageSPIOrderTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class TruffleContextTest extends AbstractPolyglotTest {
@@ -555,6 +556,18 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             executeCount++;
             return this;
         }
+    }
+
+    @Test
+    public void testPublicEvalInnerContext() {
+        // test that primitive values can just be passed through
+        setupLanguageThatReturns(() -> 42);
+        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+        Object result = innerContext.evalPublic(null, newTruffleSource());
+        assertEquals(42, result);
+
+        com.oracle.truffle.api.source.Source internal = com.oracle.truffle.api.source.Source.newBuilder(LanguageSPIOrderTest.INTERNAL, "", "test").build();
+        assertFails(() -> innerContext.evalPublic(null, internal), IllegalArgumentException.class);
     }
 
     @Test
