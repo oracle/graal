@@ -49,6 +49,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
@@ -81,7 +82,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
  * </ul>
  *
  * An example of how to parse a regular expression:
- * 
+ *
  * <pre>
  * Object regex;
  * try {
@@ -99,7 +100,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
  * </pre>
  *
  * Regex matcher usage example in pseudocode:
- * 
+ *
  * <pre>
  * {@code
  * regex = <matcher from previous example>
@@ -221,10 +222,6 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         return true;
     }
 
-    public static RegexContext getCurrentContext() {
-        return getCurrentContext(RegexLanguage.class);
-    }
-
     public static final class RegexContext {
 
         @CompilationFinal private Env env;
@@ -239,6 +236,12 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
         public Env getEnv() {
             return env;
+        }
+
+        private static final ContextReference<RegexContext> REFERENCE = ContextReference.create(RegexLanguage.class);
+
+        public static RegexContext get(Node node) {
+            return REFERENCE.get(node);
         }
     }
 }
