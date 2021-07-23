@@ -63,6 +63,13 @@ public class MemoryAPI {
     @CConstant
     public static native int PAGE_READWRITE();
 
+    @CConstant
+    public static native int PAGE_WRITECOPY();
+
+    /** Unmaps a mapped view of a file from the calling process's address space. */
+    @CFunction(transition = NO_TRANSITION)
+    public static native int UnmapViewOfFile(PointerBase lpBaseAddress);
+
     /** Reserves, commits, or changes the state of a region of pages. */
     @CFunction(transition = NO_TRANSITION)
     public static native Pointer VirtualAlloc(PointerBase lpAddress, UnsignedWord dwSize, int flAllocationType, int flProtect);
@@ -117,4 +124,8 @@ public class MemoryAPI {
         @CField
         int Type();
     }
+
+    /** MEMORY_BASIC_INFORMATION - Type Constants */
+    @CConstant
+    public static native int MEM_MAPPED();
 }
