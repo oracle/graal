@@ -254,6 +254,7 @@ public class NativeImage {
     private boolean diagnostics = false;
     String diagnosticsDir;
     private boolean jarOptionMode = false;
+    private boolean moduleOptionMode = false;
     private boolean dryRun = false;
     private String printFlagsOptionQuery = null;
     private String printFlagsWithExtraHelpOptionQuery = null;
@@ -1165,7 +1166,7 @@ public class NativeImage {
                 }
             }
 
-            if (!jarOptionMode) {
+            if (!jarOptionMode && !moduleOptionMode) {
                 /* Main-class from customImageBuilderArgs counts as explicitMainClass */
                 boolean explicitMainClass = getHostedOptionFinalArgumentValue(customImageBuilderArgs, oHClass) != null;
                 String mainClassModule = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHModule);
@@ -1781,6 +1782,10 @@ public class NativeImage {
 
     void setJarOptionMode(boolean val) {
         jarOptionMode = val;
+    }
+
+    void setModuleOptionMode(boolean val) {
+        moduleOptionMode = val;
     }
 
     boolean isVerbose() {
