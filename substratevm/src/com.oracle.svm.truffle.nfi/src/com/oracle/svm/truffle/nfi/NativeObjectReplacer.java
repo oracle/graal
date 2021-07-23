@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+//Checkstyle: allow reflection
+
 import java.util.IdentityHashMap;
 import java.util.function.Function;
 

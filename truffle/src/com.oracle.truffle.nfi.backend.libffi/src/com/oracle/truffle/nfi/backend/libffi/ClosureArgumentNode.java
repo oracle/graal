@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -92,7 +90,7 @@ abstract class ClosureArgumentNode extends Node {
         }
 
         @Specialization
-        Object doBuffer(ByteBuffer arg,
+        Object doBuffer(NativeArgumentBuffer.Pointer arg,
                         @CachedLibrary("type") NativeArgumentLibrary nativeArguments) {
             NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct(arg, 0);
             return nativeArguments.deserialize(type, buffer);

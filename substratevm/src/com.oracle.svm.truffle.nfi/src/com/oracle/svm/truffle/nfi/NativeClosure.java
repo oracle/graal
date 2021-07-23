@@ -29,7 +29,6 @@ import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_l
 import static com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_alloc;
 
 import java.lang.ref.WeakReference;
-import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -40,7 +39,6 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -60,7 +58,6 @@ import com.oracle.svm.truffle.nfi.LibFFI.ClosureData;
 import com.oracle.svm.truffle.nfi.LibFFI.NativeClosureHandle;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI;
-import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_arg;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_callback;
 import com.oracle.truffle.api.CallTarget;
@@ -85,15 +82,6 @@ final class NativeClosure {
             this.receiver = null;
         }
         this.signature = signature;
-    }
-
-    private ByteBuffer createRetBuffer(PointerBase buffer) {
-        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_CachedTypeInfo retType = signature.signatureInfo.getRetType();
-        int size = retType.size;
-        if (size < SizeOf.get(ffi_arg.class)) {
-            size = SizeOf.get(ffi_arg.class);
-        }
-        return CTypeConversion.asByteBuffer(buffer, size);
     }
 
     static Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer prepareClosure(Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx,
@@ -124,7 +112,7 @@ final class NativeClosure {
         return ctx.createClosureNativePointer(data.rawValue(), code.rawValue(), callTarget, signature, receiver);
     }
 
-    private Object call(WordPointer argPointers, ByteBuffer retBuffer) {
+    private Object call(WordPointer argPointers, Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer retBuffer) {
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_CachedTypeInfo[] argTypes = signature.signatureInfo.getArgTypes();
         int length = argTypes.length;
         if (receiver != null) {
@@ -151,7 +139,7 @@ final class NativeClosure {
                 // skip
             } else {
                 WordPointer argPtr = argPointers.read(i);
-                args[i] = CTypeConversion.asByteBuffer(argPtr, argTypes[i].size);
+                args[i] = new Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer(argPtr.rawValue());
             }
         }
 
@@ -169,7 +157,7 @@ final class NativeClosure {
              * and when the ClosureNativePointer object is GCed, the native stub that calls this
              * code is freed. We still need to check to make findbugs happy.
              */
-            CompilerDirectives.shouldNotReachHere("Native closure used after free.");
+            throw CompilerDirectives.shouldNotReachHere("Native closure used after free.");
         }
         return c.call(args);
     }
@@ -229,7 +217,7 @@ final class NativeClosure {
 
     private static void doInvokeClosureBufferRet(Pointer ret, WordPointer args, ClosureData user) {
         NativeClosure closure = lookup(user);
-        ByteBuffer retBuffer = closure.createRetBuffer(ret);
+        Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer retBuffer = new Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer(ret.rawValue());
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches patches = (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches) closure.call(args, retBuffer);
 
         if (patches != null) {
