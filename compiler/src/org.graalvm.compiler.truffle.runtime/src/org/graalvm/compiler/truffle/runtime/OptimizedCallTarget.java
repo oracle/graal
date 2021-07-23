@@ -79,8 +79,9 @@ import jdk.vm.ci.meta.SpeculationLog;
  *
  * The end-goal of executing a {@link OptimizedCallTarget} is executing its root node. The following
  * call-graph shows all the paths that can be taken from calling a call target (through all the
- * public <code>call*</code> methods) to the {@linkplain #executeRootNode(VirtualFrame) execution of
- * the root node} depending on the type of call.
+ * public <code>call*</code> methods) to the
+ * {@linkplain #executeRootNode(VirtualFrame, CompilationState) execution of the root node}
+ * depending on the type of call.
  *
  * <pre>
  *              GraalRuntimeSupport#callProfiled                    GraalRuntimeSupport#callInlined
@@ -497,10 +498,30 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final Object callInlined(Node location, Object... arguments) {
         try {
             ensureInitialized();
-            return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
+            return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments), getTier());
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert keepAlive(location);
+        }
+    }
+
+    private static CompilationState getTier() {
+        if (CompilerDirectives.inCompiledCode()) {
+            if (GraalCompilerDirectives.hasNextTier()) {
+                if (CompilerDirectives.inCompilationRoot()) {
+                    return CompilationState.FIRST_TIER_ROOT;
+                } else {
+                    return CompilationState.FIRST_TIER_INLINED;
+                }
+            } else {
+                if (CompilerDirectives.inCompilationRoot()) {
+                    return CompilationState.LAST_TIER_ROOT;
+                } else {
+                    return CompilationState.LAST_TIER_INLINED;
+                }
+            }
+        } else {
+            return CompilationState.INTERPRETED;
         }
     }
 
@@ -600,7 +621,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (CompilerDirectives.inCompiledCode()) {
             args = injectArgumentsProfile(originalArguments);
         }
-        Object result = executeRootNode(createFrame(getRootNode().getFrameDescriptor(), args));
+        Object result = executeRootNode(createFrame(getRootNode().getFrameDescriptor(), args), getTier());
         profileReturnValue(result);
         return result;
     }
@@ -626,8 +647,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return compile(true);
     }
 
-    private Object executeRootNode(VirtualFrame frame) {
-        final boolean inCompiled = CompilerDirectives.inCompilationRoot();
+    private Object executeRootNode(VirtualFrame frame, CompilationState tier) {
         try {
             Object toRet = rootNode.execute(frame);
             TruffleSafepoint.poll(rootNode);
@@ -639,11 +659,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             GraalRuntimeAccessor.LANGUAGE.onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
-            if (CompilerDirectives.inInterpreter() && inCompiled) {
+            if (CompilerDirectives.inInterpreter() && tier != CompilationState.INTERPRETED) {
                 notifyDeoptimized(frame);
             }
             // this assertion is needed to keep the values from being cleared as non-live locals
-            assert frame != null && this != null;
+            assert frame != null && this != null && tier != null;
         }
     }
 

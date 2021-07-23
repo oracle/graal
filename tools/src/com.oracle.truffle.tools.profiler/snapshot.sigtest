@@ -12,27 +12,34 @@ meth public boolean isGatherSelfHitTimes()
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter getFilter()
 meth public int getStackLimit()
 meth public java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>> getRootNodes()
+ anno 0 java.lang.Deprecated()
+meth public java.util.Map<com.oracle.truffle.api.TruffleContext,com.oracle.truffle.tools.profiler.CPUSamplerData> getData()
 meth public java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>> getThreadToNodesMap()
+ anno 0 java.lang.Deprecated()
 meth public java.util.Map<java.lang.Thread,java.util.List<com.oracle.truffle.tools.profiler.StackTraceEntry>> takeSample()
 meth public long getPeriod()
 meth public long getSampleCount()
+ anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.tools.profiler.CPUSampler find(org.graalvm.polyglot.Engine)
 meth public void clearData()
 meth public void close()
 meth public void setCollecting(boolean)
 meth public void setDelay(long)
 meth public void setDelaySamplingUntilNonInternalLangInit(boolean)
+ anno 0 java.lang.Deprecated()
 meth public void setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 meth public void setGatherSelfHitTimes(boolean)
 meth public void setMode(com.oracle.truffle.tools.profiler.CPUSampler$Mode)
+ anno 0 java.lang.Deprecated()
 meth public void setPeriod(long)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds DEFAULT_FILTER,closed,collecting,copyPayload,delay,delaySamplingUntilNonInternalLangInit,env,filter,gatherSelfHitTimes,mergePayload,mode,nonInternalLanguageContextInitialized,payloadFactory,period,rootNodes,samplerTask,samplerThread,samplesTaken,shadowStack,stackLimit,stackOverflowed,stacksBinding
-hcls SamplingTimerTask
+hfds COPY_PAYLOAD,DEFAULT_FILTER,MERGE_PAYLOAD,PAYLOAD_FACTORY,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,safepointStackSampler,samplerTask,samplerThread,stackLimit
+hcls MutableSamplerData,SamplingTimerTask
 
 CLSS public final static !enum com.oracle.truffle.tools.profiler.CPUSampler$Mode
  outer com.oracle.truffle.tools.profiler.CPUSampler
+ anno 0 java.lang.Deprecated()
 fld public final static com.oracle.truffle.tools.profiler.CPUSampler$Mode EXCLUDE_INLINED_ROOTS
 fld public final static com.oracle.truffle.tools.profiler.CPUSampler$Mode ROOTS
 fld public final static com.oracle.truffle.tools.profiler.CPUSampler$Mode STATEMENTS
@@ -51,6 +58,17 @@ meth public int getSelfInterpretedHitCount()
 meth public java.util.List<java.lang.Long> getSelfHitTimes()
 supr java.lang.Object
 hfds compiledHitCount,interpretedHitCount,selfCompiledHitCount,selfHitTimes,selfInterpretedHitCount
+
+CLSS public final com.oracle.truffle.tools.profiler.CPUSamplerData
+meth public com.oracle.truffle.api.TruffleContext getContext()
+meth public java.util.LongSummaryStatistics getSampleBias()
+meth public java.util.LongSummaryStatistics getSampleDuration()
+meth public java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>> getThreadData()
+meth public long getSampleInterval()
+meth public long getSamples()
+meth public long missedSamples()
+supr java.lang.Object
+hfds biasStatistics,context,durationStatistics,intervalMs,missedSamples,samplesTaken,threadData
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUTracer
 innr public final static Payload
@@ -89,7 +107,7 @@ meth public void clearData()
 meth public void close()
 meth public void setCollecting(boolean)
 supr java.lang.Object
-hfds CLEAN_INTERVAL,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
+hfds CLEAN_INTERVAL,INTEROP,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
 hcls Listener,ObjectWeakReference
 
 CLSS public final com.oracle.truffle.tools.profiler.HeapSummary
@@ -118,7 +136,7 @@ meth public void setCollecting(boolean)
 meth public void setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds DEFAULT_FILTER,activeBinding,closed,collecting,copyPayload,env,filter,mergePayload,payloadFactory,rootNodes,shadowStack,stackLimit,stackOverflowed,stacksBinding
+hfds DEFAULT_FILTER,INTEROP,activeBinding,closed,collecting,copyPayload,env,filter,mergePayload,payloadFactory,rootNodes,shadowStack,stackLimit,stackOverflowed,stacksBinding
 hcls Listener
 
 CLSS public final static com.oracle.truffle.tools.profiler.MemoryTracer$AllocationEventInfo
@@ -150,6 +168,7 @@ supr java.lang.Object
 hfds children,parent,payload,sourceLocation
 
 CLSS public final com.oracle.truffle.tools.profiler.StackTraceEntry
+cons public init(java.lang.String)
 meth public boolean equals(java.lang.Object)
 meth public boolean isCompiled()
 meth public boolean isInlined()
@@ -161,7 +180,7 @@ meth public java.lang.String getRootName()
 meth public java.lang.String toString()
 meth public java.util.Set<java.lang.Class<?>> getTags()
 supr java.lang.Object
-hfds STATE_COMPILATION_ROOT,STATE_COMPILED,STATE_INTERPRETED,STATE_UNKNOWN,instrumentedNode,rootName,sourceSection,stackTraceElement,state,tags
+hfds STATE_FIRST_TIER_COMPILATION_ROOT,STATE_FIRST_TIER_COMPILED,STATE_INTERPRETED,STATE_LAST_TIER_COMPILATION_ROOT,STATE_LAST_TIER_COMPILED,STATE_UNKNOWN,instrumentedNode,rootName,sourceSection,stackTraceElement,state,tags
 
 CLSS public abstract interface java.io.Closeable
 intf java.lang.AutoCloseable
@@ -174,6 +193,12 @@ meth public abstract void close() throws java.lang.Exception
 
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
 meth public abstract int compareTo({java.lang.Comparable%0})
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
 cons protected init(java.lang.String,int)
@@ -205,4 +230,30 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
 

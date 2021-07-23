@@ -234,11 +234,12 @@ innr public abstract interface static SourcePredicate
 innr public final Builder
 innr public final static IndexRange
 meth public boolean includes(com.oracle.truffle.api.nodes.Node)
+meth public boolean includes(com.oracle.truffle.api.nodes.RootNode,com.oracle.truffle.api.source.SourceSection,java.util.Set<java.lang.Class<?>>)
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder newBuilder()
 supr java.lang.Object
-hfds expressions
-hcls EventFilterExpression,Not
+hfds TAGGED_NODE_CACHE,expressions
+hcls EventFilterExpression,Not,TaggedNode
 
 CLSS public final com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder
  outer com.oracle.truffle.api.instrumentation.SourceSectionFilter

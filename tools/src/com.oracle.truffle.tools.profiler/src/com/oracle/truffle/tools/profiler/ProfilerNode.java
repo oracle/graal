@@ -194,6 +194,24 @@ public final class ProfilerNode<T> {
         }
     }
 
+    void deepMergeNodeToChildren(ProfilerNode<T> node, BiConsumer<T, T> mergePayload, Supplier<T> payloadFactory) {
+        final StackTraceEntry childSourceLocation = node.getSourceLocation();
+        final T childPayload = node.getPayload();
+        ProfilerNode<T> destinationChild = findBySourceLocation(childSourceLocation);
+        if (destinationChild == null) {
+            T destinationPayload = payloadFactory.get();
+            mergePayload.accept(childPayload, destinationPayload);
+            destinationChild = new ProfilerNode<>(this, childSourceLocation, destinationPayload);
+            if (children == null) {
+                children = new HashMap<>();
+            }
+            children.put(childSourceLocation, destinationChild);
+        } else {
+            mergePayload.accept(childPayload, destinationChild.getPayload());
+        }
+        destinationChild.deepMergeChildrenFrom(node, mergePayload, payloadFactory);
+    }
+
     private ProfilerNode<T> findBySourceLocation(StackTraceEntry targetSourceLocation) {
         if (children != null) {
             for (ProfilerNode<T> child : children.values()) {
