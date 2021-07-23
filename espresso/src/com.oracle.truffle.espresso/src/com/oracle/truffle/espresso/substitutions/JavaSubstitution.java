@@ -69,10 +69,6 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
         public boolean isValidFor(@SuppressWarnings("unused") JavaVersion version) {
             return true;
         }
-
-        public Class<?> generatedBy() {
-            return Substitution.class;
-        }
     }
 
     JavaSubstitution() {
