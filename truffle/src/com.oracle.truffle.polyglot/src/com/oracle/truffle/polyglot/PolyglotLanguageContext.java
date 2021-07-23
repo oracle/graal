@@ -461,7 +461,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert isInitialized();
         assert Thread.currentThread() == thread;
         synchronized (context) {
-            PolyglotContextImpl prev = context.engine.enter(context, true, language.engine.getUncachedLocation(), true, false);
+            PolyglotContextImpl prev = context.engine.enter(context);
             lazy.activePolyglotThreads.add(thread);
             return prev;
         }
@@ -747,8 +747,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return getAPIAccess().newValue(cache, this, guestValue);
     }
 
-    public Object toGuestValue(Node toGuestValueNode, Object receiver) {
-        return context.toGuestValue(toGuestValueNode, receiver);
+    public Object toGuestValue(Object receiver) {
+        return context.toGuestValue(receiver);
     }
 
     static final class ToHostValueNode {
@@ -940,18 +940,18 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         @Specialization(guards = "receiver == null")
         Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
-            return context.toGuestValue(this, receiver);
+            return context.toGuestValue(receiver);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
         Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
-            return context.toGuestValue(this, cachedReceiver.cast(receiver));
+            return context.toGuestValue(cachedReceiver.cast(receiver));
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         Object doUncached(PolyglotLanguageContext context, Object receiver) {
-            return context.toGuestValue(this, receiver);
+            return context.toGuestValue(receiver);
         }
     }
 

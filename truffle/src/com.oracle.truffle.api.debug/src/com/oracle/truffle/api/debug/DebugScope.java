@@ -443,7 +443,7 @@ public final class DebugScope {
             return null;
         }
         // make sure rawValue is a valid Interop value
-        if (!Debugger.ACCESSOR.interopSupport().isInteropType(rawValue)) {
+        if (!InteropLibrary.isValidValue(rawValue)) {
             throw new IllegalArgumentException("raw value is not an Interop value");
         }
         // check if language class of the root node corresponds to the input language

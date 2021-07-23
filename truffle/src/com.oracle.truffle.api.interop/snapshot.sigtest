@@ -156,6 +156,8 @@ meth public long getHashSize(java.lang.Object) throws com.oracle.truffle.api.int
 meth public long readBufferLong(java.lang.Object,java.nio.ByteOrder,long) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public short asShort(java.lang.Object) throws com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public short readBufferShort(java.lang.Object,java.nio.ByteOrder,long) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
+meth public static boolean isValidProtocolValue(java.lang.Object)
+meth public static boolean isValidValue(java.lang.Object)
 meth public static com.oracle.truffle.api.interop.InteropLibrary getUncached()
 meth public static com.oracle.truffle.api.interop.InteropLibrary getUncached(java.lang.Object)
 meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truffle.api.interop.InteropLibrary> getFactory()

@@ -10,6 +10,11 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed support to read language and instrument registrations from `META-INF/truffle` files. Recompiling the TruffleLanguage or TruffleInstrument using the Truffle annotation processor automatically migrates the language or instrument to the new behavior. Languages are already migrated if they were compiled with a version later or equal than 19.3.
 * Added [SourceSectionFilter#includes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.html##includes-com.oracle.truffle.api.nodes.RootNode-com.oracle.truffle.api.source.SourceSection-java.util.Set-).
 * Added [FrameInstance#getCompilationTier](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameInstance.html#getCompilationTier--) and [FrameInstancel#isCompilationRoot](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameInstance.htmll#isCompilationRoot--)
+* Added `InteropLibrary.isValidValue(Object)` and `InteropLibrary.isValidProtocolValue(Object)`.
+* Added `TruffleContext.evalPublic(Node, Source)` and `TruffleContext.evalInternal(Node, Source)` that allow to evaluate sources in an inner context and access values of the inner context safely.
+* Added `TruffleContext.Builder.initializeCreatorContext(boolean)` that allows to disable initialization of the language that created the inner context.
+* Added the ability to share values between contexts. Guest languages can now use values of the polyglot embedding API using host interop. This no longer leads to invalid sharing errors.
+* Added `ReflectionLibrary.getUncached` method.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.

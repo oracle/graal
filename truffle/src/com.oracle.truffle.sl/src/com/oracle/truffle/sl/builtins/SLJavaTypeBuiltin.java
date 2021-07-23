@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.builtins;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.junit.Test;
+/**
+ * Builtin that allows to lookup a Java type.
+ */
+@NodeInfo(shortName = "java")
+public abstract class SLJavaTypeBuiltin extends SLBuiltinNode {
 
-public class SLValueSharingTest {
-
-    public static class JavaObject {
-        public Object sharedField;
-    }
-
-    @Test
-    public void testImplicitValueSharing() {
-        JavaObject obj = new JavaObject();
-        Context.Builder b = Context.newBuilder().allowAllAccess(true);
-        try (Context c0 = b.build();
-                        Context c1 = b.build()) {
-
-            c0.eval("sl", "function test(obj) { obj.sharedField = new(); }");
-            c1.eval("sl", "function test(obj) { return obj.sharedField; }");
-
-            c0.getBindings("sl").getMember("test").execute(obj);
-            Value test1 = c1.getBindings("sl").getMember("test");
-
-            Value v = test1.execute(obj);
-
-            assertTrue(v.hasMembers());
-            assertEquals(v, c1.asValue(obj.sharedField));
+    @Specialization
+    public Object doLookup(Object symbolName,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @CachedContext(SLLanguage.class) SLContext context) {
+        try {
+            /*
+             * This is the entry point to Java host interoperability. The return value of
+             * lookupHostSymbol implements the interop contracts. So we can use Java for things that
+             * are expressible also in SL. Like function calls on objects.
+             */
+            return context.getEnv().lookupHostSymbol(interop.asString(symbolName));
+        } catch (UnsupportedMessageException e) {
+            throw new SLException("The java builtin expected a String argument, but a non-string argument was provided.", this);
         }
-
     }
+
 }

@@ -56,7 +56,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
 
 final class PolyglotHostAccess extends AbstractHostAccess {
 
@@ -68,8 +67,7 @@ final class PolyglotHostAccess extends AbstractHostAccess {
     }
 
     @Override
-    public Object toGuestValue(Object polyglotContext, Object node, Object hostValue) {
-        Node parentNode = (Node) node;
+    public Object toGuestValue(Object polyglotContext, Object hostValue) {
         PolyglotContextImpl internalContext = (PolyglotContextImpl) polyglotContext;
         if (hostValue instanceof Value) {
             Value receiverValue = (Value) hostValue;
@@ -77,11 +75,11 @@ final class PolyglotHostAccess extends AbstractHostAccess {
             PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
             Object valueReceiver = polyglot.getAPIAccess().getReceiver(receiverValue);
             if (valueContext != internalContext) {
-                valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);
+                valueReceiver = internalContext.migrateValue(valueReceiver, valueContext);
             }
             return valueReceiver;
         } else if (PolyglotWrapper.isInstance(hostValue)) {
-            return internalContext.migrateHostWrapper(parentNode, PolyglotWrapper.asInstance(hostValue));
+            return internalContext.migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
         } else if (hostValue instanceof Proxy) {
             return toGuestProxy(hostValue);
         }

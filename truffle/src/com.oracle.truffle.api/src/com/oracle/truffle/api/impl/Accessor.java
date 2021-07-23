@@ -229,8 +229,6 @@ public abstract class Accessor {
 
         public abstract void checkInteropType(Object result);
 
-        public abstract boolean isInteropType(Object result);
-
         public abstract boolean isExecutableObject(Object value);
 
         public abstract Object createDefaultNodeObject(Node node);
@@ -367,11 +365,13 @@ public abstract class Accessor {
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
-        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config);
+        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, boolean initializeCreatorContext);
 
         public abstract Object enterInternalContext(Node node, Object polyglotContext);
 
         public abstract void leaveInternalContext(Node node, Object polyglotContext, Object prev);
+
+        public abstract Object evalInternalContext(Node node, Object polyglotContext, Source source, boolean allowInternal);
 
         public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
 
@@ -615,6 +615,9 @@ public abstract class Accessor {
         public abstract boolean areStaticObjectSafetyChecksRelaxed(Object polyglotLanguageInstance);
 
         public abstract String getStaticObjectStorageStrategy(Object polyglotLanguageInstance);
+
+        public abstract Object getHostContext(Object valueContext);
+
     }
 
     public abstract static class LanguageSupport extends Support {
