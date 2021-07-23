@@ -395,7 +395,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertFalse(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
         Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
-        Assert.assertNull(osrMetadata.getOSRCompilations()); // don't even bother allocating the map
     }
 
     @Test

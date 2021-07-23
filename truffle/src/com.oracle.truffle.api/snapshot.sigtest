@@ -933,6 +933,7 @@ meth public abstract java.lang.Object getOSRMetadata()
 meth public abstract void setOSRMetadata(java.lang.Object)
 meth public static java.lang.Object reportOSRBackEdge(com.oracle.truffle.api.nodes.BytecodeOSRNode,com.oracle.truffle.api.frame.VirtualFrame,int)
 meth public static void doOSRFrameTransfer(com.oracle.truffle.api.nodes.BytecodeOSRNode,com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.Frame)
+meth public void prepareOSR()
 
 CLSS public com.oracle.truffle.api.nodes.ControlFlowException
 cons public init()

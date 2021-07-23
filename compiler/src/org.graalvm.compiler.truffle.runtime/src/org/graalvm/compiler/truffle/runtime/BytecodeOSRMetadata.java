@@ -54,19 +54,81 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class BytecodeOSRMetadata {
     // Marker object to indicate that OSR is disabled.
     public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, null, Integer.MAX_VALUE);
-    // Must be a power of 2 (polling uses bit masks)
+    // Must be a power of 2 (polling uses bit masks). OSRCompilationThreshold is a multiple of this
+    // interval.
     public static final int OSR_POLL_INTERVAL = 1024;
 
     private final BytecodeOSRNode osrNode;
     private final FrameDescriptor frameDescriptor;
-    private volatile Map<Integer, OptimizedCallTarget> compilationMap;
+
+    // Lazily initialized state. Most nodes with back-edges will not trigger compilation, so we
+    // defer initialization of some fields until they're actually used.
+    static final class LazyState {
+        private final Map<Integer, OptimizedCallTarget> compilationMap;
+        @CompilationFinal private final Assumption frameVersion;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlots;
+        @CompilationFinal(dimensions = 1) private final byte[] frameTags;
+
+        LazyState(Map<Integer, OptimizedCallTarget> compilationMap, Assumption frameVersion, FrameSlot[] frameSlots, byte[] frameTags) {
+            this.compilationMap = compilationMap;
+            this.frameVersion = frameVersion;
+            this.frameSlots = frameSlots;
+            this.frameTags = frameTags;
+        }
+    }
+
+    @CompilationFinal private volatile LazyState lazyState;
+
+    private LazyState getLazyState() {
+        LazyState currentLazyState = lazyState;
+        if (currentLazyState == null) {
+            currentLazyState = ((Node) osrNode).atomic(() -> {
+                LazyState lockedLazyState = lazyState;
+                if (lockedLazyState == null) {
+                    // We're initializing the state, so create a new compilation map.
+                    lockedLazyState = lazyState = createLazy(new ConcurrentHashMap<>());
+                }
+                return lockedLazyState;
+            });
+        }
+        return currentLazyState;
+    }
+
+    private void updateFrameSlots() {
+        CompilerAsserts.neverPartOfCompilation();
+        LazyState state = getLazyState();
+        if (!Assumption.isValidAssumption(state.frameVersion)) {
+            ((Node) osrNode).atomic(() -> {
+                if (Assumption.isValidAssumption(state.frameVersion)) {
+                    return; // Frame slots were fixed up by another thread.
+                }
+                // We're updating the existing state, so reuse the compilation map.
+                lazyState = createLazy(state.compilationMap);
+            });
+        }
+    }
+
+    /*
+     * Create a new LazyState using the given compilationMap and the frame descriptor's current slot
+     * information.
+     */
+    private LazyState createLazy(Map<Integer, OptimizedCallTarget> compilationMap) {
+        CompilerAsserts.neverPartOfCompilation();
+        // Another thread could modify the frame in the middle of this method. If we get the frame
+        // slots before the assumption, the slots may be updated in between, and we might obtain the
+        // new (valid) assumption, despite our slots actually being stale. Get the assumption first
+        // to avoid this race.
+        Assumption newFrameVersion = frameDescriptor.getVersion();
+        FrameSlot[] newFrameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
+        byte[] newFrameTags = new byte[newFrameSlots.length];
+        for (int i = 0; i < newFrameSlots.length; i++) {
+            newFrameTags[i] = frameDescriptor.getFrameSlotKind(newFrameSlots[i]).tag;
+        }
+        return new LazyState(compilationMap, newFrameVersion, newFrameSlots, newFrameTags);
+    }
+
     private final int osrThreshold;
     private int backEdgeCount;
-
-    // Used for OSR state transfer.
-    @CompilationFinal private volatile Assumption frameVersion;
-    @CompilationFinal(dimensions = 1) private volatile FrameSlot[] frameSlots;
-    @CompilationFinal(dimensions = 1) private volatile byte[] frameTags;
 
     BytecodeOSRMetadata(BytecodeOSRNode osrNode, FrameDescriptor frameDescriptor, int osrThreshold) {
         this.osrNode = osrNode;
@@ -74,7 +136,6 @@ public final class BytecodeOSRMetadata {
             throw new IllegalArgumentException("Cannot perform OSR on a frame which can be materialized.");
         }
         this.frameDescriptor = frameDescriptor;
-        this.compilationMap = null;
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
     }
@@ -84,25 +145,14 @@ public final class BytecodeOSRMetadata {
             return null;
         }
 
-        Map<Integer, OptimizedCallTarget> osrCompilations = compilationMap;
-        if (osrCompilations == null) {
-            osrCompilations = ((Node) osrNode).atomic(() -> {
-                Map<Integer, OptimizedCallTarget> lockedOSRCompilations = compilationMap;
-                if (lockedOSRCompilations == null) {
-                    compilationMap = lockedOSRCompilations = new ConcurrentHashMap<>();
-                }
-                return lockedOSRCompilations;
-            });
-        }
-
-        OptimizedCallTarget osrTarget = osrCompilations.get(target);
+        LazyState state = getLazyState();
+        OptimizedCallTarget osrTarget = state.compilationMap.get(target);
         if (osrTarget == null) {
-            Map<Integer, OptimizedCallTarget> finalOSRCompilations = osrCompilations; // effectively-final
             osrTarget = ((Node) osrNode).atomic(() -> {
-                OptimizedCallTarget lockedTarget = finalOSRCompilations.get(target);
+                OptimizedCallTarget lockedTarget = state.compilationMap.get(target);
                 if (lockedTarget == null) {
                     lockedTarget = createOSRTarget(target);
-                    finalOSRCompilations.put(target, lockedTarget);
+                    state.compilationMap.put(target, lockedTarget);
                 }
                 return lockedTarget;
             });
@@ -137,39 +187,23 @@ public final class BytecodeOSRMetadata {
         return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
     }
 
-    private synchronized OptimizedCallTarget createOSRTarget(int target) {
-        assert compilationMap != null && !compilationMap.containsKey(target);
+    /**
+     * Creates an OSR call target at the given dispatch target and requests compilation. The node's
+     * AST lock should be held when this is invoked.
+     */
+    private OptimizedCallTarget createOSRTarget(int target) {
         TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
         OptimizedCallTarget osrTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
         requestOSRCompilation(osrTarget); // queue it up for compilation
         return osrTarget;
     }
 
-    private synchronized void requestOSRCompilation(OptimizedCallTarget osrTarget) {
+    private void requestOSRCompilation(OptimizedCallTarget osrTarget) {
         osrNode.prepareOSR();
         updateFrameSlots();
         osrTarget.compile(true);
         if (osrTarget.isCompilationFailed()) {
             markCompilationFailed();
-        }
-    }
-
-    private synchronized void updateFrameSlots() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (!Assumption.isValidAssumption(this.frameVersion)) {
-            // Another thread could modify the frame in the middle of this method.
-            // If we get the frame slots before the assumption, the slots may be updated in between,
-            // and we might obtain the new (valid) assumption, despite our slots actually being
-            // stale. Get the assumption first to avoid this race.
-            Assumption newFrameVersion = frameDescriptor.getVersion();
-            FrameSlot[] newFrameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
-            byte[] newFrameTags = new byte[newFrameSlots.length];
-            for (int i = 0; i < newFrameSlots.length; i++) {
-                newFrameTags[i] = frameDescriptor.getFrameSlotKind(newFrameSlots[i]).tag;
-            }
-            this.frameVersion = newFrameVersion;
-            this.frameSlots = newFrameSlots;
-            this.frameTags = newFrameTags;
         }
     }
 
@@ -188,22 +222,25 @@ public final class BytecodeOSRMetadata {
             throw new IllegalArgumentException("Target frame descriptor is different from the descriptor used for compilation.");
         }
 
+        LazyState state = getLazyState();
+        CompilerAsserts.partialEvaluationConstant(state);
         // The frame version could have changed; if so, deoptimize and update the slots+tags.
-        if (!frameVersion.isValid()) {
+        if (!Assumption.isValidAssumption(state.frameVersion)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             updateFrameSlots();
+            state = getLazyState();
         }
 
-        for (int i = 0; i < frameSlots.length; i++) {
-            FrameSlot slot = frameSlots[i];
-            byte expectedTag = frameTags[i];
+        for (int i = 0; i < state.frameSlots.length; i++) {
+            FrameSlot slot = state.frameSlots[i];
+            byte expectedTag = state.frameTags[i];
             byte actualTag = source.getTag(slot);
 
             // The tag for this slot may have changed; if so, deoptimize and update it.
             boolean tagsCondition = expectedTag == actualTag;
             if (!tagsCondition) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                frameTags[i] = actualTag;
+                state.frameTags[i] = actualTag;
                 expectedTag = actualTag;
             }
             switch (expectedTag) {
@@ -236,8 +273,9 @@ public final class BytecodeOSRMetadata {
     }
 
     synchronized void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
-        if (compilationMap != null) {
-            for (OptimizedCallTarget callTarget : compilationMap.values()) {
+        LazyState state = lazyState;
+        if (state != null) {
+            for (OptimizedCallTarget callTarget : state.compilationMap.values()) {
                 if (callTarget != null) {
                     if (callTarget.isCompilationFailed()) {
                         markCompilationFailed();
@@ -248,17 +286,19 @@ public final class BytecodeOSRMetadata {
         }
     }
 
-    private synchronized void markCompilationFailed() {
-        osrNode.setOSRMetadata(DISABLED);
-        if (compilationMap != null) {
-            compilationMap.clear();
-            compilationMap = null;
-        }
+    private void markCompilationFailed() {
+        ((Node) osrNode).atomic(() -> {
+            osrNode.setOSRMetadata(DISABLED);
+            LazyState state = lazyState;
+            if (state != null) {
+                state.compilationMap.clear();
+            }
+        });
     }
 
     // for testing
     public Map<Integer, OptimizedCallTarget> getOSRCompilations() {
-        return compilationMap;
+        return getLazyState().compilationMap;
     }
 
     public int getBackEdgeCount() {

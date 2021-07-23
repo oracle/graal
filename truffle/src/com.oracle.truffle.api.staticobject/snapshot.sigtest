@@ -11,7 +11,7 @@ supr com.oracle.truffle.api.staticobject.StaticProperty
 hfds id
 
 CLSS public abstract com.oracle.truffle.api.staticobject.StaticProperty
-cons public init()
+cons protected init()
 meth protected abstract java.lang.String getId()
 meth public final boolean compareAndExchangeBoolean(java.lang.Object,boolean,boolean)
 meth public final boolean compareAndSwapBoolean(java.lang.Object,boolean,boolean)
