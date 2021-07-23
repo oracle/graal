@@ -97,7 +97,7 @@ public abstract class TypeFlow<T> {
      * the type flow graph.
      * <p/>
      * A type flow can also be marked as saturated when one of its inputs has reached the saturated
-     * state and has propagated the "saturated" marker downstream. Thus, since in such a situtation
+     * state and has propagated the "saturated" marker downstream. Thus, since in such a situation
      * the input stops propagating type states, a flow's type state may be incomplete. It is up to
      * individual type flows to subscribe themselves directly to the type flows of their declared
      * types if they need further updates.
@@ -358,7 +358,7 @@ public abstract class TypeFlow<T> {
     private boolean addUse(BigBang bb, TypeFlow<?> use, boolean propagateTypeState, boolean registerInput) {
         if (isSaturated() && propagateTypeState) {
             /* Let the use know that this flow is already saturated. */
-            use.onInputSaturated(bb, this);
+            notifyUseOfSaturation(bb, use);
             return false;
         }
         if (doAddUse(bb, use, registerInput)) {
@@ -370,7 +370,7 @@ public abstract class TypeFlow<T> {
                      * use would have missed the saturated signal. Let the use know that this flow
                      * became saturated.
                      */
-                    use.onInputSaturated(bb, this);
+                    notifyUseOfSaturation(bb, use);
                     /* And unlink the use. */
                     removeUse(use);
                     return false;
@@ -381,6 +381,10 @@ public abstract class TypeFlow<T> {
             return true;
         }
         return false;
+    }
+
+    protected void notifyUseOfSaturation(BigBang bb, TypeFlow<?> use) {
+        use.onInputSaturated(bb, this);
     }
 
     protected boolean doAddUse(BigBang bb, TypeFlow<?> use, boolean registerInput) {
@@ -420,14 +424,14 @@ public abstract class TypeFlow<T> {
     private boolean addObserver(BigBang bb, TypeFlow<?> observer, boolean triggerUpdate, boolean registerObservees) {
         if (isSaturated() && triggerUpdate) {
             /* Let the observer know that this flow is already saturated. */
-            observer.onObservedSaturated(bb, this);
+            notifyObserverOfSaturation(bb, observer);
             return false;
         }
         if (doAddObserver(bb, observer, registerObservees)) {
             if (triggerUpdate) {
                 if (isSaturated()) {
                     /* This flow is already saturated, notify the observer. */
-                    observer.onObservedSaturated(bb, this);
+                    notifyObserverOfSaturation(bb, observer);
                     removeObserver(observer);
                     return false;
                 } else if (!this.state.isEmpty()) {
@@ -447,6 +451,10 @@ public abstract class TypeFlow<T> {
             return true;
         }
         return false;
+    }
+
+    protected void notifyObserverOfSaturation(BigBang bb, TypeFlow<?> observer) {
+        observer.onObservedSaturated(bb, this);
     }
 
     private boolean doAddObserver(BigBang bb, TypeFlow<?> observer, boolean registerObservees) {
@@ -607,14 +615,22 @@ public abstract class TypeFlow<T> {
     /** This flow will swap itself out at all uses and observers. */
     protected void swapOut(BigBang bb, TypeFlow<?> newFlow) {
         for (TypeFlow<?> use : getUses()) {
-            removeUse(use);
-            newFlow.addUse(bb, use);
+            swapAtUse(bb, newFlow, use);
         }
         for (TypeFlow<?> observer : getObservers()) {
-            removeObserver(observer);
-            /* Notify the observer that its observed flow has changed. */
-            observer.replacedObservedWith(bb, newFlow);
+            swapAtObserver(bb, newFlow, observer);
         }
+    }
+
+    protected void swapAtUse(BigBang bb, TypeFlow<?> newFlow, TypeFlow<?> use) {
+        removeUse(use);
+        newFlow.addUse(bb, use);
+    }
+
+    protected void swapAtObserver(BigBang bb, TypeFlow<?> newFlow, TypeFlow<?> observer) {
+        removeObserver(observer);
+        /* Notify the observer that its observed flow has changed. */
+        observer.replacedObservedWith(bb, newFlow);
     }
 
     /**

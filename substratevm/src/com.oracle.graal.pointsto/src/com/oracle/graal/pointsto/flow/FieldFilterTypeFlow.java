@@ -63,6 +63,16 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
+    protected void notifyUseOfSaturation(BigBang bb, TypeFlow<?> use) {
+        swapAtUse(bb, declaredType.getTypeFlow(bb, true), use);
+    }
+
+    @Override
+    protected void notifyObserverOfSaturation(BigBang bb, TypeFlow<?> observer) {
+        swapAtObserver(bb, declaredType.getTypeFlow(bb, true), observer);
+    }
+
+    @Override
     public String toString() {
         return "FieldFilterTypeFlow<" + source + ">";
     }
