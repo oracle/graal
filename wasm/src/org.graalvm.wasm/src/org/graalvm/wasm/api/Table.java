@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,25 +44,16 @@ import static java.lang.Integer.compareUnsigned;
 import static org.graalvm.wasm.WasmMath.minUnsigned;
 import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
-import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.RootNode;
 
 @ExportLibrary(InteropLibrary.class)
 public class Table extends Dictionary {
@@ -157,28 +148,14 @@ public class Table extends Dictionary {
     }
 
     public Object set(int index, Object element) {
-        final WasmFunctionInstance functionInstance = new WasmFunctionInstance(null, null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                if (InteropLibrary.getUncached().isExecutable(element)) {
-                    try {
-                        return InteropLibrary.getUncached().execute(element, frame.getArguments());
-                    } catch (UnsupportedTypeException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s has an unsupported type.", element);
-                    } catch (ArityException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s has unexpected arity.", element);
-                    } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s is not executable.", element);
-                    }
-                } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s is not executable.", element);
-                }
-            }
-        }));
+        final WasmFunctionInstance functionInstance;
+        if (element instanceof WasmFunctionInstance) {
+            functionInstance = (WasmFunctionInstance) element;
+        } else if (InteropLibrary.getUncached(element).isNull(element)) {
+            functionInstance = null;
+        } else {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
+        }
 
         try {
             table.set(index, functionInstance);

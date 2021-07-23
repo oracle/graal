@@ -162,12 +162,7 @@ public class GuestToHostService extends AbstractHostService {
     }
 
     @Override
-    public Object migrateHostObject(Object newContext, Object value) {
-        return null;
-    }
-
-    @Override
-    public Object migrateHostProxy(Object newContext, Object value) {
+    public Object migrateValue(Object hostContext, Object value, Object valueContext) {
         return null;
     }
 

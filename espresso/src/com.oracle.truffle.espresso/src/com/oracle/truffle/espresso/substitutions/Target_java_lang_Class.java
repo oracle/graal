@@ -40,6 +40,8 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -445,97 +447,12 @@ public final class Target_java_lang_Class {
         }
         final Method[] methods = collectedMethods.toArray(Method.EMPTY_ARRAY);
 
-        EspressoContext context = self.getKlass().getContext();
-
-        // TODO(peterssen): Cache guest j.l.reflect.Method constructor.
-        // Calling the constructor is just for validation, manually setting the fields would
-        // be faster.
-        Method methodInit = meta.java_lang_reflect_Method.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
-                        /* declaringClass */ Type.java_lang_Class,
-                        /* name */ Type.java_lang_String,
-                        /* parameterTypes */ Type.java_lang_Class_array,
-                        /* returnType */ Type.java_lang_Class,
-                        /* checkedExceptions */ Type.java_lang_Class_array,
-                        /* modifiers */ Type._int,
-                        /* slot */ Type._int,
-                        /* signature */ Type.java_lang_String,
-                        /* annotations */ Type._byte_array,
-                        /* parameterAnnotations */ Type._byte_array,
-                        /* annotationDefault */ Type._byte_array));
-
-        StaticObject arr = meta.java_lang_reflect_Method.allocateReferenceArray(methods.length, new IntFunction<StaticObject>() {
+        return meta.java_lang_reflect_Method.allocateReferenceArray(methods.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
-                Method m = methods[i];
-                Attribute rawRuntimeVisibleAnnotations = m.getAttribute(Name.RuntimeVisibleAnnotations);
-                StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
-                                : StaticObject.NULL;
-
-                Attribute rawRuntimeVisibleParameterAnnotations = m.getAttribute(Name.RuntimeVisibleParameterAnnotations);
-                StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
-                                : StaticObject.NULL;
-
-                Attribute rawRuntimeVisibleTypeAnnotations = m.getAttribute(Name.RuntimeVisibleTypeAnnotations);
-                StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
-                                : StaticObject.NULL;
-
-                Attribute rawAnnotationDefault = m.getAttribute(Name.AnnotationDefault);
-                StaticObject annotationDefault = rawAnnotationDefault != null
-                                ? StaticObject.wrap(rawAnnotationDefault.getData(), meta)
-                                : StaticObject.NULL;
-                final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
-                                m.getParameterCount(),
-                                new IntFunction<StaticObject>() {
-                                    @Override
-                                    public StaticObject apply(int j) {
-                                        return rawParameterKlasses[j].mirror();
-                                    }
-                                });
-
-                final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObject checkedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
-                    @Override
-                    public StaticObject apply(int j) {
-                        return rawCheckedExceptions[j].mirror();
-                    }
-                });
-
-                SignatureAttribute signatureAttribute = (SignatureAttribute) m.getAttribute(Name.Signature);
-                StaticObject genericSignature = StaticObject.NULL;
-                if (signatureAttribute != null) {
-                    String sig = m.getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
-                    genericSignature = meta.toGuestString(sig);
-                }
-
-                StaticObject instance = meta.java_lang_reflect_Method.allocateInstance();
-
-                methodInit.invokeDirect(
-                                /* this */ instance,
-                                /* declaringClass */ m.getDeclaringKlass().mirror(),
-                                /* name */ context.getStrings().intern(m.getName()),
-                                /* parameterTypes */ parameterTypes,
-                                /* returnType */ m.resolveReturnKlass().mirror(),
-                                /* checkedExceptions */ checkedExceptions,
-                                /* modifiers */ m.getMethodModifiers(),
-                                /* slot */ i, // TODO(peterssen): Fill method slot.
-                                /* signature */ genericSignature,
-
-                                // FIXME(peterssen): Fill annotations bytes.
-                                /* annotations */ runtimeVisibleAnnotations,
-                                /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
-                                /* annotationDefault */ annotationDefault);
-
-                meta.HIDDEN_METHOD_KEY.setHiddenObject(instance, m);
-                meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
-                return instance;
+                return methods[i].makeMirror();
             }
         });
-
-        return arr;
 
     }
 
@@ -602,6 +519,57 @@ public final class Target_java_lang_Class {
             return ((ObjectKlass) klass).isRecord();
         }
         return false;
+    }
+
+    @Substitution(hasReceiver = true)
+    @TruffleBoundary
+    public static @JavaType(internalName = "[Ljava/lang/reflect/RecordComponent;") StaticObject getRecordComponents0(@JavaType(Class.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        Klass k = self.getMirrorKlass();
+        if (!(k instanceof ObjectKlass)) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass klass = (ObjectKlass) k;
+        RecordAttribute record = (RecordAttribute) klass.getAttribute(RecordAttribute.NAME);
+        if (record == null) {
+            return StaticObject.NULL;
+        }
+        RecordAttribute.RecordComponentInfo[] components = record.getComponents();
+        return meta.java_lang_reflect_RecordComponent.allocateReferenceArray(components.length, (i) -> components[i].toGuestComponent(meta, klass));
+    }
+
+    @Substitution(hasReceiver = true)
+    @TruffleBoundary
+    public static @JavaType(Class[].class) StaticObject getPermittedSubclasses0(@JavaType(Class.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        Klass k = self.getMirrorKlass();
+        if (!(k instanceof ObjectKlass)) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass klass = (ObjectKlass) k;
+        if (!klass.isSealed()) {
+            return StaticObject.NULL;
+        }
+        char[] classes = ((PermittedSubclassesAttribute) klass.getAttribute(PermittedSubclassesAttribute.NAME)).getClasses();
+        StaticObject[] permittedSubclasses = new StaticObject[classes.length];
+        RuntimeConstantPool pool = klass.getConstantPool();
+        int nClasses = 0;
+        for (int index : classes) {
+            Klass permitted;
+            try {
+                permitted = pool.resolvedKlassAt(klass, index);
+            } catch (EspressoException e) {
+                /* Suppress and continue */
+                continue;
+            }
+            if (permitted instanceof ObjectKlass) {
+                permittedSubclasses[nClasses++] = permitted.mirror();
+            }
+        }
+        if (nClasses == permittedSubclasses.length) {
+            return StaticObject.createArray(meta.java_lang_Class_array, permittedSubclasses);
+        }
+        return meta.java_lang_Class.allocateReferenceArray(nClasses, (i) -> permittedSubclasses[i]);
     }
 
     @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java8OrEarlier.class)

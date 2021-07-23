@@ -340,6 +340,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Object getHostContext(Object polyglotContext) {
+            return ((PolyglotContextImpl) polyglotContext).getHostContextImpl();
+        }
+
+        @Override
         public TruffleContext getCurrentCreatorTruffleContext() {
             PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
             return context != null ? context.creatorTruffleContext : null;
@@ -662,7 +667,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object toGuestValue(Object obj, Object languageContext) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.toGuestValue(null, obj);
+            return context.toGuestValue(obj);
         }
 
         @Override
@@ -724,20 +729,43 @@ final class EngineAccessor extends Accessor {
         public Object enterInternalContext(Node location, Object polyglotLanguageContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotLanguageContext);
             PolyglotEngineImpl engine = resolveEngine(location, context);
-            Node useLocation = location;
-            if (useLocation == null) {
-                useLocation = engine.getUncachedLocation();
+            return engine.enter(context);
+        }
+
+        @Override
+        public Object evalInternalContext(Node location, Object polyglotContext, Source source, boolean allowInternal) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            if (context.parent == null) {
+                throw PolyglotEngineException.illegalState("Only created inner contexts can be used to evaluate sources. " +
+                                "Use TruffleLanguage.Env.parseInternal(Source) or TruffleInstrument.Env.parse(Source) instead.");
             }
-            if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
-                return engine.enter(context, true, useLocation, true, false);
-            } else {
-                return enterInternalContextBoundary(context, useLocation, engine);
+            PolyglotEngineImpl engine = resolveEngine(location, context);
+            PolyglotContextImpl prev = engine.enter(context);
+            try {
+                return evalBoundary(source, prev, context, allowInternal);
+            } finally {
+                engine.leave(prev, context);
             }
         }
 
         @TruffleBoundary
-        private static Object enterInternalContextBoundary(PolyglotContextImpl context, Node location, PolyglotEngineImpl engine) {
-            return engine.enter(context, true, location, true, false);
+        private static Object evalBoundary(Source source, PolyglotContextImpl parentEnteredContext, PolyglotContextImpl context, boolean allowInternal) {
+            if (parentEnteredContext != null && parentEnteredContext != context.parent && parentEnteredContext.engine == context.engine) {
+                throw PolyglotEngineException.illegalState("Invalid parent context entered. " +
+                                "The parent creator context or no context must be entered to evaluate code in an inner context.");
+            }
+            PolyglotLanguageContext targetContext = context.getContext(context.engine.requireLanguage(source.getLanguage(), allowInternal));
+            PolyglotLanguage accessingLanguage = context.creator;
+            targetContext.checkAccess(accessingLanguage);
+            Object result;
+            try {
+                CallTarget target = targetContext.parseCached(accessingLanguage, source, null);
+                result = target.call(PolyglotImpl.EMPTY_ARGS);
+            } catch (RuntimeException e) {
+                throw OtherContextGuestObject.migrateException(context.parent, e, context);
+            }
+            assert InteropLibrary.isValidValue(result) : "invalid call target return value";
+            return context.parent.migrateValue(result, context);
         }
 
         @Override
@@ -746,7 +774,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl context = ((PolyglotContextImpl) impl);
             PolyglotEngineImpl engine = resolveEngine(node, context);
             if (CompilerDirectives.isPartialEvaluationConstant(engine)) {
-                engine.leave((PolyglotContextImpl) prev, context, true);
+                engine.leave((PolyglotContextImpl) prev, context);
             } else {
                 leaveInternalContextBoundary(prev, context, engine);
             }
@@ -754,7 +782,7 @@ final class EngineAccessor extends Accessor {
 
         @TruffleBoundary
         private static void leaveInternalContextBoundary(Object prev, PolyglotContextImpl context, PolyglotEngineImpl engine) {
-            engine.leave((PolyglotContextImpl) prev, context, true);
+            engine.leave((PolyglotContextImpl) prev, context);
         }
 
         private static PolyglotEngineImpl resolveEngine(Node node, PolyglotContextImpl context) {
@@ -781,7 +809,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config) {
+        public TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, boolean initializeCreatorContext) {
             PolyglotLanguageContext creator = ((PolyglotLanguageContext) sourcePolyglotLanguageContext);
             PolyglotContextImpl impl;
             synchronized (creator.context) {
@@ -793,9 +821,11 @@ final class EngineAccessor extends Accessor {
             }
             synchronized (impl) {
                 impl.initializeContextLocals();
-                impl.engine.initializeMultiContext(creator.context);
+                impl.engine.initializeMultiContext();
                 impl.notifyContextCreated();
-                impl.initializeInnerContextLanguage(creator.language.getId());
+                if (initializeCreatorContext) {
+                    impl.initializeInnerContextLanguage(creator.language.getId());
+                }
             }
             return impl.creatorTruffleContext;
         }

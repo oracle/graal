@@ -49,8 +49,12 @@ import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_MET
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -149,6 +153,7 @@ public final class ClassfileParser {
     public static final char JAVA_MIN_SUPPORTED_VERSION = JAVA_1_1_VERSION;
     public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_11_VERSION;
     public static final char JAVA_MAX_SUPPORTED_MINOR_VERSION = 0;
+    public static final char JAVA_PREVIEW_MINOR_VERSION = 65535;
 
     private final ClasspathFile classfile;
 
@@ -250,9 +255,11 @@ public final class ClassfileParser {
      */
     private void verifyVersion(int major, int minor) {
         if (context.getJavaVersion().java8OrEarlier()) {
-            versionCheck8(context.getJavaVersion().classFileVersion(), major, minor);
+            versionCheck8OrEarlier(context.getJavaVersion().classFileVersion(), major, minor);
+        } else if (context.getJavaVersion().java11OrEarlier()) {
+            versionCheck11OrEarlier(context.getJavaVersion().classFileVersion(), major, minor);
         } else {
-            versionCheck11(context.getJavaVersion().classFileVersion(), major, minor);
+            versionCheck12OrLater(context.getJavaVersion().classFileVersion(), major, minor);
         }
     }
 
@@ -262,12 +269,14 @@ public final class ClassfileParser {
      * <li>Major_version >= 45 and major_version <= current_major_version, any minor version.
      * <li>Major_version = current_major_version and minor_version <= MAX_SUPPORTED_MINOR (= 0).
      */
-    private static void versionCheck8(int maxMajor, int major, int minor) {
-        if (major < JAVA_MIN_SUPPORTED_VERSION ||
-                        major > maxMajor ||
-                        (major == maxMajor && minor > JAVA_MAX_SUPPORTED_MINOR_VERSION)) {
-            throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+    private static void versionCheck8OrEarlier(int maxMajor, int major, int minor) {
+        if (major == maxMajor && minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION) {
+            return;
         }
+        if (major >= JAVA_MIN_SUPPORTED_VERSION && major < maxMajor) {
+            return;
+        }
+        throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
     }
 
     /**
@@ -278,13 +287,40 @@ public final class ClassfileParser {
      * <li>Major_version = current_major_version and minor_version = 65535 and --enable-preview is
      * present.
      */
-    private static void versionCheck11(int maxMajor, int major, int minor) {
-        if (major < JAVA_MIN_SUPPORTED_VERSION ||
-                        major > maxMajor ||
-                        major != JAVA_1_1_VERSION && minor != 0 ||
-                        (major == maxMajor) && (minor > JAVA_MAX_SUPPORTED_MINOR_VERSION)) {
-            throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+    private static void versionCheck11OrEarlier(int maxMajor, int major, int minor) {
+        if (major == maxMajor && (minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION || minor == JAVA_PREVIEW_MINOR_VERSION)) {
+            return;
         }
+        if (major < maxMajor && major > JAVA_MIN_SUPPORTED_VERSION && minor == 0) {
+            return;
+        }
+        if (major == JAVA_MIN_SUPPORTED_VERSION) {
+            return;
+        }
+        throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+    }
+
+    /**
+     * Hotspot comment (17): A legal major_version.minor_version must be one of the following:
+     *
+     * <li>Major_version >= 45 and major_version < 56, any minor_version.
+     * <li>Major_version >= 56 and major_version <= JVM_CLASSFILE_MAJOR_VERSION and minor_version =
+     * 0.
+     * <li>Major_version = JVM_CLASSFILE_MAJOR_VERSION and minor_version = 65535 and
+     * --enable-preview is present.
+     *
+     */
+    private static void versionCheck12OrLater(int maxMajor, int major, int minor) {
+        if (major >= JAVA_12_VERSION && major <= maxMajor && minor == 0) {
+            return;
+        }
+        if (major >= JAVA_MIN_SUPPORTED_VERSION && major < JAVA_12_VERSION) {
+            return;
+        }
+        if (major == maxMajor && minor == JAVA_PREVIEW_MINOR_VERSION) {
+            return;
+        }
+        throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
     }
 
     private static EspressoException unsupportedClassVersionError(String message) {
@@ -634,6 +670,9 @@ public final class ClassfileParser {
             } else if (infoType.supports(SIGNATURE) && attributeName.equals(Name.Signature)) {
                 if (context.getJavaVersion().java9OrLater() && signature != null) {
                     throw ConstantPool.classFormatError("Duplicate AnnotationDefault attribute");
+                }
+                if (attributeSize != 2) {
+                    throw ConstantPool.classFormatError("Invalid attribute_length value for signature attribute: " + attributeSize + " != 2");
                 }
                 return signature = parseSignatureAttribute(attributeName);
             }
@@ -1010,20 +1049,21 @@ public final class ClassfileParser {
         return new LineNumberTableAttribute(name, entries);
     }
 
-    private LocalVariableTable parseLocalVariableAttribute(Symbol<Name> name) {
+    private LocalVariableTable parseLocalVariableAttribute(Symbol<Name> name, int codeLength, int maxLocals) {
         assert Name.LocalVariableTable.equals(name);
-        return parseLocalVariableTable(name);
+        return parseLocalVariableTable(name, codeLength, maxLocals);
     }
 
-    private LocalVariableTable parseLocalVariableTypeAttribute(Symbol<Name> name) {
+    private LocalVariableTable parseLocalVariableTypeAttribute(Symbol<Name> name, int codeLength, int maxLocals) {
         assert Name.LocalVariableTypeTable.equals(name);
-        return parseLocalVariableTable(name);
+        return parseLocalVariableTable(name, codeLength, maxLocals);
     }
 
-    private LocalVariableTable parseLocalVariableTable(Symbol<Name> name) {
+    private LocalVariableTable parseLocalVariableTable(Symbol<Name> name, int codeLength, int maxLocals) {
+        boolean isLVTT = Name.LocalVariableTypeTable.equals(name);
         int entryCount = stream.readU2();
         if (entryCount == 0) {
-            return LocalVariableTable.EMPTY;
+            return isLVTT ? LocalVariableTable.EMPTY_LVTT : LocalVariableTable.EMPTY_LVT;
         }
         Local[] locals = new Local[entryCount];
         for (int i = 0; i < entryCount; i++) {
@@ -1033,8 +1073,32 @@ public final class ClassfileParser {
             int descIndex = stream.readU2();
             int slot = stream.readU2();
 
+            if (bci < 0 || bci >= codeLength) {
+                throw ConstantPool.classFormatError("Invalid local variable table attribute entry: start_pc out of bounds: " + bci);
+            }
+            if (bci + length > codeLength) {
+                throw ConstantPool.classFormatError("Invalid local variable table attribute entry: start_pc + length out of bounds: " + (bci + length));
+            }
+
             Utf8Constant poolName = pool.utf8At(nameIndex);
             Utf8Constant typeName = pool.utf8At(descIndex);
+
+            typeName.validateUTF8();
+            poolName.validateFieldName();
+
+            int extraSlot = 0;
+            if (!isLVTT) {
+                typeName.validateType(false);
+                Symbol<Type> type = typeName.value();
+                if (type == Type._long || type == Type._double) {
+                    extraSlot = 1;
+                }
+            }
+
+            if (slot + extraSlot >= maxLocals) {
+                throw ConstantPool.classFormatError("Invalid local variable table attribute entry: index points to an invalid frame slot: " + slot);
+            }
+
             locals[i] = new Local(poolName, typeName, bci, bci + length, slot);
 
         }
@@ -1044,6 +1108,7 @@ public final class ClassfileParser {
     private SignatureAttribute parseSignatureAttribute(Symbol<Name> name) {
         assert Name.Signature.equals(name);
         int signatureIndex = stream.readU2();
+        pool.utf8At(signatureIndex).validateUTF8();
         return new SignatureAttribute(name, signatureIndex);
     }
 
@@ -1250,23 +1315,31 @@ public final class ClassfileParser {
 
     private PermittedSubclassesAttribute parsePermittedSubclasses(Symbol<Name> attributeName) {
         assert PermittedSubclassesAttribute.NAME.equals(attributeName);
+        if ((classFlags & ACC_FINAL) != 0) {
+            throw ConstantPool.classFormatError("A final class may not declare a permitted subclasses attribute.");
+        }
         int numberOfClasses = stream.readU2();
-        int[] classes = new int[numberOfClasses];
+        if (numberOfClasses == 0) {
+            return PermittedSubclassesAttribute.EMPTY;
+        }
+        char[] classes = new char[numberOfClasses];
         for (int i = 0; i < numberOfClasses; i++) {
             int pos = stream.readU2();
             pool.classAt(pos).validate(pool);
-            classes[i] = pos;
+            classes[i] = (char) pos;
         }
         return new PermittedSubclassesAttribute(attributeName, classes);
     }
 
     private RecordAttribute parseRecord(Symbol<Name> recordAttributeName) {
         assert RecordAttribute.NAME.equals(recordAttributeName);
-        int length = stream.readU2();
-        RecordAttribute.RecordComponentInfo[] components = new RecordAttribute.RecordComponentInfo[length];
-        for (int i = 0; i < length; i++) {
+        int count = stream.readU2();
+        RecordAttribute.RecordComponentInfo[] components = new RecordAttribute.RecordComponentInfo[count];
+        for (int i = 0; i < count; i++) {
             final int name = stream.readU2();
             final int descriptor = stream.readU2();
+            pool.utf8At(name).validateUTF8();
+            pool.utf8At(descriptor).validateType(false);
             Attribute[] componentAttributes = parseRecordComponentAttributes();
             components[i] = new RecordAttribute.RecordComponentInfo(name, descriptor, componentAttributes);
         }
@@ -1278,8 +1351,7 @@ public final class ClassfileParser {
         Attribute[] componentAttributes = new Attribute[size];
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Record);
         for (int j = 0; j < size; j++) {
-            final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName = pool.symbolAt(stream.readU2(), "attribute name");
             final int attributeSize = stream.readS4();
             Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
             componentAttributes[j] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
@@ -1340,6 +1412,7 @@ public final class ClassfileParser {
 
         int attributeCount = stream.readU2();
         final Attribute[] codeAttributes = spawnAttributesArray(attributeCount);
+        int totalLocalTableCount = 0;
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Code);
 
@@ -1355,9 +1428,10 @@ public final class ClassfileParser {
             if (attributeName.equals(Name.LineNumberTable)) {
                 codeAttributes[i] = parseLineNumberTable(attributeName);
             } else if (attributeName.equals(Name.LocalVariableTable)) {
-                codeAttributes[i] = parseLocalVariableAttribute(attributeName);
+                codeAttributes[i] = parseLocalVariableAttribute(attributeName, codeLength, maxLocals);
+                totalLocalTableCount++;
             } else if (attributeName.equals(Name.LocalVariableTypeTable)) {
-                codeAttributes[i] = parseLocalVariableTypeAttribute(attributeName);
+                codeAttributes[i] = parseLocalVariableTypeAttribute(attributeName, codeLength, maxLocals);
             } else if (attributeName.equals(Name.StackMapTable)) {
                 if (stackMapTable != null) {
                     throw ConstantPool.classFormatError("Duplicate StackMapTable attribute");
@@ -1374,7 +1448,42 @@ public final class ClassfileParser {
             }
         }
 
+        if (totalLocalTableCount > 0) {
+            validateLocalTables(codeAttributes);
+        }
+
         return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, majorVersion);
+    }
+
+    private void validateLocalTables(Attribute[] codeAttributes) {
+        if (getMajorVersion() < JAVA_1_5_VERSION) {
+            return;
+        }
+        EconomicMap<Local, Boolean> table = EconomicMap.create(Local.localEquivalence);
+        ArrayList<LocalVariableTable> typeTables = new ArrayList<>();
+        for (Attribute attr : codeAttributes) {
+            if (attr.getName() == Name.LocalVariableTable) {
+                LocalVariableTable localTable = (LocalVariableTable) attr;
+                for (Local local : localTable.getLocals()) {
+                    if (table.put(local, false) != null) {
+                        throw ConstantPool.classFormatError("Duplicate local in local variable table: " + local);
+                    }
+                }
+            } else if (attr.getName() == Name.LocalVariableTypeTable) {
+                typeTables.add((LocalVariableTable) attr);
+            }
+        }
+        for (LocalVariableTable typeTable : typeTables) {
+            for (Local local : typeTable.getLocals()) {
+                Boolean present = table.put(local, true);
+                if (present == null) {
+                    throw ConstantPool.classFormatError("Local in local variable type table does not match any local variable table entry: " + local);
+                }
+                if (present) {
+                    throw ConstantPool.classFormatError("Duplicate local in local variable type table: " + local);
+                }
+            }
+        }
     }
 
     private ExceptionHandler[] parseExceptionHandlerEntries() {
@@ -1578,6 +1687,13 @@ public final class ClassfileParser {
                 throw ConstantPool.classFormatError(classType + " superinterfaces cannot contain arrays nor primitives");
             }
             interfaces[i] = interfaceType;
+        }
+        // Check for duplicate interfaces in the interface array.
+        Set<Symbol<Type>> present = new HashSet<>(interfaces.length);
+        for (Symbol<Type> t : interfaces) {
+            if (!present.add(t)) {
+                throw ConstantPool.classFormatError("Duplicate interface name in classfile: " + t);
+            }
         }
         return interfaces;
     }

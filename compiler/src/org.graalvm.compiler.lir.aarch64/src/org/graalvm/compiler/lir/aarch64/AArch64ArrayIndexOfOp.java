@@ -27,7 +27,6 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -130,7 +129,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         masm.cbz(64, arrayLength, end);
 
         // Load address of first array element
-        masm.loadAddress(baseAddress, AArch64Address.createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, asRegister(arrayPtrValue), arrayBaseOffset));
+        masm.add(64, baseAddress, asRegister(arrayPtrValue), arrayBaseOffset);
 
         /*
          * Search char-by-char for small strings (with search space size of less than 64 bits, i.e.,
@@ -151,7 +150,8 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         masm.sub(64, curIndex, zr, curIndex, ShiftType.LSL, shiftSize);
         // Loop doing char-by-char search
         masm.bind(searchByCharLoop);
-        masm.ldr(charSize * Byte.SIZE, curChar, AArch64Address.createRegisterOffsetAddress(baseAddress, curIndex, false));
+        int charBitSize = charSize * Byte.SIZE;
+        masm.ldr(charBitSize, curChar, AArch64Address.createRegisterOffsetAddress(charBitSize, baseAddress, curIndex, false));
         masm.cmp(32, curChar, searchChar);
         masm.branchConditionally(ConditionFlag.EQ, match);
 
@@ -220,7 +220,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
             // 3. Find searchChar in the 8-byte chunk
             masm.bind(chunkedReadLoop);
-            masm.ldr(64, curChar, AArch64Address.createRegisterOffsetAddress(baseAddress, curIndex, false));
+            masm.ldr(64, curChar, AArch64Address.createRegisterOffsetAddress(64, baseAddress, curIndex, false));
             masm.eor(64, curChar, searchChar, curChar);
             masm.orr(64, tmp2, curChar, bitMask7f);
             masm.sub(64, curChar, curChar, bitMask01Reg);

@@ -498,7 +498,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
             str.append("/**\n * ").append(GENERATED_BY).append("{").append(AT_LINK).append(helper.getNodeTarget().getQualifiedName()).append("}\n */");
             return str.toString();
         } else {
-            str.append("/**\n * ").append(GENERATED_BY).append("{").append(AT_LINK).append(className).append("#").append(targetMethodName).append("(");
+            str.append("/**\n * ").append(GENERATED_BY).append("{").append(AT_LINK).append(className).append("#").append(helper.getMethodTarget().getSimpleName()).append("(");
         }
         boolean first = true;
         for (String param : parameterTypes) {
@@ -624,8 +624,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * @param helper A helper structure.
      * @return The string forming the substitutor.
      */
-    String spawnSubstitutor(String targetPackage, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        String substitutorName = getSubstitutorClassName(className, targetMethodName, parameterTypeName);
+    String spawnSubstitutor(String substitutorName, String targetPackage, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder classFile = new StringBuilder();
         // Header
         classFile.append(COPYRIGHT);

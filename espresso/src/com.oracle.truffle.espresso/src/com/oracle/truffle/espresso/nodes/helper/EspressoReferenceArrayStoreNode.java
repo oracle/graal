@@ -36,19 +36,19 @@ public class EspressoReferenceArrayStoreNode extends Node {
     @CompilationFinal boolean noOutOfBoundEx = true;
     @CompilationFinal boolean noArrayStoreEx = true;
 
-    public EspressoReferenceArrayStoreNode(EspressoContext context) {
-        this.typeCheck = TypeCheckNodeGen.create(context);
+    public EspressoReferenceArrayStoreNode() {
+        this.typeCheck = TypeCheckNodeGen.create();
     }
 
-    public void arrayStore(StaticObject value, int index, StaticObject array) {
+    public void arrayStore(EspressoContext context, StaticObject value, int index, StaticObject array) {
         if (Integer.compareUnsigned(index, array.length()) >= 0) {
             enterOutOfBound();
-            Meta meta = typeCheck.getMeta();
+            Meta meta = context.getMeta();
             throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
         if (!StaticObject.isNull(value) && !typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
             enterArrayStoreEx();
-            Meta meta = typeCheck.getMeta();
+            Meta meta = context.getMeta();
             throw meta.throwException(meta.java_lang_ArrayStoreException);
         }
         (array.<Object[]> unwrap())[index] = value;

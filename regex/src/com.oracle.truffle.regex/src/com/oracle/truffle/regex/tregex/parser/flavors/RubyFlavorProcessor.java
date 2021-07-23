@@ -2126,7 +2126,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     break;
 
                 case '>':
-                    bailOut("atomic groups are not supported");
+                    if (!inSource.getOptions().isIgnoreAtomicGroups()) {
+                        bailOut("atomic groups are not supported");
+                    }
                     group(false);
                     break;
 

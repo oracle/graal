@@ -38,6 +38,7 @@ import jdk.vm.ci.code.stack.InspectedFrame;
 public class GraalFrameInstance implements FrameInstance {
     static final int CALL_TARGET_INDEX = 0;
     static final int FRAME_INDEX = 1;
+    static final int OPTIMIZATION_TIER_FRAME_INDEX = 2;
 
     static final int CALL_NODE_NOTIFY_INDEX = 1;
 
@@ -53,8 +54,7 @@ public class GraalFrameInstance implements FrameInstance {
             CALL_INLINED = OptimizedCallTarget.class.getDeclaredMethod("callInlined", Node.class, Object[].class);
             CALL_INLINED_CALL = GraalRuntimeSupport.class.getDeclaredMethod(GraalRuntimeSupport.CALL_INLINED_METHOD_NAME, Node.class, CallTarget.class, Object[].class);
             CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
-
-            CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class);
+            CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class, CompilationState.class);
         } catch (NoSuchMethodException | SecurityException e) {
             throw new InternalError(e);
         }
@@ -93,7 +93,17 @@ public class GraalFrameInstance implements FrameInstance {
     }
 
     @Override
-    public final CallTarget getCallTarget() {
+    public int getCompilationTier() {
+        return ((CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).getTier();
+    }
+
+    @Override
+    public boolean isCompilationRoot() {
+        return ((CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).isCompilationRoot();
+    }
+
+    @Override
+    public CallTarget getCallTarget() {
         return (CallTarget) callTargetFrame.getLocal(CALL_TARGET_INDEX);
     }
 

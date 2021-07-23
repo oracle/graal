@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -93,7 +92,7 @@ final class PolyglotBindings implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object readMember(String member, @CachedLibrary("this") InteropLibrary thisLibrary) throws UnknownIdentifierException {
+    Object readMember(String member) throws UnknownIdentifierException {
         Value value = getBindings().get(member);
         if (value == null) {
             // legacy support
@@ -104,7 +103,7 @@ final class PolyglotBindings implements TruffleObject {
             throw UnknownIdentifierException.create(member);
         }
         if (languageContext != null) {
-            return context.toGuestValue(thisLibrary, value);
+            return context.toGuestValue(value);
         } else {
             return context.getAPIAccess().getReceiver(value);
         }

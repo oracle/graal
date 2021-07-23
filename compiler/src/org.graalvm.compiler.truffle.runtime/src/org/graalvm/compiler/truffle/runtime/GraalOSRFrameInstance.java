@@ -49,4 +49,14 @@ public final class GraalOSRFrameInstance extends GraalFrameInstance {
     public boolean isVirtualFrame() {
         return osrFrame.isVirtual(FRAME_INDEX);
     }
+
+    @Override
+    public int getCompilationTier() {
+        return ((CompilationState) osrFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).getTier();
+    }
+
+    @Override
+    public boolean isCompilationRoot() {
+        return ((CompilationState) osrFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).isCompilationRoot();
+    }
 }

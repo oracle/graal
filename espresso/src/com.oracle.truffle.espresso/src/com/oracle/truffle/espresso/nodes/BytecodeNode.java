@@ -1693,11 +1693,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 if (refArrayStoreNode == null) {
-                    refArrayStoreNode = insert(new EspressoReferenceArrayStoreNode(getContext()));
+                    refArrayStoreNode = insert(new EspressoReferenceArrayStoreNode());
                 }
             }
         }
-        refArrayStoreNode.arrayStore(EspressoFrame.popObject(refs, top - 1), index, array);
+        refArrayStoreNode.arrayStore(getContext(), EspressoFrame.popObject(refs, top - 1), index, array);
     }
 
     private int beforeJumpChecks(long[] primitives, Object[] refs, int curBCI, int targetBCI, int statementIndex, InstrumentationSupport instrument, int[] loopCount, VirtualFrame frame) {
@@ -1785,7 +1785,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         } else if (constant instanceof DynamicConstant) {
             DynamicConstant.Resolved dynamicConstant = pool.resolvedDynamicConstantAt(getMethod().getDeclaringKlass(), cpi);
             dynamicConstant.putResolved(primitives, refs, top, this);
-
         } else {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.unimplemented(constant.toString());

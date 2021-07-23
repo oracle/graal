@@ -136,8 +136,8 @@ final class ShadowStack {
             this.profilerStack = profilerStack;
             this.cachedThread = Thread.currentThread();
             this.interpretedLocation = new StackTraceEntry(instrumenter, context, StackTraceEntry.STATE_INTERPRETED);
-            this.compiledLocation = new StackTraceEntry(interpretedLocation, StackTraceEntry.STATE_COMPILED);
-            this.compilationRootLocation = new StackTraceEntry(interpretedLocation, StackTraceEntry.STATE_COMPILATION_ROOT);
+            this.compiledLocation = new StackTraceEntry(interpretedLocation, StackTraceEntry.STATE_LAST_TIER_COMPILED);
+            this.compilationRootLocation = new StackTraceEntry(interpretedLocation, StackTraceEntry.STATE_LAST_TIER_COMPILATION_ROOT);
             this.isAttachedToRootTag = context.hasTag(StandardTags.RootTag.class);
             this.ignoreInlinedRoots = ignoreInlinedRoots;
             this.cachedStack = getStack();

@@ -23,10 +23,15 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
+import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.ALL;
+import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VersionRange.higher;
 import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VersionRange.lower;
+
+import java.util.Arrays;
+import java.util.HashSet;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -78,6 +83,11 @@ public final class Meta implements ContextAccess {
         java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
+        java_lang_Object_array = java_lang_Object.array();
+
+        EspressoError.guarantee(
+                        new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES)).equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
+                        "arrays super interfaces must contain java.lang.Cloneable and java.io.Serializable");
 
         java_lang_Class = knownKlass(Type.java_lang_Class);
         HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
@@ -90,8 +100,6 @@ public final class Meta implements ContextAccess {
         java_lang_Class_forName_String = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
         HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
-
-        java_lang_Object_array = java_lang_Object.array();
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
@@ -311,6 +319,7 @@ public final class Meta implements ContextAccess {
         java_lang_reflect_Constructor_signature = java_lang_reflect_Constructor.requireDeclaredField(Name.signature, Type.java_lang_String);
 
         java_lang_reflect_Method = knownKlass(Type.java_lang_reflect_Method);
+        java_lang_reflect_Method_init = java_lang_reflect_Method.lookupDeclaredMethod(Name._init_, Signature.java_lang_reflect_Method_init_signature);
         HIDDEN_METHOD_KEY = java_lang_reflect_Method.requireHiddenField(Name.HIDDEN_METHOD_KEY);
         HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Method.requireHiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         java_lang_reflect_Method_root = java_lang_reflect_Method.requireDeclaredField(Name.root, Type.java_lang_reflect_Method);
@@ -339,6 +348,8 @@ public final class Meta implements ContextAccess {
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
         java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.requireDeclaredMethod(Name._init_, Signature._void_long_int);
+        java_nio_ByteOrder = knownKlass(Type.java_nio_ByteOrder);
+        java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
@@ -547,6 +558,34 @@ public final class Meta implements ContextAccess {
 
             java_lang_Class_module = null;
         }
+
+        java_lang_Record = diff() //
+                        .klass(VERSION_16_OR_HIGHER, Type.java_lang_Record) //
+                        .notRequiredKlass();
+        java_lang_reflect_RecordComponent = diff() //
+                        .klass(VERSION_16_OR_HIGHER, Type.java_lang_reflect_RecordComponent) //
+                        .notRequiredKlass();
+        java_lang_reflect_RecordComponent_clazz = diff() //
+                        .field(ALL, Name.clazz, Type.java_lang_Class) //
+                        .notRequiredField(java_lang_reflect_RecordComponent);
+        java_lang_reflect_RecordComponent_name = diff() //
+                        .field(ALL, Name.name, Type.java_lang_String) //
+                        .notRequiredField(java_lang_reflect_RecordComponent);
+        java_lang_reflect_RecordComponent_type = diff() //
+                        .field(ALL, Name.type, Type.java_lang_Class) //
+                        .notRequiredField(java_lang_reflect_RecordComponent);
+        java_lang_reflect_RecordComponent_accessor = diff() //
+                        .field(ALL, Name.accessor, Type.java_lang_reflect_Method) //
+                        .notRequiredField(java_lang_reflect_RecordComponent);
+        java_lang_reflect_RecordComponent_signature = diff() //
+                        .field(ALL, Name.signature, Type.java_lang_String) //
+                        .notRequiredField(java_lang_reflect_RecordComponent);
+        java_lang_reflect_RecordComponent_annotations = diff() //
+                        .field(ALL, Name.annotations, Type._byte_array) //
+                        .notRequiredField(java_lang_reflect_RecordComponent);
+        java_lang_reflect_RecordComponent_typeAnnotations = diff() //
+                        .field(ALL, Name.typeAnnotations, Type._byte_array) //
+                        .notRequiredField(java_lang_reflect_RecordComponent);
 
         sun_reflect_MagicAccessorImpl = diff() //
                         .klass(VERSION_8_OR_LOWER, Type.sun_reflect_MagicAccessorImpl) //
@@ -947,6 +986,16 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Module_loader;
     public final Field HIDDEN_MODULE_ENTRY;
 
+    public final ObjectKlass java_lang_Record;
+    public final ObjectKlass java_lang_reflect_RecordComponent;
+    public final Field java_lang_reflect_RecordComponent_clazz;
+    public final Field java_lang_reflect_RecordComponent_name;
+    public final Field java_lang_reflect_RecordComponent_type;
+    public final Field java_lang_reflect_RecordComponent_accessor;
+    public final Field java_lang_reflect_RecordComponent_signature;
+    public final Field java_lang_reflect_RecordComponent_annotations;
+    public final Field java_lang_reflect_RecordComponent_typeAnnotations;
+
     public final ObjectKlass java_lang_AssertionStatusDirectives;
     public final Field java_lang_AssertionStatusDirectives_classes;
     public final Field java_lang_AssertionStatusDirectives_classEnabled;
@@ -968,6 +1017,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass sun_reflect_DelegatingClassLoader;
 
     public final ObjectKlass java_lang_reflect_Method;
+    public final Method java_lang_reflect_Method_init;
     public final Field HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
     public final Field HIDDEN_METHOD_KEY;
     public final Field java_lang_reflect_Method_root;
@@ -1080,6 +1130,8 @@ public final class Meta implements ContextAccess {
     public final Method java_nio_ByteBuffer_wrap;
     public final ObjectKlass java_nio_DirectByteBuffer;
     public final Method java_nio_DirectByteBuffer_init_long_int;
+    public final ObjectKlass java_nio_ByteOrder;
+    public final Field java_nio_ByteOrder_LITTLE_ENDIAN;
 
     public final ObjectKlass java_lang_ThreadGroup;
     public final Method java_lang_ThreadGroup_add;
@@ -1354,6 +1406,10 @@ public final class Meta implements ContextAccess {
         public final Method InvalidArrayIndexException_create_long;
         public final Method InvalidArrayIndexException_create_long_Throwable;
 
+        public final ObjectKlass InvalidBufferOffsetException;
+        public final Method InvalidBufferOffsetException_create_long_long;
+        public final Method InvalidBufferOffsetException_create_long_long_Throwable;
+
         public final ObjectKlass ForeignException;
         public final ObjectKlass ExceptionType;
         public final Field ExceptionType_EXIT;
@@ -1394,6 +1450,10 @@ public final class Meta implements ContextAccess {
             InvalidArrayIndexException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
             InvalidArrayIndexException_create_long = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long);
             InvalidArrayIndexException_create_long_Throwable = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long_Throwable);
+
+            InvalidBufferOffsetException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException);
+            InvalidBufferOffsetException_create_long_long = InvalidBufferOffsetException.requireDeclaredMethod(Name.create, Signature.InvalidBufferOffsetException_long_long);
+            InvalidBufferOffsetException_create_long_long_Throwable = InvalidBufferOffsetException.requireDeclaredMethod(Name.create, Signature.InvalidBufferOffsetException_long_long_Throwable);
 
             ForeignException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
             ExceptionType = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);

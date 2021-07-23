@@ -90,7 +90,7 @@ final class DefaultScope {
             int lastI = 0;
             for (int i = 0; i < slots.size(); i++) {
                 FrameSlot slot = slots.get(i);
-                if (!EngineAccessor.INTEROP.isInteropType(frame.getValue(slot)) || isInternal(slot)) {
+                if (!InteropLibrary.isValidValue(frame.getValue(slot)) || isInternal(slot)) {
                     if (nonNulls == null) {
                         nonNulls = new ArrayList<>(slots.size());
                     }
@@ -343,7 +343,7 @@ final class DefaultScope {
             try {
                 int index = Integer.parseInt(member);
                 if (0 <= index && index < args.length) {
-                    return EngineAccessor.INTEROP.isInteropType(args[index]);
+                    return InteropLibrary.isValidValue(args[index]);
                 } else {
                     return false;
                 }

@@ -12,6 +12,14 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `FrameDescriptor#canMaterialize()`, which returns whether a frame can be materialized.
     * Calls to `Frame#materialize()` will now throw an `UnsupportedOperationException` if the descriptor is marked non-materializable.
 * Added `BytecodeOSRNode` interface to support on-stack replacement (OSR) for bytecode interpreters. OSR can improve start-up performance by switching from interpreted code to compiled code in the middle of execution. It is especially effective for targets with long-running loops, which can get "stuck" running in the interpreter without OSR. Refer to the [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BytecodeOSRNode.html) and the [OSR guide](https://github.com/oracle/graal/blob/master/truffle/docs/OnStackReplacement.md) for more details.
+* Removed support to read language and instrument registrations from `META-INF/truffle` files. Recompiling the TruffleLanguage or TruffleInstrument using the Truffle annotation processor automatically migrates the language or instrument to the new behavior. Languages are already migrated if they were compiled with a version later or equal than 19.3.
+* Added [SourceSectionFilter#includes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.html##includes-com.oracle.truffle.api.nodes.RootNode-com.oracle.truffle.api.source.SourceSection-java.util.Set-).
+* Added [FrameInstance#getCompilationTier](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameInstance.html#getCompilationTier--) and [FrameInstancel#isCompilationRoot](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameInstance.htmll#isCompilationRoot--)
+* Added `InteropLibrary.isValidValue(Object)` and `InteropLibrary.isValidProtocolValue(Object)`.
+* Added `TruffleContext.evalPublic(Node, Source)` and `TruffleContext.evalInternal(Node, Source)` that allow to evaluate sources in an inner context and access values of the inner context safely.
+* Added `TruffleContext.Builder.initializeCreatorContext(boolean)` that allows to disable initialization of the language that created the inner context.
+* Added the ability to share values between contexts. Guest languages can now use values of the polyglot embedding API using host interop. This no longer leads to invalid sharing errors.
+* Added `ReflectionLibrary.getUncached` method.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.

@@ -41,6 +41,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.function.IntFunction;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
@@ -662,6 +663,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return Signatures.parameterCount(getParsedSignature(), false);
     }
 
+    public int getArgumentCount() {
+        return getParameterCount() + (isStatic() ? 0 : 1);
+    }
+
     public static Method getHostReflectiveMethodRoot(StaticObject seed, Meta meta) {
         assert seed.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(seed.getKlass());
         StaticObject curMethod = seed;
@@ -877,7 +882,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (attribute != null) {
             return attribute.getLocalvariableTable();
         }
-        return LocalVariableTable.EMPTY;
+        return LocalVariableTable.EMPTY_LVT;
     }
 
     public LocalVariableTable getLocalVariableTypeTable() {
@@ -885,7 +890,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (attribute != null) {
             return attribute.getLocalvariableTypeTable();
         }
-        return LocalVariableTable.EMPTY;
+        return LocalVariableTable.EMPTY_LVTT;
     }
 
     /**
@@ -1172,6 +1177,73 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return !removedByRedefinition.isValid();
     }
 
+    public StaticObject makeMirror() {
+        Meta meta = getMeta();
+        Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+        StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleParameterAnnotations = getAttribute(Name.RuntimeVisibleParameterAnnotations);
+        StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Name.RuntimeVisibleTypeAnnotations);
+        StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawAnnotationDefault = getAttribute(Name.AnnotationDefault);
+        StaticObject annotationDefault = rawAnnotationDefault != null
+                        ? StaticObject.wrap(rawAnnotationDefault.getData(), meta)
+                        : StaticObject.NULL;
+        final Klass[] rawParameterKlasses = resolveParameterKlasses();
+        StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
+                        getParameterCount(),
+                        new IntFunction<StaticObject>() {
+                            @Override
+                            public StaticObject apply(int j) {
+                                return rawParameterKlasses[j].mirror();
+                            }
+                        });
+
+        final Klass[] rawCheckedExceptions = getCheckedExceptions();
+        StaticObject guestCheckedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int j) {
+                return rawCheckedExceptions[j].mirror();
+            }
+        });
+
+        SignatureAttribute signatureAttribute = (SignatureAttribute) getAttribute(Name.Signature);
+        StaticObject guestGenericSignature = StaticObject.NULL;
+        if (signatureAttribute != null) {
+            String sig = getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
+            guestGenericSignature = meta.toGuestString(sig);
+        }
+
+        StaticObject instance = meta.java_lang_reflect_Method.allocateInstance();
+
+        meta.java_lang_reflect_Method_init.invokeDirect(
+                        /* this */ instance,
+                        /* declaringClass */ getDeclaringKlass().mirror(),
+                        /* name */ getContext().getStrings().intern(getName()),
+                        /* parameterTypes */ parameterTypes,
+                        /* returnType */ resolveReturnKlass().mirror(),
+                        /* checkedExceptions */ guestCheckedExceptions,
+                        /* modifiers */ getMethodModifiers(),
+                        /* slot */ getVTableIndex(),
+                        /* signature */ guestGenericSignature,
+
+                        /* annotations */ runtimeVisibleAnnotations,
+                        /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
+                        /* annotationDefault */ annotationDefault);
+        meta.HIDDEN_METHOD_KEY.setHiddenObject(instance, this);
+        meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        return instance;
+    }
+
     public final class MethodVersion implements MethodRef {
         private final Assumption assumption;
         private final RuntimeConstantPool pool;
@@ -1395,7 +1467,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public boolean hasVariableTable() {
-            return getLocalVariableTable() != LocalVariableTable.EMPTY;
+            return getLocalVariableTable() != LocalVariableTable.EMPTY_LVT;
         }
 
         @Override

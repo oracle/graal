@@ -65,6 +65,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -301,7 +302,8 @@ public class SLTestRunner extends ParentRunner<TestCase> {
                 SLLanguage.installBuiltin(builtin);
             }
 
-            Context.Builder builder = Context.newBuilder().allowExperimentalOptions(true).in(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).out(out);
+            Context.Builder builder = Context.newBuilder().allowExperimentalOptions(true).allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL).in(
+                            new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).out(out);
             for (Map.Entry<String, String> e : testCase.options.entrySet()) {
                 builder.option(e.getKey(), e.getValue());
             }

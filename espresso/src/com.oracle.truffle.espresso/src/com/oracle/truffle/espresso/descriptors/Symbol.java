@@ -226,6 +226,11 @@ public final class Symbol<T> extends ByteSequence {
         // j.l.Module
         public static final Symbol<Name> loader = StaticSymbols.putName("loader");
 
+        // j.l.RecordComponent
+        public static final Symbol<Name> accessor = StaticSymbols.putName("accessor");
+        public static final Symbol<Name> annotations = StaticSymbols.putName("annotations");
+        public static final Symbol<Name> typeAnnotations = StaticSymbols.putName("typeAnnotations");
+
         // j.l.String
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");
         public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
@@ -299,6 +304,9 @@ public final class Symbol<T> extends ByteSequence {
 
         // java.nio.ByteBuffer
         public static final Symbol<Name> wrap = StaticSymbols.putName("wrap");
+
+        // java.nio.ByteOrder
+        public static final Symbol<Name> LITTLE_ENDIAN = StaticSymbols.putName("LITTLE_ENDIAN");
 
         // java.nio.Buffer
         public static final Symbol<Name> address = StaticSymbols.putName("address");
@@ -705,6 +713,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_io_Serializable = StaticSymbols.putType("Ljava/io/Serializable;");
         public static final Symbol<Type> java_nio_ByteBuffer = StaticSymbols.putType("Ljava/nio/ByteBuffer;");
         public static final Symbol<Type> java_nio_DirectByteBuffer = StaticSymbols.putType("Ljava/nio/DirectByteBuffer;");
+        public static final Symbol<Type> java_nio_ByteOrder = StaticSymbols.putType("Ljava/nio/ByteOrder;");
 
         public static final Symbol<Type> java_security_PrivilegedActionException = StaticSymbols.putType("Ljava/security/PrivilegedActionException;");
 
@@ -764,6 +773,10 @@ public final class Symbol<T> extends ByteSequence {
         // Modules
         public static final Symbol<Type> java_lang_Module = StaticSymbols.putType("Ljava/lang/Module;");
 
+        // Record
+        public static final Symbol<Type> java_lang_Record = StaticSymbols.putType("Ljava/lang/Record;");
+        public static final Symbol<Type> java_lang_reflect_RecordComponent = StaticSymbols.putType("Ljava/lang/reflect/RecordComponent;");
+
         // Unsafe Constants (required for 13+)
         public static final Symbol<Type> jdk_internal_misc_UnsafeConstants = StaticSymbols.putType("Ljdk/internal/misc/UnsafeConstants;");
 
@@ -813,6 +826,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnsupportedTypeException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/InvalidArrayIndexException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ForeignException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ForeignException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ExceptionType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;");
     }
@@ -912,6 +927,19 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> java_util_Iterator = StaticSymbols.putSignature(Type.java_util_Iterator);
         public static final Symbol<Signature> java_util_Set = StaticSymbols.putSignature(Type.java_util_Set);
 
+        public static final Symbol<Signature> java_lang_reflect_Method_init_signature = StaticSymbols.putSignature(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* name */ Type.java_lang_String,
+                        /* parameterTypes */ Type.java_lang_Class_array,
+                        /* returnType */ Type.java_lang_Class,
+                        /* checkedExceptions */ Type.java_lang_Class_array,
+                        /* modifiers */ Type._int,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array,
+                        /* parameterAnnotations */ Type._byte_array,
+                        /* annotationDefault */ Type._byte_array);
+
         public static final Symbol<Signature> MethodType_Class_Class = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Class_array);
         public static final Symbol<Signature> MethodType_String_ClassLoader = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_String, Type.java_lang_ClassLoader);
 
@@ -988,6 +1016,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> InvalidArrayIndexException_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long);
         public static final Symbol<Signature> InvalidArrayIndexException_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long,
                         Type.java_lang_Throwable);
+
+        public static final Symbol<Signature> InvalidBufferOffsetException_long_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException, Type._long,
+                        Type._long);
+        public static final Symbol<Signature> InvalidBufferOffsetException_long_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException,
+                        Type._long, Type._long,
+                        Type.java_lang_Throwable);
+
         public static final Symbol<Signature> _void_sun_misc_Signal = StaticSymbols.putSignature(Type._void, Type.sun_misc_Signal);
         public static final Symbol<Signature> _void_jdk_internal_misc_Signal = StaticSymbols.putSignature(Type._void, Type.jdk_internal_misc_Signal);
 

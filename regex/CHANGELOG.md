@@ -5,6 +5,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 ## Version 21.3.0
 
 * Support for case-insensitive matching in Ruby regular expressions.
+* Added Regexp option IgnoreAtomicGroups for treating atomic groups as ordinary groups.
 
 ## Version 21.2.0
 

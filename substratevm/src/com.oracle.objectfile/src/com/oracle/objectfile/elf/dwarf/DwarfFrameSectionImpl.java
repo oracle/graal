@@ -121,7 +121,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             pos += putInt(0, scratch, 0);
             pos += putInt(DwarfDebugInfo.DW_CFA_CIE_id, scratch, 0);
             pos += putByte(DwarfDebugInfo.DW_CFA_CIE_version, scratch, 0);
-            pos += putAsciiStringBytes("", scratch, 0);
+            pos += putByte((byte) 0, scratch, 0);
             pos += putULEB(1, scratch, 0);
             pos += putSLEB(-8, scratch, 0);
             pos += putByte((byte) getReturnPCIdx(), scratch, 0);
@@ -142,7 +142,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             pos = putInt(0, buffer, pos);
             pos = putInt(DwarfDebugInfo.DW_CFA_CIE_id, buffer, pos);
             pos = putByte(DwarfDebugInfo.DW_CFA_CIE_version, buffer, pos);
-            pos = putAsciiStringBytes("", buffer, pos);
+            pos = putByte((byte) 0, buffer, pos);
             pos = putULEB(1, buffer, pos);
             pos = putSLEB(-8, buffer, pos);
             pos = putByte((byte) getReturnPCIdx(), buffer, pos);

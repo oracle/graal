@@ -1615,6 +1615,18 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
+        public Value emitMathSignum(Value input) {
+            LLVMValueRef val = getVal(input);
+            LLVMTypeRef type = typeOf(val);
+            assert LLVMIRBuilder.isFloatType(type) || LLVMIRBuilder.isDoubleType(type);
+
+            LLVMValueRef zero = LLVMIRBuilder.isFloatType(type) ? builder.constantFloat(0.0f) : builder.constantDouble(0.0d);
+            LLVMValueRef one = LLVMIRBuilder.isFloatType(type) ? builder.constantFloat(1.0f) : builder.constantDouble(1.0d);
+            LLVMValueRef signum = builder.buildSelect(builder.buildCompare(Condition.EQ, val, zero, true), val, builder.buildCopysign(one, val));
+            return new LLVMVariable(signum);
+        }
+
+        @Override
         public Value emitMathLog(Value input, boolean base10) {
             LLVMValueRef value = getVal(input);
             LLVMValueRef log = base10 ? builder.buildLog10(value) : builder.buildLog(value);

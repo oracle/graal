@@ -58,6 +58,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.Attributes;
@@ -347,6 +348,27 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             }
         } finally {
             deleteDir(tempDir1);
+        }
+    }
+
+    @Test
+    public void testResourceBundle() throws IOException {
+        setupEnv();
+        final Class<?> hostClass = HostClassLoadingTestClass4.class;
+        String newClassName = hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        try {
+            Files.write(tempDir.resolve("bundle.properties"), Collections.singleton("key=value"));
+            Path jar = createJar(tempDir);
+            try {
+                languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar.toString()));
+                Object testClass = languageEnv.lookupHostSymbol(newClassName);
+                assertEquals("value", execute(read(testClass, "testMethod"), "bundle", "key"));
+            } finally {
+                Files.deleteIfExists(jar);
+            }
+        } finally {
+            deleteDir(tempDir);
         }
     }
 

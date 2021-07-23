@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
+import org.graalvm.compiler.nodes.calc.CopySignNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.calc.MaxNode;
 import org.graalvm.compiler.nodes.calc.MinNode;
@@ -156,6 +157,21 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             });
         }
         registerMinMax(r);
+
+        r.register2("copySign", float.class, float.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
+                b.addPush(JavaKind.Float, new CopySignNode(magnitude, sign));
+                return true;
+            }
+        });
+        r.register2("copySign", double.class, double.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
+                b.addPush(JavaKind.Double, new CopySignNode(magnitude, sign));
+                return true;
+            }
+        });
     }
 
     private static void registerFMA(Registration r) {

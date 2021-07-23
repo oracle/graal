@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -333,6 +333,22 @@ public interface Platform {
          * @since 21.0
          */
         public IOS_AARCH64() {
+        }
+    }
+
+    /**
+     * Supported leaf platform: iOS on x86 64-bit.
+     *
+     * @since 21.3
+     */
+    final class IOS_AMD64 implements IOS, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 21.3
+         */
+        public IOS_AMD64() {
         }
     }
 

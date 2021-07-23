@@ -517,6 +517,9 @@ public class InputFilterTest extends InstrumentationEventTest {
         execute(code);
         binding.dispose();
 
+        // made the transient issue GR-32632 always occur before it was fixed.
+        System.gc();
+
         // we execute again to let the instrumentation wrappers be cleaned up
         execute(code);
 

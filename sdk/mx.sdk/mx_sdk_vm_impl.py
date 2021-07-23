@@ -455,12 +455,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _incl_list.append((base_dir + '/Contents/Info.plist', plist_src))
                         _excl_list.append(orig_info_plist)
                         break
-                libjli_symlink = {
-                    'source_type': 'link',
-                    'path': '../Home/jre/lib/jli/libjli.dylib' if _src_jdk_version == 8 else '../Home/lib/jli/libjli.dylib'
-                }
-                _incl_list.append((base_dir + '/Contents/MacOS/libjli.dylib', libjli_symlink))
-                _excl_list.append(join(_src_jdk_dir, 'Contents', 'MacOS', 'libjli.dylib'))
+                if _src_jdk_version != 8:
+                    # on JDK>8, we copy the jimage into Contents/Home so we need to separately
+                    # add Contents/MacOS
+                    _incl_list.append((base_dir + '/Contents/MacOS', {
+                        'source_type': 'file',
+                        'path': join(_src_jdk_dir, 'Contents', 'MacOS')
+                    }))
             return _incl_list, _excl_list
 
         svm_component = get_component('svm', stage1=True)

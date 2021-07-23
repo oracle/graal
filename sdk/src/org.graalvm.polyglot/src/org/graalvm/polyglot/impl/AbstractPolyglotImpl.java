@@ -501,7 +501,8 @@ public abstract class AbstractPolyglotImpl {
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader);
+                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
+                        boolean allowValueSharing);
 
         public abstract String getImplementationName(Object receiver);
 
@@ -622,7 +623,7 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Object toGuestValue(Object internalContext, Object parentNode, Object hostValue);
+        public abstract Object toGuestValue(Object internalContext, Object hostValue);
 
         public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
 
@@ -710,13 +711,11 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isHostProxy(Object value);
 
-        public abstract Object migrateHostObject(Object newContext, Object value);
-
-        public abstract Object migrateHostProxy(Object newContext, Object value);
-
         public abstract Error toHostResourceError(Throwable hostException);
 
         public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
+
+        public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
     }
 
