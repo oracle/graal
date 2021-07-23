@@ -368,6 +368,14 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         }
     }
 
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        FeatureImpl.AfterCompilationAccessImpl config = (FeatureImpl.AfterCompilationAccessImpl) access;
+
+        graalObjectReplacer.updateSubstrateDataAfterCompilation(config.getUniverse(), config.getProviders().getConstantFieldProvider());
+        graalObjectReplacer.registerImmutableObjects(access);
+    }
+
     @SuppressWarnings("deprecation")
     private void registerUnsafeAccess(DuringAnalysisAccess access,
                     Class<? extends com.oracle.truffle.api.nodes.Node> clazz) {
