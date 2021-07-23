@@ -373,7 +373,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 case "java":
                     // Espresso doesn't provide methods as executable values.
                     // It can only invoke methods from the declaring class or receiver.
-                    return Workload.createInvoke(evalSource, "main", ProxyArray.fromArray(/* empty */));
+                    return Workload.createInvoke(evalSource, "main", ProxyArray.fromArray());
                 default:
                     // Fallback for other languages: Look for 'memberName' in global scope.
                     result = context.getBindings(languageId).getMember(memberName);

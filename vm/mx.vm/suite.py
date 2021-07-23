@@ -131,6 +131,19 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
         },
+        "nfi-native" : {
+            "subDir" : "benchmarks",
+            "native" : "shared_lib",
+            "deliverable" : "microbench",
+            "buildDependencies" : [
+                "truffle:TRUFFLE_NFI_GRAALVM_SUPPORT",
+            ],
+            "cflags" : [
+                "-I<path:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT>/include",
+            ],
+            "testProject" : True,
+            "defaultBuild": False,
+        },
     },
 
     "libraries" : {
@@ -239,7 +252,13 @@ suite = {
                     # "file:benchmarks/warmup/*.rb",
                     # "file:benchmarks/warmup/*.py",
                     "extracted-dependency:WARMUP_BENCHMARKS/*"
-                ]
+                ],
+                "./nfi/": [
+                    "file:benchmarks/nfi/*.pmh",
+                ],
+                "./nfi-native/": [
+                    "dependency:nfi-native",
+                ],
             },
             "defaultBuild": False,
         },
