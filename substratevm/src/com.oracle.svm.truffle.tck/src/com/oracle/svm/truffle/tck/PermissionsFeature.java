@@ -692,7 +692,7 @@ public class PermissionsFeature implements Feature {
         private final ImageClassLoader imageClassLoader;
 
         SafeServiceLoaderRecognizer(BigBang bb, ImageClassLoader imageClassLoader) {
-            AnalysisType serviceLoaderIterator = bb.forClass("java.util.ServiceLoader$LazyIterator");
+            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType("java.util.ServiceLoader$LazyIterator");
             Set<AnalysisMethod> methods = findMethods(bb, serviceLoaderIterator, (m) -> m.getName().equals("nextService"));
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup ServiceLoader$LazyIterator.nextService().");
