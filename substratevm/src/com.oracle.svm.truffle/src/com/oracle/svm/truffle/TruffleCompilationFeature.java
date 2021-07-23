@@ -225,6 +225,11 @@ public class TruffleCompilationFeature implements com.oracle.svm.core.graal.Graa
     }
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return Truffle.getRuntime() instanceof SubstrateTruffleRuntime;
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime,
                         "TruffleCompilationFeature requires SubstrateTruffleRuntime");
