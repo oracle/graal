@@ -110,8 +110,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
- * {@link TruffleCompilationFeature}'s dependency), then {@link TruffleRuntime} <b>must</b> be set to
- * the {@link DefaultTruffleRuntime}.
+ * {@link TruffleCompilationFeature}'s dependency), then {@link TruffleRuntime} <b>must</b> be set
+ * to the {@link DefaultTruffleRuntime}.
  */
 public final class TruffleBaseFeature implements com.oracle.svm.core.graal.GraalFeature {
 

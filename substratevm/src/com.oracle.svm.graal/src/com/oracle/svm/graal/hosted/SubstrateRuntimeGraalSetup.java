@@ -64,9 +64,9 @@ public class SubstrateRuntimeGraalSetup implements RuntimeGraalSetup {
 
     @Override
     public SharedRuntimeConfigurationBuilder createRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
-                                                                               ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
-                                                                               NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
+                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
+                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
         return new SubstrateRuntimeConfigurationBuilder(options, hostVM, aUniverse, metaAccess, originalReflectionProvider, backendProvider, nativeLibraries, classInitializationSupport,
-                loopsDataProvider);
+                        loopsDataProvider);
     }
 }
