@@ -915,7 +915,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI'],
-    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI', 'truffle:TRUFFLE_NFI_PANAMA'],
     installable=False,
     stability="supported",
 ))
