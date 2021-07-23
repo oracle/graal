@@ -71,9 +71,23 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.*;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.RuntimeNameMapper;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
+import org.graalvm.polyglot.ResourceLimitEvent;
+import org.graalvm.polyglot.ResourceLimits;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -489,7 +503,7 @@ public abstract class AbstractPolyglotImpl {
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
-                        RuntimeNameMapper nameMapper);
+                        RuntimeNameMapper nameMapper, boolean allowValueSharing);
 
         public abstract String getImplementationName(Object receiver);
 
@@ -610,7 +624,7 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Object toGuestValue(Object internalContext, Object parentNode, Object hostValue);
+        public abstract Object toGuestValue(Object internalContext, Object hostValue);
 
         public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
 
@@ -698,13 +712,11 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isHostProxy(Object value);
 
-        public abstract Object migrateHostObject(Object newContext, Object value);
-
-        public abstract Object migrateHostProxy(Object newContext, Object value);
-
         public abstract Error toHostResourceError(Throwable hostException);
 
         public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
+
+        public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
     }
 

@@ -234,7 +234,7 @@ final class HostInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     private static Object asTruffleObjectProxy(Object obj, HostContext context) {
-        Object unboxed = context.language.access.toGuestValue(context.internalContext, null, obj);
+        Object unboxed = context.language.access.toGuestValue(context.internalContext, obj);
         if (unboxed != null) {
             return unboxed;
         }

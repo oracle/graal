@@ -240,6 +240,8 @@ meth public int hashCode()
 meth public java.lang.Object enter()
  anno 0 java.lang.Deprecated()
 meth public java.lang.Object enter(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.Object evalInternal(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.source.Source)
+meth public java.lang.Object evalPublic(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.source.Source)
 meth public java.util.concurrent.Future<java.lang.Void> pause()
 meth public void close()
 meth public void closeCancelled(com.oracle.truffle.api.nodes.Node,java.lang.String)
@@ -249,14 +251,15 @@ meth public void leave(java.lang.Object)
  anno 0 java.lang.Deprecated()
 meth public void resume(java.util.concurrent.Future<java.lang.Void>)
 supr java.lang.Object
-hfds CONTEXT_ASSERT_STACK,EMPTY,closeable,polyglotContext
+hfds CONTEXT_ASSERT_STACK,EMPTY,creator,polyglotContext
 
 CLSS public final com.oracle.truffle.api.TruffleContext$Builder
  outer com.oracle.truffle.api.TruffleContext
 meth public com.oracle.truffle.api.TruffleContext build()
 meth public com.oracle.truffle.api.TruffleContext$Builder config(java.lang.String,java.lang.Object)
+meth public com.oracle.truffle.api.TruffleContext$Builder initializeCreatorContext(boolean)
 supr java.lang.Object
-hfds config,sourceEnvironment
+hfds config,initializeCreatorContext,sourceEnvironment
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleException
  anno 0 java.lang.Deprecated()
@@ -786,6 +789,8 @@ meth public abstract boolean isVirtualFrame()
 meth public abstract com.oracle.truffle.api.CallTarget getCallTarget()
 meth public abstract com.oracle.truffle.api.frame.Frame getFrame(com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
 meth public abstract com.oracle.truffle.api.nodes.Node getCallNode()
+meth public boolean isCompilationRoot()
+meth public int getCompilationTier()
 
 CLSS public final static !enum com.oracle.truffle.api.frame.FrameInstance$FrameAccess
  outer com.oracle.truffle.api.frame.FrameInstance

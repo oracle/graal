@@ -40,7 +40,7 @@ public final class CheckCastNode extends QuickNode {
         super(top, callerBCI);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
-        this.typeCheckNode = TypeCheckNodeGen.create(typeToCheck.getContext());
+        this.typeCheckNode = TypeCheckNodeGen.create();
     }
 
     @Override

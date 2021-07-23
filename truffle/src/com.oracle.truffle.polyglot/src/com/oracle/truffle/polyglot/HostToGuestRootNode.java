@@ -107,7 +107,7 @@ abstract class HostToGuestRootNode extends RootNode {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     seenEnter = true;
                 }
-                prev = engine.enter(context, true, this, true, false);
+                prev = engine.enterCached(context, true);
             } else {
                 if (!seenNonEnter) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -130,7 +130,7 @@ abstract class HostToGuestRootNode extends RootNode {
         } finally {
             if (needsEnter) {
                 try {
-                    engine.leave(prev, context, true);
+                    engine.leaveCached(prev, context);
                 } catch (Throwable e) {
                     throw handleException(languageContext, e, false, RuntimeException.class);
                 }

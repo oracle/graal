@@ -39,7 +39,7 @@ public final class InstanceOfNode extends QuickNode {
         super(top, curBCI);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
-        this.typeCheckNode = TypeCheckNodeGen.create(typeToCheck.getContext());
+        this.typeCheckNode = TypeCheckNodeGen.create();
     }
 
     @Override
