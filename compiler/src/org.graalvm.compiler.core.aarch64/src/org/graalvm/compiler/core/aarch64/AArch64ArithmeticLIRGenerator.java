@@ -384,8 +384,13 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    protected Variable emitBinary(ValueKind<?> resultKind, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
+    protected Variable emitBinary(LIRKind resultKind, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
         Variable result = getLIRGen().newVariable(resultKind);
+        emitBinary(result, op, commutative, a, b);
+        return result;
+    }
+
+    protected void emitBinary(AllocatableValue result, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
         if (isValidBinaryConstant(op, b)) {
             emitBinaryConst(result, op, asAllocatable(a), asJavaConstant(b));
         } else if (commutative && isValidBinaryConstant(op, a)) {
@@ -393,10 +398,9 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         } else {
             emitBinaryVar(result, op, asAllocatable(a), asAllocatable(b));
         }
-        return result;
     }
 
-    private void emitBinaryVar(Variable result, AArch64ArithmeticOp op, AllocatableValue a, AllocatableValue b) {
+    private void emitBinaryVar(AllocatableValue result, AArch64ArithmeticOp op, AllocatableValue a, AllocatableValue b) {
         AllocatableValue x = moveSp(a);
         AllocatableValue y = moveSp(b);
         switch (op) {
@@ -410,7 +414,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    public void emitBinaryConst(Variable result, AArch64ArithmeticOp op, AllocatableValue a, JavaConstant b) {
+    public void emitBinaryConst(AllocatableValue result, AArch64ArithmeticOp op, AllocatableValue a, JavaConstant b) {
         AllocatableValue x = moveSp(a);
         getLIRGen().append(new AArch64ArithmeticOp.BinaryConstOp(op, result, x, b));
     }

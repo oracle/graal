@@ -476,7 +476,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     private Variable emitCondMoveOp(Condition condition, Value trueValue, Value falseValue, boolean isFloatComparison, boolean unorderedIsTrue, boolean isSelfEqualsCheck) {
         boolean isParityCheckNecessary = isFloatComparison && unorderedIsTrue != AMD64ControlFlow.trueOnUnordered(condition);
-        Variable result = newVariable(trueValue.getValueKind());
+        Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
         if (!isParityCheckNecessary && isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0)) {
             if (isFloatComparison) {
                 append(new FloatCondSetOp(result, condition));

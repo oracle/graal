@@ -33,7 +33,9 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.function.Function;
 
+import jdk.vm.ci.meta.PlatformKind;
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
@@ -417,5 +419,43 @@ public class AArch64ControlFlow {
             isFarBranch = !crb.labelWithinRange(instruction, label, maxLIRDistance);
         }
         return isFarBranch;
+    }
+
+    @Opcode("CMOV")
+    public static class ASIMDCondMoveOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<ASIMDCondMoveOp> TYPE = LIRInstructionClass.create(ASIMDCondMoveOp.class);
+
+        @Def({REG}) AllocatableValue result;
+        /*
+         * For each element, the condition reg is expected to contain either all ones or all zeros
+         * to pick between trueVal and falseVal.
+         */
+        @Use({REG}) AllocatableValue condition;
+        /*
+         * trueVal & falseVal cannot be assigned the same reg as the result reg, as condition is
+         * moved into the result reg before trueVal & falseVal are used.
+         */
+        @Alive({REG}) AllocatableValue trueVal;
+        @Alive({REG}) AllocatableValue falseVal;
+
+        public ASIMDCondMoveOp(AllocatableValue result, AllocatableValue condition, AllocatableValue trueVal, AllocatableValue falseVal) {
+            super(TYPE);
+            PlatformKind conditionKind = condition.getPlatformKind();
+            PlatformKind trueKind = trueVal.getPlatformKind();
+            PlatformKind falseKind = falseVal.getPlatformKind();
+            assert conditionKind.getSizeInBytes() == trueKind.getSizeInBytes() && conditionKind.getVectorLength() == trueKind.getVectorLength() : condition + " " + trueVal;
+            assert trueKind == falseKind : trueVal + " " + falseVal;
+            this.result = result;
+            this.condition = condition;
+            this.trueVal = trueVal;
+            this.falseVal = falseVal;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            AArch64ASIMDAssembler.ASIMDSize size = AArch64ASIMDAssembler.ASIMDSize.fromVectorKind(result.getPlatformKind());
+            masm.neon.moveVV(size, asRegister(result), asRegister(condition));
+            masm.neon.bslVVV(size, asRegister(result), asRegister(trueVal), asRegister(falseVal));
+        }
     }
 }

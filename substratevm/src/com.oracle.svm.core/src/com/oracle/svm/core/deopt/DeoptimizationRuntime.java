@@ -26,6 +26,7 @@ package com.oracle.svm.core.deopt;
 
 import java.util.Objects;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
@@ -100,7 +101,10 @@ public class DeoptimizationRuntime {
         log.string("    debugId: ").signed(debugId).string("  speculation: ").string(Objects.toString(speculation)).newline();
 
         NodeSourcePosition sourcePosition = DeoptimizationSourcePositionDecoder.decode(debugId, ip);
-        if (sourcePosition != null) {
+        if (sourcePosition == null || !SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
+            log.string("    To see the stack trace that triggered deoptimization, build the native image with -H:+IncludeNodeSourcePositions and run with --engine.NodeSourcePositions");
+            log.newline();
+        } else {
             log.string("    stack trace that triggered deoptimization:").newline();
             NodeSourcePosition cur = sourcePosition;
             while (cur != null) {
