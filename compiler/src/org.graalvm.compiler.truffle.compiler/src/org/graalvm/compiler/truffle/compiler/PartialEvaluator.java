@@ -32,11 +32,13 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Maxim
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintExpansionHistogram;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
 
 import java.net.URI;
 import java.nio.Buffer;
 import java.util.Objects;
 
+import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -194,7 +196,8 @@ public abstract class PartialEvaluator {
         boolean needSourcePositions = options.get(NodeSourcePositions) ||
                         instrumentationCfg.instrumentBranches ||
                         instrumentationCfg.instrumentBoundaries ||
-                        !options.get(TracePerformanceWarnings).isEmpty();
+                        !options.get(TracePerformanceWarnings).isEmpty() ||
+                        (TruffleOptions.AOT && options.get(TraceTransferToInterpreter));
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         options.get(ExcludeAssertions));
     }

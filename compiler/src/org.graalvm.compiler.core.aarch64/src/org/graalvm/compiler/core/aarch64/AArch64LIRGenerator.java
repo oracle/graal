@@ -55,7 +55,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddLSEOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ByteSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Compare;
@@ -258,7 +258,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
         assert ((AArch64Kind) left.getPlatformKind()).isInteger() && left.getPlatformKind() == right.getPlatformKind();
-        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(LIRKind.combine(left, right), AArch64ArithmeticOp.ANDS, true, left, right);
+        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
         append(new AArch64ControlFlow.BranchOp(ConditionFlag.EQ, trueDestination, falseDestination, trueSuccessorProbability));
     }
 
@@ -288,7 +288,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         boolean finalUnorderedIsTrue = mirrored ? !unorderedIsTrue : unorderedIsTrue;
         ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, finalUnorderedIsTrue);
-        Variable result = newVariable(trueValue.getValueKind());
+        Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
 
         if (isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0)) {
             append(new CondSetOp(result, cmpCondition));
@@ -556,8 +556,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         assert ((AArch64Kind) left.getPlatformKind()).isInteger() && ((AArch64Kind) right.getPlatformKind()).isInteger();
         assert ((AArch64Kind) trueValue.getPlatformKind()).isInteger() && ((AArch64Kind) falseValue.getPlatformKind()).isInteger();
-        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(left.getValueKind(), AArch64ArithmeticOp.ANDS, true, left, right);
-        Variable result = newVariable(trueValue.getValueKind());
+        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
+        Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
 
         if (isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0)) {
             append(new CondSetOp(result, ConditionFlag.EQ));
@@ -587,7 +587,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitByteSwap(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
-        append(new AArch64ByteSwapOp(result, input));
+        append(new AArch64ByteSwap.ByteSwapOp(result, asAllocatable(input)));
         return result;
     }
 
