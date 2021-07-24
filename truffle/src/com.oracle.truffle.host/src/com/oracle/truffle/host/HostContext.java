@@ -171,7 +171,7 @@ final class HostContext {
             className = nameMapper.getClass(className.substring(0, className.length() - 2)) + "[]";
         }
         else
-            nameMapper.getClass(className);
+            className = nameMapper.getClass(className);
         validateClass(className);
         if (className.endsWith("[]")) {
             Class<?> componentType = findClass(className.substring(0, className.length() - 2));
