@@ -266,6 +266,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
 
+        /* The classes below initialize the j2pkcs11 native library in their class initializer */
+        rci.rerunInitialization(clazz(access, "sun.security.pkcs11.wrapper.PKCS11"), "for substitutions");
+        rci.rerunInitialization(clazz(access, "sun.security.pkcs11.Secmod"), "for substitutions");
+
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
          * gets the value of the -Djavax.net.ssl.trustStore and -Djavax.net.ssl.trustStorePassword
@@ -321,6 +325,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                 PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
             }
         }
+
+        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_pkcs11");
+        access.registerReachabilityHandler(SecurityServicesFeature::registerSunPKCS11Config, clazz(access, "sun.security.pkcs11.SunPKCS11"));
     }
 
     private void addManuallyConfiguredUsedProviders(DuringSetupAccess access) {
@@ -332,6 +339,113 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                 trace("Marked provider %s as used", className);
                 manuallyMarkedUsedProviderClassNames.add(className);
             }
+        }
+    }
+
+    private static void registerSunPKCS11Config(BeforeAnalysisAccess a) {
+        /* We statically link j2pkcs11 thus we classify it as builtIn library */
+        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
+        nativeLibraries.addStaticJniLibrary("j2pkcs11");
+
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("j2pkcs11");
+
+        registerForThrowNew(a,
+                        "java.lang.OutOfMemoryError",
+                        "java.lang.NullPointerException",
+                        "java.io.IOException",
+                        "sun.security.pkcs11.wrapper.PKCS11RuntimeException");
+
+        JNIRuntimeAccess.register(java.lang.String.class);
+
+        JNIRuntimeAccess.register(java.lang.Object.class);
+        JNIRuntimeAccess.register(java.lang.Object[].class);
+        JNIRuntimeAccess.register(constructor(a, "java.lang.Object"));
+        JNIRuntimeAccess.register(method(a, "java.lang.Object", "getClass"));
+
+        JNIRuntimeAccess.register(java.lang.Class.class);
+        JNIRuntimeAccess.register(method(a, "java.lang.Class", "getName"));
+
+        JNIRuntimeAccess.register(byte[].class);
+        JNIRuntimeAccess.register(boolean[].class);
+        JNIRuntimeAccess.register(char[].class);
+        JNIRuntimeAccess.register(int[].class);
+        JNIRuntimeAccess.register(long[].class);
+
+        JNIRuntimeAccess.register(java.lang.Boolean.class);
+        JNIRuntimeAccess.register(constructor(a, "java.lang.Boolean", boolean.class));
+        JNIRuntimeAccess.register(method(a, "java.lang.Boolean", "booleanValue"));
+
+        JNIRuntimeAccess.register(java.lang.Byte.class);
+        JNIRuntimeAccess.register(constructor(a, "java.lang.Byte", byte.class));
+        JNIRuntimeAccess.register(method(a, "java.lang.Byte", "byteValue"));
+
+        JNIRuntimeAccess.register(java.lang.Integer.class);
+        JNIRuntimeAccess.register(constructor(a, "java.lang.Integer", int.class));
+        JNIRuntimeAccess.register(method(a, "java.lang.Integer", "intValue"));
+
+        JNIRuntimeAccess.register(java.lang.Long.class);
+        JNIRuntimeAccess.register(constructor(a, "java.lang.Long", long.class));
+        JNIRuntimeAccess.register(method(a, "java.lang.Long", "longValue"));
+
+        JNIRuntimeAccess.register(java.lang.Character.class);
+        JNIRuntimeAccess.register(constructor(a, "java.lang.Character", char.class));
+        JNIRuntimeAccess.register(method(a, "java.lang.Character", "charValue"));
+
+        JNIRuntimeAccess.register(constructor(a, "java.util.ArrayList"));
+        JNIRuntimeAccess.register(method(a, "java.util.ArrayList", "add", Object.class));
+        JNIRuntimeAccess.register(constructor(a, "sun.security.pkcs11.Secmod$Module", String.class, String.class, String.class, int.class, int.class));
+        JNIRuntimeAccess.register(fields(a, "sun.security.pkcs11.wrapper.PKCS11", "pNativeData"));
+
+        registerAll(clazz(a, "sun.security.pkcs11.wrapper.PKCS11Exception"));
+
+        registerAll(
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_AES_CTR_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_ATTRIBUTE"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_CCM_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_CREATEMUTEX"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_C_INITIALIZE_ARGS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_DATE"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_DESTROYMUTEX"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_ECDH1_DERIVE_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_ECDH2_DERIVE_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_GCM_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_INFO"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_LOCKMUTEX"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_MECHANISM"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_MECHANISM_INFO"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_NOTIFY"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_PBE_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_PKCS5_PBKD2_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_RSA_PKCS_OAEP_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_RSA_PKCS_PSS_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_SESSION_INFO"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_SLOT_INFO"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_SSL3_KEY_MAT_OUT"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_SSL3_KEY_MAT_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_SSL3_MASTER_KEY_DERIVE_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_SSL3_RANDOM_DATA"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_TLS12_KEY_MAT_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_TLS12_MASTER_KEY_DERIVE_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_TLS_MAC_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_TLS_PRF_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_TOKEN_INFO"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_UNLOCKMUTEX"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_VERSION"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_X9_42_DH1_DERIVE_PARAMS"),
+                        clazz(a, "sun.security.pkcs11.wrapper.CK_X9_42_DH2_DERIVE_PARAMS"));
+    }
+
+    private static void registerAll(Class<?>... classes) {
+        JNIRuntimeAccess.register(classes);
+        for (Class<?> clazz : classes) {
+            JNIRuntimeAccess.register(clazz.getDeclaredConstructors());
+            for (Method m : clazz.getDeclaredMethods()) {
+                if (!"toString".equals(m.getName())) {
+                    JNIRuntimeAccess.register(m);
+                }
+            }
+            JNIRuntimeAccess.register(clazz.getDeclaredFields());
+            registerAll(clazz.getDeclaredClasses());
         }
     }
 
