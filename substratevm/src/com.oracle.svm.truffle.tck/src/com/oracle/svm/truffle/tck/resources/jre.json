@@ -265,6 +265,11 @@
       {
         "name" : "checkPermission",
         "parameterTypes" : []
+      },
+      {
+        "name" : "getLogManager",
+        "justification" : "substituted method has hook to install shutdown hook.",
+        "parameterTypes" : []
       }
     ]
   },
