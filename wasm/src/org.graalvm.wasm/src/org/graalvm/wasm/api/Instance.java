@@ -159,26 +159,6 @@ public class Instance extends Dictionary {
         return importModules;
     }
 
-    private static boolean isMemory(InteropLibrary lib, Object memory) throws UnknownIdentifierException, UnsupportedMessageException {
-        if (!lib.isMemberReadable(memory, "descriptor")) {
-            return false;
-        }
-        final Object descriptor = lib.readMember(memory, "descriptor");
-        if (!(lib.isMemberReadable(descriptor, "initial") && lib.isNumber(lib.readMember(descriptor, "initial")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(descriptor, "maximum") && lib.isNumber(lib.readMember(descriptor, "maximum")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(memory, "grow") && lib.isExecutable(lib.readMember(memory, "grow")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(memory, "buffer"))) {
-            return false;
-        }
-        return true;
-    }
-
     private static boolean isGlobal(InteropLibrary lib, Object table) throws UnknownIdentifierException, UnsupportedMessageException {
         if (!lib.isMemberReadable(table, "descriptor")) {
             return false;
