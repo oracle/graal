@@ -49,7 +49,7 @@ public class LLVMAsForeignLibraryDefaults {
 
     }
 
-    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = byte[].class, useForAOTPriority = 1)
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = byte[].class, useForAOT = true, useForAOTPriority = 1)
     static class ArrayAsForeignLibrary {
         // the inherited isForeign returns false
     }

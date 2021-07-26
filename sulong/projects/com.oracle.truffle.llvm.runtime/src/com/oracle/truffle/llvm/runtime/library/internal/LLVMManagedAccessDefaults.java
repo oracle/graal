@@ -180,8 +180,8 @@ abstract class LLVMManagedAccessDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = byte[].class, useForAOTPriority = 1)
-    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = byte[].class, useForAOTPriority = 2)
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = byte[].class, useForAOT = false)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = byte[].class, useForAOT = false)
     static class VirtualAlloc {
 
         private static int checkOffset(long offset) throws IndexOutOfBoundsException {
