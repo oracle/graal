@@ -114,6 +114,9 @@ final class DefaultInliningPolicy implements InliningPolicy {
         final PriorityQueue<CallNode> inlineQueue = getQueue(tree, CallNode.State.Expanded);
         CallNode candidate;
         while ((candidate = inlineQueue.poll()) != null) {
+            if (!InliningPolicy.acceptForInline(candidate, options)) {
+                continue;
+            }
             if (candidate.isTrivial()) {
                 candidate.inline();
                 continue;
