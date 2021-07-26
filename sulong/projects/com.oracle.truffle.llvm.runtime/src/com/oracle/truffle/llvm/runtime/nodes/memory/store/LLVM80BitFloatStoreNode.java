@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -95,9 +96,10 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, LLVM80BitFloat value,
-                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             byte[] bytes = value.getBytes();
             assert bytes.length == LLVM80BitFloat.BYTE_WIDTH;
             long curOffset = address.getOffset() + offset;
@@ -126,6 +128,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
     // TODO (fredmorcos) When GR-26485 is fixed, use limit = "3" here.
     @Specialization
     @ExplodeLoop
+    @GenerateAOT.Exclude
     protected static void doForeign(LLVMManagedPointer address, LLVM80BitFloat value,
                     // TODO (fredmorcos) When GR-26485 is fixed, use
                     // @CachedLibrary("address.getObject()") here.

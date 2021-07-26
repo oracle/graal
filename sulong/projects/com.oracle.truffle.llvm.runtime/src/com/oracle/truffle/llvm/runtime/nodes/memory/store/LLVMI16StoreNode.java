@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -75,9 +76,10 @@ public abstract class LLVMI16StoreNode extends LLVMStoreNode {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, short value,
-                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeI16(address.getObject(), address.getOffset() + offset, value);
         }
     }
@@ -96,9 +98,10 @@ public abstract class LLVMI16StoreNode extends LLVMStoreNode {
         doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization
+    @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static void doOpManaged(LLVMManagedPointer address, short value,
-                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI16(address.getObject(), address.getOffset(), value);
     }
 

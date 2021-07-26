@@ -76,9 +76,10 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, float value,
-                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeFloat(address.getObject(), address.getOffset() + offset, value);
         }
     }
@@ -98,9 +99,10 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
         doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization
+    @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static void doOpManaged(LLVMManagedPointer address, float value,
-                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeFloat(address.getObject(), address.getOffset(), value);
     }
 

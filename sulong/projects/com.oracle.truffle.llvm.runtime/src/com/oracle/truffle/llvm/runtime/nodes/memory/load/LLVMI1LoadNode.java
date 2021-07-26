@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -74,9 +75,10 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
             return doI1Managed(getReceiver.execute(addr), offset, nativeRead);
         }
 
-        @Specialization
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected boolean doI1Managed(LLVMManagedPointer addr, long offset,
-                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             return nativeRead.readI8(addr.getObject(), addr.getOffset() + offset) != 0;
         }
     }
@@ -95,9 +97,10 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
         return doI1Managed(getReceiver.execute(addr), nativeRead);
     }
 
-    @Specialization
+    @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected boolean doI1Managed(LLVMManagedPointer addr,
-                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
         return nativeRead.readI8(addr.getObject(), addr.getOffset()) != 0;
     }
 }

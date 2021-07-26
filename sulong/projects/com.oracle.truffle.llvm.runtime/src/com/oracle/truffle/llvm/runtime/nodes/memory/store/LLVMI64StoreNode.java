@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -97,15 +98,17 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
             language.getLLVMMemory().putI64(this, addr.asNative() + offset, toAddress.executeWithTarget(value).asNative());
         }
 
-        @Specialization
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManagedI64(LLVMManagedPointer address, long offset, long value,
-                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeI64(address.getObject(), address.getOffset() + offset, value);
         }
 
-        @Specialization(replaces = "doOpManagedI64")
+        @Specialization(limit = "3", replaces = "doOpManagedI64")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, Object value,
-                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeGenericI64(address.getObject(), address.getOffset() + offset, value);
         }
     }
@@ -145,15 +148,17 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
         language.getLLVMMemory().putI64(this, addr, toAddress.executeWithTarget(value).asNative());
     }
 
-    @Specialization
+    @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static void doOpManagedI64(LLVMManagedPointer address, long value,
-                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI64(address.getObject(), address.getOffset(), value);
     }
 
-    @Specialization(replaces = "doOpManagedI64")
+    @Specialization(limit = "3", replaces = "doOpManagedI64")
+    @GenerateAOT.Exclude
     protected static void doOpManaged(LLVMManagedPointer address, Object value,
-                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeGenericI64(address.getObject(), address.getOffset(), value);
     }
 

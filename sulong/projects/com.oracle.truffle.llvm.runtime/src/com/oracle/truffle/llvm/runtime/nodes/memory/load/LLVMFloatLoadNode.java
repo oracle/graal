@@ -76,9 +76,10 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
             return doFloatManaged(getReceiver.execute(addr), offset, nativeRead);
         }
 
-        @Specialization
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static float doFloatManaged(LLVMManagedPointer addr, long offset,
-                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             return nativeRead.readFloat(addr.getObject(), addr.getOffset() + offset);
         }
     }
@@ -97,9 +98,10 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
         return doFloatManaged(getReceiver.execute(addr), nativeRead);
     }
 
-    @Specialization
+    @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static float doFloatManaged(LLVMManagedPointer addr,
-                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
         return nativeRead.readFloat(addr.getObject(), addr.getOffset());
     }
 }
