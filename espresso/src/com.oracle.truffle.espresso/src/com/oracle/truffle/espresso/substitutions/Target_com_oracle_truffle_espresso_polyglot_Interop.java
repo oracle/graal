@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -44,6 +45,8 @@ import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.utilities.TriState;
@@ -56,8 +59,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
-    private static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
-
     abstract static class InteropNode extends Node {
 
         static @JavaType(Object.class) StaticObject maybeWrapAsObject(Object value, InteropLibrary valueInterop, EspressoContext context) {
@@ -69,7 +70,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         }
 
         static @JavaType(Throwable.class) StaticObject maybeWrapAsForeignException(Object value, InteropLibrary valueInterop, EspressoContext context) {
-            assert UNCACHED.isException(value);
+            assert InteropLibrary.getUncached().isException(value);
             if (value instanceof StaticObject) {
                 // Already wrapped.
                 return (StaticObject) value;
@@ -79,7 +80,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         }
 
         static String toHostString(Object value, InteropLibrary valueInterop) {
-            assert UNCACHED.isString(value);
+            assert InteropLibrary.getUncached().isString(value);
             try {
                 return valueInterop.asString(value);
             } catch (UnsupportedMessageException e) {
@@ -93,116 +94,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         }
 
         static StaticObject wrapForeignException(Throwable throwable, Meta meta) {
-            assert UNCACHED.isException(throwable);
+            assert InteropLibrary.getUncached().isException(throwable);
             assert throwable instanceof AbstractTruffleException;
-            return StaticObject.createForeignException(meta, throwable, UNCACHED);
-        }
-
-        @TruffleBoundary
-        static RuntimeException throwInteropException(InteropException e, Meta meta) {
-            if (e instanceof UnsupportedMessageException) {
-                Throwable cause = e.getCause();
-                assert cause == null || cause instanceof AbstractTruffleException;
-                StaticObject exception = (cause == null)
-                                // UnsupportedMessageException.create()
-                                ? (StaticObject) meta.polyglot.UnsupportedMessageException_create.invokeDirect(null)
-                                // UnsupportedMessageException.create(Throwable cause)
-                                : (StaticObject) meta.polyglot.UnsupportedMessageException_create_Throwable.invokeDirect(null, wrapForeignException(cause, meta));
-                throw EspressoException.wrap(exception, meta);
-            }
-
-            if (e instanceof UnknownIdentifierException) {
-                StaticObject unknownIdentifier = meta.toGuestString(((UnknownIdentifierException) e).getUnknownIdentifier());
-                Throwable cause = e.getCause();
-                StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
-                                // UnknownIdentifierException.create(String unknownIdentifier)
-                                ? (StaticObject) meta.polyglot.UnknownIdentifierException_create_String.invokeDirect(null, unknownIdentifier)
-                                // UnknownIdentifierException.create(String unknownIdentifier,
-                                // Throwable
-                                // cause)
-                                : (StaticObject) meta.polyglot.UnknownIdentifierException_create_String_Throwable.invokeDirect(null, unknownIdentifier, wrapForeignException(cause, meta));
-                throw EspressoException.wrap(exception, meta);
-            }
-
-            if (e instanceof ArityException) {
-                int expectedArity = ((ArityException) e).getExpectedMinArity();
-                int actualArity = ((ArityException) e).getActualArity();
-                Throwable cause = e.getCause();
-                StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
-                                // ArityException.create(int expectedArity, int actualArity)
-                                ? (StaticObject) meta.polyglot.ArityException_create_int_int.invokeDirect(null, expectedArity, actualArity)
-                                // ArityException.create(int expectedArity, int actualArity,
-                                // Throwable
-                                // cause)
-                                : (StaticObject) meta.polyglot.ArityException_create_int_int_Throwable.invokeDirect(null, expectedArity, actualArity, wrapForeignException(cause, meta));
-                throw EspressoException.wrap(exception, meta);
-            }
-
-            if (e instanceof UnsupportedTypeException) {
-                Object[] hostValues = ((UnsupportedTypeException) e).getSuppliedValues();
-                // Transform suppliedValues[] into a guest Object[].
-                StaticObject[] backingArray = new StaticObject[hostValues.length];
-                for (int i = 0; i < backingArray.length; i++) {
-                    Object value = hostValues[i];
-                    if (value instanceof StaticObject) {
-                        backingArray[i] = (StaticObject) value; // no need to re-type
-                    } else {
-                        // TODO(peterssen): Wrap with precise types.
-                        backingArray[i] = StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, value, UNCACHED);
-                    }
-                }
-                StaticObject suppliedValues = StaticObject.wrap(backingArray, meta);
-                StaticObject hint = meta.toGuestString(e.getMessage());
-                Throwable cause = e.getCause();
-                StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
-                                // UnsupportedTypeException.create(Object[] suppliedValues, String
-                                // hint)
-                                ? (StaticObject) meta.polyglot.UnsupportedTypeException_create_Object_array_String.invokeDirect(null, suppliedValues, hint)
-                                // UnsupportedTypeException.create(Object[] suppliedValues, String
-                                // hint,
-                                // Throwable cause)
-                                : (StaticObject) meta.polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.invokeDirect(null, suppliedValues, hint,
-                                                wrapForeignException(cause, meta));
-                throw EspressoException.wrap(exception, meta);
-            }
-
-            if (e instanceof InvalidArrayIndexException) {
-                long invalidIndex = ((InvalidArrayIndexException) e).getInvalidIndex();
-                Throwable cause = e.getCause();
-                StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
-                                // InvalidArrayIndexException.create(long invalidIndex)
-                                ? (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long.invokeDirect(null, invalidIndex)
-                                // InvalidArrayIndexException.create(long invalidIndex, Throwable
-                                // cause)
-                                : (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long_Throwable.invokeDirect(null, invalidIndex, wrapForeignException(cause, meta));
-                throw EspressoException.wrap(exception, meta);
-            }
-
-            if (e instanceof InvalidBufferOffsetException) {
-                long byteOffset = ((InvalidBufferOffsetException) e).getByteOffset();
-                long length = ((InvalidBufferOffsetException) e).getLength();
-                Throwable cause = e.getCause();
-                StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
-                                // InvalidBufferOffsetException.create(long byteOffset, long length)
-                                ? (StaticObject) meta.polyglot.InvalidBufferOffsetException_create_long_long.invokeDirect(null, byteOffset, length)
-                                // InvalidBufferOffsetException.create(long byteOffset, long length,
-                                // Throwable cause)
-                                : (StaticObject) meta.polyglot.InvalidBufferOffsetException_create_long_long_Throwable.invokeDirect(null, byteOffset, length, wrapForeignException(cause, meta));
-                throw EspressoException.wrap(exception, meta);
-            }
-
-            if (e instanceof StopIterationException) {
-                Throwable cause = e.getCause();
-                StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
-                                // StopIterationException.create()
-                                ? (StaticObject) meta.polyglot.StopIterationException_create.invokeDirect(null)
-                                // StopIterationException.create(Throwable cause)
-                                : (StaticObject) meta.polyglot.StopIterationException_create_Throwable.invokeDirect(null, wrapForeignException(cause, meta));
-                throw EspressoException.wrap(exception, meta);
-            }
-
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.unexpected("Unexpected interop exception: ", e);
+            return StaticObject.createForeignException(meta, throwable, InteropLibrary.getUncached());
         }
 
         @TruffleBoundary
@@ -273,12 +167,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached BranchProfile error) {
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asBoolean(unwrap(receiver));
             } catch (InteropException e) {
-                error.enter();
-                throw throwInteropException(e, getMeta());
+                exceptionProfile.enter();
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -315,7 +210,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
-    abstract static class AsString extends InteropNode {
+    abstract static class AsString extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract @JavaType(String.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver);
@@ -325,13 +220,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
-                return context.getMeta().toGuestString(interop.asString(unwrap(receiver)));
+                return getMeta().toGuestString(interop.asString(unwrap(receiver)));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -347,7 +242,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * @see InteropLibrary#isNumber(Object)
      */
     @Substitution
-    abstract static class IsNumber extends InteropNode {
+    abstract static class IsNumber extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -368,7 +263,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * @see InteropLibrary#fitsInByte(Object)
      */
     @Substitution
-    abstract static class FitsInByte extends InteropNode {
+    abstract static class FitsInByte extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -503,13 +398,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         byte doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asByte(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -531,13 +426,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         short doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asShort(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -559,13 +454,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         int doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asInt(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -587,13 +482,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         long doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asLong(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -615,13 +510,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         float doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asFloat(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -643,13 +538,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         double doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asDouble(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -713,13 +608,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 throw interop.throwException(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -744,6 +639,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(unwrap(receiver));
@@ -762,7 +658,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 // @formatter:on
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw InteropNode.throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -787,13 +683,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile error) {
             try {
                 return interop.isExceptionIncompleteSource(unwrap(receiver));
             } catch (InteropException e) {
                 error.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -819,13 +715,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         int doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile error) {
             try {
                 return interop.getExceptionExitStatus(unwrap(receiver));
             } catch (InteropException e) {
                 error.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -875,16 +771,17 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile error) {
             try {
                 Object cause = interop.getExceptionCause(unwrap(receiver));
-                assert UNCACHED.isException(cause);
-                assert !UNCACHED.isNull(cause);
+                assert InteropLibrary.getUncached().isException(cause);
+                assert !InteropLibrary.getUncached().isNull(cause);
                 // The cause must be an exception; if foreign, wrap it as ForeignException.
                 return maybeWrapAsForeignException(cause, causeInterop, context);
             } catch (InteropException e) {
                 error.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -933,10 +830,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary messageInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object message = interop.getExceptionMessage(unwrap(receiver));
-                assert UNCACHED.isString(message);
+                assert InteropLibrary.getUncached().isString(message);
                 // TODO(peterssen): Cannot wrap as String even if the foreign object is String-like.
                 // Executing String methods, that rely on it having a .value field is not supported
                 // yet
@@ -944,7 +842,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return maybeWrapAsObject(message, messageInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -998,14 +896,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary stackTraceInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object stackTrace = interop.getExceptionStackTrace(unwrap(receiver));
-                assert UNCACHED.hasArrayElements(stackTrace);
+                assert InteropLibrary.getUncached().hasArrayElements(stackTrace);
                 return maybeWrapAsObject(stackTrace, stackTraceInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1065,6 +964,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object value = interop.readArrayElement(unwrap(receiver), index);
@@ -1077,7 +977,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return maybeWrapAsObject(value, valueInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1099,13 +999,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         long doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.getArraySize(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1162,7 +1062,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long index,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -1175,7 +1075,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 }
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1209,13 +1109,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         long index,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 interop.removeArrayElement(unwrap(receiver), index);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1372,14 +1272,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary metaObjectInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object metaObject = interop.getMetaObject(unwrap(receiver));
-                assert UNCACHED.isMetaObject(metaObject);
+                assert InteropLibrary.getUncached().isMetaObject(metaObject);
                 return maybeWrapAsObject(metaObject, metaObjectInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1410,7 +1311,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary displayStringInterop) {
             Object displayString = interop.toDisplayString(unwrap(receiver), allowSideEffects);
-            assert UNCACHED.isString(displayString);
+            assert InteropLibrary.getUncached().isString(displayString);
             return maybeWrapAsObject(displayString, displayStringInterop, context);
         }
     }
@@ -1473,14 +1374,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary qualifiedNameInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object qualifiedName = interop.getMetaQualifiedName(unwrap(receiver));
-                assert UNCACHED.isString(qualifiedName);
+                assert InteropLibrary.getUncached().isString(qualifiedName);
                 return maybeWrapAsObject(qualifiedName, qualifiedNameInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1509,14 +1411,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary simpleNameInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object simpleName = interop.getMetaSimpleName(unwrap(receiver));
-                assert UNCACHED.isString(simpleName);
+                assert InteropLibrary.getUncached().isString(simpleName);
                 return maybeWrapAsObject(simpleName, simpleNameInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1545,14 +1448,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject instance,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.isMetaInstance(unwrap(receiver), unwrap(instance));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1663,14 +1566,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         int doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.identityHashCode(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1739,15 +1642,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary membersInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
-            Meta meta = context.getMeta();
             try {
                 Object members = interop.getMembers(unwrap(receiver));
-                assert UNCACHED.hasArrayElements(members);
+                assert InteropLibrary.getUncached().hasArrayElements(members);
                 return maybeWrapAsObject(members, membersInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, meta);
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1775,7 +1678,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             return interop.isMemberReadable(unwrap(receiver), hostMember);
         }
@@ -1812,15 +1715,16 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberValueInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             try {
                 Object memberValue = interop.readMember(unwrap(receiver), hostMember);
                 return maybeWrapAsObject(memberValue, memberValueInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1848,7 +1752,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             return interop.isMemberModifiable(unwrap(receiver), hostMember);
         }
@@ -1877,7 +1781,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             return interop.isMemberInsertable(unwrap(receiver), hostMember);
         }
@@ -1910,12 +1814,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(String.class) StaticObject member,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             try {
                 if (isForeignProfile.profile(receiver.isForeignObject())) {
@@ -1926,7 +1830,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 }
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -1953,7 +1857,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             return interop.isMemberRemovable(unwrap(receiver), hostMember);
         }
@@ -1982,17 +1886,17 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         void doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(String.class) StaticObject member,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             try {
                 interop.removeMember(unwrap(receiver), hostMember);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2020,7 +1924,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             return interop.isMemberInvocable(unwrap(receiver), hostMember);
         }
@@ -2057,9 +1961,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached BranchProfile exceptionProfile) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
@@ -2067,7 +1972,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return maybeWrapAsObject(result, resultInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2095,7 +2000,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             return interop.hasMemberReadSideEffects(unwrap(receiver), hostMember);
         }
@@ -2124,7 +2029,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop) {
-            assert UNCACHED.isString(member);
+            assert InteropLibrary.getUncached().isString(member);
             String hostMember = toHostString(member, memberInterop);
             return interop.hasMemberWriteSideEffects(unwrap(receiver), hostMember);
         }
@@ -2178,14 +2083,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         long doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asPointer(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2269,6 +2174,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached BranchProfile exceptionProfile) {
             try {
@@ -2277,7 +2183,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return maybeWrapAsObject(result, resultInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2340,6 +2246,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached BranchProfile exceptionProfile) {
             try {
@@ -2348,7 +2255,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return maybeWrapAsObject(result, resultInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2401,14 +2308,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary executableNameInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object executableName = interop.getExecutableName(unwrap(receiver));
-                assert UNCACHED.isString(executableName);
+                assert InteropLibrary.getUncached().isString(executableName);
                 return maybeWrapAsObject(executableName, executableNameInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2461,14 +2369,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary declaringMetaObjectInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object declaringMetaObject = interop.getDeclaringMetaObject(unwrap(receiver));
-                assert UNCACHED.isMetaObject(declaringMetaObject);
+                assert InteropLibrary.getUncached().isMetaObject(declaringMetaObject);
                 return maybeWrapAsObject(declaringMetaObject, declaringMetaObjectInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2530,12 +2439,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         long doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.getBufferSize(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2571,12 +2481,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.isBufferWritable(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2614,12 +2525,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.readBufferByte(unwrap(receiver), byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2657,12 +2569,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         byte value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 interop.writeBufferByte(unwrap(receiver), byteOffset, value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2707,6 +2620,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -2717,7 +2631,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2759,6 +2673,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         short value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -2770,7 +2685,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2814,6 +2729,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -2824,7 +2740,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2866,6 +2782,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         int value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -2877,7 +2794,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2920,6 +2837,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -2930,7 +2848,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -2972,6 +2890,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         long value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -2983,7 +2902,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3026,6 +2945,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -3036,7 +2956,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3078,6 +2998,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         float value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -3089,7 +3010,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3132,7 +3053,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -3143,7 +3064,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3185,6 +3106,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         double value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
@@ -3196,7 +3118,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3253,14 +3175,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object iterator = interop.getIterator(unwrap(receiver));
-                assert UNCACHED.isIterator(iterator);
+                assert InteropLibrary.getUncached().isIterator(iterator);
                 return maybeWrapAsObject(iterator, iteratorInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3316,13 +3239,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.hasIteratorNextElement(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3364,13 +3287,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary elementInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object element = interop.getIteratorNextElement(unwrap(receiver));
                 return maybeWrapAsObject(element, elementInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3432,13 +3356,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         long doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.getHashSize(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3506,6 +3430,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -3518,7 +3443,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return maybeWrapAsObject(result, resultInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3553,6 +3478,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -3566,12 +3492,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     return maybeWrapAsObject(result, resultInterop, context);
                 } else {
                     Object result = interop.readHashValueOrDefault(receiver, key, defaultValue);
-                    // defaultValue is already a StaticObject, no need to re-wrap as Object.
                     return maybeWrapAsObject(result, resultInterop, context);
                 }
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3697,7 +3622,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject key,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -3709,7 +3634,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 }
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3772,7 +3697,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -3784,7 +3709,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 }
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3845,14 +3770,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object iterator = interop.getHashEntriesIterator(unwrap(receiver));
-                assert UNCACHED.isIterator(iterator);
+                assert InteropLibrary.getUncached().isIterator(iterator);
                 return maybeWrapAsObject(iterator, iteratorInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3881,14 +3807,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object iterator = interop.getHashKeysIterator(unwrap(receiver));
-                assert UNCACHED.isIterator(iterator);
+                assert InteropLibrary.getUncached().isIterator(iterator);
                 return maybeWrapAsObject(iterator, iteratorInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3917,14 +3844,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object iterator = interop.getHashValuesIterator(unwrap(receiver));
-                assert UNCACHED.isIterator(iterator);
+                assert InteropLibrary.getUncached().isIterator(iterator);
                 return maybeWrapAsObject(iterator, iteratorInterop, context);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
         }
     }
@@ -3943,7 +3871,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * argument.
      */
     abstract static class ToHostArguments extends InteropNode {
-        static final int LIMIT = 2;
 
         abstract Object[] execute(boolean unwrapArguments, @JavaType(Object[].class) StaticObject arguments);
 
@@ -3987,6 +3914,194 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 hostArgs[i] = unwrapArguments ? unwrap(elem) : elem;
             }
             return hostArgs;
+        }
+    }
+
+    /**
+     * Throws host interop exceptions as guest exceptions.
+     */
+    abstract static class ThrowInteropExceptionAsGuest extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract RuntimeException execute(InteropException hostException);
+
+        @Specialization
+        RuntimeException doUnsupportedMessageException(
+                        UnsupportedMessageException e,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
+                        @Cached ConditionProfile noCauseProfile,
+                        @Cached("create(context.getMeta().polyglot.UnsupportedMessageException_create.getCallTarget())") DirectCallNode create,
+                        @Cached("create(context.getMeta().polyglot.UnsupportedMessageException_create_Throwable.getCallTarget())") DirectCallNode createWithCause) {
+            Throwable cause = e.getCause();
+            assert cause == null || cause instanceof AbstractTruffleException;
+            StaticObject exception = noCauseProfile.profile(cause == null)
+                            /* UnsupportedMessageException.create() */
+                            ? (StaticObject) create.call()
+                            /* UnsupportedMessageException.create(Throwable cause) */
+                            : (StaticObject) createWithCause.call(maybeWrapAsForeignException(cause, causeInterop, context));
+            throw EspressoException.wrap(exception, context.getMeta());
+        }
+
+        @Specialization
+        RuntimeException doUnknownIdentifierException(
+                        UnknownIdentifierException e,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
+                        @Cached ConditionProfile noCauseProfile,
+                        @Cached("create(context.getMeta().polyglot.UnknownIdentifierException_create_String.getCallTarget())") DirectCallNode createWithIdentifier,
+                        @Cached("create(context.getMeta().polyglot.UnknownIdentifierException_create_String_Throwable.getCallTarget())") DirectCallNode createWithIdentifierAndCause) {
+            StaticObject unknownIdentifier = context.getMeta().toGuestString(e.getUnknownIdentifier());
+            Throwable cause = e.getCause();
+            StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
+                            /* UnknownIdentifierException.create(String unknownIdentifier) */
+                            ? (StaticObject) createWithIdentifier.call(unknownIdentifier)
+                            /*
+                             * UnknownIdentifierException.create(String unknownIdentifier, Throwable
+                             * cause)
+                             */
+                            : (StaticObject) createWithIdentifierAndCause.call(unknownIdentifier, maybeWrapAsForeignException(cause, causeInterop, context));
+            throw EspressoException.wrap(exception, context.getMeta());
+        }
+
+        @Specialization
+        RuntimeException doArityException(
+                        ArityException e,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
+                        @Cached ConditionProfile noCauseProfile,
+                        @Cached("create(context.getMeta().polyglot.ArityException_create_int_int_int.getCallTarget())") DirectCallNode createWithArityRange,
+                        @Cached("create(context.getMeta().polyglot.ArityException_create_int_int_int_Throwable.getCallTarget())") DirectCallNode createWithArityRangeAndCause) {
+            int expectedMinArity = e.getExpectedMinArity();
+            int expectedMaxArity = e.getExpectedMaxArity();
+            int actualArity = e.getActualArity();
+            Throwable cause = e.getCause();
+            StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
+                            /*
+                             * ArityException.create(int expectedMinArity, int expectedMaxArity, int
+                             * actualArity)
+                             */
+                            ? (StaticObject) createWithArityRange.call(expectedMinArity, expectedMaxArity, actualArity)
+                            /*
+                             * ArityException.create(int expectedMinArity, int expectedMaxArity, int
+                             * actualArity, Throwable cause)
+                             */
+                            : (StaticObject) createWithArityRangeAndCause.call(expectedMinArity, expectedMinArity, actualArity, maybeWrapAsForeignException(cause, causeInterop, context));
+            throw EspressoException.wrap(exception, context.getMeta());
+        }
+
+        @Specialization
+        RuntimeException doUnsupportedTypeException(
+                        UnsupportedTypeException e,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
+                        @Cached ConditionProfile noCauseProfile,
+                        @Cached("create(context.getMeta().polyglot.UnsupportedTypeException_create_Object_array_String.getCallTarget())") DirectCallNode createWithValuesHint,
+                        @Cached("create(context.getMeta().polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.getCallTarget())") DirectCallNode createWithValuesHintAndCause) {
+            Object[] hostValues = e.getSuppliedValues();
+            // Transform suppliedValues[] into a guest Object[].
+            StaticObject[] backingArray = new StaticObject[hostValues.length];
+            for (int i = 0; i < backingArray.length; i++) {
+                backingArray[i] = maybeWrapAsObject(hostValues[i], InteropLibrary.getUncached(), context);
+            }
+            StaticObject suppliedValues = StaticObject.wrap(backingArray, context.getMeta());
+            StaticObject hint = context.getMeta().toGuestString(e.getMessage());
+            Throwable cause = e.getCause();
+            StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
+                            /*
+                             * UnsupportedTypeException.create(Object[] suppliedValues, String hint)
+                             */
+                            ? (StaticObject) createWithValuesHint.call(suppliedValues, hint)
+                            /*
+                             * UnsupportedTypeException.create(Object[] suppliedValues, String hint,
+                             * Throwable cause)
+                             */
+                            : (StaticObject) createWithValuesHintAndCause.call(suppliedValues, hint, maybeWrapAsForeignException(cause, causeInterop, context));
+            throw EspressoException.wrap(exception, context.getMeta());
+        }
+
+        @Specialization
+        RuntimeException doInvalidArrayIndexException(
+                        InvalidArrayIndexException e,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
+                        @Cached ConditionProfile noCauseProfile,
+                        @Cached("create(context.getMeta().polyglot.InvalidArrayIndexException_create_long.getCallTarget())") DirectCallNode createWithIndex,
+                        @Cached("create(context.getMeta().polyglot.InvalidArrayIndexException_create_long_Throwable.getCallTarget())") DirectCallNode createWithIndexAndCause) {
+            long invalidIndex = e.getInvalidIndex();
+            Throwable cause = e.getCause();
+            StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
+                            /* InvalidArrayIndexException.create(long invalidIndex) */
+                            ? (StaticObject) createWithIndex.call(invalidIndex)
+                            /*
+                             * InvalidArrayIndexException.create(long invalidIndex, Throwable cause)
+                             */
+                            : (StaticObject) createWithIndexAndCause.call(invalidIndex, maybeWrapAsObject(cause, causeInterop, context));
+            throw EspressoException.wrap(exception, context.getMeta());
+        }
+
+        @Specialization
+        RuntimeException doInvalidBufferOffsetException(
+                        InvalidBufferOffsetException e,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
+                        @Cached ConditionProfile noCauseProfile,
+                        @Cached("create(context.getMeta().polyglot.InvalidBufferOffsetException_create_long_long.getCallTarget())") DirectCallNode createWithOffsetLength,
+                        @Cached("create(context.getMeta().polyglot.InvalidBufferOffsetException_create_long_long_Throwable.getCallTarget())") DirectCallNode createWithOffsetLengthAndCause) {
+            long byteOffset = e.getByteOffset();
+            long length = e.getLength();
+            Throwable cause = e.getCause();
+            StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
+                            /* InvalidBufferOffsetException.create(long byteOffset, long length) */
+                            ? (StaticObject) createWithOffsetLength.call(byteOffset, length)
+                            /*
+                             * InvalidBufferOffsetException.create(long byteOffset, long length,
+                             * Throwable cause)
+                             */
+                            : (StaticObject) createWithOffsetLengthAndCause.call(byteOffset, length, maybeWrapAsForeignException(cause, causeInterop, context));
+            throw EspressoException.wrap(exception, context.getMeta());
+        }
+
+        @Specialization
+        RuntimeException doStopIterationException(
+                        StopIterationException e,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
+                        @Cached ConditionProfile noCauseProfile,
+                        @Cached("create(context.getMeta().polyglot.StopIterationException_create.getCallTarget())") DirectCallNode create,
+                        @Cached("create(context.getMeta().polyglot.StopIterationException_create_Throwable.getCallTarget())") DirectCallNode createWithCause) {
+            Throwable cause = e.getCause();
+            StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
+                            /* StopIterationException.create() */
+                            ? (StaticObject) create.call()
+                            /* StopIterationException.create(Throwable cause) */
+                            : (StaticObject) createWithCause.call(maybeWrapAsForeignException(cause, causeInterop, context));
+            throw EspressoException.wrap(exception, context.getMeta());
+        }
+
+        @Specialization
+        RuntimeException doUnknownKeyException(
+                        UnknownKeyException e,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary keyInterop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
+                        @Cached ConditionProfile noCauseProfile,
+                        @Cached("create(context.getMeta().polyglot.UnknownKeyException_create_Object.getCallTarget())") DirectCallNode createWithKey,
+                        @Cached("create(context.getMeta().polyglot.UnknownKeyException_create_Object_Throwable.getCallTarget())") DirectCallNode createWithKeyAndCause) {
+            StaticObject unknownKey = maybeWrapAsObject(e.getUnknownKey(), keyInterop, context);
+            Throwable cause = e.getCause();
+            StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
+                            /* UnknownKeyException.create(Object unknownKey) */
+                            ? (StaticObject) createWithKey.call(unknownKey)
+                            /* UnknownKeyException.create(Object unknownKey, Throwable cause) */
+                            : (StaticObject) createWithKeyAndCause.call(unknownKey, maybeWrapAsObject(cause, causeInterop, context));
+            throw EspressoException.wrap(exception, context.getMeta());
+        }
+
+        @Fallback
+        @TruffleBoundary
+        RuntimeException shouldNotReachHere(InteropException e) {
+            throw EspressoError.shouldNotReachHere("Unexpected host interop exception", e);
         }
     }
 

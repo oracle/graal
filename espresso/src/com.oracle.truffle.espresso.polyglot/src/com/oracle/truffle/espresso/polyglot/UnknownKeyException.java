@@ -56,7 +56,7 @@ public final class UnknownKeyException extends InteropException {
     private final Object unknownKey;
 
     private UnknownKeyException(Object unknownKey) {
-        super(null); // GR-23961 - after language adoption we should initialize the cause with null.
+        super(null);
         this.unknownKey = unknownKey;
     }
 

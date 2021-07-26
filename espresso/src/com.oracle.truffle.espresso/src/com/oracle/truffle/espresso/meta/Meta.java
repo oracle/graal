@@ -1399,8 +1399,8 @@ public final class Meta implements ContextAccess {
         public final Method UnsupportedTypeException_create_Object_array_String_Throwable;
 
         public final ObjectKlass ArityException;
-        public final Method ArityException_create_int_int;
-        public final Method ArityException_create_int_int_Throwable;
+        public final Method ArityException_create_int_int_int;
+        public final Method ArityException_create_int_int_int_Throwable;
 
         public final ObjectKlass InvalidArrayIndexException;
         public final Method InvalidArrayIndexException_create_long;
@@ -1413,6 +1413,10 @@ public final class Meta implements ContextAccess {
         public final ObjectKlass StopIterationException;
         public final Method StopIterationException_create;
         public final Method StopIterationException_create_Throwable;
+
+        public final ObjectKlass UnknownKeyException;
+        public final Method UnknownKeyException_create_Object;
+        public final Method UnknownKeyException_create_Object_Throwable;
 
         public final ObjectKlass ForeignException;
         public final ObjectKlass ExceptionType;
@@ -1435,8 +1439,8 @@ public final class Meta implements ContextAccess {
             }
 
             ArityException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
-            ArityException_create_int_int = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int);
-            ArityException_create_int_int_Throwable = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_Throwable);
+            ArityException_create_int_int_int = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_int);
+            ArityException_create_int_int_int_Throwable = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_int_Throwable);
 
             UnknownIdentifierException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
             UnknownIdentifierException_create_String = UnknownIdentifierException.requireDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String);
@@ -1462,6 +1466,10 @@ public final class Meta implements ContextAccess {
             StopIterationException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_StopIterationException);
             StopIterationException_create = StopIterationException.requireDeclaredMethod(Name.create, Signature.StopIterationException);
             StopIterationException_create_Throwable = StopIterationException.requireDeclaredMethod(Name.create, Signature.StopIterationException_Throwable);
+
+            UnknownKeyException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownKeyException);
+            UnknownKeyException_create_Object = UnknownKeyException.requireDeclaredMethod(Name.create, Signature.UnknownKeyException_Object);
+            UnknownKeyException_create_Object_Throwable = UnknownKeyException.requireDeclaredMethod(Name.create, Signature.UnknownKeyException_Object_Throwable);
 
             ForeignException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
             ExceptionType = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
