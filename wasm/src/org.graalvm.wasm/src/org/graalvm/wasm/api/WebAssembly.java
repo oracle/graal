@@ -68,7 +68,6 @@ public class WebAssembly extends Dictionary {
         addMember("compile", new Executable(args -> compile(args)));
         addMember("instantiate", new Executable(args -> instantiate(args)));
         addMember("validate", new Executable(args -> validate(args)));
-        addMember("Memory", new Executable(args -> memAlloc(args)));
         addMember("Global", new Executable(args -> createGlobal(args)));
 
         Dictionary module = new Dictionary();
