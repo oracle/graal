@@ -56,7 +56,7 @@ public abstract class ToCharNode extends Node {
 
     @Specialization
     static char doByte(byte arg) {
-        return (char) arg;
+        return (char) Byte.toUnsignedInt(arg);
     }
 
     @Specialization
