@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class InputIndexOfNode extends Node {
@@ -64,8 +63,8 @@ public abstract class InputIndexOfNode extends Node {
         return ArrayUtils.indexOf(input, fromIndex, maxIndex, chars);
     }
 
-    @Specialization
-    public int doTruffleObjBytes(TruffleObject input, int fromIndex, int maxIndex, byte[] bytes,
+    @Specialization(guards = "neitherByteArrayNorString(input)")
+    public int doTruffleObjBytes(Object input, int fromIndex, int maxIndex, byte[] bytes,
                     @Cached InputReadNode charAtNode) {
         for (int i = fromIndex; i < maxIndex; i++) {
             int c = charAtNode.execute(input, i);
@@ -78,8 +77,8 @@ public abstract class InputIndexOfNode extends Node {
         return -1;
     }
 
-    @Specialization
-    public int doTruffleObjChars(TruffleObject input, int fromIndex, int maxIndex, char[] chars,
+    @Specialization(guards = "neitherByteArrayNorString(input)")
+    public int doTruffleObjChars(Object input, int fromIndex, int maxIndex, char[] chars,
                     @Cached InputReadNode charAtNode) {
         for (int i = fromIndex; i < maxIndex; i++) {
             int c = charAtNode.execute(input, i);
@@ -90,5 +89,9 @@ public abstract class InputIndexOfNode extends Node {
             }
         }
         return -1;
+    }
+
+    protected static boolean neitherByteArrayNorString(Object obj) {
+        return !(obj instanceof byte[]) && !(obj instanceof String);
     }
 }
