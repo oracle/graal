@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,14 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmMath;
+import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+
+import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -60,7 +65,6 @@ public class WebAssembly extends Dictionary {
         addMember("instantiate", new Executable(args -> instantiate(args)));
         addMember("validate", new Executable(args -> validate(args)));
         addMember("Memory", new Executable(args -> createMemory(args)));
-        addMember("Table", new Executable(args -> createTable(args)));
         addMember("Global", new Executable(args -> createGlobal(args)));
 
         Dictionary module = new Dictionary();
@@ -68,6 +72,12 @@ public class WebAssembly extends Dictionary {
         module.addMember("imports", new Executable(args -> moduleImports(args)));
         module.addMember("customSections", new Executable(args -> moduleCustomSections(args)));
         addMember("Module", module);
+
+        addMember("table_alloc", new Executable(args -> tableAlloc(args)));
+        addMember("table_grow", new Executable(args -> tableGrow(args)));
+        addMember("table_read", new Executable(args -> tableRead(args)));
+        addMember("table_write", new Executable(args -> tableWrite(args)));
+        addMember("table_size", new Executable(args -> tableSize(args)));
 
         addMember("func_type", new Executable(args -> funcType(args)));
     }
@@ -190,11 +200,6 @@ public class WebAssembly extends Dictionary {
         return Memory.create(limits[0], limits[1]);
     }
 
-    private static Object createTable(Object[] args) {
-        final int[] limits = toSizeLimits(args);
-        return Table.create(limits[0], limits[1]);
-    }
-
     private static Object createGlobal(Object[] args) {
         checkArgumentCount(args, 3);
 
@@ -254,6 +259,112 @@ public class WebAssembly extends Dictionary {
     private static Object moduleCustomSections(Object[] args) {
         checkArgumentCount(args, 2);
         return toModule(args).customSections(args[1]);
+    }
+
+    private static Object tableAlloc(Object[] args) {
+        final int[] limits = toSizeLimits(args);
+        return tableAlloc(limits[0], limits[1]);
+    }
+
+    public static WasmTable tableAlloc(int initial, int maximum) {
+        if (Integer.compareUnsigned(initial, maximum) > 0) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min table size exceeds max memory size");
+        }
+        if (Integer.compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min table size exceeds implementation limit");
+        }
+        final int maxAllowedSize = WasmMath.minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
+        return new WasmTable(initial, maximum, maxAllowedSize);
+    }
+
+    private static Object tableGrow(Object[] args) {
+        checkArgumentCount(args, 2);
+        if (!(args[0] instanceof WasmTable)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
+        }
+        if (!(args[1] instanceof Integer)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+        }
+        WasmTable table = (WasmTable) args[0];
+        int delta = (Integer) args[1];
+        return tableGrow(table, delta);
+    }
+
+    public static int tableGrow(WasmTable table, int delta) {
+        final int size = table.size();
+        try {
+            table.grow(delta);
+        } catch (IllegalArgumentException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, e.getMessage());
+        }
+        return size;
+    }
+
+    private static Object tableRead(Object[] args) {
+        checkArgumentCount(args, 2);
+        if (!(args[0] instanceof WasmTable)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
+        }
+        if (!(args[1] instanceof Integer)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+        }
+        WasmTable table = (WasmTable) args[0];
+        int index = (Integer) args[1];
+        return tableRead(table, index);
+    }
+
+    public static Object tableRead(WasmTable table, int index) {
+        try {
+            final Object result = table.get(index);
+            return result == null ? WasmVoidResult.getInstance() : result;
+        } catch (IndexOutOfBoundsException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
+        }
+    }
+
+    private static Object tableWrite(Object[] args) {
+        checkArgumentCount(args, 3);
+        if (!(args[0] instanceof WasmTable)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
+        }
+        if (!(args[1] instanceof Integer)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+        }
+        WasmTable table = (WasmTable) args[0];
+        int index = (Integer) args[1];
+        return tableWrite(table, index, args[2]);
+    }
+
+    public static Object tableWrite(WasmTable table, int index, Object element) {
+        final WasmFunctionInstance functionInstance;
+        if (element instanceof WasmFunctionInstance) {
+            functionInstance = (WasmFunctionInstance) element;
+        } else if (InteropLibrary.getUncached(element).isNull(element)) {
+            functionInstance = null;
+        } else {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
+        }
+
+        try {
+            table.set(index, functionInstance);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
+        }
+
+        return WasmVoidResult.getInstance();
+    }
+
+    private static Object tableSize(Object[] args) {
+        checkArgumentCount(args, 1);
+        if (!(args[0] instanceof WasmTable)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
+        }
+        WasmTable table = (WasmTable) args[0];
+        return tableSize(table);
+    }
+
+    public static int tableSize(WasmTable table) {
+        return table.size();
     }
 
     private static Object funcType(Object[] args) {

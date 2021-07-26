@@ -66,6 +66,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("com.sun.nio.zipfs.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.io.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.lang.**", RuleNode.Inclusion.Exclude);
+        // The agent should not filter calls from native libraries.
+        internalCallerFilter.addOrGetChildren("java.lang.ClassLoader$NativeLibrary", RuleNode.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("java.math.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.net.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.nio.**", RuleNode.Inclusion.Exclude);

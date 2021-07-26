@@ -28,6 +28,7 @@ package com.oracle.svm.core.classinitialization;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.jdk.InternalVMMethod;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -49,6 +50,7 @@ import sun.misc.Unsafe;
  * state is mutable while {@link DynamicHub} must be immutable, and 2) few classes require
  * initialization at runtime so factoring out the information reduces image size.
  */
+@InternalVMMethod
 public final class ClassInitializationInfo {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();

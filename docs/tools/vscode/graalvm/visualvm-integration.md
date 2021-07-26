@@ -27,7 +27,7 @@ Once a GraalVM installation is set as active, the Command Palette contains the f
 
 3&#46; Invoke Start Debugging or Run Without Debugging action to start a project.
 
-4&#46; Use the actions available in the **Gr activity | VisualVM pane** to monitor and analyze the project process.
+4&#46; Use the actions available in the **Gr activity -> VisualVM pane** to monitor and analyze the project process.
 
 ## VisualVM Pane
 
@@ -40,18 +40,18 @@ If a process has already been selected for monitoring, VisualVM opens the proces
 If a process selected for monitoring is not running any more, invoking the action just clears the process selection and shows a notification.
 Subsequent action invocation starts VisualVM again without a process context.
 
-**More Actions... | Preselect [Overview/Monitor/Threads/Sampler] view**
+**More Actions... -> Preselect [Overview/Monitor/Threads/Sampler] view**
 
 Choices to define which tab will be selected when opening the process view.
 
 ![VisualVM Pane in VS Code](images/visualvm_pane.png)
 
-**More Actions... | Bring VisualVM window to front**
+**More Actions... -> Bring VisualVM window to front**
 
 When selected, the VisualVM window is made the topmost window every time an action is invoked on VisualVM.
 It may have no effect in certain window systems.
 
-**More Actions... | Enable Go to Source integration**
+**More Actions... -> Enable Go to Source integration**
 
 Only available when there is a project open in VS Code.
 When selected, the VisualVM is configured to open source code back in VS Code editor on Go to Source action invocation in various VisualVM views.
