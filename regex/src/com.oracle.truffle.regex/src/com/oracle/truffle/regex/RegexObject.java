@@ -107,6 +107,9 @@ import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
  * The return value is a {@link RegexResult}. The contents of the {@code exec} can be compiled
  * lazily and so its first invocation might involve a longer delay as the regular expression is
  * compiled on the fly.
+ * <li>{@code boolean isBacktracking}: whether or not matching with this regular expression will use
+ * backtracking when matching, which could result in an exponential runtime in the worst case
+ * scenario</li>
  * </ol>
  * <p>
  */
@@ -119,13 +122,15 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private static final String PROP_FLAGS = "flags";
     private static final String PROP_GROUP_COUNT = "groupCount";
     private static final String PROP_GROUPS = "groups";
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXEC, PROP_PATTERN, PROP_FLAGS, PROP_GROUP_COUNT, PROP_GROUPS);
+    private static final String PROP_IS_BACKTRACKING = "isBacktracking";
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_EXEC, PROP_PATTERN, PROP_FLAGS, PROP_GROUP_COUNT, PROP_GROUPS, PROP_IS_BACKTRACKING);
 
     private final RegexSource source;
     private final AbstractRegexObject flags;
     private final int numberOfCaptureGroups;
     private final AbstractRegexObject namedCaptureGroups;
     private final CallTarget execCallTarget;
+    private final boolean backtracking;
 
     public RegexObject(RegexExecNode execNode, RegexSource source, AbstractRegexObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
         this.source = source;
@@ -133,6 +138,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
         this.execCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(execNode.getRegexLanguage(), execNode));
+        this.backtracking = execNode.isBacktracking();
     }
 
     @TruffleBoundary
@@ -161,6 +167,10 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
     public CallTarget getExecCallTarget() {
         return execCallTarget;
+    }
+
+    public boolean isBacktracking() {
+        return backtracking;
     }
 
     public RegexObjectExecMethod getExecMethod() {
@@ -193,6 +203,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
                 return getNumberOfCaptureGroups();
             case PROP_GROUPS:
                 return getNamedCaptureGroups();
+            case PROP_IS_BACKTRACKING:
+                return isBacktracking();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
