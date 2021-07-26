@@ -58,7 +58,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
 
 public class OptimizedBlockNodeTest {
 
@@ -565,7 +565,7 @@ public class OptimizedBlockNodeTest {
         context.getBindings("sl").getMember(name).execute();
         context.enter();
         try {
-            OptimizedCallTarget target = ((OptimizedCallTarget) SLLanguage.getCurrentContext().getFunctionRegistry().getFunction(name).getCallTarget());
+            OptimizedCallTarget target = ((OptimizedCallTarget) SLContext.get(null).getFunctionRegistry().getFunction(name).getCallTarget());
             // we invalidate to make sure the call counts are updated.
             target.invalidate("invalidate for test");
             return target;
