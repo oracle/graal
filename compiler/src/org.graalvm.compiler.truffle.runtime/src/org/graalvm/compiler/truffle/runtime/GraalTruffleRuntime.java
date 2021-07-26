@@ -584,7 +584,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
          * does not have a call node. Its call target and frame are the first two parameters of
          * executeRootNode(C) {@link InspectedFrame}, so we can construct a {@link FrameInstance}
          * using this frame.
-         * 
+         *
          * Down the stack, method B calls C, so it does have a call node. This node is a parameter
          * to the callDirect {@link InspectedFrame}, so we remember this frame and use it to
          * construct a {@link FrameInstance} when we reach executeRootNode(B). We construct a
