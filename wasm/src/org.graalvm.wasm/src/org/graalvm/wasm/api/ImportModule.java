@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import java.util.HashMap;
@@ -55,7 +56,7 @@ import java.util.Map;
 public class ImportModule extends BuiltinModule {
     private final HashMap<String, Pair<WasmFunction, Object>> functions;
     private final HashMap<String, Memory> memories;
-    private final HashMap<String, Table> tables;
+    private final HashMap<String, WasmTable> tables;
     private final HashMap<String, Object> globals;
 
     public ImportModule() {
@@ -80,10 +81,10 @@ public class ImportModule extends BuiltinModule {
             final Memory memory = entry.getValue();
             defineExternalMemory(instance, memoryName, memory.wasmMemory());
         }
-        for (Map.Entry<String, Table> entry : tables.entrySet()) {
+        for (Map.Entry<String, WasmTable> entry : tables.entrySet()) {
             final String tableName = entry.getKey();
-            final Table table = entry.getValue();
-            defineExternalTable(instance, tableName, table.wasmTable());
+            final WasmTable table = entry.getValue();
+            defineExternalTable(instance, tableName, table);
         }
         for (Map.Entry<String, Object> entry : globals.entrySet()) {
             final String globalName = entry.getKey();
@@ -101,7 +102,7 @@ public class ImportModule extends BuiltinModule {
         memories.put(name, memory);
     }
 
-    public void addTable(String name, Table table) {
+    public void addTable(String name, WasmTable table) {
         tables.put(name, table);
     }
 
