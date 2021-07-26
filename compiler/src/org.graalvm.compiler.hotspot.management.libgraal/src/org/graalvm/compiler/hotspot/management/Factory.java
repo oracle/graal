@@ -61,7 +61,6 @@ public final class Factory extends Thread {
     private static final int POLL_INTERVAL_MS = 2000;
     private static volatile Factory instance;
     private MBeanServer platformMBeanServer;
-    private boolean nativeInitialized;
     private AggregatedMemoryPoolBean aggregatedMemoryPoolBean;
     private Map<Long, ObjectName[]> mbeansForActiveIsolate;
 
@@ -70,11 +69,19 @@ public final class Factory extends Thread {
      */
     private final Set<Long> pendingIsolates;
 
+    @SuppressWarnings("try")
     private Factory() {
         super("Libgraal MBean Registration");
         this.pendingIsolates = new LinkedHashSet<>();
         this.setPriority(Thread.MIN_PRIORITY);
         this.setDaemon(true);
+        // The Factory class is a singleton, it's guaranteed that native method registration is
+        // performed at most once. The Factory instance is never created by the isolate shutdown
+        // hook as the unregister method is called by the isolate only if the Factory was already
+        // created by the registration thread.
+        try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            LibGraal.registerNativeMethods(JMXToLibGraalCalls.class);
+        }
     }
 
     /**
@@ -172,7 +179,6 @@ public final class Factory extends Thread {
     private boolean poll() {
         MBeanServer mBeanServer = findMBeanServer();
         if (mBeanServer != null) {
-            initializeNatives();
             return process();
         } else {
             return false;
@@ -191,19 +197,6 @@ public final class Factory extends Thread {
             }
         }
         return platformMBeanServer;
-    }
-
-    /**
-     * Registers native methods before the first call to libgraal is done.
-     */
-    @SuppressWarnings("try")
-    private void initializeNatives() {
-        if (!nativeInitialized) {
-            try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-                LibGraal.registerNativeMethods(JMXToLibGraalCalls.class);
-            }
-            nativeInitialized = true;
-        }
     }
 
     /**
