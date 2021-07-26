@@ -6,6 +6,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 
 * Support for case-insensitive matching in Ruby regular expressions.
 * Added Regexp option IgnoreAtomicGroups for treating atomic groups as ordinary groups.
+* Compiled regular expressions export the `isBacktracking` boolean member, which can be used to determine if the regexp can backtrack and potentially lead to exponential runtime.
 
 ## Version 21.2.0
 
