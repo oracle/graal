@@ -808,16 +808,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
 
-            for (GuardExpression guard : specialization.getGuards()) {
-                if (guard.getExpression().isNodeReceiverBound()) {
-                    uncachable = false;
-                    if (requireUncachable) {
-                        guard.addError("Failed to generate code for @%s: One of the guards bind non-static methods or fields . " +
-                                        "Add a static modifier to the bound guard method or field to resolve this.", types.GenerateUncached.asElement().getSimpleName().toString());
-                    }
-                    break;
-                }
-            }
             if (!specialization.getExceptions().isEmpty()) {
                 uncachable = false;
                 if (requireUncachable) {
