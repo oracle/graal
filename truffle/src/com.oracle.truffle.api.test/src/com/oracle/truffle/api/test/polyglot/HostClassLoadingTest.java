@@ -352,7 +352,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testResourceBundle() throws IOException {
+    public void testResourceBundleJar() throws IOException {
         setupEnv();
         final Class<?> hostClass = HostClassLoadingTestClass4.class;
         String newClassName = hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME;
@@ -367,6 +367,22 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             } finally {
                 Files.deleteIfExists(jar);
             }
+        } finally {
+            deleteDir(tempDir);
+        }
+    }
+
+    @Test
+    public void testResourceBundleFolder() throws IOException {
+        setupEnv();
+        final Class<?> hostClass = HostClassLoadingTestClass4.class;
+        String newClassName = hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        try {
+            Files.write(tempDir.resolve("bundle.properties"), Collections.singleton("key=value"));
+            languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(tempDir.toString()));
+            Object testClass = languageEnv.lookupHostSymbol(newClassName);
+            assertEquals("value", execute(read(testClass, "testMethod"), "bundle", "key"));
         } finally {
             deleteDir(tempDir);
         }
