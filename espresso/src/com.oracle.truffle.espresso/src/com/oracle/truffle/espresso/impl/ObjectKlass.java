@@ -623,12 +623,16 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Klass[] getNestMembers() {
+        if (this != nest()) {
+            return nest().getNestMembers();
+        }
         NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
         if (nestMembers == null || nestMembers.getClasses().length == 0) {
-            return EMPTY_ARRAY;
+            return new Klass[]{nest()};
         }
         RuntimeConstantPool pool = getConstantPool();
-        ArrayList<Klass> klasses = new ArrayList<>();
+        ArrayList<Klass> klasses = new ArrayList<>(1 + nestMembers.getClasses().length);
+        klasses.add(nest());
         for (int i = 0; i < nestMembers.getClasses().length; i++) {
             int index = nestMembers.getClasses()[i];
             try {
