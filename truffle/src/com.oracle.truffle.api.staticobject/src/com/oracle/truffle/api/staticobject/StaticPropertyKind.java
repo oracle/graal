@@ -217,4 +217,13 @@ enum StaticPropertyKind {
         assert StaticPropertyKind.values().length < java.lang.Byte.MAX_VALUE;
         return (byte) ordinal();
     }
+
+    @Override
+    public String toString() {
+        if (this == StaticPropertyKind.Object) {
+            return "java.lang.Object";
+        } else {
+            return name().toLowerCase();
+        }
+    }
 }

@@ -126,38 +126,9 @@ public abstract class StaticProperty {
         return (byte) (flags & ~STORE_AS_FINAL);
     }
 
-    final String getInternalKindName() {
-        return toInternalKindName(getInternalKind());
-    }
-
-    final String toInternalKindName(byte kind) {
-        switch (kind) {
-            case 0:
-                return "long";
-            case 1:
-                return "double";
-            case 2:
-                return "int";
-            case 3:
-                return "float";
-            case 4:
-                return "short";
-            case 5:
-                return "char";
-            case 6:
-                return "byte";
-            case 7:
-                return "boolean";
-            case 8:
-                return "java.lang.Object";
-            default:
-                throw new IllegalStateException("Illegal internal kind: " + getInternalKind());
-        }
-    }
-
     final void initOffset(int o) {
         if (this.offset != 0) {
-            throw new IllegalStateException("Attempt to reinitialize the offset of static property '" + getId() + "' of type '" + getInternalKindName() + "'.\n" +
+            throw new IllegalStateException("Attempt to reinitialize the offset of static property '" + getId() + "' of type '" + StaticPropertyKind.valueOf(getInternalKind()) + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.offset = o;
@@ -165,7 +136,7 @@ public abstract class StaticProperty {
 
     final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
-            throw new IllegalStateException("Attempt to reinitialize the shape of static property '" + getId() + "' of type '" + getInternalKindName() + "'.\n" +
+            throw new IllegalStateException("Attempt to reinitialize the shape of static property '" + getId() + "' of type '" + StaticPropertyKind.valueOf(getInternalKind()) + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.shape = s;
@@ -175,7 +146,7 @@ public abstract class StaticProperty {
         byte internalKind = getInternalKind();
         if (internalKind != getInternalKind(kind)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + getInternalKindName() + "' cannot be accessed as '" + toInternalKindName(getInternalKind(kind)) + "'");
+            throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + StaticPropertyKind.valueOf(getInternalKind()) + "' cannot be accessed as '" + StaticPropertyKind.valueOf(getInternalKind(kind)) + "'");
         }
     }
 
