@@ -354,17 +354,14 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             } else {
                 constant = javaConstant.asLong();
             }
-            /* Checking sign bit of original value. */
-            boolean isNegative = (constant & (1L << (fromBits - 1))) != 0;
-            long mask = NumUtil.getNbitNumberLong(fromBits);
-            long signExtendedValue;
-            if (isNegative) {
-                /* Making sure all sign bits are set within 64-bit value. */
-                signExtendedValue = constant | ~mask;
-            } else {
-                /* All sign bits are cleared within 64-bit value. */
-                signExtendedValue = constant & mask;
-            }
+            /*
+             * Performing sign extend via a left shift followed by an arithmetic right shift. First,
+             * a left shift of (64 - fromBits) is performed to remove non-meaningful bits, and then
+             * an arithmetic right shift is used to set correctly all sign bits. Note the "toBits"
+             * size is not considered, as the constant is saved as a long value.
+             */
+            int shiftSize = 64 - fromBits;
+            long signExtendedValue = (constant << shiftSize) >> shiftSize;
             return new ConstantValue(resultKind, JavaConstant.forLong(signExtendedValue));
         }
         Variable result = getLIRGen().newVariable(resultKind);

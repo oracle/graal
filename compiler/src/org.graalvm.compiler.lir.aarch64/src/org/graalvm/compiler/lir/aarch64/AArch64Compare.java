@@ -46,6 +46,8 @@ import org.graalvm.compiler.lir.gen.LIRGenerator;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64Compare {
@@ -59,8 +61,24 @@ public class AArch64Compare {
         public CompareOp(Value x, Value y) {
             super(TYPE);
             assert x.getPlatformKind() == y.getPlatformKind() : x.getPlatformKind() + " " + y.getPlatformKind();
+            assert !isJavaConstant(y) || isCompareConstant(y);
             this.x = x;
             this.y = y;
+        }
+
+        /**
+         * Checks if value can be used as a constant or not.
+         */
+        public static boolean isCompareConstant(Value value) {
+            if (isJavaConstant(value)) {
+                JavaConstant constant = asJavaConstant(value);
+                if (constant instanceof PrimitiveConstant) {
+                    return AArch64MacroAssembler.isComparisonImmediate(constant.asLong());
+                } else {
+                    return constant.isDefaultForKind();
+                }
+            }
+            return false;
         }
 
         @Override
@@ -84,26 +102,9 @@ public class AArch64Compare {
             if (constant.isDefaultForKind()) {
                 masm.cmp(size, asRegister(x), 0);
             } else {
-                final long longValue = constant.asLong();
-                assert NumUtil.isInt(longValue);
-                int maskedValue;
-                switch (constant.getJavaKind()) {
-                    case Boolean:
-                    case Byte:
-                        maskedValue = (int) (longValue & 0xFF);
-                        break;
-                    case Char:
-                    case Short:
-                        maskedValue = (int) (longValue & 0xFFFF);
-                        break;
-                    case Int:
-                    case Long:
-                        maskedValue = (int) longValue;
-                        break;
-                    default:
-                        throw GraalError.shouldNotReachHere();
-                }
-                masm.cmp(size, asRegister(x), maskedValue);
+                JavaKind javaKind = constant.getJavaKind();
+                GraalError.guarantee(javaKind == JavaKind.Int || javaKind == JavaKind.Long, "Unexpected constant size.");
+                masm.cmp(size, asRegister(x), NumUtil.safeToInt(constant.asLong()));
             }
         }
     }
@@ -118,7 +119,7 @@ public class AArch64Compare {
 
         public FloatCompareOp(Value x, Value y, Condition condition, boolean unorderedIsTrue) {
             super(TYPE);
-            assert !isJavaConstant(y) || isFloatCmpConstant(y, condition, unorderedIsTrue);
+            assert !isJavaConstant(y) || isCompareConstant(y, condition, unorderedIsTrue);
             this.x = x;
             this.y = y;
             this.condition = condition;
@@ -126,48 +127,55 @@ public class AArch64Compare {
         }
 
         /**
-         * Checks if val can be used as a constant for the gpCompare operation or not.
+         * There is no condition code for "EQ || unordered" or "NE && !unordered", so we have to fix
+         * them up ourselves.
          */
-        public static boolean isFloatCmpConstant(Value val, Condition condition, boolean unorderedIsTrue) {
-            // If the condition is "EQ || unordered" or "NE && unordered" we have to use 2 registers
-            // in any case.
-            if (!(condition == Condition.EQ && unorderedIsTrue || condition == Condition.NE && !unorderedIsTrue)) {
+        private static boolean needsUnorderedFixup(Condition condition, boolean unorderedIsTrue) {
+            return (condition == Condition.EQ && unorderedIsTrue) || (condition == Condition.NE && !unorderedIsTrue);
+        }
+
+        /**
+         * Checks if value can be used as a constant or not.
+         */
+        public static boolean isCompareConstant(Value value, Condition condition, boolean unorderedIsTrue) {
+            /*
+             * If fixup is needed then all values must be in registers.
+             */
+            if (needsUnorderedFixup(condition, unorderedIsTrue)) {
                 return false;
             }
-            return isJavaConstant(val) && asJavaConstant(val).isDefaultForKind();
+            return isJavaConstant(value) && asJavaConstant(value).isDefaultForKind();
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             assert isRegister(x);
+            Register left = asRegister(x);
             int size = x.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            boolean fixupUnorderedState = needsUnorderedFixup(condition, unorderedIsTrue);
             if (isRegister(y)) {
-                masm.fcmp(size, asRegister(x), asRegister(y));
-                // There is no condition code for "EQ || unordered" nor one for "NE && unordered",
-                // so we have to fix them up ourselves.
-                // In both cases we combine the asked for condition into the EQ, respectively NE
-                // condition, i.e.
-                // if EQ && unoreredIsTrue, then the EQ flag will be set if the two values gpCompare
-                // unequal but are
-                // unordered.
-                if (condition == Condition.EQ && unorderedIsTrue) {
-                    // if f1 ordered f2:
-                    // result = f1 == f2
-                    // else:
-                    // result = EQUAL
+                masm.fcmp(size, left, asRegister(y));
+                /*
+                 * There is no condition code for "condition == EQ && unordered" or
+                 * "condition == NE && !unordered", so we have to fix them up ourselves.
+                 *
+                 * We do this by conditionally changing the condition bits (via fccmp) to be set to
+                 * EQ (Z==1) when the operands are unordered. In code, the operation is:
+                 *
+                 * result = ordered(f1, f2) ? cmp(f1, f2) : EQ
+                 *
+                 * When a value is unordered, setting the result to EQ satisfies
+                 * "condition == EQ && unordered" since EQ == EQ, and also
+                 * "condition == NE && !unordered", since EQ != NE
+                 */
+                if (fixupUnorderedState) {
                     int nzcv = 0b0100;   // EQUAL -> Z = 1
-                    masm.fccmp(size, asRegister(x), asRegister(y), nzcv, AArch64Assembler.ConditionFlag.VC);
-                } else if (condition == Condition.NE && !unorderedIsTrue) {
-                    // if f1 ordered f2:
-                    // result = f1 != f2
-                    // else:
-                    // result = !NE == EQUAL
-                    int nzcv = 0b0100;   // EQUAL -> Z = 1
-                    masm.fccmp(size, asRegister(x), asRegister(y), nzcv, AArch64Assembler.ConditionFlag.VC);
+                    masm.fccmp(size, left, asRegister(y), nzcv, AArch64Assembler.ConditionFlag.VC);
                 }
             } else {
+                assert !fixupUnorderedState;
                 // cmp against +0.0
-                masm.fcmpZero(size, asRegister(x));
+                masm.fcmpZero(size, left);
             }
         }
 
