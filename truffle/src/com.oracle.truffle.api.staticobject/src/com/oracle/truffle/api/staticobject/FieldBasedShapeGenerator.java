@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.staticobject;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
@@ -49,6 +47,7 @@ import com.oracle.truffle.api.impl.asm.Type;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -86,20 +85,24 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties, storageClassName);
         Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
         Object[] resolvedFields = PRECISE_TYPES ? SomAccessor.RUNTIME.getResolvedFields(generatedStorageClass, true, false) : null;
+        HashMap<String, Integer> offsets;
+        if (PRECISE_TYPES) {
+            offsets = new HashMap<>();
+            for (Object resolvedField : resolvedFields) {
+                offsets.put(SomAccessor.RUNTIME.getFieldName(resolvedField), SomAccessor.RUNTIME.getFieldOffset(resolvedField));
+            }
+        } else {
+            offsets = null;
+        }
+
         for (Entry<String, StaticProperty> entry : staticProperties.entrySet()) {
-            int offset = -1;
+            int offset;
             if (PRECISE_TYPES) {
-                String propertyName = entry.getKey();
-                StaticProperty property = entry.getValue();
-                for (Object resolvedField : resolvedFields) {
-                    if (SomAccessor.RUNTIME.getFieldName(resolvedField).equals(propertyName)) {
-                        offset = SomAccessor.RUNTIME.getFieldOffset(resolvedField);
-                        break;
-                    }
+                Integer o = offsets.get(entry.getKey());
+                if (o == null) {
+                    throw new RuntimeException("Cannot find offset. Class: " + generatedStorageClass.getName() + "\tfield: " + entry.getValue().getId());
                 }
-                if (offset == -1) {
-                    throw new RuntimeException("Cannot find offset. Class: " + generatedStorageClass.getName() + "\tfield: " + property.getId());
-                }
+                offset = o;
             } else {
                 offset = getObjectFieldOffset(generatedStorageClass, entry.getKey());
             }
