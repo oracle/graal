@@ -119,6 +119,7 @@ ce_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight'
 ce_complete_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'insightheap', 'java', 'js', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'vvm']
 ce_ruby_components = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrn', 'lsp', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'svm', 'svmnfi', 'tfl', 'tflm', 'vvm']
 ce_python_components = ['bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llmulrl', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'ni', 'nic', 'nil', 'nju', 'pbm', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'vvm']
+ce_fastr_components = ce_components + ['R', 'llp', 'bRMain']
 ce_no_native_components = ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lsp', 'nfi', 'ni', 'nil', 'polynative', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm']
 
 mx_sdk_vm.register_vm_config('ce', ['insight', 'insightheap', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'poly', 'bpolyglot', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'tfl', 'tflm', 'vvm'], _suite, env_file='ce-win')
@@ -128,6 +129,7 @@ mx_sdk_vm.register_vm_config('ce', ce_components + ['njs'], _suite, dist_name='c
 mx_sdk_vm.register_vm_config('ce', ce_ruby_components, _suite, dist_name='ce-ruby', env_file='ce-ruby')
 mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete')
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
+mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
 mx_sdk_vm.register_vm_config('libgraal', ['bgu', 'cmp', 'dis', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite)
 mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi', 'cmp', 'svm', 'svmnfi', 'llp', 'llrc', 'llrn'], _suite)
