@@ -207,7 +207,7 @@ public class ResourceConfiguration implements ConfigurationBase {
         writer.unindent().newline().append('}');
     }
 
-    private void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
+    private static void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
         writer.append('{').quote("name").append(':').quote(config.baseName);
         if (!config.locales.isEmpty()) {
             writer.append(',').quote("locales").append(":");
