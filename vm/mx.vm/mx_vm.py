@@ -30,13 +30,13 @@ from __future__ import print_function
 
 import mx
 import mx_gate
+import mx_jardistribution
 import mx_sdk_vm, mx_sdk_vm_impl
 import mx_vm_benchmark
 import mx_vm_gate
 
 import os
-from os.path import join, relpath
-
+from os.path import basename, isdir, join, relpath
 
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
@@ -133,7 +133,7 @@ mx_sdk_vm.register_vm_config('libgraal', ['bgu', 'cmp', 'dis', 'gu', 'gvm', 'lg'
 mx_sdk_vm.register_vm_config('toolchain-only', ['sdk', 'tfl', 'tflm', 'nfi', 'cmp', 'svm', 'svmnfi', 'llp', 'llrc', 'llrn'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'sdk', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'bpolyglot'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('toolchain-only-bash', ['bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'tfl', 'tflm', 'gu', 'svm', 'svmnfi', 'gvm', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'sdk', 'llrc', 'llrn', 'cmp'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bjs', 'blli', 'bnative-image', 'btruffleruby', 'pynl', 'bgraalpython', 'pyn', 'bwasm', 'cmp', 'gwa', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'pbm', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
+mx_sdk_vm.register_vm_config('ce', ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'java', 'libpoly', 'sespresso', 'spolyglot', 'ejvm', 'bjs', 'blli', 'bnative-image', 'btruffleruby', 'pynl', 'bgraalpython', 'pyn', 'bwasm', 'cmp', 'gwa', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'pbm', 'rby', 'rbyl', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite, env_file='polybench-ce')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['llmulrl'], _suite, env_file='ce-llimul')
 
 if mx.get_os() == 'windows':
@@ -220,6 +220,52 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             ))
             # add bitcode to the layout of the benchmark distribution
             _add_project_to_dist('./', 'benchmarks.interpreter.llvm.native')
+
+        if mx_sdk_vm_impl.has_component('Java on Truffle'):
+            java_benchmarks = join(_suite.dir, 'benchmarks', 'interpreter', 'java')
+            for f in os.listdir(java_benchmarks):
+                if isdir(join(java_benchmarks, f)) and not f.startswith("."):
+                    main_class = basename(f)
+                    simple_name = main_class.split(".")[-1]
+
+                    project_name = 'benchmarks.interpreter.espresso.' + simple_name.lower()
+                    register_project(mx.JavaProject(
+                        suite=_suite,
+                        subDir=None,
+                        srcDirs=[join(_suite.dir, 'benchmarks', 'interpreter', 'java', main_class)],
+                        deps=[],
+                        name=project_name,
+                        d=join(_suite.dir, 'benchmarks', 'interpreter', 'java', main_class),
+                        javaCompliance='1.8+',
+                        checkstyleProj=project_name,
+                        workingSets=None,
+                        theLicense=None,
+                        testProject=True,
+                        defaultBuild=False,
+                    ))
+
+                    dist_name = 'POLYBENCH_ESPRESSO_' + simple_name.upper()
+                    register_distribution(mx_jardistribution.JARDistribution(
+                        suite=_suite,
+                        subDir=None,
+                        srcDirs=[''],
+                        sourcesPath=[],
+                        deps=[project_name],
+                        mainClass=main_class,
+                        name=dist_name,
+                        path=simple_name + '.jar',
+                        platformDependent=False,
+                        distDependencies=[],
+                        javaCompliance='1.8+',
+                        excludedLibs=[],
+                        workingSets=None,
+                        theLicense=None,
+                        testProject=True,
+                        defaultBuild=False,
+                    ))
+                    # add jars to the layout of the benchmark distribution
+                    _add_project_to_dist('./interpreter/{}.jar'.format(simple_name), dist_name,
+                        source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
 
 
 class GraalVmSymlinks(mx.Project):
