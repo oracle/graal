@@ -217,7 +217,7 @@ public abstract class StaticShape<T> {
 
         Builder(TruffleLanguage<?> language) {
             this.language = language;
-            storageClassName = generateStorageName();
+            storageClassName = ShapeGenerator.class.getPackage().getName().replace('.', '/') + "/GeneratedStaticObject" + DELIMITER + counter.incrementAndGet();
         }
 
         /**
@@ -251,16 +251,27 @@ public abstract class StaticShape<T> {
          * @since 21.3.0
          */
         public Builder property(StaticProperty property, Class<?> type, boolean storeAsFinal) {
-            validateType(type);
-            return property(property, getDescriptor(type.getName()), StaticPropertyKind.valueOf(type), storeAsFinal);
+            StaticPropertyKind kind;
+            String descriptor;
+            if (type.isPrimitive()) {
+                kind = StaticPropertyKind.valueOf(type);
+                descriptor = StaticPropertyKind.getDescriptor(kind.ordinal());
+            } else if (type.isArray()) {
+                kind = StaticPropertyKind.Object;
+                descriptor = type.getName().replace('.', '/');
+            } else {
+                kind = StaticPropertyKind.Object;
+                descriptor = "L" + type.getName().replace('.', '/') + ";";
+            }
+            return property(property, descriptor, kind, storeAsFinal);
         }
 
         public Builder property(StaticProperty property, Builder builder, boolean storeAsFinal) {
-            return property(property, getDescriptor(builder.storageClassName), StaticPropertyKind.Object, storeAsFinal);
+            return property(property, "L" + builder.storageClassName + ";", StaticPropertyKind.Object, storeAsFinal);
         }
 
         public Builder property(StaticProperty property, StaticShape<?> shape, boolean storeAsFinal) {
-            return property(property, getDescriptor(shape.getStorageClass().getName()), StaticPropertyKind.Object, storeAsFinal);
+            return property(property, "L" + shape.getStorageClass().getName().replace('.', '/') + ";", StaticPropertyKind.Object, storeAsFinal);
         }
 
         private Builder property(StaticProperty property, String descriptor, StaticPropertyKind kind, boolean storeAsFinal) {
@@ -380,31 +391,8 @@ public abstract class StaticShape<T> {
             isActive = false;
         }
 
-        private static String generateStorageName() {
-            return ShapeGenerator.class.getPackage().getName().replace('.', '/') + "/GeneratedStaticObject" + DELIMITER + counter.incrementAndGet();
-        }
-
-        private static String getDescriptor(String className) {
-            switch (className) {
-                case "long":
-                    return "J";
-                case "double":
-                    return "D";
-                case "int":
-                    return "I";
-                case "float":
-                    return "F";
-                case "short":
-                    return "S";
-                case "char":
-                    return "C";
-                case "byte":
-                    return "B";
-                case "boolean":
-                    return "Z";
-                default:
-                    return "L" + className.replace('.', '/') + ";";
-            }
+        private String getStorageClassDescriptor() {
+            return "L" + storageClassName + ";";
         }
 
         private GeneratorClassLoader getOrCreateClassLoader(Class<?> referenceClass) {
@@ -417,12 +405,6 @@ public abstract class StaticShape<T> {
                 throw new RuntimeException("The Truffle language instance associated to this Builder returned an unexpected class loader");
             }
             return (GeneratorClassLoader) cl;
-        }
-
-        private static void validateType(Class<?> type) {
-            if (!type.isPrimitive() && type != Object.class) {
-                throw new IllegalArgumentException("The static property type can be a primitive class or Object.class");
-            }
         }
 
         private String validateAndGetId(StaticProperty property) {
