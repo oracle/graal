@@ -43,6 +43,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.meta.SpeculationLog;
@@ -78,11 +79,14 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     private final boolean firstTierBackedgeCounts;
     private volatile boolean compilationDisabled;
 
+    private final LoopConditionProfile loopConditionProfile;
+
     private OptimizedOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, boolean firstTierBackedgeCounts) {
         Objects.requireNonNull(repeatableNode);
         this.repeatableNode = repeatableNode;
         this.osrThreshold = osrThreshold;
         this.firstTierBackedgeCounts = firstTierBackedgeCounts;
+        this.loopConditionProfile = LoopConditionProfile.create();
     }
 
     /**
@@ -134,7 +138,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             long iterationsCompleted = 0;
             Object status;
             try {
-                while (repeatableNode.shouldContinue((status = repeatableNode.executeRepeatingWithValue(frame)))) {
+                while (loopConditionProfile.inject(repeatableNode.shouldContinue((status = repeatableNode.executeRepeatingWithValue(frame))))) {
                     iterationsCompleted++;
                     if (CompilerDirectives.inInterpreter()) {
                         // compiled method got invalidated. We might need OSR again.
@@ -150,7 +154,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             return status;
         } else {
             Object status;
-            while (repeatableNode.shouldContinue((status = repeatableNode.executeRepeatingWithValue(frame)))) {
+            while (loopConditionProfile.inject(repeatableNode.shouldContinue((status = repeatableNode.executeRepeatingWithValue(frame))))) {
                 if (CompilerDirectives.inInterpreter()) {
                     // compiled method got invalidated. We might need OSR again.
                     return execute(frame);
@@ -181,9 +185,14 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             // The status returned here is different than CONTINUE_LOOP_STATUS.
             return status;
         } finally {
-            baseLoopCount = toIntOrMaxInt(baseLoopCount + iterations);
-            reportParentLoopCount(toIntOrMaxInt(iterations));
+            reportLoopIterations(iterations);
         }
+    }
+
+    private void reportLoopIterations(long iterations) {
+        baseLoopCount = toIntOrMaxInt(baseLoopCount + iterations);
+        loopConditionProfile.profileCounted(iterations);
+        reportParentLoopCount(toIntOrMaxInt(iterations));
     }
 
     private void reportParentLoopCount(int iterations) {
@@ -235,8 +244,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             } while (repeatableNode.shouldContinue(status = repeatableNode.executeRepeatingWithValue(frame)));
             return status;
         } finally {
-            baseLoopCount = toIntOrMaxInt(baseLoopCount + iterations);
-            reportParentLoopCount(toIntOrMaxInt(iterations));
+            reportLoopIterations(iterations);
         }
     }
 

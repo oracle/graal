@@ -29,13 +29,17 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 
 public final class OptimizedLoopNode extends LoopNode {
 
     @Child private RepeatingNode repeatingNode;
 
+    private final LoopConditionProfile loopConditionProfile;
+
     OptimizedLoopNode(RepeatingNode repeatingNode) {
         this.repeatingNode = repeatingNode;
+        this.loopConditionProfile = LoopConditionProfile.create();
     }
 
     @Override
@@ -54,7 +58,7 @@ public final class OptimizedLoopNode extends LoopNode {
         Object status;
         long loopCount = 0;
         try {
-            while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame))) {
+            while (loopConditionProfile.inject(repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame)))) {
                 if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.hasNextTier()) {
                     loopCount++;
                 }
@@ -62,6 +66,7 @@ public final class OptimizedLoopNode extends LoopNode {
             }
             return status;
         } finally {
+            loopConditionProfile.profileCounted(loopCount);
             reportLoopCount(this, OptimizedOSRLoopNode.toIntOrMaxInt(loopCount));
         }
     }
