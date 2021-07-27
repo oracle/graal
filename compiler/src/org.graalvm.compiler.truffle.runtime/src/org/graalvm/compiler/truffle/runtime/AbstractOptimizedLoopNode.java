@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,33 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleSafepoint;
+import java.util.Objects;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 
-public final class OptimizedLoopNode extends AbstractOptimizedLoopNode {
+abstract class AbstractOptimizedLoopNode extends LoopNode {
 
-    OptimizedLoopNode(RepeatingNode repeatingNode) {
-        super(repeatingNode);
+    @Child protected RepeatingNode repeatingNode;
+
+    protected final LoopConditionProfile loopConditionProfile;
+
+    protected AbstractOptimizedLoopNode(RepeatingNode repeatingNode) {
+        this.repeatingNode = Objects.requireNonNull(repeatingNode);
+        this.loopConditionProfile = LoopConditionProfile.create();
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object status;
-        long loopCount = 0;
-        try {
-            while (loopConditionProfile.inject(repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame)))) {
-                if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.hasNextTier()) {
-                    loopCount++;
-                }
-                TruffleSafepoint.poll(this);
-            }
-            return status;
-        } finally {
-            loopConditionProfile.profileCounted(loopCount);
-            reportLoopCount(this, OptimizedOSRLoopNode.toIntOrMaxInt(loopCount));
-        }
+    public final RepeatingNode getRepeatingNode() {
+        return repeatingNode;
     }
 
-    static LoopNode create(RepeatingNode repeatingNode) {
-        return new OptimizedLoopNode(repeatingNode);
+    @SuppressWarnings("deprecation")
+    @Override
+    public final void executeLoop(VirtualFrame frame) {
+        execute(frame);
     }
 
 }
