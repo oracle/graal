@@ -79,6 +79,29 @@ public class OptimizedBlockNodeTest {
     }
 
     @Test
+    public void testFirstBlockElementExceedsLimit() {
+        setup(1);
+        OptimizedBlockNode<TestElement> block = createBlock(2, 1, null, new TestElementExecutor(), 5);
+        OptimizedCallTarget target = createTest(block);
+        target.computeBlockCompilations();
+        target.call();
+        target.compile(true);
+
+        // should not trigger and block compilation
+        PartialBlocks<TestElement> partialBlocks = block.getPartialBlocks();
+        assertNotNull(partialBlocks);
+        assertNotNull(partialBlocks.getBlockRanges());
+        assertEquals(1, partialBlocks.getBlockRanges().length);
+        assertEquals(1, partialBlocks.getBlockRanges()[0]);
+        assertNotNull(partialBlocks.getBlockTargets());
+        assertEquals(2, partialBlocks.getBlockTargets().length);
+        assertTrue(partialBlocks.getBlockTargets()[0].isValid());
+        assertTrue(partialBlocks.getBlockTargets()[1].isValid());
+
+        assertEquals(1, target.call());
+    }
+
+    @Test
     public void testBlockSizePlusOne() {
         int groupSize = 1;
         for (int i = 0; i < 5; i++) {
@@ -306,7 +329,7 @@ public class OptimizedBlockNodeTest {
 
         setup(2);
 
-        block = createBlock(5, 1, null, new StartsWithExecutor());
+        block = createBlock(5, 1, null, new StartsWithExecutor(), 0);
         target = createTest(block);
         elementExecuted = ((TestRootNode) block.getRootNode()).elementExecuted;
         expectedResult = 4;
@@ -487,16 +510,26 @@ public class OptimizedBlockNodeTest {
     }
 
     private static OptimizedBlockNode<TestElement> createBlock(int blockSize, int depth, Object returnValue) {
-        return createBlock(blockSize, depth, returnValue, new TestElementExecutor());
+        return createBlock(blockSize, depth, returnValue, new TestElementExecutor(), 0);
     }
 
-    private static OptimizedBlockNode<TestElement> createBlock(int blockSize, int depth, Object returnValue, ElementExecutor<TestElement> executor) {
+    private static OptimizedBlockNode<TestElement> createBlock(int blockSize, int depth, Object returnValue, ElementExecutor<TestElement> executor, int extraChildrenOfFirstElement) {
         if (depth == 0) {
             return null;
         }
         TestElement[] elements = new TestElement[blockSize];
         for (int i = 0; i < blockSize; i++) {
-            elements[i] = new TestElement(createBlock(blockSize, depth - 1, returnValue), returnValue == null ? i : returnValue, i);
+            Node[] extraDummyChildren;
+            if (i == 0 && extraChildrenOfFirstElement > 0) {
+                extraDummyChildren = new Node[extraChildrenOfFirstElement];
+                for (int j = 0; j < extraDummyChildren.length; j++) {
+                    extraDummyChildren[j] = new Node() {
+                    };
+                }
+            } else {
+                extraDummyChildren = new Node[0];
+            }
+            elements[i] = new TestElement(createBlock(blockSize, depth - 1, returnValue), returnValue == null ? i : returnValue, i, extraDummyChildren);
         }
         return (OptimizedBlockNode<TestElement>) BlockNode.create(elements, executor);
     }
@@ -643,16 +676,18 @@ public class OptimizedBlockNodeTest {
 
         @Child BlockNode<?> childBlock;
         @Child ElementChildNode childNode = new ElementChildNode();
+        @Children Node[] extraDummyChildren;
 
         final Object returnValue;
         final int childIndex;
 
         @CompilationFinal TestRootNode root;
 
-        TestElement(BlockNode<?> childBlock, Object returnValue, int childIndex) {
+        TestElement(BlockNode<?> childBlock, Object returnValue, int childIndex, Node[] extraDummyChildren) {
             this.childBlock = childBlock;
             this.returnValue = returnValue;
             this.childIndex = childIndex;
+            this.extraDummyChildren = extraDummyChildren;
         }
 
         void onAdopt() {
