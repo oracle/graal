@@ -16,6 +16,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added the ability to share values between contexts. Guest languages can now use values of the polyglot embedding API using host interop. This no longer leads to invalid sharing errors.
 * Added `ReflectionLibrary.getUncached` method.
 * Removed deprecated `TruffleLanguage.Registration#mimeType()`. Split up MIME types into `TruffleLanguage.Registration#characterMimeTypes()` and `TruffleLanguage.Registration#byteMimeTypes()`.
+* Added loop condition profiling to `LoopNode`, so the `RepeatingNode` no longer needs to profile or inject the loop count. Language implementations should remove loop condition profiles from their repeating nodes since they are redundant now.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
