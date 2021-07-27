@@ -119,7 +119,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         Object classNames = resource.get("classNames");
         if (classNames != null) {
             List<Object> asList = asList(classNames, "Attribute 'classNames' must be a list of classes");
-            UserError.guarantee(!asList.isEmpty(), "List of classnames for %s is empty", basename);
+            UserError.guarantee(!asList.isEmpty(), "List of classNames for %s is empty", basename);
             for (Object o : asList) {
                 String className = asString(o, "Elements of 'classNames' must of strings.");
                 registry.addClassBasedResourceBundle(className);
