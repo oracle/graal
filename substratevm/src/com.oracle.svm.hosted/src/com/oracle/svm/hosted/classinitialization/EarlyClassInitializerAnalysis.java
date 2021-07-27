@@ -55,6 +55,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
@@ -197,7 +198,7 @@ final class EarlyClassInitializerAnalysis {
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
             ResolvedJavaMethod clinitMethod = b.getGraph().method();
-            if (type.isInitialized() || type.isArray() || type.equals(clinitMethod.getDeclaringClass())) {
+            if (!EnsureClassInitializedNode.needsRuntimeInitialization(clinitMethod.getDeclaringClass(), type)) {
                 return false;
             }
             if (classInitializationSupport.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.getJavaClass(type), true, analyzedClasses) != InitKind.RUN_TIME) {

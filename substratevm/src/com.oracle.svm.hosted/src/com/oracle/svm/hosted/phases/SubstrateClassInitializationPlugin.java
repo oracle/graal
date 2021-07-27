@@ -60,7 +60,7 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
 
     @Override
     public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
-        if (needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
+        if (EnsureClassInitializedNode.needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
             emitEnsureClassInitialized(builder, SubstrateObjectConstant.forObject(host.dynamicHub(type)), frameState.get());
             /*
              * The classInit value is only registered with Invoke nodes. Since we do not need that,
@@ -78,13 +78,5 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
         ValueNode hub = ConstantNode.forConstant(hubConstant, builder.getMetaAccess(), builder.getGraph());
         EnsureClassInitializedNode node = new EnsureClassInitializedNode(hub, frameState);
         builder.add(node);
-    }
-
-    /**
-     * Return true if the type needs to be initialized at run time, i.e., it has not been already
-     * initialized during image generation.
-     */
-    static boolean needsRuntimeInitialization(ResolvedJavaType declaringClass, ResolvedJavaType type) {
-        return !declaringClass.equals(type) && !type.isInitialized() && !type.isArray();
     }
 }
