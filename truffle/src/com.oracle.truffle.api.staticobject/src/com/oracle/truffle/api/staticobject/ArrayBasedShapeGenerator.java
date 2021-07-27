@@ -426,9 +426,11 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
         storageWriter.visit(V1_8, storageAccess, storageClassName, null, storageSuperName, null);
         addStorageConstructors(storageWriter, storageClassName, storageSuperClass, storageSuperName);
-        addStorageField(storageWriter, "primitive", StaticPropertyKind.BYTE_ARRAY, true);
-        addStorageField(storageWriter, "object", StaticPropertyKind.OBJECT_ARRAY, true);
-        addStorageField(storageWriter, "shape", StaticPropertyKind.Object.toByte(), true);
+        addStorageField(storageWriter, "primitive", "[B", true);
+        addStorageField(storageWriter, "object", "[Ljava/lang/Object;", true);
+        // Cannot use a more precise descriptor because the class might be loaded by a class loader
+        // that does not find it
+        addStorageField(storageWriter, "shape", "Ljava/lang/Object;", true);
         if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
             addCloneMethod(storageSuperClass, storageWriter, storageClassName);
         }

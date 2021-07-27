@@ -96,8 +96,6 @@ enum StaticPropertyKind {
     Object; // 8
 
     static final int N_PRIMITIVES = 8;
-    static final byte BYTE_ARRAY = 9;
-    static final byte OBJECT_ARRAY = 10;
 
     static String getDescriptor(int i) {
         if (i == StaticPropertyKind.Long.ordinal()) {
@@ -118,10 +116,6 @@ enum StaticPropertyKind {
             return "Z";
         } else if (i == StaticPropertyKind.Object.ordinal()) {
             return "Ljava/lang/Object;";
-        } else if (i == BYTE_ARRAY) {
-            return "[B";
-        } else if (i == OBJECT_ARRAY) {
-            return "[Ljava/lang/Object;";
         } else {
             throw new IllegalArgumentException("Invalid StaticPropertyKind: " + i);
         }

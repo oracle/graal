@@ -85,19 +85,12 @@ abstract class ShapeGenerator<T> {
     static void addStorageFields(ClassVisitor cv, Map<String, StaticProperty> staticProperties) {
         for (Entry<String, StaticProperty> entry : staticProperties.entrySet()) {
             StaticProperty property = entry.getValue();
-            if (PRECISE_TYPES) {
-                addStorageField(cv, entry.getKey(), property.getDescriptor(), property.storeAsFinal());
-            } else {
-                addStorageField(cv, entry.getKey(), property.getInternalKind(), property.storeAsFinal());
-            }
+            String descriptor = PRECISE_TYPES ? property.getDescriptor() : StaticPropertyKind.getDescriptor(property.getInternalKind());
+            addStorageField(cv, entry.getKey(), descriptor, property.storeAsFinal());
         }
     }
 
-    static void addStorageField(ClassVisitor cv, String propertyName, byte internalKind, boolean storeAsFinal) {
-        addStorageField(cv, propertyName, StaticPropertyKind.getDescriptor(internalKind), storeAsFinal);
-    }
-
-    private static void addStorageField(ClassVisitor cv, String propertyName, String descriptor, boolean storeAsFinal) {
+    static void addStorageField(ClassVisitor cv, String propertyName, String descriptor, boolean storeAsFinal) {
         int access = storeAsFinal ? ACC_FINAL | ACC_PUBLIC : ACC_PUBLIC;
         FieldVisitor fv = cv.visitField(access, propertyName, descriptor, null, null);
         fv.visitEnd();
