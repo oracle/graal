@@ -148,7 +148,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 }
             } finally {
                 if (firstTierBackedgeCounts && iterationsCompleted > 1) {
-                    reportParentLoopCount(toIntOrMaxInt(iterationsCompleted));
+                    LoopNode.reportLoopCount(this, toIntOrMaxInt(iterationsCompleted));
                 }
             }
             return status;
@@ -192,14 +192,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     private void reportLoopIterations(long iterations) {
         baseLoopCount = toIntOrMaxInt(baseLoopCount + iterations);
         loopConditionProfile.profileCounted(iterations);
-        reportParentLoopCount(toIntOrMaxInt(iterations));
-    }
-
-    private void reportParentLoopCount(int iterations) {
-        Node parent = getParent();
-        if (parent != null) {
-            LoopNode.reportLoopCount(parent, iterations);
-        }
+        LoopNode.reportLoopCount(this, toIntOrMaxInt(iterations));
     }
 
     final void reportChildLoopCount(int iterations) {
