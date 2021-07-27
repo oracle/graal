@@ -44,7 +44,6 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
@@ -126,8 +125,8 @@ public abstract class TRegexExecutorEntryNode extends Node {
         return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), false);
     }
 
-    @Specialization
-    Object doTruffleObject(TruffleObject input, int fromIndex, int index, int maxIndex,
+    @Specialization(guards = "neitherByteArrayNorString(input)")
+    Object doTruffleObject(Object input, int fromIndex, int index, int maxIndex,
                     @Cached("createClassProfile()") ValueProfile inputClassProfile) {
         // conservatively disable compact string optimizations.
         // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
@@ -137,5 +136,9 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     static boolean isCompactString(String str) {
         return UNSAFE != null && UNSAFE.getByte(str, coderFieldOffset) == 0;
+    }
+
+    protected static boolean neitherByteArrayNorString(Object obj) {
+        return !(obj instanceof byte[]) && !(obj instanceof String);
     }
 }
