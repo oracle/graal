@@ -132,11 +132,11 @@ public class Instance extends Dictionary {
                         ensureImportModule(importModules, d.module()).addMemory(d.name(), (Memory) member);
                         break;
                     case table:
-                        if (!isTable(lib, member)) {
+                        if (!(member instanceof WasmTable)) {
                             throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not a valid table.");
                         }
                         // TODO: Use the Interop API to access the table.
-                        ensureImportModule(importModules, d.module()).addTable(d.name(), (Table) member);
+                        ensureImportModule(importModules, d.module()).addTable(d.name(), (WasmTable) member);
                         break;
                     case global:
                         if (!isGlobal(lib, member)) {
@@ -174,39 +174,6 @@ public class Instance extends Dictionary {
             return false;
         }
         if (!(lib.isMemberReadable(memory, "buffer"))) {
-            return false;
-        }
-        return true;
-    }
-
-    private static boolean isTable(InteropLibrary lib, Object table) throws UnknownIdentifierException, UnsupportedMessageException {
-        if (!lib.isMemberReadable(table, "descriptor")) {
-            return false;
-        }
-        final Object descriptor = lib.readMember(table, "descriptor");
-        if (!(lib.isMemberReadable(descriptor, "initial") && lib.isNumber(lib.readMember(descriptor, "initial")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(descriptor, "maximum") && lib.isNumber(lib.readMember(descriptor, "maximum")))) {
-            return false;
-        }
-        if (!lib.isMemberReadable(descriptor, "element")) {
-            return false;
-        }
-        final Object element = lib.readMember(descriptor, "element");
-        if (!(lib.isString(element) && lib.asString(element).equals(TableKind.anyfunc.name()))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(table, "grow") && lib.isExecutable(lib.readMember(table, "grow")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(table, "get") && lib.isExecutable(lib.readMember(table, "get")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(table, "set") && lib.isExecutable(lib.readMember(table, "set")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(table, "length") && lib.isNumber(lib.readMember(table, "length")))) {
             return false;
         }
         return true;
@@ -267,7 +234,7 @@ public class Instance extends Dictionary {
                 e.addMember(name, new Memory(memory));
             } else if (instance.module().exportedTableNames().contains(name)) {
                 final WasmTable table = instance.table();
-                e.addMember(name, new Table(table));
+                e.addMember(name, table);
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");

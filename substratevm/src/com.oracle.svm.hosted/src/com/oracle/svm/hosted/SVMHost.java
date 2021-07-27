@@ -109,7 +109,6 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -652,10 +651,9 @@ public class SVMHost implements HostVM {
              */
             classInitializerSideEffect.put(method, true);
         } else if (n instanceof EnsureClassInitializedNode) {
-            Constant constantHub = ((EnsureClassInitializedNode) n).getHub().asConstant();
-            if (constantHub != null) {
-                AnalysisType type = (AnalysisType) bb.getProviders().getConstantReflection().asJavaType(constantHub);
-                initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add(type);
+            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(bb.getProviders());
+            if (type != null) {
+                initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add((AnalysisType) type);
             } else {
                 classInitializerSideEffect.put(method, true);
             }

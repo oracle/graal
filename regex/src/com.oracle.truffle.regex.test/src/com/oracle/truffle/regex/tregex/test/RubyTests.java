@@ -343,4 +343,11 @@ public class RubyTests extends RegexTestBase {
     public void ignoreAtomicGroups() {
         test("(?>foo)", "", "foo", 0, true, 0, 3);
     }
+
+    @Test
+    public void reportBacktracking() {
+        Assert.assertFalse(compileRegex("(?:foo)+", "").getMember("isBacktracking").asBoolean());
+        Assert.assertTrue(compileRegex("(?:foo){64}", "").getMember("isBacktracking").asBoolean());
+        Assert.assertTrue(compileRegex("(x+)\\1", "").getMember("isBacktracking").asBoolean());
+    }
 }

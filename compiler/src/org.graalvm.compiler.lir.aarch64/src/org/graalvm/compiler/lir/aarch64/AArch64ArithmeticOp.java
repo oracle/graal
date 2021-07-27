@@ -75,6 +75,7 @@ public enum AArch64ArithmeticOp {
     ANDS(LOGICAL),
     OR(LOGICAL),
     XOR(LOGICAL),
+    TST(LOGICAL),
     BIC,
     ORN,
     EON,
@@ -235,6 +236,10 @@ public enum AArch64ArithmeticOp {
                 case XOR:
                     masm.eor(size, dst, src, b.asLong());
                     break;
+                case TST:
+                    assert dst.equals(zr);
+                    masm.tst(size, src, b.asLong());
+                    break;
                 case LSL:
                     masm.lsl(size, dst, src, b.asLong());
                     break;
@@ -332,6 +337,10 @@ public enum AArch64ArithmeticOp {
                     break;
                 case BIC:
                     masm.bic(dstSize, dst, src1, src2);
+                    break;
+                case TST:
+                    assert dst.equals(zr);
+                    masm.tst(dstSize, src1, src2);
                     break;
                 case ORN:
                     masm.orn(dstSize, dst, src1, src2);
@@ -735,6 +744,9 @@ public enum AArch64ArithmeticOp {
                     break;
                 case MUL:
                     masm.neon.mulVVV(size, eSize, dst, src1, src2);
+                    break;
+                case TST:
+                    masm.neon.cmtstVVV(size, eSize, dst, src1, src2);
                     break;
                 case MNEG:
                     /* First perform multiply. */

@@ -46,10 +46,6 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
     private AArch64LIRKindTool kindtool;
     private boolean supportsDerivedReference;
 
-    public AArch64AddressLoweringByUse(AArch64LIRKindTool kindtool) {
-        this(kindtool, true);
-    }
-
     public AArch64AddressLoweringByUse(AArch64LIRKindTool kindtool, boolean supportsDerivedReference) {
         this.kindtool = kindtool;
         this.supportsDerivedReference = supportsDerivedReference;

@@ -167,6 +167,11 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return inputProfile;
     }
 
+    @Override
+    public boolean isBacktracking() {
+        return backtrackingMode;
+    }
+
     private static int charactersProcessedDuringSearch(RegexResult result, int fromIndex, int inputLength) {
         if (result == NoMatchResult.getInstance()) {
             return inputLength - fromIndex;

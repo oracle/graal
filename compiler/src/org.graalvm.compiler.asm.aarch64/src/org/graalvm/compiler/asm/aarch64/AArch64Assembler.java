@@ -710,7 +710,7 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /**
-     * Condition Flags for branches. See 4.3
+     * Condition Flags for branches. See C1.2.4
      */
     public enum ConditionFlag {
         // Integer | Floating-point meanings
