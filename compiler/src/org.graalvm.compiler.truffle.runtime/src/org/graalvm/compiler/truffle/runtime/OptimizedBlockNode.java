@@ -313,15 +313,21 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 if (newBlockSize <= maxBlockSize) {
                     currentBlockSize = newBlockSize;
                 } else {
-                    if (blockRanges == null) {
-                        blockRanges = new int[8];
-                        blockSizes = new int[8];
-                    } else if (currentBlockIndex >= blockRanges.length) {
-                        blockRanges = Arrays.copyOf(blockRanges, blockRanges.length * 2);
-                        blockSizes = Arrays.copyOf(blockSizes, blockSizes.length * 2);
+                    /*
+                     * If the first child already exceeds the limit, there are no previous elements
+                     * to create a partial block from.
+                     */
+                    if (i > 0) {
+                        if (blockRanges == null) {
+                            blockRanges = new int[8];
+                            blockSizes = new int[8];
+                        } else if (currentBlockIndex >= blockRanges.length) {
+                            blockRanges = Arrays.copyOf(blockRanges, blockRanges.length * 2);
+                            blockSizes = Arrays.copyOf(blockSizes, blockSizes.length * 2);
+                        }
+                        blockSizes[currentBlockIndex] = currentBlockSize;
+                        blockRanges[currentBlockIndex++] = i;
                     }
-                    blockSizes[currentBlockIndex] = currentBlockSize;
-                    blockRanges[currentBlockIndex++] = i;
                     currentBlockSize = childCount;
                 }
             }
