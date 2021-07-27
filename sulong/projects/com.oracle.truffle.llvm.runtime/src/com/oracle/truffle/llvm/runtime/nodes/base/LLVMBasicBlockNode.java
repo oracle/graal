@@ -224,17 +224,18 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
         @Override
         public void enterSuccessor(int successorIndex) {
-            if (aot) {
-                return;
-            }
-
-            if (CompilerDirectives.inCompiledCode() && successorExecutionCount != null) {
+            if (!aot && CompilerDirectives.inCompiledCode() && successorExecutionCount != null) {
                 if (successorExecutionCount[successorIndex] == 0) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
             }
-            if (CompilerDirectives.inInterpreter() && successorExecutionCount != null) {
-                successorExecutionCount[successorIndex]++;
+            if (CompilerDirectives.inInterpreter()) {
+                if (aot) {
+                    aot = false;
+                }
+                if (successorExecutionCount != null) {
+                    successorExecutionCount[successorIndex]++;
+                }
             }
         }
     }
