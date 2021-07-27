@@ -28,9 +28,12 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
@@ -197,6 +200,14 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.addPlainImageBuilderArg("-H:+DiagnosticsMode");
                 nativeImage.addPlainImageBuilderArg("-H:DiagnosticsDir=" + nativeImage.diagnosticsDir);
                 System.out.println("# Diagnostics mode enabled: image-build reports are saved to " + nativeImage.diagnosticsDir);
+                return true;
+            case "--list-cpu-features":
+                args.poll();
+                nativeImage.showMessage("Available AMD64 CPUFeatures: " + Arrays.toString(AMD64.CPUFeature.values()));
+                nativeImage.showNewline();
+                nativeImage.showMessage("Available AArch64 CPUFeatures: " + Arrays.toString(AArch64.CPUFeature.values()));
+                nativeImage.showNewline();
+                System.exit(0);
                 return true;
         }
 
