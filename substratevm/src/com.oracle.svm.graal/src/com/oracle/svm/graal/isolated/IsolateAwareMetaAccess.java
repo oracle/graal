@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /** Code for {@link SubstrateMetaAccess} that is specific to compilation in isolates. */
-final class IsolateAwareMetaAccess extends SubstrateMetaAccess {
+public final class IsolateAwareMetaAccess extends SubstrateMetaAccess {
     @Override
     public JavaConstant encodeSpeculation(SpeculationLog.Speculation speculation) {
         if (!SubstrateOptions.shouldCompileInIsolates()) {

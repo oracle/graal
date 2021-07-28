@@ -153,6 +153,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     private AnalysisMetaAccess metaAccess;
     private GraalObjectReplacer graalObjectReplacer;
     private final Set<Class<?>> registeredClasses = new HashSet<>();
+    private boolean profilingEnabled;
     // Checkstyle: resume
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
@@ -208,6 +209,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         // reinitialize language cache
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState",
                         Collections.emptyList());
+
+        profilingEnabled = Truffle.getRuntime().isProfilingEnabled();
     }
 
     @Override
@@ -251,7 +254,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         r.register0("isProfilingEnabled", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(profilingEnabled));
                 return true;
             }
         });

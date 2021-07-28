@@ -197,7 +197,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     private final Set<ResolvedJavaMethod> warnMethods;
     private final Set<GraalFeature.CallTreeNode> warnViolations;
     private final Set<GraalFeature.CallTreeNode> neverPartOfCompilationViolations;
-    private boolean profilingEnabled;
 
     public TruffleFeature() {
         blocklistMethods = new HashSet<>();
@@ -248,22 +247,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         if (!ImageSingletons.contains(TruffleSupport.class)) {
             ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
         }
-    }
-
-    @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        /*
-         * See TruffleBaseFeature's registerInvocationPlugins method.
-         */
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), Profile.class);
-        r.setAllowOverwrite(true);
-        r.register0("isProfilingEnabled", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(profilingEnabled));
-                return true;
-            }
-        });
     }
 
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {
@@ -381,7 +364,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
          * fallback engine can not stay in the the image though, so we clear it right after. We
          * don't expect it to be used except for profiling enabled check.
          */
-        this.profilingEnabled = Truffle.getRuntime().isProfilingEnabled();
         TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotEngineImpl", "resetFallbackEngine", Collections.emptyList());
     }
 
