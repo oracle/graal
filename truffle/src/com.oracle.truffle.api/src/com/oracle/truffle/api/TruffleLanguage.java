@@ -310,14 +310,6 @@ public abstract class TruffleLanguage<C> {
         String version() default "inherit";
 
         /**
-         * @since 0.8 or earlier
-         * @deprecated split up MIME types into {@link #characterMimeTypes() character} and
-         *             {@link #byteMimeTypes() byte} based MIME types.
-         */
-        @Deprecated
-        String[] mimeType() default {};
-
-        /**
          * Returns the default MIME type of this language. The default MIME type allows embedders
          * and other language or instruments to find out how content is interpreted if no MIME type
          * was specified. The default MIME type must be specified in the list of supported

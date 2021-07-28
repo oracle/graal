@@ -166,18 +166,15 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             return false;
         }
 
-        List<String> legacyMimeTypes = ElementUtils.getAnnotationValueList(String.class, registrationMirror, "mimeType");
-        if (legacyMimeTypes.isEmpty()) {
-            String id = ElementUtils.getAnnotationValue(String.class, registrationMirror, "id");
-            if (id.isEmpty()) {
-                emitError("The attribute id is mandatory.", annotatedElement, registrationMirror, null);
-                return false;
-            }
-            if (RESERVED_IDS.contains(id)) {
-                emitError(String.format("Id '%s' is reserved for other use and must not be used as id.", id), annotatedElement, registrationMirror,
-                                ElementUtils.getAnnotationValue(registrationMirror, "id"));
-                return false;
-            }
+        String id = ElementUtils.getAnnotationValue(String.class, registrationMirror, "id");
+        if (id.isEmpty()) {
+            emitError("The attribute id is mandatory.", annotatedElement, registrationMirror, null);
+            return false;
+        }
+        if (RESERVED_IDS.contains(id)) {
+            emitError(String.format("Id '%s' is reserved for other use and must not be used as id.", id), annotatedElement, registrationMirror,
+                            ElementUtils.getAnnotationValue(registrationMirror, "id"));
+            return false;
         }
 
         if (!validateFileTypeDetectors(annotatedElement, registrationMirror)) {

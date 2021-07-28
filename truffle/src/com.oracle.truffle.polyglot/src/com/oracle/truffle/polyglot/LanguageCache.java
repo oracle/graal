@@ -278,9 +278,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         String version = reg.version();
         TreeSet<String> characterMimes = new TreeSet<>();
         Collections.addAll(characterMimes, reg.characterMimeTypes());
-        if (characterMimes.isEmpty()) {
-            Collections.addAll(characterMimes, getMimeTypesDeprecated(reg));
-        }
         TreeSet<String> byteMimeTypes = new TreeSet<>();
         Collections.addAll(byteMimeTypes, reg.byteMimeTypes());
         String defaultMime = reg.defaultMimeType();
@@ -298,11 +295,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal,
                         servicesClassNames, reg.contextPolicy(), provider));
-    }
-
-    @SuppressWarnings("deprecation")
-    private static String[] getMimeTypesDeprecated(Registration reg) {
-        return reg.mimeType();
     }
 
     private static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
