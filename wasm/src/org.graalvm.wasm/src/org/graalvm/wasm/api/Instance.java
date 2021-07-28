@@ -125,11 +125,11 @@ public class Instance extends Dictionary {
                         ensureImportModule(importModules, d.module()).addFunction(d.name(), Pair.create(f, member));
                         break;
                     case memory:
-                        if (!isMemory(lib, member)) {
+                        if (!(member instanceof WasmMemory)) {
                             throw new WasmJsApiException(Kind.LinkError, "Member " + member + " is not a valid memory.");
                         }
                         // TODO: Use the Interop API to access the memory.
-                        ensureImportModule(importModules, d.module()).addMemory(d.name(), (Memory) member);
+                        ensureImportModule(importModules, d.module()).addMemory(d.name(), (WasmMemory) member);
                         break;
                     case table:
                         if (!(member instanceof WasmTable)) {
@@ -157,26 +157,6 @@ public class Instance extends Dictionary {
         }
 
         return importModules;
-    }
-
-    private static boolean isMemory(InteropLibrary lib, Object memory) throws UnknownIdentifierException, UnsupportedMessageException {
-        if (!lib.isMemberReadable(memory, "descriptor")) {
-            return false;
-        }
-        final Object descriptor = lib.readMember(memory, "descriptor");
-        if (!(lib.isMemberReadable(descriptor, "initial") && lib.isNumber(lib.readMember(descriptor, "initial")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(descriptor, "maximum") && lib.isNumber(lib.readMember(descriptor, "maximum")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(memory, "grow") && lib.isExecutable(lib.readMember(memory, "grow")))) {
-            return false;
-        }
-        if (!(lib.isMemberReadable(memory, "buffer"))) {
-            return false;
-        }
-        return true;
     }
 
     private static boolean isGlobal(InteropLibrary lib, Object table) throws UnknownIdentifierException, UnsupportedMessageException {
@@ -231,7 +211,7 @@ public class Instance extends Dictionary {
                 }
             } else if (instance.module().exportedMemoryNames().contains(name)) {
                 final WasmMemory memory = instance.memory();
-                e.addMember(name, new Memory(memory));
+                e.addMember(name, memory);
             } else if (instance.module().exportedTableNames().contains(name)) {
                 final WasmTable table = instance.table();
                 e.addMember(name, table);

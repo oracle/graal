@@ -62,8 +62,6 @@ import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.Global;
 import org.graalvm.wasm.api.ImportExportKind;
 import org.graalvm.wasm.api.Instance;
-import org.graalvm.wasm.api.Memory;
-import org.graalvm.wasm.api.MemoryDescriptor;
 import org.graalvm.wasm.api.Module;
 import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.ModuleImportDescriptor;
@@ -74,6 +72,7 @@ import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
@@ -159,7 +158,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Memory memory = Memory.create(new MemoryDescriptor(4, 8));
+            final WasmMemory memory = WebAssembly.memAlloc(4, 8);
             final Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
@@ -169,9 +168,9 @@ public class WasmJsApiSuite {
             final Instance instance = instantiatedSource.instance();
             try {
                 final Object initZero = instance.exports().readMember("initZero");
-                Assert.assertEquals("Must be zero initially.", 0, memory.wasmMemory().load_i32(null, 0));
+                Assert.assertEquals("Must be zero initially.", 0, memory.load_i32(null, 0));
                 InteropLibrary.getUncached(initZero).execute(initZero);
-                Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0));
+                Assert.assertEquals("Must be 174 after initialization.", 174, memory.load_i32(null, 0));
             } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
@@ -185,9 +184,9 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMemoryExport, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Memory memory = (Memory) instance.exports().readMember("memory");
+                final WasmMemory memory = (WasmMemory) instance.exports().readMember("memory");
                 final Object readZero = instance.exports().readMember("readZero");
-                memory.wasmMemory().store_i32(null, 0, 174);
+                memory.store_i32(null, 0, 174);
                 final Object result = InteropLibrary.getUncached(readZero).execute(readZero);
                 Assert.assertEquals("Must be 174.", 174, InteropLibrary.getUncached(result).asInt(result));
             } catch (InteropException e) {
@@ -370,12 +369,12 @@ public class WasmJsApiSuite {
             try {
                 final InteropLibrary lib = InteropLibrary.getUncached();
                 final Object exports = lib.readMember(instance, "exports");
-                final Object memoryABuffer = lib.execute(lib.readMember(lib.readMember(exports, "a"), "buffer"));
-                final Object memoryBBuffer = lib.execute(lib.readMember(lib.readMember(exports, "b"), "buffer"));
+                final Object memoryABuffer = lib.readMember(exports, "a");
+                final Object memoryBBuffer = lib.readMember(exports, "b");
                 lib.writeArrayElement(memoryABuffer, 0, (byte) 42);
                 final byte readValue = lib.asByte(lib.readArrayElement(memoryBBuffer, 0));
                 Assert.assertEquals("Written value should correspond to read value", (byte) 42, readValue);
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException | InvalidArrayIndexException e) {
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | InvalidArrayIndexException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -611,9 +610,7 @@ public class WasmJsApiSuite {
             Instance instance = wasm.instantiate(module, new Dictionary());
             try {
                 Object exports = InteropLibrary.getUncached(instance).readMember(instance, "exports");
-                Object memory = InteropLibrary.getUncached(exports).readMember(exports, "memory");
-                Object bufferGetter = InteropLibrary.getUncached(memory).readMember(memory, "buffer");
-                Object buffer = InteropLibrary.getUncached(bufferGetter).execute(bufferGetter);
+                Object buffer = InteropLibrary.getUncached(exports).readMember(exports, "memory");
 
                 long bufferSize = 4 * Sizes.MEMORY_PAGE_SIZE;
                 InteropLibrary interop = InteropLibrary.getUncached(buffer);
@@ -812,7 +809,7 @@ public class WasmJsApiSuite {
         try {
             Object[] memories = new Object[5];
             for (int i = 0; i < memories.length; i++) {
-                memories[i] = Memory.create(new MemoryDescriptor(32767, 32767));
+                memories[i] = WebAssembly.memAlloc(32767, 32767);
             }
         } catch (AbstractTruffleException ex) {
             Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));

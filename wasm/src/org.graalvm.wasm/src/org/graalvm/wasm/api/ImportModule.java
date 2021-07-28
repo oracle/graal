@@ -48,6 +48,7 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import java.util.HashMap;
@@ -55,7 +56,7 @@ import java.util.Map;
 
 public class ImportModule extends BuiltinModule {
     private final HashMap<String, Pair<WasmFunction, Object>> functions;
-    private final HashMap<String, Memory> memories;
+    private final HashMap<String, WasmMemory> memories;
     private final HashMap<String, WasmTable> tables;
     private final HashMap<String, Object> globals;
 
@@ -76,10 +77,10 @@ public class ImportModule extends BuiltinModule {
             final SymbolTable.FunctionType type = function.type();
             defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
         }
-        for (Map.Entry<String, Memory> entry : memories.entrySet()) {
+        for (Map.Entry<String, WasmMemory> entry : memories.entrySet()) {
             final String memoryName = entry.getKey();
-            final Memory memory = entry.getValue();
-            defineExternalMemory(instance, memoryName, memory.wasmMemory());
+            final WasmMemory memory = entry.getValue();
+            defineExternalMemory(instance, memoryName, memory);
         }
         for (Map.Entry<String, WasmTable> entry : tables.entrySet()) {
             final String tableName = entry.getKey();
@@ -98,7 +99,7 @@ public class ImportModule extends BuiltinModule {
         functions.put(name, info);
     }
 
-    public void addMemory(String name, Memory memory) {
+    public void addMemory(String name, WasmMemory memory) {
         memories.put(name, memory);
     }
 

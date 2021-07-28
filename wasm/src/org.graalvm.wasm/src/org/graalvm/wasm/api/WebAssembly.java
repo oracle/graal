@@ -53,7 +53,11 @@ import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.memory.ByteArrayWasmMemory;
+import org.graalvm.wasm.memory.WasmMemory;
 
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
 import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 public class WebAssembly extends Dictionary {
@@ -64,7 +68,6 @@ public class WebAssembly extends Dictionary {
         addMember("compile", new Executable(args -> compile(args)));
         addMember("instantiate", new Executable(args -> instantiate(args)));
         addMember("validate", new Executable(args -> validate(args)));
-        addMember("Memory", new Executable(args -> createMemory(args)));
         addMember("Global", new Executable(args -> createGlobal(args)));
 
         Dictionary module = new Dictionary();
@@ -80,6 +83,9 @@ public class WebAssembly extends Dictionary {
         addMember("table_size", new Executable(args -> tableSize(args)));
 
         addMember("func_type", new Executable(args -> funcType(args)));
+
+        addMember("mem_alloc", new Executable(args -> memAlloc(args)));
+        addMember("mem_grow", new Executable(args -> memGrow(args)));
     }
 
     private Object instantiate(Object[] args) {
@@ -193,11 +199,6 @@ public class WebAssembly extends Dictionary {
         }
 
         return new int[]{initial, maximum};
-    }
-
-    private static Object createMemory(Object[] args) {
-        final int[] limits = toSizeLimits(args);
-        return Memory.create(limits[0], limits[1]);
     }
 
     private static Object createGlobal(Object[] args) {
@@ -394,6 +395,42 @@ public class WebAssembly extends Dictionary {
             typeInfo.append(ValueType.fromByteValue(f.returnType()));
         }
         return typeInfo.toString();
+    }
+
+    private static Object memAlloc(Object[] args) {
+        final int[] limits = toSizeLimits(args);
+        return memAlloc(limits[0], limits[1]);
+    }
+
+    public static WasmMemory memAlloc(int initial, int maximum) {
+        if (compareUnsigned(initial, maximum) > 0) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min memory size exceeds max memory size");
+        } else if (compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min memory size exceeds implementation limit");
+        }
+        final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
+        return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize);
+    }
+
+    private static Object memGrow(Object[] args) {
+        checkArgumentCount(args, 2);
+        if (!(args[0] instanceof WasmMemory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        if (!(args[1] instanceof Integer)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+        }
+        WasmMemory memory = (WasmMemory) args[0];
+        int delta = (Integer) args[1];
+        return memGrow(memory, delta);
+    }
+
+    public static long memGrow(WasmMemory memory, int delta) {
+        final long pageSize = memory.size();
+        if (!memory.grow(delta)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Cannot grow memory above max limit");
+        }
+        return pageSize;
     }
 
 }
