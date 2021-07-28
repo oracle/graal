@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
@@ -63,14 +64,14 @@ public abstract class LLVMVaListLibrary extends Library {
      * @param arguments
      * @param numberOfExplicitArguments
      */
-    public abstract void initialize(Object vaList, Object[] arguments, int numberOfExplicitArguments);
+    public abstract void initialize(Object vaList, Object[] arguments, int numberOfExplicitArguments, Frame frame);
 
     /**
      * Clean up the va_list. It corresponds to the <code>va_end</code> macro.
      *
      * @param vaList
      */
-    public abstract void cleanup(Object vaList);
+    public abstract void cleanup(Object vaList, Frame frame);
 
     /**
      * Copy the source va_list to the destination va_list. It corresponds to the
@@ -79,7 +80,7 @@ public abstract class LLVMVaListLibrary extends Library {
      * @param srcVaList
      * @param destVaList
      */
-    public abstract void copy(Object srcVaList, Object destVaList);
+    public abstract void copy(Object srcVaList, Object destVaList, Frame frame);
 
     /**
      * Shift the va_list argument to the next argument. It corresponds to the <code>va_arg</code>
@@ -89,5 +90,5 @@ public abstract class LLVMVaListLibrary extends Library {
      * @param type the expected argument type
      * @return the current argument before shifting
      */
-    public abstract Object shift(Object vaList, Type type);
+    public abstract Object shift(Object vaList, Type type, Frame frame);
 }

@@ -37,7 +37,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -95,7 +95,7 @@ public class LLVMVaListStorage implements TruffleObject {
     public enum VarArgArea {
         GP_AREA,
         FP_AREA,
-        OVERFLOW_AREA;
+        OVERFLOW_AREA
     }
 
     public static VarArgArea getVarArgArea(Object arg) {
@@ -446,19 +446,12 @@ public class LLVMVaListStorage implements TruffleObject {
     @GenerateUncached
     public abstract static class StackAllocationNode extends LLVMNode {
 
-        public abstract LLVMPointer executeWithTarget(long size);
+        public abstract LLVMPointer executeWithTarget(long size, Frame frame);
 
-        @Specialization
-        LLVMPointer allocate(long size,
+        LLVMPointer allocate(long size, Frame frame,
                         @Cached(value = "createVarargsAreaStackAllocationNode()", allowUncached = true) VarargsAreaStackAllocationNode allocNode) {
-            // N.B. Using FrameAccess.READ_WRITE may lead to throwing NPE, nevertheless using the
-            // safe
-            // FrameAccess.READ_ONLY is not sufficient as some nodes below need to write to the
-            // frame.
-            // Therefore toNative is put behind the Truffle boundary and FrameAccess.MATERIALIZE is
-            // used as a workaround.
-            VirtualFrame frame = (VirtualFrame) Truffle.getRuntime().getCurrentFrame().getFrame(FrameAccess.MATERIALIZE);
-            return allocNode.executeWithTarget(frame, size);
+            assert frame instanceof VirtualFrame;
+            return allocNode.executeWithTarget((VirtualFrame) frame, size);
         }
 
         @SuppressWarnings("static-method")
