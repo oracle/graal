@@ -1649,22 +1649,22 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     private void addSubImmInstruction(Instruction instr, Register dst, Register src, int aimm, InstructionType type) {
-        emitInt(type.encoding | instr.encoding | AddSubImmOp | encodeAimm(aimm) | rd(dst) | rs1(src));
+        emitInt(type.encoding | instr.encoding | AddSubImmOp | encodeAddSubtractImm(aimm) | rd(dst) | rs1(src));
     }
 
     public void ccmp(int size, Register x, Register y, int aimm, ConditionFlag condition) {
-        emitInt(generalFromSize(size).encoding | CCMP.encoding | rs1(x) | rs2(y) | encodeAimm(aimm) | condition.encoding << ConditionalConditionOffset);
+        emitInt(generalFromSize(size).encoding | CCMP.encoding | rs1(x) | rs2(y) | encodeAddSubtractImm(aimm) | condition.encoding << ConditionalConditionOffset);
     }
 
     /**
-     * Encodes arithmetic immediate.
+     * Encodes add/subtract immediate.
      *
      * @param imm Immediate has to be either an unsigned 12-bit value or an unsigned 24-bit value
      *            with the lower 12 bits zero.
      * @return Representation of immediate for use with arithmetic instructions.
      */
-    private static int encodeAimm(int imm) {
-        assert isAimm(imm) : "Immediate has to be legal arithmetic immediate value " + imm;
+    private static int encodeAddSubtractImm(int imm) {
+        assert isAddSubtractImmediate(imm, false) : "Immediate has to be legal add/substract immediate value " + imm;
         if (NumUtil.isUnsignedNbit(12, imm)) {
             return imm << ImmediateOffset;
         } else {
@@ -1675,14 +1675,16 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /**
-     * Checks whether immediate can be encoded as an arithmetic immediate.
+     * Checks whether immediate can be encoded as an add/subtract immediate.
      *
      * @param imm Immediate has to be either an unsigned 12bit value or un unsigned 24bit value with
      *            the lower 12 bits 0.
+     * @param useAbs whether to check the absolute imm value, or check imm as provided.
      * @return true if valid arithmetic immediate, false otherwise.
      */
-    protected static boolean isAimm(int imm) {
-        return NumUtil.isUnsignedNbit(12, imm) || (NumUtil.isUnsignedNbit(12, imm >>> 12) && ((imm & 0xfff) == 0));
+    public static boolean isAddSubtractImmediate(long imm, boolean useAbs) {
+        long checkedImm = useAbs ? Math.abs(imm) : imm;
+        return NumUtil.isUnsignedNbit(12, checkedImm) || (NumUtil.isUnsignedNbit(12, checkedImm >>> 12) && ((checkedImm & 0xfff) == 0));
     }
 
     /* Logical (immediate) (5.4.2) */
