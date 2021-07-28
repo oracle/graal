@@ -467,7 +467,7 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_TOTAL_COUNT:
                 return getContext().getCreatedThreadCount();
         }
-        throw EspressoError.unimplemented("GetLongAttribute " + att);
+        return -1L;
     }
 
     private boolean JMM_VERBOSE_GC_state = false;
@@ -490,7 +490,7 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_ALLOCATED_MEMORY:
                 return JMM_THREAD_ALLOCATED_MEMORY_state;
         }
-        throw EspressoError.unimplemented("GetBoolAttribute ", att);
+        return false;
     }
 
     @ManagementImpl
@@ -507,7 +507,7 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_ALLOCATED_MEMORY:
                 return JMM_THREAD_ALLOCATED_MEMORY_state = flag;
         }
-        throw EspressoError.unimplemented("SetBoolAttribute ", att);
+        return false;
     }
 
     @ManagementImpl
