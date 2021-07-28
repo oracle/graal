@@ -22,7 +22,7 @@ This page provides an architectural overview of GraalVM and its runtime modes, s
 
 ## GraalVM Architecture
 
-![GraalVM architecture diagram](/img/graalvm_architecture_community.png "High-level architecture of GraalVM open ecosystem")
+![](/img/graalvm_architecture_community.png)
 
 GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](https://github.com/oracle/graal/tree/master/compiler), which is written in Java, to the HotSpot Java Virtual Machine.
 
