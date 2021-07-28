@@ -48,7 +48,6 @@ import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -122,7 +121,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         try {
             body.execute(context, frame, stacklocals);
         } catch (StackOverflowError e) {
-            CompilerDirectives.transferToInterpreter();
+            errorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
 
@@ -150,9 +149,13 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
                 return Double.longBitsToDouble(returnValue);
             }
             default:
-                CompilerDirectives.transferToInterpreter();
+                errorBranch();
                 throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", body.returnTypeId());
         }
+    }
+
+    protected final void errorBranch() {
+        codeEntry().errorBranch();
     }
 
     @ExplodeLoop
