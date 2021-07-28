@@ -107,7 +107,8 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                     newEntryState[i] = tool.getEntry(originalVirtual, i);
                 }
                 VirtualObjectNode newVirtual = originalVirtual.duplicate();
-                tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
+                /* n.b. duplicate will replicate the source position so pass null */
+                tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList(), null, false);
                 tool.replaceWithVirtual(newVirtual);
             }
         } else {
