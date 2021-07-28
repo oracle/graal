@@ -23,12 +23,12 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.ALL;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_16_OR_HIGHER;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_8_OR_LOWER;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_9_OR_HIGHER;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VersionRange.higher;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VersionRange.lower;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.lower;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -353,9 +353,11 @@ public final class Meta implements ContextAccess {
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
         // The interrupted field is no longer hidden as of JDK14+
-        HIDDEN_INTERRUPTED = java_lang_Thread.requireHiddenField(Name.HIDDEN_INTERRUPTED);
+        HIDDEN_INTERRUPTED = diff() //
+                        .field(lower(13), Name.HIDDEN_INTERRUPTED, Type._boolean)//
+                        .field(higher(14), Name.interrupted, Type._boolean) //
+                        .maybeHiddenfield(java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
-        HIDDEN_IS_ALIVE = java_lang_Thread.requireHiddenField(Name.HIDDEN_IS_ALIVE);
         HIDDEN_DEATH = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH);
         HIDDEN_DEATH_THROWABLE = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH_THROWABLE);
         HIDDEN_SUSPEND_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_SUSPEND_LOCK);
@@ -1155,7 +1157,6 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Thread_checkAccess;
     public final Method java_lang_Thread_stop;
     public final Field HIDDEN_HOST_THREAD;
-    public final Field HIDDEN_IS_ALIVE;
     public final Field HIDDEN_INTERRUPTED;
     public final Field HIDDEN_DEATH;
     public final Field HIDDEN_DEATH_THROWABLE;

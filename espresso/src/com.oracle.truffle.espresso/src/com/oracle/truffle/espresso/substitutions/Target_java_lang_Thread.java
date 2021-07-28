@@ -387,12 +387,11 @@ public final class Target_java_lang_Thread {
     }
 
     public static void setInterrupt(StaticObject self, boolean value) {
-        self.getKlass().getMeta().HIDDEN_INTERRUPTED.setHiddenObject(self, value);
+        self.getKlass().getMeta().HIDDEN_INTERRUPTED.setBoolean(self, value, true);
     }
 
     static boolean checkInterrupt(StaticObject self) {
-        Boolean interrupt = (Boolean) self.getKlass().getMeta().HIDDEN_INTERRUPTED.getHiddenObject(self);
-        return interrupt != null && interrupt;
+        return self.getKlass().getMeta().HIDDEN_INTERRUPTED.getBoolean(self, true);
     }
 
     @TruffleBoundary
