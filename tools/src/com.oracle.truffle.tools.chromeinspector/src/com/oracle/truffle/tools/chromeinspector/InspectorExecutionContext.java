@@ -154,7 +154,7 @@ public final class InspectorExecutionContext {
         synchronized (this) {
             sh = scriptsHandler;
             if (sh == null) {
-                scriptsHandler = sh = new ScriptsHandler(inspectInternal);
+                scriptsHandler = sh = new ScriptsHandler(env, inspectInternal);
                 attachListener = true;
                 schCounter = 0;
             }
