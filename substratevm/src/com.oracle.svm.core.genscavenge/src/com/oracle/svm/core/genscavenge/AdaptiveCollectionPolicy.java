@@ -222,14 +222,8 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return promotionEstimate.aboveThan(oldFree);
     }
 
-    private void updateAverages(boolean isSurvivorOverflow, UnsignedWord survived, UnsignedWord promoted) {
-        if (!isSurvivorOverflow) {
-            avgSurvived.sample(survived);
-        } else {
-            // TODO: we should know the exact amount
-            UnsignedWord survivedGuess = survived.add(promoted);
-            avgSurvived.sample(survivedGuess);
-        }
+    private void updateAverages(UnsignedWord survived, UnsignedWord survivorOverflow, UnsignedWord promoted) {
+        avgSurvived.sample(survived.add(survivorOverflow));
         avgPromoted.sample(promoted);
     }
 
@@ -467,18 +461,16 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         timer.reset();
         timer.open();
 
-        boolean isSurvivorOverflow = false; // FIXME: we currently overfill the young generation
-                                            // with surviving objects...
-
         GCAccounting accounting = GCImpl.getGCImpl().getAccounting();
         UnsignedWord oldLive = accounting.getOldGenerationAfterChunkBytes();
         oldSizeExceededInPreviousCollection = oldLive.aboveThan(oldSize);
 
         UnsignedWord survived = HeapImpl.getHeapImpl().getYoungGeneration().computeSurvivorObjectBytes();
-        UnsignedWord promoted = GCImpl.getGCImpl().getAccounting().getPromotedObjectBytes();
-        updateAverages(isSurvivorOverflow, survived, promoted);
+        UnsignedWord survivorOverflow = accounting.getSurvivorOverflowObjectBytes();
+        UnsignedWord promoted = accounting.getPromotedObjectBytes(); // includes survivorOverflow
+        updateAverages(survived, survivorOverflow, promoted);
 
-        computeSurvivorSpaceSizeAndThreshold(isSurvivorOverflow, sizes.maxSurvivorSize());
+        computeSurvivorSpaceSizeAndThreshold(survivorOverflow.aboveThan(0), sizes.maxSurvivorSize());
         computeEdenSpaceSize();
         if (completeCollection) {
             computeOldGenSpaceSize(oldLive);

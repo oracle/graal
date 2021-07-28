@@ -950,21 +950,25 @@ public final class GCImpl implements GC {
         Header<?> originalChunk = getChunk(original, isAligned);
         Space originalSpace = HeapChunk.getSpace(originalChunk);
 
-        Object result;
+        Object result = null;
+        boolean survivorOverflow = false;
         if (originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
             if (isAligned) {
                 result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             } else {
                 result = heap.getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
             }
-        } else {
+            survivorOverflow = (result == null);
+        }
+        if (result == null) { // tenuring age reached or survivor space full
             if (isAligned) {
                 result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             } else {
                 result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
             }
+            assert result != null : "promotion failure in old generation must have been handled";
             if (result != original) {
-                accounting.onObjectPromoted(result);
+                accounting.onObjectPromoted(result, survivorOverflow);
             }
         }
 
@@ -988,9 +992,11 @@ public final class GCImpl implements GC {
             Header<?> originalChunk = getChunk(referent, isAligned);
             Space originalSpace = HeapChunk.getSpace(originalChunk);
 
+            boolean promoted = false;
             if (originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
-                heap.getYoungGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
-            } else {
+                promoted = heap.getYoungGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
+            }
+            if (!promoted) {
                 heap.getOldGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
             }
         }

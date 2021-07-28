@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -32,8 +35,11 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
@@ -85,7 +91,7 @@ public final class OldGeneration extends Generation {
     }
 
     @Override
-    protected void promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
+    protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
         if (originalSpace.isFromSpace()) {
             if (isAligned) {
                 getToSpace().promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
@@ -93,6 +99,7 @@ public final class OldGeneration extends Generation {
                 getToSpace().promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
             }
         }
+        return true;
     }
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {
@@ -153,5 +160,17 @@ public final class OldGeneration extends Generation {
         UnsignedWord fromBytes = getFromSpace().getChunkBytes();
         UnsignedWord toBytes = getToSpace().getChunkBytes();
         return fromBytes.add(toBytes);
+    }
+
+    @SuppressWarnings("static-method")
+    AlignedHeapChunk.AlignedHeader requestAlignedChunk() {
+        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
+        AlignedHeapChunk.AlignedHeader chunk = HeapImpl.getChunkProvider().produceAlignedChunk();
+        if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, chunk.isNull())) {
+            Log.log().string("[! OldGeneration.requestAlignedChunk: failure to allocate aligned chunk!]");
+            throw VMError.shouldNotReachHere("Promotion failure");
+        }
+        RememberedSet.get().enableRememberedSetForChunk(chunk);
+        return chunk;
     }
 }

@@ -34,7 +34,7 @@ import com.oracle.svm.core.thread.VMOperation;
 
 /**
  * @see GCAccounting
- * @see SpaceAccounting
+ * @see ChunksAccounting
  */
 public final class HeapAccounting {
     private final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();

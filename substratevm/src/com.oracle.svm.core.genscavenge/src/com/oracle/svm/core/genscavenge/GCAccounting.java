@@ -48,6 +48,7 @@ public final class GCAccounting {
     private UnsignedWord collectedTotalChunkBytes = WordFactory.zero();
     private UnsignedWord allocatedChunkBytes = WordFactory.zero();
     private UnsignedWord promotedObjectBytes = WordFactory.zero();
+    private UnsignedWord survivorOverflowObjectBytes = WordFactory.zero();
 
     /* Before and after measures. */
     private UnsignedWord youngChunkBytesBefore = WordFactory.zero();
@@ -112,6 +113,10 @@ public final class GCAccounting {
         return promotedObjectBytes;
     }
 
+    UnsignedWord getSurvivorOverflowObjectBytes() {
+        return survivorOverflowObjectBytes;
+    }
+
     void beforeCollection() {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
         /* Gather some space statistics. */
@@ -130,6 +135,7 @@ public final class GCAccounting {
             allocatedObjectBytes = allocatedObjectBytes.add(edenObjectBytesBefore);
         }
         promotedObjectBytes = WordFactory.zero();
+        survivorOverflowObjectBytes = WordFactory.zero();
         trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
                         .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
@@ -137,9 +143,12 @@ public final class GCAccounting {
 
     /** Called after an object has been promoted from the young generation to the old generation. */
     @AlwaysInline("GC performance")
-    void onObjectPromoted(Object result) {
+    void onObjectPromoted(Object result, boolean survivorOverflow) {
         UnsignedWord size = LayoutEncoding.getSizeFromObject(result);
         promotedObjectBytes = promotedObjectBytes.add(size);
+        if (survivorOverflow) {
+            survivorOverflowObjectBytes = survivorOverflowObjectBytes.add(size);
+        }
     }
 
     void afterCollection(boolean completeCollection, Timer collectionTimer) {
