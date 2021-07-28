@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -59,6 +60,7 @@ public abstract class LLVMStringHelper extends LLVMNode {
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     void doManaged(LLVMManagedPointer dst, long bufLength, String src,
                     @Bind("dst.getObject()") Object obj,
                     @CachedLibrary("obj") LLVMManagedWriteLibrary write) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -47,6 +48,7 @@ public abstract class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements L
     }
 
     @Specialization(limit = "1")
+    @GenerateAOT.Exclude
     public void execute(LLVMPointer ptr,
                     @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                     @Bind("ctx.getFreeReadOnlyGlobalsBlockFunction()") Object freeGlobalsBlock,

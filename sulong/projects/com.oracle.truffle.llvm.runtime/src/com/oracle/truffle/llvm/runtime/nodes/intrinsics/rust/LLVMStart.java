@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -187,6 +188,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         public abstract Object executeDispatch(Object closure, Object[] arguments);
 
         @Specialization(guards = "pointer.asNative() == cachedAddress")
+        @GenerateAOT.Exclude
         protected Object doHandleCached(@SuppressWarnings("unused") LLVMNativePointer pointer, Object[] arguments,
                         @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
                         @Cached("getFunctionDescriptor(pointer)") LLVMFunctionDescriptor cachedDescriptor,
@@ -195,6 +197,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         }
 
         @Specialization(guards = {"isSameObject(pointer.getObject(), cachedDescriptor)", "cachedDescriptor != null", "pointer.getOffset() == 0"})
+        @GenerateAOT.Exclude
         protected Object doDirectCached(@SuppressWarnings("unused") LLVMManagedPointer pointer, Object[] arguments,
                         @Cached("asFunctionDescriptor(pointer.getObject())") LLVMFunctionDescriptor cachedDescriptor,
                         @Cached("getDispatchNode(cachedDescriptor)") LLVMDispatchNode dispatchNode) {
@@ -202,6 +205,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         }
 
         @Specialization
+        @GenerateAOT.Exclude
         protected Object doOther(@SuppressWarnings("unused") LLVMManagedPointer pointer, @SuppressWarnings("unused") Object[] arguments) {
             // based on the usage of this node, we can safely assume that the inline cache is always
             // big enough - so we don't have a fallback implementation
@@ -216,7 +220,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
         @TruffleBoundary
         protected LLVMDispatchNode getDispatchNode(LLVMFunctionDescriptor fd) {
-            return LLVMDispatchNodeGen.create(fd.getLLVMFunction().getType());
+            return LLVMDispatchNodeGen.create(fd.getLLVMFunction().getType(), fd.getLLVMFunction());
         }
     }
 }

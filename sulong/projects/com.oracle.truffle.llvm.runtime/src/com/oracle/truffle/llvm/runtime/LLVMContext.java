@@ -298,6 +298,14 @@ public final class LLVMContext {
         }
     }
 
+    public boolean isAOTCacheStore() {
+        return env.getOptions().get(SulongEngineOption.AOTCacheStore);
+    }
+
+    public boolean isAOTCacheLoad() {
+        return env.getOptions().get(SulongEngineOption.AOTCacheLoad);
+    }
+
     private void setLibsulongAuxFunction(String name) {
         LLVMScope fileScope = language.getInternalFileScopes("libsulong");
         LLVMSymbol contextFunction = fileScope.get(name);

@@ -56,12 +56,13 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNo
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI32Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI64Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI8Node;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 abstract class LLVMManagedAccessDefaults {
 
-    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = Object.class, useForAOT = false)
     static class FallbackRead {
 
         @ExportMessage
@@ -120,7 +121,7 @@ abstract class LLVMManagedAccessDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = Object.class, useForAOT = false)
     static class FallbackWrite {
 
         @ExportMessage
@@ -179,8 +180,8 @@ abstract class LLVMManagedAccessDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = byte[].class)
-    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = byte[].class)
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = byte[].class, useForAOT = false)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = byte[].class, useForAOT = false)
     static class VirtualAlloc {
 
         private static int checkOffset(long offset) throws IndexOutOfBoundsException {
@@ -383,13 +384,13 @@ abstract class LLVMManagedAccessDefaults {
                 writeLong(obj, offset, value, self, exception, language);
             }
 
-            @Specialization(limit = "3")
+            @Specialization
             static void writePointer(byte[] obj, long offset, LLVMPointer value,
-                            @CachedLibrary("value") LLVMNativeLibrary nativeLib,
+                            @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
                             @Exclusive @Cached BranchProfile exception,
                             @CachedLanguage LLVMLanguage language) {
-                LLVMNativePointer nativeValue = nativeLib.toNativePointer(value);
-                writeLong(obj, offset, nativeValue.asNative(), nativeLib, exception, language);
+                LLVMNativePointer nativeValue = toNativePointer.execute(value);
+                writeLong(obj, offset, nativeValue.asNative(), toNativePointer, exception, language);
             }
         }
     }

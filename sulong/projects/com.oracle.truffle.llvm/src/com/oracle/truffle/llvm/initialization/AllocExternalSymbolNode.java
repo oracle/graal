@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNode.AllocExistingLocalSymbolsNode.AllocExistingGlobalSymbolsNode;
@@ -103,6 +104,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
         }
 
         @Specialization(guards = {"pointer != null", "isDefaultFlagActive(rtldFlags)"}, limit = "1")
+        @GenerateAOT.Exclude
         LLVMPointer doDefault(@SuppressWarnings("unused") LLVMLocalScope localScope,
                         @SuppressWarnings("unused") LLVMScope globalScope,
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
@@ -115,6 +117,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
         }
 
         @Specialization(guards = {"pointer != null", "!(isDefaultFlagActive(rtldFlags))"}, limit = "1")
+        @GenerateAOT.Exclude
         LLVMPointer doDLopen(@SuppressWarnings("unused") LLVMLocalScope localScope,
                         @SuppressWarnings("unused") LLVMScope globalScope,
                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
@@ -155,6 +158,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             public abstract LLVMPointer execute(LLVMScope scope, LLVMSymbol symbol, LLVMContext context);
 
             @Specialization(guards = {"resultSymbol != null"})
+            @GenerateAOT.Exclude
             LLVMPointer allocateFromLocalScope(@SuppressWarnings("unused") LLVMScope scope,
                             LLVMSymbol symbol,
                             LLVMContext context,
@@ -166,6 +170,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             }
 
             @Specialization(guards = {"resultSymbol == null"})
+            @GenerateAOT.Exclude
             LLVMPointer allocateFromLocalScopeNull(@SuppressWarnings("unused") LLVMScope scope,
                             @SuppressWarnings("unused") LLVMSymbol symbol,
                             @SuppressWarnings("unused") LLVMContext context,
@@ -189,6 +194,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             // local for dlopen
 
             @Specialization(guards = {"localScope.get(symbol.getName()) == null", "pointer != null", "isDefaultFlagActive(rtldFlags)"}, limit = "1")
+            @GenerateAOT.Exclude
             LLVMPointer doDefaultGlobal(@SuppressWarnings("unused") LLVMLocalScope localScope,
                             @SuppressWarnings("unused") LLVMScope globalScope,
                             @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
@@ -201,6 +207,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             }
 
             @Specialization(guards = {"globalScope.get(symbol.getName()) == null", "pointer != null", "!(isDefaultFlagActive(rtldFlags))"}, limit = "1")
+            @GenerateAOT.Exclude
             LLVMPointer doDLopenLocal(@SuppressWarnings("unused") LLVMLocalScope localScope,
                             @SuppressWarnings("unused") LLVMScope globalScope,
                             @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
@@ -322,6 +329,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
                     if (nativeFunction != null) {
                         LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), new LLVMFunctionCode(symbol.asFunction()));
                         functionDescriptor.getFunctionCode().define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
+                        this.symbol.asFunction().setNFISymbol(nativeFunction.getObject());
                         return LLVMManagedPointer.create(functionDescriptor);
                     }
                     return null;

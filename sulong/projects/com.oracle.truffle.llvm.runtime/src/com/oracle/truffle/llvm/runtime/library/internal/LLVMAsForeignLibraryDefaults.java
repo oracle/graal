@@ -34,7 +34,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 public class LLVMAsForeignLibraryDefaults {
 
-    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = Object.class, useForAOT = false)
     static class DefaultAsForeignLibrary {
 
         @ExportMessage
@@ -49,7 +49,7 @@ public class LLVMAsForeignLibraryDefaults {
 
     }
 
-    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = byte[].class)
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = byte[].class, useForAOT = true, useForAOTPriority = 1)
     static class ArrayAsForeignLibrary {
         // the inherited isForeign returns false
     }

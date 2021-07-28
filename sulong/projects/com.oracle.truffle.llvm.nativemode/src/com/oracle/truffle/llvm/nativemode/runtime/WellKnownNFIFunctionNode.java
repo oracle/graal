@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nativemode.runtime;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -61,6 +62,7 @@ abstract class WellKnownNFIFunctionNode extends WellKnownNativeFunctionNode {
     }
 
     @Specialization(assumptions = "singleContextAssumption()")
+    @GenerateAOT.Exclude
     Object doCached(Object[] args,
                     @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctx,
                     @Cached("getFunction(ctx)") Object cachedFunction,
@@ -69,6 +71,7 @@ abstract class WellKnownNFIFunctionNode extends WellKnownNativeFunctionNode {
     }
 
     @Specialization(replaces = "doCached")
+    @GenerateAOT.Exclude
     Object doGeneric(Object[] args,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctx,
                     @CachedLibrary(limit = "3") InteropLibrary interop) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {

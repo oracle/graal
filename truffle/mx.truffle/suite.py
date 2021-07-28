@@ -892,6 +892,7 @@ suite = {
           "com.oracle.truffle.api.impl to org.graalvm.locator",
           "com.oracle.truffle.api to org.graalvm.locator, com.oracle.truffle.truffle_nfi, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+          "com.oracle.truffle.api.library to com.oracle.truffle.truffle_nfi_libffi, com.oracle.truffle.truffle_nfi",
         ],
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -962,7 +963,7 @@ suite = {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi",
         "requires" : [
-          "org.graalvm.truffle",
+          "org.graalvm.truffle"
         ]
       },
       "subDir" : "src",
@@ -984,7 +985,8 @@ suite = {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
         "requiresConcealed" : {
           "org.graalvm.truffle" : [
-            "com.oracle.truffle.api"
+            "com.oracle.truffle.api",
+            "com.oracle.truffle.api.library"
           ],
         }
       },

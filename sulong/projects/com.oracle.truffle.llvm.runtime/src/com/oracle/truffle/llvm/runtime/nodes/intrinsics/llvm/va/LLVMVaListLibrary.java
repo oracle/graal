@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
@@ -46,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  * @see LLVMVAArg
  */
 @GenerateLibrary
+@GenerateAOT
 public abstract class LLVMVaListLibrary extends Library {
 
     static final LibraryFactory<LLVMVaListLibrary> FACTORY = LibraryFactory.resolve(LLVMVaListLibrary.class);

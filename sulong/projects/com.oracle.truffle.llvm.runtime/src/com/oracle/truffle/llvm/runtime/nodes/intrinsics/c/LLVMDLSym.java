@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
@@ -63,6 +64,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
     // RTLD_DEFAULT ((void *) 0) ((void *) -2)
 
     @Specialization(guards = "isLLVMLibrary(libraryHandle)", limit = "2")
+    @GenerateAOT.Exclude
     protected Object doOp(LLVMManagedPointer libraryHandle,
                     LLVMPointer symbol,
                     @Cached() LLVMReadStringNode readStr,
@@ -136,6 +138,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
             return LLVMManagedPointer.create(function);
         }
 
+        @GenerateAOT.Exclude
         @Specialization(guards = {"!isFunctionDescriptor(symbol)", "interopLibrary.isPointer(symbol)"}, limit = "1")
         protected LLVMNativePointer doNFISymbol(Object symbol,
                         @CachedLibrary("symbol") InteropLibrary interopLibrary,

@@ -331,6 +331,7 @@ suite = {
       "checkstyleVersion" : "8.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8+",
+      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -106,6 +107,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
      * @see #executeDispatch(Object, Object[])
      */
     @Specialization(guards = {"function.asNative() == cachedFunction.asNative()", "!cachedFunction.isNull()"}, assumptions = "singleContextAssumption()")
+    @GenerateAOT.Exclude
     protected Object doCached(LLVMNativePointer function, Object[] arguments,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("function") @SuppressWarnings("unused") LLVMNativePointer cachedFunction,
@@ -121,6 +123,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     }
 
     @Specialization(replaces = "doCached", guards = "!function.isNull()")
+    @GenerateAOT.Exclude
     protected Object doGeneric(LLVMNativePointer function, Object[] arguments,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,6 +60,22 @@ public final class LLVMNativeCallUtils {
         }
         try {
             return nativeCall.execute(function, nativeArgs);
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
+        }
+    }
+
+    static Object callNativeFunction(boolean enabled, ContextReference<LLVMContext> context, LLVMDispatchNode.NativeSymbolExecutorNode nativeSymbolExecutorNode, Object function, Object[] nativeArgs,
+                    LLVMFunctionDescriptor descriptor) {
+        CompilerAsserts.partialEvaluationConstant(enabled);
+        if (enabled) {
+            if (descriptor != null) {
+                traceNativeCall(context.get(), descriptor);
+            }
+        }
+        try {
+            return nativeSymbolExecutorNode.execute(function, nativeArgs);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);

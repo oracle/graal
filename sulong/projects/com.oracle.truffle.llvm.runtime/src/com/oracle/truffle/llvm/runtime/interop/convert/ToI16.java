@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -90,6 +91,7 @@ public abstract class ToI16 extends ForeignToLLVM {
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
+    @GenerateAOT.Exclude
     protected short fromForeign(Object obj,
                     @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
                     @CachedLibrary(limit = "3") InteropLibrary interop,

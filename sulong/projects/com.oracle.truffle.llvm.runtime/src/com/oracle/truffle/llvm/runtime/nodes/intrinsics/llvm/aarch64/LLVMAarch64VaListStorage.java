@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -40,6 +37,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -93,13 +91,16 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
-@ExportLibrary(LLVMManagedReadLibrary.class)
-@ExportLibrary(LLVMManagedWriteLibrary.class)
-@ExportLibrary(LLVMVaListLibrary.class)
-@ExportLibrary(NativeTypeLibrary.class)
+import java.util.ArrayList;
+import java.util.Arrays;
+
+@ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 5)
+@ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 4)
+@ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 3)
+@ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 2)
+@ExportLibrary(value = LLVMCopyTargetLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(InteropLibrary.class)
-@ExportLibrary(LLVMCopyTargetLibrary.class)
-public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
+public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     // %struct.__va_list = type { i8*, i8*, i8*, i32, i32 }
 
@@ -161,6 +162,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     // LLVMCopyTargetLibrary
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     public boolean canCopyFrom(Object source, @SuppressWarnings("unused") long length) {
         /*
          * I do not test if the length is the size of va_list as I need that the execution proceed
@@ -287,7 +289,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @TruffleBoundary
     Object getNativeType(@CachedLanguage LLVMLanguage language) {
         // This method should never be invoked
-        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
+        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, findDataLayoutFromCurrentFrame()));
     }
 
     // LLVMManagedReadLibrary implementation
@@ -330,6 +332,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization(guards = "vaList.isNativized()")
+        @GenerateAOT.Exclude // recursion cut
         static int readNativeI32(LLVMAarch64VaListStorage vaList, long offset,
                         @Cached LLVMI32LoadNode.LLVMI32OffsetLoadNode offsetLoad) {
             return offsetLoad.executeWithTarget(vaList.nativized, offset);
@@ -355,6 +358,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization(guards = "vaList.isNativized()")
+        @GenerateAOT.Exclude // recursion cut
         static LLVMPointer readNativePointer(LLVMAarch64VaListStorage vaList, long offset,
                         @Cached LLVMPointerLoadNode.LLVMPointerOffsetLoadNode offsetLoad) {
             return offsetLoad.executeWithTarget(vaList.nativized, offset);
@@ -408,6 +412,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization(guards = "vaList.isNativized()")
+        @GenerateAOT.Exclude // recursion cut
         static void writeNative(LLVMAarch64VaListStorage vaList, long offset, int value,
                         @Cached LLVMI32OffsetStoreNode offsetStore) {
             offsetStore.executeWithTarget(vaList.nativized, offset, value);
@@ -445,6 +450,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization(guards = "vaList.isNativized()")
+        @GenerateAOT.Exclude // recursion cut
         static void writeNative(LLVMAarch64VaListStorage vaList, long offset, LLVMPointer value,
                         @Cached LLVMPointerStoreNode.LLVMPointerOffsetStoreNode offsetStore) {
             offsetStore.executeWithTarget(vaList.nativized, offset, value);
@@ -609,9 +615,9 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     }
 
-    static long getVAListTypeSize() {
+    static long getVAListTypeSize(LLVMNode node) {
         try {
-            return VA_LIST_TYPE.getSize(getDataLayout());
+            return VA_LIST_TYPE.getSize(node.getDataLayout());
         } catch (TypeOverflowException e) {
             CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException("Should not get here");
@@ -620,12 +626,12 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     @SuppressWarnings("static-method")
     LLVMExpressionNode createAllocaNode(LLVMLanguage language) {
-        DataLayout dataLayout = getDataLayout();
+        DataLayout dataLayout = findDataLayoutFromCurrentFrame();
         return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
     }
 
     LLVMExpressionNode createAllocaNodeUncached(LLVMLanguage language) {
-        DataLayout dataLayout = getDataLayout();
+        DataLayout dataLayout = findDataLayoutFromCurrentFrame();
         LLVMExpressionNode alloca = language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
         if (alloca instanceof LLVMGetStackSpaceInstruction) {
             ((LLVMGetStackSpaceInstruction) alloca).setStackAccess(rootNode.getStackAccess());
@@ -823,7 +829,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = {"source.isNativized()", "source.overflowArgArea != null"})
         static void copyNativeToManaged(LLVMAarch64VaListStorage source, LLVMAarch64VaListStorage dest,
-                        @CachedLibrary("source") LLVMManagedReadLibrary srcReadLib) {
+                        @CachedLibrary(limit = "1") LLVMManagedReadLibrary srcReadLib) {
             // The destination va_list will be in the managed state, even if the source has been
             // nativized. We need to read some state from the native memory, though.
 
@@ -835,6 +841,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization(guards = {"source.isNativized()", "source.overflowArgArea == null"})
+        @GenerateAOT.Exclude // recursion cut
         static void copyNative(LLVMAarch64VaListStorage source, LLVMAarch64VaListStorage dest,
                         @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
                         @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
@@ -845,6 +852,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization
+        @GenerateAOT.Exclude // recursion cut
         static void copyManagedToNative(LLVMAarch64VaListStorage source, NativeVAListWrapper dest, @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
             LLVMAarch64VaListStorage dummyClone = new LLVMAarch64VaListStorage(source.rootNode);
             dummyClone.nativized = dest.nativeVAListPtr;
@@ -881,8 +889,8 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @SuppressWarnings("static-method")
     @ExportMessage
     Object shift(Type type,
-                    @CachedLibrary("this") LLVMManagedReadLibrary readLib,
-                    @CachedLibrary("this") LLVMManagedWriteLibrary writeLib,
+                    @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLib,
+                    @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLib,
                     @Cached BranchProfile regAreaProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isNativizedProfile) {
         int regSaveOffs = 0;
@@ -980,7 +988,7 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
      * @see LLVMVAStart
      * @see LLVMVAEnd
      */
-    @ExportLibrary(LLVMVaListLibrary.class)
+    @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 0)
     @ImportStatic(LLVMVaListStorage.class)
     public static final class NativeVAListWrapper {
 
@@ -1114,10 +1122,11 @@ public class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
             @Specialization
             @TruffleBoundary
+            @GenerateAOT.Exclude // recursion cut
             static void copyToManagedObject(NativeVAListWrapper source, LLVMAarch64VaListStorage dest,
                             @Shared("allocaNode") @Cached StackAllocationNode allocaNode,
-                            @CachedLibrary("source") LLVMVaListLibrary vaListLibrary,
-                            @Cached(value = "getVAListTypeSize()", allowUncached = true) long vaListTypeSize) {
+                            @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary,
+                            @Cached(value = "getVAListTypeSize(allocaNode)", allowUncached = true) long vaListTypeSize) {
                 LLVMPointer nativeDestPtr = allocaNode.executeWithTarget(vaListTypeSize);
                 dest.nativized = nativeDestPtr;
 

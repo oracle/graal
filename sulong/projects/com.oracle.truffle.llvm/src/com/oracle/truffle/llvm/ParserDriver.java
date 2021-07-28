@@ -542,7 +542,7 @@ final class ParserDriver {
             return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
         } else {
             // check if the functions should be resolved eagerly or lazily.
-            boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
+            boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING) && !context.getEnv().getOptions().get(SulongEngineOption.AOTCacheStore);
             LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), dependencies, source, language);
             return LLVMLanguage.createCallTarget(loadModules);
         }

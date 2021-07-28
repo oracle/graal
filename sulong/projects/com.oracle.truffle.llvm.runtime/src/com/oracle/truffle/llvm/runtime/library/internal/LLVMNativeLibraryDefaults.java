@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 abstract class LLVMNativeLibraryDefaults {
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Object.class, useForAOT = false)
     static class DefaultLibrary {
 
         @ExportMessage
@@ -139,7 +139,7 @@ abstract class LLVMNativeLibraryDefaults {
 
     }
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class, useForAOT = true, useForAOTPriority = 1)
     static class LongLibrary {
 
         /**
@@ -162,7 +162,7 @@ abstract class LLVMNativeLibraryDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = byte[].class)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = byte[].class, useForAOT = true, useForAOTPriority = 1)
     static class ArrayLibrary {
 
         /**

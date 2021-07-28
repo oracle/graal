@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -93,6 +94,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         abstract ByteBuffer execute(Object object, LLVMCharset charset);
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         ByteBuffer doBoxed(Object object, LLVMCharset charset,
                         @CachedLibrary("object") InteropLibrary interop,
                         @Cached BranchProfile exception) {
@@ -112,6 +114,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         protected abstract long execute(ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
 
         @Specialization(guards = "isExact(srcBuffer, srcBufferClass)")
+        @GenerateAOT.Exclude
         long doWrite(ByteBuffer srcBuffer, LLVMPointer target, long targetLen, int zeroTerminatorLen,
                         @Cached("srcBuffer.getClass()") Class<? extends ByteBuffer> srcBufferClass,
                         @Cached LLVMI8OffsetStoreNode write) {

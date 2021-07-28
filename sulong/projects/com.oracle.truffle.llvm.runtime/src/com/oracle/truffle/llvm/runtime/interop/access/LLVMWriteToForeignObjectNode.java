@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -50,10 +51,11 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMAccessForeignObjectNod
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMAccessForeignObjectNode.OffsetDummy;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMAccessForeignObjectNode.ResolveNativePointerNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
 import java.nio.ByteOrder;
 
 @NodeChild(value = "foreign", type = ForeignDummy.class, implicit = true)
@@ -75,6 +77,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         void doBuffer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, byte value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") LLVMInteropType.Buffer type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop,
@@ -96,6 +99,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3", guards = "type == null")
+        @GenerateAOT.Exclude
         void doFallback(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, byte value, LLVMManagedPointer resolved, @SuppressWarnings("unused") Object type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop) {
             // unknown type, assume to "array of primitives"
@@ -123,6 +127,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         void doBuffer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, short value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") LLVMInteropType.Buffer type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop,
@@ -144,6 +149,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3", guards = "type == null")
+        @GenerateAOT.Exclude
         void doFallback(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, short value, LLVMManagedPointer resolved, @SuppressWarnings("unused") Object type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop) {
             // unknown type, assume to "array of primitives"
@@ -171,6 +177,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         void doBuffer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, int value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") LLVMInteropType.Buffer type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop,
@@ -192,6 +199,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3", guards = "type == null")
+        @GenerateAOT.Exclude
         void doFallback(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, int value, LLVMManagedPointer resolved, @SuppressWarnings("unused") Object type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop) {
             // unknown type, assume to "array of primitives"
@@ -219,6 +227,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         void doBuffer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, float value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") LLVMInteropType.Buffer type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop,
@@ -240,6 +249,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3", guards = "type == null")
+        @GenerateAOT.Exclude
         void doFallback(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, float value, LLVMManagedPointer resolved, @SuppressWarnings("unused") Object type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop) {
             // unknown type, assume to "array of primitives"
@@ -267,6 +277,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         void doBuffer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, double value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") LLVMInteropType.Buffer type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop,
@@ -288,6 +299,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3", guards = "type == null")
+        @GenerateAOT.Exclude
         void doFallback(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, double value, LLVMManagedPointer resolved, @SuppressWarnings("unused") Object type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop) {
             // unknown type, assume to "array of primitives"
@@ -318,17 +330,18 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
             language.getLLVMMemory().putI64(this, resolved, value);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         void doNativePointer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, Object value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                        @CachedLibrary("value") LLVMNativeLibrary natives,
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
                         @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putPointer(this, resolved, natives.toNativePointer(value));
+            language.getLLVMMemory().putPointer(this, resolved, toNativePointer.execute(value));
         }
 
-        @Specialization(limit = "3")
+        @Specialization
+        @GenerateAOT.Exclude
         void doBufferLong(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, long value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") LLVMInteropType.Buffer type,
-                        @CachedLibrary("resolved.getObject()") InteropLibrary interop,
+                        @CachedLibrary(limit = "3") InteropLibrary interop,
                         @Cached BranchProfile oobProfile) {
             try {
                 interop.writeBufferLong(resolved.getObject(), ByteOrder.nativeOrder(), resolved.getOffset(), value);
@@ -339,13 +352,14 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
             }
         }
 
-        @Specialization(limit = "3")
+        @Specialization
+        @GenerateAOT.Exclude
         void doBufferPointer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, Object value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") LLVMInteropType.Buffer type,
-                        @CachedLibrary("resolved.getObject()") InteropLibrary interop,
-                        @CachedLibrary("value") LLVMNativeLibrary natives,
+                        @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
                         @Cached BranchProfile oobProfile) {
-            LLVMNativePointer n = natives.toNativePointer(value);
+            LLVMNativePointer n = toNativePointer.execute(value);
             try {
                 interop.writeBufferLong(resolved.getObject(), ByteOrder.nativeOrder(), resolved.getOffset(), n.asNative());
             } catch (InvalidBufferOffsetException ex) {
@@ -363,6 +377,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3", guards = "type == null")
+        @GenerateAOT.Exclude
         void doFallbackLong(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, long value, LLVMManagedPointer resolved, @SuppressWarnings("unused") Object type,
                         @CachedLibrary("resolved.getObject()") InteropLibrary interop) {
             // unknown type, assume "array of primitives"
@@ -378,6 +393,7 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         }
 
         @Specialization(limit = "3", guards = "type == null")
+        @GenerateAOT.Exclude
         void doFallbackPointer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, LLVMPointer value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") Object type,
                         @Cached LLVMPointerDataEscapeNode dataEscape,

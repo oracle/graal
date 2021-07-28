@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,9 @@
 package com.oracle.truffle.llvm.runtime.nodes.op.arith.floating;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic.LLVMArithmeticOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.arith.floating.LLVMArithmeticFactoryFactory.CachedAddNodeGen;
@@ -67,6 +69,17 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
+        public LLVMArithmetic execute80BitFloat(LLVM80BitFloat x, LLVM80BitFloat y,
+                        @Cached("createLLVM80BitFloatNode()") LLVMArithmeticOpNode impl) {
+            return impl.execute(x, y);
+        }
+
+        LLVMArithmeticOpNode createLLVM80BitFloatNode() {
+            return LLVM80BitFloat.createPositiveZero().createAddNode();
+        }
+
+        @GenerateAOT.Exclude
+        @Specialization(guards = "impl.canCompute(x, y)", replaces = "execute80BitFloat")
         public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
                         @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             return impl.execute(x, y);
@@ -88,6 +101,17 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
+        public LLVMArithmetic execute80BitFloat(LLVM80BitFloat x, LLVM80BitFloat y,
+                        @Cached("createLLVM80BitFloatNode()") LLVMArithmeticOpNode impl) {
+            return impl.execute(x, y);
+        }
+
+        LLVMArithmeticOpNode createLLVM80BitFloatNode() {
+            return LLVM80BitFloat.createPositiveZero().createSubNode();
+        }
+
+        @GenerateAOT.Exclude
+        @Specialization(guards = "impl.canCompute(x, y)", replaces = "execute80BitFloat")
         public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
                         @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             return impl.execute(x, y);
@@ -108,6 +132,17 @@ public abstract class LLVMArithmeticFactory {
             return x instanceof LLVMArithmetic && y instanceof LLVMArithmetic;
         }
 
+        @Specialization(guards = "impl.canCompute(x, y)")
+        public LLVMArithmetic execute80BitFloat(LLVM80BitFloat x, LLVM80BitFloat y,
+                        @Cached("createLLVM80BitFloatNode()") LLVMArithmeticOpNode impl) {
+            return impl.execute(x, y);
+        }
+
+        LLVMArithmeticOpNode createLLVM80BitFloatNode() {
+            return LLVM80BitFloat.createPositiveZero().createMulNode();
+        }
+
+        @GenerateAOT.Exclude
         @Specialization(guards = "impl.canCompute(x, y)")
         public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
                         @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
@@ -130,6 +165,17 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
+        public LLVMArithmetic execute80BitFloat(LLVM80BitFloat x, LLVM80BitFloat y,
+                        @Cached("createLLVM80BitFloatNode()") LLVMArithmeticOpNode impl) {
+            return impl.execute(x, y);
+        }
+
+        LLVMArithmeticOpNode createLLVM80BitFloatNode() {
+            return LLVM80BitFloat.createPositiveZero().createDivNode();
+        }
+
+        @GenerateAOT.Exclude
+        @Specialization(guards = "impl.canCompute(x, y)", replaces = "execute80BitFloat")
         public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
                         @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             return impl.execute(x, y);
@@ -151,6 +197,17 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
+        public LLVMArithmetic execute80BitFloat(LLVM80BitFloat x, LLVM80BitFloat y,
+                        @Cached("createLLVM80BitFloatNode()") LLVMArithmeticOpNode impl) {
+            return impl.execute(x, y);
+        }
+
+        LLVMArithmeticOpNode createLLVM80BitFloatNode() {
+            return LLVM80BitFloat.createPositiveZero().createRemNode();
+        }
+
+        @GenerateAOT.Exclude
+        @Specialization(guards = "impl.canCompute(x, y)", replaces = "execute80BitFloat")
         public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
                         @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             return impl.execute(x, y);
