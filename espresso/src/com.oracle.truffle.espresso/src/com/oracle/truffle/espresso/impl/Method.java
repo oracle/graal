@@ -1362,7 +1362,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                      * The method was obtained through a regular lookup (since it is in the declared
                      * methods). Delegate it to a polysignature method lookup.
                      */
-                    target = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
+                    target = declaringKlass.lookupPolysigMethod(getName(), getRawSignature(), LookupMode.ALL).getCallTarget();
                 }
 
                 if (target == null) {
@@ -1588,4 +1588,28 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
     // endregion jdwp-specific
+
+    public enum LookupMode {
+        ALL(true, true),
+        INSTANCE_ONLY(true, false),
+        STATIC_ONLY(false, true);
+
+        private final boolean instances;
+        private final boolean statics;
+
+        LookupMode(boolean instances, boolean statics) {
+            this.instances = instances;
+            this.statics = statics;
+        }
+
+        public boolean ignore(Method m) {
+            if (!statics && m.isStatic()) {
+                return true;
+            }
+            if (!instances && !m.isStatic()) {
+                return true;
+            }
+            return false;
+        }
+    }
 }

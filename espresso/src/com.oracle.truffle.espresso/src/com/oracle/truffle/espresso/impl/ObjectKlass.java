@@ -221,7 +221,7 @@ public final class ObjectKlass extends Klass {
             getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(mirror(), info.protectionDomain);
         }
         if (info.classData != null) {
-            getMeta().java_lang_Class_classData.setHiddenObject(mirror(), info.classData);
+            getMeta().java_lang_Class_classData.setObject(mirror(), info.classData);
         }
         if (!info.addedToRegistry()) {
             initSelfReferenceInPool();
@@ -819,9 +819,9 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, Method.LookupMode lookupMode) {
         KLASS_LOOKUP_METHOD_COUNT.inc();
-        Method method = lookupDeclaredMethod(methodName, signature);
+        Method method = lookupDeclaredMethod(methodName, signature, lookupMode);
         if (method == null) {
             // Implicit interface methods.
             method = lookupMirandas(methodName, signature);
@@ -829,10 +829,10 @@ public final class ObjectKlass extends Klass {
         if (method == null &&
                         (getType() == Type.java_lang_invoke_MethodHandle ||
                                         getType() == Type.java_lang_invoke_VarHandle)) {
-            method = lookupPolysigMethod(methodName, signature);
+            method = lookupPolysigMethod(methodName, signature, lookupMode);
         }
         if (method == null && getSuperKlass() != null) {
-            method = getSuperKlass().lookupMethod(methodName, signature, accessingKlass);
+            method = getSuperKlass().lookupMethod(methodName, signature, accessingKlass, lookupMode);
         }
         return method;
     }

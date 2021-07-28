@@ -1178,20 +1178,22 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return obj;
     }
 
-    @ExplodeLoop
     public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        return lookupDeclaredMethod(methodName, signature, Method.LookupMode.ALL);
+    }
+
+    @ExplodeLoop
+    public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature, Method.LookupMode lookupMode) {
         KLASS_LOOKUP_DECLARED_METHOD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
         for (Method method : getDeclaredMethods()) {
-            if (methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
-                return method;
+            if (!lookupMode.ignore(method)) {
+                if (methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
+                    return method;
+                }
             }
         }
         return null;
-    }
-
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        return lookupMethod(methodName, signature, null);
     }
 
     private static <T> boolean isSorted(T[] array, Comparator<T> comparator) {
@@ -1233,7 +1235,19 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Give the accessing klass if there is a chance the method to be resolved is a method handle
      * intrinsics.
      */
-    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass);
+    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, Method.LookupMode lookupMode);
+
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        return lookupMethod(methodName, signature, null, Method.LookupMode.ALL);
+    }
+
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Method.LookupMode lookupMode) {
+        return lookupMethod(methodName, signature, null, lookupMode);
+    }
+
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+        return lookupMethod(methodName, signature, accessingKlass, Method.LookupMode.ALL);
+    }
 
     public final Method vtableLookup(int vtableIndex) {
         if (this instanceof ObjectKlass) {
@@ -1247,18 +1261,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return null;
     }
 
-    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        Method m = lookupPolysignatureDeclaredMethod(methodName);
+    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature, Method.LookupMode lookupMode) {
+        Method m = lookupPolysignatureDeclaredMethod(methodName, lookupMode);
         if (m != null) {
             return findMethodHandleIntrinsic(m, signature);
         }
         return null;
     }
 
-    public Method lookupPolysignatureDeclaredMethod(Symbol<Name> methodName) {
+    public Method lookupPolysignatureDeclaredMethod(Symbol<Name> methodName, Method.LookupMode lookupMode) {
         for (Method m : getDeclaredMethods()) {
-            if (m.getName() == methodName && m.isSignaturePolymorphicDeclared()) {
-                return m;
+            if (!lookupMode.ignore(m)) {
+                if (m.getName() == methodName && m.isSignaturePolymorphicDeclared()) {
+                    return m;
+                }
             }
         }
         return null;
