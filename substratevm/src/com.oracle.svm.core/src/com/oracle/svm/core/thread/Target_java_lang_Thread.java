@@ -56,6 +56,11 @@ final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     volatile boolean interrupted;
 
+    @Alias //
+    @TargetElement(name = "interrupted", onlyWith = JDK14OrLater.class) //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    volatile boolean interruptedJDK14OrLater;
+
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean wasStartedByCurrentIsolate;
 
@@ -256,6 +261,14 @@ final class Target_java_lang_Thread {
     private void setPriority0(int priority) {
     }
 
+    /**
+     * Avoid in VM-internal contexts: this method is not {@code final} and can be overridden with
+     * code that does locking or performs other actions that can be unsafe in a specific context.
+     * Use {@link JavaThreads#isInterrupted} instead.
+     */
+    @Alias
+    public native boolean isInterrupted();
+
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     private boolean isInterrupted(boolean clearInterrupted) {
@@ -272,11 +285,6 @@ final class Target_java_lang_Thread {
             interrupted = false;
         }
         return result;
-    }
-
-    @Substitute
-    public boolean isInterrupted() {
-        return interrupted;
     }
 
     /**
