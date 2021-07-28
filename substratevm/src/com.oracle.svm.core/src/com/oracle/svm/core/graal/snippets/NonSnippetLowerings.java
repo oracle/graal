@@ -265,6 +265,13 @@ public abstract class NonSnippetLowerings {
                     if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]),
                                         callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
+                    } else if (!targetMethod.hasCodeOffsetInImage()) {
+                        /*
+                         * The target method is not included in the image. This means that it was
+                         * also not needed for the deoptimization entry point. Thus, we are certain
+                         * that this branch will fold away. If not, we will fail later on.
+                         */
+                        return;
                     } else {
                         /*
                          * In runtime-compiled code, we emit indirect calls via the respective heap
