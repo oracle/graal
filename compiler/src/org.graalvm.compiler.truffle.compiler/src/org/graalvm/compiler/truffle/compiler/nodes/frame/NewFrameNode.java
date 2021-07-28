@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -268,12 +269,13 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             }
         }
 
-        tool.createVirtualObject(virtualFrameObjectArray, objectArrayEntryState, Collections.<MonitorIdNode> emptyList(), false);
+        NodeSourcePosition sourcePosition = getNodeSourcePosition();
+        tool.createVirtualObject(virtualFrameObjectArray, objectArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
         if (virtualFramePrimitiveArray != null) {
-            tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList(), false);
+            tool.createVirtualObject(virtualFramePrimitiveArray, primitiveArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
         }
         if (virtualFrameTagArray != null) {
-            tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, Collections.<MonitorIdNode> emptyList(), false);
+            tool.createVirtualObject(virtualFrameTagArray, tagArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
         }
 
         assert frameFields.length == 5 || frameFields.length == 3;
@@ -293,7 +295,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
          * materialized. This can only be lifted by a AllowMaterializeNode, which corresponds to a
          * frame.materialize() call.
          */
-        tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList(), true);
+        tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, true);
         tool.replaceWithVirtual(virtualFrame);
     }
 
