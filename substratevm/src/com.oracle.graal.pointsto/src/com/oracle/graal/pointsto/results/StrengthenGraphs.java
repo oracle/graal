@@ -83,6 +83,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import com.oracle.svm.util.ImageBuildStatistics;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -398,6 +400,10 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
          * allows later inlining of the callee.
          */
         private void devirtualizeInvoke(AnalysisMethod singleCallee, Invoke invoke) {
+            if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(graph.getOptions())) {
+                ImageBuildStatistics.counters().incDevirtualizedInvokeCounter();
+            }
+
             Stamp anchoredReceiverStamp = StampFactory.object(TypeReference.createWithoutAssumptions(singleCallee.getDeclaringClass()));
             ValueNode piReceiver = insertPi(invoke.getReceiver(), anchoredReceiverStamp, (FixedWithNextNode) invoke.asNode().predecessor());
             if (piReceiver != null) {
