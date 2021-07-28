@@ -92,6 +92,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -104,6 +105,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
@@ -1407,8 +1409,35 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
+    private static boolean isCurrentEngineHostCallback(PolyglotEngineImpl engine) {
+        RootNode topMostGuestToHostRootNode = Truffle.getRuntime().iterateFrames((f) -> {
+            RootNode root = ((RootCallTarget) f.getCallTarget()).getRootNode();
+            if (EngineAccessor.HOST.isGuestToHostRootNode(root)) {
+                return root;
+            }
+            return null;
+        });
+        if (topMostGuestToHostRootNode == null) {
+            return false;
+        } else {
+            PolyglotEngineImpl rootEngine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(topMostGuestToHostRootNode);
+            if (rootEngine == engine) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Embedder close.
+     */
     public void close(boolean cancelIfExecuting) {
         try {
+            if (isActive(Thread.currentThread()) && !isCurrentEngineHostCallback(engine)) {
+                clearExplicitContextStack();
+            }
+
             if (cancelIfExecuting) {
                 /*
                  * Cancel does invalidate. We always need to invalidate before force-closing a
@@ -1827,7 +1856,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     private void setClosingState() {
         assert Thread.holdsLock(this);
         closingThread = Thread.currentThread();
-        clearExplicitContextStack();
         closingLock.lock();
         State targetState;
         switch (state) {
@@ -2000,15 +2028,18 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return finishClose(cancelOperation, notifyInstruments);
     }
 
-    private void clearExplicitContextStack() {
-        assert Thread.holdsLock(this);
+    synchronized void clearExplicitContextStack() {
         PolyglotThreadInfo threadInfo = getCachedThreadInfo();
         if (!threadInfo.explicitContextStack.isEmpty()) {
             PolyglotContextImpl c = this;
             while (!threadInfo.explicitContextStack.isEmpty()) {
-                PolyglotContextImpl prev = threadInfo.explicitContextStack.removeLast();
-                engine.leave(prev, c);
-                c = prev;
+                if (PolyglotContextImpl.currentNotEntered() == this) {
+                    PolyglotContextImpl prev = threadInfo.explicitContextStack.removeLast();
+                    engine.leave(prev, c);
+                    c = prev;
+                } else {
+                    throw PolyglotEngineException.illegalState("Unable to automatically leave an explicitly entered context, some other context was entered in the meantime.");
+                }
             }
         }
     }

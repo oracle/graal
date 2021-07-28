@@ -68,8 +68,8 @@ final class PolyglotContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public void close(Object receiver, boolean interuptExecution) {
-        ((PolyglotContextImpl) receiver).close(interuptExecution);
+    public void close(Object receiver, boolean cancelIfExecuting) {
+        ((PolyglotContextImpl) receiver).close(cancelIfExecuting);
     }
 
     @Override

@@ -51,6 +51,7 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.RootNode;
 
 final class HostAccessor extends Accessor {
 
@@ -147,6 +148,11 @@ final class HostAccessor extends Accessor {
         @Override
         public boolean isPrimitiveTarget(Class<?> c) {
             return HostToTypeNode.isPrimitiveTarget(c);
+        }
+
+        @Override
+        public boolean isGuestToHostRootNode(RootNode root) {
+            return root instanceof GuestToHostRootNode;
         }
     }
 

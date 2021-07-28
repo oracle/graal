@@ -277,6 +277,7 @@ public abstract class Accessor {
 
         public abstract boolean isPrimitiveTarget(Class<?> c);
 
+        public abstract boolean isGuestToHostRootNode(RootNode root);
     }
 
     public abstract static class EngineSupport extends Support {

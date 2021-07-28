@@ -790,6 +790,9 @@ public final class Context implements AutoCloseable {
      * {@link Builder#err(OutputStream) error output stream}. If a context was closed, then its
      * methods will throw an {@link IllegalStateException} when invoked. If an attempt to close a
      * context was successful, then consecutive calls to close have no effect.
+     * <p>
+     * For convenience, before the actual closing process begins, the close method leaves the
+     * context on the current thread, if it was entered {@link #enter() explicitly}.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            {@link PolyglotException#isCancelled() cancelled}, else an
@@ -816,6 +819,9 @@ public final class Context implements AutoCloseable {
      * {@link Builder#err(OutputStream) error output stream}. If a context was closed, then its
      * methods will throw an {@link IllegalStateException}, when invoked. If an attempt to close a
      * context was successful, then consecutive calls to close have no effect.
+     * <p>
+     * For convenience, before the actual closing process begins, the close method leaves the
+     * context on the current thread, if it was entered {@link #enter() explicitly}.
      *
      * @throws PolyglotException in case the close failed due to a guest language error.
      * @throws IllegalStateException if the context is currently executing on another thread.
