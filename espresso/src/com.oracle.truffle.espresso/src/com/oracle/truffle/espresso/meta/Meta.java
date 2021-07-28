@@ -352,9 +352,10 @@ public final class Meta implements ContextAccess {
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
+        // The interrupted field is no longer hidden as of JDK14+
+        HIDDEN_INTERRUPTED = java_lang_Thread.requireHiddenField(Name.HIDDEN_INTERRUPTED);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
         HIDDEN_IS_ALIVE = java_lang_Thread.requireHiddenField(Name.HIDDEN_IS_ALIVE);
-        HIDDEN_INTERRUPTED = java_lang_Thread.requireHiddenField(Name.HIDDEN_INTERRUPTED);
         HIDDEN_DEATH = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH);
         HIDDEN_DEATH_THROWABLE = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH_THROWABLE);
         HIDDEN_SUSPEND_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_SUSPEND_LOCK);
@@ -444,6 +445,11 @@ public final class Meta implements ContextAccess {
 
         java_lang_invoke_MethodHandles = knownKlass(Type.java_lang_invoke_MethodHandles);
         java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.requireDeclaredMethod(Name.lookup, Signature.MethodHandles$Lookup);
+
+        java_lang_invoke_VarHandles = knownKlass(Type.java_lang_invoke_VarHandles);
+        java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset = diff() //
+                        .method(higher(14), Name.getStaticFieldFromBaseAndOffset, Signature.Field_Object_long_Class) //
+                        .notRequiredMethod(java_lang_invoke_VarHandles);
 
         java_lang_invoke_CallSite = knownKlass(Type.java_lang_invoke_CallSite);
         java_lang_invoke_CallSite_target = java_lang_invoke_CallSite.requireDeclaredField(Name.target, Type.java_lang_invoke_MethodHandle);
@@ -1230,6 +1236,9 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_invoke_MethodHandles;
     public final Method java_lang_invoke_MethodHandles_lookup;
+
+    public final ObjectKlass java_lang_invoke_VarHandles;
+    public final Method java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset;
 
     public final ObjectKlass java_lang_invoke_CallSite;
     public final Field java_lang_invoke_CallSite_target;
