@@ -176,9 +176,9 @@
     local hwlocBind_16C_32T = ["--hwloc-bind=--cpubind node:0.core:0-15.pu:0-1 --membind node:0"],
     run+: [
       # JMeter
-      self.benchmark_cmd + ["shopcart-jmeter:large"]                                         + ["--"] + self.extra_vm_args + ["-Xms8g",    "-Xmx8g"],
+      self.benchmark_cmd + ["shopcart-jmeter:large"]                                         + ["--"] + self.extra_vm_args + ["-Xmx8g"],
       bench_upload,
-      self.benchmark_cmd + ["petclinic-jmeter:tiny"]                                         + ["--"] + self.extra_vm_args + ["-Xms8g",    "-Xmx8g"],
+      self.benchmark_cmd + ["petclinic-jmeter:tiny"]                                         + ["--"] + self.extra_vm_args + ["-Xmx8g"],
       bench_upload,
       # shopcart-wrk
       self.benchmark_cmd + ["shopcart-wrk:mixed-tiny"]                   + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1",  "-XX:MaxDirectMemorySize=256m"],

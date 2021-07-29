@@ -47,19 +47,16 @@
   heap:: {
     small:: {
       environment+: {
-        XMS: small_heap,
         XMX: small_heap
       }
     },
     default:: {
       environment+: {
-        XMS: default_heap,
         XMX: default_heap
       }
     },
     large:: {
       environment+: {
-        XMS: large_heap,
         XMX: large_heap
       }
     },
