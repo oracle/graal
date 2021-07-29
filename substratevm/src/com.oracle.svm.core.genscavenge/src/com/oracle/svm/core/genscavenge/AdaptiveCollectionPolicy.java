@@ -222,9 +222,16 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return promotionEstimate.aboveThan(oldFree);
     }
 
-    private void updateAverages(UnsignedWord survived, UnsignedWord survivorOverflow, UnsignedWord promoted) {
-        avgSurvived.sample(survived.add(survivorOverflow));
-        avgPromoted.sample(promoted);
+    private void updateAverages(UnsignedWord survivedChunkBytes, UnsignedWord survivorOverflowObjectBytes, UnsignedWord promotedObjectBytes) {
+        /*
+         * Adding the object bytes of overflowed survivor objects does not consider the overhead of
+         * partially filled chunks in the many survivor spaces, so it underestimates the necessary
+         * survivors capacity. However, this should self-correct as we expand the survivor space and
+         * reduce the tenuring age to avoid overflowing survivor objects in the first place.
+         */
+        avgSurvived.sample(survivedChunkBytes.add(survivorOverflowObjectBytes));
+
+        avgPromoted.sample(promotedObjectBytes);
     }
 
     private void computeSurvivorSpaceSizeAndThreshold(boolean isSurvivorOverflow, UnsignedWord survivorLimit) {
@@ -465,12 +472,19 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         UnsignedWord oldLive = accounting.getOldGenerationAfterChunkBytes();
         oldSizeExceededInPreviousCollection = oldLive.aboveThan(oldSize);
 
-        UnsignedWord survived = HeapImpl.getHeapImpl().getYoungGeneration().computeSurvivorObjectBytes();
-        UnsignedWord survivorOverflow = accounting.getSurvivorOverflowObjectBytes();
-        UnsignedWord promoted = accounting.getPromotedObjectBytes(); // includes survivorOverflow
-        updateAverages(survived, survivorOverflow, promoted);
+        /*
+         * Update the averages that survivor space and tenured space sizes are derived from. Note
+         * that we use chunk bytes (not object bytes) for the survivors. This is because they are
+         * kept in many spaces (one for each age), which potentially results in significant overhead
+         * from chunks that may only be partially filled, especially when the heap is small. Using
+         * chunk bytes here ensures that the needed survivor capacity is not underestimated.
+         */
+        UnsignedWord survivedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorChunkBytes();
+        UnsignedWord survivorOverflowObjectBytes = accounting.getSurvivorOverflowObjectBytes();
+        UnsignedWord promotedObjBytes = accounting.getPromotedObjectBytes(); // includes overflowed
+        updateAverages(survivedChunkBytes, survivorOverflowObjectBytes, promotedObjBytes);
 
-        computeSurvivorSpaceSizeAndThreshold(survivorOverflow.aboveThan(0), sizes.maxSurvivorSize());
+        computeSurvivorSpaceSizeAndThreshold(survivorOverflowObjectBytes.aboveThan(0), sizes.maxSurvivorSize());
         computeEdenSpaceSize();
         if (completeCollection) {
             computeOldGenSpaceSize(oldLive);
