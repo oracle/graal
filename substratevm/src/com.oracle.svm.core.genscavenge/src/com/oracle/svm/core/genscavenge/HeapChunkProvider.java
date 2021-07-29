@@ -43,6 +43,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
 /**
@@ -133,23 +134,35 @@ final class HeapChunkProvider {
      */
     void consumeAlignedChunks(AlignedHeader firstChunk) {
         assert HeapChunk.getPrevious(firstChunk).isNull() : "prev must be null";
-        AlignedHeader cur = firstChunk;
 
-        UnsignedWord unusedBytes = getBytesInUnusedChunks();
-        UnsignedWord reserved = GCImpl.getPolicy().getMaximumFreeReservedSize();
-        if (reserved.aboveThan(unusedBytes)) {
-            UnsignedWord chunksToKeep = reserved.subtract(unusedBytes).unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
+        UnsignedWord freeListBytes = getBytesInUnusedChunks();
+        UnsignedWord reserveBytes = GCImpl.getPolicy().getMaximumFreeReservedSize();
+
+        AlignedHeader cur = firstChunk;
+        if (freeListBytes.belowThan(reserveBytes)) {
+            // Retain some of the chunks in the free list for quicker allocation
+            UnsignedWord chunksToKeep = reserveBytes.subtract(freeListBytes)
+                            .unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
             while (cur.isNonNull() && chunksToKeep.aboveThan(0)) {
                 AlignedHeader next = HeapChunk.getNext(cur);
                 cleanAlignedChunk(cur);
                 pushUnusedAlignedChunk(cur);
+
                 chunksToKeep = chunksToKeep.subtract(1);
                 cur = next;
             }
         }
-        // TODO: release unused chunks if there's _more_ than space should be available
-
         freeAlignedChunkList(cur);
+
+        if (freeListBytes.aboveThan(reserveBytes)) {
+            /*
+             * Release chunks from the free list to the operating system. This can be necessary
+             * after eden shrinks or if too many chunks were allocated during a collection.
+             */
+            UnsignedWord unusedChunksToFree = freeListBytes.subtract(reserveBytes)
+                            .unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
+            freeUnusedAlignedChunksAtSafepoint(unusedChunksToFree);
+        }
     }
 
     private static void cleanAlignedChunk(AlignedHeader alignedChunk) {
@@ -220,6 +233,21 @@ final class HeapChunkProvider {
                 }
             }
         }
+    }
+
+    private void freeUnusedAlignedChunksAtSafepoint(UnsignedWord count) {
+        VMOperation.guaranteeInProgressAtSafepoint("Removing non-atomically from the unused chunk list.");
+
+        AlignedHeader chunk = unusedAlignedChunks.get();
+        UnsignedWord released = WordFactory.zero();
+        while (chunk.isNonNull() && released.belowThan(count)) {
+            AlignedHeader next = HeapChunk.getNext(chunk);
+            freeAlignedChunk(chunk);
+            chunk = next;
+            released = released.add(1);
+        }
+        unusedAlignedChunks.set(chunk);
+        bytesInUnusedAlignedChunks.subtractAndGet(released.multiply(HeapParameters.getAlignedHeapChunkSize()));
     }
 
     /** Acquire an UnalignedHeapChunk from the operating system. */
