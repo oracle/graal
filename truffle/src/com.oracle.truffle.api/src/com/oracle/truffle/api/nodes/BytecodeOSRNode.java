@@ -47,8 +47,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 /**
  * Interface for Truffle bytecode nodes which can be on-stack replaced (OSR).
  *
- * There are a few restrictions Bytecode OSR nodes must satisfy in order for OSR to work correctly:
- *
+ * There are a couple of restrictions Bytecode OSR nodes must satisfy in order for OSR to work
+ * correctly:
  * <ol>
  * <li>The node must extend {@link Node} or a subclass of {@link Node}.</li>
  * <li>The node must provide storage for the OSR metadata maintained by the runtime using an
@@ -56,38 +56,63 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal}, and the
  * {@link BytecodeOSRNode#getOSRMetadata} and {@link BytecodeOSRNode#setOSRMetadata} methods must
  * proxy accesses to it.</li>
- * <li>{@link Frame Frames} passed to to this node's {@link BytecodeOSRNode#executeOSR} method must
- * be non-materializable.</li>
  * </ol>
  *
  * <p>
- * The node may optionally override {@link BytecodeOSRNode#prepareOSR} to perform any necessary
- * initialization. This method will be called before compilation.
+ * For performance reasons, the parent frame may be copied into a new frame used for OSR. If this
+ * happens, {@link BytecodeOSRNode#copyIntoOSRFrame} is used to perform the copy, and
+ * {@link BytecodeOSRNode#restoreParentFrame} is used to (optionally) copy the OSR frame contents
+ * back into the parent frame after OSR. A node may override these methods; by default,
+ * {@link BytecodeOSRNode#copyIntoOSRFrame} performs a slot-wise copy and
+ * {@link BytecodeOSRNode#restoreParentFrame} does nothing.
+ *
+ * <p>
+ * A node may also wish to override {@link BytecodeOSRNode#prepareOSR} to perform initialization.
+ * This method will be called before compilation, and can be useful to avoid deoptimizing inside
+ * compiled code.
  *
  * @since 21.3
  */
 public interface BytecodeOSRNode extends NodeInterface {
 
     /**
-     * Entrypoint to invoke this node through OSR. Typically, this method will:
-     * <ul>
-     * <li>transfer state from the {@code parentFrame} into the {@code osrFrame} (if necessary)
-     * <li>execute this node from the {@code target} location
-     * <li>transfer state from the {@code osrFrame} back to the {@code parentFrame} (if necessary)
-     * </ul>
+     * Entrypoint to invoke this node through OSR. This method should execute from the
+     * {@code target} location.
+     *
      * <p>
-     * NOTE: The result of {@link Frame#getArguments()} for {@code osrFrame} is undefined and must
-     * not be used. Additionally, since the parent frame could also come from an OSR call (in the
-     * situation where an OSR call deoptimizes), the arguments of {@code parentFrame} are also
-     * undefined.
+     * The {@code osrFrame} may be the parent frame, but for performance reasons could also be a new
+     * frame. The frame's {@link Frame#getArguments() arguments} are undefined and should not be
+     * used directly.
+     *
+     * <p>
+     * Typically, a bytecode node's {@link ExecutableNode#execute(VirtualFrame)
+     * execute(VirtualFrame)} method already contains a dispatch loop. This loop can be extracted
+     * into a separate method which can also be used by
+     * {@link BytecodeOSRNode#executeOSR(VirtualFrame, int)}. For example:
+     *
+     * <pre>
+     * Object execute(VirtualFrame frame) {
+     *   return dispatchFromBCI(frame, 0);
+     * }
+     * Object executeOSR(VirtualFrame osrFrame, int target) {
+     *   return dispatchFromBCI(osrFrame, target);
+     * }
+     * Object dispatchFromBCI(VirtualFrame frame, int bci) {
+     *     // main dispatch loop
+     *     while(true) {
+     *         switch(instructions[bci]) {
+     *             ...
+     *         }
+     *     }
+     * }
+     * </pre>
      *
      * @param osrFrame the frame to use for OSR.
-     * @param parentFrame the frame of the previous invocation (which may itself be an OSR frame).
      * @param target the target location to execute from (e.g., bytecode index).
      * @return the result of execution.
      * @since 21.3
      */
-    Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target);
+    Object executeOSR(VirtualFrame osrFrame, int target);
 
     /**
      * Gets the OSR metadata for this instance.
@@ -112,6 +137,39 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     void setOSRMetadata(Object osrMetadata);
+
+    /**
+     * Copies the contents of the {@code parentFrame} into the {@code osrFrame} used to execute OSR.
+     * By default, performs a slot-wise copy of the frame.
+     *
+     * <p>
+     * NOTE: This method is only used if the Truffle runtime decides to copy the frame. OSR may also
+     * reuse the parent frame directly.
+     *
+     * @param osrFrame the frame to use for OSR.
+     * @param parentFrame the frame used before performing OSR.
+     * @param target the target location OSR will execute from (e.g., bytecode index).
+     * @since 21.3
+     */
+    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        doOSRFrameTransfer(this, parentFrame, osrFrame);
+    }
+
+    /**
+     * Restores the contents of the {@code osrFrame} back into the {@code parentFrame} after OSR. By
+     * default, does nothing (because the parent frame is usually not needed after OSR).
+     *
+     * <p>
+     * NOTE: This method is only used if the Truffle runtime decided to copy the frame using
+     * {@link BytecodeOSRNode#copyIntoOSRFrame}.
+     *
+     * @param osrFrame the frame which was used for OSR.
+     * @param parentFrame the frame which will be used by the parent after returning from OSR.
+     * @since 21.3
+     */
+    default void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+        // do nothing
+    }
 
     /**
      * Optional hook which will be invoked before OSR compilation. This hook can be used to perform
@@ -167,13 +225,8 @@ public interface BytecodeOSRNode extends NodeInterface {
      * Transfers state from the {@code source} frame into the {@code target} frame. The frames must
      * have the same layout as the frame used to execute the {@code osrNode}.
      * <p>
-     * This helper can be used when implementing {@link #executeOSR} to transfer state between OSR
-     * and parent frames.
-     *
-     * <p>
-     * NOTE: If a language uses this method to transfer state, the OSR metadata field must be marked
-     * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal}, since the metadata may be
-     * used inside the compiled code to perform the state transfer.
+     * This helper can be used when implementing {@link BytecodeOSRNode#copyIntoOSRFrame} and
+     * {@link BytecodeOSRNode#restoreParentFrame(VirtualFrame, VirtualFrame)}.
      *
      * @param osrNode the node being on-stack replaced.
      * @param source the frame to transfer state from.

@@ -24,8 +24,10 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
@@ -33,17 +35,44 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 final class BytecodeOSRRootNode extends BaseOSRRootNode {
     @Child private BytecodeOSRNode bytecodeOSRNode;
     private final int target;
+    @CompilationFinal private boolean seenMaterializedFrame;
 
     BytecodeOSRRootNode(BytecodeOSRNode bytecodeOSRNode, int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
         this.bytecodeOSRNode = bytecodeOSRNode;
         this.target = target;
+        this.seenMaterializedFrame = materializeCalled(frameDescriptor);
+    }
+
+    private static boolean materializeCalled(FrameDescriptor frameDescriptor) {
+        return ((GraalTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
     }
 
     @Override
     public Object executeOSR(VirtualFrame frame) {
-        Frame parentFrame = (Frame) frame.getArguments()[0];
-        return bytecodeOSRNode.executeOSR(frame, parentFrame, target);
+        VirtualFrame parentFrame = (VirtualFrame) frame.getArguments()[0];
+
+        if (!seenMaterializedFrame) {
+            // We aren't expecting a materialized frame. If we get one, deoptimize.
+            if (materializeCalled(parentFrame.getFrameDescriptor())) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                seenMaterializedFrame = true;
+            }
+        }
+
+        if (seenMaterializedFrame) {
+            // If materialize has ever happened, just use the parent frame.
+            // This will be slower, since we cannot do scalar replacement on the frame, but it is
+            // required to prevent the materialized frame from getting out of sync during OSR.
+            return bytecodeOSRNode.executeOSR(parentFrame, target);
+        } else {
+            bytecodeOSRNode.copyIntoOSRFrame(frame, parentFrame, target);
+            try {
+                return bytecodeOSRNode.executeOSR(frame, target);
+            } finally {
+                bytecodeOSRNode.restoreParentFrame(frame, parentFrame);
+            }
+        }
     }
 
     @Override

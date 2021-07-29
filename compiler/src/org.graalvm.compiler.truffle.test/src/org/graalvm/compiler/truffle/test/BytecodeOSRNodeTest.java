@@ -487,7 +487,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
+        public Object executeOSR(VirtualFrame osrFrame, int target) {
             return execute(osrFrame);
         }
 
@@ -520,11 +520,14 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
             setInt(osrFrame, indexSlot, getInt(parentFrame, indexSlot));
-            int numIterations = getInt(parentFrame, numIterationsSlot);
-            setInt(osrFrame, numIterationsSlot, numIterations);
-            return executeLoop(osrFrame, numIterations);
+            setInt(osrFrame, numIterationsSlot, getInt(parentFrame, numIterationsSlot));
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target) {
+            return executeLoop(osrFrame, getInt(osrFrame, numIterationsSlot));
         }
 
         @Override
@@ -851,13 +854,13 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
-            BytecodeOSRNode.doOSRFrameTransfer(this, parentFrame, osrFrame);
-            try {
-                return executeLoop(osrFrame);
-            } finally {
-                BytecodeOSRNode.doOSRFrameTransfer(this, osrFrame, parentFrame);
-            }
+        public Object executeOSR(VirtualFrame osrFrame, int target) {
+            return executeLoop(osrFrame);
+        }
+
+        @Override
+        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+            BytecodeOSRNode.doOSRFrameTransfer(this, osrFrame, parentFrame);
         }
 
         @Override
@@ -980,15 +983,20 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
-            osrCount += 1;
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
             changeFrame(osrFrame.getFrameDescriptor()); // only changes the first time
             BytecodeOSRNode.doOSRFrameTransfer(this, parentFrame, osrFrame);
-            try {
-                return executeLoop(osrFrame);
-            } finally {
-                BytecodeOSRNode.doOSRFrameTransfer(this, osrFrame, parentFrame);
-            }
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target) {
+            osrCount += 1;
+            return executeLoop(osrFrame);
+        }
+
+        @Override
+        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+            BytecodeOSRNode.doOSRFrameTransfer(this, osrFrame, parentFrame);
         }
 
         @TruffleBoundary
@@ -1128,10 +1136,14 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         @ExplodeLoop
-        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
             for (int i = 0; i < regs.length; i++) {
                 setInt(osrFrame, i, getInt(parentFrame, i));
             }
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target) {
             return executeFromBCI(osrFrame, target);
         }
 

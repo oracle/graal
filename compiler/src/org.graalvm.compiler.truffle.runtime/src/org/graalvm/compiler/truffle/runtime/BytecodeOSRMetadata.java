@@ -99,11 +99,12 @@ public final class BytecodeOSRMetadata {
         LazyState state = getLazyState();
         if (!Assumption.isValidAssumption(state.frameVersion)) {
             ((Node) osrNode).atomic(() -> {
-                if (Assumption.isValidAssumption(state.frameVersion)) {
+                LazyState lockedState = getLazyState();
+                if (Assumption.isValidAssumption(lockedState.frameVersion)) {
                     return; // Frame slots were fixed up by another thread.
                 }
                 // We're updating the existing state, so reuse the compilation map.
-                lazyState = createLazy(state.compilationMap);
+                lazyState = createLazy(lockedState.compilationMap);
             });
         }
     }

@@ -412,8 +412,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     @CompilationFinal private Object osrMetadata;
 
     @Override
-    public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
-        initializeOSRBody(osrFrame, parentFrame, target);
+    public Object executeOSR(VirtualFrame osrFrame, int target) {
         return executeBodyFromBCI(osrFrame, target);
     }
 
@@ -680,9 +679,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         setBCI(frame, 0);
     }
 
+    /**
+     * Override the default implementation of this method to ensure the primitive and ref arrays can
+     * be scalar replaced. Also, clear locals in the parent frame since they won't be used again.
+     */
+    @Override
     @ExplodeLoop
-    void initializeOSRBody(VirtualFrame frame, Frame parentFrame, int startBCI) {
-        CompilerAsserts.partialEvaluationConstant(startBCI);
+    public void copyIntoOSRFrame(VirtualFrame frame, VirtualFrame parentFrame, int target) {
+        CompilerAsserts.partialEvaluationConstant(target);
         int slotCount = getMethod().getMaxLocals() + getMethod().getMaxStackSize();
         CompilerAsserts.partialEvaluationConstant(slotCount);
         long[] primitives = new long[slotCount];
@@ -708,7 +712,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
         }
-        setBCI(frame, startBCI);
+        setBCI(frame, target);
     }
 
     @Override
