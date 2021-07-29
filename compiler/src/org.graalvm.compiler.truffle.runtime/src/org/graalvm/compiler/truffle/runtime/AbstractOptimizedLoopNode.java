@@ -26,20 +26,21 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.api.profiles.LoopConditionProfile;
 
 abstract class AbstractOptimizedLoopNode extends LoopNode {
 
     @Child protected RepeatingNode repeatingNode;
 
-    protected final LoopConditionProfile loopConditionProfile;
+    @CompilationFinal private long trueCount; // long for long running loops.
+    @CompilationFinal private int falseCount;
 
     protected AbstractOptimizedLoopNode(RepeatingNode repeatingNode) {
         this.repeatingNode = Objects.requireNonNull(repeatingNode);
-        this.loopConditionProfile = LoopConditionProfile.create();
     }
 
     @Override
@@ -53,4 +54,33 @@ abstract class AbstractOptimizedLoopNode extends LoopNode {
         execute(frame);
     }
 
+    protected final void profileCounted(long iterations) {
+        if (CompilerDirectives.inInterpreter()) {
+            long trueCountLocal = trueCount + iterations;
+            if (trueCountLocal >= 0) { // don't write overflow values
+                trueCount = trueCountLocal;
+                int falseCountLocal = falseCount;
+                if (falseCountLocal < Integer.MAX_VALUE) {
+                    falseCount = falseCountLocal + 1;
+                }
+            }
+        }
+    }
+
+    protected final boolean inject(boolean condition) {
+        if (CompilerDirectives.inCompiledCode()) {
+            return CompilerDirectives.injectBranchProbability(calculateProbability(trueCount, falseCount), condition);
+        } else {
+            return condition;
+        }
+    }
+
+    private static double calculateProbability(long trueCountLocal, int falseCountLocal) {
+        if (falseCountLocal == 0 && trueCountLocal == 0) {
+            // Avoid division by zero and assume default probability for AOT.
+            return 0.5;
+        } else {
+            return (double) trueCountLocal / (double) (trueCountLocal + falseCountLocal);
+        }
+    }
 }

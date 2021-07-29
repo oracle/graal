@@ -118,7 +118,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             long iterationsCompleted = 0;
             Object status;
             try {
-                while (loopConditionProfile.inject(repeatingNode.shouldContinue((status = repeatingNode.executeRepeatingWithValue(frame))))) {
+                while (inject(repeatingNode.shouldContinue((status = repeatingNode.executeRepeatingWithValue(frame))))) {
                     iterationsCompleted++;
                     if (CompilerDirectives.inInterpreter()) {
                         // compiled method got invalidated. We might need OSR again.
@@ -134,7 +134,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             return status;
         } else {
             Object status;
-            while (loopConditionProfile.inject(repeatingNode.shouldContinue((status = repeatingNode.executeRepeatingWithValue(frame))))) {
+            while (inject(repeatingNode.shouldContinue((status = repeatingNode.executeRepeatingWithValue(frame))))) {
                 if (CompilerDirectives.inInterpreter()) {
                     // compiled method got invalidated. We might need OSR again.
                     return execute(frame);
@@ -171,7 +171,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
     private void reportLoopIterations(long iterations) {
         baseLoopCount = toIntOrMaxInt(baseLoopCount + iterations);
-        loopConditionProfile.profileCounted(iterations);
+        profileCounted(iterations);
         LoopNode.reportLoopCount(this, toIntOrMaxInt(iterations));
     }
 

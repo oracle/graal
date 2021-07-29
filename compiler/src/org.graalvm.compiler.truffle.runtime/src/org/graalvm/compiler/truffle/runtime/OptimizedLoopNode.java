@@ -41,7 +41,7 @@ public final class OptimizedLoopNode extends AbstractOptimizedLoopNode {
         Object status;
         long loopCount = 0;
         try {
-            while (loopConditionProfile.inject(repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame)))) {
+            while (inject(repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame)))) {
                 if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.hasNextTier()) {
                     loopCount++;
                 }
@@ -49,7 +49,7 @@ public final class OptimizedLoopNode extends AbstractOptimizedLoopNode {
             }
             return status;
         } finally {
-            loopConditionProfile.profileCounted(loopCount);
+            profileCounted(loopCount);
             reportLoopCount(this, OptimizedOSRLoopNode.toIntOrMaxInt(loopCount));
         }
     }
