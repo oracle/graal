@@ -311,7 +311,7 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
         PartialEscapeClosure.COUNTER_ALLOCATION_REMOVED.increment(debug);
         effects.addVirtualizationDelta(1);
         if (sourcePosition != null) {
-            assert virtualObject.getNodeSourcePosition() == null : "source pos already set!";
+            assert virtualObject.getNodeSourcePosition() == null || virtualObject.getNodeSourcePosition() == sourcePosition : "unexpected source pos!";
             virtualObject.setNodeSourcePosition(sourcePosition);
         }
     }
