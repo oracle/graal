@@ -45,10 +45,12 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -327,6 +329,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * named capture groups so far.
      */
     private Map<String, Integer> namedCaptureGroups;
+    /**
+     * A set of capture groups names which occur repeatedly in the expression. Backreferences to
+     * such capture groups can refer to either of the homonymous capture groups, depending on which
+     * of them matched most recently. Such backreferences are not supported in TRegex.
+     */
+    private Set<String> ambiguousCaptureGroups;
 
     /**
      * The number of capture groups encountered in the input pattern so far, i.e. the (zero-based)
@@ -400,6 +408,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         this.lookbehindDepth = 0;
         this.groupStack = new ArrayDeque<>();
         this.namedCaptureGroups = null;
+        this.ambiguousCaptureGroups = null;
         this.groupIndex = 0;
         this.lastTerm = TermCategory.None;
         this.lastTermOutPosition = -1;
@@ -684,10 +693,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                                 String groupName = parseGroupName('>');
                                 if (namedCaptureGroups == null) {
                                     namedCaptureGroups = new HashMap<>();
+                                    ambiguousCaptureGroups = new HashSet<>();
                                     numberOfCaptureGroups = 0;
                                 }
                                 if (namedCaptureGroups.containsKey(groupName)) {
-                                    bailOut("different capture groups with the same name are not supported");
+                                    ambiguousCaptureGroups.add(groupName);
                                 }
                                 numberOfCaptureGroups++;
                                 namedCaptureGroups.put(groupName, numberOfCaptureGroups);
@@ -1341,6 +1351,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     throw syntaxErrorAt(RbErrorMessages.unknownGroupName(groupName), beginPos);
                 }
             } else {
+                if (ambiguousCaptureGroups.contains(groupName)) {
+                    bailOut("backreferences to multiple homonymous named capture groups are not supported");
+                }
                 groupNumber = namedCaptureGroups.get(groupName);
             }
         }
