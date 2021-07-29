@@ -319,8 +319,6 @@ public final class ObjectKlass extends Klass {
                      * fields appear in the ClassFile structure.
                      */
                     prepare();
-
-                    initState = PREPARED;
                     if (getContext().isMainThreadCreated()) {
                         if (getContext().shouldReportVMEvents()) {
                             prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
@@ -374,7 +372,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    private void prepare() {
+    public void prepare() {
         checkLoadingConstraints();
         for (Field f : staticFieldTable) {
             ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
@@ -431,6 +429,7 @@ public final class ObjectKlass extends Klass {
                     throw EspressoError.shouldNotReachHere("invalid constant field kind");
             }
         }
+        initState = PREPARED;
     }
 
     // Need to carefully synchronize, as the work of other threads can erase our own work.

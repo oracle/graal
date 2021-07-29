@@ -214,7 +214,9 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject initClassName(@JavaType(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
-        return getName0(self, meta);
+        StaticObject name = getName0(self, meta);
+        meta.java_lang_Class_name.set(self, name);
+        return name;
     }
 
     @TruffleBoundary

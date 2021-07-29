@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -111,7 +112,7 @@ public abstract class ClassRegistry implements ContextAccess {
         public final boolean isStrongHidden;
 
         public boolean addedToRegistry() {
-            return !isAnonymousClass() && (!isHidden() || isStrongHidden());
+            return !isAnonymousClass() && !isHidden();
         }
 
         public boolean isAnonymousClass() {
@@ -237,6 +238,26 @@ public abstract class ClassRegistry implements ContextAccess {
      */
     protected final ConcurrentHashMap<Symbol<Type>, ClassRegistries.RegistryEntry> classes = new ConcurrentHashMap<>();
 
+    /**
+     * Strong hidden classes must be referenced by the class loader data to prevent them from being
+     * reclaimed, while not appearing in the actual registry. This field simply keeps those hidden
+     * classes strongly reachable from the class registry.
+     */
+    private volatile Collection<Klass> strongHiddenKlasses = null;
+
+    private Object getStrongHiddenClassRegistrationLock() {
+        return this;
+    }
+
+    private void registerStrongHiddenClass(Klass klass) {
+        synchronized (getStrongHiddenClassRegistrationLock()) {
+            if (strongHiddenKlasses == null) {
+                strongHiddenKlasses = new ArrayList<>();
+            }
+            strongHiddenKlasses.add(klass);
+        }
+    }
+
     @Override
     public final EspressoContext getContext() {
         return context;
@@ -357,6 +378,8 @@ public abstract class ClassRegistry implements ContextAccess {
         ObjectKlass klass = createKlass(meta, parserKlass, type, superKlassType, info);
         if (info.addedToRegistry()) {
             registerKlass(klass, type);
+        } else if (info.isStrongHidden()) {
+            registerStrongHiddenClass(klass);
         }
         return klass;
     }

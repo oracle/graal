@@ -1082,7 +1082,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             nest = (ObjectKlass) lookup.getMirrorKlass().nest();
         }
         if (!isHidden) {
-            if (StaticObject.isNull(classData)) {
+            if (!StaticObject.isNull(classData)) {
                 throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "classData is only applicable for hidden classes");
             }
             if (isNestMate) {
@@ -1110,11 +1110,13 @@ public final class VM extends NativeEnv implements ContextAccess {
             // Special handling
             k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
         } else {
-            k = getRegistries().defineKlass(type, bytes, loader);
+            k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
         }
 
         if (initialize) {
             k.safeInitialize();
+        } else {
+            k.verify();
         }
         return k.mirror();
     }

@@ -1340,7 +1340,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         // Reflection relies on anonymous classes including a '/' on the name, to avoid generating
         // (invalid) fast method accessors. See
         // sun.reflect.misc.ReflectUtil#isVMAnonymousClass(Class<?>).
-        if (isAnonymous()) {
+        if (isAnonymous() || isHidden()) {
             externalName = appendID(externalName);
         }
         return externalName;

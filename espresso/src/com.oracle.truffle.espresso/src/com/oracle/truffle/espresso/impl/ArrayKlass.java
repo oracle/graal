@@ -28,7 +28,9 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -174,5 +176,20 @@ public final class ArrayKlass extends Klass {
     @Override
     public String getNameAsString() {
         return "[" + componentType.getNameAsString();
+    }
+
+    @Override
+    public String getExternalName() {
+        String base = super.getExternalName();
+        boolean isHiddenOrAnonymous = getElementalType().isAnonymous() || getElementalType().isHidden();
+        if (!isHiddenOrAnonymous) {
+            return base;
+        }
+        return fixupExternalName(base);
+    }
+
+    @TruffleBoundary
+    private String fixupExternalName(String base) {
+        return base.replace(";", cat("/", getComponentType().getId(), ";"));
     }
 }
