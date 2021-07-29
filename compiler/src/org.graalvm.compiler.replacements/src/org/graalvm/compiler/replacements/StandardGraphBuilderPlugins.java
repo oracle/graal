@@ -1582,6 +1582,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInlineOnlyInvocationPlugin("sideEffect", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
+                b.addPush(JavaKind.Long, new SideEffectNode(a));
+                return true;
+            }
+        });
         r.register(new RequiredInlineOnlyInvocationPlugin("trustedBox", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {

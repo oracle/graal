@@ -147,6 +147,14 @@ public final class GraalDirectives {
     }
 
     /**
+     * A call to this method will force the compiler to assume this instruction has a visible memory
+     * effect killing all memory locations.
+     */
+    public static long sideEffect(long a) {
+        return a;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive).
      *
