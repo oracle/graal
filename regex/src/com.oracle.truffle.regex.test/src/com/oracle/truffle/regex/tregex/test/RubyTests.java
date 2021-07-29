@@ -362,4 +362,20 @@ public class RubyTests extends RegexTestBase {
         test("\\A\\R\\R\\z", "", "\n\n", 0, true, 0, 2);
         test("\\A\\R\\R\\z", "", "\r\n", 0, false);
     }
+
+    @Test
+    public void github2412() {
+        // Checkstyle: stop line length
+        // 1 root capture group and 16 named capture groups
+        Assert.assertEquals(1 + 16, compileRegex("           % (?<type>%)\n" +
+                        "          | % (?<flags>(?-mix:[ #0+-]|(?-mix:(\\d+)\\$))*)\n" +
+                        "            (?:\n" +
+                        "              (?: (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:<(?<name>\\w+)>)?\n" +
+                        "                | (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:<(?<name>\\w+)>) (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))?\n" +
+                        "                | (?-mix:<(?<name>\\w+)>) (?<more_flags>(?-mix:[ #0+-]|(?-mix:(\\d+)\\$))*) (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))?\n" +
+                        "              ) (?-mix:(?<type>[bBdiouxXeEfgGaAcps]))\n" +
+                        "              | (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\{(?<name>\\w+)\\})\n" +
+                        "            )", "x").getMember("groupCount").asInt());
+        // Checkstyle: resume line length
+    }
 }

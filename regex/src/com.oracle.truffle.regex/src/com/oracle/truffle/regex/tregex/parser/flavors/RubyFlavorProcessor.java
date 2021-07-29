@@ -671,7 +671,8 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                             break;
                         default:
                             while (match("c") || match("C-") || match("M-")) {
-                                // skip control escape sequences, \\cX, \\C-X or \\M-X, which can be nested
+                                // skip control escape sequences, \\cX, \\C-X or \\M-X, which can be
+                                // nested
                             }
                             // skip escaped char
                             advance();
