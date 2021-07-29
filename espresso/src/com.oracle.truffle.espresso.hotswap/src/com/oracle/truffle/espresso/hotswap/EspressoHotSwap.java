@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.espresso.hotswap;
 
+import java.io.IOException;
+
 /**
  * Provides access to the enhanced HotSwap capabilities of Espresso. Every method allows
  * registration of HotSwap actions that will be fired on relevant class redefinition changes.
@@ -117,6 +119,28 @@ public final class EspressoHotSwap {
     public static boolean registerClassInitHotSwap(Class<?> klass, boolean onChange, HotSwapAction action) {
         if (handler != null) {
             handler.registerStaticClassInitHotSwap(klass, onChange, action);
+        }
+        return handler != null;
+    }
+
+    /**
+     * Registration of a HotSwap action that will be fired if changes are detected to specified
+     * resource
+     *
+     * @param loader the class loader to lookup the service type
+     * @param resource the resource to register a change listener on
+     * @param action the action to fire
+     * @return true if registration was successful
+     * @since 21.3
+     */
+    public static boolean registerResourceListener(ClassLoader loader, String resource, HotSwapAction action) {
+        try {
+            if (handler != null) {
+                handler.registerResourceListener(loader, resource, action);
+            }
+        } catch (IOException ex) {
+            System.err.println(ex.getMessage());
+            return false;
         }
         return handler != null;
     }

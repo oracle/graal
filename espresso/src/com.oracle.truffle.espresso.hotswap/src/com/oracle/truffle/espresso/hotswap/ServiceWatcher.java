@@ -44,12 +44,15 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.nio.file.Watchable;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -58,6 +61,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -70,13 +74,38 @@ import java.util.function.Function;
 final class ServiceWatcher {
 
     private static final String PREFIX = "META-INF/services/";
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
     private final Map<String, Set<String>> services = new HashMap<>(4);
 
     private WatcherThread serviceWatcherThread;
     private URLWatcher urlWatcher;
 
+    public void addResourceWatcher(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
+        if (!ensureInitialized()) {
+            return;
+        }
+        URL url;
+        if (loader == null) {
+            url = ClassLoader.getSystemResource(resource);
+        } else {
+            url = loader.getResource(resource);
+        }
+        if (url == null) {
+            throw new IOException("Resource " + resource + " not found from class loader: " + loader.getClass().getName());
+        }
+
+        if ("file".equals(url.getProtocol())) {
+            // parent directory to register watch on
+            File file = new File(url.getFile()).getParentFile();
+            serviceWatcherThread.addWatch(new File(url.getFile()).getName(), Paths.get(file.toURI()), () -> callback.fire());
+        }
+    }
+
     public synchronized void addServiceWatcher(Class<?> service, ClassLoader loader, HotSwapAction callback) {
+        if (!ensureInitialized()) {
+            return;
+        }
         try {
             // cache initial service implementations
             Set<String> serviceImpl = Collections.synchronizedSet(new HashSet<>());
@@ -93,15 +122,6 @@ final class ServiceWatcher {
             }
             String fullName = PREFIX + service.getName();
             services.put(fullName, serviceImpl);
-
-            // start watcher threads on first registration
-            if (serviceWatcherThread == null) {
-                // start watching
-                serviceWatcherThread = new WatcherThread();
-                serviceWatcherThread.start();
-                urlWatcher = new URLWatcher();
-                urlWatcher.startWatching();
-            }
 
             // pick up the initial URLs for the service class
             ArrayList<URL> initialURLs = new ArrayList<>();
@@ -125,7 +145,12 @@ final class ServiceWatcher {
 
             // listen for changes to URLs in the resources
             urlWatcher.addWatch(new URLServiceState(initialURLs, loader, fullName, (url) -> {
-                callback.fire();
+                try {
+                    callback.fire();
+                } catch (Throwable t) {
+                    System.err.println("[HotSwap API]: Unexpected exception while running service change action");
+                    t.printStackTrace();
+                }
                 // parent directory to register watch on
                 File file = new File(url.getFile()).getParentFile();
                 // listen for changes to the service registration file
@@ -135,11 +160,33 @@ final class ServiceWatcher {
                     // perhaps fallback to reloading and fetching from service loader at intervals?
                 }
                 return null;
-            }, callback::fire));
+            }, () -> {
+                try {
+                    callback.fire();
+                } catch (Throwable t) {
+                    System.err.println("[HotSwap API]: Unexpected exception while running service change action");
+                    t.printStackTrace();
+                }
+            }));
         } catch (IOException e) {
             // perhaps fallback to reloading and fetching from service loader at intervals?
             return;
         }
+    }
+
+    private boolean ensureInitialized() {
+        // start watcher threads
+        try {
+            if (serviceWatcherThread == null) {
+                serviceWatcherThread = new WatcherThread();
+                serviceWatcherThread.start();
+                urlWatcher = new URLWatcher();
+                urlWatcher.startWatching();
+            }
+        } catch (IOException ex) {
+            return false;
+        }
+        return true;
     }
 
     private synchronized void onServiceChange(HotSwapAction callback, ServiceLoader<?> serviceLoader, String fullName) {
@@ -175,7 +222,7 @@ final class ServiceWatcher {
     private final class WatcherThread extends Thread {
 
         private final WatchService watchService;
-        private final Map<String, Runnable> watchActions = Collections.synchronizedMap(new HashMap<>());
+        private final Map<ResourceInfo, Runnable> watchActions = Collections.synchronizedMap(new HashMap<>());
 
         private WatcherThread() throws IOException {
             super("hotswap-watcher-1");
@@ -183,9 +230,9 @@ final class ServiceWatcher {
             this.watchService = FileSystems.getDefault().newWatchService();
         }
 
-        public void addWatch(String serviceName, Path dir, Runnable callback) throws IOException {
-            dir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
-            watchActions.put(serviceName, callback);
+        public void addWatch(String resourceName, Path dir, Runnable callback) throws IOException {
+            dir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE);
+            watchActions.put(new ResourceInfo(dir, resourceName), callback);
         }
 
         @Override
@@ -194,9 +241,42 @@ final class ServiceWatcher {
             try {
                 while ((key = watchService.take()) != null) {
                     for (WatchEvent<?> event : key.pollEvents()) {
+                        if (event.kind() == StandardWatchEventKinds.OVERFLOW) {
+                            continue;
+                        }
                         String fileName = event.context().toString();
-                        if (watchActions.containsKey(fileName)) {
-                            watchActions.get(fileName).run();
+                        Path watchPath = null;
+                        Watchable watchable = key.watchable();
+                        if (watchable instanceof Path) {
+                            watchPath = (Path) watchable;
+                        }
+                        if (watchPath == null) {
+                            continue;
+                        }
+                        // object used for comparison with cache
+                        ResourceInfo resourceInfo = new ResourceInfo(watchPath, fileName, false);
+                        if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
+                            if (watchActions.containsKey(resourceInfo)) {
+                                // IDEs will typically perform a delete -> create on build
+                                // so we need to re-register the path to the service when/if
+                                // the resource has been recreated again
+                                for (ResourceInfo info : watchActions.keySet()) {
+                                    if (info.equals(resourceInfo)) {
+                                        watchForRecreation(info);
+                                        break;
+                                    }
+                                }
+                            }
+                            continue;
+                        }
+                        if (watchActions.containsKey(resourceInfo)) {
+                            resourceInfo.updateChecksum();
+                            try {
+                                watchActions.get(resourceInfo).run();
+                            } catch (Throwable t) {
+                                System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
+                                t.printStackTrace();
+                            }
                         }
                     }
                     key.reset();
@@ -204,6 +284,105 @@ final class ServiceWatcher {
             } catch (InterruptedException e) {
                 throw new RuntimeException("Espresso HotSwap service watcher thread was interupted!");
             }
+        }
+
+        private void watchForRecreation(ResourceInfo resourceInfo) {
+            // wait up to 1 min. for the file to be recreated
+            long stopWaiting = System.currentTimeMillis() + 60 * 1000;
+
+            try {
+                Path resourcePath = resourceInfo.watchPath.resolve(resourceInfo.resourceName);
+                boolean recreated = false;
+                while (!recreated && System.currentTimeMillis() < stopWaiting) {
+                    if (resourcePath.toFile().exists()) {
+                        recreated = true;
+                    } else {
+                        Thread.sleep(5);
+                    }
+                }
+                if (recreated) {
+                    // compare recreated resource with info to see if actual changes were made
+                    String existingChecksum = resourceInfo.getChecksum();
+                    String newChecksum = calculateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
+                    if (!existingChecksum.equals(newChecksum)) {
+                        resourceInfo.updateChecksum(newChecksum);
+                        // fire the change listener
+                        try {
+                            watchActions.get(resourceInfo).run();
+                        } catch (Throwable t) {
+                            System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
+                            t.printStackTrace();
+                        }
+                    }
+                    // re-add watch on parent path
+                    resourceInfo.watchPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE);
+                }
+            } catch (Exception e) {
+
+            }
+        }
+    }
+
+    private static String calculateChecksum(Path watchPath, String resourceName) {
+        try {
+            byte[] b = Files.readAllBytes(watchPath.resolve(resourceName));
+            return bytesToHex(MessageDigest.getInstance("MD5").digest(b));
+        } catch (Exception e) {
+            System.err.println("[HotSwap API]: unable to calculate checksum for watched resource " + resourceName);
+        }
+        return "1";
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
+
+    private static final class ResourceInfo {
+        private final Path watchPath;
+        private final String resourceName;
+        private String checksum;
+
+        public ResourceInfo(Path watchPath, String resourceName, boolean calculateChecksum) {
+            this.watchPath = watchPath;
+            this.resourceName = resourceName;
+            checksum = calculateChecksum ? calculateChecksum(watchPath, resourceName) : null;
+        }
+
+        private ResourceInfo(Path watchPath, String resourceName) {
+            this(watchPath, resourceName, true);
+        }
+
+        public void updateChecksum() {
+            checksum = calculateChecksum(watchPath, resourceName);
+        }
+
+        public void updateChecksum(String newChecksum) {
+            checksum = newChecksum;
+        }
+
+        public String getChecksum() {
+            return checksum;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
+            ResourceInfo that = (ResourceInfo) o;
+            return watchPath.equals(that.watchPath) && resourceName.equals(that.resourceName);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(watchPath, resourceName);
         }
     }
 
