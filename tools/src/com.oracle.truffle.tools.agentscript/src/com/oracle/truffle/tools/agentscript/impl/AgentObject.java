@@ -200,6 +200,7 @@ final class AgentObject implements TruffleObject {
                             key = iop.readArrayElement(keyAndValue, 0);
                             value = iop.readArrayElement(keyAndValue, 1);
                         } catch (InvalidArrayIndexException ex) {
+                            CompilerDirectives.shouldNotReachHere(ex);
                             continue;
                         }
                         String type = iop.asString(key);
