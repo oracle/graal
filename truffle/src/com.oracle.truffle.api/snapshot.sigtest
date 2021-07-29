@@ -761,9 +761,7 @@ meth public void clear(com.oracle.truffle.api.frame.FrameSlot)
 CLSS public final com.oracle.truffle.api.frame.FrameDescriptor
 cons public init()
 cons public init(java.lang.Object)
-cons public init(java.lang.Object,boolean)
 intf java.lang.Cloneable
-meth public boolean canMaterialize()
 meth public com.oracle.truffle.api.Assumption getNotInFrameAssumption(java.lang.Object)
 meth public com.oracle.truffle.api.Assumption getVersion()
 meth public com.oracle.truffle.api.frame.FrameDescriptor copy()
@@ -783,7 +781,7 @@ meth public java.util.Set<java.lang.Object> getIdentifiers()
 meth public void removeFrameSlot(java.lang.Object)
 meth public void setFrameSlotKind(com.oracle.truffle.api.frame.FrameSlot,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.Object
-hfds NEVER_PART_OF_COMPILATION_MESSAGE,canMaterialize,defaultValue,identifierToNotInFrameAssumptionMap,identifierToSlotMap,lock,materializeCalled,size,slots,version
+hfds NEVER_PART_OF_COMPILATION_MESSAGE,defaultValue,identifierToNotInFrameAssumptionMap,identifierToSlotMap,lock,materializeCalled,size,slots,version
 
 CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance
 innr public final static !enum FrameAccess
@@ -933,12 +931,14 @@ meth public short executeShort(com.oracle.truffle.api.frame.VirtualFrame,{com.or
 
 CLSS public abstract interface com.oracle.truffle.api.nodes.BytecodeOSRNode
 intf com.oracle.truffle.api.nodes.NodeInterface
-meth public abstract java.lang.Object executeOSR(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.Frame,int)
+meth public abstract java.lang.Object executeOSR(com.oracle.truffle.api.frame.VirtualFrame,int)
 meth public abstract java.lang.Object getOSRMetadata()
 meth public abstract void setOSRMetadata(java.lang.Object)
 meth public static java.lang.Object reportOSRBackEdge(com.oracle.truffle.api.nodes.BytecodeOSRNode,com.oracle.truffle.api.frame.VirtualFrame,int)
 meth public static void doOSRFrameTransfer(com.oracle.truffle.api.nodes.BytecodeOSRNode,com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.Frame)
+meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int)
 meth public void prepareOSR()
+meth public void restoreParentFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame)
 
 CLSS public com.oracle.truffle.api.nodes.ControlFlowException
 cons public init()

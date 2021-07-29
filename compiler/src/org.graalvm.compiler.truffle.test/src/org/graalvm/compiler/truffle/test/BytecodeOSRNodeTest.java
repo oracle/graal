@@ -79,7 +79,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testSimpleInterpreterLoop() {
-        RootNode rootNode = new Program(new InfiniteInterpreterLoop(), new FrameDescriptor(null, false));
+        RootNode rootNode = new Program(new InfiniteInterpreterLoop(), new FrameDescriptor());
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         // Interpreter invocation should be OSR compiled and break out of the interpreter loop.
         Assert.assertEquals(42, target.call());
@@ -90,7 +90,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFixedIterationLoop() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         FixedIterationLoop osrNode = new FixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -102,7 +102,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFixedIterationLoopBelowThreshold() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         FixedIterationLoop osrNode = new FixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -115,21 +115,21 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Test
     public void testMultipleLoops() {
         // Each loop runs for osrThreshold + 1 iterations, so the first loop should trigger OSR.
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         TwoFixedIterationLoops osrNode = new TwoFixedIterationLoops(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(TwoFixedIterationLoops.OSR_IN_FIRST_LOOP, target.call(osrThreshold + 1));
 
         // Each loop runs for osrThreshold/2 + 1 iterations, so the second loop should trigger OSR.
-        frameDescriptor = new FrameDescriptor(null, false);
+        frameDescriptor = new FrameDescriptor();
         osrNode = new TwoFixedIterationLoops(frameDescriptor);
         rootNode = new Program(osrNode, frameDescriptor);
         target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(TwoFixedIterationLoops.OSR_IN_SECOND_LOOP, target.call(osrThreshold / 2 + 1));
 
         // Each loop runs for osrThreshold/2 iterations, so OSR should not get triggered.
-        frameDescriptor = new FrameDescriptor(null, false);
+        frameDescriptor = new FrameDescriptor();
         osrNode = new TwoFixedIterationLoops(frameDescriptor);
         rootNode = new Program(osrNode, frameDescriptor);
         target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -141,7 +141,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFailedCompilation() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         UncompilableFixedIterationLoop osrNode = new UncompilableFixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -155,7 +155,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testDeoptimizeAndRecompile() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         DeoptimizingFixedIterationLoop osrNode = new DeoptimizingFixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -179,7 +179,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testInvalidateOnNodeReplaced() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         Node childToReplace = new Node() {
         };
         FixedIterationLoop osrNode = new FixedIterationLoopWithChild(frameDescriptor, childToReplace);
@@ -206,18 +206,21 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
-     * Test that OSR will not proceed if the frame can be materialized.
+     * Test that OSR succeeds even if a Frame with the given FrameDescriptor has been materialized
+     * before.
      */
     @Test
     public void testOSRWithMaterializeableFrame() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, true);
-        FixedIterationLoop osrNode = new FixedIterationLoop(frameDescriptor);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
+        runtime.markFrameMaterializeCalled(frameDescriptor);
+        MaterializedFixedIterationLoop osrNode = new MaterializedFixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-        Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
-        // Compilation should be disabled; we don't want to waste our time trying to compile again
-        BytecodeOSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
-        Assert.assertEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
+        // OSR should succeed.
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
+        // Since the frame could be materialized, we should reuse the parent frame instead of
+        // copying.
+        Assert.assertFalse(osrNode.frameWasCopied);
     }
 
     /*
@@ -232,7 +235,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                         "engine.BackgroundCompilation", Boolean.TRUE.toString() // override defaults
         );
         InfiniteInterpreterLoop osrNode = new InfiniteInterpreterLoop();
-        RootNode rootNode = new Program(osrNode, new FrameDescriptor(null, false));
+        RootNode rootNode = new Program(osrNode, new FrameDescriptor());
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(42, target.call());
         BytecodeOSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
@@ -246,7 +249,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testStackTraceHidesOSRCallTarget() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         CheckStackWalkCallTarget osrNode = new CheckStackWalkCallTarget(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -258,7 +261,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testStackTraceUsesOSRFrame() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         CheckStackWalkFrame osrNode = new CheckStackWalkFrame(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -272,7 +275,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testStackTraceUsesNewestOSRFrame() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         CheckStackWalkFrameNested osrNode = new CheckStackWalkFrameNested(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -289,7 +292,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testGetCallerFrameSkipsOSR() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         CheckGetCallerFrameSkipsOSR osrNode = new CheckGetCallerFrameSkipsOSR(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -304,7 +307,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFrameTransfer() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         RootNode rootNode = new Program(new FrameTransferringNode(frameDescriptor), frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(42, target.call());
@@ -317,7 +320,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFrameTransferWithTagUpdate() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         RootNode rootNode = new Program(new FrameTransferringNodeWithTagUpdate(frameDescriptor), frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(42, target.call());
@@ -329,7 +332,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFrameChanges() {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         FrameChangingNode osrNode = new FrameChangingNode(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -370,7 +373,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Test
     public void testOSRInBytecodeLoop() {
         // osrThreshold + 1 back-edges -> compiled
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         BytecodeNode bytecodeNode = new BytecodeNode(3, frameDescriptor, tripleInput1);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -387,7 +390,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Test
     public void testNoOSRInBytecodeLoop() {
         // osrThreshold back-edges -> not compiled
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         BytecodeNode bytecodeNode = new BytecodeNode(3, frameDescriptor, tripleInput1);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -402,7 +405,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         // computes osrThreshold * 2
         // Inner loop contributes 1 back-edge, so each outer loop contributes 2 back-edges, and
         // the even-valued osrThreshold gets hit by the outer loop back-edge.
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         BytecodeNode bytecodeNode = new BytecodeNode(4, frameDescriptor, multiplyInputs);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -420,7 +423,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         // Inner loop contributes osrThreshold-2 back-edges, so the first outer loop contributes
         // osrThreshold-1 back-edges, then the next back-edge (which triggers OSR) is from the inner
         // loop.
-        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
         BytecodeNode bytecodeNode = new BytecodeNode(4, frameDescriptor, multiplyInputs);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
@@ -664,6 +667,19 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public FixedIterationLoopWithChild(FrameDescriptor frameDescriptor, Node child) {
             super(frameDescriptor);
             this.child = child;
+        }
+    }
+
+    public static class MaterializedFixedIterationLoop extends FixedIterationLoop {
+        boolean frameWasCopied = false;
+
+        public MaterializedFixedIterationLoop(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+        }
+
+        @Override
+        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+            frameWasCopied = true;
         }
     }
 

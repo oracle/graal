@@ -42,7 +42,6 @@ package com.oracle.truffle.api.impl;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -83,10 +82,6 @@ final class DefaultVirtualFrame implements VirtualFrame {
 
     @Override
     public MaterializedFrame materialize() {
-        if (!getFrameDescriptor().canMaterialize()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnsupportedOperationException("Cannot materialize a frame for which materialization was explicitly disallowed.");
-        }
         return new DefaultMaterializedFrame(this);
     }
 

@@ -118,10 +118,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public MaterializedFrame materialize() {
-        if (!getFrameDescriptor().canMaterialize()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnsupportedOperationException("Cannot materialize a frame for which materialization was explicitly disallowed.");
-        }
         ((GraalTruffleRuntime) Truffle.getRuntime()).markFrameMaterializeCalled(descriptor);
         return this;
     }

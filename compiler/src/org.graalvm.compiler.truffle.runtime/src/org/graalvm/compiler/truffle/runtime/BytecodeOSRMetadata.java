@@ -133,9 +133,6 @@ public final class BytecodeOSRMetadata {
 
     BytecodeOSRMetadata(BytecodeOSRNode osrNode, FrameDescriptor frameDescriptor, int osrThreshold) {
         this.osrNode = osrNode;
-        if (frameDescriptor != null && frameDescriptor.canMaterialize()) {
-            throw new IllegalArgumentException("Cannot perform OSR on a frame which can be materialized.");
-        }
         this.frameDescriptor = frameDescriptor;
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;

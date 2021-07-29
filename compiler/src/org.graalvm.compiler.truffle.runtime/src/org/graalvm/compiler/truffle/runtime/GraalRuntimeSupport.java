@@ -91,7 +91,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 if (metadata == null) {
                     OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
                     FrameDescriptor frameDescriptor = parentFrame.getFrameDescriptor();
-                    if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR) && !frameDescriptor.canMaterialize()) {
+                    if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
                         metadata = new BytecodeOSRMetadata(osrNode, frameDescriptor, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
                     } else {
                         metadata = BytecodeOSRMetadata.DISABLED;
