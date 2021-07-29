@@ -78,7 +78,7 @@ public class InlineBeforeAnalysis {
 
     public static class Options {
         @Option(help = "Experimental: Inline methods before static analysis")//
-        public static final OptionKey<Boolean> InlineBeforeAnalysis = new OptionKey<>(false);
+        public static final OptionKey<Boolean> InlineBeforeAnalysis = new OptionKey<>(true);
     }
 
     @SuppressWarnings("try")
