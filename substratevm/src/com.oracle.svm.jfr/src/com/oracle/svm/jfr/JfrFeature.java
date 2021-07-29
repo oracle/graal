@@ -24,10 +24,17 @@
  */
 package com.oracle.svm.jfr;
 
+//Checkstyle: allow reflection
+
+import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.util.VMError;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -55,6 +62,7 @@ import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.jfc.JFC;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 /**
  * Provides basic JFR support. As this support is both platform-dependent and JDK-specific, the
@@ -97,6 +105,9 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @AutomaticFeature
 public class JfrFeature implements Feature {
+
+    private final ConcurrentHashMap<Class, Boolean> fieldRegistration = new ConcurrentHashMap<>();
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return JfrEnabled.get();
@@ -162,5 +173,32 @@ public class JfrFeature implements Feature {
             // Off-set by one for error-catcher
             JfrTraceId.assign(clazz, hub.getTypeID() + 1);
         }
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
+        if (eventClass != null && access.isReachable(eventClass)) {
+            Set<Class<?>> s = access.reachableSubtypes(eventClass);
+            for (Class<?> c : s) {
+                if (c.getCanonicalName().equals("jdk.jfr.Event")
+                        || c.getCanonicalName().equals("jdk.internal.event.Event")
+                        || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent")) {
+                    continue;
+                }
+                fieldRegistration.computeIfAbsent(c, this::registerEventHandler);
+
+            }
+        }
+    }
+
+    private boolean registerEventHandler(Class c) {
+        try {
+            Field f = c.getDeclaredField("eventHandler");
+            RuntimeReflection.register(f);
+        } catch (Exception e) {
+            throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
+        }
+        return Boolean.TRUE;
     }
 }
