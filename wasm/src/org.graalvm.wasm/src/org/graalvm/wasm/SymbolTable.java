@@ -43,15 +43,12 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.ByteArrayWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -679,22 +676,15 @@ public abstract class SymbolTable {
         globalTypes[index] = globalType;
     }
 
-    void declareExternalGlobal(int index, Object global) {
-        final InteropLibrary lib = InteropLibrary.getUncached();
-        try {
-            final Object descriptor = lib.readMember(global, "descriptor");
-            final byte valueType = ValueType.parse((String) lib.readMember(descriptor, "value")).byteValue();
-            final byte mutability = (byte) ((boolean) lib.readMember(descriptor, "mutable") ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT);
-            allocateGlobal(index, valueType, mutability);
-            module().addLinkAction((context, instance) -> {
-                final GlobalRegistry globals = context.globals();
-                final int address = globals.allocateExternalGlobal(global);
-                instance.setGlobalAddress(index, address);
-            });
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Global does not have a valid descriptor: " + global);
-        }
+    void declareExternalGlobal(int index, WasmGlobal global) {
+        final byte valueType = global.getValueType().byteValue();
+        final byte mutability = (byte) (global.isMutable() ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT);
+        allocateGlobal(index, valueType, mutability);
+        module().addLinkAction((context, instance) -> {
+            final GlobalRegistry globals = context.globals();
+            final int address = globals.allocateExternalGlobal(global);
+            instance.setGlobalAddress(index, address);
+        });
     }
 
     void declareGlobal(int index, byte valueType, byte mutability) {
@@ -776,7 +766,7 @@ public abstract class SymbolTable {
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalExport(instance.module(), name, index));
     }
 
-    public void declareExportedExternalGlobal(String name, int index, Object global) {
+    public void declareExportedExternalGlobal(String name, int index, WasmGlobal global) {
         checkNotParsed();
         declareExternalGlobal(index, global);
         exportGlobal(name, index);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
 
-public class GlobalDescriptor extends Dictionary {
-    private final ValueType valueType;
-    private final Boolean mutable;
+package org.graalvm.wasm.globals;
 
-    public GlobalDescriptor(String valueType, Boolean mutable) {
-        this.valueType = ValueType.valueOf(valueType);
-        this.mutable = mutable;
-        addMembers(new Object[]{
-                        "value", this.valueType.name(),
-                        "mutable", this.mutable,
-        });
+import org.graalvm.wasm.api.ValueType;
+
+public class DefaultWasmGlobal extends WasmGlobal {
+    private Object value;
+
+    public DefaultWasmGlobal(ValueType valueType, boolean mutable, Object value) {
+        super(valueType, mutable);
+        this.value = value;
+    }
+
+    @Override
+    public Object getValue() {
+        return value;
+    }
+
+    @Override
+    public void setValue(Object value) {
+        this.value = value;
     }
 }
