@@ -660,19 +660,21 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         while (!atEnd()) {
             switch (consumeChar()) {
                 case '\\':
-                    while (match("c") || match("C-") || match("M-")) {
-                        // skip control escape sequences, \\cX, \\C-X or \\M-X, which can be nested
-                    }
-                    // skip escaped char; if it includes a group name, skip that too
-                    int c = consumeChar();
-                    switch (c) {
+                    switch (curChar()) {
                         case 'k':
                         case 'g':
                             // skip contents of group name (which might contain syntax chars)
+                            int c = consumeChar();
                             if (match("<")) {
                                 parseGroupReference('>', true, true, c == 'k', true);
                             }
                             break;
+                        default:
+                            while (match("c") || match("C-") || match("M-")) {
+                                // skip control escape sequences, \\cX, \\C-X or \\M-X, which can be nested
+                            }
+                            // skip escaped char
+                            advance();
                     }
                     break;
                 case '[':
@@ -689,7 +691,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 case '(':
                     if (charClassDepth == 0) {
                         if (match("?")) {
-                            if (match("<") && curChar() != '=' && curChar() != '!') {
+                            if (match("<")) {
+                                if (curChar() == '=' || curChar() == '!') {
+                                    // look-behind
+                                    break;
+                                }
                                 String groupName = parseGroupName('>');
                                 if (namedCaptureGroups == null) {
                                     namedCaptureGroups = new HashMap<>();
