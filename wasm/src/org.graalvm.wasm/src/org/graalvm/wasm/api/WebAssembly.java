@@ -71,10 +71,6 @@ import java.util.Objects;
 
 import static java.lang.Integer.compareUnsigned;
 import static org.graalvm.wasm.WasmMath.minUnsigned;
-import static org.graalvm.wasm.api.ImportExportKind.function;
-import static org.graalvm.wasm.api.ImportExportKind.global;
-import static org.graalvm.wasm.api.ImportExportKind.memory;
-import static org.graalvm.wasm.api.ImportExportKind.table;
 import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 public class WebAssembly extends Dictionary {
@@ -241,14 +237,14 @@ public class WebAssembly extends Dictionary {
             final Integer globalIndex = module.exportedGlobals().get(name);
 
             if (module.exportedMemoryNames().contains(name)) {
-                list.add(new ModuleExportDescriptor(name, memory.name(), null));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), null));
             } else if (module.exportedTableNames().contains(name)) {
-                list.add(new ModuleExportDescriptor(name, table.name(), null));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), null));
             } else if (f != null) {
-                list.add(new ModuleExportDescriptor(name, function.name(), WebAssembly.functionTypeToString(f)));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
             } else if (globalIndex != null) {
                 String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
-                list.add(new ModuleExportDescriptor(name, global.name(), valueType));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType));
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
@@ -269,11 +265,11 @@ public class WebAssembly extends Dictionary {
             switch (descriptor.identifier) {
                 case ImportIdentifier.FUNCTION:
                     final WasmFunction f = module.importedFunction(descriptor);
-                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), function.name(), WebAssembly.functionTypeToString(f)));
+                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
                     break;
                 case ImportIdentifier.TABLE:
                     if (Objects.equals(module.importedTable(), descriptor)) {
-                        list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, table.name(), null));
+                        list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.table.name(), null));
                     } else {
                         CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
@@ -281,7 +277,7 @@ public class WebAssembly extends Dictionary {
                     break;
                 case ImportIdentifier.MEMORY:
                     if (Objects.equals(module.importedMemory(), descriptor)) {
-                        list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, memory.name(), null));
+                        list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.memory.name(), null));
                     } else {
                         CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Memory import inconsistent.");
@@ -290,7 +286,7 @@ public class WebAssembly extends Dictionary {
                 case ImportIdentifier.GLOBAL:
                     final Integer index = importedGlobalDescriptors.get(descriptor);
                     String valueType = ValueType.fromByteValue(module.globalValueType(index)).toString();
-                    list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, global.name(), valueType));
+                    list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.global.name(), valueType));
                     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
