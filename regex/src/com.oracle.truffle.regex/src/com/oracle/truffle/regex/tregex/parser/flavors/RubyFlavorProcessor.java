@@ -708,12 +708,14 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     }
                     break;
                 case '#':
-                    if (globalFlags.isExtended()) {
-                        int endOfLine = inPattern.indexOf('\n', position);
-                        if (endOfLine >= 0) {
-                            position = endOfLine + 1;
-                        } else {
-                            position = inPattern.length();
+                    if (charClassDepth == 0) {
+                        if (globalFlags.isExtended()) {
+                            int endOfLine = inPattern.indexOf('\n', position);
+                            if (endOfLine >= 0) {
+                                position = endOfLine + 1;
+                            } else {
+                                position = inPattern.length();
+                            }
                         }
                     }
                     break;
