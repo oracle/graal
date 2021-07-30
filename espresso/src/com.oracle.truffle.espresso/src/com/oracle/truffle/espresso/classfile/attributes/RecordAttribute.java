@@ -65,7 +65,7 @@ public class RecordAttribute extends Attribute {
             StaticObject component = meta.java_lang_reflect_RecordComponent.allocateInstance();
             Symbol<Name> nameSymbol = pool.symbolAt(name);
             Symbol<Type> typeSymbol = pool.symbolAt(descriptor);
-            Symbol<Signature> signature = meta.getSignatures().makeRaw(Type._void, typeSymbol);
+            Symbol<Signature> signature = meta.getSignatures().makeRaw(typeSymbol);
             meta.java_lang_reflect_RecordComponent_clazz.setObject(component, klass.mirror());
             meta.java_lang_reflect_RecordComponent_name.setObject(component, meta.toGuestString(nameSymbol));
             meta.java_lang_reflect_RecordComponent_type.setObject(component, meta.resolveSymbolAndAccessCheck(typeSymbol, klass).mirror());
