@@ -261,14 +261,17 @@ final class ServiceWatcher {
                             continue;
                         }
                         if (watchActions.containsKey(resourceInfo)) {
-                            resourceInfo.updateChecksum();
-                            try {
-                                watchActions.get(resourceInfo).run();
-                            } catch (Throwable t) {
-                                // Checkstyle: stop warning message from guest code
-                                System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
-                                // Checkstyle: resume warning message from guest code
-                                t.printStackTrace();
+                            byte[] existingChecksum = resourceInfo.getChecksum();
+                            byte[] newChecksum = resourceInfo.updateChecksum();
+                            if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
+                                try {
+                                    watchActions.get(resourceInfo).run();
+                                } catch (Throwable t) {
+                                    // Checkstyle: stop warning message from guest code
+                                    System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
+                                    // Checkstyle: resume warning message from guest code
+                                    t.printStackTrace();
+                                }
                             }
                         }
                     }
@@ -360,8 +363,8 @@ final class ServiceWatcher {
             this(watchPath, resourceName, true);
         }
 
-        public void updateChecksum() {
-            checksum = calculateChecksum(watchPath, resourceName);
+        public byte[] updateChecksum() {
+            return checksum = calculateChecksum(watchPath, resourceName);
         }
 
         public void updateChecksum(byte[] newChecksum) {
