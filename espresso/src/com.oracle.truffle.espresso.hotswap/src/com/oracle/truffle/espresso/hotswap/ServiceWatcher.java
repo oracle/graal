@@ -148,7 +148,9 @@ final class ServiceWatcher {
                 try {
                     callback.fire();
                 } catch (Throwable t) {
+                    // Checkstyle: stop warning message from guest code
                     System.err.println("[HotSwap API]: Unexpected exception while running service change action");
+                    // Checkstyle: resume warning message from guest code
                     t.printStackTrace();
                 }
                 // parent directory to register watch on
@@ -164,7 +166,9 @@ final class ServiceWatcher {
                 try {
                     callback.fire();
                 } catch (Throwable t) {
+                    // Checkstyle: stop warning message from guest code
                     System.err.println("[HotSwap API]: Unexpected exception while running service change action");
+                    // Checkstyle: resume warning message from guest code
                     t.printStackTrace();
                 }
             }));
@@ -274,7 +278,9 @@ final class ServiceWatcher {
                             try {
                                 watchActions.get(resourceInfo).run();
                             } catch (Throwable t) {
+                                // Checkstyle: stop warning message from guest code
                                 System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
+                                // Checkstyle: resume warning message from guest code
                                 t.printStackTrace();
                             }
                         }
@@ -310,7 +316,9 @@ final class ServiceWatcher {
                         try {
                             watchActions.get(resourceInfo).run();
                         } catch (Throwable t) {
+                            // Checkstyle: stop warning message from guest code
                             System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
+                            // Checkstyle: resume warning message from guest code
                             t.printStackTrace();
                         }
                     }
@@ -328,7 +336,9 @@ final class ServiceWatcher {
             byte[] b = Files.readAllBytes(watchPath.resolve(resourceName));
             return bytesToHex(MessageDigest.getInstance("MD5").digest(b));
         } catch (Exception e) {
+            // Checkstyle: stop warning message from guest code
             System.err.println("[HotSwap API]: unable to calculate checksum for watched resource " + resourceName);
+            // Checkstyle: resume warning message from guest code
         }
         return "1";
     }
@@ -348,7 +358,7 @@ final class ServiceWatcher {
         private final String resourceName;
         private String checksum;
 
-        public ResourceInfo(Path watchPath, String resourceName, boolean calculateChecksum) {
+        private ResourceInfo(Path watchPath, String resourceName, boolean calculateChecksum) {
             this.watchPath = watchPath;
             this.resourceName = resourceName;
             checksum = calculateChecksum ? calculateChecksum(watchPath, resourceName) : null;
@@ -372,10 +382,12 @@ final class ServiceWatcher {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o)
+            if (this == o) {
                 return true;
-            if (o == null || getClass() != o.getClass())
+            }
+            if (o == null || getClass() != o.getClass()) {
                 return false;
+            }
             ResourceInfo that = (ResourceInfo) o;
             return watchPath.equals(that.watchPath) && resourceName.equals(that.resourceName);
         }

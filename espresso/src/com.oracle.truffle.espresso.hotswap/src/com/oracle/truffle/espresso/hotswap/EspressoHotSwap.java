@@ -124,8 +124,8 @@ public final class EspressoHotSwap {
     }
 
     /**
-     * Registration of a HotSwap action that will be fired if changes are detected to specified
-     * resource
+     * Registration of a HotSwap action that will be fired if changes are detected to the specified
+     * resource.
      *
      * @param loader the class loader to lookup the service type
      * @param resource the resource to register a change listener on
@@ -139,7 +139,9 @@ public final class EspressoHotSwap {
                 handler.registerResourceListener(loader, resource, action);
             }
         } catch (IOException ex) {
+            // Checkstyle: stop warning message from guest code
             System.err.println(ex.getMessage());
+            // Checkstyle: resume warning message from guest code
             return false;
         }
         return handler != null;
