@@ -111,8 +111,8 @@ final class HotSwapHandler {
         serviceWatcher.addServiceWatcher(service, loader, callback);
     }
 
-    public synchronized void registerResourceListener(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
-        serviceWatcher.addResourceWatcher(loader, resource, callback);
+    public synchronized boolean registerResourceListener(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
+        return serviceWatcher.addResourceWatcher(loader, resource, callback);
     }
 
     @SuppressWarnings("unused")

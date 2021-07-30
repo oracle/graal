@@ -135,9 +135,9 @@ public final class EspressoHotSwap {
      */
     public static boolean registerResourceListener(ClassLoader loader, String resource, HotSwapAction action) throws IOException {
         if (handler != null) {
-            handler.registerResourceListener(loader, resource, action);
+            return handler.registerResourceListener(loader, resource, action);
         }
-        return handler != null;
+        return false;
     }
 
     /**

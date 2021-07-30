@@ -82,7 +82,7 @@ final class ServiceWatcher {
     private WatcherThread serviceWatcherThread;
     private URLWatcher urlWatcher;
 
-    public void addResourceWatcher(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
+    public boolean addResourceWatcher(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
         ensureInitialized();
         URL url;
         if (loader == null) {
@@ -98,7 +98,9 @@ final class ServiceWatcher {
             // parent directory to register watch on
             File file = new File(url.getFile()).getParentFile();
             serviceWatcherThread.addWatch(new File(url.getFile()).getName(), Paths.get(file.toURI()), () -> callback.fire());
+            return true;
         }
+        return false;
     }
 
     public synchronized void addServiceWatcher(Class<?> service, ClassLoader loader, HotSwapAction callback) throws IOException {
