@@ -573,7 +573,7 @@ public abstract class VMThreads {
         return THREAD_MUTEX.isOwner();
     }
 
-    public static boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
+    public static boolean printLocationInfo(Log log, UnsignedWord value) {
         for (IsolateThread thread = firstThreadUnsafe(); thread.isNonNull(); thread = nextThread(thread)) {
             if (thread.equal(value)) {
                 log.string("is a thread");

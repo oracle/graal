@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
@@ -77,7 +78,7 @@ public class ErrHandlingAPI {
         int NumberParameters();
 
         @CFieldAddress
-        CLongPointer ExceptionInformation(int index);
+        CLongPointer ExceptionInformation();
     }
 
     @CConstant

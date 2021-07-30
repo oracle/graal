@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 
@@ -114,7 +115,8 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
         int numParameters = exceptionRecord.NumberParameters();
         if ((exceptionCode == EXCEPTION_ACCESS_VIOLATION() || exceptionCode == EXCEPTION_IN_PAGE_ERROR()) && numParameters >= 2) {
-            long exParam0 = exceptionRecord.ExceptionInformation(0).read();
+            CLongPointer exInfo = exceptionRecord.ExceptionInformation();
+            long exParam0 = exInfo.addressOf(0).read();
             if (exParam0 == 0) {
                 log.string(", reading address");
             } else if (exParam0 == 1) {
@@ -124,12 +126,13 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             } else {
                 log.string(", ExceptionInformation=").zhex(exParam0);
             }
-            log.string(" ").zhex(exceptionRecord.ExceptionInformation(1).read());
+            log.string(" ").zhex(exInfo.addressOf(1).read());
         } else {
             if (numParameters > 0) {
                 log.string(", ExceptionInformation=");
+                CLongPointer exInfo = exceptionRecord.ExceptionInformation();
                 for (int i = 0; i < numParameters; i++) {
-                    log.string(" ").zhex(exceptionRecord.ExceptionInformation(i).read());
+                    log.string(" ").zhex(exInfo.addressOf(i).read());
                 }
             }
         }

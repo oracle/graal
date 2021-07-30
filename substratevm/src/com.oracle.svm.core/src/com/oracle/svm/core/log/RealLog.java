@@ -444,7 +444,8 @@ public class RealLog extends Log {
 
     @Override
     public Log zhex(WordBase value) {
-        return zhex(value.rawValue());
+        zhex(value.rawValue());
+        return this;
     }
 
     @NeverInline("Logging is always slow-path code")

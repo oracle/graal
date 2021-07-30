@@ -28,6 +28,7 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -72,9 +73,6 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.Counter;
 
 public class SubstrateDiagnostics {
-    private static final Stage0StackFramePrintVisitor[] PRINT_VISITORS = new Stage0StackFramePrintVisitor[]{Stage0StackFramePrintVisitor.SINGLETON, Stage1StackFramePrintVisitor.SINGLETON,
-                    StackFramePrintVisitor.SINGLETON};
-
     private static final FastThreadLocalBytes<CCharPointer> threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1);
     private static final PrintDiagnosticsState state = new PrintDiagnosticsState();
 
@@ -106,7 +104,7 @@ public class SubstrateDiagnostics {
     }
 
     public static void printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
-        if (value.notEqual(0) && !RuntimeCodeInfoMemory.singleton().printLocationInfo(log, value, allowJavaHeapAccess) && !VMThreads.printLocationInfo(log, value, allowJavaHeapAccess) &&
+        if (value.notEqual(0) && !RuntimeCodeInfoMemory.singleton().printLocationInfo(log, value, allowJavaHeapAccess) && !VMThreads.printLocationInfo(log, value) &&
                         !Heap.getHeap().printLocationInfo(log, value, allowJavaHeapAccess)) {
             log.string("is an unknown value");
         }
@@ -136,6 +134,7 @@ public class SubstrateDiagnostics {
         return true;
     }
 
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "This method is single threaded. The fields 'diagnosticThunkIndex' and 'invocationCount' are only volatile to ensure that the updated field values are written right away.")
     private static void printDiagnosticsForCurrentState() {
         assert isInProgressByCurrentThread();
 
@@ -580,9 +579,12 @@ public class SubstrateDiagnostics {
     }
 
     private static class DumpCurrentThreadDecodedStackTrace extends DiagnosticThunk {
+        private static final Stage0StackFramePrintVisitor[] PRINT_VISITORS = new Stage0StackFramePrintVisitor[]{StackFramePrintVisitor.SINGLETON, Stage1StackFramePrintVisitor.SINGLETON,
+                        Stage0StackFramePrintVisitor.SINGLETON};
+
         @Override
         public int maxInvocations() {
-            return 1;
+            return 3;
         }
 
         @Override
@@ -590,15 +592,9 @@ public class SubstrateDiagnostics {
         public void printDiagnostics(Log log, int invocationCount) {
             Pointer sp = state.sp;
             CodePointer ip = state.ip;
-            for (int i = 0; i < PRINT_VISITORS.length; i++) {
-                try {
-                    log.string("Stacktrace stage ").signed(i).string(":").indent(true);
-                    ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[i], log);
-                    log.indent(false);
-                } catch (Exception e) {
-                    dumpException(log, this, e);
-                }
-            }
+            log.string("Stacktrace:").indent(true);
+            ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[invocationCount - 1], log);
+            log.indent(false);
         }
     }
 
@@ -612,8 +608,8 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, int invocationCount) {
             if (VMOperation.isInProgressAtSafepoint()) {
-                // Iterate all threads without checking if the thread mutex is locked (it should be
-                // locked by this thread though because we are at a safepoint).
+                // Iterate all threads without checking if the thread mutex is locked (it should
+                // be locked by this thread though because we are at a safepoint).
                 for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (vmThread == CurrentIsolate.getCurrentThread()) {
                         continue;

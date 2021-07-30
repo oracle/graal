@@ -742,7 +742,7 @@ public final class HeapImpl extends Heap {
 
             log.string("Heap settings and statistics:").indent(true);
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
-            if (ImageSingletons.lookup(CompressEncoding.class).hasBase()) {
+            if (SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase()) {
                 log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             }
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
