@@ -252,6 +252,9 @@ public abstract class StaticShape<T> {
          * @since 21.3.0
          */
         public Builder property(StaticProperty property, Class<?> type, boolean storeAsFinal) {
+            if (type.isAnonymousClass()) {
+                throw new IllegalArgumentException("Cannot use an anonymous class as type of a static property");
+            }
             String descriptor = Type.getDescriptor(type);
             StaticPropertyKind kind = type.isPrimitive() ? StaticPropertyKind.valueOf(type) : StaticPropertyKind.Object;
             return property(property, descriptor, kind, storeAsFinal);
