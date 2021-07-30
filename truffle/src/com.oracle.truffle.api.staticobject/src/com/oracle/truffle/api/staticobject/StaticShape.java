@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.impl.asm.Type;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -251,18 +252,8 @@ public abstract class StaticShape<T> {
          * @since 21.3.0
          */
         public Builder property(StaticProperty property, Class<?> type, boolean storeAsFinal) {
-            StaticPropertyKind kind;
-            String descriptor;
-            if (type.isPrimitive()) {
-                kind = StaticPropertyKind.valueOf(type);
-                descriptor = StaticPropertyKind.getDescriptor(kind.ordinal());
-            } else if (type.isArray()) {
-                kind = StaticPropertyKind.Object;
-                descriptor = type.getName().replace('.', '/');
-            } else {
-                kind = StaticPropertyKind.Object;
-                descriptor = "L" + type.getName().replace('.', '/') + ";";
-            }
+            String descriptor = Type.getDescriptor(type);
+            StaticPropertyKind kind = type.isPrimitive() ? StaticPropertyKind.valueOf(type) : StaticPropertyKind.Object;
             return property(property, descriptor, kind, storeAsFinal);
         }
 
@@ -271,7 +262,8 @@ public abstract class StaticShape<T> {
         }
 
         public Builder property(StaticProperty property, StaticShape<?> shape, boolean storeAsFinal) {
-            return property(property, "L" + shape.getStorageClass().getName().replace('.', '/') + ";", StaticPropertyKind.Object, storeAsFinal);
+            String descriptor = Type.getDescriptor(shape.getStorageClass());
+            return property(property, descriptor, StaticPropertyKind.Object, storeAsFinal);
         }
 
         private Builder property(StaticProperty property, String descriptor, StaticPropertyKind kind, boolean storeAsFinal) {
