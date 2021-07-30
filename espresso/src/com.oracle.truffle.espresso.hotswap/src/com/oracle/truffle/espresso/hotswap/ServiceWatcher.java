@@ -280,42 +280,49 @@ final class ServiceWatcher {
         }
 
         private void watchForRecreation(ResourceInfo resourceInfo) {
-            // wait up to 1 min. for the file to be recreated
-            long stopWaiting = System.currentTimeMillis() + 60 * 1000;
+            // wait for the file to be recreated in another thread since
+            // we don't want to block the handling of other events
+            Thread recreationCheckThread = new Thread(() -> {
+                // max waiting time is 10 min.
+                long stopWaiting = System.currentTimeMillis() + 10 * 60 * 1000;
 
-            try {
-                Path resourcePath = resourceInfo.watchPath.resolve(resourceInfo.resourceName);
-                boolean recreated = false;
-                while (!recreated && System.currentTimeMillis() < stopWaiting) {
-                    File file = resourcePath.toFile();
-                    if (file.exists() && file.canRead()) {
-                        recreated = true;
-                    } else {
-                        Thread.sleep(5);
-                    }
-                }
-                if (recreated) {
-                    // compare recreated resource with info to see if actual changes were made
-                    byte[] existingChecksum = resourceInfo.getChecksum();
-                    byte[] newChecksum = calculateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
-                    if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
-                        resourceInfo.updateChecksum(newChecksum);
-                        // fire the change listener
-                        try {
-                            watchActions.get(resourceInfo).run();
-                        } catch (Throwable t) {
-                            // Checkstyle: stop warning message from guest code
-                            System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
-                            // Checkstyle: resume warning message from guest code
-                            t.printStackTrace();
+                try {
+                    Path resourcePath = resourceInfo.watchPath.resolve(resourceInfo.resourceName);
+                    boolean recreated = false;
+                    while (!recreated && System.currentTimeMillis() < stopWaiting) {
+                        File file = resourcePath.toFile();
+                        if (file.exists() && file.canRead()) {
+                            recreated = true;
+                        } else {
+                            Thread.sleep(5);
                         }
                     }
-                    // re-add watch on parent path
-                    resourceInfo.watchPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE);
-                }
-            } catch (Exception e) {
+                    if (recreated) {
+                        // compare recreated resource with info to see if actual changes were made
+                        byte[] existingChecksum = resourceInfo.getChecksum();
+                        byte[] newChecksum = calculateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
+                        if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
+                            resourceInfo.updateChecksum(newChecksum);
+                            // fire the change listener
+                            try {
+                                watchActions.get(resourceInfo).run();
+                            } catch (Throwable t) {
+                                // Checkstyle: stop warning message from guest code
+                                System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
+                                // Checkstyle: resume warning message from guest code
+                                t.printStackTrace();
+                            }
+                        }
+                        // re-add watch on parent path
+                        resourceInfo.watchPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE);
+                    }
+                } catch (Exception e) {
 
-            }
+                }
+            });
+            recreationCheckThread.setDaemon(true);
+            recreationCheckThread.start();
+
         }
     }
 
