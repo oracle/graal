@@ -104,7 +104,7 @@ public class JfrManager {
         Boolean disk = parseBoolean(args, JfrStartArgument.Disk);
         String path = args.get(JfrStartArgument.Filename);
         Long maxAge = parseDuration(args, JfrStartArgument.MaxAge);
-        Long maxSize = parseLong(args, JfrStartArgument.MaxSize);
+        Long maxSize = parseMaxSize(args, JfrStartArgument.MaxSize);
         Boolean dumpOnExit = parseBoolean(args, JfrStartArgument.DumpOnExit);
         Boolean pathToGcRoots = parseBoolean(args, JfrStartArgument.PathToGCRoots);
 
@@ -160,19 +160,6 @@ public class JfrManager {
         }
     }
 
-    private static Long parseLong(Map<JfrStartArgument, String> args, JfrStartArgument key) throws IllegalArgumentException {
-        String value = args.get(key);
-        if (value == null) {
-            return null;
-        } else {
-            try {
-                return Long.valueOf(value);
-            } catch (NumberFormatException ex) {
-                throw UserError.abort("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. Expected a number.");
-            }
-        }
-    }
-
     private static Long parseDuration(Map<JfrStartArgument, String> args, JfrStartArgument key) {
         String value = args.get(key);
         if (value != null) {
@@ -210,6 +197,44 @@ public class JfrManager {
                     return Duration.ofDays(time).toNanos();
                 }
                 throw new IllegalArgumentException("Unit is invalid.");
+            } catch (IllegalArgumentException e) {
+                throw UserError.abort("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    private static Long parseMaxSize(Map<JfrStartArgument, String> args, JfrStartArgument key) {
+        final String value = args.get(key);
+        if (value != null) {
+            try {
+                int idx = indexOfFirstNonDigitCharacter(value);
+                long number;
+                try {
+                    number = Long.parseLong(value.substring(0, idx));
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Expected a number.");
+                }
+
+                // Missing unit, number is plain bytes
+                if (idx == value.length()) {
+                    return number;
+                }
+
+                final char unit = value.substring(idx).charAt(0);
+                switch (unit) {
+                    case 'k':
+                    case 'K':
+                        return number * 1024;
+                    case 'm':
+                    case 'M':
+                        return number * 1024 * 1024;
+                    case 'g':
+                    case 'G':
+                        return number * 1024 * 1024 * 1024;
+                    default:
+                        return number;
+                }
             } catch (IllegalArgumentException e) {
                 throw UserError.abort("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
             }
