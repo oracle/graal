@@ -42,6 +42,7 @@ package com.oracle.truffle.espresso.hotswap;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -52,6 +53,7 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.Watchable;
+import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -74,7 +76,6 @@ import java.util.function.Function;
 final class ServiceWatcher {
 
     private static final String PREFIX = "META-INF/services/";
-    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
     private final Map<String, Set<String>> services = new HashMap<>(4);
 
@@ -286,7 +287,8 @@ final class ServiceWatcher {
                 Path resourcePath = resourceInfo.watchPath.resolve(resourceInfo.resourceName);
                 boolean recreated = false;
                 while (!recreated && System.currentTimeMillis() < stopWaiting) {
-                    if (resourcePath.toFile().exists()) {
+                    File file = resourcePath.toFile();
+                    if (file.exists() && file.canRead()) {
                         recreated = true;
                     } else {
                         Thread.sleep(5);
@@ -294,9 +296,9 @@ final class ServiceWatcher {
                 }
                 if (recreated) {
                     // compare recreated resource with info to see if actual changes were made
-                    String existingChecksum = resourceInfo.getChecksum();
-                    String newChecksum = calculateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
-                    if (!existingChecksum.equals(newChecksum)) {
+                    byte[] existingChecksum = resourceInfo.getChecksum();
+                    byte[] newChecksum = calculateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
+                    if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
                         resourceInfo.updateChecksum(newChecksum);
                         // fire the change listener
                         try {
@@ -317,32 +319,29 @@ final class ServiceWatcher {
         }
     }
 
-    private static String calculateChecksum(Path watchPath, String resourceName) {
+    private static byte[] calculateChecksum(Path watchPath, String resourceName) {
         try {
-            byte[] b = Files.readAllBytes(watchPath.resolve(resourceName));
-            return bytesToHex(MessageDigest.getInstance("MD5").digest(b));
+            byte[] buffer = new byte[4096];
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            try (InputStream is = Files.newInputStream(watchPath.resolve(resourceName)); DigestInputStream dis = new DigestInputStream(is, md)) {
+                // read through the entire stream which updates the message digest underneath
+                while (dis.read(buffer) != -1) {
+                    dis.read();
+                }
+            }
+            return md.digest();
         } catch (Exception e) {
             // Checkstyle: stop warning message from guest code
             System.err.println("[HotSwap API]: unable to calculate checksum for watched resource " + resourceName);
             // Checkstyle: resume warning message from guest code
         }
-        return "1";
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int j = 0; j < bytes.length; j++) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-        }
-        return new String(hexChars);
+        return new byte[]{-1};
     }
 
     private static final class ResourceInfo {
         private final Path watchPath;
         private final String resourceName;
-        private String checksum;
+        private byte[] checksum;
 
         private ResourceInfo(Path watchPath, String resourceName, boolean calculateChecksum) {
             this.watchPath = watchPath;
@@ -358,11 +357,11 @@ final class ServiceWatcher {
             checksum = calculateChecksum(watchPath, resourceName);
         }
 
-        public void updateChecksum(String newChecksum) {
+        public void updateChecksum(byte[] newChecksum) {
             checksum = newChecksum;
         }
 
-        public String getChecksum() {
+        public byte[] getChecksum() {
             return checksum;
         }
 
