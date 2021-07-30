@@ -238,12 +238,7 @@ public final class Target_java_lang_Class {
 
         ArrayList<Field> collectedMethods = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
-        /*
-         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
-         * doing verification, which, at this point, is the only thing left from linking we need to
-         * do.
-         */
-        klass.verify();
+        klass.ensureLinked();
         for (Field f : klass.getDeclaredFields()) {
             if (!publicOnly || f.isPublic()) {
                 collectedMethods.add(f);
@@ -331,12 +326,7 @@ public final class Target_java_lang_Class {
                     @InjectMeta Meta meta) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
-        /*
-         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
-         * doing verification, which, at this point, is the only thing left from linking we need to
-         * do.
-         */
-        klass.verify();
+        klass.ensureLinked();
         for (Method m : klass.getDeclaredConstructors()) {
             if (Name._init_.equals(m.getName()) && (!publicOnly || m.isPublic())) {
                 collectedMethods.add(m);
@@ -434,12 +424,7 @@ public final class Target_java_lang_Class {
                     @InjectMeta Meta meta) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
-        /*
-         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
-         * doing verification, which, at this point, is the only thing left from linking we need to
-         * do.
-         */
-        klass.verify();
+        klass.ensureLinked();
         for (Method m : klass.getDeclaredMethods()) {
             if ((!publicOnly || m.isPublic()) &&
                             // Filter out <init> and <clinit> from reflection.

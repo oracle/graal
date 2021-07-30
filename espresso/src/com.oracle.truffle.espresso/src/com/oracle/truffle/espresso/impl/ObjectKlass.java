@@ -135,7 +135,7 @@ public final class ObjectKlass extends Klass {
     public static final int LINKED = 1;
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
-    public static final int ERRONEOUS = 99;
+    public static final int ERRONEOUS = -1;
 
     private final StaticObject definingClassLoader;
 
@@ -227,7 +227,7 @@ public final class ObjectKlass extends Klass {
             initSelfReferenceInPool();
         }
 
-        this.initState = LINKED;
+        this.initState = LOADED;
         assert verifyTables();
     }
 
@@ -289,20 +289,33 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    boolean isInitializedImpl() {
-        return initState == INITIALIZED;
-    }
-
-    private boolean isPrepared() {
-        return initState == PREPARED;
-    }
+    // region InitStatus
 
     public int getState() {
         return initState;
     }
 
-    private boolean isInitializedOrPrepared() {
-        return isPrepared() || isInitialized();
+    boolean isInitializedImpl() {
+        return initState >= INITIALIZED;
+    }
+
+    private boolean isLinked() {
+        return initState >= LINKED;
+    }
+
+    private boolean isPrepared() {
+        return initState >= PREPARED;
+    }
+
+    private void setErroneousInitialization() {
+        initState = ERRONEOUS;
+    }
+
+    private void checkErroneousInitialization() {
+        if (initState == ERRONEOUS) {
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
+        }
     }
 
     @ExplodeLoop
@@ -311,14 +324,9 @@ public final class ObjectKlass extends Klass {
         synchronized (this) {
             // Double-check under lock
             checkErroneousInitialization();
-            if (!(isInitializedOrPrepared())) {
+            if (!(isInitializedImpl())) {
+                initState = INITIALIZED;
                 try {
-                    /*
-                     * Spec fragment: Then, initialize each final static field of C with the
-                     * constant value in its ConstantValue attribute (&sect;4.7.2), in the order the
-                     * fields appear in the ClassFile structure.
-                     */
-                    prepare();
                     if (getContext().isMainThreadCreated()) {
                         if (getContext().shouldReportVMEvents()) {
                             prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
@@ -366,94 +374,260 @@ public final class ObjectKlass extends Klass {
                     throw e;
                 }
                 checkErroneousInitialization();
-                initState = INITIALIZED;
                 assert isInitialized();
             }
         }
     }
 
-    public void prepare() {
-        checkLoadingConstraints();
-        for (Field f : staticFieldTable) {
-            ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
-            if (a == null) {
-                continue;
-            }
-            switch (f.getKind()) {
-                case Boolean: {
-                    boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
-                    f.set(getStatics(), c);
-                    break;
+    /*
+     * Spec fragment: Then, initialize each final static field of C with the constant value in its
+     * ConstantValue attribute (&sect;4.7.2), in the order the fields appear in the ClassFile
+     * structure.
+     */
+    private void prepare() {
+        synchronized (this) {
+            if (!isPrepared()) {
+                checkLoadingConstraints();
+                for (Field f : staticFieldTable) {
+                    ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
+                    if (a == null) {
+                        continue;
+                    }
+                    switch (f.getKind()) {
+                        case Boolean: {
+                            boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Byte: {
+                            byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Short: {
+                            short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Char: {
+                            char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Int: {
+                            int c = getConstantPool().intAt(a.getConstantValueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Float: {
+                            float c = getConstantPool().floatAt(a.getConstantValueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Long: {
+                            long c = getConstantPool().longAt(a.getConstantValueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Double: {
+                            double c = getConstantPool().doubleAt(a.getConstantValueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        case Object: {
+                            StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
+                            f.set(getStatics(), c);
+                            break;
+                        }
+                        default:
+                            throw EspressoError.shouldNotReachHere("invalid constant field kind");
+                    }
                 }
-                case Byte: {
-                    byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
-                    f.set(getStatics(), c);
-                    break;
-                }
-                case Short: {
-                    short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
-                    f.set(getStatics(), c);
-                    break;
-                }
-                case Char: {
-                    char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
-                    f.set(getStatics(), c);
-                    break;
-                }
-                case Int: {
-                    int c = getConstantPool().intAt(a.getConstantValueIndex());
-                    f.set(getStatics(), c);
-                    break;
-                }
-                case Float: {
-                    float c = getConstantPool().floatAt(a.getConstantValueIndex());
-                    f.set(getStatics(), c);
-                    break;
-                }
-                case Long: {
-                    long c = getConstantPool().longAt(a.getConstantValueIndex());
-                    f.set(getStatics(), c);
-                    break;
-                }
-                case Double: {
-                    double c = getConstantPool().doubleAt(a.getConstantValueIndex());
-                    f.set(getStatics(), c);
-                    break;
-                }
-                case Object: {
-                    StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
-                    f.set(getStatics(), c);
-                    break;
-                }
-                default:
-                    throw EspressoError.shouldNotReachHere("invalid constant field kind");
+                initState = PREPARED;
             }
         }
-        initState = PREPARED;
+    }
+
+    private void checkLoadingConstraints() {
+        if (getSuperKlass() != null) {
+            if (!isInterface()) {
+                Method[] thisVTable = getVTable();
+                if (thisVTable != null) {
+                    Method[] superVTable = getSuperKlass().getVTable();
+                    Klass k1;
+                    Klass k2;
+                    for (int i = 0; i < superVTable.length; i++) {
+                        k1 = thisVTable[i].getDeclaringKlass();
+                        k2 = superVTable[i].getDeclaringKlass();
+                        if (k1 == this) {
+                            thisVTable[i].checkLoadingConstraints(k1.getDefiningClassLoader(), k2.getDefiningClassLoader());
+                        }
+                    }
+                }
+            }
+            if (getItable() != null) {
+                Method[][] itables = getItable();
+                Klass[] klassTable = getiKlassTable();
+                for (int i = 0; i < getItable().length; i++) {
+                    Klass interfKlass = klassTable[i];
+                    Method[] table = itables[i];
+                    for (Method m : table) {
+                        if (m.getDeclaringKlass() == this) {
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getDefiningClassLoader());
+                        } else {
+                            m.checkLoadingConstraints(interfKlass.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Need to carefully synchronize, as the work of other threads can erase our own work.
 
-    void initializeImpl() {
-        if (!isInitialized()) { // Skip synchronization and locks if already init.
+    @Override
+    public void ensureLinked() {
+        if (!isLinked()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            verify();
+            synchronized (this) {
+                initState = LINKED;
+                if (getSuperKlass() != null) {
+                    getSuperKlass().ensureLinked();
+                }
+                for (ObjectKlass interf : getSuperInterfaces()) {
+                    interf.ensureLinked();
+                }
+                prepare();
+                verify();
+            }
+        }
+    }
+
+    void initializeImpl() {
+        if (!isInitializedImpl()) { // Skip synchronization and locks if already init.
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ensureLinked();
             actualInit();
         }
     }
 
     private void recursiveInitialize() {
-        if (!isInitialized()) { // Skip synchronization and locks if already init.
+        if (!isInitializedImpl()) { // Skip synchronization and locks if already init.
             for (ObjectKlass interf : getSuperInterfaces()) {
                 interf.recursiveInitialize();
             }
             if (hasDeclaredDefaultMethods()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                verify();
-                actualInit(); // Does not recursively initialize interfaces
+                initializeImpl(); // Does not recursively initialize interfaces
             }
         }
     }
+
+    // endregion InitStatus
+
+    // region Verification
+
+    @CompilationFinal //
+    private volatile int verificationStatus = UNVERIFIED;
+
+    @CompilationFinal //
+    private EspressoException verificationError = null;
+
+    private static final int UNVERIFIED = 0;
+
+    private static final int VERIFYING = 1;
+    private static final int VERIFIED = 2;
+
+    private void setVerificationStatus(int status) {
+        verificationStatus = status;
+    }
+
+    private boolean isVerifyingOrVerified() {
+        return verificationStatus >= VERIFYING;
+    }
+
+    private boolean isVerified() {
+        return verificationStatus >= VERIFIED;
+    }
+
+    private void checkErroneousVerification() {
+        if (verificationStatus == ERRONEOUS) {
+            throw verificationError;
+        }
+    }
+
+    private void setErroneousVerification(EspressoException e) {
+        verificationStatus = ERRONEOUS;
+        verificationError = e;
+    }
+
+    private void verify() {
+        if (!isVerified()) {
+            checkErroneousVerification();
+            synchronized (this) {
+                if (!isVerifyingOrVerified()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    setVerificationStatus(VERIFYING);
+                    try {
+                        verifyImpl();
+                    } catch (EspressoException e) {
+                        setErroneousVerification(e);
+                        throw e;
+                    }
+                    setVerificationStatus(VERIFIED);
+                }
+            }
+            checkErroneousVerification();
+        }
+    }
+
+    private void verifyImpl() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (getContext().needsVerify(getDefiningClassLoader())) {
+            Meta meta = getMeta();
+            if (getSuperKlass() != null && getSuperKlass().isFinalFlagSet()) {
+                throw meta.throwException(meta.java_lang_VerifyError);
+            }
+            if (getSuperKlass() != null) {
+                getSuperKlass().verify();
+            }
+            for (ObjectKlass interf : getSuperInterfaces()) {
+                interf.verify();
+            }
+            if (meta.sun_reflect_MagicAccessorImpl.isAssignableFrom(this)) {
+                /*
+                 * Hotspot comment:
+                 *
+                 * As of the fix for 4486457 we disable verification for all of the
+                 * dynamically-generated bytecodes associated with the 1.4 reflection
+                 * implementation, not just those associated with
+                 * sun/reflect/SerializationConstructorAccessor. NOTE: this is called too early in
+                 * the bootstrapping process to be guarded by
+                 * Universe::is_gte_jdk14x_version()/UseNewReflection. Also for lambda generated
+                 * code, gte jdk8
+                 */
+                return;
+            }
+            for (Method m : getDeclaredMethods()) {
+                try {
+                    MethodVerifier.verify(m);
+                } catch (MethodVerifier.VerifierError e) {
+                    String message = String.format("Verification for class `%s` failed for method `%s`: \n\t%s", getExternalName(), m.getNameAsString(), e.getMessage());
+                    switch (e.kind()) {
+                        case Verify:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
+                        case ClassFormat:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
+                        case NoClassDefFound:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
+                    }
+                }
+            }
+        }
+
+    }
+
+    // endregion Verification
 
     @Override
     public Klass getElementalType() {
@@ -856,73 +1030,6 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
-    @Override
-    public void verify() {
-        if (!isVerified()) {
-            checkErroneousVerification();
-            synchronized (this) {
-                if (!isVerifyingOrVerified()) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setVerificationStatus(VERIFYING);
-                    try {
-                        verifyImpl();
-                    } catch (EspressoException e) {
-                        setErroneousVerification(e);
-                        throw e;
-                    }
-                    setVerificationStatus(VERIFIED);
-                }
-            }
-            checkErroneousVerification();
-        }
-    }
-
-    private void verifyImpl() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (getContext().needsVerify(getDefiningClassLoader())) {
-            Meta meta = getMeta();
-            if (getSuperKlass() != null && getSuperKlass().isFinalFlagSet()) {
-                throw meta.throwException(meta.java_lang_VerifyError);
-            }
-            if (getSuperKlass() != null) {
-                getSuperKlass().verify();
-            }
-            for (ObjectKlass interf : getSuperInterfaces()) {
-                interf.verify();
-            }
-            if (meta.sun_reflect_MagicAccessorImpl.isAssignableFrom(this)) {
-                /*
-                 * Hotspot comment:
-                 * 
-                 * As of the fix for 4486457 we disable verification for all of the
-                 * dynamically-generated bytecodes associated with the 1.4 reflection
-                 * implementation, not just those associated with
-                 * sun/reflect/SerializationConstructorAccessor. NOTE: this is called too early in
-                 * the bootstrapping process to be guarded by
-                 * Universe::is_gte_jdk14x_version()/UseNewReflection. Also for lambda generated
-                 * code, gte jdk8
-                 */
-                return;
-            }
-            for (Method m : getDeclaredMethods()) {
-                try {
-                    MethodVerifier.verify(m);
-                } catch (MethodVerifier.VerifierError e) {
-                    String message = String.format("Verification for class `%s` failed for method `%s`: \n\t%s", getExternalName(), m.getNameAsString(), e.getMessage());
-                    switch (e.kind()) {
-                        case Verify:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
-                        case ClassFormat:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
-                        case NoClassDefFound:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
-                    }
-                }
-            }
-        }
-
-    }
-
     void print(PrintStream out) {
         out.println(getType());
         for (Method m : getDeclaredMethods()) {
@@ -934,90 +1041,6 @@ public final class ObjectKlass extends Klass {
 
     public boolean hasFinalizer() {
         return (getModifiers() & ACC_FINALIZER) != 0;
-    }
-
-    // Verification data
-
-    // Verification data
-    @CompilationFinal //
-    private volatile int verificationStatus = UNVERIFIED;
-
-    @CompilationFinal //
-    private EspressoException verificationError = null;
-
-    private static final int UNVERIFIED = 0;
-
-    private static final int VERIFYING = 1;
-    private static final int VERIFIED = 2;
-
-    private void setVerificationStatus(int status) {
-        verificationStatus = status;
-    }
-
-    private boolean isVerifyingOrVerified() {
-        return verificationStatus == VERIFYING || verificationStatus == VERIFIED;
-    }
-
-    private boolean isVerified() {
-        return verificationStatus == VERIFIED;
-    }
-
-    private void checkErroneousVerification() {
-        if (verificationStatus == ERRONEOUS) {
-            throw verificationError;
-        }
-    }
-
-    private void setErroneousVerification(EspressoException e) {
-        verificationStatus = ERRONEOUS;
-        verificationError = e;
-    }
-
-    private void setErroneousInitialization() {
-        initState = ERRONEOUS;
-    }
-
-    private void checkErroneousInitialization() {
-        if (initState == ERRONEOUS) {
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
-        }
-    }
-
-    private void checkLoadingConstraints() {
-        if (getSuperKlass() != null) {
-            if (!isInterface()) {
-                Method[] thisVTable = getVTable();
-                if (thisVTable != null) {
-                    Method[] superVTable = getSuperKlass().getVTable();
-                    Klass k1;
-                    Klass k2;
-                    for (int i = 0; i < superVTable.length; i++) {
-                        k1 = thisVTable[i].getDeclaringKlass();
-                        k2 = superVTable[i].getDeclaringKlass();
-                        if (k1 == this) {
-                            thisVTable[i].checkLoadingConstraints(k1.getDefiningClassLoader(), k2.getDefiningClassLoader());
-                        }
-                    }
-                }
-            }
-            if (getItable() != null) {
-                Method[][] itables = getItable();
-                Klass[] klassTable = getiKlassTable();
-                for (int i = 0; i < getItable().length; i++) {
-                    Klass interfKlass = klassTable[i];
-                    Method[] table = itables[i];
-                    for (Method m : table) {
-                        if (m.getDeclaringKlass() == this) {
-                            m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getDefiningClassLoader());
-                        } else {
-                            m.checkLoadingConstraints(interfKlass.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
-                            m.checkLoadingConstraints(this.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
-                        }
-                    }
-                }
-            }
-        }
     }
 
     @TruffleBoundary

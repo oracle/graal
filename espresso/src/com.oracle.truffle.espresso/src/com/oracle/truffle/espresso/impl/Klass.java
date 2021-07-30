@@ -693,10 +693,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     /**
      * Final override for performance reasons.
-     *
+     * <p>
      * The compiler cannot see that the {@link Klass} hierarchy is sealed, there's a single
      * {@link ContextAccess#getMeta} implementation.
-     *
+     * <p>
      * This final override avoids the virtual call in compiled code.
      */
     @Override
@@ -774,7 +774,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         // Array and primitive classes do not require initialization.
     }
 
-    public void verify() {
+    public void ensureLinked() {
         /* nop */
     }
 
@@ -782,10 +782,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Determines if this type is either the same as, or is a superclass or superinterface of, the
      * type represented by the specified parameter. This method is identical to
      * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
-     *
+     * <p>
      * Fast check for Object types (as opposed to interface types) -> do not need to walk the entire
      * class hierarchy.
-     *
+     * <p>
      * Interface check is still slow, though.
      */
     public final boolean isAssignableFrom(Klass other) {
@@ -1402,8 +1402,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             switch (state) {
                 case ObjectKlass.LOADED:
                     return ClassStatusConstants.VERIFIED;
-                case ObjectKlass.PREPARED:
                 case ObjectKlass.LINKED:
+                case ObjectKlass.PREPARED:
                     return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED;
                 case ObjectKlass.INITIALIZED:
                     return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED | ClassStatusConstants.INITIALIZED;

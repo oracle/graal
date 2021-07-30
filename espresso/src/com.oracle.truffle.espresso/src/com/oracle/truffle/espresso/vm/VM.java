@@ -1116,7 +1116,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (initialize) {
             k.safeInitialize();
         } else {
-            k.verify();
+            k.ensureLinked();
         }
         return k.mirror();
     }
