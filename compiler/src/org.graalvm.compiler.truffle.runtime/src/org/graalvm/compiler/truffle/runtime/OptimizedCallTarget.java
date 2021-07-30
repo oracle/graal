@@ -139,7 +139,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
      * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
      * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
-     * real call to the call target. Reset by TruffleFeature after image generation.
+     * real call to the call target.
      */
     private int callCount;
 
@@ -148,7 +148,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
      * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
      * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
-     * real call to the call target. Reset by TruffleFeature after image generation.
+     * real call to the call target.
      */
     private int callAndLoopCount;
     private int highestCompiledTier = 0;
@@ -176,9 +176,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * the CallTarget, except that the newer profile can only be less precise (= more null) and so
      * will end up not casting at all the argument indices that did not match the profile.
      *
-     * These fields are reset by TruffleFeature after image generation. These fields are initially
-     * null, and once they become non-null they never become null again (except through the reset of
-     * TruffleFeature).
+     * These fields are initially null, and once they become non-null they never become null again.
      */
     @CompilationFinal private volatile ArgumentsProfile argumentsProfile;
     @CompilationFinal private volatile ReturnProfile returnProfile;
@@ -253,7 +251,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     /**
-     * Set if compilation failed or was ignored. Reset by TruffleFeature after image generation.
+     * Set if compilation failed or was ignored. Reset by TruffleBaseFeature after image generation.
      */
     private volatile boolean compilationFailed;
     /**
@@ -265,7 +263,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /**
      * Timestamp when the call target was initialized e.g. used the first time. Reset by
-     * TruffleFeature after image generation.
+     * TruffleBaseFeature after image generation.
      */
     private volatile long initializedTimestamp;
 

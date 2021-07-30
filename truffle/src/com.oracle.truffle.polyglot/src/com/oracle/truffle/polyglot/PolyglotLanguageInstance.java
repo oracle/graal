@@ -264,7 +264,7 @@ final class PolyglotLanguageInstance implements VMObject {
     }
 
     /*
-     * Called from TruffleFeature.StaticObjectSupport.
+     * Called from TruffleBaseFeature.StaticObjectSupport.
      */
     static Collection<PolyglotLanguageInstance> getActiveInstances() {
         Set<PolyglotLanguageInstance> instances = new HashSet<>();

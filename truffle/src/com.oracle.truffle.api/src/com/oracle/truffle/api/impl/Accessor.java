@@ -1237,7 +1237,7 @@ public abstract class Accessor {
     /**
      * Returns a {@link TVMCI} obtained from {@link TruffleRuntime}.
      *
-     * NOTE: this method is called reflectively by {@code TruffleFeature} to initialize
+     * NOTE: this method is called reflectively by {@code TruffleBaseFeature} to initialize
      * {@code tvmci} instance.
      */
     private static TVMCI getTVMCI() {

@@ -131,7 +131,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
         SingleContextState() {
             this(singleContextState.singleContext);
-            // called by TruffleFeature
+            // called by TruffleBaseFeature
         }
 
         SingleContextState(PolyglotContextImpl context) {

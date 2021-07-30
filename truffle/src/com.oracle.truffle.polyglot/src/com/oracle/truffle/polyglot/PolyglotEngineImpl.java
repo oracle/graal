@@ -1288,8 +1288,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     /**
-     * Clears the pre-initialized engines. The TruffleFeature needs to clean emitted engines during
-     * Feature.cleanup.
+     * Clears the pre-initialized engines. The TruffleBaseFeature needs to clean emitted engines
+     * during Feature.cleanup.
      */
     static void resetPreInitializedEngine() {
         ENGINES.clear();
@@ -1458,7 +1458,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private static final String DISABLE_PRIVILEGES_VALUE = ImageBuildTimeOptions.get(ImageBuildTimeOptions.DISABLE_PRIVILEGES_NAME);
     private static final String[] DISABLED_PRIVILEGES = DISABLE_PRIVILEGES_VALUE.isEmpty() ? new String[0] : DISABLE_PRIVILEGES_VALUE.split(",");
 
-    // reflectively read from TruffleFeature
+    // reflectively read from TruffleBaseFeature
     private static final boolean ALLOW_CREATE_PROCESS;
     static final boolean ALLOW_ENVIRONMENT_ACCESS;
     static final boolean ALLOW_IO;
@@ -2013,7 +2013,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     /*
-     * Invoked by TruffleFeature to make sure the fallback engine is not contained in the image.
+     * Invoked by TruffleBaseFeature to make sure the fallback engine is not contained in the image.
      */
     static void resetFallbackEngine() {
         synchronized (PolyglotImpl.class) {

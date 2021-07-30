@@ -138,7 +138,7 @@ public final class Engine implements AutoCloseable {
          * Performs context pre-initialization.
          *
          * NOTE: this method is called reflectively by downstream projects
-         * (com.oracle.svm.truffle.TruffleFeature).
+         * (com.oracle.svm.truffle.TruffleBaseFeature).
          */
         @SuppressWarnings("unused")
         private static void preInitializeEngine() {
@@ -149,7 +149,7 @@ public final class Engine implements AutoCloseable {
          * Clears the pre-initialized engine.
          *
          * NOTE: this method is called reflectively by downstream projects
-         * (com.oracle.svm.truffle.TruffleFeature).
+         * (com.oracle.svm.truffle.TruffleBaseFeature).
          */
         @SuppressWarnings("unused")
         private static void resetPreInitializedEngine() {
