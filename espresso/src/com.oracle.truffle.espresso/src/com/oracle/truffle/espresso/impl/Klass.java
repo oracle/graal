@@ -590,12 +590,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers) {
+        this(context, name, type, superKlass, superInterfaces, modifiers, -1);
+    }
+
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers, int possibleID) {
         this.context = context;
         this.name = name;
         this.type = type;
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
-        this.id = context.getNewKlassId();
+        this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
         this.modifiers = modifiers;
         this.runtimePackage = initRuntimePackage();
     }
@@ -1340,8 +1344,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         // Reflection relies on anonymous classes including a '/' on the name, to avoid generating
         // (invalid) fast method accessors. See
         // sun.reflect.misc.ReflectUtil#isVMAnonymousClass(Class<?>).
-        if (isAnonymous() || isHidden()) {
+        if (isAnonymous()) {
             externalName = appendID(externalName);
+        }
+        if (isHidden()) {
+            externalName = convertHidden(externalName);
         }
         return externalName;
     }
@@ -1350,6 +1357,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private String appendID(String externalName) {
         // A small improvement over HotSpot here, which uses the class identity hash code.
         return externalName + "/" + getId(); // VM.JVM_IHashCode(self);
+    }
+
+    @TruffleBoundary
+    protected String convertHidden(String externalName) {
+        // A small improvement over HotSpot here, which uses the class identity hash code.
+        int idx = externalName.lastIndexOf('+');
+        char[] chars = externalName.toCharArray();
+        chars[idx] = '/';
+        return new String(chars);
+
     }
 
     public boolean sameRuntimePackage(Klass other) {

@@ -148,7 +148,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
-        super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces, linkedKlass.getFlags());
+        super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces, linkedKlass.getFlags(), info.klassID);
 
         this.nest = info.dynamicNest;
         this.hostKlass = info.hostKlass;
@@ -612,7 +612,7 @@ public final class ObjectKlass extends Klass {
                 try {
                     MethodVerifier.verify(m);
                 } catch (MethodVerifier.VerifierError e) {
-                    String message = String.format("Verification for class `%s` failed for method `%s`: \n\t%s", getExternalName(), m.getNameAsString(), e.getMessage());
+                    String message = String.format("Verification for class `%s` failed for method `%s`", getExternalName(), m.getNameAsString());
                     switch (e.kind()) {
                         case Verify:
                             throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);

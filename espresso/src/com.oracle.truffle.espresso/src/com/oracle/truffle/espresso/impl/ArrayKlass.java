@@ -181,15 +181,17 @@ public final class ArrayKlass extends Klass {
     @Override
     public String getExternalName() {
         String base = super.getExternalName();
-        boolean isHiddenOrAnonymous = getElementalType().isAnonymous() || getElementalType().isHidden();
-        if (!isHiddenOrAnonymous) {
-            return base;
+        if (getElementalType().isAnonymous()) {
+            return fixupAnonymousExternalName(base);
         }
-        return fixupExternalName(base);
+        if (getElementalType().isHidden()) {
+            return convertHidden(base);
+        }
+        return base;
     }
 
     @TruffleBoundary
-    private String fixupExternalName(String base) {
-        return base.replace(";", cat("/", getComponentType().getId(), ";"));
+    private String fixupAnonymousExternalName(String base) {
+        return base.replace(";", cat("/", getElementalType().getId(), ";"));
     }
 }

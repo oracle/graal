@@ -110,6 +110,7 @@ public abstract class ClassRegistry implements ContextAccess {
         public final StaticObject classData;
         public final boolean isHidden;
         public final boolean isStrongHidden;
+        public int klassID = -1;
 
         public boolean addedToRegistry() {
             return !isAnonymousClass() && !isHidden();
@@ -133,6 +134,10 @@ public abstract class ClassRegistry implements ContextAccess {
                 flags |= Constants.ACC_IS_HIDDEN_CLASS;
             }
             return flags;
+        }
+
+        public void initKlassID(int klassID) {
+            this.klassID = klassID;
         }
     }
 

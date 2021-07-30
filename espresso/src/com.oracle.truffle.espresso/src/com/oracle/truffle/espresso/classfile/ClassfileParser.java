@@ -440,6 +440,14 @@ public final class ClassfileParser {
         // Ensure there are no trailing bytes
         stream.checkEndOfFile();
 
+        if (classDefinitionInfo.isHidden()) {
+            int futureKlassID = context.getNewKlassId();
+            classDefinitionInfo.initKlassID(futureKlassID);
+            thisKlassName = context.getNames().getOrCreate(thisKlassName.toString() + "+" + futureKlassID);
+            thisKlassType = context.getTypes().fromName(thisKlassName);
+            pool = pool.patchForHiddenClass(thisKlassIndex, thisKlassName);
+        }
+
         return new ParserKlass(pool, classDefinitionInfo.patchFlags(classFlags), thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
     }
 
