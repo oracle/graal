@@ -54,6 +54,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 @Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
 
+    public static final long MILLIS_TO_NANOS = 1_000_000L;
     public static final double MAX_OVERHEAD_WARNING_THRESHOLD = 0.2;
 
     enum Output {
@@ -155,9 +156,9 @@ class CPUSamplerCLI extends ProfilerCLI {
     private static void printWarnings(CPUSampler sampler, PrintStream out) {
         if (sampler.hasStackOverflowed()) {
             printDiv(out);
-            out.println("Warning: Shadow stack has overflowed its capacity of " + sampler.getStackLimit() + " during execution!");
+            out.println("Warning: The stack has overflowed the sampled stack limit of " + sampler.getStackLimit() + " during execution!");
             out.println("         The printed data is incomplete or incorrect!");
-            out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
+            out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set the sampled stack limit.");
             printDiv(out);
         }
         if (sampleDurationTooLong(sampler)) {
@@ -172,7 +173,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     private static boolean sampleDurationTooLong(CPUSampler sampler) {
         for (CPUSamplerData value : sampler.getData().values()) {
-            if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod()) {
+            if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod() * MILLIS_TO_NANOS) {
                 return true;
             }
         }

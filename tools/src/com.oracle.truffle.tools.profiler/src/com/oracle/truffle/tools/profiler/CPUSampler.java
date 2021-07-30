@@ -40,6 +40,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
@@ -47,7 +50,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.profiler.SafepointStackSampler.StackSample;
@@ -57,11 +59,12 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 /**
  * Implementation of a sampling based profiler for
  * {@linkplain com.oracle.truffle.api.TruffleLanguage Truffle languages} built on top of the
- * {@linkplain TruffleInstrument Truffle instrumentation framework}.
+ * {@linkplain TruffleSafepoint Truffle safepoints} and
+ * {@link TruffleRuntime#iterateFrames(FrameInstanceVisitor) iterateFrames()}.
  * <p>
- * The sampler keeps a shadow stack during execution. This shadow stack is sampled at regular
- * intervals, i.e. the state of the stack is copied and saved into trees of {@linkplain ProfilerNode
- * nodes}, which represent the profile of the execution.
+ * The sampler samples the stack of each thread at regular intervals by using Truffle safepoints.
+ * The state of the stack is copied and saved into trees of {@linkplain ProfilerNode nodes}, which
+ * represent the profile of the execution.
  * <p>
  * Usage example: {@codesnippet CPUSamplerSnippets#example}
  *
@@ -224,7 +227,8 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * @return the sampling period i.e. the time between two samples of the shadow stack are taken.
+     * @return the sampling period i.e. the time between two samples of the stack are taken, in
+     *         milliseconds.
      * @since 0.30
      */
     public synchronized long getPeriod() {
@@ -232,7 +236,8 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Sets the sampling period i.e. the time between two samples of the shadow stack are taken.
+     * Sets the sampling period i.e. the time between two samples of the stack are taken, in
+     * milliseconds.
      *
      * @param samplePeriod the new sampling period.
      * @since 0.30
@@ -261,7 +266,7 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * @return size of the shadow stack
+     * @return the maximum amount of stack frames that are sampled.
      * @since 0.30
      */
     public synchronized int getStackLimit() {
@@ -272,7 +277,7 @@ public final class CPUSampler implements Closeable {
      * Sets the maximum amount of stack frames that are sampled. Whether or not the stack grew more
      * than the provided size during execution can be checked with {@linkplain #hasStackOverflowed}
      *
-     * @param stackLimit the new size of the shadow stack
+     * @param stackLimit the maximum amount of stack frames that are sampled
      * @since 0.30
      */
     public synchronized void setStackLimit(int stackLimit) {
@@ -332,7 +337,8 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * @return was the shadow stack size insufficient for the execution.
+     * @return was the the maximum amount of stack frames that are sampled insufficient for the
+     *         execution.
      * @since 0.30
      */
     public boolean hasStackOverflowed() {
@@ -566,7 +572,7 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Wrapper for information on how many times an element was seen on the shadow stack. Used as a
+     * Wrapper for information on how many times an element was seen on the stack. Used as a
      * template parameter of {@link ProfilerNode}. Differentiates between an execution in compiled
      * code and in the interpreter.
      *
@@ -585,8 +591,8 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * @return The number of times the element was found bellow the top of the shadow stack as
-         *         compiled code
+         * @return The number of times the element was found below the top of the stack as compiled
+         *         code
          * @since 0.30
          */
         public int getCompiledHitCount() {
@@ -594,7 +600,7 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * @return The number of times the element was found bellow the top of the shadow stack as
+         * @return The number of times the element was found bellow the top of the stack as
          *         interpreted code
          * @since 0.30
          */
@@ -603,8 +609,8 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * @return The number of times the element was found on the top of the shadow stack as
-         *         compiled code
+         * @return The number of times the element was found on the top of the stack as compiled
+         *         code
          * @since 0.30
          */
         public int getSelfCompiledHitCount() {
@@ -612,8 +618,8 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * @return The number of times the element was found on the top of the shadow stack as
-         *         interpreted code
+         * @return The number of times the element was found on the top of the stack as interpreted
+         *         code
          * @since 0.30
          */
         public int getSelfInterpretedHitCount() {
@@ -621,7 +627,7 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * @return Total number of times the element was found on the top of the shadow stack
+         * @return Total number of times the element was found on the top of the stack
          * @since 0.30
          */
         public int getSelfHitCount() {
@@ -629,7 +635,7 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * @return Total number of times the element was found bellow the top of the shadow stack
+         * @return Total number of times the element was found bellow the top of the stack
          * @since 0.30
          */
         public int getHitCount() {
@@ -728,8 +734,8 @@ public final class CPUSampler implements Closeable {
     static class MutableSamplerData {
         final Map<Thread, ProfilerNode<Payload>> threadData = new HashMap<>();
         final AtomicLong samplesTaken = new AtomicLong(0);
-        final LongSummaryStatistics biasStatistic = new LongSummaryStatistics();
-        final LongSummaryStatistics durationStatistic = new LongSummaryStatistics();
+        final LongSummaryStatistics biasStatistic = new LongSummaryStatistics(); // nanoseconds
+        final LongSummaryStatistics durationStatistic = new LongSummaryStatistics(); // nanoseconds
         final AtomicLong missedSamples = new AtomicLong(0);
     }
 
