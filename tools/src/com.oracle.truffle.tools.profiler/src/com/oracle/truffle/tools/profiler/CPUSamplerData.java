@@ -42,8 +42,8 @@ public final class CPUSamplerData {
 
     final TruffleContext context;
     final Map<Thread, Collection<ProfilerNode<Payload>>> threadData;
-    final LongSummaryStatistics biasStatistics;  // in nanoseconds
-    final LongSummaryStatistics durationStatistics;  // in nanoseconds
+    final LongSummaryStatistics biasStatistics;  // nanoseconds
+    final LongSummaryStatistics durationStatistics;  // nanoseconds
     final long samplesTaken;
     final long intervalMs;
     final long missedSamples;

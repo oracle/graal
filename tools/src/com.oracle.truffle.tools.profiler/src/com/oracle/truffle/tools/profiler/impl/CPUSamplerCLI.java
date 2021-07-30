@@ -156,9 +156,9 @@ class CPUSamplerCLI extends ProfilerCLI {
     private static void printWarnings(CPUSampler sampler, PrintStream out) {
         if (sampler.hasStackOverflowed()) {
             printDiv(out);
-            out.println("Warning: Shadow stack has overflowed its capacity of " + sampler.getStackLimit() + " during execution!");
+            out.println("Warning: The stack has overflowed the sampled stack limit of " + sampler.getStackLimit() + " during execution!");
             out.println("         The printed data is incomplete or incorrect!");
-            out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
+            out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set the sampled stack limit.");
             printDiv(out);
         }
         if (sampleDurationTooLong(sampler)) {
