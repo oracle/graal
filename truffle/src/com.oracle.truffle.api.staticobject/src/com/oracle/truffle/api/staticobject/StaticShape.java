@@ -158,12 +158,12 @@ public abstract class StaticShape<T> {
 
     abstract Object getStorage(Object obj, boolean primitive);
 
-    final <U> U cast(Object obj, Class<U> type) {
+    final <U> U cast(Object obj, Class<U> type, boolean checkCondition) {
         if (safetyChecks) {
             return checkedCast(obj, type);
         } else {
             assert checkedCast(obj, type) != null;
-            return SomAccessor.RUNTIME.unsafeCast(obj, type, true, false, false);
+            return SomAccessor.RUNTIME.unsafeCast(obj, type, !checkCondition || type.isInstance(obj), false, false);
         }
     }
 
