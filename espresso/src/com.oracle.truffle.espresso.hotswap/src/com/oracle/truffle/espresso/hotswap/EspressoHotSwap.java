@@ -133,16 +133,9 @@ public final class EspressoHotSwap {
      * @return true if registration was successful
      * @since 21.3
      */
-    public static boolean registerResourceListener(ClassLoader loader, String resource, HotSwapAction action) {
-        try {
-            if (handler != null) {
-                handler.registerResourceListener(loader, resource, action);
-            }
-        } catch (IOException ex) {
-            // Checkstyle: stop warning message from guest code
-            System.err.println(ex.getMessage());
-            // Checkstyle: resume warning message from guest code
-            return false;
+    public static boolean registerResourceListener(ClassLoader loader, String resource, HotSwapAction action) throws IOException {
+        if (handler != null) {
+            handler.registerResourceListener(loader, resource, action);
         }
         return handler != null;
     }

@@ -81,10 +81,8 @@ final class ServiceWatcher {
     private WatcherThread serviceWatcherThread;
     private URLWatcher urlWatcher;
 
-    public void addResourceWatcher(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
-        if (!ensureInitialized()) {
-            return;
-        }
+    public boolean addResourceWatcher(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
+        ensureInitialized();
         URL url;
         if (loader == null) {
             url = ClassLoader.getSystemResource(resource);
@@ -103,10 +101,8 @@ final class ServiceWatcher {
     }
 
     public synchronized void addServiceWatcher(Class<?> service, ClassLoader loader, HotSwapAction callback) {
-        if (!ensureInitialized()) {
-            return;
-        }
         try {
+            ensureInitialized();
             // cache initial service implementations
             Set<String> serviceImpl = Collections.synchronizedSet(new HashSet<>());
 
@@ -178,19 +174,14 @@ final class ServiceWatcher {
         }
     }
 
-    private boolean ensureInitialized() {
+    private void ensureInitialized() throws IOException {
         // start watcher threads
-        try {
-            if (serviceWatcherThread == null) {
-                serviceWatcherThread = new WatcherThread();
-                serviceWatcherThread.start();
-                urlWatcher = new URLWatcher();
-                urlWatcher.startWatching();
-            }
-        } catch (IOException ex) {
-            return false;
+        if (serviceWatcherThread == null) {
+            serviceWatcherThread = new WatcherThread();
+            serviceWatcherThread.start();
+            urlWatcher = new URLWatcher();
+            urlWatcher.startWatching();
         }
-        return true;
     }
 
     private synchronized void onServiceChange(HotSwapAction callback, ServiceLoader<?> serviceLoader, String fullName) {
