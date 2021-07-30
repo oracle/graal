@@ -81,7 +81,7 @@ final class ServiceWatcher {
     private WatcherThread serviceWatcherThread;
     private URLWatcher urlWatcher;
 
-    public boolean addResourceWatcher(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
+    public void addResourceWatcher(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
         ensureInitialized();
         URL url;
         if (loader == null) {
@@ -100,78 +100,73 @@ final class ServiceWatcher {
         }
     }
 
-    public synchronized void addServiceWatcher(Class<?> service, ClassLoader loader, HotSwapAction callback) {
-        try {
-            ensureInitialized();
-            // cache initial service implementations
-            Set<String> serviceImpl = Collections.synchronizedSet(new HashSet<>());
+    public synchronized void addServiceWatcher(Class<?> service, ClassLoader loader, HotSwapAction callback) throws IOException {
+        ensureInitialized();
+        // cache initial service implementations
+        Set<String> serviceImpl = Collections.synchronizedSet(new HashSet<>());
 
-            ServiceLoader<?> serviceLoader = ServiceLoader.load(service, loader);
-            Iterator<?> iterator = serviceLoader.iterator();
-            while (iterator.hasNext()) {
-                try {
-                    Object o = iterator.next();
-                    serviceImpl.add(o.getClass().getName());
-                } catch (ServiceConfigurationError e) {
-                    // ignore services that we're not able to instantiate
-                }
+        ServiceLoader<?> serviceLoader = ServiceLoader.load(service, loader);
+        Iterator<?> iterator = serviceLoader.iterator();
+        while (iterator.hasNext()) {
+            try {
+                Object o = iterator.next();
+                serviceImpl.add(o.getClass().getName());
+            } catch (ServiceConfigurationError e) {
+                // ignore services that we're not able to instantiate
             }
-            String fullName = PREFIX + service.getName();
-            services.put(fullName, serviceImpl);
+        }
+        String fullName = PREFIX + service.getName();
+        services.put(fullName, serviceImpl);
 
-            // pick up the initial URLs for the service class
-            ArrayList<URL> initialURLs = new ArrayList<>();
-            Enumeration<URL> urls;
-            if (loader == null) {
-                urls = ClassLoader.getSystemResources(fullName);
-            } else {
-                urls = loader.getResources(fullName);
-            }
+        // pick up the initial URLs for the service class
+        ArrayList<URL> initialURLs = new ArrayList<>();
+        Enumeration<URL> urls;
+        if (loader == null) {
+            urls = ClassLoader.getSystemResources(fullName);
+        } else {
+            urls = loader.getResources(fullName);
+        }
 
-            while (urls.hasMoreElements()) {
-                URL url = urls.nextElement();
-                if ("file".equals(url.getProtocol())) {
-                    // parent directory to register watch on
-                    File file = new File(url.getFile()).getParentFile();
-                    // listen for changes to the service registration file
-                    initialURLs.add(url);
-                    serviceWatcherThread.addWatch(service.getName(), Paths.get(file.toURI()), () -> onServiceChange(callback, serviceLoader, fullName));
-                }
-            }
-
-            // listen for changes to URLs in the resources
-            urlWatcher.addWatch(new URLServiceState(initialURLs, loader, fullName, (url) -> {
-                try {
-                    callback.fire();
-                } catch (Throwable t) {
-                    // Checkstyle: stop warning message from guest code
-                    System.err.println("[HotSwap API]: Unexpected exception while running service change action");
-                    // Checkstyle: resume warning message from guest code
-                    t.printStackTrace();
-                }
+        while (urls.hasMoreElements()) {
+            URL url = urls.nextElement();
+            if ("file".equals(url.getProtocol())) {
                 // parent directory to register watch on
                 File file = new File(url.getFile()).getParentFile();
                 // listen for changes to the service registration file
-                try {
-                    serviceWatcherThread.addWatch(service.getName(), Paths.get(file.toURI()), () -> onServiceChange(callback, serviceLoader, fullName));
-                } catch (IOException e) {
-                    // perhaps fallback to reloading and fetching from service loader at intervals?
-                }
-                return null;
-            }, () -> {
-                try {
-                    callback.fire();
-                } catch (Throwable t) {
-                    // Checkstyle: stop warning message from guest code
-                    System.err.println("[HotSwap API]: Unexpected exception while running service change action");
-                    // Checkstyle: resume warning message from guest code
-                    t.printStackTrace();
-                }
-            }));
-        } catch (IOException e) {
-            // perhaps fallback to reloading and fetching from service loader at intervals?
-            return;
+                initialURLs.add(url);
+                serviceWatcherThread.addWatch(service.getName(), Paths.get(file.toURI()), () -> onServiceChange(callback, serviceLoader, fullName));
+            }
         }
+
+        // listen for changes to URLs in the resources
+        urlWatcher.addWatch(new URLServiceState(initialURLs, loader, fullName, (url) -> {
+            try {
+                callback.fire();
+            } catch (Throwable t) {
+                // Checkstyle: stop warning message from guest code
+                System.err.println("[HotSwap API]: Unexpected exception while running service change action");
+                // Checkstyle: resume warning message from guest code
+                t.printStackTrace();
+            }
+            // parent directory to register watch on
+            File file = new File(url.getFile()).getParentFile();
+            // listen for changes to the service registration file
+            try {
+                serviceWatcherThread.addWatch(service.getName(), Paths.get(file.toURI()), () -> onServiceChange(callback, serviceLoader, fullName));
+            } catch (IOException e) {
+                // perhaps fallback to reloading and fetching from service loader at intervals?
+            }
+            return null;
+        }, () -> {
+            try {
+                callback.fire();
+            } catch (Throwable t) {
+                // Checkstyle: stop warning message from guest code
+                System.err.println("[HotSwap API]: Unexpected exception while running service change action");
+                // Checkstyle: resume warning message from guest code
+                t.printStackTrace();
+            }
+        }));
     }
 
     private void ensureInitialized() throws IOException {

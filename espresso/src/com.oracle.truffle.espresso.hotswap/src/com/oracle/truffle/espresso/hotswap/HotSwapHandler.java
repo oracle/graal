@@ -107,7 +107,7 @@ final class HotSwapHandler {
         }
     }
 
-    public synchronized void registerMetaInfServicesListener(Class<?> service, ClassLoader loader, HotSwapAction callback) {
+    public synchronized void registerMetaInfServicesListener(Class<?> service, ClassLoader loader, HotSwapAction callback) throws IOException {
         serviceWatcher.addServiceWatcher(service, loader, callback);
     }
 

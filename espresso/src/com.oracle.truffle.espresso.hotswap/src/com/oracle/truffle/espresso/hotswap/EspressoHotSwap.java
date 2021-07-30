@@ -150,7 +150,7 @@ public final class EspressoHotSwap {
      * @return true if registration was successful
      * @since 21.2
      */
-    public static boolean registerMetaInfServicesListener(Class<?> serviceType, ClassLoader loader, HotSwapAction action) {
+    public static boolean registerMetaInfServicesListener(Class<?> serviceType, ClassLoader loader, HotSwapAction action) throws IOException {
         if (handler != null) {
             handler.registerMetaInfServicesListener(serviceType, loader, action);
         }
