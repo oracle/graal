@@ -224,7 +224,7 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * @return the sampling period i.e. the time between two samples of the shadow stack are taken.
+     * @return the sampling period i.e. the time between two samples of the shadow stack are taken, in milliseconds.
      * @since 0.30
      */
     public synchronized long getPeriod() {
@@ -232,7 +232,7 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Sets the sampling period i.e. the time between two samples of the shadow stack are taken.
+     * Sets the sampling period i.e. the time between two samples of the shadow stack are taken, in milliseconds.
      *
      * @param samplePeriod the new sampling period.
      * @since 0.30
@@ -728,8 +728,8 @@ public final class CPUSampler implements Closeable {
     static class MutableSamplerData {
         final Map<Thread, ProfilerNode<Payload>> threadData = new HashMap<>();
         final AtomicLong samplesTaken = new AtomicLong(0);
-        final LongSummaryStatistics biasStatistic = new LongSummaryStatistics();
-        final LongSummaryStatistics durationStatistic = new LongSummaryStatistics();
+        final LongSummaryStatistics biasStatistic = new LongSummaryStatistics(); // in nanoseconds
+        final LongSummaryStatistics durationStatistic = new LongSummaryStatistics(); // in nanoseconds
         final AtomicLong missedSamples = new AtomicLong(0);
     }
 

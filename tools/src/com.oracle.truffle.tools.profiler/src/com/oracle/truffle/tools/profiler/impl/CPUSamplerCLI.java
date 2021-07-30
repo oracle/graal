@@ -54,6 +54,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 @Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
 
+    public static final long MILLIS_TO_NANOS = 1_000_000L;
     public static final double MAX_OVERHEAD_WARNING_THRESHOLD = 0.2;
 
     enum Output {
@@ -172,7 +173,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     private static boolean sampleDurationTooLong(CPUSampler sampler) {
         for (CPUSamplerData value : sampler.getData().values()) {
-            if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod()) {
+            if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod() * MILLIS_TO_NANOS) {
                 return true;
             }
         }
