@@ -215,7 +215,7 @@ final class ServiceWatcher {
     private final class WatcherThread extends Thread {
 
         private final WatchService watchService;
-        private final Map<ResourceInfo, Runnable> watchActions = Collections.synchronizedMap(new HashMap<>());
+        private final Map<ResourceInfo, ServiceWatcher.State> watchActions = Collections.synchronizedMap(new HashMap<>());
 
         private WatcherThread() throws IOException {
             super("hotswap-watcher-1");
@@ -225,7 +225,7 @@ final class ServiceWatcher {
 
         public void addWatch(String resourceName, Path dir, Runnable callback) throws IOException {
             dir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE);
-            watchActions.put(new ResourceInfo(dir, resourceName), callback);
+            watchActions.put(new ResourceInfo(dir, resourceName), new ServiceWatcher.State(calculateChecksum(dir, resourceName), callback));
         }
 
         @Override
@@ -247,27 +247,23 @@ final class ServiceWatcher {
                             continue;
                         }
                         // object used for comparison with cache
-                        ResourceInfo resourceInfo = new ResourceInfo(watchPath, fileName, false);
+                        ResourceInfo resourceInfo = new ResourceInfo(watchPath, fileName);
                         if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
                             if (watchActions.containsKey(resourceInfo)) {
                                 // IDEs will typically perform a delete -> create on build
                                 // so we need to re-register the path to the service when/if
                                 // the resource has been recreated again
-                                for (ResourceInfo info : watchActions.keySet()) {
-                                    if (info.equals(resourceInfo)) {
-                                        watchForRecreation(info);
-                                        break;
-                                    }
-                                }
+                                watchForRecreation(resourceInfo, watchActions.get(resourceInfo));
                             }
                             continue;
                         }
                         if (watchActions.containsKey(resourceInfo)) {
-                            byte[] existingChecksum = resourceInfo.getChecksum();
-                            byte[] newChecksum = resourceInfo.updateChecksum();
+                            ServiceWatcher.State state = watchActions.get(resourceInfo);
+                            byte[] existingChecksum = state.getChecksum();
+                            byte[] newChecksum = state.updateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
                             if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
                                 try {
-                                    watchActions.get(resourceInfo).run();
+                                    state.getAction().run();
                                 } catch (Throwable t) {
                                     // Checkstyle: stop warning message from guest code
                                     System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
@@ -284,7 +280,7 @@ final class ServiceWatcher {
             }
         }
 
-        private void watchForRecreation(ResourceInfo resourceInfo) {
+        private void watchForRecreation(ResourceInfo resourceInfo, ServiceWatcher.State state) {
             // wait for the file to be recreated in another thread since
             // we don't want to block the handling of other events
             Thread recreationCheckThread = new Thread(() -> {
@@ -304,13 +300,13 @@ final class ServiceWatcher {
                     }
                     if (recreated) {
                         // compare recreated resource with info to see if actual changes were made
-                        byte[] existingChecksum = resourceInfo.getChecksum();
+                        byte[] existingChecksum = state.getChecksum();
                         byte[] newChecksum = calculateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
                         if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
-                            resourceInfo.updateChecksum(newChecksum);
+                            state.updateChecksum(newChecksum);
                             // fire the change listener
                             try {
-                                watchActions.get(resourceInfo).run();
+                                state.getAction().run();
                             } catch (Throwable t) {
                                 // Checkstyle: stop warning message from guest code
                                 System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
@@ -353,28 +349,10 @@ final class ServiceWatcher {
     private static final class ResourceInfo {
         private final Path watchPath;
         private final String resourceName;
-        private byte[] checksum;
-
-        private ResourceInfo(Path watchPath, String resourceName, boolean calculateChecksum) {
-            this.watchPath = watchPath;
-            this.resourceName = resourceName;
-            checksum = calculateChecksum ? calculateChecksum(watchPath, resourceName) : null;
-        }
 
         private ResourceInfo(Path watchPath, String resourceName) {
-            this(watchPath, resourceName, true);
-        }
-
-        public byte[] updateChecksum() {
-            return checksum = calculateChecksum(watchPath, resourceName);
-        }
-
-        public void updateChecksum(byte[] newChecksum) {
-            checksum = newChecksum;
-        }
-
-        public byte[] getChecksum() {
-            return checksum;
+            this.watchPath = watchPath;
+            this.resourceName = resourceName;
         }
 
         @Override
@@ -392,6 +370,32 @@ final class ServiceWatcher {
         @Override
         public int hashCode() {
             return Objects.hash(watchPath, resourceName);
+        }
+    }
+
+    private static final class State {
+        private byte[] checksum;
+        private Runnable action;
+
+        State(byte[] checksum, Runnable action) {
+            this.checksum = checksum;
+            this.action = action;
+        }
+
+        public byte[] updateChecksum(Path watchPath, String resourceName) {
+            return checksum = calculateChecksum(watchPath, resourceName);
+        }
+
+        public void updateChecksum(byte[] newChecksum) {
+            checksum = newChecksum;
+        }
+
+        public byte[] getChecksum() {
+            return checksum;
+        }
+
+        public Runnable getAction() {
+            return action;
         }
     }
 
