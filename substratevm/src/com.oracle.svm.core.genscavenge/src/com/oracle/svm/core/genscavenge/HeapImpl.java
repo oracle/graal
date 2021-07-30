@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.word.Word;
@@ -591,7 +590,7 @@ public final class HeapImpl extends Heap {
 
     @Override
     public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
-        if (ImageSingletons.lookup(CompressEncoding.class).hasBase() && value.equal(KnownIntrinsics.heapBase())) {
+        if (SubstrateOptions.SpawnIsolates.getValue() && value.equal(KnownIntrinsics.heapBase())) {
             log.string("is the heap base");
             return true;
         }
@@ -742,7 +741,7 @@ public final class HeapImpl extends Heap {
 
             log.string("Heap settings and statistics:").indent(true);
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
-            if (SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase()) {
+            if (SubstrateOptions.SpawnIsolates.getValue()) {
                 log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             }
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();

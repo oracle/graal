@@ -224,8 +224,7 @@ public class SubstrateDiagnostics {
         return CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
     }
 
-    private static boolean printFrameAnchors(Log log, IsolateThread thread) {
-        log.string("Java frame anchors:").indent(true);
+    private static void logFrameAnchors(Log log, IsolateThread thread) {
         JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
         if (anchor.isNull()) {
             log.string("No anchors").newline();
@@ -234,8 +233,6 @@ public class SubstrateDiagnostics {
             log.string("Anchor ").zhex(anchor.rawValue()).string(" LastJavaSP ").zhex(anchor.getLastJavaSP().rawValue()).string(" LastJavaIP ").zhex(anchor.getLastJavaIP().rawValue()).newline();
             anchor = anchor.getPreviousAnchor();
         }
-        log.indent(false);
-        return true;
     }
 
     private static class PrintDiagnosticsState {
@@ -369,7 +366,7 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, int invocationCount) {
             if (DeoptimizationSupport.enabled()) {
-                log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer().rawValue()).newline().newline();
+                log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer()).newline().newline();
             }
         }
     }
@@ -388,13 +385,13 @@ public class SubstrateDiagnostics {
             Pointer sp = state.sp;
             CodePointer ip = state.ip;
 
-            log.string("TopFrame info:").indent(true);
+            log.string("Top frame info:").indent(true);
             if (sp.isNonNull() && ip.isNonNull()) {
                 long totalFrameSize = getTotalFrameSize(sp, ip);
                 DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
                 if (deoptFrame != null) {
-                    log.string("RSP ").zhex(sp.rawValue()).string(" frame was deoptimized:").newline();
-                    log.string("SourcePC ").zhex(deoptFrame.getSourcePC().rawValue()).newline();
+                    log.string("RSP ").zhex(sp).string(" frame was deoptimized:").newline();
+                    log.string("SourcePC ").zhex(deoptFrame.getSourcePC()).newline();
                     log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
                 } else if (totalFrameSize != -1) {
                     log.string("TotalFrameSize in CodeInfoTable ").signed(totalFrameSize).newline();
@@ -408,11 +405,11 @@ public class SubstrateDiagnostics {
                     }
 
                     if (anchor.isNonNull()) {
-                        log.string("Found matching Anchor:").zhex(anchor.rawValue()).newline();
+                        log.string("Found matching Anchor:").zhex(anchor).newline();
                         Pointer lastSp = anchor.getLastJavaSP();
-                        log.string("LastJavaSP ").zhex(lastSp.rawValue()).newline();
+                        log.string("LastJavaSP ").zhex(lastSp).newline();
                         CodePointer lastIp = anchor.getLastJavaIP();
-                        log.string("LastJavaIP ").zhex(lastIp.rawValue()).newline();
+                        log.string("LastJavaIP ").zhex(lastIp).newline();
                     }
                 }
             }
@@ -436,7 +433,7 @@ public class SubstrateDiagnostics {
             log.string("Threads:").indent(true);
             // Only used for diagnostics - iterate all threads without locking the thread mutex.
             for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-                log.zhex(thread.rawValue()).spaces(1).string(VMThreads.StatusSupport.getStatusString(thread));
+                log.zhex(thread).spaces(1).string(VMThreads.StatusSupport.getStatusString(thread));
                 if (accessThreadObject) {
                     Thread threadObj = JavaThreads.fromVMThread(thread);
                     log.string(" \"").string(threadObj.getName()).string("\" - ").object(threadObj);
@@ -467,11 +464,11 @@ public class SubstrateDiagnostics {
             IsolateThread currentThread = CurrentIsolate.getCurrentThread();
             if (isThreadOnlyAttachedForCrashHandler(currentThread)) {
                 if (invocationCount == 1) {
-                    log.string("The failing thread ").zhex(currentThread.rawValue()).string(" does not have a full set of VM thread locals as it is an unattached thread.").newline();
+                    log.string("The failing thread ").zhex(currentThread).string(" does not have a full set of VM thread locals as it is an unattached thread.").newline();
                     log.newline();
                 }
             } else {
-                log.string("VM thread locals for the failing thread ").zhex(currentThread.rawValue()).string(":").indent(true);
+                log.string("VM thread locals for the failing thread ").zhex(currentThread).string(":").indent(true);
                 VMThreadLocalInfos.dumpToLog(log, currentThread, invocationCount == 1);
                 log.indent(false);
             }
@@ -574,7 +571,10 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, int invocationCount) {
-            printFrameAnchors(log, CurrentIsolate.getCurrentThread());
+            IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+            log.string("Java frame anchors for the failing thread ").zhex(currentThread).string(":").indent(true);
+            logFrameAnchors(log, currentThread);
+            log.indent(false);
         }
     }
 
@@ -592,7 +592,7 @@ public class SubstrateDiagnostics {
         public void printDiagnostics(Log log, int invocationCount) {
             Pointer sp = state.sp;
             CodePointer ip = state.ip;
-            log.string("Stacktrace:").indent(true);
+            log.string("Stacktrace for the failing thread ").zhex(CurrentIsolate.getCurrentThread()).string(":").indent(true);
             ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[invocationCount - 1], log);
             log.indent(false);
         }
@@ -615,9 +615,9 @@ public class SubstrateDiagnostics {
                         continue;
                     }
                     try {
-                        log.string("Thread ").zhex(vmThread.rawValue()).string(":").indent(true);
+                        log.string("Thread ").zhex(vmThread).string(":").indent(true);
                         printFrameAnchors(log, vmThread);
-                        printStacktrace(log, vmThread);
+                        printStackTrace(log, vmThread);
                         log.indent(false);
                     } catch (Exception e) {
                         dumpException(log, this, e);
@@ -626,8 +626,14 @@ public class SubstrateDiagnostics {
             }
         }
 
-        private static void printStacktrace(Log log, IsolateThread vmThread) {
-            log.string("Full stacktrace:").indent(true);
+        private static void printFrameAnchors(Log log, IsolateThread vmThread) {
+            log.string("Frame anchors:").indent(true);
+            logFrameAnchors(log, vmThread);
+            log.indent(false);
+        }
+
+        private static void printStackTrace(Log log, IsolateThread vmThread) {
+            log.string("Stacktrace:").indent(true);
             JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
             log.redent(false);
         }
