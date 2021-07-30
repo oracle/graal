@@ -184,6 +184,14 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
+    public static @JavaType(String.class) StaticObject initClassName(@JavaType(Class.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        StaticObject name = getName0(self, meta);
+        meta.java_lang_Class_name.set(self, name);
+        return name;
+    }
+
+    @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject getSimpleBinaryName0(@JavaType(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
         Klass k = self.getMirrorKlass();
@@ -209,14 +217,6 @@ public final class Target_java_lang_Class {
             }
         }
         return StaticObject.NULL;
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(String.class) StaticObject initClassName(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
-        StaticObject name = getName0(self, meta);
-        meta.java_lang_Class_name.set(self, name);
-        return name;
     }
 
     @TruffleBoundary

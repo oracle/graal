@@ -543,10 +543,15 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     int refKind,
                     Klass callerKlass,
                     Meta meta) {
-        Method.LookupMode lookupMode = refKind == REF_invokeStatic ? Method.LookupMode.STATIC_ONLY : Method.LookupMode.INSTANCE_ONLY;
-        Method target = defKlass.lookupMethod(name, sig, callerKlass, lookupMode);
+        Method target = defKlass.lookupMethod(name, sig, callerKlass);
         if (target == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, cat("Failed lookup for method ", defKlass.getName(), "#", name, ":", sig));
+        }
+        if (target.isStatic() != (refKind == REF_invokeStatic)) {
+            String expected = (refKind == REF_invokeStatic) ? "Static" : "Instance";
+            String actual = (refKind == REF_invokeStatic) ? "Instance" : "Static";
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError,
+                            cat(expected, " method lookup resulted in ", actual, " resolution for method ", defKlass.getName(), "#", name, ":", sig));
         }
         plantResolvedMethod(memberName, target, refKind, meta);
     }

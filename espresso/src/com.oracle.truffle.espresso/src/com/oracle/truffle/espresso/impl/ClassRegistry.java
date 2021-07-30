@@ -136,8 +136,8 @@ public abstract class ClassRegistry implements ContextAccess {
             return flags;
         }
 
-        public void initKlassID(int klassID) {
-            this.klassID = klassID;
+        public void initKlassID(int futureKlassID) {
+            this.klassID = futureKlassID;
         }
     }
 
