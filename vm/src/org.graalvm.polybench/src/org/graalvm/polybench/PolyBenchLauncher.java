@@ -322,24 +322,14 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     }
 
     private void repeatIterations(Context context, String languageId, String name, Value evalSource, boolean warmup, int iterations) {
-        Value run = null;
-        if (!"java".equals(languageId)) {
-            run = lookup(context, languageId, evalSource, "run");
-        }
+        Workload workload = lookup(context, languageId, evalSource, "run");
         // Enter explicitly to avoid context switches for each iteration.
         context.enter();
         try {
             for (int i = 0; i < iterations; i++) {
                 config.metric.beforeIteration(warmup, i, config);
 
-                if ("java".equals(languageId)) {
-                    // Espresso doesn't provide methods as executable values.
-                    // It can only invoke methods from the declaring class or receiver.
-                    evalSource.invokeMember("main", ProxyArray.fromArray(/* empty */));
-                } else {
-                    // The executeVoid method is the fastest way to do the transition to guest.
-                    run.executeVoid();
-                }
+                workload.run();
 
                 config.metric.afterIteration(warmup, i, config);
 
@@ -359,7 +349,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private Value lookup(Context context, String languageId, Value evalSource, String memberName) {
+    private Workload lookup(Context context, String languageId, Value evalSource, String memberName) {
         Value result;
         if (evalSource.hasMember(memberName)) {
             // first try the memberName directly
@@ -381,7 +371,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     result = context.getBindings(languageId).getMember("main").getMember(memberName);
                     break;
                 case "java":
-                    throw abort("Espresso doesn't provide methods as executable values. It can only invoke methods from the declaring class or receiver.");
+                    // Espresso doesn't provide methods as executable values.
+                    // It can only invoke methods from the declaring class or receiver.
+                    return Workload.createInvoke(evalSource, "main", ProxyArray.fromArray(/* empty */));
                 default:
                     // Fallback for other languages: Look for 'memberName' in global scope.
                     result = context.getBindings(languageId).getMember(memberName);
@@ -394,6 +386,6 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         if (!result.canExecute()) {
             throw abort("The member named " + memberName + " is not executable: " + result);
         }
-        return result;
+        return Workload.createExecuteVoid(result);
     }
 }
