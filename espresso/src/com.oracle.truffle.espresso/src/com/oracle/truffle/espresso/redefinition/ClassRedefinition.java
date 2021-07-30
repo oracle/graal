@@ -82,9 +82,8 @@ public final class ClassRedefinition {
         ADD_METHOD,
         REMOVE_METHOD,
         NEW_CLASS,
-        FIELD_OBJECT_TYPE_CHANGE,
-        // currently unsupported
         SCHEMA_CHANGE,
+        // currently unsupported
         HIERARCHY_CHANGE,
         CLASS_MODIFIERS_CHANGE,
         INVALID;
@@ -192,7 +191,6 @@ public final class ClassRedefinition {
                 case CLASS_NAME_CHANGED:
                 case ADD_METHOD:
                 case REMOVE_METHOD:
-                case FIELD_OBJECT_TYPE_CHANGE:
                     doRedefineClass(packet, refreshSubClasses);
                     return 0;
                 case NEW_CLASS:
@@ -268,21 +266,17 @@ public final class ClassRedefinition {
                     // object type field.
                     Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldField.getType().toString());
                     if (isPatched && matcher.matches()) {
-                        collectedChanges.addObjectTypeFieldChange(oldField, finalParserKlass.getFields()[i]);
-                        result = ClassChange.FIELD_OBJECT_TYPE_CHANGE;
+                        // TODO
+                        result = ClassChange.SCHEMA_CHANGE;
                     }
                     found = true;
                     break;
-                } else if (oldField.getName() == newField.getName() && oldField.getType() != newField.getType()) {
-                    // OK, field type changed
-                    if (oldField.getType().length() > 1 && newField.getType().length() > 1) {
-                        // object type field changed to another object type
-                        collectedChanges.addObjectTypeFieldChange(oldField, newField);
-                        result = ClassChange.FIELD_OBJECT_TYPE_CHANGE;
-                        found = true;
-                        break;
-                    }
-                    // all other combinations of field type changes are not currently supported
+                } else if (oldField.getName() == newField.getName() && oldField.getType() == newField.getType()) {
+                    // OK, compatible field change that doesn't change the layout
+                    // TODO
+                } else if (oldField.getName() == newField.getName()) {
+                    // incompatible field change requires remove + add field
+                    // TODO
                 }
             }
             if (!found) {

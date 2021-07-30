@@ -23,9 +23,7 @@
 package com.oracle.truffle.espresso.redefinition;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 
 import java.util.ArrayList;
@@ -40,7 +38,6 @@ public final class DetectedChange {
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
     private final Set<Method> removedMethods = new HashSet<>();
-    private final Map<Field, ParserField> changedObjectTypeFields = new HashMap<>();
     private boolean classInitializerChanged;
 
     void addMethodBodyChange(Method oldMethod, ParserMethod newMethod) {
@@ -76,14 +73,6 @@ public final class DetectedChange {
 
     public void addNewMethods(List<ParserMethod> newMethods) {
         addedMethods.addAll(newMethods);
-    }
-
-    public void addObjectTypeFieldChange(Field oldField, ParserField newField) {
-        changedObjectTypeFields.put(oldField, newField);
-    }
-
-    public Map<Field, ParserField> getChangedObjectTypeFields() {
-        return Collections.unmodifiableMap(changedObjectTypeFields);
     }
 
     public boolean clinitChanged() {

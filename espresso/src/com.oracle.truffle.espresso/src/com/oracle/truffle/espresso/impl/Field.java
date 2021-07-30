@@ -89,17 +89,6 @@ public final class Field extends Member<Type> implements FieldRef {
         return version;
     }
 
-    public void redefineField(ParserField parserField, RuntimeConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        // first, redefine the underlying parserField
-        linkedField.redefine(parserField);
-        // update the field version and invalidate old version
-        FieldVersion old = fieldVersion;
-        fieldVersion = new FieldVersion(parserField.getType(), pool);
-        old.getAssumption().invalidate();
-        changedByRedefinition = true;
-    }
-
     public boolean isHidden() {
         return linkedField.isHidden();
     }

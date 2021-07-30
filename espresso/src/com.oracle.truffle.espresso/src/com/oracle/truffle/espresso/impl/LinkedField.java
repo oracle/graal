@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_OBFUSCATE;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -44,7 +42,7 @@ final class LinkedField extends StaticProperty {
         OBFUSCATED,
     }
 
-    @CompilationFinal private ParserField parserField;
+    private final ParserField parserField;
     private final int slot;
 
     LinkedField(ParserField parserField, int slot, IdMode mode) {
@@ -161,19 +159,6 @@ final class LinkedField extends StaticProperty {
     }
 
     ParserField getParserField() {
-        ParserField current = parserField;
-        if (!current.getRedefineAssumption().isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            do {
-                current = parserField;
-            } while (!current.getRedefineAssumption().isValid());
-        }
-        return current;
-    }
-
-    public void redefine(ParserField newParserField) {
-        ParserField old = parserField;
-        parserField = maybeCorrectParserField(newParserField, idMode());
-        old.getRedefineAssumption().invalidate();
+        return parserField;
     }
 }

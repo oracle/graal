@@ -177,7 +177,7 @@ public interface FieldRefConstant extends MemberRefConstant {
 
         @Override
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
-            return resolved.getType();
+            return getType(pool);
         }
     }
 }

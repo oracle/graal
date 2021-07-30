@@ -1160,13 +1160,6 @@ public final class ObjectKlass extends Klass {
         }
         LinkedKlass linkedKlass = LinkedKlass.redefine(parserKlass, getSuperKlass().getLinkedKlass(), interfaces, getLinkedKlass());
 
-        // changed object type fields handling
-        if (!change.getChangedObjectTypeFields().isEmpty()) {
-            for (Map.Entry<Field, ParserField> entry : change.getChangedObjectTypeFields().entrySet()) {
-                entry.getKey().redefineField(entry.getValue(), pool);
-            }
-        }
-
         Method[][] itable = oldVersion.itable;
         Method[] vtable = oldVersion.vtable;
         ObjectKlass[] iKlassTable;
