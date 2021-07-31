@@ -25,10 +25,12 @@
 package com.oracle.svm.hosted.phases;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -39,6 +41,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.util.GuardedAnnotationAccess;
 
@@ -60,6 +63,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * method above the limit. On the other hand, the inlining depth is generous because we do do not
  * need to limit it. Note that more experimentation is necessary to come up with the optimal
  * configuration.
+ * 
+ * Important: the implementation details of this class are publicly observable API. Since
+ * {@link java.lang.reflect.Method} constants can be produced by inlining lookup methods with
+ * constant arguments, reducing inlining can break customer code. This means we can never reduce the
+ * amount of inlining in a future version without breaking compatibility. This also means that we
+ * must be conservative and only inline what is necessary for known use cases.
  */
 public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<InlineBeforeAnalysisPolicyImpl.CountersScope> {
 
@@ -86,6 +95,11 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
 
         CountersScope(CountersScope accumulated) {
             this.accumulated = accumulated;
+        }
+
+        @Override
+        public String toString() {
+            return numNodes + "/" + numInvokes + " (" + accumulated.numNodes + "/" + accumulated.numInvokes + ")";
         }
     }
 
@@ -152,8 +166,13 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
             /* Infrastructure nodes that are not even visible to the policy. */
             throw VMError.shouldNotReachHere("Node must not be visible to policy: " + node.getClass().getTypeName());
         }
-        if (node.getNodeClass().size() == NodeSize.SIZE_0 || node instanceof FrameState) {
-            /* Infrastructure nodes that are never counted. */
+        if (node instanceof FullInfopointNode || node instanceof ValueProxy || node instanceof FrameState || node instanceof AbstractBeginNode || node instanceof AbstractEndNode) {
+            /*
+             * Infrastructure nodes that are never counted. We could look at the NodeSize annotation
+             * of a node, but that is a bit unreliable. For example, FrameState and
+             * ExceptionObjectNode have size != 0 but we do not want to count them; CallTargetNode
+             * has size 0 but we need to count it.
+             */
             return true;
         }
 
