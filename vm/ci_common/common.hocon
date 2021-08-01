@@ -85,17 +85,13 @@ js_windows: ${common_vm_windows} ${js_windows_common} {
 }
 
 # SULONG
-sulong_linux: ${sulong.deps.linux}
-sulong_darwin: ${sulong.deps.darwin}
+sulong_linux: ${sulong.deps.common} ${sulong.deps.linux}
+sulong_darwin: ${sulong.deps.common} ${sulong.deps.darwin}
 
 # TRUFFLERUBY
-truffleruby_linux: ${sulong_linux} {
-  packages: {
-    ruby: "==2.6.3"
-  }
-}
+truffleruby_linux: ${sulong_linux} ${truffleruby.deps.common} ${truffleruby.deps.linux}
 
-truffleruby_darwin: ${sulong_darwin} {}
+truffleruby_darwin: ${sulong_darwin} ${truffleruby.deps.common} ${truffleruby.deps.darwin}
 
 # FASTR
 # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
