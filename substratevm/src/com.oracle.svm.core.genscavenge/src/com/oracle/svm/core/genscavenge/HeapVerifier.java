@@ -450,7 +450,7 @@ public final class HeapVerifier {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed) {
+        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             result &= verifyReference(parentObject, objRef, compressed);
             return true;
         }

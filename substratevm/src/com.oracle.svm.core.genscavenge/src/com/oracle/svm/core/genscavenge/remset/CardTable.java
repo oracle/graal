@@ -200,7 +200,7 @@ final class CardTable {
 
         @Override
         @SuppressFBWarnings(value = {"NS_DANGEROUS_NON_SHORT_CIRCUIT"}, justification = "Non-short circuit logic is used on purpose here.")
-        public boolean visitObjectReference(Pointer reference, boolean compressed) {
+        public boolean visitObjectReference(Pointer reference, boolean compressed, Object holderObject) {
             Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(reference, compressed);
             success &= verifyReference(parentObject, cardTableStart, objectsStart, reference, referencedObject);
             return true;

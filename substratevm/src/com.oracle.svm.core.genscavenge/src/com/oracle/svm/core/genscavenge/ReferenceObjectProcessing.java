@@ -110,7 +110,7 @@ final class ReferenceObjectProcessing {
         }
         if (maybeUpdateForwardedReference(dr, referentAddr)) {
             // Some other object had a strong reference to the referent, so the referent was already
-            // promoted. The called above updated the reference so that it now points to the
+            // promoted. The call above updated the reference object so that it now points to the
             // promoted object.
             return;
         }
@@ -129,7 +129,9 @@ final class ReferenceObjectProcessing {
             }
             UnsignedWord elapsed = WordFactory.unsigned(clock - timestamp);
             if (elapsed.belowThan(maxSoftRefAccessIntervalMs)) {
-                refVisitor.visitObjectReference(ReferenceInternals.getReferentFieldAddress(dr), true);
+                // Important: we need to pass the reference object as holder so that the remembered
+                // set can be updated accordingly!
+                refVisitor.visitObjectReference(ReferenceInternals.getReferentFieldAddress(dr), true, dr);
                 return; // referent will survive and referent field has been updated
             }
         }
@@ -220,6 +222,7 @@ final class ReferenceObjectProcessing {
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             Object forwardedObj = ObjectHeaderImpl.getForwardedObject(referentAddr);
             ReferenceInternals.setReferent(dr, forwardedObj);
+            RememberedSet.get().dirtyCardIfNecessary(dr, forwardedObj);
             return true;
         }
         return false;
