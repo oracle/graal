@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -44,9 +41,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class GraalVMCreateDerefHandle extends LLVMIntrinsic {
 
     @Specialization
-    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMNativePointer handle = context.getDerefHandleContainer().allocate(this, value.getObject());
+    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value) {
+        LLVMNativePointer handle = getContext().getDerefHandleContainer().allocate(this, value.getObject());
         if (value.getOffset() != 0) {
             return handle.increment(value.getOffset());
         }

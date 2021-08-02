@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
@@ -583,7 +582,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         }
 
         protected WellKnownNativeFunctionNode createFunction() {
-            LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
+            LLVMContext context = LLVMContext.get(this);
             NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
             if (nativeContextExtension == null) {
                 return null;
@@ -598,8 +597,8 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         @GenerateAOT.Exclude // TODO: it could be AOT-included as long as we could somehow pre-load
                              // the function
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
-                        @Cached("createFunction()") WellKnownNativeFunctionNode function,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Cached("createFunction()") WellKnownNativeFunctionNode function) {
+            LLVMLanguage language = LLVMLanguage.get(this);
             LLVMMemory memory = language.getLLVMMemory();
             LLVMNativePointer mem = memory.allocateMemory(this, 3 * 16);
             LLVMNativePointer ptrX = mem;

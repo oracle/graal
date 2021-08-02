@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,11 +31,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -50,9 +47,8 @@ public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
     public abstract LLVMPointer execute(LLVMSymbol symbol);
 
     @Specialization
-    LLVMPointer doAccess(LLVMSymbol symbol,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMPointer value = context.getSymbol(symbol);
+    LLVMPointer doAccess(LLVMSymbol symbol) {
+        LLVMPointer value = getContext().getSymbol(symbol);
         if (value != null) {
             return value;
         }

@@ -202,7 +202,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         }
 
         protected static Assumption singleContextAssumption() {
-            return LLVMLanguage.getLanguage().singleContextAssumption;
+            return LLVMLanguage.get(null).singleContextAssumption;
         }
 
     }

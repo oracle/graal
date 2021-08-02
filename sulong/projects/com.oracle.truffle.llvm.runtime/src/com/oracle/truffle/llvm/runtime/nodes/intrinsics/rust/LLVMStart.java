@@ -33,14 +33,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -117,13 +113,11 @@ public abstract class LLVMStart extends LLVMIntrinsic {
          */
         @Specialization
         protected long doOp(LLVMStack stack, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                        @CachedLanguage LLVMLanguage language,
                         @Cached("createToNativeWithTarget()") @SuppressWarnings("unused") LLVMToNativeNode toNative,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode fnDispatchNode,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
-            LLVMMemory memory = language.getLLVMMemory();
-            LLVMGlobal vtableGlobal = ctx.findGlobal(vtable);
+            LLVMMemory memory = getLanguage().getLLVMMemory();
+            LLVMGlobal vtableGlobal = getContext().findGlobal(vtable);
             assert vtableGlobal != null;
             try {
                 LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal);
@@ -215,7 +209,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
         @TruffleBoundary
         protected LLVMFunctionDescriptor getFunctionDescriptor(LLVMNativePointer fp) {
-            return lookupContextReference(LLVMLanguage.class).get().getFunctionDescriptor(fp);
+            return getContext().getFunctionDescriptor(fp);
         }
 
         @TruffleBoundary

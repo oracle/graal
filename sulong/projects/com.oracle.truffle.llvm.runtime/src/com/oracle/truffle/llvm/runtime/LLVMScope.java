@@ -37,11 +37,11 @@ import java.util.Map.Entry;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -259,13 +259,13 @@ public class LLVMScope implements TruffleObject {
     @ExportMessage
     Object readMember(String globalName,
                     @Cached BranchProfile exception,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) throws UnknownIdentifierException {
+                    @CachedLibrary("this") InteropLibrary self) throws UnknownIdentifierException {
 
         if (contains(globalName)) {
             LLVMSymbol symbol = get(globalName);
             if (symbol != null && symbol.isFunction()) {
                 try {
-                    LLVMPointer value = context.getSymbol(symbol);
+                    LLVMPointer value = LLVMContext.get(self).getSymbol(symbol);
                     if (value != null) {
                         return LLVMManagedPointer.cast(value).getObject();
                     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -54,8 +52,8 @@ public abstract class LLVMVAListNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public LLVMManagedPointer createVAList(@CachedLanguage LLVMLanguage lang) {
-        Object vaListStorage = lang.getCapability(PlatformCapability.class).createVAListStorage(getRootNode());
+    public LLVMManagedPointer createVAList() {
+        Object vaListStorage = getLanguage().getCapability(PlatformCapability.class).createVAListStorage(getRootNode());
         return LLVMManagedPointer.create(vaListStorage);
     }
 

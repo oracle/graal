@@ -94,7 +94,7 @@ public final class LLVMFunctionCode {
         private final LLVMFunctionCode functionCode;
 
         TagSulongFunctionPointerNode(LLVMFunctionCode functionCode) {
-            super(LLVMLanguage.getLanguage());
+            super(LLVMLanguage.get(null));
             this.functionCode = functionCode;
         }
 
@@ -437,7 +437,7 @@ public final class LLVMFunctionCode {
     CallTarget getForeignCallTarget(LLVMFunctionDescriptor functionDescriptor) {
         if (foreignFunctionCallTarget == null) {
             CompilerDirectives.transferToInterpreter();
-            LLVMLanguage language = LLVMLanguage.getLanguage();
+            LLVMLanguage language = LLVMLanguage.get(null);
             LLVMSourceFunctionType sourceType = getFunction().getSourceType();
             LLVMInteropType interopType = language.getInteropType(sourceType);
 
@@ -458,7 +458,7 @@ public final class LLVMFunctionCode {
     CallTarget getForeignConstructorCallTarget(LLVMFunctionDescriptor functionDescriptor) {
         if (foreignConstructorCallTarget == null) {
             CompilerDirectives.transferToInterpreter();
-            LLVMLanguage language = LLVMLanguage.getLanguage();
+            LLVMLanguage language = LLVMLanguage.get(null);
             LLVMSourceFunctionType sourceType = getFunction().getSourceType();
             LLVMInteropType interopType = language.getInteropType(sourceType);
             LLVMInteropType extractedType = ((LLVMInteropType.Function) interopType).getParameter(0);

@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
@@ -123,7 +122,7 @@ public final class InitializeExternalNode extends LLVMNode {
     @ExplodeLoop
     public void execute(LLVMContext context, LLVMLocalScope localScope, LLVMDLOpen.RTLDFlags rtldFlags) {
         LLVMScope globalScope = context.getGlobalScope();
-        LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+        LLVMIntrinsicProvider intrinsicProvider = getLanguage().getCapability(LLVMIntrinsicProvider.class);
         NativeContextExtension nativeContextExtension = getNativeContextExtension(context);
         // functions and globals
         for (int i = 0; i < allocExternalSymbols.length; i++) {

@@ -40,7 +40,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -100,7 +99,7 @@ public final class SulongLibrary implements TruffleObject {
 
         @TruffleBoundary
         private CallTarget createCallTarget() {
-            LLVMLanguage language = LLVMLanguage.getLanguage();
+            LLVMLanguage language = LLVMLanguage.get(null);
             RootCallTarget startCallTarget = language.getStartFunctionCode().getLLVMIRFunctionSlowPath();
             Path applicationPath = Paths.get(mainFunction.getStringPath());
             RootNode rootNode = new LLVMGlobalRootNode(language, new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
@@ -220,17 +219,15 @@ public final class SulongLibrary implements TruffleObject {
         @Specialization(guards = {"library.main == cachedMain", "cachedMain != null"})
         static Object doCached(SulongLibrary library, Object[] args,
                         @Cached("library.main") @SuppressWarnings("unused") CachedMainFunction cachedMain,
-                        @Cached("create(cachedMain.getMainCallTarget())") DirectCallNode call,
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-            ctx.setMainLibraryLocator(library.libraryLocator);
+                        @Cached("create(cachedMain.getMainCallTarget())") DirectCallNode call) {
+            LLVMContext.get(call).setMainLibraryLocator(library.libraryLocator);
             return call.call(args);
         }
 
         @Specialization(replaces = "doCached", guards = "library.main != null")
         static Object doGeneric(SulongLibrary library, Object[] args,
-                        @Cached("create()") IndirectCallNode call,
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-            ctx.setMainLibraryLocator(library.libraryLocator);
+                        @Cached("create()") IndirectCallNode call) {
+            LLVMContext.get(call).setMainLibraryLocator(library.libraryLocator);
             return call.call(library.main.getMainCallTarget(), args);
         }
 

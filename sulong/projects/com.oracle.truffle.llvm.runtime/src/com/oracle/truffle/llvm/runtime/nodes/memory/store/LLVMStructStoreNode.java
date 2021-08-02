@@ -30,11 +30,9 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -84,15 +82,13 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
         // nothing to do
     }
 
-    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(language, address)", "!isAutoDerefHandle(language, value)"})
-    protected void doOp(LLVMNativePointer address, LLVMNativePointer value,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language) {
+    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(address)", "!isAutoDerefHandle(value)"})
+    protected void doOp(LLVMNativePointer address, LLVMNativePointer value) {
         memMove.executeWithTarget(address, value, getStructSize());
     }
 
-    @Specialization(guards = {"getStructSize() > 0", "isAutoDerefHandle(language, addr)", "isAutoDerefHandle(language, value)"})
+    @Specialization(guards = {"getStructSize() > 0", "isAutoDerefHandle(addr)", "isAutoDerefHandle(value)"})
     protected void doOpDerefHandle(LLVMNativePointer addr, LLVMNativePointer value,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
         doManaged(getReceiver.execute(addr), getReceiver.execute(value));
     }
@@ -102,9 +98,8 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
         memMove.executeWithTarget(address, value, getStructSize());
     }
 
-    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(language, address)"}, replaces = "doOp")
+    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(address)"}, replaces = "doOp")
     protected void doConvert(LLVMNativePointer address, LLVMPointer value,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         memMove.executeWithTarget(address, toNative.executeWithTarget(value), getStructSize());
     }

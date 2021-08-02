@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -40,7 +39,6 @@ import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
@@ -83,11 +81,11 @@ public abstract class LLVMAccessForeignObjectNode extends LLVMNode {
          * Helper for guards to check whether {@code obj} is an auto-deref handle (e.g. a wrapped
          * pointer). This helper assumes that an isPointer call returns true for {@code obj}.
          */
-        static boolean isWrappedAutoDerefHandle(LLVMLanguage language, LLVMNativePointerSupport.IsPointerNode isPointerNode,
+        final boolean isWrappedAutoDerefHandle(LLVMNativePointerSupport.IsPointerNode isPointerNode,
                         LLVMNativePointerSupport.AsPointerNode asPointerNode, Object obj) {
             try {
                 assert isPointerNode.execute(obj);
-                return LLVMNode.isAutoDerefHandle(language, asPointerNode.execute(obj));
+                return isAutoDerefHandle(asPointerNode.execute(obj));
             } catch (UnsupportedMessageException ex) {
                 throw CompilerDirectives.shouldNotReachHere(ex);
             }
@@ -95,9 +93,8 @@ public abstract class LLVMAccessForeignObjectNode extends LLVMNode {
 
         public abstract LLVMPointer execute(Object foreign, long offset);
 
-        @Specialization(limit = "3", guards = {"isPointerNode.execute(receiver)", "!isWrappedAutoDerefHandle(language, isPointerNode, asPointerNode, receiver)"})
+        @Specialization(limit = "3", guards = {"isPointerNode.execute(receiver)", "!isWrappedAutoDerefHandle(isPointerNode, asPointerNode, receiver)"})
         LLVMNativePointer doPointer(Object receiver, long offset,
-                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
                         @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointerNode,
                         @Cached LLVMNativePointerSupport.AsPointerNode asPointerNode) {
             try {
@@ -108,9 +105,8 @@ public abstract class LLVMAccessForeignObjectNode extends LLVMNode {
             }
         }
 
-        @Specialization(limit = "3", guards = {"isPointerNode.execute(receiver)", "isWrappedAutoDerefHandle(language, isPointerNode, asPointerNode, receiver)"})
+        @Specialization(limit = "3", guards = {"isPointerNode.execute(receiver)", "isWrappedAutoDerefHandle(isPointerNode, asPointerNode, receiver)"})
         LLVMManagedPointer doDerefHandle(Object receiver, long offset,
-                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode receiverNode,
                         @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointerNode,
                         @Cached LLVMNativePointerSupport.AsPointerNode asPointerNode) {

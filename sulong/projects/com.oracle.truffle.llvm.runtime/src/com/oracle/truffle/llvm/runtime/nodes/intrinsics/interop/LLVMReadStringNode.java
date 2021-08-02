@@ -39,7 +39,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -122,7 +121,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
         boolean isReadOnlyMemory(LLVMPointer address) {
             CompilerAsserts.neverPartOfCompilation();
-            LLVMGlobal global = lookupContextReference(LLVMLanguage.class).get().findGlobal(address);
+            LLVMGlobal global = getContext().findGlobal(address);
             if (global != null) {
                 return global.isReadOnly();
             } else {

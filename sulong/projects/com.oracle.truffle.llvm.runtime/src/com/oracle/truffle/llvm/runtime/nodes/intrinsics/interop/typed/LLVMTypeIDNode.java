@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,13 +31,10 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -53,11 +50,11 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
 
     @CompilationFinal private LLVMInteropType cachedType;
 
-    protected final LLVMInteropType getType(ContextReference<LLVMContext> ctxRef, LLVMPointer pointer) {
-        LLVMContext context = ctxRef.get();
+    protected final LLVMInteropType getType(LLVMPointer pointer) {
+        LLVMContext context = getContext();
         if (cachedType == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            LLVMGlobal global = ctxRef.get().findGlobal(pointer);
+            LLVMGlobal global = context.findGlobal(pointer);
             if (global == null) {
                 return null;
             }
@@ -70,9 +67,8 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    LLVMInteropType doGlobal(LLVMPointer pointer,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
-        LLVMInteropType type = getType(ctxRef, pointer);
+    LLVMInteropType doGlobal(LLVMPointer pointer) {
+        LLVMInteropType type = getType(pointer);
         if (type instanceof LLVMInteropType.Array) {
             return ((LLVMInteropType.Array) type).elementType;
         }

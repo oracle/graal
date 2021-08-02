@@ -33,7 +33,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
@@ -79,14 +78,14 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
+    protected final PrintStream nativeCallStatisticsStream() {
         CompilerAsserts.neverPartOfCompilation();
-        return context.get().nativeCallStatsStream();
+        return getContext().nativeCallStatsStream();
     }
 
-    protected static boolean nativeCallStatisticsEnabled(ContextReference<LLVMContext> context) {
+    protected final boolean nativeCallStatisticsEnabled() {
         CompilerAsserts.neverPartOfCompilation();
-        return nativeCallStatisticsStream(context) != null;
+        return nativeCallStatisticsStream() != null;
     }
 
     protected static boolean isFunctionDescriptor(Object object) {
@@ -113,7 +112,7 @@ public abstract class LLVMNode extends Node {
                 assert !(datalayoutNode instanceof RootNode) : "root node must not have a parent";
                 datalayoutNode = datalayoutNode.getParent();
             } else {
-                return LLVMLanguage.getLanguage().getDefaultDataLayout();
+                return LLVMLanguage.get(null).getDefaultDataLayout();
             }
         }
         return ((LLVMHasDatalayoutNode) datalayoutNode).getDatalayout();
@@ -189,13 +188,13 @@ public abstract class LLVMNode extends Node {
         return String.valueOf(value);
     }
 
-    public static boolean isAutoDerefHandle(LLVMLanguage language, LLVMNativePointer addr) {
-        return isAutoDerefHandle(language, addr.asNative());
+    public final boolean isAutoDerefHandle(LLVMNativePointer addr) {
+        return isAutoDerefHandle(addr.asNative());
     }
 
-    public static boolean isAutoDerefHandle(LLVMLanguage language, long addr) {
+    public final boolean isAutoDerefHandle(long addr) {
         // checking the bit is cheaper than getting the assumption in interpreted mode
-        if (CompilerDirectives.inCompiledCode() && language.getNoDerefHandleAssumption().isValid()) {
+        if (CompilerDirectives.inCompiledCode() && getLanguage().getNoDerefHandleAssumption().isValid()) {
             return false;
         }
         return LLVMHandleMemoryBase.isDerefHandleMemory(addr);
@@ -223,8 +222,16 @@ public abstract class LLVMNode extends Node {
         return null;
     }
 
+    public final LLVMContext getContext() {
+        return LLVMContext.get(this);
+    }
+
+    public final LLVMLanguage getLanguage() {
+        return LLVMLanguage.get(this);
+    }
+
     public static Assumption singleContextAssumption() {
-        return LLVMLanguage.getLanguage().singleContextAssumption;
+        return LLVMLanguage.get(null).singleContextAssumption;
     }
 
     /**
