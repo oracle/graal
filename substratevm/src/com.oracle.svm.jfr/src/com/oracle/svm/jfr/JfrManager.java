@@ -193,7 +193,7 @@ public class JfrManager {
                     return Duration.ofMinutes(time).toNanos();
                 } else if ("h".equals(unit)) {
                     return Duration.ofHours(time).toNanos();
-                } else if ("f".equals(unit)) {
+                } else if ("d".equals(unit)) {
                     return Duration.ofDays(time).toNanos();
                 }
                 throw new IllegalArgumentException("Unit is invalid.");
@@ -233,6 +233,7 @@ public class JfrManager {
                     case 'G':
                         return number * 1024 * 1024 * 1024;
                     default:
+                        // Unknown unit, number is treated as plain bytes
                         return number;
                 }
             } catch (IllegalArgumentException e) {
