@@ -36,7 +36,6 @@ import java.util.zip.ZipFile;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
@@ -55,7 +54,7 @@ public final class Classpath {
         } else {
             // regular file.
 
-            EspressoContext context = EspressoLanguage.getCurrentContext();
+            EspressoContext context = EspressoContext.get(null);
             if (context.getJavaVersion().modulesEnabled()) {
                 JImageLibrary library = context.jimageLibrary();
                 TruffleObject image = library.open(name);
@@ -76,7 +75,7 @@ public final class Classpath {
      * Creates a classpath {@link Entry} from a given file system path, but forces it to never be a
      * modules entry. Useful if trying to obtain a classpath {@link Entry} when there is no
      * {@link EspressoContext} available.
-     * 
+     *
      * @param name a file system path denoting a classpath entry
      */
     public static Entry createNonModuleEntry(String name) {

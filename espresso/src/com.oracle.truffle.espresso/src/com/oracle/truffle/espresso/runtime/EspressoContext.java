@@ -55,10 +55,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -988,5 +990,11 @@ public final class EspressoContext {
 
     public void rerunclinit(ObjectKlass oldKlass) {
         jdwpContext.rerunclinit(oldKlass);
+    }
+
+    private static final ContextReference<EspressoContext> REFERENCE = ContextReference.create(EspressoLanguage.class);
+
+    public static EspressoContext get(Node node) {
+        return REFERENCE.get(node);
     }
 }

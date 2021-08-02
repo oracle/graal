@@ -25,13 +25,11 @@ package com.oracle.truffle.espresso.substitutions;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.FinalizationSupport;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -119,12 +117,12 @@ public final class Target_java_lang_ref_Reference {
 
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
-    abstract static class Enqueue extends Node {
+    abstract static class Enqueue extends SubstitutionNode {
         abstract boolean execute(@JavaType(java.lang.ref.Reference.class) StaticObject self);
 
         @Specialization
         boolean doCached(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_ref_Reference_enqueue.getCallTargetNoSubstitution())") DirectCallNode originalEnqueue) {
             if (context.getJavaVersion().java9OrLater()) {
                 /*

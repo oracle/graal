@@ -26,9 +26,7 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -43,10 +41,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -66,7 +62,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * @see InteropLibrary#isNull(Object)
      */
     @Substitution
-    abstract static class IsNull extends Node {
+    abstract static class IsNull extends SubstitutionNode {
         static final int LIMIT = 4;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -87,7 +83,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * @see InteropLibrary#isBoolean(Object)
      */
     @Substitution
-    abstract static class IsBoolean extends Node {
+    abstract static class IsBoolean extends SubstitutionNode {
         static final int LIMIT = 4;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -107,7 +103,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
-    abstract static class AsBoolean extends Node {
+    abstract static class AsBoolean extends SubstitutionNode {
         static final int LIMIT = 4;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -115,13 +111,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         boolean doCached(@JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @Cached BranchProfile error) {
             try {
                 return interop.asBoolean(unwrap(receiver));
             } catch (InteropException e) {
                 error.enter();
-                throw throwInteropException(e, context.getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1550,7 +1545,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @ReportPolymorphism
-    abstract static class HasBufferElements extends Node {
+    abstract static class HasBufferElements extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -1565,7 +1560,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     /**
      * Returns the buffer size of the receiver, in bytes.
-     * 
+     *
      * <p>
      * Invoking this message does not cause any observable side-effects.
      *
@@ -1574,7 +1569,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
-    abstract static class GetBufferSize extends Node {
+    abstract static class GetBufferSize extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract long execute(@JavaType(Object.class) StaticObject receiver);
@@ -1583,13 +1578,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         long doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.getBufferSize(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1616,7 +1610,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
-    abstract static class IsBufferWritable extends Node {
+    abstract static class IsBufferWritable extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -1625,13 +1619,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.isBufferWritable(unwrap(receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1659,7 +1652,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
-    abstract static class ReadBufferByte extends Node {
+    abstract static class ReadBufferByte extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract byte execute(@JavaType(Object.class) StaticObject receiver, long byteOffset);
@@ -1669,13 +1662,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.readBufferByte(unwrap(receiver), byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1702,7 +1694,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
-    abstract static class WriteBufferByte extends Node {
+    abstract static class WriteBufferByte extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, long byteOffset, byte value);
@@ -1713,13 +1705,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         byte value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 interop.writeBufferByte(unwrap(receiver), byteOffset, value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1762,7 +1753,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class ReadBufferShort extends Node {
+    abstract static class ReadBufferShort extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract short execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -1773,9 +1764,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 return interop.readBufferShort(unwrap(receiver),
                                 order == littleEndian
@@ -1784,7 +1774,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1805,7 +1795,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Throws UnsupportedMessageException if and only if either
      * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
      * returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -1814,7 +1804,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class WriteBufferShort extends Node {
+    abstract static class WriteBufferShort extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, short value);
@@ -1826,9 +1816,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         short value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 interop.writeBufferShort(unwrap(receiver),
                                 order == littleEndian
@@ -1838,7 +1827,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1862,7 +1851,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if
      * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -1871,7 +1860,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class ReadBufferInt extends Node {
+    abstract static class ReadBufferInt extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract int execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -1882,9 +1871,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 return interop.readBufferInt(unwrap(receiver),
                                 order == littleEndian
@@ -1893,7 +1881,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1914,7 +1902,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Throws UnsupportedMessageException if and only if either
      * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
      * returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -1923,7 +1911,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class WriteBufferInt extends Node {
+    abstract static class WriteBufferInt extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, int value);
@@ -1935,9 +1923,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         int value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 interop.writeBufferInt(unwrap(receiver),
                                 order == littleEndian
@@ -1947,7 +1934,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -1970,7 +1957,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if
      * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -1979,7 +1966,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class ReadBufferLong extends Node {
+    abstract static class ReadBufferLong extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract long execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -1990,9 +1977,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 return interop.readBufferLong(unwrap(receiver),
                                 order == littleEndian
@@ -2001,7 +1987,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -2022,7 +2008,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Throws UnsupportedMessageException if and only if either
      * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
      * returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -2031,7 +2017,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class WriteBufferLong extends Node {
+    abstract static class WriteBufferLong extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, long value);
@@ -2043,9 +2029,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         long value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 interop.writeBufferLong(unwrap(receiver),
                                 order == littleEndian
@@ -2055,7 +2040,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -2078,7 +2063,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if
      * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -2087,7 +2072,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class ReadBufferFloat extends Node {
+    abstract static class ReadBufferFloat extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract float execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -2098,9 +2083,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 return interop.readBufferFloat(unwrap(receiver),
                                 order == littleEndian
@@ -2109,7 +2093,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -2130,7 +2114,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Throws UnsupportedMessageException if and only if either
      * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
      * returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -2139,7 +2123,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class WriteBufferFloat extends Node {
+    abstract static class WriteBufferFloat extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, float value);
@@ -2151,9 +2135,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         float value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 interop.writeBufferFloat(unwrap(receiver),
                                 order == littleEndian
@@ -2163,7 +2146,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -2186,7 +2169,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if
      * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -2195,7 +2178,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class ReadBufferDouble extends Node {
+    abstract static class ReadBufferDouble extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract double execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -2206,9 +2189,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 return interop.readBufferDouble(unwrap(receiver),
                                 order == littleEndian
@@ -2217,7 +2200,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 byteOffset);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }
@@ -2238,7 +2221,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Throws UnsupportedMessageException if and only if either
      * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
      * returns {@code false}
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -2247,7 +2230,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    abstract static class WriteBufferDouble extends Node {
+    abstract static class WriteBufferDouble extends SubstitutionNode {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, double value);
@@ -2259,9 +2242,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long byteOffset,
                         double value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile,
-                        @Cached("getLittleEndian(contextRef.get())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+                        @Cached("getLittleEndian(getContext())") @JavaType(ByteOrder.class) StaticObject littleEndian) {
             try {
                 interop.writeBufferDouble(unwrap(receiver),
                                 order == littleEndian
@@ -2271,7 +2253,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                                 value);
             } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropException(e, contextRef.get().getMeta());
+                throw throwInteropException(e, getMeta());
             }
         }
     }

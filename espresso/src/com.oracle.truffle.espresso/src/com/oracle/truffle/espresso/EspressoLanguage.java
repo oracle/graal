@@ -25,10 +25,6 @@ package com.oracle.truffle.espresso;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
@@ -39,6 +35,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
@@ -52,10 +49,14 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
+import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @Registration(id = EspressoLanguage.ID, //
@@ -167,7 +168,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected CallTarget parse(final ParsingRequest request) throws Exception {
-        assert getCurrentContext().isInitialized();
+        assert EspressoContext.get(null).isInitialized();
         String contents = request.getSource().getCharacters().toString();
         if (DestroyVMNode.EVAL_NAME.equals(contents)) {
             RootNode node = new DestroyVMNode(this);
@@ -198,10 +199,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public Signatures getSignatures() {
         return signatures;
-    }
-
-    public static EspressoContext getCurrentContext() {
-        return getCurrentContext(EspressoLanguage.class);
     }
 
     @Override
@@ -267,5 +264,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             }
             return foreignShape;
         }
+    }
+
+    private static final LanguageReference<EspressoLanguage> REFERENCE = LanguageReference.create(EspressoLanguage.class);
+
+    public static EspressoLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 }

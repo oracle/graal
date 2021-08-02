@@ -23,14 +23,13 @@
 
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
@@ -58,7 +57,7 @@ public abstract class DoubleArrayStoreNode extends QuickNode {
     @Specialization(guards = "array.isForeignObject()")
     void doForeign(StaticObject array, int index, double value,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
         ForeignArrayUtils.writeForeignArrayElement(array, index, value, interop, context.getMeta(), exceptionProfile);
     }

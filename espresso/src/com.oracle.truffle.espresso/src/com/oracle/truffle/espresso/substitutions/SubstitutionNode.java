@@ -20,29 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.espresso.substitutions;
 
-package com.oracle.truffle.espresso.nodes.interop;
-
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class ExitCodeNode extends RootNode {
-    public static final String EVAL_NAME = "<ExitCode>";
+abstract class SubstitutionNode extends Node implements ContextAccess {
 
-    public ExitCodeNode(TruffleLanguage<?> language) {
-        super(language);
+    public final EspressoContext getContext() {
+        return EspressoContext.get(this);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        assert frame.getArguments().length == 0;
-        EspressoContext context = EspressoContext.get(this);
-        if (!context.isClosing()) {
-            return StaticObject.NULL;
-        }
-        return context.getExitStatus();
-    }
 }

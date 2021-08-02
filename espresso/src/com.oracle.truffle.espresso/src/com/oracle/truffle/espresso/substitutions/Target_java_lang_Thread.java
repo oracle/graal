@@ -27,12 +27,10 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -177,13 +175,13 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class Start0 extends Node {
+    abstract static class Start0 extends SubstitutionNode {
         abstract void execute(@JavaType(Thread.class) StaticObject self);
 
         @Specialization
         @TruffleBoundary
         void doCached(@JavaType(Thread.class) StaticObject self,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_Thread_exit.getCallTarget())") DirectCallNode threadExit) {
             Meta meta = context.getMeta();
             if (context.multiThreadingEnabled()) {
@@ -248,7 +246,7 @@ public final class Target_java_lang_Thread {
             } else {
                 String reason = context.getMultiThreadingDisabledReason();
                 Klass threadKlass = self.getKlass();
-                EspressoLanguage.getCurrentContext().getLogger().warning(() -> {
+                EspressoContext.get(null).getLogger().warning(() -> {
                     String guestName = Target_java_lang_Thread.getThreadName(meta, self);
                     String className = threadKlass.getExternalName();
                     return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
@@ -341,13 +339,13 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class GetState extends Node {
+    abstract static class GetState extends SubstitutionNode {
         abstract @JavaType(internalName = "Ljava/lang/Thread$State;") StaticObject execute(@JavaType(Thread.class) StaticObject self);
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/Thread$State;")
         StaticObject execute(@JavaType(Thread.class) StaticObject self,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
             Meta meta = context.getMeta();
             return (StaticObject) toThreadState.call(meta.java_lang_Thread_threadStatus.getInt(self));

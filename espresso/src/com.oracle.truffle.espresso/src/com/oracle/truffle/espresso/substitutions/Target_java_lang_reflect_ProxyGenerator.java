@@ -22,12 +22,10 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.redefinition.plugins.jdkproxy.JDKProxyRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -36,7 +34,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Target_java_lang_reflect_ProxyGenerator {
 
     @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
-    abstract static class GenerateProxyClass extends Node {
+    abstract static class GenerateProxyClass extends SubstitutionNode {
 
         abstract @JavaType(byte[].class) StaticObject execute(
                         @JavaType(String.class) StaticObject proxyName, @JavaType(Class[].class) StaticObject interfaces, int classModifier);
@@ -47,7 +45,7 @@ public final class Target_java_lang_reflect_ProxyGenerator {
                         @JavaType(String.class) StaticObject proxyName,
                         @JavaType(Class[].class) StaticObject interfaces,
                         int classModifier,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_reflect_ProxyGenerator_generateProxyClass.getCallTargetNoSubstitution())") DirectCallNode original) {
             // for class redefinition we need to collect details about generated JDK Dynamic proxies
             JDKProxyRedefinitionPlugin plugin = context.lookup(JDKProxyRedefinitionPlugin.class);

@@ -31,13 +31,11 @@ import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.ffi.Buffer;
@@ -182,7 +180,7 @@ public final class Target_sun_misc_Unsafe {
      * use the most significant 32 bits. It is hard to imagine a JVM technology which needs more
      * than a few bits to encode an offset within a non-array object, However, for consistency with
      * other methods in this class, this method reports its result as a long value.
-     * 
+     *
      * @see #getInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -311,10 +309,10 @@ public final class Target_sun_misc_Unsafe {
     /*
      * The following three methods are there to enable atomic operations on sub-word fields, which
      * would be impossible due to the safety checks in the static object model.
-     * 
+     *
      * All sub-word CAE operations route to `compareAndExchangeInt` in Java code, which, if left
      * as-is would access, for example, byte fields as ints, which is forbidden by the object model.
-     * 
+     *
      * As a workaround, create a substitution for sub-words CAE operations (to which CAS are routed
      * in Java code), and check the field kind to call the corresponding static property method.
      */
@@ -684,7 +682,7 @@ public final class Target_sun_misc_Unsafe {
     // region get*(long offset)
 
     @Substitution(hasReceiver = true)
-    abstract static class GetByte extends Node {
+    abstract static class GetByte extends SubstitutionNode {
 
         abstract byte execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
@@ -692,13 +690,13 @@ public final class Target_sun_misc_Unsafe {
         byte doCached(
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getByte(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class GetChar extends Node {
+    abstract static class GetChar extends SubstitutionNode {
 
         abstract char execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
@@ -706,13 +704,13 @@ public final class Target_sun_misc_Unsafe {
         char doCached(
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getChar(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class GetShort extends Node {
+    abstract static class GetShort extends SubstitutionNode {
 
         abstract short execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
@@ -720,13 +718,13 @@ public final class Target_sun_misc_Unsafe {
         short doCached(
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getShort(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class GetInt extends Node {
+    abstract static class GetInt extends SubstitutionNode {
 
         abstract int execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
@@ -734,13 +732,13 @@ public final class Target_sun_misc_Unsafe {
         int doCached(
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getInt(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class GetFloat extends Node {
+    abstract static class GetFloat extends SubstitutionNode {
 
         abstract float execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
@@ -748,13 +746,13 @@ public final class Target_sun_misc_Unsafe {
         float doCached(
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getFloat(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class GetDouble extends Node {
+    abstract static class GetDouble extends SubstitutionNode {
 
         abstract double execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
@@ -762,13 +760,13 @@ public final class Target_sun_misc_Unsafe {
         double doCached(
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getDouble(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class GetLong extends Node {
+    abstract static class GetLong extends SubstitutionNode {
 
         abstract long execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
@@ -776,7 +774,7 @@ public final class Target_sun_misc_Unsafe {
         long doCached(
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getLong(address);
         }
     }
@@ -968,7 +966,7 @@ public final class Target_sun_misc_Unsafe {
      * @see #getByte
      */
     @Substitution(hasReceiver = true)
-    abstract static class PutByte extends Node {
+    abstract static class PutByte extends SubstitutionNode {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, byte value);
 
@@ -977,13 +975,13 @@ public final class Target_sun_misc_Unsafe {
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
                         byte value,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putByte(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class PutChar extends Node {
+    abstract static class PutChar extends SubstitutionNode {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, char value);
 
@@ -992,13 +990,13 @@ public final class Target_sun_misc_Unsafe {
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
                         char value,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putChar(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class PutShort extends Node {
+    abstract static class PutShort extends SubstitutionNode {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, short value);
 
@@ -1007,13 +1005,13 @@ public final class Target_sun_misc_Unsafe {
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
                         short value,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putShort(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class PutInt extends Node {
+    abstract static class PutInt extends SubstitutionNode {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, int value);
 
@@ -1022,13 +1020,13 @@ public final class Target_sun_misc_Unsafe {
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
                         int value,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putInt(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class PutFloat extends Node {
+    abstract static class PutFloat extends SubstitutionNode {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, float value);
 
@@ -1037,13 +1035,13 @@ public final class Target_sun_misc_Unsafe {
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
                         float value,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putFloat(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class PutDouble extends Node {
+    abstract static class PutDouble extends SubstitutionNode {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, double value);
 
@@ -1052,13 +1050,13 @@ public final class Target_sun_misc_Unsafe {
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
                         double value,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putDouble(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    abstract static class PutLong extends Node {
+    abstract static class PutLong extends SubstitutionNode {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long value);
 
@@ -1067,7 +1065,7 @@ public final class Target_sun_misc_Unsafe {
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
                         long value,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putLong(address, value);
         }
     }
@@ -1299,7 +1297,7 @@ public final class Target_sun_misc_Unsafe {
      * absolute addresses can use long offsets and null base pointers to express the field locations
      * in a form usable by {@link #getInt}. Therefore, code which will be ported to such JVMs on
      * 64-bit platforms must preserve all bits of static field offsets.
-     * 
+     *
      * @see #getInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
@@ -1401,7 +1399,7 @@ public final class Target_sun_misc_Unsafe {
      * special is usually required to ensure this when called from Java (in which there will
      * ordinarily be a live reference to the thread) but this is not nearly-automatically so when
      * calling from native code.
-     * 
+     *
      * @param thread the thread to unpark.
      *
      */
@@ -1447,7 +1445,7 @@ public final class Target_sun_misc_Unsafe {
 
     /**
      * Ensures lack of reordering of loads before the fence with loads or stores after the fence.
-     * 
+     *
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
@@ -1457,7 +1455,7 @@ public final class Target_sun_misc_Unsafe {
 
     /**
      * Ensures lack of reordering of stores before the fence with loads or stores after the fence.
-     * 
+     *
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
@@ -1468,7 +1466,7 @@ public final class Target_sun_misc_Unsafe {
     /**
      * Ensures lack of reordering of loads or stores before the fence with loads or stores after the
      * fence.
-     * 
+     *
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
