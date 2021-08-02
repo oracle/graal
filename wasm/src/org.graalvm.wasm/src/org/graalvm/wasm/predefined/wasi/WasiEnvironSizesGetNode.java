@@ -40,8 +40,8 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import java.util.Map;
+
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
@@ -49,7 +49,8 @@ import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import java.util.Map;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class WasiEnvironSizesGetNode extends WasmBuiltinRootNode {
 
@@ -65,7 +66,7 @@ public final class WasiEnvironSizesGetNode extends WasmBuiltinRootNode {
 
     @TruffleBoundary
     private int environSizesGet(int environCountAddress, int environSizeAddress) {
-        final Map<String, String> env = contextReference().get().environment().getEnvironment();
+        final Map<String, String> env = getContext().environment().getEnvironment();
         int size = 0;
         for (final Map.Entry<String, String> entry : env.entrySet()) {
             size += WasmMemory.encodedStringLength(entry.getKey() + "=" + entry.getValue());

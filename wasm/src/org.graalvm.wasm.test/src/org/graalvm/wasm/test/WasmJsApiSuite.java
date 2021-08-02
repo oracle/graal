@@ -489,7 +489,7 @@ public class WasmJsApiSuite {
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
                             null,
                             null,
-                            Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
+                            Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.get(null).language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 42;

@@ -77,7 +77,7 @@ public class Instance extends Dictionary {
         this.truffleContext = truffleContext;
         this.module = module;
         this.importObject = importObject;
-        final WasmContext instanceContext = WasmContext.getCurrent();
+        final WasmContext instanceContext = WasmContext.get(null);
         this.instance = instantiateModule(instanceContext);
         instanceContext.linker().tryLink(instance);
         this.exportObject = initializeExports(instanceContext);

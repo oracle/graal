@@ -40,14 +40,15 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
 
@@ -63,7 +64,7 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
 
     @TruffleBoundary
     private int argsSizesGet(int argcAddress, int argvBufSizeAddress) {
-        final String[] arguments = contextReference().get().environment().getApplicationArguments();
+        final String[] arguments = getContext().environment().getApplicationArguments();
         final int argc = arguments.length;
         int argvBufSize = 0;
         for (final String argument : arguments) {
