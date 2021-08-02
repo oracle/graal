@@ -406,29 +406,27 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public static boolean verifyAssignableTypes(BigBang bb) {
         List<AnalysisType> allTypes = bb.getUniverse().getTypes();
 
-        boolean pass = true;
-        for (AnalysisType t1 : allTypes) {
-            if (t1.assignableTypes != null) {
-                for (AnalysisType t2 : allTypes) {
-                    boolean expected;
-                    if (t2.isInstantiated()) {
-                        expected = t1.isAssignableFrom(t2);
-                    } else {
-                        expected = false;
-                    }
-                    boolean actual = t1.assignableTypes.getState().containsType(t2);
+        Set<String> mismatchedAssignableResults = ConcurrentHashMap.newKeySet();
+        allTypes.parallelStream().filter(t -> t.assignableTypes != null).forEach(t1 -> {
+            for (AnalysisType t2 : allTypes) {
+                boolean expected;
+                if (t2.isInstantiated()) {
+                    expected = t1.isAssignableFrom(t2);
+                } else {
+                    expected = false;
+                }
+                boolean actual = t1.assignableTypes.getState().containsType(t2);
 
-                    if (actual != expected) {
-                        System.out.println("assignableTypes mismatch: " +
-                                        t1.toJavaName(true) + " (instantiated: " + t1.isInstantiated() + ") - " +
-                                        t2.toJavaName(true) + " (instantiated: " + t2.isInstantiated() + "): " +
-                                        "expected=" + expected + ", actual=" + actual);
-                        pass = false;
-                    }
+                if (actual != expected) {
+                    mismatchedAssignableResults.add("assignableTypes mismatch: " +
+                                    t1.toJavaName(true) + " (instantiated: " + t1.isInstantiated() + ") - " +
+                                    t2.toJavaName(true) + " (instantiated: " + t2.isInstantiated() + "): " +
+                                    "expected=" + expected + ", actual=" + actual);
                 }
             }
-        }
-        if (!pass) {
+        });
+        if (!mismatchedAssignableResults.isEmpty()) {
+            mismatchedAssignableResults.forEach(System.err::println);
             throw new AssertionError("Verification of all-instantiated type flows failed");
         }
         return true;
