@@ -75,10 +75,6 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
         instanceCount.incrementAndGet();
     }
 
-    public static LanguageContext getContext() {
-        return getCurrentContext(LanguageSPITestLanguage.class);
-    }
-
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
@@ -135,5 +131,11 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
         context.disposeCalled++;
     }
+
+    public static LanguageContext getContext() {
+        return CONTEXT_REF.get(null);
+    }
+
+    private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(LanguageSPITestLanguage.class);
 
 }

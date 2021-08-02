@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
@@ -77,9 +78,9 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
     @Test
     public void testContextReference() {
         assertFails(() -> ContextReference.create(null), NullPointerException.class);
-        assertFails(() -> ContextReference.create(TruffleLanguage.class), IllegalArgumentException.class);
+        assertFails(() -> ContextReference.create(TruffleLanguage.class).get(null), IllegalArgumentException.class);
         ContextReference<ProxyLanguage.LanguageContext> ref = ContextReference.create(ProxyLanguage.class);
-        assertFails(() -> ref.get(), AssertionError.class, (e) -> {
+        assertFails(() -> ref.get(null), AssertionError.class, (e) -> {
             assertEquals("No polyglot context is entered. A language or context reference must not be used if there is no polyglot context entered.", e.getMessage());
         });
 
@@ -90,10 +91,7 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
         assertSame(languageEnv, ref.get(new TestRootNode(language)).getEnv());
 
         ContextReference<ContextAPITestLanguage.LanguageContext> invalidRef = ContextReference.create(ContextAPITestLanguage.class);
-        assertFails(() -> invalidRef.get(), AssertionError.class, (e) -> {
-            assertEquals("The language " + ContextAPITestLanguage.class.getName() + " is not yet created for the currently entered context and can therefore not be accessed. " +
-                            "Initialize the language explicitly before accessing a language or context reference.", e.getMessage());
-        });
+        assertNull(invalidRef.get(null));
 
         assertSame(ref, ContextReference.create(ProxyLanguage.class));
 
@@ -108,9 +106,9 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
     public void testLanguageReference() {
         // try invalid language
         assertFails(() -> LanguageReference.create(null), NullPointerException.class);
-        assertFails(() -> LanguageReference.create(TruffleLanguage.class), IllegalArgumentException.class);
+        assertFails(() -> LanguageReference.create(TruffleLanguage.class).get(null), IllegalArgumentException.class);
         LanguageReference<ProxyLanguage> ref = LanguageReference.create(ProxyLanguage.class);
-        assertFails(() -> ref.get(), AssertionError.class, (e) -> {
+        assertFails(() -> ref.get(null), AssertionError.class, (e) -> {
             assertEquals("No polyglot context is entered. A language or context reference must not be used if there is no polyglot context entered.", e.getMessage());
         });
 
@@ -122,10 +120,7 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
 
         LanguageReference<ContextAPITestLanguage> invalidRef = LanguageReference.create(ContextAPITestLanguage.class);
 
-        assertFails(() -> invalidRef.get(), AssertionError.class, (e) -> {
-            assertEquals("The language " + ContextAPITestLanguage.class.getName() + " is not yet created for the currently entered context and can therefore not be accessed. " +
-                            "Initialize the language explicitly before accessing a language or context reference.", e.getMessage());
-        });
+        assertNull(invalidRef.get(null));
 
         assertSame(ref, LanguageReference.create(ProxyLanguage.class));
 
@@ -149,6 +144,7 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
 
     }
 
+    @SuppressWarnings("deprecation")
     private static class ContextSupplierTestNode extends Node {
 
         ContextSupplierTestNode() {
@@ -158,12 +154,12 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
         @SuppressWarnings("unchecked")
         public void execute() {
             try {
-                lookupContextReference(TruffleLanguage.class);
+                lookupContextReference(TruffleLanguage.class).get();
                 fail();
             } catch (IllegalArgumentException e) {
             }
             try {
-                lookupContextReference(InvalidLanguage.class);
+                lookupContextReference(InvalidLanguage.class).get();
                 fail();
             } catch (IllegalArgumentException e) {
             }
@@ -174,13 +170,14 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
 
             for (Class<? extends Language1> language : LANGUAGE_CLASSES) {
                 ContextReference<Env> supplier = lookupContextReference(language);
-                Env value = supplier.get();
+                Env value = supplier.get(null);
                 assertSame(Language1.getContext(language), value);
-                assertSame(value, supplier.get());
+                assertSame(value, supplier.get(null));
             }
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static class LanguageSupplierTestNode extends Node {
 
         LanguageSupplierTestNode() {
@@ -190,12 +187,12 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
         @SuppressWarnings("unchecked")
         public void execute() {
             try {
-                lookupLanguageReference(TruffleLanguage.class);
+                lookupLanguageReference(TruffleLanguage.class).get();
                 fail();
             } catch (IllegalArgumentException e) {
             }
             try {
-                lookupLanguageReference(InvalidLanguage.class);
+                lookupLanguageReference(InvalidLanguage.class).get();
                 fail();
             } catch (IllegalArgumentException e) {
             }
@@ -206,13 +203,14 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
 
             for (Class<? extends Language1> language : LANGUAGE_CLASSES) {
                 LanguageReference<? extends Language1> supplier = lookupLanguageReference(language);
-                Language1 value = supplier.get();
+                Language1 value = supplier.get(null);
                 assertSame(Language1.getLanguage(language), value);
-                assertSame(value, supplier.get());
+                assertSame(value, supplier.get(null));
             }
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Registration(id = LANGUAGE1, name = LANGUAGE1)
     public static class Language1 extends TruffleLanguage<Env> {
 

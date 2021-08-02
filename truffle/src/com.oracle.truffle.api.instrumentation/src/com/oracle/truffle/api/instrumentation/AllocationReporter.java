@@ -58,6 +58,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Reporter of guest language value allocations. Language implementation ought to use this class to
@@ -361,10 +362,6 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     void example() {
     }
 
-    static ContextObject getCurrentContext() {
-        return getCurrentContext(AllocationReporterSnippets.class);
-    }
-
     // @formatter:off
     // BEGIN: AllocationReporterSnippets#example
     @Override
@@ -374,7 +371,7 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     }
 
     Object allocateNew() {
-        AllocationReporter reporter = getCurrentContext().getReporter();
+        AllocationReporter reporter = ContextObject.get(null).getReporter();
         // Test if the reporter is active, we should compute the size estimate
         if (reporter.isActive()) {
             long size = findSizeEstimate();
@@ -392,7 +389,7 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     }
 
     Object allocateComplex() {
-        AllocationReporter reporter = getCurrentContext().getReporter();
+        AllocationReporter reporter = ContextObject.get(null).getReporter();
         // If the allocated size is a constant, onEnter() and onReturnValue()
         // can be called without a fast-path performance penalty when not active
         reporter.onEnter(null, 0, 16);
@@ -433,6 +430,10 @@ class ContextObject {
 
     public AllocationReporter getReporter() {
         return reporter;
+    }
+
+    static ContextObject get(@SuppressWarnings("unused") Node node) {
+        return null;
     }
 
 }

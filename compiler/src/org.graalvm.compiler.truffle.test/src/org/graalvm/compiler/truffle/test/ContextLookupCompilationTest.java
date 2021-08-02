@@ -62,6 +62,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+// we suppress deprecation until the old APIs are gone
+// we should not break compilation of old APIs in the meantime
+@SuppressWarnings("deprecation")
 public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     static final String EXCLUSIVE_LANGUAGE = "ContextLookupCompilationTestExclusive";
@@ -558,7 +561,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
                 }
                 int sum = 0;
                 for (int i = 0; i < lookups; i++) {
-                    sum += ref.get().magicNumber;
+                    sum += ref.get(this).magicNumber;
                 }
 
                 // we are not actually using the sum to test context references to fold
@@ -602,7 +605,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     ref = lookupContextReference(accessLanguage.getClass());
                 }
-                Object ctx = ref.get();
+                Object ctx = ref.get(this);
                 CompilerAsserts.partialEvaluationConstant(ctx);
                 return ctx;
             }
@@ -624,7 +627,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
                 }
                 int sum = 0;
                 for (int i = 0; i < lookups; i++) {
-                    LanguageContext ctx = ref.get();
+                    LanguageContext ctx = ref.get(this);
                     sum += ctx.magicNumber;
                 }
                 return sum;
@@ -644,7 +647,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     ref = lookupLanguageReference(accessLanguage.getClass());
                 }
-                Object ctx = ref.get();
+                Object ctx = ref.get(this);
                 CompilerAsserts.partialEvaluationConstant(ctx);
                 return ctx;
             }
@@ -689,7 +692,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                return ref.get();
+                return ref.get(this);
             }
         };
         return root;

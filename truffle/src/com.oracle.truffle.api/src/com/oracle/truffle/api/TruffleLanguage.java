@@ -1529,18 +1529,11 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language instance for the current {@link Thread thread}. If a {@link Node
-     * node} is accessible then {@link Node#lookupLanguageReference(Class)} should be used instead.
-     * Throws an {@link IllegalStateException} if the language is not yet initialized or not
-     * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
-     * a compilation final value.
-     *
-     * @param <T> the language type
-     * @param languageClass the exact language class needs to be provided for the lookup.
-     * @see Node#lookupLanguageReference(Class)
-     * @see com.oracle.truffle.api.dsl.CachedLanguage
      * @since 0.27
+     * @deprecated in 21.3, use static final context references instead. See
+     *             {@link ContextReference} for the new intended usage.
      */
+    @Deprecated
     protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
         try {
             return LanguageAccessor.engineAccess().getCurrentLanguage(languageClass);
@@ -1551,19 +1544,11 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language context entered on the current thread. If a {@link Node node} is
-     * accessible then {@link Node#lookupContextReference(Class)} should be used instead. An
-     * {@link IllegalStateException} is thrown if the language is not yet initialized or not
-     * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
-     * a compilation final value.
-     *
-     * @param <C> the context type
-     * @param <T> the language type
-     * @param languageClass the exact language class needs to be provided for the lookup.
-     * @see Node#lookupContextReference(Class)
-     * @see com.oracle.truffle.api.dsl.CachedContext
      * @since 0.27
+     * @deprecated in 21.3, use static final context references instead. See
+     *             {@link LanguageReference} for the new intended usage.
      */
+    @Deprecated
     protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
         try {
             return ENGINE.getCurrentContext(languageClass);
@@ -3721,7 +3706,9 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * @since 19.0
+         * @deprecated in 21.3, use {@link #get(Node)} instead.
          */
+        @Deprecated
         public abstract L get();
 
         /**
@@ -3846,8 +3833,10 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * @since 0.25
+         * @deprecated in 21.3, use {@link #get(Node)} instead.
          */
         @SuppressWarnings("unchecked")
+        @Deprecated
         public abstract C get();
 
         /**

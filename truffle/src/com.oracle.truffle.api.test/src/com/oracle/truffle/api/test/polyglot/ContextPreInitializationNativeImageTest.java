@@ -84,8 +84,8 @@ public class ContextPreInitializationNativeImageTest {
             context.initialize(LANGUAGE);
 
             context.enter();
-            assertTrue(Language.getContext().patched);
-            assertTrue(String.valueOf(Language.getContext().threadLocalActions), Language.getContext().threadLocalActions > 0);
+            assertTrue(Language.CONTEXT_REF.get(null).patched);
+            assertTrue(String.valueOf(Language.CONTEXT_REF.get(null).threadLocalActions), Language.CONTEXT_REF.get(null).threadLocalActions > 0);
         }
 
     }
@@ -149,11 +149,11 @@ public class ContextPreInitializationNativeImageTest {
                         CompilerDirectives.shouldNotReachHere("invalid context local");
                     }
 
-                    if (CONTEXT_REF.get() != context) {
+                    if (CONTEXT_REF.get(null) != context) {
                         CompilerDirectives.shouldNotReachHere("invalid context reference");
                     }
 
-                    if (LANGUAGE_REF.get() != Language.this) {
+                    if (LANGUAGE_REF.get(null) != Language.this) {
                         CompilerDirectives.shouldNotReachHere("invalid language reference");
                     }
 
@@ -169,18 +169,14 @@ public class ContextPreInitializationNativeImageTest {
             assertFalse(context.patched);
             context.patched = true;
 
-            if (CONTEXT_REF.get() != context) {
+            if (CONTEXT_REF.get(null) != context) {
                 CompilerDirectives.shouldNotReachHere("invalid context reference");
             }
 
-            if (LANGUAGE_REF.get() != this) {
+            if (LANGUAGE_REF.get(null) != this) {
                 CompilerDirectives.shouldNotReachHere("invalid language reference");
             }
             return true;
-        }
-
-        static TestContext getContext() {
-            return getCurrentContext(Language.class);
         }
 
     }

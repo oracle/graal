@@ -627,49 +627,11 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a reference that returns the current language instance. The returned language
-     * reference is intended to be cached in the currently adopted AST. If this node is
-     * {@link #isAdoptable() adoptable} then the method must be invoked after the AST was adopted
-     * otherwise an {@link IllegalStateException} is thrown. The reference lookup decides which
-     * lookup method is the best given the parent {@link ExecutableNode} or {@link RootNode} and the
-     * provided languageClass. It is recommended to use
-     * {@link com.oracle.truffle.api.dsl.CachedLanguage @CachedLanguage} instead whenever possible.
-     * The given language class must not be <code>null</code>. If the given language class is not
-     * known to the current engine then an {@link IllegalArgumentException} is thrown.
-     * <p>
-     * Usage example:
-     *
-     * <pre>
-     * class ExampleNode extends Node {
-     *
-     *     &#64;CompilationFinal private LanguageReference<MyLanguage> reference;
-     *
-     *     void execute() {
-     *         if (reference == null) {
-     *             CompilerDirectives.transferToInterpreterAndInvalidate();
-     *             this.reference = lookupLanguageReference(MyLanguage.class);
-     *         }
-     *         MyLanguage language = this.reference.get();
-     *         // use language
-     *     }
-     * }
-     *
-     * </pre>
-     * <p>
-     * The current language might vary between {@link ExecutableNode#execute(VirtualFrame)
-     * executions} if resources or code was shared between multiple contexts and the node was
-     * inserted into an AST that was not associated with this language. It is not recommended to
-     * cache the language in the AST directly.
-     * <p>
-     * This method is designed for partial evaluation and will reliably return a constant when
-     * called with a class literal and the number of accessed languages does not exceed the limit of
-     * 5 per root executable node. If possible the reference should be cached in the AST in order to
-     * avoid the repeated lookup of the parent executable or root node.
-     *
-     * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context reference in
-     *      specializations or exported messages.
      * @since 19.0
+     * @deprecated in 21.3, use static final context references instead. See
+     *             {@link LanguageReference} for the new intended usage.
      */
+    @Deprecated
     @SuppressWarnings({"unchecked", "rawtypes"})
     @TruffleBoundary
     protected final <T extends TruffleLanguage> LanguageReference<T> lookupLanguageReference(Class<T> languageClass) {
@@ -709,49 +671,11 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns a reference that returns the current execution context associated with the given
-     * language. The returned context reference is intended to be cached in the currently adopted
-     * AST. If this node is {@link #isAdoptable() adoptable} then the method must be invoked after
-     * the AST was adopted otherwise an {@link IllegalStateException} is thrown. The reference
-     * lookup decides which lookup method is the best given the parent {@link ExecutableNode} or
-     * {@link RootNode} and the provided languageClass. It is recommended to use
-     * {@link com.oracle.truffle.api.dsl.CachedContext @CachedContext} instead whenever possible.
-     * The given language class must not be null. If the given language class is not known to the
-     * current engine then an {@link IllegalArgumentException} is thrown.
-     * <p>
-     * Usage example:
-     *
-     * <pre>
-     * class ExampleNode extends Node {
-     *
-     *     &#64;CompilationFinal private ContextReference<MyContext> reference;
-     *
-     *     void execute() {
-     *         if (reference == null) {
-     *             CompilerDirectives.transferToInterpreterAndInvalidate();
-     *             this.reference = lookupContextReference(MyLanguage.class);
-     *         }
-     *         MyContext context = this.reference.get();
-     *         // use context
-     *     }
-     * }
-     *
-     * </pre>
-     * <p>
-     * The current context might vary between {@link ExecutableNode#execute(VirtualFrame)
-     * executions} if resources or code is shared between multiple contexts. It is not recommended
-     * to cache the context in the AST directly.
-     * <p>
-     * This method is designed for partial evaluation and will reliably return a constant when
-     * called with a class literal and the number of accessed languages does not exceed the limit of
-     * 5 per root executable node. If possible the reference should be cached in the AST in order to
-     * avoid the repeated lookup of the parent executable or root node.
-     * <p>
-     *
-     * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context reference in
-     *      specializations or exported messages.
      * @since 19.0
+     * @deprecated in 21.3, use static final context references instead. See
+     *             {@link LanguageReference} for the new intended usage.
      */
+    @Deprecated
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     protected final <C, T extends TruffleLanguage<C>> ContextReference<C> lookupContextReference(Class<T> languageClass) {

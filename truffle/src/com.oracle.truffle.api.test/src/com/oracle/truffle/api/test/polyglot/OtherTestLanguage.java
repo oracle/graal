@@ -55,7 +55,9 @@ public class OtherTestLanguage extends TruffleLanguage<Env> {
     }
 
     public static OtherTestLanguage getInstance() {
-        return getCurrentLanguage(OtherTestLanguage.class);
+        return REFERENCE.get(null);
     }
+
+    private static final LanguageReference<OtherTestLanguage> REFERENCE = LanguageReference.create(OtherTestLanguage.class);
 
 }

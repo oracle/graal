@@ -46,64 +46,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
-import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Allows to access the current language instance in specializations or exported messages. The
- * parameter type must be the exact type of the language access or a {@link LanguageReference} that
- * provides it. The latter parameter allows to lookup the language lazily, e.g. in a conditional
- * branch. Using this annotation always allows to generate {@link GenerateUncached uncached}
- * versions of the node.
- * <p>
- * This annotation can be used in two different ways:
- * <ol>
- * <li>Direct language access:</li>
- *
- * <pre>
- * &#64;GenerateUncached
- * abstract static class ExampleNode extends Node {
- *
- *     abstract Object execute(Object argument);
- *
- *     &#64;Specialization
- *     static int doInt(int value,
- *                     &#64;CachedLanguage MyLanguage language) {
- *         // use context
- *         return value;
- *     }
- *
- * }
- * </pre>
- *
- * <li>Conditional language access:</li>
- *
- * <pre>
- * &#64;GenerateUncached
- * abstract class ExampleNode extends Node {
- *
- *     abstract Object execute(Object argument);
- *
- *     &#64;Specialization
- *     static int doInt(int value,
- *                     &#64;CachedLanguage LanguageReference<MyLanguage> ref) {
- *         if (value == 42) {
- *             // use context conditionally
- *             MyLanguage language = ref.get();
- *
- *         }
- *         return value;
- *     }
- * }
- * </pre>
- * </ol>
- * <p>
- * The generated code uses the {@link Node#lookupLanguageReference(Class)} method to implement this
- * feature. This method may also be used manually.
- *
- * @see Cached @Cached for more information on using this annotation.
- * @see CachedContext @CachedContext to access the language instance.
  * @since 19.0
+ * @deprecated in 21.3, use static final language references instead. See {@link LanguageReference}
+ *             for the new intended usage.
  */
+@Deprecated
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
 public @interface CachedLanguage {

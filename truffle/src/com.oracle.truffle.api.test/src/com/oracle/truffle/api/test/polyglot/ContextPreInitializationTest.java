@@ -65,6 +65,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -73,11 +74,9 @@ import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.ContextLocal;
-import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.TruffleLogger;
+import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -97,23 +96,23 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import org.graalvm.collections.Pair;
 
 public class ContextPreInitializationTest {
 
@@ -2152,7 +2151,7 @@ public class ContextPreInitializationTest {
         ON_FINALIZE_CONTEXT
     }
 
-    static class BaseLanguage extends TruffleLanguage<CountingContext> {
+    abstract static class BaseLanguage extends TruffleLanguage<CountingContext> {
 
         static Map<Pair<Class<? extends BaseLanguage>, ActionKind>, Consumer<TruffleLanguage.Env>> actions = new HashMap<>();
 
@@ -2188,7 +2187,7 @@ public class ContextPreInitializationTest {
 
         @Override
         protected boolean patchContext(CountingContext context, TruffleLanguage.Env newEnv) {
-            assertNotNull(getCurrentContext(getClass()));
+            assertNotNull(getContextReference0().get(null));
             assertTrue(context.preInitialized);
             assertFalse(context.env.isPreInitialization());
             context.patchContextCount++;
@@ -2230,15 +2229,16 @@ public class ContextPreInitializationTest {
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
-            Class<? extends TruffleLanguage<CountingContext>> languageClass = getClass();
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    executeImpl(lookupContextReference(languageClass).get());
+                    executeImpl(getContextReference0().get(this));
                     return result;
                 }
             });
         }
+
+        protected abstract ContextReference<CountingContext> getContextReference0();
 
         protected void useLanguage(CountingContext context, String id) {
             com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(id, "", "").internal(true).build();
@@ -2296,12 +2296,20 @@ public class ContextPreInitializationTest {
             state = createContextLocal((context) -> new AtomicInteger());
         }
 
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final LanguageReference<ContextPreInitializationTestFirstLanguage> REFERENCE = LanguageReference.create(ContextPreInitializationTestFirstLanguage.class);
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestFirstLanguage.class);
+
         static ContextThreadLocal<AtomicInteger> getThreadStateReference() {
-            return getCurrentLanguage(ContextPreInitializationTestFirstLanguage.class).threadState;
+            return REFERENCE.get(null).threadState;
         }
 
         static ContextLocal<AtomicInteger> getStateReference() {
-            return getCurrentLanguage(ContextPreInitializationTestFirstLanguage.class).state;
+            return REFERENCE.get(null).state;
         }
 
         @Override
@@ -2375,8 +2383,15 @@ public class ContextPreInitializationTest {
         }
 
         public static Env getCurrentContext() {
-            return getCurrentContext(ContextPreInitializationTestSecondLanguage.class).env;
+            return CONTEXT_REF.get(null).env;
         }
+
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestSecondLanguage.class);
 
         @Override
         protected boolean patchContext(CountingContext context, Env newEnv) {
@@ -2400,6 +2415,13 @@ public class ContextPreInitializationTest {
 
     @TruffleLanguage.Registration(id = INTERNAL, name = INTERNAL, version = "1.0", internal = true)
     public static final class ContextPreInitializationTestInternalLanguage extends BaseLanguage {
+
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestInternalLanguage.class);
     }
 
     private static final class TestHandler extends Handler {
@@ -2465,6 +2487,13 @@ public class ContextPreInitializationTest {
         protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
             return firstOptions.equals(newOptions);
         }
+
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestSharedLanguage.class);
     }
 
     public abstract static class BaseInstrument extends TruffleInstrument implements ContextsListener {

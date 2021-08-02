@@ -24,16 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
-import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
-import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.api.staticobject.StaticShape;
+import java.io.Closeable;
+
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
@@ -47,11 +39,21 @@ import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.Closeable;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
+import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
+import com.oracle.truffle.api.staticobject.StaticProperty;
+import com.oracle.truffle.api.staticobject.StaticShape;
 
 @RunWith(Parameterized.class)
 public class StaticObjectCompilationTest extends PartialEvaluationTest {
@@ -63,6 +65,13 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
     }
 
     @Parameterized.Parameter public StaticObjectTestEnvironment te;
+
+    @BeforeClass
+    public static void initialize() {
+        for (StaticObjectTestEnvironment env : environments) {
+            env.initialize();
+        }
+    }
 
     @AfterClass
     public static void teardown() {
@@ -364,18 +373,22 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
 
     static class StaticObjectTestEnvironment implements Closeable {
         private final boolean arrayBased;
-        final TruffleLanguage<?> testLanguage;
-        final Context context;
+        TruffleLanguage<?> testLanguage;
+        Context context;
 
         StaticObjectTestEnvironment(boolean arrayBased) {
             this.arrayBased = arrayBased;
+
+        }
+
+        public void initialize() {
             context = Context.newBuilder(TestLanguage.TEST_LANGUAGE_ID).//
                             allowExperimentalOptions(true).//
                             option("engine.StaticObjectStorageStrategy", this.arrayBased ? "array-based" : "field-based").//
                             build();
             context.initialize(TestLanguage.TEST_LANGUAGE_ID);
             context.enter();
-            testLanguage = TestLanguage.getCurrentContext().getLanguage();
+            testLanguage = TestLanguage.REFERENCE.get(null);
             context.leave();
         }
 
@@ -390,6 +403,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         @Override
         public void close() {
             context.close();
+            context = null;
         }
 
         @Override
@@ -411,9 +425,8 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
             return new TestContext(this);
         }
 
-        static TestContext getCurrentContext() {
-            return getCurrentContext(TestLanguage.class);
-        }
+        static final LanguageReference<TestLanguage> REFERENCE = LanguageReference.create(TestLanguage.class);
+
     }
 
     static class TestContext {

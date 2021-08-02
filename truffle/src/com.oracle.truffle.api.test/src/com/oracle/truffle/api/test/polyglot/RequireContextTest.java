@@ -50,6 +50,8 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+
 import java.nio.file.Paths;
 import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
@@ -65,10 +67,10 @@ public class RequireContextTest extends AbstractPolyglotTest {
     @Test
     public void testGetCurrentContext() {
         setupEnv(Context.create());
-        assertFails(() -> ProxyLanguage.getCurrentContext(), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        assertFails(() -> LanguageContext.get(null), AssertionError.class);
         context.enter();
         try {
-            assertEquals(languageEnv, ProxyLanguage.getCurrentContext().getEnv());
+            assertEquals(languageEnv, LanguageContext.get(null).getEnv());
         } finally {
             context.leave();
         }

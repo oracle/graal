@@ -47,13 +47,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.test.OSUtils;
-import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
-import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
-import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
-
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -106,6 +99,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
@@ -116,6 +110,14 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.OSUtils;
+import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
+import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
+import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
 
 public class TruffleFileTest extends AbstractPolyglotTest {
 
@@ -508,7 +510,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         assertTrue(internalFile.isSameFile(internalFile));
         assertTrue(publicFile.isSameFile(internalFile));
         assertTrue(internalFile.isSameFile(publicFile));
-        TruffleLanguage.Env otherLanguageEnv = DuplicateMimeTypeLanguage1.getCurrentLanguageContext(DuplicateMimeTypeLanguage1.class).getEnv();
+        TruffleLanguage.Env otherLanguageEnv = DuplicateMimeTypeLanguage1.getContext().getEnv();
         TruffleFile otherLanguagePublicFile = otherLanguageEnv.getPublicTruffleFile(path);
         TruffleFile otherLanguageInternalFile = otherLanguageEnv.getInternalTruffleFile(path);
         assertTrue(publicFile.isSameFile(otherLanguagePublicFile));
@@ -869,6 +871,17 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             static Language1Detector getInstance() {
                 return BaseDetector.getInstance(Language1Detector.class);
             }
+        }
+
+        private static final LanguageReference<DuplicateMimeTypeLanguage1> REFERENCE = LanguageReference.create(DuplicateMimeTypeLanguage1.class);
+        private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(DuplicateMimeTypeLanguage1.class);
+
+        public static DuplicateMimeTypeLanguage1 get(Node node) {
+            return REFERENCE.get(node);
+        }
+
+        public static LanguageContext getContext() {
+            return CONTEXT_REF.get(null);
         }
     }
 

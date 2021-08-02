@@ -641,8 +641,11 @@ class TruffleContextSnippets {
             innerContext.close();
         }
     }
+    private static ContextReference<MyContext> REFERENCE
+                 = ContextReference.create(MyLanguage.class);
+
     private static MyContext getContext() {
-        return TruffleLanguage.getCurrentContext(MyLanguage.class);
+        return REFERENCE.get(null);
     }
     // END: TruffleContextSnippets#executeInContext
     // @formatter:on

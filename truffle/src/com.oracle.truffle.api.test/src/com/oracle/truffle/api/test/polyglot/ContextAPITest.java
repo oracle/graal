@@ -325,7 +325,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                     throw new SyntaxError(request.getSource().createSection(0, 5));
                 }
 
-                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
                     private final com.oracle.truffle.api.source.Source source = request.getSource();
 
                     @Override
@@ -905,7 +905,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(ParsingRequest request) throws Exception {
-                                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         try {
@@ -917,7 +917,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
                                     @TruffleBoundary
                                     private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
-                                        Object o = InteropLibrary.getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                                        Object o = InteropLibrary.getUncached().readMember(com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).env.getPolyglotBindings(),
+                                                        "test");
                                         return InteropLibrary.getUncached().execute(o);
                                     }
                                 });
@@ -969,7 +970,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         try (Context c = builder.build()) {
             c.initialize(ProxyLanguage.ID);
             c.enter();
-            TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
+            TruffleLanguage.Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv();
             assertTrue("all access implies host access allowed", env.isHostLookupAllowed());
             assertTrue("all access implies native access allowed", env.isNativeAccessAllowed());
             assertTrue("all access implies create thread allowed", env.isCreateThreadAllowed());
@@ -979,7 +980,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         try (Context c = builder.build()) {
             c.initialize(ProxyLanguage.ID);
             c.enter();
-            TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
+            TruffleLanguage.Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv();
             assertFalse("host access is disallowed by default", env.isHostLookupAllowed());
             assertFalse("native access is disallowed by default", env.isNativeAccessAllowed());
             assertFalse("thread creation is disallowed by default", env.isCreateThreadAllowed());
@@ -993,7 +994,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         Context c = Context.newBuilder().timeZone(zone).build();
         c.initialize(ProxyLanguage.ID);
         c.enter();
-        assertEquals(zone, ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        assertEquals(zone, com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv().getTimeZone());
         c.leave();
         c.close();
     }
@@ -1003,7 +1004,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         Context c = Context.create();
         c.initialize(ProxyLanguage.ID);
         c.enter();
-        assertEquals(ZoneId.systemDefault(), ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        assertEquals(ZoneId.systemDefault(), com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv().getTimeZone());
         c.leave();
         c.close();
     }
@@ -1277,7 +1278,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                 ctx.initialize(VALID_EXCLUSIVE_LANGUAGE);
                 ctx.enter();
                 try {
-                    ValidExclusiveLanguage lang = ValidExclusiveLanguage.getCurrentLanguage();
+                    ValidExclusiveLanguage lang = ValidExclusiveLanguage.REFERENCE.get(null);
                     Future<?> future = executorService.submit(() -> {
                         Context.create().close();
                         checkCompleted.set(true);
@@ -1313,9 +1314,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
             return true;
         }
 
-        static ValidExclusiveLanguage getCurrentLanguage() {
-            return getCurrentLanguage(ValidExclusiveLanguage.class);
-        }
+        static final LanguageReference<ValidExclusiveLanguage> REFERENCE = LanguageReference.create(ValidExclusiveLanguage.class);
 
     }
 
