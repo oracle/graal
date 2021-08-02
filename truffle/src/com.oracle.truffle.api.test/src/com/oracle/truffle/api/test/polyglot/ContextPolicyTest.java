@@ -726,13 +726,12 @@ public class ContextPolicyTest {
                         @CachedLibrary(limit = "5") InteropLibrary library,
                         @Cached SupplierAccessor accessor,
                         @Cached(value = "this.lookupLanguageReference0(accessor)", allowUncached = true) LanguageReference<? extends Object> cachedLanguageSupplier,
-                        @Cached(value = "this.lookupContextReference0(accessor)", allowUncached = true) ContextReference<? extends Object> cachedContextSupplier,
-                        @Cached(value = "this.getContextReference()", allowUncached = true) ContextReference<Env> contextReference)
+                        @Cached(value = "this.lookupContextReference0(accessor)", allowUncached = true) ContextReference<? extends Object> cachedContextSupplier)
                         throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
 
             Object prev = enterInner();
             try {
-                doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier, contextReference);
+                doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier);
 
                 target.call(args);
 
@@ -747,20 +746,16 @@ public class ContextPolicyTest {
         }
 
         @TruffleBoundary
-        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier,
-                        ContextReference<Env> contextReference) {
-            doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier);
-            assertSame(expectedEnvironment, contextReference.get());
+        @SuppressWarnings("unused")
+        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier) {
+            doAssertions(accessor, cachedLanguageSupplier);
         }
 
         @TruffleBoundary
-        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier) {
+        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier) {
             assertSame(expectedLanguage, lookupLanguageReference0(accessor).get());
             assertSame(expectedEnvironment, lookupContextReference0(accessor).get());
             assertSame(expectedLanguage, cachedLanguageSupplier.get());
-            assertSame(expectedEnvironment, cachedContextSupplier.get());
-            assertSame(cachedLanguageSupplier, lookupLanguageReference0(accessor));
-            assertSame(cachedContextSupplier, lookupContextReference0(accessor));
         }
 
         @TruffleBoundary
@@ -795,17 +790,6 @@ public class ContextPolicyTest {
                 LanguageReference<?> o = node.getLanguageReference0(expectedLanguage.getClass());
                 doAssertions(o);
                 return o;
-            } finally {
-                leaveInner(prev);
-            }
-        }
-
-        @SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
-        ContextReference<Env> getContextReference() {
-            Object prev = enterInner();
-            try {
-                // ensure initialized
-                return ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()).getContextReference();
             } finally {
                 leaveInner(prev);
             }

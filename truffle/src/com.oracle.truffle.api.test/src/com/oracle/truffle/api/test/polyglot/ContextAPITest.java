@@ -1244,30 +1244,25 @@ public class ContextAPITest extends AbstractPolyglotTest {
     @Test
     public void testGetCurrentContextNotEnteredRaceCondition() throws ExecutionException, InterruptedException {
         for (int i = 0; i < 10000; i++) {
-            Object prev = EngineAPITest.resetSingleContextState(false);
-            try {
-                AtomicBoolean checkCompleted = new AtomicBoolean();
-                ExecutorService executorService = Executors.newFixedThreadPool(1);
-                try (Context ctx = Context.create()) {
-                    ctx.enter();
-                    try {
-                        Future<?> future = executorService.submit(() -> {
-                            Context.create().close();
-                            checkCompleted.set(true);
-                        });
-                        while (!checkCompleted.get()) {
-                            Context.getCurrent();
-                        }
-                        future.get();
-                    } finally {
-                        ctx.leave();
+            AtomicBoolean checkCompleted = new AtomicBoolean();
+            ExecutorService executorService = Executors.newFixedThreadPool(1);
+            try (Context ctx = Context.create()) {
+                ctx.enter();
+                try {
+                    Future<?> future = executorService.submit(() -> {
+                        Context.create().close();
+                        checkCompleted.set(true);
+                    });
+                    while (!checkCompleted.get()) {
+                        Context.getCurrent();
                     }
+                    future.get();
                 } finally {
-                    executorService.shutdownNow();
-                    executorService.awaitTermination(100, TimeUnit.SECONDS);
+                    ctx.leave();
                 }
             } finally {
-                EngineAPITest.restoreSingleContextState(prev);
+                executorService.shutdownNow();
+                executorService.awaitTermination(100, TimeUnit.SECONDS);
             }
         }
     }
@@ -1275,33 +1270,28 @@ public class ContextAPITest extends AbstractPolyglotTest {
     @Test
     public void testGetCurrentContextEnteredRaceCondition() throws ExecutionException, InterruptedException {
         for (int i = 0; i < 10000; i++) {
-            Object prev = EngineAPITest.resetSingleContextState(false);
-            try {
-                AtomicBoolean checkCompleted = new AtomicBoolean();
-                ExecutorService executorService = Executors.newFixedThreadPool(1);
+            AtomicBoolean checkCompleted = new AtomicBoolean();
+            ExecutorService executorService = Executors.newFixedThreadPool(1);
 
-                try (Context ctx = Context.create()) {
-                    ctx.initialize(VALID_EXCLUSIVE_LANGUAGE);
-                    ctx.enter();
-                    try {
-                        ValidExclusiveLanguage lang = ValidExclusiveLanguage.getCurrentLanguage();
-                        Future<?> future = executorService.submit(() -> {
-                            Context.create().close();
-                            checkCompleted.set(true);
-                        });
-                        while (!checkCompleted.get()) {
-                            lang.contextLocal.get();
-                        }
-                        future.get();
-                    } finally {
-                        ctx.leave();
+            try (Context ctx = Context.create()) {
+                ctx.initialize(VALID_EXCLUSIVE_LANGUAGE);
+                ctx.enter();
+                try {
+                    ValidExclusiveLanguage lang = ValidExclusiveLanguage.getCurrentLanguage();
+                    Future<?> future = executorService.submit(() -> {
+                        Context.create().close();
+                        checkCompleted.set(true);
+                    });
+                    while (!checkCompleted.get()) {
+                        lang.contextLocal.get();
                     }
+                    future.get();
                 } finally {
-                    executorService.shutdownNow();
-                    executorService.awaitTermination(100, TimeUnit.SECONDS);
+                    ctx.leave();
                 }
             } finally {
-                EngineAPITest.restoreSingleContextState(prev);
+                executorService.shutdownNow();
+                executorService.awaitTermination(100, TimeUnit.SECONDS);
             }
         }
     }

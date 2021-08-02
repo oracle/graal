@@ -82,6 +82,7 @@ final class LanguageAccessor extends Accessor {
     static final JDKSupport JDK = ACCESSOR.jdkSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
 
     private LanguageAccessor() {
     }
@@ -146,10 +147,10 @@ final class LanguageAccessor extends Accessor {
             return info.getPolyglotInstrument();
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object polyglotLanguage, Object polyglotLanguageInstance) {
             impl.languageInfo = language;
-            impl.reference = engineAccess().getCurrentContextReference(polyglotLanguage);
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
             if (impl.contextLocals == null) {
                 impl.contextLocals = Collections.emptyList();

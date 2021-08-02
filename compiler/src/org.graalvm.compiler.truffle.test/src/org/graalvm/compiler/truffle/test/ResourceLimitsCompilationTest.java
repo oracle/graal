@@ -42,18 +42,12 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.ResourceLimits;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.api.test.polyglot.EngineAPITest;
 
 public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
-
-    @Before
-    public void setup() {
-        EngineAPITest.resetSingleContextState(true);
-    }
 
     @Test
     @SuppressWarnings("try")
@@ -132,7 +126,9 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                  * Verify that the statements fold to a single read for the context and a single
                  * read/write for the statement counts.
                  */
-                Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextThreadLocal.activeSingleContextNonVolatile")));
+                if (!TruffleOptions.AOT) {
+                    Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("JavaThread::<JVMCIReservedOop0>")));
+                }
                 Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
                 Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
                 Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
@@ -150,7 +146,9 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
          * Verify that the statements fold to a single read for the context and a single read/write
          * for the statement counts.
          */
-        Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextThreadLocal.activeSingleContextNonVolatile")));
+        if (!TruffleOptions.AOT) {
+            Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("JavaThread::<JVMCIReservedOop0>")));
+        }
         Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
         Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
         Assert.assertEquals(0, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementLimit")));
@@ -170,7 +168,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
 
                 OptimizedCallTarget target = evalTestScript(context0);
                 StructuredGraph graph = partialEval(target, new Object[0]);
-                Assert.assertEquals(1, countNodes(graph, MethodCallTargetNode.TYPE));
+                Assert.assertEquals(0, countNodes(graph, MethodCallTargetNode.TYPE));
                 Assert.assertEquals(6, countNodes(graph, AddNode.TYPE));
                 compile(target, graph);
                 /*
@@ -179,7 +177,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
                  */
                 Assert.assertEquals(1, countNodes(graph, ReadNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
                 Assert.assertEquals(1, countNodes(graph, WriteNode.TYPE, (n) -> n.getLocationIdentity().toString().equals("PolyglotContextImpl.statementCounter")));
-                Assert.assertEquals(1, countNodes(graph, InvokeWithExceptionNode.TYPE));
+                Assert.assertEquals(0, countNodes(graph, InvokeWithExceptionNode.TYPE));
             }
         }
     }
@@ -197,11 +195,11 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
 
                 OptimizedCallTarget target = evalTestScript(context);
                 StructuredGraph graph = partialEval(target, new Object[0]);
-                Assert.assertEquals(1, countNodes(graph, MethodCallTargetNode.TYPE));
+                Assert.assertEquals(0, countNodes(graph, MethodCallTargetNode.TYPE));
                 Assert.assertEquals(6, countNodes(graph, AtomicReadAndAddNode.TYPE));
                 compile(target, graph);
                 Assert.assertEquals(6, countNodes(graph, LoweredAtomicReadAndAddNode.TYPE));
-                Assert.assertEquals(1, countNodes(graph, InvokeWithExceptionNode.TYPE));
+                Assert.assertEquals(0, countNodes(graph, InvokeWithExceptionNode.TYPE));
             }
         }
     }

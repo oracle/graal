@@ -189,7 +189,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public Context getCurrentContext() {
         try {
-            PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             if (context == null) {
                 throw PolyglotEngineException.illegalState(
                                 "No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
@@ -421,7 +421,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @TruffleBoundary
     public Value asValue(Object hostValue) {
         try {
-            PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
+            PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
             return asValue(currentContext, hostValue);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);

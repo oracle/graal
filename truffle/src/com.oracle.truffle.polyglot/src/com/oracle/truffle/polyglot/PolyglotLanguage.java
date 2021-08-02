@@ -44,7 +44,6 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.EngineAccessor.NODES;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -59,14 +58,9 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import com.oracle.truffle.polyglot.PolyglotReferences.AbstractContextReference;
 
 final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -75,7 +69,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     final LanguageInfo info;
 
     Language api; // effectively final
-    final int index;
+    final int contextIndex;
     private final boolean host;
     final RuntimeException initError;
 
@@ -86,11 +80,6 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     private volatile PolyglotLanguageInstance initLanguage;
     private final LinkedList<PolyglotLanguageInstance> instancePool;
 
-    final ContextProfile profile;
-    private final LanguageReference<TruffleLanguage<Object>> multiLanguageReference;
-    private final LanguageReference<TruffleLanguage<Object>> singleOrMultiLanguageReference;
-    private final AbstractContextReference multiContextReference;
-    private final AbstractContextReference singleOrMultiContextReference;
     final Assumption singleInstance = Truffle.getRuntime().createAssumption("Single language instance per engine.");
     private boolean firstInstance = true;
 
@@ -98,20 +87,16 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     volatile LocalLocation[] previousContextLocalLocations;
     volatile LocalLocation[] previousContextThreadLocalLocations;
 
-    PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
+    final WeakAssumedValue<PolyglotLanguageInstance> singleLanguageInstance = new WeakAssumedValue<>("single language instance");
+
+    PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int contextIndex, boolean host, RuntimeException initError) {
         this.engine = engine;
         this.cache = cache;
         this.initError = initError;
-        this.index = index;
+        this.contextIndex = contextIndex;
         this.host = host;
-        this.profile = new ContextProfile(this);
         this.instancePool = new LinkedList<>();
         this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
-        this.multiLanguageReference = PolyglotReferences.createAlwaysMultiLanguage(this);
-        this.multiContextReference = PolyglotReferences.createAlwaysMultiContext(this);
-
-        this.singleOrMultiContextReference = PolyglotReferences.createAssumeSingleContext(this, engine.singleContext, null, multiContextReference, false);
-        this.singleOrMultiLanguageReference = PolyglotReferences.createAssumeSingleLanguage(this, null, singleInstance, multiLanguageReference);
     }
 
     List<PolyglotLanguageInstance> getInstancePool() {
@@ -122,7 +107,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
 
     ContextPolicy getEffectiveContextPolicy(PolyglotLanguage inLanguage) {
         ContextPolicy sourcePolicy;
-        if (engine.singleContext.isValid()) {
+        if (engine.singleContextValue.isValid()) {
             // with a bound engine context policy is effectively always exclusive
             sourcePolicy = ContextPolicy.EXCLUSIVE;
         } else {
@@ -137,16 +122,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     }
 
     PolyglotLanguageContext getCurrentLanguageContext() {
-        return PolyglotContextImpl.requireContext().contexts[index];
-    }
-
-    PolyglotLanguageContext getCurrentLanguageContextOptional() {
-        PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
-        if (context != null && context.engine == this.engine) {
-            return context.contexts[index];
-        } else {
-            return null;
-        }
+        return PolyglotContextImpl.requireContext().contexts[contextIndex];
     }
 
     boolean isFirstInstance() {
@@ -203,6 +179,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         return options;
     }
 
+    @SuppressWarnings("unchecked")
     private PolyglotLanguageInstance createInstance() {
         assert Thread.holdsLock(engine.lock);
         if (firstInstance) {
@@ -219,6 +196,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         if (instance == null) {
             instance = ensureInitialized(new PolyglotLanguageInstance(this));
         }
+        singleLanguageInstance.update(instance);
         return instance;
     }
 
@@ -311,42 +289,6 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         instancePool.clear();
     }
 
-    /**
-     * Returns a context reference sharable within this engine.
-     */
-    AbstractContextReference getContextReference() {
-        if (singleInstance.isValid() && !engine.conservativeContextReferences) {
-            return singleOrMultiContextReference;
-        } else {
-            return multiContextReference;
-        }
-    }
-
-    /**
-     * Returns a language reference sharable within this engine.
-     */
-    LanguageReference<TruffleLanguage<Object>> getLanguageReference() {
-        if (singleInstance.isValid()) {
-            return singleOrMultiLanguageReference;
-        } else {
-            return multiLanguageReference;
-        }
-    }
-
-    /**
-     * Returns a context reference that always looks up the current context.
-     */
-    AbstractContextReference getConservativeContextReference() {
-        return multiContextReference;
-    }
-
-    /**
-     * Returns a language reference that always looks up the current language.
-     */
-    LanguageReference<TruffleLanguage<Object>> getConservativeLanguageReference() {
-        return multiLanguageReference;
-    }
-
     OptionValuesImpl getOptionValues() {
         if (optionValues == null) {
             synchronized (engine.lock) {
@@ -402,59 +344,6 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     @Override
     public String toString() {
         return "PolyglotLanguage [id=" + getId() + ", name=" + getName() + ", host=" + isHost() + "]";
-    }
-
-    static final class ContextProfile {
-
-        private final Assumption singleContext;
-        @CompilationFinal private volatile WeakReference<Object> cachedSingleContext;
-        @CompilationFinal private volatile WeakReference<PolyglotLanguageContext> cachedSingleLanguageContext;
-
-        ContextProfile(PolyglotLanguage language) {
-            this.singleContext = language.engine.singleContext.isValid() ? Truffle.getRuntime().createAssumption("Language single context.") : NeverValidAssumption.INSTANCE;
-        }
-
-        public Assumption getSingleContext() {
-            return singleContext;
-        }
-
-        PolyglotLanguageContext profile(Object context) {
-            if (singleContext.isValid()) {
-                WeakReference<PolyglotLanguageContext> ref = cachedSingleLanguageContext;
-                PolyglotLanguageContext cachedSingle = ref == null ? null : ref.get();
-                if (singleContext.isValid()) {
-                    assert cachedSingle == context : assertionError(cachedSingle, context);
-                    return cachedSingle;
-                }
-            }
-            return (PolyglotLanguageContext) context;
-        }
-
-        static String assertionError(Object cachedContext, Object currentContext) {
-            return (cachedContext + " != " + currentContext);
-        }
-
-        void notifyContextCreate(PolyglotLanguageContext context, Env env) {
-            if (singleContext.isValid()) {
-                WeakReference<Object> ref = this.cachedSingleContext;
-                Object cachedSingle = ref == null ? null : ref.get();
-                assert cachedSingle != LANGUAGE.getContext(env) || cachedSingle == null : "Non-null context objects should be distinct";
-                if (ref == null) {
-                    if (singleContext.isValid()) {
-                        this.cachedSingleContext = new WeakReference<>(LANGUAGE.getContext(env));
-                        this.cachedSingleLanguageContext = new WeakReference<>(context);
-                    }
-                } else {
-                    prepareForMultiContext();
-                }
-            }
-        }
-
-        public void prepareForMultiContext() {
-            singleContext.invalidate();
-            cachedSingleContext = null;
-            cachedSingleLanguageContext = null;
-        }
     }
 
     boolean assertCorrectEngine() {

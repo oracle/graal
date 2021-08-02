@@ -107,6 +107,8 @@ public class ContextPreInitializationNativeImageTest {
 
         final ContextThreadLocal<Integer> threadLocal = createContextThreadLocal((c, t) -> 42);
         final ContextLocal<Integer> contextLocal = createContextLocal((c) -> 42);
+        private static final ContextReference<TestContext> CONTEXT_REF = ContextReference.create(Language.class);
+        private static final LanguageReference<Language> LANGUAGE_REF = LanguageReference.create(Language.class);
 
         @Override
         protected TestContext createContext(Env env) {
@@ -147,6 +149,14 @@ public class ContextPreInitializationNativeImageTest {
                         CompilerDirectives.shouldNotReachHere("invalid context local");
                     }
 
+                    if (CONTEXT_REF.get() != context) {
+                        CompilerDirectives.shouldNotReachHere("invalid context reference");
+                    }
+
+                    if (LANGUAGE_REF.get() != Language.this) {
+                        CompilerDirectives.shouldNotReachHere("invalid language reference");
+                    }
+
                     return null;
                 }
 
@@ -158,6 +168,14 @@ public class ContextPreInitializationNativeImageTest {
         protected boolean patchContext(TestContext context, Env newEnv) {
             assertFalse(context.patched);
             context.patched = true;
+
+            if (CONTEXT_REF.get() != context) {
+                CompilerDirectives.shouldNotReachHere("invalid context reference");
+            }
+
+            if (LANGUAGE_REF.get() != this) {
+                CompilerDirectives.shouldNotReachHere("invalid language reference");
+            }
             return true;
         }
 

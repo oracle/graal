@@ -86,6 +86,7 @@ import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -107,10 +108,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     private static final String ENABLED_MESSAGES_NAME = "ENABLED_MESSAGES";
 
     private final ProcessorContext context = ProcessorContext.getInstance();
-    private final Map<String, CodeVariableElement> libraryConstants;
+    private final StaticConstants constants;
 
-    public ExportsGenerator(Map<String, CodeVariableElement> libraryConstants) {
-        this.libraryConstants = libraryConstants;
+    public ExportsGenerator(StaticConstants constants) {
+        this.constants = constants;
     }
 
     static class CacheKey {
@@ -175,7 +176,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
     @Override
     public List<CodeTypeElement> create(ProcessorContext context1, AnnotationProcessor<?> processor, ExportsData exports) {
-        libraryConstants.clear();
+        constants.clear();
 
         String className = createGenClassName(exports.getTemplateType());
         CodeTypeElement genClass = createClass(exports, null, modifiers(Modifier.FINAL), className, null);
@@ -233,7 +234,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         statics.end();
         statics.end();
 
-        genClass.addAll(libraryConstants.values());
+        genClass.addAll(constants.libraries.values());
+        genClass.addAll(constants.contextReferences.values());
+        genClass.addAll(constants.languageReferences.values());
         return Arrays.asList(genClass);
     }
 
@@ -625,9 +628,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     firstSpecialization = s;
                     break;
                 }
-
                 FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, acceptsMessage.getSpecializedNode(),
-                                cachedSharedNodes, libraryExports.getSharedExpressions(), libraryConstants);
+                                cachedSharedNodes, libraryExports.getSharedExpressions(), constants);
                 List<CacheExpression> caches = new ArrayList<>();
                 for (CacheKey key : eagerCaches.keySet()) {
                     caches.add(key.cache);
@@ -807,7 +809,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 boolean shared = true;
                 if (dummyNodeClass == null) {
                     FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, cachedSpecializedNode, cachedSharedNodes, libraryExports.getSharedExpressions(),
-                                    libraryConstants);
+                                    constants);
                     dummyNodeClass = createClass(libraryExports, null, modifiers(), "Dummy", types.Node);
                     factory.create(dummyNodeClass);
                     sharedNodes.put(cachedSpecializedNode, dummyNodeClass);
@@ -1137,7 +1139,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     }
 
     private CodeVariableElement useLibraryConstant(TypeMirror typeConstant) {
-        return FlatNodeGenFactory.createLibraryConstant(libraryConstants, typeConstant);
+        return FlatNodeGenFactory.createLibraryConstant(constants, typeConstant);
     }
 
     private CodeVariableElement useDispatchLibraryConstant() {
@@ -1297,7 +1299,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     directCall.getModifiers().add(Modifier.STATIC);
                 }
             } else {
-                FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), libraryConstants);
+                FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), constants);
                 CodeExecutableElement generatedUncached = factory.createUncached();
                 if (firstNode) {
                     uncachedClass.getEnclosedElements().addAll(factory.createUncachedFields());

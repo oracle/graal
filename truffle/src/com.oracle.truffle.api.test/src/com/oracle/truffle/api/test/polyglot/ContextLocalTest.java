@@ -194,7 +194,6 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     assertFails(() -> language1.contextThreadLocal1.get(t0, Thread.currentThread()),
                                     AssertionError.class,
                                     (e) -> e.getMessage().startsWith("Detected invalid sharing of context locals"));
-                    assertFails(() -> language0.contextThreadLocal0.get(), AssertionError.class, (e) -> e.getMessage().startsWith("Detected invalid sharing of context locals"));
 
                     assertSame(env1, language1.contextThreadLocal0.get(t1, Thread.currentThread()).env);
                     assertSame(Thread.currentThread(), language1.contextThreadLocal0.get(t1,

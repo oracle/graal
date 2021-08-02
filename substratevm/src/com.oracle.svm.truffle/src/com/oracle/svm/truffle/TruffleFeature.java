@@ -288,6 +288,8 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         FeatureImpl.BeforeAnalysisAccessImpl config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
 
+        ImageSingletons.lookup(TruffleBaseFeature.class).setProfilingEnabled(truffleRuntime.isProfilingEnabled());
+
         for (Class<?> initType : truffleRuntime.getLookupTypes()) {
             access.registerAsUsed(initType);
         }

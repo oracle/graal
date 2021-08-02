@@ -109,9 +109,7 @@ public class RequireContextTest extends AbstractPolyglotTest {
 
         @Override
         public void accept(IllegalStateException ise) {
-            if (!"There is no current context available.".equals(ise.getMessage())) {
-                throw new AssertionError("Expected  'There is no current context available.' message but was " + ise.getMessage(), ise);
-            }
+            assertEquals("There is no current context available.", ise.getMessage());
         }
     }
 

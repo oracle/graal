@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,63 +22,62 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.thread;
+package org.graalvm.compiler.truffle.compiler.hotspot.nodes;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
-
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+/**
+ * Loads {@code JavaThread::_jvmci_reserved_oop0} for the current thread.
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThreadLocalAccess, Lowerable {
-    public static final NodeClass<LoadVMThreadLocalNode> TYPE = NodeClass.create(LoadVMThreadLocalNode.class);
+public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode implements Lowerable {
 
-    protected final VMThreadLocalInfo threadLocalInfo;
-    protected final BarrierType barrierType;
-    @Input protected ValueNode holder;
-    private final boolean floatReads;
+    static final LocationIdentity JVMCI_RESERVED_REFERENCE = NamedLocationIdentity.mutable("JavaThread::<JVMCIReservedOop0>");
 
-    public LoadVMThreadLocalNode(MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, BarrierType barrierType, boolean floatReads) {
-        super(TYPE, threadLocalInfo.isObject ? StampFactory.object(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(threadLocalInfo.valueClass)))
-                        : StampFactory.forKind(threadLocalInfo.storageKind));
-        this.threadLocalInfo = threadLocalInfo;
-        this.barrierType = barrierType;
-        this.floatReads = floatReads;
-        this.holder = holder;
+    public static final NodeClass<HotSpotLoadReservedReferenceNode> TYPE = NodeClass.create(HotSpotLoadReservedReferenceNode.class);
+
+    private final WordTypes wordTypes;
+
+    private final int jvmciReservedReference0Offset;
+
+    public HotSpotLoadReservedReferenceNode(MetaAccessProvider metaAccess, WordTypes wordTypes, int jvmciReservedReference0Offset) {
+        super(TYPE, StampFactory.object(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(Object[].class))));
+        this.wordTypes = wordTypes;
+        this.jvmciReservedReference0Offset = jvmciReservedReference0Offset;
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        assert threadLocalInfo.offset >= 0;
-
-        ConstantNode offset = ConstantNode.forLong(threadLocalInfo.offset, holder.graph());
-        AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
-        JavaReadNode read = graph().add(new JavaReadNode(stamp, threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true));
-
-        if (floatReads) {
-            /*
-             * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise they
-             * will be conservatively be forced at a fixed location.
-             */
-            read.setGuard(read.graph().start());
-        }
-
+        CurrentJavaThreadNode thread = graph().unique(new CurrentJavaThreadNode(wordTypes));
+        AddressNode address = graph().unique(new OffsetAddressNode(thread, graph().unique(ConstantNode.forLong(jvmciReservedReference0Offset))));
+        JavaReadNode read = graph().add(new JavaReadNode(JavaKind.Object, address, JVMCI_RESERVED_REFERENCE, BarrierType.NONE, false));
+        /*
+         * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise they will
+         * conservatively be forced at a fixed location.
+         */
+        read.setGuard(graph().start());
         graph().replaceFixedWithFixed(this, read);
         tool.getLowerer().lower(read, tool);
     }
+
 }

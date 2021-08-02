@@ -124,7 +124,6 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     protected void disposeContext(LanguageContext context) {
         if (context.initialized) {
             assertSame(getContext(), context);
-            assertSame(context, getContextReference().get());
 
             assertSame(context, new RootNode(this) {
                 @Override

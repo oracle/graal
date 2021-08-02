@@ -423,7 +423,7 @@ public class CachedContextTest extends AbstractPolyglotTest {
 
         @Specialization
         static String s0(Object value,
-                        @ExpectError("Invalid @CachedContext specification. The context type could not be inferred from super type 'TruffleLanguage<T>' in language 'InvalidLanguage2'.")//
+                        @ExpectError("Invalid @CachedContext specification. The context type could not be inferred from super type in language 'InvalidLanguage2'.")//
                         @CachedContext(InvalidLanguage2.class) Object language) {
             throw new AssertionError();
         }

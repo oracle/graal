@@ -154,6 +154,11 @@ final class HostAccessor extends Accessor {
         public boolean isGuestToHostRootNode(RootNode root) {
             return root instanceof GuestToHostRootNode;
         }
+
+        @Override
+        public boolean isHostLanguage(Class<?> languageClass) {
+            return languageClass == HostLanguage.class;
+        }
     }
 
 }
