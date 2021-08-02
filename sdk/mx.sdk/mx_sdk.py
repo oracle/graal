@@ -166,7 +166,7 @@ def graalvm_components(opt_limit_to_suite=False):
 
 
 def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority=0):
-    return add_graalvm_hostvm_config(name, java_args=java_args, launcher_args=launcher_args, priority=priority)
+    return mx_sdk_vm.add_graalvm_hostvm_config(name, java_args=java_args, launcher_args=launcher_args, priority=priority)
 
 
 def jdk_enables_jvmci_by_default(jdk):
