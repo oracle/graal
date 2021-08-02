@@ -106,8 +106,8 @@ final class PolyglotFastThreadLocals {
         return ref;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static <C extends TruffleLanguage> LanguageReference<C> createLanguageReference(Class<? extends TruffleLanguage<?>> language) {
+    @SuppressWarnings({"unchecked"})
+    private static <C extends TruffleLanguage<?>> LanguageReference<C> createLanguageReference(Class<? extends TruffleLanguage<?>> language) {
         return (LanguageReference<C>) lookupReferences(language).languageReference;
     }
 
@@ -429,8 +429,7 @@ final class PolyglotFastThreadLocals {
     /*
      * Remove with deprecated APIs.
      */
-    @SuppressWarnings("rawtypes")
-    static final class LegacyLanguageReference<C extends TruffleLanguage> extends LanguageReference<C> {
+    static final class LegacyLanguageReference<C extends TruffleLanguage<?>> extends LanguageReference<C> {
 
         private final LanguageReference<C> delegate;
         private final Node fixedNode;
