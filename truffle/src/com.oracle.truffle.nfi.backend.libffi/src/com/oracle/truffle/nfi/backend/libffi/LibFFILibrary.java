@@ -43,11 +43,11 @@ package com.oracle.truffle.nfi.backend.libffi;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -95,9 +95,9 @@ final class LibFFILibrary implements TruffleObject {
     @ExportMessage
     Object readMember(String symbol,
                     @Cached BranchProfile exception,
-                    @CachedContext(LibFFILanguage.class) LibFFIContext ctx) throws UnknownIdentifierException {
+                    @CachedLibrary("this") InteropLibrary node) throws UnknownIdentifierException {
         try {
-            return ctx.lookupSymbol(this, symbol);
+            return LibFFIContext.get(node).lookupSymbol(this, symbol);
         } catch (NFIUnsatisfiedLinkError ex) {
             exception.enter();
             throw UnknownIdentifierException.create(symbol);
