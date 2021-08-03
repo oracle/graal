@@ -283,7 +283,7 @@ final class PolyglotFastThreadLocals {
     }
 
     private static int resolveLanguageIndex(int index) {
-        if (index < LANGUAGE_START || index > LANGUAGE_START + (LanguageCache.getMaxStaticIndex() * LANGUAGE_ELEMENTS)) {
+        if (index < LANGUAGE_START || index >= LANGUAGE_START + ((LanguageCache.getMaxStaticIndex() + 1) * LANGUAGE_ELEMENTS)) {
             throw CompilerDirectives.shouldNotReachHere("invalid fast thread local index");
         }
         return Math.floorDiv(index - LANGUAGE_START, LANGUAGE_ELEMENTS);
