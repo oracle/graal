@@ -181,7 +181,7 @@ function title(e) {
 }
 
 function function_name(e) {
-    return title(e).replace(/\\([^(]*\\)$/,"");
+    return title(e);
 }
 
 function update_text(e) {
@@ -210,6 +210,17 @@ function update_text_parts(e, r, t, w, txt) {
         return;
     }
 
+    let x = search_text_width(w, t, txt, lengths);
+
+    if (x > 2) {
+        t.style["display"] = "block";
+        t.textContent = txt.substring(0,x - 2) + "..";
+    } else {
+        t.style["display"] = "none";
+    }
+}
+
+function search_text_width(w, t, txt, lengths) {
     let x = Math.round(txt.length / 4);
     let good_x = 0;
     let bad_x = txt.length;
@@ -223,13 +234,7 @@ function update_text_parts(e, r, t, w, txt) {
         }
         x = Math.round((bad_x - good_x) / 4) + good_x;
     }
-
-    if (x > 2) {
-        t.style["display"] = "block";
-        t.textContent = txt.substring(0,x - 2) + "..";
-    } else {
-        t.style["display"] = "none";
-    }
+    return x;
 }
 
 var txt_length_cache = {}
@@ -248,7 +253,9 @@ function substring_width(t, txt, x, lengths) {
     let w = lengths[x - 1];
     if (w == -1) {
         t.style["display"] = "block";
-        t.textContent = txt;
+        if (t.textContent.length < (x + 2)) {
+            t.textContent = txt.substring(0, x + 1);
+        }
         w = t.getSubStringLength(0, x);
         lengths[x - 1] = w;
     }

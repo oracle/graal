@@ -92,7 +92,7 @@ function zoom_child(sample) {
 
     r.width.baseVal.value = width;
 
-    update_text_parts(e, r, t, width - 3, sample.n.replace(/\\([^(]*\\)$/,""));
+    update_text_parts(e, r, t, width - 3, sample.n);
 }
 
 function zoom_parent(sample) {

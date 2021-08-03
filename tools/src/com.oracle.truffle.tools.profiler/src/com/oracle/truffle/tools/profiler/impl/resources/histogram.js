@@ -115,15 +115,14 @@ function h_create_element_for_id(id, bar, width) {
 
 function h_update_bar(id, bar) {
     let width = ((bar.c + bar.i) / h_max) * (h_width - 2 * xpad);
+    let space_after = h_width - 2 * xpad - 3 - width; // Allows for space after the bar and not extending into the right margin.
     if (width >= h_minwidth && id < 100) {
         if ((id + 1) > h_max_depth) {
             h_max_depth = id + 1;
         }
         let e = h_element_for_id(id);
         if (e == undefined) {
-            if (width >= h_minwidth) {
-                e = h_create_element_for_id(id, bar, width);
-            }
+            e = h_create_element_for_id(id, bar, width);
         }
         e.style.display = "block";
         let r = e.firstElementChild;
@@ -131,10 +130,29 @@ function h_update_bar(id, bar) {
         r.width.baseVal.value = width;
         r.style.fill = fg_color_for_sample(color_type, bar);
         t.textContent = bar.n;
-        if (t.textLength.baseVal.value > width - 6) {
+        let t_width = t.textLength.baseVal.value;
+        if (t_width < width - 6) {
+            // If the text fits in the bar, put it there.
+            t.x.baseVal[0].value = xpad + 3;
+        } else if (t_width < space_after)  {
+            // If the text fits after the bar put it there
             t.x.baseVal[0].value = xpad + 3 + width;
         } else {
-            t.x.baseVal[0].value = xpad + 3;
+            let w;
+            if (width > space_after) {
+                t.x.baseVal[0].value = xpad + 3;
+                w = width;
+            } else {
+                t.x.baseVal[0].value = xpad + 3 + width;
+                w = space_after;
+            }
+            let x = search_text_width(w, t, bar.n, get_txt_lengths(bar.n));
+
+            if (x > 2) {
+                t.textContent = bar.n.substring(0,x - 2) + "..";
+            } else {
+                t.textContent = "";
+            }
         }
     }
 }

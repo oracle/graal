@@ -647,6 +647,19 @@ class SVGSamplerOutput {
             return 0.5;
         }
 
+        public String abbreviate(String fullText, double width) {
+            String text;
+            int textLength = (int) (width / (fontSize() * fontWidth()));
+            if (textLength > fullText.length()) {
+                text = fullText;
+            } else if (textLength >= 3) {
+                text = fullText.substring(0, textLength - 2) + "...";
+            } else {
+                text = "";
+            }
+            return text;
+        }
+
         public String getResource(String name) {
             StringBuilder resource = new StringBuilder();
             try (
@@ -764,19 +777,6 @@ class SVGSamplerOutput {
             return widthPerTime * x + XPAD;
         }
 
-        private String abbreviate(String fullText, double width) {
-            String text;
-            int textLength = (int) (width / (owner.fontSize() * owner.fontWidth()));
-            if (textLength > fullText.length()) {
-                text = fullText;
-            } else if (textLength >= 3) {
-                text = fullText.substring(0, textLength - 2) + "...";
-            } else {
-                text = "";
-            }
-            return text;
-        }
-
         private String drawSample(double y, JSONObject sample) {
             StringBuilder output = new StringBuilder();
             double width = sampleWidth(sample);
@@ -799,7 +799,7 @@ class SVGSamplerOutput {
 
             String fullText = sample.getString("n");
 
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), x + 3, y - 5 + FRAMEHEIGHT, abbreviate(fullText, width), null, ""));
+            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), x + 3, y - 5 + FRAMEHEIGHT, owner.abbreviate(fullText, width), null, ""));
             output.append(owner.svg.endGroup(groupAttrs));
             if (sample.has("s")) {
                 JSONArray children = sample.getJSONArray("s");
@@ -956,15 +956,28 @@ class SVGSamplerOutput {
             HashMap<String, String> rectAttrs = new HashMap<>();
 
             output.append(owner.svg.fillRectangle(x1, y1, width, FRAMEHEIGHT, owner.colorForName(name, GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
+            double afterWidth = IMAGEWIDTH - width - XPAD * 2;
             int textLength = (int) (width / (owner.fontSize() / owner.fontWidth()));
+            int afterLength = (int) (afterWidth / (owner.fontSize() / owner.fontWidth()));
 
             boolean textOUtsideBar;
+            double textX;
+            String text = name;
             if (textLength > name.length()) {
-                textOUtsideBar = false;
+                textX = x1 + 3;
+            } else if (afterLength > name.length()) {
+                textX = x1 + 3 + width;
             } else {
-                textOUtsideBar = true;
+                if (textLength > afterLength) {
+                    textX = x1 + 3;
+                    text = owner.abbreviate(name, width);
+                } else {
+                    textX = x1 + 3 + width;
+                    text = owner.abbreviate(name, afterWidth);
+                }
             }
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), x1 + 3 + (textOUtsideBar ? width : 0.0), y1 - 5 + FRAMEHEIGHT, name , null, ""));
+
+            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), textX, y1 - 5 + FRAMEHEIGHT, text , null, ""));
             output.append(owner.svg.endGroup(groupAttrs));
             return output.toString();
         }
