@@ -65,8 +65,7 @@ public abstract class LLVMVAStart extends LLVMExpressionNode {
     @Specialization
     protected Object vaStart(VirtualFrame frame, LLVMPointer targetAddress,
                     @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary,
-                    @Cached LLVMVaListStorage.StackAllocationNode stackAllocationNode) {
+                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
         Object vaList = wrapperFactory.execute(targetAddress);
         vaListLibrary.initialize(vaList, getArgumentsArray(frame), numberOfExplicitArguments, frame);
         return null;

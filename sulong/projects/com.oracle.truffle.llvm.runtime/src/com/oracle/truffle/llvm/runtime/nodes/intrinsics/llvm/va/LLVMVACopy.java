@@ -58,9 +58,9 @@ public abstract class LLVMVACopy extends LLVMBuiltin {
 
     @Specialization
     protected Object copyVAList(VirtualFrame frame, LLVMPointer dest, LLVMPointer source,
-                                @Cached VAListPointerWrapperFactoryDelegate sourceWrapperFactory,
-                                @Cached VAListPointerWrapperFactoryDelegate destWrapperFactory,
-                                @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+                    @Cached VAListPointerWrapperFactoryDelegate sourceWrapperFactory,
+                    @Cached VAListPointerWrapperFactoryDelegate destWrapperFactory,
+                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
         vaListLibrary.copy(sourceWrapperFactory.execute(source), destWrapperFactory.execute(dest), frame);
         return null;
     }

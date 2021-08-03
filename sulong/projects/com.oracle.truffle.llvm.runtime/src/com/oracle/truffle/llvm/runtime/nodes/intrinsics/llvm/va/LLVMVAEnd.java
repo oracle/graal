@@ -52,8 +52,8 @@ public abstract class LLVMVAEnd extends LLVMExpressionNode {
 
     @Specialization
     protected Object cleanVAList(VirtualFrame frame, LLVMPointer targetAddress,
-                                 @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                                 @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
+                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
         vaListLibrary.cleanup(wrapperFactory.execute(targetAddress), frame);
         return null;
     }

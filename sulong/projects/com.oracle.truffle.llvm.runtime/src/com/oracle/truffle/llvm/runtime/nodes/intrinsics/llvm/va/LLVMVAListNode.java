@@ -44,8 +44,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
  * This node creates an instance of a platform specific managed va_list object. The instantiation is
- * delegated to {@link PlatformCapability#createVAListStorage(RootNode, com.oracle.truffle.llvm.runtime.pointer.LLVMPointer)}) so that this class remains
- * platform independent. This node is appended to the AST when
+ * delegated to
+ * {@link PlatformCapability#createVAListStorage(RootNode, com.oracle.truffle.llvm.runtime.pointer.LLVMPointer)})
+ * so that this class remains platform independent. This node is appended to the AST when
  * {@link NodeFactory#createAlloca(Type, int)} is called. That method is the place where the request
  * to allocate a <code>va_list</code> variable on the stack is intercepted by comparing the type
  * argument with the predefined platform specific <code>va_list</code> type (obtained via
@@ -56,15 +57,16 @@ public abstract class LLVMVAListNode extends LLVMExpressionNode {
     protected LLVMVAListNode() {
     }
 
-    LLVMExpressionNode createAllocaNode(LLVMLanguage language) {
+    LLVMExpressionNode createAllocaNode() {
         DataLayout dataLayout = LLVMVaListStorage.findDataLayoutFromCurrentFrame();
+        LLVMLanguage language = LLVMLanguage.get(null);
         PlatformCapability<?> capability = language.getCapability(PlatformCapability.class);
         return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(capability.getVAListType(), capability.getVAListAlignment());
     }
 
     @Specialization
     public LLVMManagedPointer createVAList(VirtualFrame frame,
-                                           @Cached("createAllocaNode(lang)") LLVMExpressionNode allocaNode) {
+                    @Cached("createAllocaNode()") LLVMExpressionNode allocaNode) {
         // allocaNode == null indicates that no native stack is supported
         LLVMNativePointer vaListNativeStackPtr = allocaNode == null ? LLVMNativePointer.createNull() : LLVMNativePointer.cast(allocaNode.executeGeneric(frame));
         Object vaListStorage = LLVMLanguage.get(this).getCapability(PlatformCapability.class).createVAListStorage(getRootNode(), vaListNativeStackPtr);

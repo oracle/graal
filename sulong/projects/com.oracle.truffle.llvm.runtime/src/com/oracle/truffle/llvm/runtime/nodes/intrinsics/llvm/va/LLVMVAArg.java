@@ -53,8 +53,8 @@ public abstract class LLVMVAArg extends LLVMExpressionNode {
 
     @Specialization
     protected Object vaArg(VirtualFrame frame, LLVMManagedPointer targetAddress,
-                           @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                           @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
+                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
         return vaListLibrary.shift(wrapperFactory.execute(targetAddress), type, frame);
     }
 }
