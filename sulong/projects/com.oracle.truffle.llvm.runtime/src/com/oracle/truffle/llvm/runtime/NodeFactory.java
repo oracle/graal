@@ -167,7 +167,7 @@ public interface NodeFactory {
 
     LLVMExpressionNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type.TypeArrayBuilder argTypes, Type retType);
 
-    LLVMExpressionNode createLandingPad(LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup, long[] clauseKinds, LLVMExpressionNode[] entries,
+    LLVMExpressionNode createLandingPad(FrameSlot exceptionSlot, boolean cleanup, long[] clauseKinds, LLVMExpressionNode[] entries,
                     LLVMExpressionNode getStack);
 
     LLVMControlFlowNode createResumeInstruction(FrameSlot exceptionSlot);

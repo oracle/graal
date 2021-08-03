@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,14 +42,14 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
     private final List<LLVMSourceMethodType> methods;
 
     @TruffleBoundary
-    public LLVMSourceClassLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
-        super(name, size, align, offset, location);
+    public LLVMSourceClassLikeType(String name, long size, long align, long offset, LLVMSourceLocation location, String identifier) {
+        super(name, size, align, offset, location, identifier);
         this.methods = new ArrayList<>();
     }
 
     private LLVMSourceClassLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
-                    List<LLVMSourceMethodType> methods, LLVMSourceLocation location) {
-        super(name, size, align, offset, dynamicMembers, staticMembers, location);
+                    List<LLVMSourceMethodType> methods, LLVMSourceLocation location, String cppTypeInfo) {
+        super(name, size, align, offset, dynamicMembers, staticMembers, location, cppTypeInfo);
         this.methods = methods;
     }
 
@@ -61,7 +61,7 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceClassLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, methods, getLocation());
+        return new LLVMSourceClassLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, methods, getLocation(), cppTypeInfo);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,21 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.func;
+#include <graalvm/llvm/polyglot.h>
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignExceptionAccessNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+class A {
+public:
+    int x;
+    A(int x);
+    A();
+};
 
-@NodeChild(value = "unwindHeader", type = LLVMExpressionNode.class)
-public abstract class LLVMRaiseExceptionNode extends LLVMExpressionNode {
+POLYGLOT_DECLARE_TYPE(A);
 
-    @Specialization
-    public Object doRaise(LLVMPointer unwindHeader, @Cached LLVMForeignExceptionAccessNode exceptionAccessNode) {
-        throw new LLVMUserException(this, unwindHeader, () -> exceptionAccessNode.execute(unwindHeader));
+A::A(int dx) {
+    x = dx;
+}
+
+A::A() {
+}
+
+long safeExecute(void *callback) {
+    try {
+        void *(*fptr)();
+        fptr = (void *(*) ()) callback;
+        fptr();
+        return 0L;
+    } catch (void *e) {
+        return 1L;
+    }
+}
+
+int execute(int x) {
+	//prevent type ID of A being optimized away
+	polyglot_from_A(new A(30));
+    if (x == 0) {
+        throw new A(50);
+    } else {
+        return x / 2;
     }
 }

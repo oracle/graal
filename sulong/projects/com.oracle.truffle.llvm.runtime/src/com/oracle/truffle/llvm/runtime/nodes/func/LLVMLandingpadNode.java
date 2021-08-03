@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -42,7 +44,10 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMManagedExceptionObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMManagedLandingpadValue;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
@@ -52,23 +57,22 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValueNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode getStack;
-    @Child private LLVMExpressionNode allocateLandingPadValue;
-    @Child private LLVMPointerStoreNode writePointer = LLVMPointerStoreNode.create();
-    @Child private LLVMI32OffsetStoreNode writeI32 = LLVMI32OffsetStoreNode.create();
     @Children private final LandingpadEntryNode[] entries;
 
     private final FrameSlot exceptionSlot;
     private final boolean cleanup;
 
-    public LLVMLandingpadNode(LLVMExpressionNode getStack, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup,
+    public LLVMLandingpadNode(LLVMExpressionNode getStack, FrameSlot exceptionSlot, boolean cleanup,
                     LandingpadEntryNode[] entries) {
         this.getStack = getStack;
-        this.allocateLandingPadValue = allocateLandingPadValue;
         this.exceptionSlot = exceptionSlot;
         this.cleanup = cleanup;
         this.entries = entries;
@@ -85,12 +89,10 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
             if (clauseId == 0 && !cleanup) {
                 throw exception;
             } else {
-                LLVMPointer landingPadValue = allocateLandingPadValue.executeLLVMPointer(frame);
-                writePointer.executeWithTarget(landingPadValue, unwindHeader);
-                writeI32.executeWithTarget(landingPadValue, ADDRESS_SIZE_IN_BYTES, clauseId);
-                return landingPadValue;
+                LLVMManagedLandingpadValue landingpadValue = new LLVMManagedLandingpadValue(unwindHeader, clauseId);
+                return LLVMManagedPointer.create(landingpadValue);
             }
-        } catch (FrameSlotTypeException | UnexpectedResultException e) {
+        } catch (FrameSlotTypeException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
@@ -143,14 +145,40 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
             return canCatch;
         }
 
+        protected static final String voidPointerType = "_ZTIPv";
+
+        protected static final int nativePointerToI32(LLVMPointer pointer) {
+            return (int) LLVMNativePointer.cast(pointer).asNative();
+        }
+
+        /**
+         * @param accessSymbolNode
+         * @param context
+         * @param typeInfo
+         */
         @Specialization
-        int getIdentifier(LLVMStack stack, LLVMPointer unwindHeader, LLVMPointer catchType) {
+        int getIdentifier(LLVMStack stack, LLVMPointer unwindHeader, LLVMPointer catchType,
+                        @Cached LLVMDynAccessSymbolNode accessSymbolNode,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context,
+                        @Cached(value = "context.getGlobalScope().get(voidPointerType)") LLVMSymbol typeInfo,
+                        @Cached(value = "accessSymbolNode.execute(typeInfo)") LLVMPointer resolvedVoidTypePtr,
+                        @Cached(value = "nativePointerToI32(resolvedVoidTypePtr)") int resolvedReturnValue) {
             if (catchType.isNull()) {
                 /*
                  * If ExcType is null, any exception matches, so the landing pad should always be
                  * entered. catch (...)
                  */
                 return 1;
+            }
+            if (LLVMManagedPointer.isInstance(unwindHeader)) {
+                final Object eObj = LLVMManagedPointer.cast(unwindHeader).getObject();
+                if (eObj instanceof LLVMManagedExceptionObject) {
+                    /*
+                     * for foreign objects (thrown via polyglot interop), catching in LLVM is
+                     * possible for 'void*', i.e. _ZTIPv
+                     */
+                    return resolvedVoidTypePtr.isSame(catchType) ? resolvedReturnValue : 0;
+                }
             }
             if (getCanCatch().canCatch(stack, unwindHeader, catchType) != 0) {
                 return (int) toComparableValue.executeWithTarget(catchType);

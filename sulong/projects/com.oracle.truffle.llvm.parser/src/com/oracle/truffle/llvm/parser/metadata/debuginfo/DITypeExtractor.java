@@ -198,7 +198,10 @@ final class DITypeExtractor implements MetadataVisitor {
             case DW_TAG_CLASS_TYPE: {
                 String name = MDNameExtractor.getName(mdType.getName());
 
-                final LLVMSourceClassLikeType type = new LLVMSourceClassLikeType(name, size, align, offset, location);
+                MDBaseNode identifierNode = mdType.getIdentifier();
+                String identifier = MDNameExtractor.getName(identifierNode);
+
+                final LLVMSourceClassLikeType type = new LLVMSourceClassLikeType(name, size, align, offset, location, identifier);
                 parsedTypes.put(mdType, type);
 
                 final List<LLVMSourceType> members = new ArrayList<>();
@@ -245,7 +248,10 @@ final class DITypeExtractor implements MetadataVisitor {
                     name = String.format("union %s", name);
                 }
 
-                final LLVMSourceStructLikeType type = new LLVMSourceStructLikeType(name, size, align, offset, location);
+                MDBaseNode identifierNode = mdType.getIdentifier();
+                String identifier = MDNameExtractor.getName(identifierNode);
+
+                final LLVMSourceStructLikeType type = new LLVMSourceStructLikeType(name, size, align, offset, location, identifier);
                 parsedTypes.put(mdType, type);
 
                 final List<LLVMSourceType> members = new ArrayList<>();

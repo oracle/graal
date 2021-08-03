@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,16 @@
 #include "cxa_exception.h"
 #include "private_typeinfo.h"
 
+namespace __extern_C {
+namespace ___sulong_import_base64 {
+
+namespace bGliYysrYWJp {
+static void *__cxa_begin_catch(void *unwind);
+static void __cxa_end_catch();
+} // namespace bGliYysrYWJp
+} // namespace ___sulong_import_base64
+} // namespace __extern_C
+
 namespace __cxxabiv1 {
 
 // special sulong namespace
@@ -44,16 +54,20 @@ static __cxa_exception *cxa_exception_from_exception_unwind_exception(_Unwind_Ex
 
 static void *thrown_object_from_cxa_exception(__cxa_exception *exception_header);
 
+static void *__cxa_begin_catch(void *unwind);
+
 } // namespace bGliYysrYWJp
 } // namespace ___sulong_import_base64
 
 extern "C" {
 
 unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
+
     __cxa_exception *ex = ___sulong_import_base64::bGliYysrYWJp::cxa_exception_from_exception_unwind_exception(unwindHeader);
     void *p = ___sulong_import_base64::bGliYysrYWJp::thrown_object_from_cxa_exception(ex);
     __shim_type_info *et = dynamic_cast<__shim_type_info *>(ex->exceptionType);
     __shim_type_info *ct = dynamic_cast<__shim_type_info *>(catchType);
+
     if (et == NULL || ct == NULL) {
         fprintf(stderr, "libsulong: Type error in sulong_eh_canCatch(...).\n");
         abort();
@@ -63,6 +77,36 @@ unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info 
         return 1;
     } else {
         return 0;
+    }
+}
+
+struct Foreign_unwind_header {
+    int64_t exception_class;
+    void *foreign_object;
+};
+
+void *__cxa_begin_catch(void *unwind) {
+    Foreign_unwind_header *v = (Foreign_unwind_header *) unwind;
+    if (v->exception_class == 0x504c594754455843) {
+        /*
+		 * 0x504c594754455843 = (char-encoded) PLYGTEXC = polyglot exception. 
+		 * denotes that the exception has not been thrown by LLVM itself, 
+		 * but via foreign language and the polyglot interop API. 
+		 * See com.oracle.truffle.llvm.runtime.interop.LLVMManagedExceptionObject[.java]
+		 */
+        return v->foreign_object;
+    }
+    return __extern_C::___sulong_import_base64::bGliYysrYWJp::__cxa_begin_catch(unwind);
+}
+
+void __cxa_end_catch() {
+    //for foreign exceptions via the interop library, globals/headers are nullptr
+    __cxa_eh_globals *globals = __cxa_get_globals_fast();
+    if (globals) {
+        __cxa_exception *exception_header = globals->caughtExceptions;
+        if (exception_header) {
+            __extern_C::___sulong_import_base64::bGliYysrYWJp::__cxa_end_catch();
+        }
     }
 }
 

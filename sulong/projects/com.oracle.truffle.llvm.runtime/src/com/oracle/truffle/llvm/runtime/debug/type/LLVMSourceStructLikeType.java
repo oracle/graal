@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,18 +43,22 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
 
     protected final LLVMSourceStaticMemberType.CollectionType staticMembers;
 
+    protected final String cppTypeInfo;
+
     @TruffleBoundary
-    public LLVMSourceStructLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
+    public LLVMSourceStructLikeType(String name, long size, long align, long offset, LLVMSourceLocation location, String identifier) {
         super(() -> name, size, align, offset, location);
         this.dynamicMembers = new ArrayList<>();
         this.staticMembers = new LLVMSourceStaticMemberType.CollectionType();
+        this.cppTypeInfo = identifier != null && identifier.startsWith("_ZTS") ? "_ZTIP" + identifier.substring(4) : null;
     }
 
     protected LLVMSourceStructLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
-                    LLVMSourceLocation location) {
+                    LLVMSourceLocation location, String cppTypeInfo) {
         super(name, size, align, offset, location);
         this.dynamicMembers = dynamicMembers;
         this.staticMembers = staticMembers;
+        this.cppTypeInfo = cppTypeInfo;
     }
 
     @TruffleBoundary
@@ -70,7 +74,7 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, getLocation());
+        return new LLVMSourceStructLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, getLocation(), cppTypeInfo);
     }
 
     @Override
@@ -190,4 +194,9 @@ public class LLVMSourceStructLikeType extends LLVMSourceType {
         }
         return null;
     }
+
+    public String getCppTypeInfo() {
+        return cppTypeInfo;
+    }
+
 }

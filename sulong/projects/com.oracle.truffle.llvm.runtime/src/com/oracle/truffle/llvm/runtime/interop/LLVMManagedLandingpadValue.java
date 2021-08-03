@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,21 +27,52 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.func;
+package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignExceptionAccessNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChild(value = "unwindHeader", type = LLVMExpressionNode.class)
-public abstract class LLVMRaiseExceptionNode extends LLVMExpressionNode {
+@ExportLibrary(LLVMManagedReadLibrary.class)
+public class LLVMManagedLandingpadValue extends LLVMInternalTruffleObject {
+    private final LLVMPointer unwindHeader;
+    private final int clauseId;
 
-    @Specialization
-    public Object doRaise(LLVMPointer unwindHeader, @Cached LLVMForeignExceptionAccessNode exceptionAccessNode) {
-        throw new LLVMUserException(this, unwindHeader, () -> exceptionAccessNode.execute(unwindHeader));
+    public LLVMManagedLandingpadValue(LLVMPointer unwindHeader, int clauseId) {
+        this.unwindHeader = unwindHeader;
+        this.clauseId = clauseId;
     }
+
+    @ExportMessage
+    public LLVMPointer readPointer(long offset) {
+        return offset == 0 ? unwindHeader : LLVMNativePointer.createNull();
+    }
+
+    @ExportMessage
+    public int readI32(long offset) {
+        return offset == 8 ? clauseId : 0;
+    }
+
+    @ExportMessage
+    final boolean isReadable() {
+        return true;
+    }
+
+    @ExportMessage
+    final byte readI8(long offset) {
+        return (byte) 0;
+    }
+
+    @ExportMessage
+    final short readI16(long offset) {
+        return (short) 0;
+    }
+
+    @ExportMessage
+    final Object readGenericI64(long offset) {
+        return offset == 0 ? unwindHeader : 0L;
+    }
+
 }

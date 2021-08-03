@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -167,7 +167,7 @@ public final class LLVMSourceTypeFactory {
         @Override
         public void visit(StructureType type) {
             try {
-                final LLVMSourceStructLikeType resolvedType = new LLVMSourceStructLikeType(type.getName(), getBitSize(type), getAlignment(type), 0L, null);
+                final LLVMSourceStructLikeType resolvedType = new LLVMSourceStructLikeType(type.getName(), getBitSize(type), getAlignment(type), 0L, null, null);
                 resolved.put(type, resolvedType);
 
                 final int numberOfMembers = type.getNumberOfElementsInt();
@@ -232,7 +232,7 @@ public final class LLVMSourceTypeFactory {
         @Override
         public void visit(OpaqueType type) {
             try {
-                final LLVMSourceStructLikeType resolvedType = new LLVMSourceStructLikeType(type.getName(), getBitSize(type), getAlignment(type), 0L, null);
+                final LLVMSourceStructLikeType resolvedType = new LLVMSourceStructLikeType(type.getName(), getBitSize(type), getAlignment(type), 0L, null, null);
                 resolved.put(type, resolvedType);
             } catch (TypeOverflowException e) {
                 throw new AssertionError(e);
