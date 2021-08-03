@@ -91,6 +91,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.RuntimeNameMapper;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -1495,7 +1496,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
-                    boolean allowValueSharing) {
+                    RuntimeNameMapper nameMapper, boolean allowValueSharing) {
         PolyglotContextImpl context;
         boolean replayEvents;
         boolean contextAddedToEngine;
@@ -1570,7 +1571,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                             allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
-                            environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing);
+                            environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, nameMapper, allowValueSharing);
             context = loadPreinitializedContext(config);
             replayEvents = false;
             contextAddedToEngine = false;

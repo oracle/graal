@@ -104,6 +104,10 @@ final class PolyglotEngineOptions {
                     "Use pre-initialized context when it's available.")//
     static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
 
+    @Option(category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Enable Multithreading (UNSAFE)")//
+    static final OptionKey<Boolean> EnableMultithreading = new OptionKey<>(false);
+
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts")//
     static final OptionKey<Boolean> RelaxStaticObjectSafetyChecks = new OptionKey<>(false);

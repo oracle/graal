@@ -315,14 +315,16 @@ public final class Context implements AutoCloseable {
     final Object receiver;
     final Context currentAPI;
     final Engine engine;
+    final RuntimeNameMapper runtimeNameMapper;
 
     @SuppressWarnings("unchecked")
-    <T> Context(AbstractContextDispatch dispatch, T receiver, Engine engine) {
+    <T> Context(AbstractContextDispatch dispatch, T receiver, Engine engine, RuntimeNameMapper nameMapper) {
         this.dispatch = dispatch;
         this.receiver = receiver;
         this.engine = engine;
         this.currentAPI = new Context(this);
         dispatch.setAPI(receiver, this);
+        this.runtimeNameMapper = nameMapper;
     }
 
     private Context() {
@@ -330,6 +332,7 @@ public final class Context implements AutoCloseable {
         this.receiver = null;
         this.engine = null;
         this.currentAPI = null;
+        this.runtimeNameMapper = null;
     }
 
     private <T> Context(Context creatorAPI) {
@@ -337,6 +340,7 @@ public final class Context implements AutoCloseable {
         this.receiver = creatorAPI.receiver;
         this.engine = creatorAPI.engine.currentAPI;
         this.currentAPI = null;
+        this.runtimeNameMapper = null;
     }
 
     /**
@@ -347,6 +351,14 @@ public final class Context implements AutoCloseable {
      */
     public Engine getEngine() {
         return engine;
+    }
+
+    /**
+     * Provides access to the NameMapper used in this context.
+     * @return The NameMapper
+     */
+    public RuntimeNameMapper getRuntimeNameMapper() {
+        return runtimeNameMapper;
     }
 
     /**
@@ -1024,6 +1036,7 @@ public final class Context implements AutoCloseable {
         private ZoneId zone;
         private Path currentWorkingDirectory;
         private ClassLoader hostClassLoader;
+        private RuntimeNameMapper runtimeNameMapper;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -1667,6 +1680,18 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Sets a name mapper. If set, the RuntimeNameMapper is used as a proxy for class, field, and
+         * method names.
+         *
+         * @param mapper the RuntimeNameMapper
+         */
+        public Builder runtimeNameMapper(RuntimeNameMapper mapper) {
+            Objects.requireNonNull(mapper, "ClassLoader must be non null.");
+            this.runtimeNameMapper = mapper;
+            return this;
+        }
+
+        /**
          * Sets a host class loader. If set the given {@code classLoader} is used to load host
          * classes and it's also set as a {@link Thread#setContextClassLoader(java.lang.ClassLoader)
          * context ClassLoader} during code execution. Otherwise the ClassLoader that was captured
@@ -1796,7 +1821,7 @@ public final class Context implements AutoCloseable {
                             io, hostClassLoading, experimentalOptions,
                             localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
-                            localCurrentWorkingDirectory, hostClassLoader, allowValueSharing);
+                            localCurrentWorkingDirectory, hostClassLoader, runtimeNameMapper == null ? new DefaultRuntimeNameMapper() : runtimeNameMapper, allowValueSharing);
             return ctx;
         }
 

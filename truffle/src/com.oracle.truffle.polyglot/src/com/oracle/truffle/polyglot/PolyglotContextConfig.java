@@ -58,6 +58,7 @@ import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.RuntimeNameMapper;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -93,6 +94,7 @@ final class PolyglotContextConfig {
     final ClassLoader hostClassLoader;
     private final List<PolyglotInstrument> configuredInstruments;
     final HostAccess hostAccess;
+    final RuntimeNameMapper nameMapper;
     final boolean allowValueSharing;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
@@ -101,7 +103,7 @@ final class PolyglotContextConfig {
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
-                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing) {
+                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, RuntimeNameMapper nameMapper, boolean allowValueSharing) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -165,6 +167,7 @@ final class PolyglotContextConfig {
         this.environment = environment == null ? Collections.emptyMap() : environment;
         this.hostAccess = hostAccess;
         this.hostClassLoader = hostClassLoader;
+        this.nameMapper = nameMapper;
     }
 
     public ZoneId getTimeZone() {

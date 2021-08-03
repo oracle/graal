@@ -934,6 +934,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 deniedLanguages.add(context.language);
             }
         }
+        if(PolyglotEngineOptions.EnableMultithreading.getValue(getEngine().engineOptionValues))
+            return;
         if (deniedLanguages != null) {
             throw throwDeniedThreadAccess(enteringThread, singleThread, deniedLanguages);
         }
@@ -1060,6 +1062,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 }
             }
         }
+
+        if(PolyglotEngineOptions.EnableMultithreading.getValue(getEngine().engineOptionValues))
+            return threadInfo;
 
         if (deniedLanguages != null) {
             throw throwDeniedThreadAccess(current, singleThread, deniedLanguages);
@@ -2658,7 +2663,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 throw new AssertionError("Host service must not change per engine.");
             }
             newHost.initializeHostContext(this, contextImpl, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed,
-                            newConfig.hostLookupAllowed);
+                            newConfig.hostLookupAllowed, newConfig.nameMapper);
         } catch (IllegalStateException e) {
             throw PolyglotEngineException.illegalState(e.getMessage());
         }
@@ -2712,7 +2717,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         allowedLanguages,
                         Collections.emptyMap(),
                         fs, internalFs, engine.logHandler, false, null,
-                        EnvironmentAccess.INHERIT, null, null, null, null, null, true);
+                        EnvironmentAccess.INHERIT, null, null, null, null, null, null, true);
 
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         synchronized (engine.lock) {

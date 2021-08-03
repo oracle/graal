@@ -196,7 +196,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
             Context api = context.api;
             if (api == null) {
-                context.api = api = getAPIAccess().newContext(contextDispatch, context, context.engine.api);
+                context.api = api = getAPIAccess().newContext(contextDispatch, context, context.engine.api, api.getRuntimeNameMapper());
             }
             return api;
         } catch (Throwable t) {

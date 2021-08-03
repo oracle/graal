@@ -75,6 +75,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.RuntimeNameMapper;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -142,7 +143,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver);
 
-        public abstract Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine);
+        public abstract Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine, RuntimeNameMapper nameMapper);
 
         public abstract Language newLanguage(AbstractLanguageDispatch dispatch, Object receiver);
 
@@ -502,7 +503,7 @@ public abstract class AbstractPolyglotImpl {
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
-                        boolean allowValueSharing);
+                        RuntimeNameMapper nameMapper, boolean allowValueSharing);
 
         public abstract String getImplementationName(Object receiver);
 
@@ -669,7 +670,7 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
-                        boolean hostLookupAllowed);
+                        boolean hostLookupAllowed, RuntimeNameMapper nameMapper);
 
         public abstract void addToHostClassPath(Object context, Object truffleFile);
 

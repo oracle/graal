@@ -294,6 +294,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
         }
         if (firstFailingThread != null) {
+            if(PolyglotEngineOptions.EnableMultithreading.getValue(getEngine().engineOptionValues))
+                return;
             throw PolyglotContextImpl.throwDeniedThreadAccess(firstFailingThread, singleThreaded, Arrays.asList(language));
         }
     }
