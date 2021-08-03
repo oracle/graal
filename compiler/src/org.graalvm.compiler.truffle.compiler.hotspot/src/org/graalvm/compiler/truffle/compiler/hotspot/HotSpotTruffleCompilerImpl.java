@@ -232,7 +232,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     /**
      * Compiles a method with fast thread local Truffle intrinsics. This allows to access the jvmci
-     * reserved oop field. See HotSpotContextThreadLocal.
+     * reserved oop field. See HotSpotFastThreadLocal.
      */
     @Override
     public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
