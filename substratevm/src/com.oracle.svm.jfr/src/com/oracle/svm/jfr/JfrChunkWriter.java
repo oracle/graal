@@ -148,10 +148,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
      */
     public void closeFile(byte[] metadataDescriptor, JfrConstantPool[] repositories) {
         assert lock.isHeldByCurrentThread();
-        JfrCloseFileOperation op = new JfrCloseFileOperation();
+        JfrChangeEpochOperation op = new JfrChangeEpochOperation();
         op.enqueue();
 
-        // JfrCloseFileOperation will switch to a new epoch so data for the old epoch will not
+        // JfrChangeEpochOperation will switch to a new epoch so data for the old epoch will not
         // be modified by other threads and can be written without a safepoint
 
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories);
@@ -334,8 +334,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         if (str.isEmpty()) {
             getFileSupport().writeByte(fd, StringEncoding.EMPTY_STRING.byteValue);
         } else {
-            getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.byteValue);
             byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
+            getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.byteValue);
             writeCompressedInt(bytes.length);
             getFileSupport().write(fd, bytes);
         }
@@ -360,9 +360,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
-    private class JfrCloseFileOperation extends JavaVMOperation {
-        protected JfrCloseFileOperation() {
-            // Some of the JDK code that deals with files uses Java synchronization. So, we need to
+    private class JfrChangeEpochOperation extends JavaVMOperation {
+        protected JfrChangeEpochOperation() {
+            // Some JDK code that deals with files uses Java synchronization. So, we need to
             // allow Java synchronization for this VM operation.
             super("JFR close file", SystemEffect.SAFEPOINT);
         }
@@ -402,6 +402,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 JfrBufferAccess.reinitialize(buffer);
             }
             JfrTraceIdEpoch.getInstance().changeEpoch();
+            SubstrateJVM.getThreadRepo().reinitializeRepository();
         }
     }
 

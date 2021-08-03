@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jfr.events;
+package com.oracle.svm.jfr;
 
-import jdk.jfr.Category;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.Name;
-import jdk.jfr.Period;
-import jdk.jfr.StackTrace;
-import jdk.jfr.internal.Type;
-
-@Label("OS Information")
-@Category("Operating System")
-@StackTrace(false)
-@Name(Type.EVENT_NAME_PREFIX + "OSInformation")
-@Period(value = "endChunk")
-public class OSInformation extends Event {
-
-    @Label("OS Version") String osVersion;
-
-    public static void emitOSInformation() {
-        OSInformation osInfo = new OSInformation();
-        String name = System.getProperty("os.name");
-        String ver = System.getProperty("os.version");
-        String arch = System.getProperty("os.arch");
-        osInfo.osVersion = name + " (" + ver + ") arch:" + arch;
-        osInfo.commit();
-    }
+/**
+ * List of all possible buffer types, see {@link com.oracle.svm.jfr.JfrBuffer}.
+ */
+public enum JfrBufferType {
+    /**
+     * The thread-local native buffer, see {@link com.oracle.svm.jfr.JfrThreadLocal}.
+     */
+    THREAD_LOCAL_NATIVE,
+    /**
+     * The thread-local java buffer, see {@link com.oracle.svm.jfr.JfrThreadLocal}.
+     */
+    THREAD_LOCAL_JAVA,
+    /**
+     * The global JFR buffers, see {@link com.oracle.svm.jfr.JfrGlobalMemory}.
+     */
+    GLOBAL_MEMORY,
+    /**
+     * All other buffers, like the one in {@link com.oracle.svm.jfr.JfrThreadRepository}.
+     */
+    C_HEAP
 }

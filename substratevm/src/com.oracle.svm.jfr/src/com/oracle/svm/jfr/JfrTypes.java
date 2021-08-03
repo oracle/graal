@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.jfr;
 
-import jdk.jfr.internal.Type;
-import jdk.jfr.internal.TypeLibrary;
+import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.List;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.jfr.internal.Type;
+import jdk.jfr.internal.TypeLibrary;
 
 /**
  * Maps JFR types against their IDs in the JDK.
@@ -37,6 +39,9 @@ import java.util.List;
 public enum JfrTypes {
     Class("java.lang.Class"),
     String("java.lang.String"),
+    Thread("java.lang.Thread"),
+    ThreadState("jdk.types.ThreadState"),
+    ThreadGroup("jdk.types.ThreadGroup"),
     StackTrace("jdk.types.StackTrace"),
     ClassLoader("jdk.types.ClassLoader"),
     Method("jdk.types.Method"),
@@ -56,13 +61,34 @@ public enum JfrTypes {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    private static String getMostSimilarType(String missingTypeName) {
+        float threshold = OptionsParser.FUZZY_MATCH_THRESHOLD;
+        String mostSimilar = null;
+        for (Type type : TypeLibrary.getInstance().getTypes()) {
+            float similarity = OptionsParser.stringSimilarity(type.getName(), missingTypeName);
+            if (similarity > threshold) {
+                threshold = similarity;
+                mostSimilar = type.getName();
+            }
+        }
+        return mostSimilar;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static long getTypeId(String typeName) {
-        List<Type> types = TypeLibrary.getInstance().getTypes();
-        for (Type type : types) {
+        for (Type type : TypeLibrary.getInstance().getTypes()) {
             if (typeName.equals(type.getName())) {
                 return type.getId();
             }
         }
-        return 0;
+
+        String exceptionMessage = "Type " + typeName + " is not found!";
+        String mostSimilarType = getMostSimilarType(typeName);
+        if (mostSimilarType != null) {
+            exceptionMessage += " The most similar type is " + mostSimilarType;
+        }
+        exceptionMessage += " Take a look at 'metadata.xml' to see all available types.";
+
+        throw VMError.shouldNotReachHere(exceptionMessage);
     }
 }

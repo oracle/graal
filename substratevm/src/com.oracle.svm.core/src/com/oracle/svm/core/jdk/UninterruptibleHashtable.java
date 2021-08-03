@@ -24,34 +24,37 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.locks.VMMutex;
 
 /**
  * An uninterruptible hashtable with a fixed size that uses chaining in case of a collision.
  */
-public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>> {
-    private static final int DEFAULT_TABLE_LENGTH = 2053;
+public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>> implements UninterruptibleAbstractHashtable<T> {
 
-    private final T[] table;
-    private final VMMutex mutex;
+    protected static final int DEFAULT_TABLE_LENGTH = 2053;
 
-    private long nextId;
-    private int size;
+    protected final T[] table;
+
+    protected long nextId;
+    protected int size;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public UninterruptibleHashtable(String name) {
-        this(name, DEFAULT_TABLE_LENGTH);
+    public UninterruptibleHashtable() {
+        this(DEFAULT_TABLE_LENGTH);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public UninterruptibleHashtable(String name, int primeLength) {
+    public UninterruptibleHashtable(int primeLength) {
         this.table = createTable(primeLength);
-        this.mutex = new VMMutex(name);
         this.size = 0;
     }
 
@@ -62,11 +65,98 @@ public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>
     protected abstract boolean isEqual(T a, T b);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected T allocateOnHeap(Pointer pointerOnStack, UnsignedWord sizeToAlloc) {
+        T pointerOnHeap = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(sizeToAlloc);
+        if (pointerOnHeap.isNonNull()) {
+            UnmanagedMemoryUtil.copy(pointerOnStack, (Pointer) pointerOnHeap, sizeToAlloc);
+            return pointerOnHeap;
+        }
+        return WordFactory.nullPointer();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract T copyToHeap(T valueOnStack);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void free(T t);
+    protected long insertEntry(T valueOnStack) {
+        int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
+        T newEntry = copyToHeap(valueOnStack);
+        if (newEntry.isNonNull()) {
+            long id = ++nextId;
+            T existingEntry = table[index];
+            newEntry.setNext(existingEntry);
+            newEntry.setId(id);
+            table[index] = newEntry;
+            size++;
+            return id;
+        }
+        return 0L;
+    }
 
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getSize() {
+        return size;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public T[] getTable() {
+        return table;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public T contains(T valueOnStack) {
+        int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
+        T entry = table[index];
+        while (entry.isNonNull()) {
+            if (isEqual(valueOnStack, entry)) {
+                return entry;
+            }
+            entry = entry.getNext();
+        }
+        return WordFactory.nullPointer();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long put(T valueOnStack) {
+        assert valueOnStack.isNonNull();
+
+        T entry = contains(valueOnStack);
+        if (entry.isNonNull()) {
+            return entry.getId();
+        } else {
+            return insertEntry(valueOnStack);
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean putIfAbsent(T valueOnStack) {
+        assert valueOnStack.isNonNull();
+
+        T entry = contains(valueOnStack);
+        if (entry.isNonNull()) {
+            return false;
+        } else {
+            insertEntry(valueOnStack);
+            return true;
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract void free(T t);
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clear() {
         for (int i = 0; i < table.length; i++) {
@@ -81,59 +171,9 @@ public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>
         size = 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setSize(int size) {
-        this.size = size;
-    }
-
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void teardown() {
         clear();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getSize() {
-        return size;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long add(T valueOnStack) {
-        assert valueOnStack.isNonNull();
-
-        mutex.lockNoTransition();
-        try {
-            // Try to find the entry in the hashtable
-            int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
-            T entry = table[index];
-            while (entry.isNonNull()) {
-                if (isEqual(valueOnStack, entry)) {
-                    return entry.getId();
-                }
-                entry = entry.getNext();
-            }
-
-            return insertEntry(index, valueOnStack);
-        } finally {
-            mutex.unlock();
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private long insertEntry(int index, T valueOnStack) {
-        T newEntry = copyToHeap(valueOnStack);
-        if (newEntry.isNonNull()) {
-            long id = ++nextId;
-            T existingEntry = table[index];
-            newEntry.setNext(existingEntry);
-            newEntry.setId(id);
-            table[index] = newEntry;
-            size++;
-            return id;
-        }
-        return 0L;
-    }
-
-    public T[] getTable() {
-        return table;
     }
 }

@@ -44,13 +44,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jfr.events.ClassLoadingStatistics;
-import com.oracle.svm.jfr.events.InitialEnvironmentVariable;
-import com.oracle.svm.jfr.events.InitialSystemProperty;
-import com.oracle.svm.jfr.events.JVMInformation;
-import com.oracle.svm.jfr.events.JavaThreadStatistics;
-import com.oracle.svm.jfr.events.OSInformation;
-import com.oracle.svm.jfr.events.PhysicalMemory;
+import com.oracle.svm.jfr.events.EndChunkPeriodEvents;
+import com.oracle.svm.jfr.events.EveryChunkPeriodEvents;
 
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
@@ -91,9 +86,10 @@ public class JfrManager {
     Runnable shutdownHook() {
         return () -> {
             if (SubstrateOptions.FlightRecorder.getValue()) {
-                // Everything should already have been torn down by JVM.destroyJFR(), which is
-                // called in a shutdown hook.
-                assert !SubstrateJVM.isInitialized();
+                // Everything should already have been torn down by JVM.destroyJFR(), which is called in
+                // a shutdown hook. So in this method we should only unregister periodic events.
+                FlightRecorder.removePeriodicEvent(EveryChunkPeriodEvents::emitEveryChunkPeriodEvents);
+                FlightRecorder.removePeriodicEvent(EndChunkPeriodEvents::emitEndChunkPeriodEvents);
             }
         };
     }
@@ -103,13 +99,11 @@ public class JfrManager {
     }
 
     private static void periodicEventSetup() throws SecurityException {
-        FlightRecorder.addPeriodicEvent(InitialSystemProperty.class, InitialSystemProperty::emitSystemProperties);
-        FlightRecorder.addPeriodicEvent(InitialEnvironmentVariable.class, InitialEnvironmentVariable::emitEnvironmentVariables);
-        FlightRecorder.addPeriodicEvent(JVMInformation.class, JVMInformation::emitJVMInformation);
-        FlightRecorder.addPeriodicEvent(OSInformation.class, OSInformation::emitOSInformation);
-        FlightRecorder.addPeriodicEvent(PhysicalMemory.class, PhysicalMemory::emitPhysicalMemory);
-        FlightRecorder.addPeriodicEvent(JavaThreadStatistics.class, JavaThreadStatistics::emitJavaThreadStats);
-        FlightRecorder.addPeriodicEvent(ClassLoadingStatistics.class, ClassLoadingStatistics::emitClassLoadingStats);
+        // Here, we are registering two "abstract" periodic events. They are "abstract" because, we
+        // are using them only to emit "real" events (like OSInformation, JVMInformation...) in
+        // callbacks (second argument) after specific period of time ("everyChunk" or "endChunk").
+        FlightRecorder.addPeriodicEvent(EveryChunkPeriodEvents.class, EveryChunkPeriodEvents::emitEveryChunkPeriodEvents);
+        FlightRecorder.addPeriodicEvent(EndChunkPeriodEvents.class, EndChunkPeriodEvents::emitEndChunkPeriodEvents);
     }
 
     private static void initRecording() {

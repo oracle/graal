@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,24 +27,37 @@ package com.oracle.svm.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
- * Used to serialize all predefined frame types into the chunk.
+ * Repository that collects all metadata about stacktraces.
  */
-public class JfrFrameTypeSerializer implements JfrConstantPool {
+public class JfrStackTraceRepository implements JfrConstantPool {
+
+    private int depth = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrFrameTypeSerializer() {
+    JfrStackTraceRepository() {
+    }
+
+    public void teardown() {
+    }
+
+    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    public long getStackTraceId(@SuppressWarnings("unused") int skipCount, @SuppressWarnings("unused") boolean previousEpoch) {
+        return 0;
+    }
+
+    public void setStackTraceDepth(int depth) {
+        if (depth < 0 || depth > SubstrateOptions.MaxJavaStackTraceDepth.getValue()) {
+            throw new IllegalArgumentException("StackTrace depth (" + depth + ") is not in a valid range!");
+        }
+        this.depth = depth;
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
-        writer.writeCompressedLong(JfrTypes.FrameType.getId());
-
-        JfrFrameType[] values = JfrFrameType.values();
-        writer.writeCompressedLong(values.length);
-        for (int i = 0; i < values.length; i++) {
-            writer.writeCompressedInt(i);
-            writer.writeString(values[i].getText());
-        }
-        return NON_EMPTY;
+    public int write(@SuppressWarnings("unused") JfrChunkWriter writer) {
+        return EMPTY;
     }
 }

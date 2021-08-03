@@ -27,11 +27,17 @@ package com.oracle.svm.core.thread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
+import com.oracle.svm.core.annotate.Inject;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.NotLoomJDK;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -61,6 +67,12 @@ final class Target_java_lang_ThreadGroup {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupGroupsRecomputation.class, disableCaching = true)//
     private ThreadGroup[] groups;
 
+    @Inject @InjectAccessors(ThreadGroupIdAccessor.class) //
+    public long id;
+
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    long injectedId;
+
     @Alias
     @TargetElement(onlyWith = NotLoomJDK.class)//
     native void addUnstarted();
@@ -68,6 +80,28 @@ final class Target_java_lang_ThreadGroup {
     @Alias
     @TargetElement(onlyWith = NotLoomJDK.class)//
     native void add(Thread t);
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native String getName();
+
+    @Alias ThreadGroup parent;
+}
+
+/**
+ * This class assigns a unique id to each thread group, and this unique id is used by JFR.
+ */
+class ThreadGroupIdAccessor {
+
+    private static final UninterruptibleUtils.AtomicLong nextID = new UninterruptibleUtils.AtomicLong(0L);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static long getId(Target_java_lang_ThreadGroup that) {
+        if (that.injectedId == 0) {
+            that.injectedId = nextID.incrementAndGet();
+        }
+        return that.injectedId;
+    }
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -161,5 +195,18 @@ class ThreadGroupGroupsRecomputation implements RecomputeFieldValue.CustomFieldV
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;
         return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).groups;
+    }
+}
+
+public class JavaLangThreadGroupSubstitutions {
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static ThreadGroup getParentThreadGroupUnsafe(ThreadGroup threadGroup) {
+        return SubstrateUtil.cast(threadGroup, Target_java_lang_ThreadGroup.class).parent;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getThreadGroupId(ThreadGroup threadGroup) {
+        return SubstrateUtil.cast(threadGroup, Target_java_lang_ThreadGroup.class).id;
     }
 }

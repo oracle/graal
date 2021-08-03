@@ -24,36 +24,21 @@
  */
 package com.oracle.svm.jfr.events;
 
+import java.util.ArrayList;
 import java.util.Properties;
-import jdk.jfr.Category;
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.Name;
-import jdk.jfr.Period;
-import jdk.jfr.StackTrace;
-import jdk.jfr.internal.Type;
 
-@Label("Initial System Property")
-@Description("System Property at JVM start")
-@Category("Java Virtual Machine")
-@StackTrace(false)
-@Name(Type.EVENT_NAME_PREFIX + "InitialSystemProperty")
-@Period(value = "endChunk")
-public class InitialSystemProperty extends Event {
-    @Label("Key") public String key;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
-    @Label("Value") public String value;
+public class InitialSystemProperty {
 
-    public static void emitSystemProperties() {
-        Properties props = System.getProperties();
+    public static ArrayList<UninterruptibleUtils.ImmutablePair<String, String>> getSystemProperties() {
+        ArrayList<UninterruptibleUtils.ImmutablePair<String, String>> result = new ArrayList<>();
+        Properties properties = System.getProperties();
 
-        for (String key : props.stringPropertyNames()) {
-            InitialSystemProperty pp = new InitialSystemProperty();
-
-            pp.key = key;
-            pp.value = props.getProperty(key);
-            pp.commit();
+        for (String key : properties.stringPropertyNames()) {
+            result.add(new UninterruptibleUtils.ImmutablePair<>(key, properties.getProperty(key)));
         }
+
+        return result;
     }
 }

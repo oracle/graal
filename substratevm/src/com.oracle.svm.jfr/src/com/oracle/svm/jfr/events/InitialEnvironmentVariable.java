@@ -24,34 +24,21 @@
  */
 package com.oracle.svm.jfr.events;
 
+import java.util.ArrayList;
 import java.util.Map;
-import jdk.jfr.Category;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.Name;
-import jdk.jfr.Period;
-import jdk.jfr.StackTrace;
-import jdk.jfr.internal.Type;
 
-@Label("Initial Environment Variable")
-@Category("Operating System")
-@StackTrace(false)
-@Name(Type.EVENT_NAME_PREFIX + "InitialEnvironmentVariable")
-@Period(value = "endChunk")
-public class InitialEnvironmentVariable extends Event {
-    @Label("Key") public String key;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
-    @Label("Value") public String value;
+public class InitialEnvironmentVariable {
 
-    public static void emitEnvironmentVariables() {
+    public static ArrayList<UninterruptibleUtils.ImmutablePair<String, String>> getEnvironmentVariables() {
+        ArrayList<UninterruptibleUtils.ImmutablePair<String, String>> result = new ArrayList<>();
         Map<String, String> env = System.getenv();
 
         for (Map.Entry<String, String> entry : env.entrySet()) {
-            InitialEnvironmentVariable ee = new InitialEnvironmentVariable();
-
-            ee.key = entry.getKey();
-            ee.value = entry.getValue();
-            ee.commit();
+            result.add(new UninterruptibleUtils.ImmutablePair<>(entry.getKey(), entry.getValue()));
         }
+
+        return result;
     }
 }

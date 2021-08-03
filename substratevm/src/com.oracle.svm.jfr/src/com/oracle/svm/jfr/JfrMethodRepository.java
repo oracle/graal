@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jfr.events;
+package com.oracle.svm.jfr;
 
-import com.oracle.svm.core.heap.Heap;
-import jdk.jfr.Category;
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.Name;
-import jdk.jfr.Period;
-import jdk.jfr.StackTrace;
-import jdk.jfr.internal.Type;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-@Label("Class Loading Statistics")
-@Category("Java Application, Statistics")
-@StackTrace(false)
-@Name(Type.EVENT_NAME_PREFIX + "ClassLoadingStatistics")
-@Period(value = "everyChunk")
-public class ClassLoadingStatistics extends Event {
+public class JfrMethodRepository implements JfrConstantPool {
 
-    @Label("Loaded Class Count") @Description("Number of classes loaded since JVM start") long loadedClassCount;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrMethodRepository() {
+    }
 
-    @Label("Unloaded Class Count") @Description("Number of classes unloaded since JVM start") long unloadedClassCount;
+    public void teardown() {
+    }
 
-    public static void emitClassLoadingStats() {
-        ClassLoadingStatistics classStats = new ClassLoadingStatistics();
-
-        classStats.loadedClassCount = Heap.getHeap().getClassCount();
-        classStats.unloadedClassCount = 0;
-        classStats.commit();
+    @Override
+    public int write(JfrChunkWriter writer) {
+        return EMPTY;
     }
 }
