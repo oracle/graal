@@ -43,6 +43,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 public final class JfrBufferAccess {
     private static final int ACQUIRED = 1;
     private static final int NOT_ACQUIRED = 0;
+    private static final int INCREASE_BUFFER_SIZE_STEP = 2;
 
     private JfrBufferAccess() {
     }
@@ -53,11 +54,12 @@ public final class JfrBufferAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static JfrBuffer allocate(UnsignedWord dataSize) {
+    public static JfrBuffer allocate(UnsignedWord dataSize, JfrBufferType bufferType) {
         UnsignedWord headerSize = JfrBufferAccess.getHeaderSize();
         JfrBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
         if (result.isNonNull()) {
             result.setSize(dataSize);
+            result.setBufferType(bufferType);
             reinitialize(result);
         }
         return result;
@@ -129,5 +131,14 @@ public final class JfrBufferAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isEmpty(JfrBuffer buffer) {
         return getDataStart(buffer).equal(buffer.getPos());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord sizeToMatchRequirements(JfrBuffer buffer, UnsignedWord required) {
+        UnsignedWord bufferSize = buffer.getSize().multiply(INCREASE_BUFFER_SIZE_STEP);
+        while (bufferSize.belowThan(required)) {
+            bufferSize = bufferSize.multiply(INCREASE_BUFFER_SIZE_STEP);
+        }
+        return bufferSize;
     }
 }

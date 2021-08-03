@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,65 +24,62 @@
  */
 package com.oracle.svm.jfr;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.util.VMError;
+
 /**
- * Stores the settings of a native JFR event. All instances of this class are guaranteed to live in
- * the image heap and don't contain any object references. So, accessing the data is always safe
- * (even during a GC).
+ * List of all possible thread states.
  */
-public class JfrNativeEventSetting {
-    private long thresholdTicks;
-    private long cutoffTicks;
-    private boolean stackTrace;
-    private boolean enabled;
-    private boolean large;
+public enum JfrThreadState {
+    NEW("STATE_NEW"),
+    RUNNABLE("STATE_RUNNABLE"),
+    BLOCKED("STATE_BLOCKED"),
+    WAITING("STATE_WAITING"),
+    TIMED_WAITING("STATE_TIMED_WAITING"),
+    TERMINATED("STATE_TERMINATED");
+
+    private final String text;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrNativeEventSetting() {
+    JfrThreadState(String text) {
+        this.text = text;
     }
 
-    public long getThresholdTicks() {
-        return thresholdTicks;
-    }
-
-    public void setThresholdTicks(long thresholdTicks) {
-        this.thresholdTicks = thresholdTicks;
-    }
-
-    public long getCutoffTicks() {
-        return cutoffTicks;
-    }
-
-    public void setCutoffTicks(long cutoffTicks) {
-        this.cutoffTicks = cutoffTicks;
+    public String getText() {
+        return text;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean hasStackTrace() {
-        return stackTrace;
-    }
-
-    public void setStackTrace(boolean stackTrace) {
-        this.stackTrace = stackTrace;
+    public byte getId() {
+        // First entry needs to have id 0.
+        return (byte) ordinal();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isEnabled() {
-        return enabled;
+    public static byte getId(Thread.State threadState) {
+        return threadStateToJfrThreadState(threadState).getId();
     }
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public boolean isLarge() {
-        return large;
-    }
-
-    public void setLarge(boolean large) {
-        this.large = large;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static JfrThreadState threadStateToJfrThreadState(Thread.State threadState) {
+        switch (threadState) {
+            case NEW:
+                return NEW;
+            case RUNNABLE:
+                return RUNNABLE;
+            case BLOCKED:
+                return BLOCKED;
+            case WAITING:
+                return WAITING;
+            case TIMED_WAITING:
+                return TIMED_WAITING;
+            case TERMINATED:
+                return TERMINATED;
+            default:
+                throw VMError.shouldNotReachHere("Unknown thread state - " + threadState);
+        }
     }
 }

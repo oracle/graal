@@ -49,7 +49,6 @@ import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.jfr.events.ClassLoadingStatistics;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
@@ -68,7 +67,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * There are two different kinds of JFR events:
  * <ul>
- * <li>Java-level events where there is a Java class such as {@link ClassLoadingStatistics} that
+ * <li>Java-level events where there is a Java class such as {@link com.oracle.svm.jfr.events.JVMInformation} that
  * defines the event. Those events are typically triggered by the Java application and a Java
  * {@link EventWriter} object is used when writing the event to a buffer.</li>
  * <li>Native events are triggered by the JVM itself and are defined in the JFR metadata.xml file.
@@ -131,6 +130,7 @@ public class JfrFeature implements Feature {
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
+        JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
     }
 

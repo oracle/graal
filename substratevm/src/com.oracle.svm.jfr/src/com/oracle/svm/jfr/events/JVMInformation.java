@@ -24,44 +24,69 @@
  */
 package com.oracle.svm.jfr.events;
 
-import com.oracle.svm.core.JavaMainWrapper;
 import java.lang.management.ManagementFactory;
-import jdk.jfr.Category;
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.Name;
-import jdk.jfr.Period;
-import jdk.jfr.StackTrace;
-import jdk.jfr.Timestamp;
-import jdk.jfr.internal.Type;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
-@Label("JVM Information")
-@Description("Description of JVM and the Java application")
-@Category("Java Virtual Machine")
-@StackTrace(false)
-@Name(Type.EVENT_NAME_PREFIX + "JVMInformation")
-@Period(value = "endChunk")
-public class JVMInformation extends Event {
+import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
-    @Label("JVM Name") String jvmName;
+public class JVMInformation {
 
-    @Label("JVM Version") String jvmVersion;
+    private String jvmName;
 
-    @Label("JVM Command Line Arguments") String jvmArguments;
+    private String jvmVersion;
 
-    @Label("JVM Settings File Arguments") String jvmFlags;
+    private String jvmArguments;
 
-    @Label("Java Application Arguments") String javaArguments;
+    private String jvmFlags;
 
-    @Label("JVM Start Time") @Timestamp long jvmStartTime;
+    private String javaArguments;
 
-    public static void emitJVMInformation() {
+    private long jvmStartTime;
+
+    private long jvmPid;
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public String getJvmName() {
+        return jvmName;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public String getJvmVersion() {
+        return jvmVersion;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public String getJvmArguments() {
+        return jvmArguments;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public String getJvmFlags() {
+        return jvmFlags;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public String getJavaArguments() {
+        return javaArguments;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getJvmStartTime() {
+        return jvmStartTime;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getJvmPid() {
+        return jvmPid;
+    }
+
+    public static JVMInformation getJVMInfo() {
+        JVMInformation jvmInfo = new JVMInformation();
+
         if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
             JavaMainWrapper.JavaMainSupport support = ImageSingletons.lookup(JavaMainWrapper.JavaMainSupport.class);
-
-            JVMInformation jvmInfo = new JVMInformation();
 
             jvmInfo.jvmName = System.getProperty("java.vm.name");
             jvmInfo.jvmVersion = System.getProperty("java.vm.version");
@@ -69,8 +94,10 @@ public class JVMInformation extends Event {
             jvmInfo.jvmFlags = "";
             jvmInfo.javaArguments = support.getJavaCommand();
             jvmInfo.jvmStartTime = ManagementFactory.getRuntimeMXBean().getStartTime();
-            jvmInfo.commit();
+            jvmInfo.jvmPid = ManagementFactory.getRuntimeMXBean().getPid();
         }
+
+        return jvmInfo;
     }
 
     private static String getVmArgs(JavaMainWrapper.JavaMainSupport support) {
