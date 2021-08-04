@@ -29,9 +29,9 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
@@ -819,8 +819,9 @@ public final class ClassfileParser {
                         Symbol<Type> annotType = constant.value();
                         if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
                             methodFlags |= ACC_LAMBDA_FORM_COMPILED;
-                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType)) {
-                            methodFlags |= ACC_LAMBDA_FORM_HIDDEN;
+                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
+                                        Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
+                            methodFlags |= ACC_HIDDEN;
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
                                         Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
@@ -858,6 +859,10 @@ public final class ClassfileParser {
             if (codeAttribute == null) {
                 throw ConstantPool.classFormatError("Missing Code attribute");
             }
+        }
+
+        if (classDefinitionInfo.isHidden()) {
+            methodFlags |= ACC_HIDDEN;
         }
 
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);

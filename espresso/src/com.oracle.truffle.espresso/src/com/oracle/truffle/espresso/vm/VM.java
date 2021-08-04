@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
@@ -1548,7 +1547,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                                             // fall-through
                                         case 1:
                                             // Frame 0 and 1 must be caller sensitive.
-                                            if ((method.getModifiers() & ACC_CALLER_SENSITIVE) == 0) {
+                                            if (!method.isCallerSensitive()) {
                                                 exception[0] = Meta.initExceptionWithMessage(meta.java_lang_InternalError, "CallerSensitive annotation expected at frame " + depth);
                                                 return /* ignore */ method;
                                             }

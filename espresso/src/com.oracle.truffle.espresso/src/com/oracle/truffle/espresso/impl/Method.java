@@ -30,6 +30,8 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITOREXIT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
@@ -622,6 +624,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @Override
     public int getModifiers() {
         return getLinkedMethod().getFlags();
+    }
+
+    public boolean isCallerSensitive() {
+        return (getModifiers() & ACC_CALLER_SENSITIVE) != 0;
+    }
+
+    public boolean isHidden() {
+        return (getModifiers() & ACC_HIDDEN) != 0;
     }
 
     public int getMethodModifiers() {
