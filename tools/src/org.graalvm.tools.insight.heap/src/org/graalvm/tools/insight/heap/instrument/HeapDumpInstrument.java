@@ -26,13 +26,14 @@ package org.graalvm.tools.insight.heap.instrument;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import java.util.function.Consumer;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.tools.insight.Insight;
 
-@TruffleInstrument.Registration(id = "heap", internal = false, services = Insight.SymbolProvider.class)
+@TruffleInstrument.Registration(id = "heap", internal = false, services = {Insight.SymbolProvider.class, Consumer.class})
 public final class HeapDumpInstrument extends TruffleInstrument {
     @Option(stability = OptionStability.STABLE, name = "dump", help = "Output file to ", category = OptionCategory.EXPERT) //
     static final OptionKey<String> DUMP = new OptionKey<>("");

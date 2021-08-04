@@ -26,6 +26,7 @@ package org.graalvm.tools.insight.heap.instrument;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -37,16 +38,22 @@ import com.oracle.truffle.api.library.ExportMessage;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.graalvm.tools.insight.Insight.SymbolProvider;
 import org.graalvm.tools.insight.heap.HeapDump;
 
 @SuppressWarnings({"static-method", "unused"})
 @ExportLibrary(InteropLibrary.class)
-final class HeapObject implements TruffleObject, SymbolProvider {
+final class HeapObject implements TruffleObject, SymbolProvider, Consumer<OutputStream> {
     private final TruffleInstrument.Env env;
     private final String path;
+    private OutputStream sink;
     private HeapDump.Builder generator;
 
     HeapObject(TruffleInstrument.Env env, String path) {
@@ -56,7 +63,7 @@ final class HeapObject implements TruffleObject, SymbolProvider {
 
     @Override
     public Map<String, ? extends Object> symbolsWithValues() throws Exception {
-        if (path == null) {
+        if (path == null && sink == null) {
             return Collections.emptyMap();
         } else {
             return Collections.singletonMap("heap", this);
@@ -65,10 +72,12 @@ final class HeapObject implements TruffleObject, SymbolProvider {
 
     synchronized HeapDump.Builder getGenerator() throws IOException {
         if (generator == null) {
-            TruffleFile file = env.getTruffleFile(path);
-            final OutputStream rawStream = file.newOutputStream();
-            final OutputStream bufferedStream = new BufferedOutputStream(rawStream);
-            generator = HeapDump.newHeapBuilder(bufferedStream);
+            if (sink == null) {
+                TruffleFile file = env.getTruffleFile(path);
+                final OutputStream rawStream = file.newOutputStream();
+                sink = new BufferedOutputStream(rawStream);
+            }
+            generator = HeapDump.newHeapBuilder(sink);
         }
         return generator;
     }
@@ -110,4 +119,39 @@ final class HeapObject implements TruffleObject, SymbolProvider {
             ex.printStackTrace();
         }
     }
+
+    static <Interface> Interface maybeProxy(Class<Interface> type, Interface delegate) {
+        if (TruffleOptions.AOT) {
+            return delegate;
+        } else {
+            return proxy(type, delegate);
+        }
+    }
+
+    private static <Interface> Interface proxy(Class<Interface> type, Interface delegate) {
+        InvocationHandler handler = (Object proxy, Method method, Object[] args) -> {
+            try {
+                return method.invoke(delegate, args);
+            } catch (InvocationTargetException ex) {
+                throw ex.getCause();
+            }
+        };
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, handler));
+    }
+
+    @Override
+    @TruffleBoundary
+    public void accept(OutputStream t) {
+        if (t == null) {
+            throw new NullPointerException();
+        }
+        if (path != null) {
+            throw new IllegalStateException("Cannot use path (" + path + ") and stream (" + t + ") at once");
+        }
+        if (sink != null) {
+            throw new IllegalStateException("Cannot set stream twice: " + sink);
+        }
+        sink = t;
+    }
+
 }
