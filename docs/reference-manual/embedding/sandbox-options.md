@@ -69,7 +69,7 @@ It is not allowed specify negative values or no time unit with CPU time limit op
 
 ```
 try (Context context = Context.newBuilder("js")
-                           .experimentalOptions(true)
+                           .allowExperimentalOptions(true)
                            .option("sandbox.MaxCPUTime", "500ms")
                            .option("sandbox.MaxCPUTimeCheckInterval", "5ms")
                        .build();) {
@@ -110,7 +110,7 @@ The statement count limit is therefore not suitable to perform time boxing and m
 
 ```
 try (Context context = Context.newBuilder("js")
-                           .experimentalOptions(true)
+                           .allowExperimentalOptions(true)
                            .option("sandbox.MaxStatements", "2")
                            .option("sandbox.MaxStatementsIncludeInternal", "false")
                        .build();) {
@@ -166,7 +166,7 @@ The efficacy of this option (also) depends on the garbage collector used.
 
 ```
 try (Context context = Context.newBuilder("js")
-                           .experimentalOptions(true)
+                           .allowExperimentalOptions(true)
                            .option("sandbox.MaxHeapMemory", "100MB")
                        .build()) {
     try {
@@ -243,7 +243,7 @@ This can be useful if a known and trusted initialization script should be exclud
 
 ```
 try (Context context = Context.newBuilder("js")
-                           .experimentalOptions(true)
+                           .allowExperimentalOptions(true)
                            .option("sandbox.MaxCPUTime", "500ms")
                        .build();) {
     try {
