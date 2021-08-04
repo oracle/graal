@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,7 +159,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             String javaClassPath = System.getProperty("java.class.path");
             if (javaClassPath != null) {
                 for (String path : javaClassPath.split(File.pathSeparator)) {
-                    if (path.contains("libgraal") && !path.contains("processor")) {
+                    if (path.contains("libgraal") && !path.contains("processor") && !path.contains("management")) {
                         classpath += File.pathSeparator + path;
                     }
                 }

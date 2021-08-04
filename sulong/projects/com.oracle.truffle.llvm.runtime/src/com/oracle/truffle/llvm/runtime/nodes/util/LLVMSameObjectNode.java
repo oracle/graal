@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.util;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -65,6 +66,7 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
     }
 
     @Specialization(limit = "3", guards = "a != b")
+    @GenerateAOT.Exclude
     boolean doForeign(Object a, Object b,
                     @CachedLibrary("a") LLVMAsForeignLibrary aForeigns,
                     @CachedLibrary("b") LLVMAsForeignLibrary bForeigns,
@@ -77,6 +79,7 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
     }
 
     @Specialization(limit = "3", guards = "fallbackGuard(a, b, aForeigns, bForeigns)")
+    @GenerateAOT.Exclude
     boolean doNotSame(Object a, Object b,
                     @SuppressWarnings("unused") @CachedLibrary("a") LLVMAsForeignLibrary aForeigns,
                     @SuppressWarnings("unused") @CachedLibrary("b") LLVMAsForeignLibrary bForeigns) {
@@ -111,6 +114,7 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
 
         // for backwards compatibility
         @Specialization(limit = "3", guards = {"a != b", "references.isSame(a, b)"})
+        @GenerateAOT.Exclude
         boolean doReferenceLibrary(Object a, Object b,
                         @CachedLibrary("a") com.oracle.truffle.llvm.spi.ReferenceLibrary references) {
             assert references.isSame(a, b);
@@ -118,6 +122,7 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = {"a != b", "!references.isSame(a, b)"})
+        @GenerateAOT.Exclude
         boolean doIdentical(Object a, Object b,
                         @CachedLibrary("a") com.oracle.truffle.llvm.spi.ReferenceLibrary references,
                         @CachedLibrary("a") InteropLibrary aInterop,

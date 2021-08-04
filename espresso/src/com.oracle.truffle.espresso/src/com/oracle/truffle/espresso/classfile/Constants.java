@@ -25,37 +25,42 @@ package com.oracle.truffle.espresso.classfile;
 public final class Constants {
 
     /* Access Flags */
-    public static final int ACC_PUBLIC = 0x00000001;
-    public static final int ACC_PRIVATE = 0x00000002;
-    public static final int ACC_PROTECTED = 0x00000004;
-    public static final int ACC_STATIC = 0x00000008;
-    public static final int ACC_FINAL = 0x00000010;
-    public static final int ACC_SYNCHRONIZED = 0x00000020;
-    public static final int ACC_SUPER = 0x00000020;
-    public static final int ACC_VOLATILE = 0x00000040;
-    public static final int ACC_TRANSIENT = 0x00000080;
-    public static final int ACC_NATIVE = 0x00000100;
-    public static final int ACC_INTERFACE = 0x00000200;
-    public static final int ACC_ABSTRACT = 0x00000400;
-    public static final int ACC_STRICT = 0x00000800;
-    public static final int ACC_EXPLICIT = 0x00001000;
+    // @formatter:off
+    public static final int ACC_PUBLIC               = 0x00000001;
+    public static final int ACC_PRIVATE              = 0x00000002;
+    public static final int ACC_PROTECTED            = 0x00000004;
+    public static final int ACC_STATIC               = 0x00000008;
+    public static final int ACC_FINAL                = 0x00000010;
+    public static final int ACC_SYNCHRONIZED         = 0x00000020;
+    public static final int ACC_SUPER                = 0x00000020;
+    public static final int ACC_VOLATILE             = 0x00000040;
+    public static final int ACC_TRANSIENT            = 0x00000080;
+    public static final int ACC_NATIVE               = 0x00000100;
+    public static final int ACC_INTERFACE            = 0x00000200;
+    public static final int ACC_ABSTRACT             = 0x00000400;
+    public static final int ACC_STRICT               = 0x00000800;
+    public static final int ACC_EXPLICIT             = 0x00001000;
 
-    public static final int ACC_BRIDGE = 0x00000040;
-    public static final int ACC_VARARGS = 0x00000080;
-    public static final int ACC_SYNTHETIC = 0x00001000;
-    public static final int ACC_ANNOTATION = 0x00002000;
-    public static final int ACC_ENUM = 0x00004000;
-    public static final int ACC_MANDATED = 0x00008000;
-    public static final int ACC_MODULE = 0x00008000;
+    public static final int ACC_BRIDGE               = 0x00000040;
+    public static final int ACC_VARARGS              = 0x00000080;
+    public static final int ACC_SYNTHETIC            = 0x00001000;
+    public static final int ACC_ANNOTATION           = 0x00002000;
+    public static final int ACC_ENUM                 = 0x00004000;
+    public static final int ACC_MANDATED             = 0x00008000;
+    public static final int ACC_MODULE               = 0x00008000;
 
     // Not part of the spec, used internally by the VM.
-    public static final int ACC_FINALIZER = 0x00010000;
-    public static final int ACC_INNER_CLASS = 0x00020000;
+    public static final int ACC_FINALIZER            = 0x00010000;
     public static final int ACC_LAMBDA_FORM_COMPILED = 0x00040000;
-    public static final int ACC_CALLER_SENSITIVE = 0x00080000;
-    public static final int ACC_LAMBDA_FORM_HIDDEN = 0x00100000;
+    public static final int ACC_CALLER_SENSITIVE     = 0x00080000;
+    public static final int ACC_LAMBDA_FORM_HIDDEN   = 0x00100000;
+    public static final int ACC_IS_HIDDEN_CLASS      = 0x04000000;
 
-    public static final int JVM_ACC_WRITTEN_FLAGS = 0x00007FFF;
+    public static final int FIELD_ID_TYPE = 0x01000000;
+    public static final int FIELD_ID_OBFUSCATE = 0x02000000;
+
+    public static final int JVM_ACC_WRITTEN_FLAGS    = 0x00007FFF;
+    // @formatter:on
 
     // Table 4.1-A. Class access and property modifiers.
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |

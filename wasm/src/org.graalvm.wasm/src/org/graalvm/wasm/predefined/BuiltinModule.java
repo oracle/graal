@@ -40,13 +40,14 @@
  */
 package org.graalvm.wasm.predefined;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.RootNode;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.ReferenceTypes;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmTable;
@@ -58,8 +59,10 @@ import org.graalvm.wasm.predefined.spectest.SpectestModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public abstract class BuiltinModule {
     private static final Map<String, BuiltinModule> predefinedModules = new HashMap<>();
@@ -75,6 +78,7 @@ public abstract class BuiltinModule {
     public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
+            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown predefined module: " + predefinedModuleName);
         }
         return builtinModule.createInstance(language, context, name);
@@ -93,7 +97,7 @@ public abstract class BuiltinModule {
         return function;
     }
 
-    protected int defineExternalGlobal(WasmInstance instance, String globalName, Object global) {
+    protected int defineExternalGlobal(WasmInstance instance, String globalName, WasmGlobal global) {
         int index = instance.symbolTable().numGlobals();
         instance.symbolTable().declareExportedExternalGlobal(globalName, index, global);
         return index;

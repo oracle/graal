@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,6 +95,10 @@ public abstract class RegexExecNode extends RegexBodyNode {
             throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));
         }
         return execute(input, adjustFromIndex(fromIndex, input));
+    }
+
+    public boolean isBacktracking() {
+        return false;
     }
 
     protected abstract RegexResult execute(Object input, int fromIndex);

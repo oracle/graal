@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         this.host = isHost;
         this.stackTrace = stackTrace;
         if (!isHostFrame()) {
-            this.formattedSource = formatSource(sourceLocation, source.getFileSystemContext(language));
+            this.formattedSource = formatSource(sourceLocation, language != null ? source.getFileSystemContext(language) : null);
         } else {
             this.formattedSource = null;
         }
@@ -172,7 +172,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguage : null;
+        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguageInstance.language : null;
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language

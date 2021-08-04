@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,13 +33,13 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
@@ -49,11 +49,14 @@ import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayCompareToOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayEqualsOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddLSEOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ByteSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
+import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Compare;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
@@ -62,11 +65,13 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64LIRFlagsVersioned;
+import org.graalvm.compiler.lir.aarch64.AArch64LIRFlags;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
+import org.graalvm.compiler.lir.aarch64.AArch64ZapRegistersOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
@@ -75,13 +80,14 @@ import org.graalvm.compiler.phases.util.Providers;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -211,7 +217,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
         Variable result = newVariable(kind);
-        if (AArch64LIRFlagsVersioned.useLSE(target().arch)) {
+        if (AArch64LIRFlags.useLSE(target().arch)) {
             append(new AtomicReadAndAddLSEOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), asAllocatable(delta)));
         } else {
             append(new AtomicReadAndAddOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), delta));
@@ -250,7 +256,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
         assert ((AArch64Kind) left.getPlatformKind()).isInteger() && left.getPlatformKind() == right.getPlatformKind();
-        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(LIRKind.combine(left, right), AArch64ArithmeticOp.ANDS, true, left, right);
+        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
         append(new AArch64ControlFlow.BranchOp(ConditionFlag.EQ, trueDestination, falseDestination, trueSuccessorProbability));
     }
 
@@ -278,9 +284,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         }
         boolean mirrored = emitCompare(cmpKind, left, actualRight, cond, unorderedIsTrue);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
-        boolean finalUnorderedIsTrue = mirrored ? !unorderedIsTrue : unorderedIsTrue;
-        ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, finalUnorderedIsTrue);
-        Variable result = newVariable(trueValue.getValueKind());
+        // Note mirroring does *not* affect unorderedIsTrue
+        ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, unorderedIsTrue);
+        Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
 
         if (isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0)) {
             append(new CondSetOp(result, cmpCondition));
@@ -326,8 +332,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
         boolean mirrored = emitCompare(cmpKind, left, actualRight, cond, unorderedIsTrue);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
-        boolean finalUnorderedIsTrue = mirrored ? !unorderedIsTrue : unorderedIsTrue;
-        ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, finalUnorderedIsTrue);
+        // Note mirroring does *not* affect unorderedIsTrue
+        ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, unorderedIsTrue);
         append(new BranchOp(cmpCondition, trueDestination, falseDestination, trueDestinationProbability));
     }
 
@@ -336,9 +342,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Takes a Condition and unorderedIsTrue flag and returns the correct Aarch64 specific
-     * ConditionFlag. Note: This is only correct if the emitCompare code for floats has correctly
-     * handled the case of 'EQ && unorderedIsTrue', respectively 'NE && !unorderedIsTrue'!
+     * Takes a Condition and unorderedIsTrue flag and returns the correct AArch64 specific
+     * ConditionFlag. Note: This is only correct if the emitCompare code for floats correctly
+     * handles 'EQ && unorderedIsTrue' and 'NE && !unorderedIsTrue'!
      */
     private static ConditionFlag toFloatConditionFlag(Condition cond, boolean unorderedIsTrue) {
         switch (cond) {
@@ -360,7 +366,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Takes a Condition and returns the correct Aarch64 specific ConditionFlag.
+     * Takes a Condition and returns the correct AArch64 specific ConditionFlag.
      */
     private static ConditionFlag toIntConditionFlag(Condition cond) {
         switch (cond) {
@@ -390,8 +396,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * This method emits the compare instruction, and may reorder the operands. It returns true if
-     * it did so.
+     * This method emits the compare instruction, and may mirror (switch) the operands. It returns
+     * true if it did so.
      *
      * @param a the left operand of the comparison. Has to have same type as b. Non null.
      * @param b the right operand of the comparison. Has to have same type as a. Non null.
@@ -402,114 +408,59 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Value right;
         boolean mirrored;
         AArch64Kind kind = (AArch64Kind) cmpKind;
+
+        /*
+         * AArch64 compares 32 or 64 bits. Note currently the size of the comparison within
+         * AArch64Compare is based on the size of the operands, not the comparison size provided.
+         *
+         * This minimum comparison size is defined in
+         * AArch64LoweringProviderMixin::smallestCompareWidth.
+         */
+        assert a.getPlatformKind() == b.getPlatformKind();
+        int cmpBitSize = cmpKind.getSizeInBytes() * Byte.SIZE;
+        GraalError.guarantee(cmpBitSize >= 32 && cmpKind == a.getPlatformKind(), "Unexpected comparison parameters.");
+
+        /*
+         * The AArch64 integer comparison instruction left operand can be the stack pointer register
+         * (sp), but not the right operand.
+         */
+        boolean aIsStackPointer;
+        boolean bIsStackPointer;
+        boolean aIsConstant;
+        boolean bIsConstant;
         if (kind.isInteger()) {
-            Value aExt = a;
-            Value bExt = b;
-
-            int compareBytes = cmpKind.getSizeInBytes();
-            // AArch64 compares 32 or 64 bits: sign extend a and b as required.
-            if (compareBytes < a.getPlatformKind().getSizeInBytes()) {
-                aExt = arithmeticLIRGen.emitSignExtend(a, compareBytes * 8, 64);
-            }
-            if (compareBytes < b.getPlatformKind().getSizeInBytes()) {
-                bExt = arithmeticLIRGen.emitSignExtend(b, compareBytes * 8, 64);
-            }
-
-            /*
-             * The AArch64 comparison instruction can treat register 31 as the stack pointer
-             * register (sp) for the left operand, but not for the right operand.
-             */
-            boolean aIsStackPointer = ValueUtil.isRegister(aExt) && ValueUtil.asRegister(aExt).equals(AArch64.sp);
-            boolean bIsStackPointer = ValueUtil.isRegister(bExt) && ValueUtil.asRegister(bExt).equals(AArch64.sp);
-
-            if (aIsStackPointer && bIsStackPointer) {
-                /*
-                 * both a and b are sp, but this cannot be encoded in an AArch64 comparison. Hence,
-                 * sp must be moved to a register.
-                 */
-                left = right = emitMove(aExt);
-                mirrored = false;
-            } else if (bIsStackPointer || (isCompareConstant(aExt) && !isCompareConstant(bExt))) {
-                left = bExt;
-                right = loadNonConst(aExt);
-                mirrored = true;
-            } else {
-                left = aExt;
-                right = loadNonConst(bExt);
-                mirrored = false;
-            }
-            append(new AArch64Compare.CompareOp(loadReg(left), loadNonCompareConst(right)));
-        } else if (kind.isSIMD()) {
-            if (AArch64Compare.FloatCompareOp.isFloatCmpConstant(a, condition, unorderedIsTrue)) {
-                left = b;
-                right = a;
-                mirrored = true;
-            } else if (AArch64Compare.FloatCompareOp.isFloatCmpConstant(b, condition, unorderedIsTrue)) {
-                left = a;
-                right = b;
-                mirrored = false;
-            } else {
-                left = a;
-                right = loadReg(b);
-                mirrored = false;
-            }
-            append(new AArch64Compare.FloatCompareOp(loadReg(left), right, condition, unorderedIsTrue));
+            aIsStackPointer = ValueUtil.isRegister(a) && ValueUtil.asRegister(a).equals(AArch64.sp);
+            bIsStackPointer = ValueUtil.isRegister(b) && ValueUtil.asRegister(b).equals(AArch64.sp);
+            aIsConstant = AArch64Compare.CompareOp.isCompareConstant(a);
+            bIsConstant = AArch64Compare.CompareOp.isCompareConstant(b);
         } else {
-            throw GraalError.shouldNotReachHere();
+            assert kind.isSIMD();
+            // sp is an integer register
+            aIsStackPointer = false;
+            bIsStackPointer = false;
+            aIsConstant = AArch64Compare.FloatCompareOp.isCompareConstant(a, condition, unorderedIsTrue);
+            bIsConstant = AArch64Compare.FloatCompareOp.isCompareConstant(b, condition, unorderedIsTrue);
         }
+
+        if (aIsStackPointer && bIsStackPointer) {
+            /*
+             * If both a and b are sp, this cannot be encoded in an AArch64 comparison. Hence, sp
+             * must be moved to a register.
+             */
+            left = right = emitMove(a);
+            mirrored = false;
+        } else if (bIsStackPointer || (aIsConstant && !bIsConstant)) {
+            left = b;
+            right = a;
+            mirrored = true;
+        } else {
+            left = a;
+            right = bIsConstant ? b : loadReg(b);
+            mirrored = false;
+        }
+        left = loadReg(left);
+        append(kind.isInteger() ? new AArch64Compare.CompareOp(left, right) : new AArch64Compare.FloatCompareOp(left, right, condition, unorderedIsTrue));
         return mirrored;
-    }
-
-    /**
-     * If value is a constant that cannot be used directly with a gpCompare instruction load it into
-     * a register and return the register, otherwise return constant value unchanged.
-     */
-    protected Value loadNonCompareConst(Value value) {
-        if (!isCompareConstant(value)) {
-            return loadReg(value);
-        }
-        return value;
-    }
-
-    /**
-     * Checks whether value can be used directly with a gpCompare instruction. This is <b>not</b>
-     * the same as {@link AArch64ArithmeticLIRGenerator#isArithmeticConstant(JavaConstant)}, because
-     * 0.0 is a valid compare constant for floats, while there are no arithmetic constants for
-     * floats.
-     *
-     * @param value any type. Non null.
-     * @return true if value can be used directly in comparison instruction, false otherwise.
-     */
-    public boolean isCompareConstant(Value value) {
-        if (isJavaConstant(value)) {
-            JavaConstant constant = asJavaConstant(value);
-            if (constant instanceof PrimitiveConstant) {
-                final long longValue = constant.asLong();
-                long maskedValue;
-                switch (constant.getJavaKind()) {
-                    case Boolean:
-                    case Byte:
-                        maskedValue = longValue & 0xFF;
-                        break;
-                    case Char:
-                    case Short:
-                        maskedValue = longValue & 0xFFFF;
-                        break;
-                    case Int:
-                        maskedValue = longValue & 0xFFFF_FFFF;
-                        break;
-                    case Long:
-                        maskedValue = longValue;
-                        break;
-                    default:
-                        throw GraalError.shouldNotReachHere();
-                }
-                return AArch64MacroAssembler.isArithmeticImmediate(maskedValue);
-            } else {
-                return constant.isDefaultForKind();
-            }
-        }
-        return false;
     }
 
     /**
@@ -525,8 +476,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         assert ((AArch64Kind) left.getPlatformKind()).isInteger() && ((AArch64Kind) right.getPlatformKind()).isInteger();
         assert ((AArch64Kind) trueValue.getPlatformKind()).isInteger() && ((AArch64Kind) falseValue.getPlatformKind()).isInteger();
-        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(left.getValueKind(), AArch64ArithmeticOp.ANDS, true, left, right);
-        Variable result = newVariable(trueValue.getValueKind());
+        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
+        Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
 
         if (isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0)) {
             append(new CondSetOp(result, ConditionFlag.EQ));
@@ -556,7 +507,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitByteSwap(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
-        append(new AArch64ByteSwapOp(result, input));
+        append(new AArch64ByteSwap.ByteSwapOp(result, asAllocatable(input)));
         return result;
     }
 
@@ -579,6 +530,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result, array1, array2, asAllocatable(length), directPointers));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value fromIndex, Value... searchValues) {
+        assert searchValues.length == 1;
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex), asAllocatable(searchValues[0])));
         return result;
     }
 
@@ -631,6 +590,29 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AArch64PauseOp());
+    }
+
+    @Override
+    public void emitCacheWriteback(Value address) {
+        append(new AArch64CacheWritebackOp(asAddressValue(address)));
+    }
+
+    @Override
+    public void emitCacheWritebackSync(boolean isPreSync) {
+        // only need a post sync barrier on AArch64
+        if (!isPreSync) {
+            append(new AArch64CacheWritebackPostSyncOp());
+        }
+    }
+
+    @Override
+    public LIRInstruction createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+        return new AArch64ZapRegistersOp(zappedRegisters, zapValues);
+    }
+
+    @Override
+    public LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues) {
+        return new AArch64ZapStackOp(zappedStack, zapValues);
     }
 
     public abstract void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args);

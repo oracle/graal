@@ -1,10 +1,10 @@
 suite = {
-  "mxversion" : "5.288.5",
+  "mxversion" : "5.302.1",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "21.1.0",
+  "version" : "21.3.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -116,23 +116,33 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
     },
 
-    "ASM5" : {
-      "sha1" : "0da08b8cce7bbf903602a25a3a163ae252435795",
+    "ASM_9.1" : {
+      "sha1" : "a99500cf6eea30535eeac6be73899d048f8d12a8",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm",
-        "version" : "5.0.4",
+        "version" : "9.1",
       },
     },
 
-    "ASM_TREE5" : {
-      "sha1" : "396ce0c07ba2b481f25a70195c7c94922f0d1b0b",
+    "ASM_TREE_9.1" : {
+      "sha1" : "c333f2a855069cb8eb17a40a3eb8b1b67755d0eb",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-tree",
-        "version" : "5.0.4",
+        "version" : "9.1",
       },
-      "dependencies" : ["ASM5"],
+      "dependencies" : ["ASM_9.1"],
+    },
+
+    "ASM_UTIL_9.1" : {
+      "sha1" : "36464a45d871779f3383a8a9aba2b26562a86729",
+      "maven" : {
+        "groupId" : "org.ow2.asm",
+        "artifactId" : "asm-util",
+        "version" : "9.1",
+      },
+      "dependencies" : ["ASM_9.1"],
     },
 
     "HSDIS" : {
@@ -415,11 +425,26 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.nativebridge.jni" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "org.graalvm.compiler.serviceprovider",
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.libgraal.jni" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
+        "org.graalvm.nativebridge.jni",
         "org.graalvm.libgraal.jni.annotation",
         "sdk:GRAAL_SDK",
       ],
@@ -767,6 +792,9 @@ suite = {
         "org.graalvm.compiler.replacements.test",
       ],
       "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
         ],
@@ -776,6 +804,25 @@ suite = {
       "workingSets" : "Graal,HotSpot,Test",
     },
 
+    "org.graalvm.compiler.hotspot.jdk16.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.replacements.test",
+      ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+        ],
+      },
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "16+",
+      "workingSets" : "Graal,HotSpot,Test",
+    },
 
     "org.graalvm.compiler.hotspot.lir.test" : {
       "subDir" : "src",
@@ -847,7 +894,7 @@ suite = {
         "org.graalvm.compiler.bytecode",
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
       ],
@@ -965,6 +1012,15 @@ suite = {
       "workingSets" : "Graal,LIR",
     },
 
+    "org.graalvm.compiler.lir.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.compiler.processor"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,LIR",
+    },
+
     "org.graalvm.compiler.lir.jtt" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1002,26 +1058,6 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,LIR,AArch64",
-    },
-
-    "org.graalvm.compiler.lir.aarch64.jdk11" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.lir.aarch64",
-      ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.code",
-          "jdk.vm.ci.aarch64",
-        ],
-      },
-      "annotationProcessors" : ["GRAAL_PROCESSOR"],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,LIR,AArch64",
-      "overlayTarget" : "org.graalvm.compiler.lir.aarch64",
-      "multiReleaseJarVersion" : "11",
     },
 
     "org.graalvm.compiler.lir.amd64" : {
@@ -1512,7 +1548,8 @@ suite = {
         "org.graalvm.compiler.graph.test",
         "org.graalvm.compiler.printer",
         "JAVA_ALLOCATION_INSTRUMENTER",
-        "ASM_TREE5",
+        "ASM_TREE_9.1",
+        "ASM_UTIL_9.1",
       ],
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1653,7 +1690,7 @@ suite = {
       "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.serviceprovider",
-      "multiReleaseJarVersion" : "9",
+      "multiReleaseJarVersion" : "11",
       "workingSets" : "Graal,Truffle",
     },
 
@@ -1776,6 +1813,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.test",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+        ],
+      },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
         "truffle:TRUFFLE_DSL_PROCESSOR"
@@ -1934,7 +1976,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.hotspot",
-      "multiReleaseJarVersion" : "9",
+      "multiReleaseJarVersion" : "11",
       "workingSets" : "Graal,Truffle",
     },
 
@@ -2027,6 +2069,7 @@ suite = {
         "org.graalvm.compiler.hotspot.amd64.test",
         "org.graalvm.compiler.hotspot.lir.test",
         "org.graalvm.compiler.hotspot.jdk15.test",
+        "org.graalvm.compiler.hotspot.jdk16.test",
         "org.graalvm.compiler.hotspot.jdk9.test",
         "org.graalvm.compiler.options.test",
         "org.graalvm.compiler.jtt",
@@ -2100,7 +2143,8 @@ suite = {
         "org.graalvm.compiler.serviceprovider.processor",
         "org.graalvm.compiler.nodeinfo.processor",
         "org.graalvm.compiler.replacements.processor",
-        "org.graalvm.compiler.core.match.processor"
+        "org.graalvm.compiler.core.match.processor",
+        "org.graalvm.compiler.lir.processor",
        ],
       "maven": False,
     },
@@ -2124,13 +2168,15 @@ suite = {
           "jdk.unsupported" # sun.misc.Unsafe
         ],
         "exports" : [
-          "* to com.oracle.graal.graal_enterprise",
-          "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management",
+          "* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise",
+          "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.agent.tracing",
+          "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver",
+          "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
+          "org.graalvm.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "org.graalvm.compiler.phases.common.jmx      to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
           "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
           "org.graalvm.util                            to jdk.internal.vm.compiler.management",

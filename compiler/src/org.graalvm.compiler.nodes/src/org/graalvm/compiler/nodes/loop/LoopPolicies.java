@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,5 +47,25 @@ public interface LoopPolicies {
 
     boolean shouldTryUnswitch(LoopEx loop);
 
-    boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
+    enum UnswitchingDecision {
+        /** This loop should be unswitched. */
+        YES,
+        /**
+         * This loop should be unswitched, and the unswitch is considered trivial. Trivial
+         * unswitches are not counted towards the loop's total unswitch count.
+         */
+        TRIVIAL,
+        /** This loop should not be unswitched. */
+        NO;
+
+        public boolean shouldUnswitch() {
+            return this == YES || this == TRIVIAL;
+        }
+
+        public boolean isTrivial() {
+            return this == TRIVIAL;
+        }
+    }
+
+    UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
 }

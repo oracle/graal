@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,10 @@ package org.graalvm.compiler.lir.alloc.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isCast;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
@@ -39,6 +39,7 @@ import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.CastValue;
 import org.graalvm.compiler.lir.ConstantValue;
@@ -169,9 +170,18 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
                  * this can happen when spill-moves are removed in eliminateSpillMoves
                  */
                 hasDead = true;
-            } else if (assignLocations(op)) {
-                instructions.set(j, null);
-                hasDead = true;
+            } else {
+                try {
+                    LIRInstruction newOp = assignLocations(op);
+                    if (op != newOp) {
+                        instructions.set(j, newOp);
+                    }
+                    if (newOp == null) {
+                        hasDead = true;
+                    }
+                } catch (GraalError e) {
+                    throw e.addContext("lir instruction", "@" + op.id() + " " + op.getClass().getName() + " " + op);
+                }
             }
         }
 
@@ -211,11 +221,13 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
     /**
      * Assigns the operand of an {@link LIRInstruction}.
      *
-     * @param op The {@link LIRInstruction} that should be colored.
-     * @return {@code true} if the instruction should be deleted.
+     * @param inputOp The {@link LIRInstruction} that should be colored.
+     * @return the {@link LIRInstruction} that should be emitted. A {@code null} return deletes the
+     *         instruction.
      */
-    protected boolean assignLocations(LIRInstruction op) {
-        assert op != null;
+    protected LIRInstruction assignLocations(LIRInstruction inputOp) {
+        assert inputOp != null;
+        LIRInstruction op = inputOp;
 
         // remove useless moves
         if (MoveOp.isMoveOp(op)) {
@@ -226,7 +238,19 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
                  * kicked out in LinearScanWalker.splitForSpilling(). When kicking out such an
                  * interval this move operation was already generated.
                  */
-                return true;
+                return null;
+            }
+        }
+
+        if (ValueMoveOp.isValueMoveOp(op)) {
+            ValueMoveOp valueMoveOp = ValueMoveOp.asValueMoveOp(op);
+            AllocatableValue input = valueMoveOp.getInput();
+            if (isVariable(input)) {
+                Value inputOperand = colorLirOperand(op, asVariable(input), OperandMode.USE);
+                if (inputOperand instanceof ConstantValue) {
+                    // Replace the ValueMoveOp with a constant materialization
+                    op = allocator.getSpillMoveFactory().createLoad(valueMoveOp.getResult(), ((ConstantValue) inputOperand).getConstant());
+                }
             }
         }
 
@@ -242,10 +266,10 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
         if (ValueMoveOp.isValueMoveOp(op)) {
             ValueMoveOp move = ValueMoveOp.asValueMoveOp(op);
             if (move.getInput().equals(move.getResult())) {
-                return true;
+                return null;
             }
         }
-        return false;
+        return op;
     }
 
     @SuppressWarnings("try")

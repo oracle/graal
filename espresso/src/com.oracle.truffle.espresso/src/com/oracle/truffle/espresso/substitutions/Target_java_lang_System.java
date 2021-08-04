@@ -65,13 +65,13 @@ public final class Target_java_lang_System {
     // endregion Profile values
 
     @Substitution
-    public static int identityHashCode(@Host(Object.class) StaticObject self) {
+    public static int identityHashCode(@JavaType(Object.class) StaticObject self) {
         SYSTEM_IDENTITY_HASH_CODE_COUNT.inc();
         return VM.JVM_IHashCode(self);
     }
 
     @Substitution
-    public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length,
+    public static void arraycopy(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
@@ -105,7 +105,7 @@ public final class Target_java_lang_System {
      *  D - ArrayStoreException
      *      if an element in the src array could not be stored into the dest array because of a type mismatch
      */
-    private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length,
+    private static void doArrayCopy(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
                     Meta meta, SubstitutionProfiler profiler) {
         if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
             throw throwNullPointerEx(meta, profiler);
@@ -216,7 +216,7 @@ public final class Target_java_lang_System {
     @TruffleBoundary
     private static void handleForeignArray(Object src, int srcPos, Object dest, int destPos, int length, Klass destType, Meta meta, SubstitutionProfiler profiler) {
         InteropLibrary library = InteropLibrary.getUncached();
-        ToEspressoNode toEspressoNode = ToEspressoNodeGen.create();
+        ToEspressoNode toEspressoNode = ToEspressoNodeGen.getUncached();
         if (library.isNull(src) || library.isNull(dest)) {
             throw throwNullPointerEx(meta, profiler);
         }

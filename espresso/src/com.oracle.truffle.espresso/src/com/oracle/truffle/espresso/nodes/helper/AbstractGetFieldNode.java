@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,22 +45,26 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class AbstractGetFieldNode extends Node {
-    final Field field;
+    final Field.FieldVersion fieldVersion;
     final String fieldName;
     final int slotCount;
     static final int CACHED_LIBRARY_LIMIT = 3;
 
-    AbstractGetFieldNode(Field field) {
-        this.field = field;
-        this.fieldName = field.getNameAsString();
-        this.slotCount = field.getKind().getSlotCount();
+    AbstractGetFieldNode(Field.FieldVersion fieldVersion) {
+        this.fieldVersion = fieldVersion;
+        this.fieldName = getField().getNameAsString();
+        this.slotCount = getField().getKind().getSlotCount();
+    }
+
+    Field getField() {
+        return fieldVersion.getField();
     }
 
     public abstract int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex);
 
-    public static AbstractGetFieldNode create(Field f) {
+    public static AbstractGetFieldNode create(Field.FieldVersion f) {
         // @formatter:off
-        switch (f.getKind()) {
+        switch (f.getField().getKind()) {
             case Boolean: return BooleanGetFieldNodeGen.create(f);
             case Byte:    return ByteGetFieldNodeGen.create(f);
             case Short:   return ShortGetFieldNodeGen.create(f);
@@ -77,8 +81,8 @@ public abstract class AbstractGetFieldNode extends Node {
     }
 
     protected Object getForeignField(StaticObject receiver, InteropLibrary interopLibrary, EspressoContext context, BranchProfile error) {
-        assert field.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
-        assert !field.isStatic();
+        assert getField().getDeclaringKlass().isAssignableFrom(receiver.getKlass());
+        assert !getField().isStatic();
         Object value;
         try {
             value = interopLibrary.readMember(receiver.rawForeignObject(), fieldName);
@@ -92,14 +96,14 @@ public abstract class AbstractGetFieldNode extends Node {
 }
 
 abstract class IntGetFieldNode extends AbstractGetFieldNode {
-    IntGetFieldNode(Field f) {
+    IntGetFieldNode(Field.FieldVersion f) {
         super(f);
-        assert f.getKind() == JavaKind.Int;
+        assert f.getField().getKind() == JavaKind.Int;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         BytecodeNode.putInt(primitives, at, executeGetField(receiver));
         return slotCount;
     }
@@ -108,7 +112,7 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     int doEspresso(StaticObject receiver) {
-        return field.getInt(receiver);
+        return getField().getInt(receiver);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
@@ -141,19 +145,19 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
     }
 
     boolean isValueField(EspressoContext context) {
-        return field == context.getMeta().java_lang_Integer_value;
+        return getField() == context.getMeta().java_lang_Integer_value;
     }
 }
 
 abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
-    BooleanGetFieldNode(Field f) {
+    BooleanGetFieldNode(Field.FieldVersion f) {
         super(f);
-        assert f.getKind() == JavaKind.Boolean;
+        assert f.getField().getKind() == JavaKind.Boolean;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         BytecodeNode.putInt(primitives, at, executeGetField(receiver) ? 1 : 0);
         return slotCount;
     }
@@ -162,7 +166,7 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     boolean doEspresso(StaticObject receiver) {
-        return field.getBoolean(receiver);
+        return getField().getBoolean(receiver);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
@@ -195,19 +199,19 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
     }
 
     boolean isValueField(EspressoContext context) {
-        return field == context.getMeta().java_lang_Boolean_value;
+        return getField() == context.getMeta().java_lang_Boolean_value;
     }
 }
 
 abstract class CharGetFieldNode extends AbstractGetFieldNode {
-    CharGetFieldNode(Field f) {
+    CharGetFieldNode(Field.FieldVersion f) {
         super(f);
-        assert f.getKind() == JavaKind.Char;
+        assert f.getField().getKind() == JavaKind.Char;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         BytecodeNode.putInt(primitives, at, executeGetField(receiver));
         return slotCount;
     }
@@ -216,7 +220,7 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     char doEspresso(StaticObject receiver) {
-        return field.getChar(receiver);
+        return getField().getChar(receiver);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
@@ -255,19 +259,19 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
     }
 
     boolean isValueField(EspressoContext context) {
-        return field == context.getMeta().java_lang_Character_value;
+        return getField() == context.getMeta().java_lang_Character_value;
     }
 }
 
 abstract class ShortGetFieldNode extends AbstractGetFieldNode {
-    ShortGetFieldNode(Field f) {
+    ShortGetFieldNode(Field.FieldVersion f) {
         super(f);
-        assert f.getKind() == JavaKind.Short;
+        assert f.getField().getKind() == JavaKind.Short;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         BytecodeNode.putInt(primitives, at, executeGetField(receiver));
         return slotCount;
     }
@@ -276,7 +280,7 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     short doEspresso(StaticObject receiver) {
-        return field.getShort(receiver);
+        return getField().getShort(receiver);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
@@ -309,19 +313,19 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
     }
 
     boolean isValueField(EspressoContext context) {
-        return field == context.getMeta().java_lang_Short_value;
+        return getField() == context.getMeta().java_lang_Short_value;
     }
 }
 
 abstract class ByteGetFieldNode extends AbstractGetFieldNode {
-    ByteGetFieldNode(Field f) {
+    ByteGetFieldNode(Field.FieldVersion f) {
         super(f);
-        assert f.getKind() == JavaKind.Byte;
+        assert f.getField().getKind() == JavaKind.Byte;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         BytecodeNode.putInt(primitives, at, executeGetField(receiver));
         return slotCount;
     }
@@ -330,7 +334,7 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     byte doEspresso(StaticObject receiver) {
-        return field.getByte(receiver);
+        return getField().getByte(receiver);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
@@ -363,19 +367,19 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
     }
 
     boolean isValueField(EspressoContext context) {
-        return field == context.getMeta().java_lang_Byte_value;
+        return getField() == context.getMeta().java_lang_Byte_value;
     }
 }
 
 abstract class LongGetFieldNode extends AbstractGetFieldNode {
-    LongGetFieldNode(Field f) {
+    LongGetFieldNode(Field.FieldVersion f) {
         super(f);
-        assert f.getKind() == JavaKind.Long;
+        assert f.getField().getKind() == JavaKind.Long;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         BytecodeNode.putLong(primitives, at, executeGetField(receiver));
         return slotCount;
     }
@@ -384,7 +388,7 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     long doEspresso(StaticObject receiver) {
-        return field.getLong(receiver);
+        return getField().getLong(receiver);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
@@ -417,19 +421,19 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
     }
 
     boolean isValueField(EspressoContext context) {
-        return field == context.getMeta().java_lang_Long_value;
+        return getField() == context.getMeta().java_lang_Long_value;
     }
 }
 
 abstract class FloatGetFieldNode extends AbstractGetFieldNode {
-    FloatGetFieldNode(Field f) {
+    FloatGetFieldNode(Field.FieldVersion f) {
         super(f);
-        assert f.getKind() == JavaKind.Float;
+        assert f.getField().getKind() == JavaKind.Float;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         BytecodeNode.putFloat(primitives, at, executeGetField(receiver));
         return slotCount;
     }
@@ -438,7 +442,7 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     float doEspresso(StaticObject receiver) {
-        return field.getFloat(receiver);
+        return getField().getFloat(receiver);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
@@ -471,19 +475,19 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
     }
 
     boolean isValueField(EspressoContext context) {
-        return field == context.getMeta().java_lang_Float_value;
+        return getField() == context.getMeta().java_lang_Float_value;
     }
 }
 
 abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
-    DoubleGetFieldNode(Field f) {
+    DoubleGetFieldNode(Field.FieldVersion f) {
         super(f);
-        assert f.getKind() == JavaKind.Double;
+        assert f.getField().getKind() == JavaKind.Double;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         BytecodeNode.putDouble(primitives, at, executeGetField(receiver));
         return slotCount;
     }
@@ -492,7 +496,7 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     double doEspresso(StaticObject receiver) {
-        return field.getDouble(receiver);
+        return getField().getDouble(receiver);
     }
 
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
@@ -525,23 +529,25 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
     }
 
     boolean isValueField(EspressoContext context) {
-        return field == context.getMeta().java_lang_Double_value;
+        return getField() == context.getMeta().java_lang_Double_value;
     }
 }
 
 abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     final Klass typeKlass;
 
-    ObjectGetFieldNode(Field f) {
+    ObjectGetFieldNode(Field.FieldVersion f) {
         super(f);
         this.typeKlass = f.resolveTypeKlass();
-        assert f.getKind() == JavaKind.Object;
+        assert f.getField().getKind() == JavaKind.Object;
     }
 
     @Override
     public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
-        root.notifyFieldAccess(frame, statementIndex, field, receiver);
-        BytecodeNode.putObject(refs, at, executeGetField(receiver));
+        root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
+        StaticObject result = executeGetField(receiver);
+        root.checkNoForeignObjectAssumption(result);
+        BytecodeNode.putObject(refs, at, result);
         return slotCount;
     }
 
@@ -549,7 +555,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     StaticObject doEspresso(StaticObject receiver) {
-        return field.getObject(receiver);
+        return fieldVersion.getObject(receiver);
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "CACHED_LIBRARY_LIMIT")

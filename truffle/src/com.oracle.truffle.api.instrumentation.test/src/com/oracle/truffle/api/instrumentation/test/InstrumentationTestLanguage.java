@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -686,7 +686,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
-            StringBuilder b = new StringBuilder();
+            StringBuilderWrapper b = new StringBuilderWrapper();
             b.append("(");
             if (children != null) {
                 for (int i = 0; i < children.length; i++) {
@@ -702,7 +702,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 }
             }
             b.append(")");
-            return InstrumentationTestLanguage.toString(b);
+            return b.toString();
         }
 
         @Override
@@ -804,7 +804,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         Object readMember(String key) throws UnknownIdentifierException {
             switch (key) {
                 case "simpleName":
-                    return getClass().getSimpleName();
+                    return classSimpleName(getClass());
             }
             if (this instanceof ConstantNode) {
                 switch (key) {
@@ -1628,6 +1628,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     }
                 }
             });
+            t.setUncaughtExceptionHandler(getPolyglotThreadUncaughtExceptionHandler(context));
             synchronized (context.spawnedThreads) {
                 context.spawnedThreads.add(t);
             }
@@ -1638,6 +1639,35 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new SpawnNode(identifier, cloneUninitialized(children, materializedTags));
         }
+    }
+
+    private static Thread.UncaughtExceptionHandler getPolyglotThreadUncaughtExceptionHandler(InstrumentContext context) {
+        return (t, e) -> {
+            InteropLibrary interop = InteropLibrary.getUncached();
+            boolean interrupted;
+            boolean cancelled = false;
+            if (interop.isException(e)) {
+                try {
+                    ExceptionType exceptionType = interop.getExceptionType(e);
+                    interrupted = exceptionType == ExceptionType.INTERRUPT;
+                } catch (UnsupportedMessageException ume) {
+                    throw CompilerDirectives.shouldNotReachHere(ume);
+                }
+            } else {
+                interrupted = e != null && e.getCause() instanceof InterruptedException;
+                cancelled = e instanceof ThreadDeath;
+            }
+            if (e != null && !interrupted && !cancelled) {
+                Env currentEnv = context.env;
+                try {
+                    e.printStackTrace(new PrintStream(currentEnv.err()));
+                } catch (Throwable exc) {
+                    // Still show the original error if printing on Env.err() fails for some
+                    // reason
+                    e.printStackTrace();
+                }
+            }
+        };
     }
 
     private static final class AsyncStackInfo {
@@ -3150,7 +3180,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             if (delegate.equals(Double.POSITIVE_INFINITY)) {
                 return "Infinity";
             }
-            return null;
+            return "Object";
         }
 
         @ExportMessage
@@ -3161,9 +3191,30 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     }
 
+    private static class StringBuilderWrapper {
+        private final StringBuilder delegate = new StringBuilder();
+
+        @TruffleBoundary
+        StringBuilderWrapper append(String s) {
+            delegate.append(s);
+            return this;
+        }
+
+        @TruffleBoundary
+        @Override
+        public String toString() {
+            return delegate.toString();
+        }
+    }
+
     @TruffleBoundary
     private static String toString(Object object) {
         return object.toString();
+    }
+
+    @TruffleBoundary
+    private static String classSimpleName(Class<?> clazz) {
+        return clazz.getSimpleName();
     }
 
     public static final class SpecialServiceImpl implements SpecialService {
@@ -3176,39 +3227,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected void finalizeContext(InstrumentContext context) {
         joinSpawnedThreads(context, true);
-    }
-
-    @Override
-    protected void initializeThread(InstrumentContext context, Thread thread) {
-        Thread.UncaughtExceptionHandler currentHandler = thread.getUncaughtExceptionHandler();
-        if (currentHandler != null && "com.oracle.truffle.polyglot.PolyglotLanguageContext$PolyglotUncaughtExceptionHandler".equals(currentHandler.getClass().getName())) {
-            thread.setUncaughtExceptionHandler((t, e) -> {
-                InteropLibrary interop = InteropLibrary.getUncached();
-                boolean interrupted;
-                boolean cancelled = false;
-                if (interop.isException(e)) {
-                    try {
-                        ExceptionType exceptionType = interop.getExceptionType(e);
-                        interrupted = exceptionType == ExceptionType.INTERRUPT;
-                    } catch (UnsupportedMessageException ume) {
-                        throw CompilerDirectives.shouldNotReachHere(ume);
-                    }
-                } else {
-                    interrupted = e != null && e.getCause() instanceof InterruptedException;
-                    cancelled = e != null && "com.oracle.truffle.polyglot.PolyglotEngineImpl$CancelExecution".equals(e.getClass().getName());
-                }
-                if (!interrupted && !cancelled) {
-                    Env currentEnv = context.env;
-                    try {
-                        e.printStackTrace(new PrintStream(currentEnv.err()));
-                    } catch (Throwable exc) {
-                        // Still show the original error if printing on Env.err() fails for some
-                        // reason
-                        e.printStackTrace();
-                    }
-                }
-            });
-        }
     }
 }
 

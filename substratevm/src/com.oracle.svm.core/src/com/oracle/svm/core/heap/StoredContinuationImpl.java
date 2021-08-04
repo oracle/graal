@@ -47,7 +47,6 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaContinuations;
@@ -93,7 +92,7 @@ public final class StoredContinuationImpl {
     private static final int HEADER_SIZE = PAYLOAD_OFFSET;
 
     private static StoredContinuation allocate(long size) {
-        return KnownIntrinsics.convertUnknownValue(NewStoredContinuationNode.allocate(size), StoredContinuation.class);
+        return NewStoredContinuationNode.allocate(size);
     }
 
     /* All method calls in this function except `allocate` should be `@Uninterruptible` */
@@ -290,7 +289,7 @@ public final class StoredContinuationImpl {
      */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     public static boolean walkStoredContinuationFromPointer(Pointer baseAddress, ObjectReferenceVisitor visitor, Object holderObject) {
-        StoredContinuation f = KnownIntrinsics.convertUnknownValue(holderObject, StoredContinuation.class);
+        StoredContinuation f = (StoredContinuation) holderObject;
 
         Pointer payloadStart = StoredContinuationImpl.payloadLocation(f);
         assert payloadStart.subtract(baseAddress).equal(StoredContinuationImpl.HEADER_SIZE) : "base address not pointing to frame instance";

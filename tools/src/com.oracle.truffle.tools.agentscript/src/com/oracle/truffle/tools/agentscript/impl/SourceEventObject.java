@@ -81,7 +81,7 @@ final class SourceEventObject implements TruffleObject {
         }
         switch (existingMember) {
             case characters:
-                return obj.source.getCharacters().toString();
+                return obj.source.hasCharacters() ? obj.source.getCharacters().toString() : NullObject.nullCheck(null);
             case name:
                 return obj.source.getName();
             case language:

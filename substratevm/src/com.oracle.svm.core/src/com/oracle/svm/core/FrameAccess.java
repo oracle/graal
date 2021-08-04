@@ -54,7 +54,8 @@ public abstract class FrameAccess {
     public static int returnAddressSize() {
         Architecture arch = ConfigurationValues.getTarget().arch;
         if (arch instanceof AArch64) {
-            return 8;
+            /* Currently AArch64.getReturnAddressSize() is incorrectly 0. */
+            return wordSize();
         } else {
             return arch.getReturnAddressSize();
         }

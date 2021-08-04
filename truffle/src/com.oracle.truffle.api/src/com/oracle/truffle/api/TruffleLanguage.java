@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.api;
 
 import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -68,6 +69,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -79,6 +81,7 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 
@@ -305,14 +308,6 @@ public abstract class TruffleLanguage<C> {
          * @since 0.8 or earlier
          */
         String version() default "inherit";
-
-        /**
-         * @since 0.8 or earlier
-         * @deprecated split up MIME types into {@link #characterMimeTypes() character} and
-         *             {@link #byteMimeTypes() byte} based MIME types.
-         */
-        @Deprecated
-        String[] mimeType() default {};
 
         /**
          * Returns the default MIME type of this language. The default MIME type allows embedders
@@ -596,10 +591,13 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Performs language context finalization actions that are necessary before language contexts
-     * are {@link #disposeContext(Object) disposed}. All installed languages must remain usable
-     * after finalization. The finalization order can be influenced by specifying
-     * {@link Registration#dependentLanguages() language dependencies}. By default internal
-     * languages are finalized last, otherwise the default order is unspecified but deterministic.
+     * are {@link #disposeContext(Object) disposed}. However, in case the underlying polyglot
+     * context is being cancelled, {@link #disposeContext(Object)} is called even if
+     * {@link #finalizeContext(Object)} throws a {@link TruffleException} or a {@link ThreadDeath}
+     * exception. All installed languages must remain usable after finalization. The finalization
+     * order can be influenced by specifying {@link Registration#dependentLanguages() language
+     * dependencies}. By default internal languages are finalized last, otherwise the default order
+     * is unspecified but deterministic.
      * <p>
      * While finalization code is run, other language contexts may become initialized. In such a
      * case, the finalization order may be non-deterministic and/or not respect the order specified
@@ -667,7 +665,10 @@ public abstract class TruffleLanguage<C> {
      * resources associated with a context. The context may become unusable after it was disposed.
      * It is not allowed to run guest language code while disposing a context. Finalization code
      * should be run in {@link #finalizeContext(Object)} instead. Finalization will be performed
-     * prior to context {@link #disposeContext(Object) disposal}.
+     * prior to context {@link #disposeContext(Object) disposal}. However, in case the underlying
+     * polyglot context is being cancelled, {@link #disposeContext(Object)} is called even if
+     * {@link #finalizeContext(Object)} throws {@link TruffleException} or {@link ThreadDeath}
+     * exception..
      * <p>
      * The disposal order can be influenced by specifying {@link Registration#dependentLanguages()
      * language dependencies}. By default internal languages are disposed last, otherwise the
@@ -2151,7 +2152,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
             try {
-                return LanguageAccessor.engineAccess().isHostObject(value);
+                return LanguageAccessor.engineAccess().isHostObject(polyglotLanguageContext, value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2170,7 +2171,7 @@ public abstract class TruffleLanguage<C> {
                 throw new ClassCastException();
             }
             try {
-                return LanguageAccessor.engineAccess().asHostObject(value);
+                return LanguageAccessor.engineAccess().asHostObject(polyglotLanguageContext, value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2232,7 +2233,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public boolean isHostFunction(Object value) {
             try {
-                return LanguageAccessor.engineAccess().isHostFunction(value);
+                return LanguageAccessor.engineAccess().isHostFunction(polyglotLanguageContext, value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2275,7 +2276,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public boolean isHostException(Throwable exception) {
             try {
-                return LanguageAccessor.engineAccess().isHostException(exception);
+                return LanguageAccessor.engineAccess().isHostException(polyglotLanguageContext, exception);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2296,7 +2297,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
             try {
-                return LanguageAccessor.engineAccess().asHostException(exception);
+                return LanguageAccessor.engineAccess().asHostException(polyglotLanguageContext, exception);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2312,7 +2313,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public boolean isHostSymbol(Object guestObject) {
             try {
-                return LanguageAccessor.engineAccess().isHostSymbol(guestObject);
+                return LanguageAccessor.engineAccess().isHostSymbol(polyglotLanguageContext, guestObject);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -3498,7 +3499,8 @@ public abstract class TruffleLanguage<C> {
          * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
-         * {@link Interruptible}.
+         * {@link Interruptible}. If the underlying polyglot context is already closed, the method
+         * returns a completed {@link Future}.
          *
          * @param threads the threads to execute the action on. <code>null</code> for all threads
          * @param action the action to perform on that thread.
@@ -3508,6 +3510,26 @@ public abstract class TruffleLanguage<C> {
          */
         public Future<Void> submitThreadLocal(Thread[] threads, ThreadLocalAction action) {
             return submitThreadLocalInternal(threads, action, true);
+        }
+
+        /**
+         * Registers {@link Closeable} for automatic close on context dispose. In most cases,
+         * closeable should be closed using try-with-resources construct. When a closeable must keep
+         * being opened for the lifetime of a context it should be registered using this method for
+         * automatic close on context dispose. The registered {@link Closeable} is weakly
+         * referenced. The guest language must strongly reference it otherwise, it may be garbage
+         * collected before it's closed.
+         * <p>
+         * If the registered closeable throws an {@link IOException} during close, the thrown
+         * exception does not prevent successful context dispose. The IOException is logged to the
+         * engine logger with a {@link Level#WARNING} level. Other exceptions are rethrown as
+         * internal {@link PolyglotException}.
+         *
+         * @param closeable to be closed on context dispose.
+         * @since 21.2
+         */
+        public void registerOnDispose(Closeable closeable) {
+            LanguageAccessor.engineAccess().registerOnDispose(polyglotLanguageContext, closeable);
         }
 
         /*

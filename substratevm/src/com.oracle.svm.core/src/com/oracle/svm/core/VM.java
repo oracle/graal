@@ -31,18 +31,16 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.util.VMError;
 
 public final class VM {
-    public static final String VERSION = buildVersion();
+
+    public final String version;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static String buildVersion() {
-        String version = System.getProperty("org.graalvm.version");
-        VMError.guarantee(version != null);
-        version = "GraalVM " + version;
-        version += " Java " + JavaVersionUtil.JAVA_SPEC;
-        String config = System.getProperty("org.graalvm.config", "");
-        if (!config.isEmpty()) {
-            version += " " + config;
-        }
-        return version;
+    public VM(String config) {
+        String versionStr = System.getProperty("org.graalvm.version");
+        VMError.guarantee(versionStr != null);
+        versionStr = "GraalVM " + versionStr;
+        versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
+        versionStr += " " + config;
+        version = versionStr;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction.RESOLV
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.vm.ci.code.RegisterArray;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
@@ -349,7 +350,17 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     protected Register[] getSaveableRegisters() {
-        return getResult().getRegisterAllocationConfig().getAllocatableRegisters().toArray();
+        RegisterArray allocatableRegisters = getResult().getRegisterAllocationConfig().getAllocatableRegisters();
+
+        ArrayList<Register> registers = new ArrayList<>(allocatableRegisters.size());
+        for (Register reg : allocatableRegisters) {
+            // mask registers should not be saved
+            if (!reg.getRegisterCategory().equals(AMD64.MASK)) {
+                registers.add(reg);
+            }
+        }
+
+        return registers.toArray(new Register[registers.size()]);
     }
 
     protected void emitRestoreRegisters(AMD64SaveRegistersOp save) {

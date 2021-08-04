@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,11 +45,9 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 
-@ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 1)
 @SuppressWarnings("deprecation") // needed because the superclass implements ReferenceLibrary
 abstract class NativePointerLibraries extends CommonPointerLibraries {
 
@@ -106,24 +104,16 @@ abstract class NativePointerLibraries extends CommonPointerLibraries {
 
     /**
      * @param receiver
-     * @see LLVMNativeLibrary#isPointer(Object)
      * @see InteropLibrary#isPointer(Object)
      */
-    @ExportMessage(library = LLVMNativeLibrary.class)
     @ExportMessage(library = InteropLibrary.class)
     static boolean isPointer(LLVMPointerImpl receiver) {
         return true;
     }
 
-    @ExportMessage(library = LLVMNativeLibrary.class)
     @ExportMessage(library = InteropLibrary.class)
     static long asPointer(LLVMPointerImpl receiver) {
         return receiver.asNative();
-    }
-
-    @ExportMessage
-    static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver) {
-        return receiver;
     }
 
     @ExportMessage

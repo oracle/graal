@@ -58,14 +58,17 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     private final LocalVariableTable localVariableTable;
     private final boolean inClassSubstitution;
 
-    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated) {
-        this(original, annotated, false);
-    }
+    /**
+     * This field is used in the {@link com.oracle.svm.hosted.SubstitutionReportFeature} class to
+     * determine {@link SubstitutionMethod} objects which correspond to annotated substitutions.
+     */
+    private final boolean isUserSubstitution;
 
-    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution) {
+    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution, boolean isUserSubstitution) {
         this.original = original;
         this.annotated = annotated;
         this.inClassSubstitution = inClassSubstitution;
+        this.isUserSubstitution = isUserSubstitution;
 
         LocalVariableTable newLocalVariableTable = null;
         if (annotated.getLocalVariableTable() != null) {
@@ -84,6 +87,10 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
             newLocalVariableTable = new LocalVariableTable(newLocals);
         }
         localVariableTable = newLocalVariableTable;
+    }
+
+    public boolean isUserSubstitution() {
+        return isUserSubstitution;
     }
 
     public ResolvedJavaMethod getOriginal() {

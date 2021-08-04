@@ -67,6 +67,7 @@ import com.oracle.truffle.sl.builtins.SLImportBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLIsExecutableBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLIsInstanceBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLIsNullBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLJavaTypeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLNewObjectBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
@@ -158,6 +159,7 @@ public final class SLContext {
         installBuiltin(SLWrapPrimitiveBuiltinFactory.getInstance());
         installBuiltin(SLTypeOfBuiltinFactory.getInstance());
         installBuiltin(SLIsInstanceBuiltinFactory.getInstance());
+        installBuiltin(SLJavaTypeBuiltinFactory.getInstance());
     }
 
     public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {

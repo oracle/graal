@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.configure.trace;
 
+import java.util.regex.Pattern;
+
 import org.graalvm.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.filters.RuleNode;
@@ -33,6 +35,12 @@ import com.oracle.svm.configure.filters.RuleNode;
  * {@code AccessVerifier} classes which accesses to ignore when the agent is in restriction mode.
  */
 public final class AccessAdvisor {
+    /**
+     * {@link java.lang.reflect.Proxy} generated classes can be put in arbitrary packages depending
+     * on the visibility and module of the interfaces they implement, so we can only match against
+     * their class name using this pattern (which we hope isn't used by anything else).
+     */
+    public static final Pattern PROXY_CLASS_NAME_PATTERN = Pattern.compile("^(.+[/.])?\\$Proxy[0-9]+$");
 
     /** Filter to ignore accesses that <em>originate in</em> methods of these internal classes. */
     private static final RuleNode internalCallerFilter;
@@ -58,6 +66,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("com.sun.nio.zipfs.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.io.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.lang.**", RuleNode.Inclusion.Exclude);
+        // The agent should not filter calls from native libraries.
+        internalCallerFilter.addOrGetChildren("java.lang.ClassLoader$NativeLibrary", RuleNode.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("java.math.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.net.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.nio.**", RuleNode.Inclusion.Exclude);
@@ -154,7 +164,10 @@ public final class AccessAdvisor {
         if (callerClass.get() == null && queriedClass.get() != null && !accessWithoutCallerFilter.treeIncludes(queriedClass.get())) {
             return true;
         }
-        return accessFilter != null && queriedClass.get() != null && !accessFilter.treeIncludes(queriedClass.get());
+        if (accessFilter != null && queriedClass.get() != null && !accessFilter.treeIncludes(queriedClass.get())) {
+            return true;
+        }
+        return heuristicsEnabled && queriedClass.get() != null && PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches();
     }
 
     public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {

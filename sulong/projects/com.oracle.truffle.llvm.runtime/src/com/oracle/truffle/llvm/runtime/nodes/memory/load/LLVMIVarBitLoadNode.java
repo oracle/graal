@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -44,6 +45,16 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @NodeField(name = "bitWidth", type = int.class)
 public abstract class LLVMIVarBitLoadNode extends LLVMLoadNode {
 
+    protected final boolean isRecursive;
+
+    protected LLVMIVarBitLoadNode() {
+        this(false);
+    }
+
+    protected LLVMIVarBitLoadNode(boolean isRecursive) {
+        this.isRecursive = isRecursive;
+    }
+
     public abstract LLVMIVarBit executeWithTarget(LLVMManagedPointer addr);
 
     public abstract int getBitWidth();
@@ -55,10 +66,10 @@ public abstract class LLVMIVarBitLoadNode extends LLVMLoadNode {
     }
 
     LLVMIVarBitLoadNode createRecursive() {
-        return LLVMIVarBitLoadNodeGen.create(null, getBitWidth());
+        return LLVMIVarBitLoadNodeGen.create(true, null, getBitWidth());
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)")
+    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(language, addr)"})
     protected LLVMIVarBit doIVarBitDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
@@ -67,6 +78,7 @@ public abstract class LLVMIVarBitLoadNode extends LLVMLoadNode {
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected LLVMIVarBit doForeign(LLVMManagedPointer addr,
                     @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
         byte[] result = new byte[getByteSize()];

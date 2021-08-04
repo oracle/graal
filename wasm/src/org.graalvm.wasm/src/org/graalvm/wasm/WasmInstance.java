@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,8 +63,8 @@ import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 @SuppressWarnings("static-method")
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
-    public WasmInstance(WasmModule module) {
-        super(module);
+    public WasmInstance(WasmContext context, WasmModule module) {
+        super(context, module);
     }
 
     public String name() {
@@ -94,7 +94,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     }
 
     private WasmFunctionInstance functionInstance(WasmFunction function) {
-        return new WasmFunctionInstance(function, target(function.index()));
+        return new WasmFunctionInstance(context(), function, target(function.index()));
     }
 
     private void ensureLinked() {

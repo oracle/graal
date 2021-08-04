@@ -29,15 +29,13 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
@@ -59,6 +57,9 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * {@link InitializeSymbolsNode} creates the symbol of all defined functions and globals, and put
@@ -92,7 +93,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
 
-    private final int bitcodeID;
+    private final BitcodeID bitcodeID;
     private final int globalLength;
 
     public InitializeSymbolsNode(LLVMParserResult result, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName) throws Type.TypeOverflowException {
@@ -180,7 +181,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         allocFunctions(ctx);
 
         if (allocRoSection != null) {
-            ctx.registerReadOnlyGlobals(bitcodeID, roBase, nodeFactory);
+            ctx.registerReadOnlyGlobals(bitcodeID.getId(), roBase, nodeFactory);
         }
         if (allocRwSection != null) {
             ctx.registerGlobals(rwBase, nodeFactory);
@@ -344,6 +345,12 @@ public final class InitializeSymbolsNode extends LLVMNode {
         @Override
         LLVMPointer allocate(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = createAndResolve(context);
+            if (context.isAOTCacheLoad() || context.isAOTCacheStore()) {
+                // Initialize the native state in the descriptor to prevent deopts/unstable ifs. The
+                // function in the descriptor should already be resolved after the auxiliary engine
+                // cache was loaded.
+                functionDescriptor.toNative();
+            }
             return LLVMManagedPointer.create(functionDescriptor);
         }
     }

@@ -217,7 +217,7 @@ public final class NFIContextExtension extends NativeContextExtension {
     public void initialize(LLVMContext context) {
         assert !isInitialized();
         if (!internalLibrariesAdded) {
-            TruffleFile file = locateInternalLibrary(context, "libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
+            TruffleFile file = locateInternalLibrary(context, getNativeLibrary("sulong-native"), "<default nfi library>");
             Object lib = loadLibrary(file.getPath(), context);
             if (lib instanceof CallTarget) {
                 libraryHandles.add(((CallTarget) lib).call());
@@ -554,7 +554,8 @@ public final class NFIContextExtension extends NativeContextExtension {
         return signatureSourceCache.getSignatureSourceSkipStackArg(type);
     }
 
-    private Object createSignature(Source signatureSource) {
+    @Override
+    public Object createSignature(Source signatureSource) {
         synchronized (signatureCache) {
             Object ret = signatureCache.get(signatureSource);
             if (ret == null) {

@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Monomorphization
+permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/Monomorphization/
+---
 # Monomorphization
 
 Truffle has an automatic approach to monomorphization (also known as "splitting"). For more information about the benefits of monomorphization, continue reading to [Monomorphization Use Cases](MonomorphizationUseCases.md).

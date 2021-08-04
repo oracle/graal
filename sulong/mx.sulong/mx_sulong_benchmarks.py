@@ -133,7 +133,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
         # This comes into play when benchmarking with AOT auxiliary images. An AOT benchmark must
         # be run twice: the first run involves parsing only with no run. Upon closing the context,
-		# the auxiliary image is saved and then loaded when the second benchmark is run. The no-run
+        # the auxiliary image is saved and then loaded when the second benchmark is run. The no-run
         # preparatory benchmark is run using the llimul launcher and passing --multi-context-runs=0.
         # We can capture this argument here and instruct the benchmark infrastructure to ignore
         # the output of this benchmark.
@@ -247,6 +247,52 @@ class CExecutionEnvironmentMixin(object):
         return env
 
 
+def add_run_numbers(out):
+    # Prepending the summary lines by the run number
+    new_result = ""
+
+    # "forknums"
+    first_20_warmup_iters_runs = 0
+    last_10_iters_runs = 0
+    pure_startup_runs = 0
+    startup_runs = 0
+    early_warmup_runs = 0
+    late_warmup_runs = 0
+
+    def make_runs_line(runs, line):
+        return "run " + str(runs) + " " + line + "\n"
+
+    for line in out.splitlines():
+        if line.startswith("first"):
+            new_result += make_runs_line(first_20_warmup_iters_runs, line)
+            first_20_warmup_iters_runs += 1
+            continue
+        elif line.startswith("last"):
+            new_result += make_runs_line(last_10_iters_runs, line)
+            last_10_iters_runs += 1
+            continue
+        elif line.startswith("Pure-startup"):
+            new_result += make_runs_line(pure_startup_runs, line)
+            pure_startup_runs += 1
+            continue
+        elif line.startswith("Startup"):
+            new_result += make_runs_line(startup_runs, line)
+            startup_runs += 1
+            continue
+        elif line.startswith("Early-warmup"):
+            new_result += make_runs_line(early_warmup_runs, line)
+            early_warmup_runs += 1
+            continue
+        elif line.startswith("Late-warmup"):
+            new_result += make_runs_line(late_warmup_runs, line)
+            late_warmup_runs += 1
+            continue
+
+        new_result += line + "\n"
+
+    return new_result
+
+
 class GccLikeVm(CExecutionEnvironmentMixin, Vm):
     def __init__(self, config_name, options):
         super(GccLikeVm, self).__init__()
@@ -274,7 +320,7 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
     def run(self, cwd, args):
         myStdOut = mx.OutputCapture()
         retCode = mx.run(args, out=mx.TeeOutputCapture(myStdOut), cwd=cwd)
-        return [retCode, myStdOut.data]
+        return [retCode, add_run_numbers(myStdOut.data)]
 
     def prepare_env(self, env):
         env['CFLAGS'] = ' '.join(self.options + _env_flags)
@@ -357,50 +403,8 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
                             ['-XX:-UseJVMCIClassLoader', self.launcherClass()]
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
 
-        # Prepending the summary lines by the run number
         ret_code, out, vm_dims = result
-        new_result = ""
-
-        # "forknums"
-        first_20_warmup_iters_runs = 0
-        last_10_iters_runs = 0
-        pure_startup_runs = 0
-        startup_runs = 0
-        early_warmup_runs = 0
-        late_warmup_runs = 0
-
-        def make_runs_line(runs, line):
-            return "run " + str(runs) + " " + line + "\n"
-
-        for line in out.splitlines():
-            if line.startswith("first"):
-                new_result += make_runs_line(first_20_warmup_iters_runs, line)
-                first_20_warmup_iters_runs += 1
-                continue
-            elif line.startswith("last"):
-                new_result += make_runs_line(last_10_iters_runs, line)
-                last_10_iters_runs += 1
-                continue
-            elif line.startswith("Pure-startup"):
-                new_result += make_runs_line(pure_startup_runs, line)
-                pure_startup_runs += 1
-                continue
-            elif line.startswith("Startup"):
-                new_result += make_runs_line(startup_runs, line)
-                startup_runs += 1
-                continue
-            elif line.startswith("Early-warmup"):
-                new_result += make_runs_line(early_warmup_runs, line)
-                early_warmup_runs += 1
-                continue
-            elif line.startswith("Late-warmup"):
-                new_result += make_runs_line(late_warmup_runs, line)
-                late_warmup_runs += 1
-                continue
-
-            new_result += line + "\n"
-
-        return ret_code, new_result, vm_dims
+        return ret_code, add_run_numbers(out), vm_dims
 
     def prepare_env(self, env):
         # if hasattr(self.host_vm(), 'run_launcher'):

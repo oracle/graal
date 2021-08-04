@@ -277,9 +277,6 @@ class BitSet {
     private static String toString(Object element) {
         if (element instanceof SpecializationData) {
             SpecializationData specialization = (SpecializationData) element;
-            if (specialization.isUninitialized()) {
-                return "uninitialized";
-            }
             return createReferenceName(specialization.getMethod());
         } else if (element instanceof TypeGuard) {
             int index = ((TypeGuard) element).getSignatureIndex();

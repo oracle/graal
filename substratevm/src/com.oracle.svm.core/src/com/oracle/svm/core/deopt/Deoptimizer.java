@@ -238,7 +238,7 @@ public final class Deoptimizer {
             /* A frame is deoptimized when the return address was patched to the deoptStub. */
             if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
                 /* The DeoptimizedFrame instance is stored above the return address. */
-                DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
+                DeoptimizedFrame result = (DeoptimizedFrame) sourceSp.readObject(0);
                 assert result != null;
                 return result;
             }
@@ -792,11 +792,13 @@ public final class Deoptimizer {
         int newEndOfParams = endOfParams;
         for (int idx = 0; idx < numValues; idx++) {
             ValueInfo targetValue = targetFrame.getValueInfos()[idx];
-            if (targetValue.getKind() == JavaKind.Illegal) {
+            if (targetValue.getKind() == JavaKind.Illegal || targetValue.getType() == FrameInfoQueryResult.ValueType.ReservedRegister) {
                 /*
-                 * The target value is optimized out, e.g. at a position after the lifetime of a
-                 * local variable. Actually we don't care what's the source value in this case, but
-                 * most likely it's also "illegal".
+                 * The target value is either optimized out, e.g. at a position after the lifetime
+                 * of a local variable, or is a reserved register. In either situation, we don't
+                 * care what the source value is. Optimized out values will not be restored, and for
+                 * reserved registers the value will be automatically correct when execution resumes
+                 * in the target frame.
                  */
             } else {
                 ValueInfo sourceValue = sourceFrame.getValueInfos()[idx];
@@ -862,13 +864,6 @@ public final class Deoptimizer {
                         DeoptimizationCounters.counters().constantValueCount.inc();
                         break;
 
-                    case ReservedRegister:
-                        /*
-                         * Nothing to do, the register will automatically be correct when execution
-                         * resumes in the target frame.
-                         */
-                        break;
-
                     default:
                         /*
                          * There must not be any other target value types because deoptimization
@@ -887,7 +882,7 @@ public final class Deoptimizer {
     }
 
     private void relockObject(JavaConstant valueConstant) {
-        Object lockedObject = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(valueConstant), Object.class);
+        Object lockedObject = SubstrateObjectConstant.asObject(valueConstant);
         Object lockData = MonitorSupport.singleton().prepareRelockObject(lockedObject);
 
         if (relockedObjects == null) {
@@ -957,7 +952,7 @@ public final class Deoptimizer {
         DeoptimizationCounters.counters().virtualObjectsCount.inc();
 
         ValueInfo[] encodings = sourceFrame.getVirtualObjects()[virtualObjectId];
-        DynamicHub hub = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame)), DynamicHub.class);
+        DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame));
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
 
         int curIdx;

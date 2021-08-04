@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -215,23 +216,23 @@ public class LoopFragmentInside extends LoopFragment {
         if (opaqueUnrolledStrides != null) {
             OpaqueNode opaque = opaqueUnrolledStrides.get(loop.loopBegin());
             CountedLoopInfo counted = loop.counted();
-            ValueNode counterStride = counted.getCounter().strideNode();
-            if (opaque == null) {
+            ValueNode counterStride = counted.getLimitCheckedIV().strideNode();
+            if (opaque == null || opaque.isDeleted()) {
                 ValueNode limit = counted.getLimit();
                 opaque = new OpaqueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
                 ValueNode newLimit = partialUnrollOverflowCheck(opaque, limit, counted);
                 condition.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
                 opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {
-                assert counted.getCounter().isConstantStride();
-                assert Math.addExact(counted.getCounter().constantStride(), counted.getCounter().constantStride()) == counted.getCounter().constantStride() * 2;
+                assert counted.getLimitCheckedIV().isConstantStride();
+                assert Math.addExact(counted.getLimitCheckedIV().constantStride(), counted.getLimitCheckedIV().constantStride()) == counted.getLimitCheckedIV().constantStride() * 2;
                 ValueNode previousValue = opaque.getValue();
                 opaque.setValue(graph.addOrUniqueWithInputs(AddNode.add(counterStride, previousValue, NodeView.DEFAULT)));
                 GraphUtil.tryKillUnused(previousValue);
             }
         }
         mainLoopBegin.setUnrollFactor(mainLoopBegin.getUnrollFactor() * 2);
-        mainLoopBegin.setLoopFrequency(Math.max(1.0, mainLoopBegin.loopFrequency() / 2));
+        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().scaleFrequency(1 / 2.0));
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "LoopPartialUnroll %s", loop);
 
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);
@@ -279,7 +280,7 @@ public class LoopFragmentInside extends LoopFragment {
                 usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
             }
 
-            assert graph.hasValueProxies() || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
+            assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
 
             mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
 
@@ -333,7 +334,7 @@ public class LoopFragmentInside extends LoopFragment {
         if (mainLoopBegin.loopExits().count() <= 1) {
             return;
         }
-        assert graph.hasValueProxies() : "Unrolling with multiple exits requires proxies";
+        assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) : "Unrolling with multiple exits requires proxies";
         // rewire non-counted exits with the follow nodes: merges or sinks
         for (LoopExitNode exit : mainLoopBegin.loopExits().snapshot()) {
             // regular path along we unroll

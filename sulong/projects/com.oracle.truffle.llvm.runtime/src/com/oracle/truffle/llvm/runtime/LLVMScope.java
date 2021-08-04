@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -121,6 +121,21 @@ public class LLVMScope implements TruffleObject {
         LLVMSymbol symbol = get(name);
         if (symbol != null && symbol.isGlobalVariable()) {
             return symbol.asGlobalVariable();
+        }
+        return null;
+    }
+
+    /**
+     * Lookup an elementPointerSymbol in the scope by name.
+     *
+     * @param name Variable name to lookup.
+     * @return A handle to the global if found, null otherwise.
+     */
+    @TruffleBoundary
+    public LLVMElemPtrSymbol getGetElementPtrSymbol(String name) {
+        LLVMSymbol symbol = get(name);
+        if (symbol != null && symbol.isElemPtrExpression()) {
+            return symbol.asElemPtrExpression();
         }
         return null;
     }

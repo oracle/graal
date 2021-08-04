@@ -38,6 +38,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -46,6 +47,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.IDGenerater;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
@@ -124,7 +126,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
         protected ForeignDecoratedRoot(TruffleLanguage<?> language, FunctionType type, Object func, LLVMFunctionDescriptor wrapper) {
             super(language);
-            this.funcCallNode = LLVMDispatchNodeGen.create(type);
+            this.funcCallNode = LLVMDispatchNodeGen.create(type, wrapper.getLLVMFunction());
             this.func = func;
             this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getFunctionCode().getLLVMIRFunctionSlowPath());
             this.wrapperCallNode.cloneCallTarget();
@@ -163,6 +165,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     }
 
     @Specialization(guards = {"isAutoDerefHandle(func)", "isFunctionDescriptor(wrapper.getObject())"})
+    @GenerateAOT.Exclude
     protected Object decorateDerefHandle(LLVMNativePointer func, LLVMManagedPointer wrapper,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached ConditionProfile isFunctionDescriptorProfile,
@@ -215,7 +218,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
     private static Object registerRoot(String path, FunctionType newFunctionType, DecoratedRoot decoratedRoot) {
         LLVMIRFunction function = new LLVMIRFunction(LLVMLanguage.createCallTarget(decoratedRoot), null);
-        LLVMFunction functionDetail = LLVMFunction.create("<wrapper>", function, newFunctionType, LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX, false, path, false);
+        LLVMFunction functionDetail = LLVMFunction.create("<wrapper>", function, newFunctionType, IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX, false, path, false);
         LLVMFunctionDescriptor wrappedFunction = new LLVMFunctionDescriptor(functionDetail, new LLVMFunctionCode(functionDetail));
         return LLVMManagedPointer.create(wrappedFunction);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,8 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
@@ -114,7 +114,15 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
         if (tool.canonicalizeReads() && address instanceof OffsetAddressNode) {
             OffsetAddressNode objAddress = (OffsetAddressNode) address;
             ValueNode object = objAddress.getBase();
-            if (metaAccess != null && object.isConstant() && !object.isNullConstant() && objAddress.getOffset().isConstant()) {
+            // Note: readConstant cannot be used to read the array length, so in order to avoid an
+            // unnecessary CompilerToVM.readFieldValue call ending in an IllegalArgumentException,
+            // check if we are reading the array length location first.
+            if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
+                ValueNode length = GraphUtil.arrayLength(object, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, tool.getConstantReflection());
+                if (length != null) {
+                    return length;
+                }
+            } else if (metaAccess != null && object.isConstant() && !object.isNullConstant() && objAddress.getOffset().isConstant()) {
                 long displacement = objAddress.getOffset().asJavaConstant().asLong();
                 int stableDimension = ((ConstantNode) object).getStableDimension();
                 if (locationIdentity.isImmutable() || stableDimension > 0) {
@@ -123,12 +131,6 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
                     if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
                         return ConstantNode.forConstant(read.stamp(view), constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
                     }
-                }
-            }
-            if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
-                ValueNode length = GraphUtil.arrayLength(object, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, tool.getConstantReflection());
-                if (length != null) {
-                    return length;
                 }
             }
             if (locationIdentity instanceof CanonicalizableLocation) {

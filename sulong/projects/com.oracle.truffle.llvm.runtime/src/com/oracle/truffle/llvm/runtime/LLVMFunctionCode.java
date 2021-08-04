@@ -253,7 +253,7 @@ public final class LLVMFunctionCode {
             try {
                 pointer = LLVMNativePointer.create(InteropLibrary.getFactory().getUncached().asPointer(wrapper));
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.shouldNotReachHere(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
 
             context.registerFunctionPointer(pointer, descriptor);
@@ -270,9 +270,20 @@ public final class LLVMFunctionCode {
 
         @Override
         void resolve(LLVMFunctionCode descriptor) {
+            CompilerAsserts.neverPartOfCompilation();
+
+            // These two calls synchronize themselves on the converter to avoid duplicate work.
             final RootCallTarget callTarget = converter.convert();
             final LLVMSourceFunctionType sourceType = converter.getSourceType();
-            descriptor.setFunction(new LLVMIRFunction(callTarget, sourceType));
+
+            synchronized (descriptor) {
+                if (descriptor.getFunction() == this) {
+                    descriptor.setFunction(new LLVMIRFunction(callTarget, sourceType));
+                } else {
+                    // concurrent resolve call in another thread, nothing to do
+                    assert descriptor.getFunction() instanceof LLVMIRFunction;
+                }
+            }
         }
 
         @Override

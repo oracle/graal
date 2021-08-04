@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.util.GraphOrder;
@@ -304,4 +305,98 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
         }
     }
 
+    public static long maxIntCacheValue() {
+        int intCacheMaxValue = -1;
+        while (Integer.valueOf(intCacheMaxValue + 1) == Integer.valueOf(intCacheMaxValue + 1)) {
+            intCacheMaxValue += 1;
+            if (intCacheMaxValue < 0) {
+                // Mitigate timeout by terminating here with incorrect answer.
+                return -2;
+            }
+        }
+        return intCacheMaxValue;
+    }
+
+    public static long minIntCacheValue() {
+        int intCacheMinValue = 0;
+        while (Integer.valueOf(intCacheMinValue - 1) == Integer.valueOf(intCacheMinValue - 1)) {
+            intCacheMinValue -= 1;
+            if (intCacheMinValue > 0) {
+                // Mitigate timeout by terminating here with incorrect answer.
+                return 1;
+            }
+        }
+        return intCacheMinValue;
+    }
+
+    public static long maxLongCacheValue() {
+        long longCacheMaxValue = -1;
+        while (Long.valueOf(longCacheMaxValue + 1) == Long.valueOf(longCacheMaxValue + 1)) {
+            longCacheMaxValue += 1;
+            if (longCacheMaxValue == Integer.MAX_VALUE) {
+                // Mitigate timeout by terminating here with incorrect answer.
+                return -2;
+            }
+        }
+        return longCacheMaxValue;
+    }
+
+    public static long minLongCacheValue() {
+        long longCacheMinValue = 0;
+        while (Long.valueOf(longCacheMinValue - 1) == Long.valueOf(longCacheMinValue - 1)) {
+            longCacheMinValue -= 1;
+            if (longCacheMinValue == Integer.MIN_VALUE) {
+                // Mitigate timeout by terminating here with incorrect answer.
+                return 1;
+            }
+        }
+        return longCacheMinValue;
+    }
+
+    /**
+     * A variation on {@link #minLongCacheValue()} where the loop exit is a conditional in the body
+     * of the loop.
+     */
+    public static long minLongCacheValue2() {
+        long longCacheMinValue = 0;
+        while (true) {
+            if (Long.valueOf(longCacheMinValue - 1) != Long.valueOf(longCacheMinValue - 1)) {
+                return longCacheMinValue;
+            }
+            longCacheMinValue -= 1;
+        }
+    }
+
+    /**
+     * Tests {@link BoxNodeIdentityPhase}.
+     */
+    @Test
+    public void testIntCacheMaxProbing() {
+        test("maxIntCacheValue");
+    }
+
+    /**
+     * Tests {@link BoxNodeIdentityPhase}.
+     */
+    @Test
+    public void testIntCacheMinProbing() {
+        test("minIntCacheValue");
+    }
+
+    /**
+     * Tests {@link BoxNodeIdentityPhase}.
+     */
+    @Test
+    public void testLongCacheMaxProbing() {
+        test("maxLongCacheValue");
+    }
+
+    /**
+     * Tests {@link BoxNodeIdentityPhase}.
+     */
+    @Test
+    public void testLongCacheMinProbing() {
+        test("minLongCacheValue");
+        test("minLongCacheValue2");
+    }
 }

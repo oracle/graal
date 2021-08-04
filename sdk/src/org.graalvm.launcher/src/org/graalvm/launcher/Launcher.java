@@ -204,7 +204,7 @@ public abstract class Launcher {
 
     /**
      * Exception which shall abort the launcher execution. Thrown by this class in the case of
-     * malformed arguments or unknown options, or deliberate exit.
+     * unhandled internal exception, malformed arguments or unknown options, or deliberate exit.
      *
      * @since 20.0
      */
@@ -336,7 +336,7 @@ public abstract class Launcher {
         String message = e.getMessage();
         if (message != null) {
             if (e instanceof NoSuchFileException) {
-                throw abort("Not such file: " + message, exitCode);
+                throw abort("No such file: " + message, exitCode);
             } else if (e instanceof AccessDeniedException) {
                 throw abort("Access denied: " + message, exitCode);
             } else {
@@ -1089,11 +1089,10 @@ public abstract class Launcher {
 
     private void printBasicNativeHelp() {
         launcherOption("--vm.D<property>=<value>", "Sets a system property");
-        /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
-        launcherOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
-        launcherOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
-        launcherOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
-        launcherOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
+        launcherOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes.");
+        launcherOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes.");
+        launcherOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes.");
+        launcherOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes.");
     }
 
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
@@ -1501,11 +1500,25 @@ public abstract class Launcher {
                     throw abort("Can not resolve classpath: could not get GraalVM home");
                 }
                 for (String entry : CLASSPATH.split(File.pathSeparator)) {
-                    Path resolved = graalVMHome.resolve(entry);
-                    if (!entry.endsWith("*") && isVerbose() && !Files.exists(resolved)) {
+                    // On Windows, Path.resolve will throw an error on * character in path.
+                    boolean endsWithStar = entry.endsWith("*");
+                    Path resolved;
+
+                    if (endsWithStar) {
+                        resolved = graalVMHome.resolve(entry.substring(0, entry.length() - 1));
+                    } else {
+                        resolved = graalVMHome.resolve(entry);
+                    }
+                    if (isVerbose() && !Files.exists(resolved)) {
                         warn("%s does not exist", resolved);
                     }
                     sb.append(resolved);
+                    if (endsWithStar) {
+                        if (!resolved.endsWith(File.separator)) {
+                            sb.append(File.separator);
+                        }
+                        sb.append("*");
+                    }
                     sb.append(File.pathSeparatorChar);
                 }
             }

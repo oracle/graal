@@ -24,12 +24,15 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.impl.ClassRedefinition;
+
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -39,11 +42,13 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+@ReportPolymorphism
 public abstract class InvokeInterfaceNode extends QuickNode {
 
     final Method resolutionSeed;
     final Klass declaringKlass;
     final int resultAt;
+    final boolean returnsPrimitiveType;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -64,6 +69,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         return directCallNode.call(args);
     }
 
+    @ReportPolymorphism.Megamorphic
     @Specialization(replaces = "callVirtualDirect")
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
@@ -77,6 +83,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         this.resolutionSeed = resolutionSeed;
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
         this.resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+        this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(resolutionSeed.getParsedSignature()));
     }
 
     protected static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed, Klass declaringKlass) {
@@ -84,7 +91,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         if (resolutionSeed.isRemovedByRedefition()) {
             // accept a slow path once the method has been removed
             // put method behind a boundary to avoid a deopt loop
-            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass()).getMethodVersion();
+            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass(), receiver).getMethodVersion();
         }
 
         int iTableIndex = resolutionSeed.getITableIndex();
@@ -99,20 +106,17 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     @Override
     public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        // Method signature does not change across methods.
-        // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
-        // signature from the lookup.
-        // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        // TODO(peterssen): IsNull Node?.
+        /**
+         * Method signature does not change across methods. Can safely use the constant signature
+         * from `resolutionSeed` instead of the non-constant signature from the lookup.
+         */
         final Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
         final StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeInterface(receiver, args);
+        if (!returnsPrimitiveType) {
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
+        }
         return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

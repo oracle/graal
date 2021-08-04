@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -47,7 +46,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_8)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "may be replaced with non-throwing counterpart", size = SIZE_8)
 public class ObjectCloneWithExceptionNode extends WithExceptionNode implements ObjectClone, SingleMemoryKill, Lowerable {
 
     public static final NodeClass<ObjectCloneWithExceptionNode> TYPE = NodeClass.create(ObjectCloneWithExceptionNode.class);
@@ -129,13 +128,9 @@ public class ObjectCloneWithExceptionNode extends WithExceptionNode implements O
     public FixedNode replaceWithNonThrowing() {
         SubstrateObjectCloneNode plainObjectClone = this.asNode().graph().add(new SubstrateObjectCloneNode(macroParams()));
         plainObjectClone.setStateAfter(stateAfter());
-        AbstractBeginNode nextBegin = this.next;
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, plainObjectClone, this.next());
         GraphUtil.killCFG(oldException);
-        if (nextBegin instanceof KillingBeginNode && ((KillingBeginNode) nextBegin).getKilledLocationIdentity().equals(plainObjectClone.getKilledLocationIdentity())) {
-            plainObjectClone.graph().removeFixed(nextBegin);
-        }
         return plainObjectClone;
     }
 }

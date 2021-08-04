@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,6 @@
  */
 package org.graalvm.wasm.memory;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.constants.Sizes;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import sun.misc.Unsafe;
-
-import java.lang.reflect.Field;
-
 import static java.lang.Integer.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
@@ -56,7 +47,19 @@ import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
-public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
+import java.lang.reflect.Field;
+
+import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
+
+import sun.misc.Unsafe;
+
+public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     /**
      * @see #declaredMinSize()
      */
@@ -102,7 +105,12 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
         this.size = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
         final long byteSize = byteSize();
-        this.startAddress = unsafe.allocateMemory(byteSize);
+        try {
+            this.startAddress = unsafe.allocateMemory(byteSize);
+        } catch (OutOfMemoryError error) {
+            CompilerDirectives.transferToInterpreter();
+            throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+        }
         unsafe.setMemory(startAddress, byteSize, (byte) 0);
     }
 
@@ -112,6 +120,7 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
 
     public void validateAddress(Node node, int address, int offset) {
         if (address < 0 || address + offset > this.byteSize()) {
+            CompilerDirectives.transferToInterpreter();
             throw trapOutOfBounds(node, address, offset);
         }
     }
@@ -165,13 +174,17 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
             final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
-            final long updatedStartAddress = unsafe.allocateMemory(targetByteSize);
-            unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
-            unsafe.setMemory(updatedStartAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
-            unsafe.freeMemory(startAddress);
-            startAddress = updatedStartAddress;
-            size += extraPageSize;
-            return true;
+            try {
+                final long updatedStartAddress = unsafe.allocateMemory(targetByteSize);
+                unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
+                unsafe.setMemory(updatedStartAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
+                unsafe.freeMemory(startAddress);
+                startAddress = updatedStartAddress;
+                size += extraPageSize;
+                return true;
+            } catch (OutOfMemoryError error) {
+                throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+            }
         } else {
             return false;
         }

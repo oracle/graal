@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,6 +74,13 @@ public class Graph {
     }
 
     public final String name;
+
+    /**
+     * Cached actual value of the {@link Options} to avoid expensive map lookup for every time a
+     * node / graph is verified.
+     */
+    public final boolean verifyGraphs;
+    public final boolean verifyGraphEdges;
 
     /**
      * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
@@ -287,6 +294,9 @@ public class Graph {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
             nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
         }
+
+        verifyGraphs = Options.VerifyGraalGraphs.getValue(options);
+        verifyGraphEdges = Options.VerifyGraalGraphEdges.getValue(options);
     }
 
     int extractOriginalNodeId(Node node) {
@@ -1166,7 +1176,7 @@ public class Graph {
     }
 
     public boolean verify() {
-        if (Options.VerifyGraalGraphs.getValue(options)) {
+        if (verifyGraphs) {
             for (Node node : getNodes()) {
                 try {
                     try {

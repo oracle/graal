@@ -32,22 +32,25 @@ import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This node is used to perform the finalizer registration at the end of the java.lang.Object
@@ -95,16 +98,16 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
      * Determines if the compiler should emit code to test whether a given object has a finalizer
      * that must be registered with the runtime upon object initialization.
      */
-    public static boolean mayHaveFinalizer(ValueNode object, Assumptions assumptions) {
+    public static boolean mayHaveFinalizer(ValueNode object, MetaAccessProvider metaAccess, Assumptions assumptions) {
         ObjectStamp objectStamp = (ObjectStamp) object.stamp(NodeView.DEFAULT);
+        ResolvedJavaType objectType = StampTool.typeOrNull(objectStamp, metaAccess);
         if (objectStamp.isExactType()) {
-            return objectStamp.type().hasFinalizer();
-        } else if (objectStamp.type() != null) {
-            AssumptionResult<Boolean> result = objectStamp.type().hasFinalizableSubclass();
-            if (result.canRecordTo(assumptions)) {
-                result.recordTo(assumptions);
-                return result.getResult();
-            }
+            return objectType.hasFinalizer();
+        }
+        AssumptionResult<Boolean> result = objectType.hasFinalizableSubclass();
+        if (result.canRecordTo(assumptions)) {
+            result.recordTo(assumptions);
+            return result.getResult();
         }
         return true;
     }
@@ -115,7 +118,7 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
         if (!(forValue.stamp(view) instanceof ObjectStamp)) {
             return this;
         }
-        if (!mayHaveFinalizer(forValue, graph().getAssumptions())) {
+        if (!mayHaveFinalizer(forValue, tool.getMetaAccess(), graph().getAssumptions())) {
             return null;
         }
 

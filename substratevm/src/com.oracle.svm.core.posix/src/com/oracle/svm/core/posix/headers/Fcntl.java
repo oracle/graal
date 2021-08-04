@@ -41,6 +41,15 @@ public class Fcntl {
     @CConstant
     public static native int O_RDONLY();
 
+    @CConstant
+    public static native int O_RDWR();
+
+    @CConstant
+    public static native int O_WRONLY();
+
+    @CConstant
+    public static native int O_CREAT();
+
     public static class NoTransitions {
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int open(CCharPointer pathname, int flags, int mode);

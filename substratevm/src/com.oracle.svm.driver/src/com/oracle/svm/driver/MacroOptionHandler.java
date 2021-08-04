@@ -83,8 +83,6 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         BuildConfiguration config = nativeImage.config;
         if (!config.useJavaModules()) {
             enabledOption.forEachPropertyValue(config, "ImageBuilderBootClasspath8", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
-        } else {
-            enabledOption.forEachPropertyValue(config, "ImageIncludeBuiltinModules", entry -> nativeImage.addImageIncludeBuiltinModules(entry), ",");
         }
 
         if (!enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
@@ -97,6 +95,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (!enabledOption.forEachPropertyValue(config, "ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
             NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
         }
+
+        enabledOption.forEachPropertyValue(config, "ImageModulePath", entry -> nativeImage.addImageModulePath(ClasspathUtils.stringToClasspath(entry), true), PATH_SEPARATOR_REGEX);
 
         String imageName = enabledOption.getProperty(config, "ImageName");
         if (imageName != null) {
@@ -111,6 +111,11 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String imageClass = enabledOption.getProperty(config, "ImageClass");
         if (imageClass != null) {
             nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + imageClass);
+        }
+
+        String imageModule = enabledOption.getProperty(config, "ImageModule");
+        if (imageModule != null) {
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + imageModule);
         }
 
         enabledOption.forEachPropertyValue(config, "JavaArgs", nativeImage::addImageBuilderJavaArgs);

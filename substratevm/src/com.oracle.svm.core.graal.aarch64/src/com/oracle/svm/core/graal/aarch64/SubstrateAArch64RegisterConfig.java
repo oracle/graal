@@ -104,10 +104,13 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final RegisterAttributes[] attributesMap;
     private final MetaAccessProvider metaAccess;
     private final RegisterArray javaGeneralParameterRegisters;
+    private final boolean preserveFramePointer;
+    public static final Register fp = r29;
 
-    public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target) {
+    public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
+        this.preserveFramePointer = preserveFramePointer;
 
         // This is the Linux 64-bit ABI for parameters.
         generalParameterRegs = new RegisterArray(r0, r1, r2, r3, r4, r5, r6, r7);
@@ -118,12 +121,23 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         nativeParamsStackOffset = 0;
 
         ArrayList<Register> regs = new ArrayList<>(allRegisters.asList());
-        regs.remove(ReservedRegisters.singleton().getFrameRegister());
+        regs.remove(ReservedRegisters.singleton().getFrameRegister()); // sp
         regs.remove(zr);
+        // Scratch registers.
         regs.remove(r8);
         regs.remove(r9);
-        regs.remove(r29);
+        if (preserveFramePointer) {
+            regs.remove(fp); // r29
+        }
+        /*
+         * R31 is not a "real" register - depending on the instruction, this encoding is either zr
+         * or sp.
+         */
         regs.remove(r31);
+        /*
+         * If enabled, the heapBaseRegister and threadRegister are r27 and r28, respectively. See
+         * AArch64ReservedRegisters and ReservedRegisters for more information.
+         */
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
         allocatableRegs = new RegisterArray(regs);
@@ -209,6 +223,10 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
             default:
                 throw VMError.shouldNotReachHere();
         }
+    }
+
+    public boolean shouldPreserveFramePointer() {
+        return preserveFramePointer;
     }
 
     @Override

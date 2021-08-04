@@ -103,7 +103,7 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @SuppressWarnings("unused") //
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    @ExcludeFromReferenceMap(reason = "Some GCs process this field manually.", onlyIf = NotCardRememberedSetHeap.class) //
+    @ExcludeFromReferenceMap(reason = "Some GCs process this field manually.", onlyIf = NotSerialGC.class) //
     transient Target_java_lang_ref_Reference<?> discovered;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
@@ -132,19 +132,21 @@ public final class Target_java_lang_ref_Reference<T> {
         ReferenceInternals.clear(SubstrateUtil.cast(this, Reference.class));
     }
 
-    @Delete
+    @Substitute
     @TargetElement(onlyWith = JDK16OrLater.class)
-    private native void clear0();
+    private void clear0() {
+        clear();
+    }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK16OrLater.class)
+    public native boolean refersTo(T obj);
 
     @Substitute
     @TargetElement(onlyWith = JDK16OrLater.class)
-    public boolean refersTo(T obj) {
+    boolean refersTo0(Object obj) {
         return ReferenceInternals.refersTo(SubstrateUtil.cast(this, Reference.class), obj);
     }
-
-    @Delete
-    @TargetElement(onlyWith = JDK16OrLater.class)
-    native boolean refersTo0(Object o);
 
     @KeepOriginal
     native boolean enqueue();
@@ -246,9 +248,9 @@ class ComputeQueueValue implements CustomFieldValueComputer {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class NotCardRememberedSetHeap implements BooleanSupplier {
+class NotSerialGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return !SubstrateOptions.UseCardRememberedSetHeap.getValue();
+        return !SubstrateOptions.UseSerialGC.getValue();
     }
 }

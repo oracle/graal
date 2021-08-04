@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -319,6 +319,96 @@ public final class CompilerDirectives {
      * @since 0.8 or earlier
      */
     public static void ensureVirtualizedHere(@SuppressWarnings("unused") Object object) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(boolean value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(byte value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(short value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(char value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(int value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(long value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(float value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(double value) {
+    }
+
+    /**
+     * Consume a value, making sure the compiler doesn't optimize away the computation of this
+     * value, even if it is otherwise unused. This should only be used for benchmarking purposes.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(Object value) {
     }
 
     /**

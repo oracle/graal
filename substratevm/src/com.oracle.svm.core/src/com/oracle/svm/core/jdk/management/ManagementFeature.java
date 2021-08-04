@@ -37,7 +37,6 @@ import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Type;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +52,8 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.RuntimeFeature;
+import com.oracle.svm.core.thread.ThreadListenerFeature;
+import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 /** See {@link ManagementSupport} for documentation. */
@@ -62,12 +63,14 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Feat
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(RuntimeFeature.class);
+        return Arrays.asList(RuntimeFeature.class, ThreadListenerFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ManagementSupport.class, new ManagementSupport());
+        ManagementSupport managementSupport = new ManagementSupport();
+        ImageSingletons.add(ManagementSupport.class, managementSupport);
+        ThreadListenerSupport.get().register(managementSupport);
     }
 
     @Override
@@ -83,7 +86,7 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Feat
         }
         access.registerObjectReplacer(this::replaceHostedPlatformManagedObject);
 
-        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory", "Avoids unnecessary reflection in the image");
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory");
     }
 
     /**

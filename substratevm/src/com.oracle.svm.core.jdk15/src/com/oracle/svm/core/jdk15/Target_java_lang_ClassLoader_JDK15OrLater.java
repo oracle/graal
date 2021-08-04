@@ -64,6 +64,7 @@ final class Target_jdk_internal_loader_NativeLibraries_JDK15OrLater {
      * The NativeLibraries is only used by the `loadLibrary` methods that are substituted, so we do
      * not need an instance for now.
      */
+    @SuppressWarnings("unused")
     @Substitute
     public static NativeLibraries jniNativeLibraries(ClassLoader loader) {
         return null;

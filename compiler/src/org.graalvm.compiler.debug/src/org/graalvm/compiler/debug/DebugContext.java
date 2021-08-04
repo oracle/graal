@@ -1345,7 +1345,7 @@ public final class DebugContext implements AutoCloseable {
             closeAfterDump = true;
         }
         for (DebugDumpHandler dumpHandler : dumpHandlers) {
-            dumpHandler.dump(this, object, format, args);
+            dumpHandler.dump(object, this, true, format, args);
             if (closeAfterDump) {
                 dumpHandler.close();
             }

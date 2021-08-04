@@ -41,6 +41,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.DebugInfo;
@@ -857,11 +858,11 @@ public class CompilationResult {
     /**
      * Closes this compilation result to future updates.
      */
-    public void close() {
+    public void close(OptionValues options) {
         if (closed) {
             throw new IllegalStateException("Cannot re-close compilation result " + this);
         }
-        dataSection.close();
+        dataSection.close(options);
         closed = true;
     }
 

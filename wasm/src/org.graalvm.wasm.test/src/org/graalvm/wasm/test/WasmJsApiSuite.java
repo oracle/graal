@@ -40,7 +40,46 @@
  */
 package org.graalvm.wasm.test;
 
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
+import java.io.IOException;
+import java.nio.ByteOrder;
+import java.util.HashMap;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.ModuleLimits;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.globals.DefaultWasmGlobal;
+import org.graalvm.wasm.globals.WasmGlobal;
+import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.api.ByteArrayBuffer;
+import org.graalvm.wasm.api.Dictionary;
+import org.graalvm.wasm.api.Executable;
+import org.graalvm.wasm.api.ImportExportKind;
+import org.graalvm.wasm.api.Instance;
+import org.graalvm.wasm.api.ModuleExportDescriptor;
+import org.graalvm.wasm.api.ModuleImportDescriptor;
+import org.graalvm.wasm.api.Sequence;
+import org.graalvm.wasm.api.ValueType;
+import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
+import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.testutil.TestutilModule;
+import org.graalvm.wasm.utils.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -53,57 +92,18 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.wasm.ModuleLimits;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.api.ByteArrayBuffer;
-import org.graalvm.wasm.api.Dictionary;
-import org.graalvm.wasm.api.Executable;
-import org.graalvm.wasm.api.Global;
-import org.graalvm.wasm.api.ImportExportKind;
-import org.graalvm.wasm.api.Instance;
-import org.graalvm.wasm.api.Memory;
-import org.graalvm.wasm.api.MemoryDescriptor;
-import org.graalvm.wasm.api.Module;
-import org.graalvm.wasm.api.ModuleExportDescriptor;
-import org.graalvm.wasm.api.ModuleImportDescriptor;
-import org.graalvm.wasm.api.ProxyGlobal;
-import org.graalvm.wasm.api.Sequence;
-import org.graalvm.wasm.api.Table;
-import org.graalvm.wasm.api.TableDescriptor;
-import org.graalvm.wasm.api.TableKind;
-import org.graalvm.wasm.api.WebAssembly;
-import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
-import org.graalvm.wasm.constants.Sizes;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.predefined.testutil.TestutilModule;
-import org.graalvm.wasm.utils.Assert;
-import org.junit.Test;
-
-import java.io.IOException;
-import java.nio.ByteOrder;
-import java.util.HashMap;
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
-
-import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 public class WasmJsApiSuite {
     @Test
     public void testCompile() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Module module = wasm.compile(binaryWithExports);
+            final WasmModule module = wasm.moduleDecode(binaryWithExports);
             try {
                 HashMap<String, ModuleExportDescriptor> exports = new HashMap<>();
                 int i = 0;
-                while (i < module.exports().getArraySize()) {
-                    final ModuleExportDescriptor d = (ModuleExportDescriptor) module.exports().readArrayElement(i);
+                while (i < WebAssembly.moduleExports(module).getArraySize()) {
+                    final ModuleExportDescriptor d = (ModuleExportDescriptor) WebAssembly.moduleExports(module).readArrayElement(i);
                     exports.put(d.name(), d);
                     i++;
                 }
@@ -111,7 +111,7 @@ public class WasmJsApiSuite {
                 Assert.assertEquals("Should export memory.", ImportExportKind.memory, exports.get("memory").kind());
                 Assert.assertEquals("Should export global __heap_base.", ImportExportKind.global, exports.get("__heap_base").kind());
                 Assert.assertEquals("Should export global __data_end.", ImportExportKind.global, exports.get("__data_end").kind());
-                Assert.assertEquals("Should have empty imports.", 0L, module.imports().getArraySize());
+                Assert.assertEquals("Should have empty imports.", 0L, WebAssembly.moduleImports(module).getArraySize());
             } catch (InvalidArrayIndexException e) {
                 throw new RuntimeException(e);
             }
@@ -122,13 +122,13 @@ public class WasmJsApiSuite {
     public void testInstantiate() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithExports, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithExports, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable main = (Executable) instance.exports().readMember("main");
-                int result = (int) main.executeFunction(new Object[0]);
-                Assert.assertEquals("Should return 42 from main.", 42, result);
-            } catch (UnknownIdentifierException e) {
+                final Object main = instance.exports().readMember("main");
+                final Object result = InteropLibrary.getUncached(main).execute(main);
+                Assert.assertEquals("Should return 42 from main.", 42, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -143,13 +143,13 @@ public class WasmJsApiSuite {
                                             "inc", new Executable(args -> ((int) args[0]) + 1)
                             }),
             });
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithImportsAndExports, importObject);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithImportsAndExports, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable addPlusOne = (Executable) instance.exports().readMember("addPlusOne");
-                int result = (int) addPlusOne.executeFunction(new Object[]{17, 3});
-                Assert.assertEquals("17 + 3 + 1 = 21.", 21, result);
-            } catch (UnknownIdentifierException e) {
+                final Object addPlusOne = instance.exports().readMember("addPlusOne");
+                final Object result = InteropLibrary.getUncached(addPlusOne).execute(addPlusOne, 17, 3);
+                Assert.assertEquals("17 + 3 + 1 = 21.", 21, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -159,20 +159,20 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Memory memory = Memory.create(new MemoryDescriptor(4, 8));
+            final WasmMemory memory = WebAssembly.memAlloc(4, 8);
             final Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
                             }),
             });
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMemoryImport, importObject);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithMemoryImport, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable initZero = (Executable) instance.exports().readMember("initZero");
-                Assert.assertEquals("Must be zero initially.", 0, memory.wasmMemory().load_i32(null, 0));
-                initZero.executeFunction(new Object[0]);
-                Assert.assertEquals("Must be 174 after initialization.", 174, memory.wasmMemory().load_i32(null, 0));
-            } catch (UnknownIdentifierException e) {
+                final Object initZero = instance.exports().readMember("initZero");
+                Assert.assertEquals("Must be zero initially.", 0, memory.load_i32(null, 0));
+                InteropLibrary.getUncached(initZero).execute(initZero);
+                Assert.assertEquals("Must be 174 after initialization.", 174, memory.load_i32(null, 0));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -182,15 +182,15 @@ public class WasmJsApiSuite {
     public void testInstantiateWithExportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMemoryExport, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithMemoryExport, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Memory memory = (Memory) instance.exports().readMember("memory");
-                final Executable readZero = (Executable) instance.exports().readMember("readZero");
-                memory.wasmMemory().store_i32(null, 0, 174);
-                final Object result = readZero.executeFunction(new Object[0]);
-                Assert.assertEquals("Must be 174.", 174, result);
-            } catch (UnknownIdentifierException e) {
+                final WasmMemory memory = (WasmMemory) instance.exports().readMember("memory");
+                final Object readZero = instance.exports().readMember("readZero");
+                memory.store_i32(null, 0, 174);
+                final Object result = InteropLibrary.getUncached(readZero).execute(readZero);
+                Assert.assertEquals("Must be 174.", 174, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -200,20 +200,26 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Table table = Table.create(new TableDescriptor(TableKind.anyfunc.name(), 4, 8));
+            final WasmTable table = WebAssembly.tableAlloc(4, 8);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultTable", table
                             }),
             });
-            table.set(0, new Executable(args -> 210));
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithTableImport, importObject);
+            WebAssembly.tableWrite(table, 0, new WasmFunctionInstance(context, null,
+                            Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                                @Override
+                                public Object execute(VirtualFrame frame) {
+                                    return 210;
+                                }
+                            })));
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithTableImport, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable callFirst = (Executable) instance.exports().readMember("callFirst");
-                Object result = callFirst.executeFunction(new Object[0]);
-                Assert.assertEquals("Must return 210.", 210, result);
-            } catch (UnknownIdentifierException e) {
+                final Object callFirst = instance.exports().readMember("callFirst");
+                Object result = InteropLibrary.getUncached(callFirst).execute(callFirst);
+                Assert.assertEquals("Must return 210.", 210, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -223,11 +229,11 @@ public class WasmJsApiSuite {
     public void testInstantiateWithExportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithTableExport, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithTableExport, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Table table = (Table) instance.exports().readMember("defaultTable");
-                final Object result = InteropLibrary.getUncached().execute(table.get(0), 9);
+                final WasmTable table = (WasmTable) instance.exports().readMember("defaultTable");
+                final Object result = InteropLibrary.getUncached().execute(WebAssembly.tableRead(table, 0), 9);
                 Assert.assertEquals("Must be 81.", 81, result);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
                 throw new RuntimeException(e);
@@ -235,42 +241,69 @@ public class WasmJsApiSuite {
         });
     }
 
-    @Test
-    public void testInstantiateWithImportGlobal() throws IOException {
+    private static void checkInstantiateWithImportGlobal(byte[] binaryWithGlobalImport, String globalType, Object globalValue) throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Global global = new Global("i32", false, 17);
+            final WasmGlobal global = new DefaultWasmGlobal(ValueType.valueOf(globalType), false, globalValue);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultGlobal", global
                             }),
             });
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithGlobalImport, importObject);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithGlobalImport, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable readGlobal = (Executable) instance.exports().readMember("readGlobal");
-                Assert.assertEquals("Must be 17 initially.", 17, readGlobal.executeFunction(new Object[0]));
-            } catch (UnknownIdentifierException e) {
+                InteropLibrary interop = InteropLibrary.getUncached();
+                final Object readGlobal1 = instance.exports().readMember("readGlobal1");
+                final Object readGlobal2 = instance.exports().readMember("readGlobal2");
+                final Object result1 = interop.execute(readGlobal1);
+                final Object result2 = interop.execute(readGlobal2);
+                Assert.assertEquals("Must be " + globalValue + " initially.", globalValue, result1);
+                Assert.assertEquals("Must be " + globalValue + " initially.", globalValue, result2);
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
     }
 
     @Test
+    public void testInstantiateWithImportGlobalI32() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportI32, "i32", 1234567890);
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalI64() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportI64, "i64", 1234567890123456789L);
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalF32() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportF32, "f32", (float) Math.PI);
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalF64() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportF64, "f64", Math.E);
+    }
+
+    @Test
     public void testInstantiateWithExportGlobal() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithGlobalExport, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithGlobalExport, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final ProxyGlobal global = (ProxyGlobal) instance.exports().readMember("exportedGlobal");
-                Assert.assertEquals("Exported global must be 1096.", 1096, global.get());
-                final Executable setGlobal = (Executable) instance.exports().readMember("setGlobal");
-                final Executable getGlobal = (Executable) instance.exports().readMember("getGlobal");
-                Assert.assertEquals("Must be 2345 initially.", 2345, getGlobal.executeFunction(new Object[0]));
-                setGlobal.executeFunction(new Object[]{25});
-                Assert.assertEquals("Must be 25 later.", 25, getGlobal.executeFunction(new Object[0]));
-            } catch (UnknownIdentifierException e) {
+                final WasmGlobal global = (WasmGlobal) instance.exports().readMember("exportedGlobal");
+                Assert.assertEquals("Exported global must be 1096.", 1096, global.getValue());
+                final Object setGlobal = instance.exports().readMember("setGlobal");
+                final Object getGlobal = instance.exports().readMember("getGlobal");
+                InteropLibrary interop = InteropLibrary.getUncached();
+                final Object result1 = interop.execute(getGlobal);
+                Assert.assertEquals("Must be 2345 initially.", 2345, interop.asInt(result1));
+                interop.execute(setGlobal, 25);
+                final Object result2 = interop.execute(getGlobal);
+                Assert.assertEquals("Must be 25 later.", 25, interop.asInt(result2));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -280,10 +313,10 @@ public class WasmJsApiSuite {
     public void testInstantiateModuleTwice() throws IOException {
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
-            Module module = wasm.compile(binaryWithExports);
+            WasmModule module = wasm.moduleDecode(binaryWithExports);
             Object importObject = new Dictionary();
-            wasm.instantiate(module, importObject);
-            wasm.instantiate(module, importObject);
+            wasm.moduleInstantiate(module, importObject);
+            wasm.moduleInstantiate(module, importObject);
         });
     }
 
@@ -291,12 +324,13 @@ public class WasmJsApiSuite {
     public void testInstantiateWithUnicodeExport() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithUnicodeExport, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithUnicodeExport, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable euroSignFn = (Executable) instance.exports().readMember("\u20AC");
-                Assert.assertEquals("Result should be 42", 42, euroSignFn.executeFunction(new Object[0]));
-            } catch (UnknownIdentifierException e) {
+                final Object euroSignFn = instance.exports().readMember("\u20AC");
+                final Object result = InteropLibrary.getUncached(euroSignFn).execute(euroSignFn);
+                Assert.assertEquals("Result should be 42", 42, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -306,10 +340,10 @@ public class WasmJsApiSuite {
     public void testExportOrder() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
-            final Module module = instantiatedSource.module();
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithMixedExports, null);
+            final WasmModule module = instantiatedSource.module();
             final Instance instance = instantiatedSource.instance();
-            final Sequence<ModuleExportDescriptor> moduleExports = module.exports();
+            final Sequence<ModuleExportDescriptor> moduleExports = WebAssembly.moduleExports(module);
             final Object instanceMembers = instance.exports().getMembers(false);
             String[] expected = new String[]{"f1", "g1", "t", "m", "g2", "f2"};
             try {
@@ -331,17 +365,17 @@ public class WasmJsApiSuite {
         final byte[] exportMemoryTwice = compileWat("exportMemoryTwice", "(memory 1) (export \"a\" (memory 0)) (export \"b\" (memory 0))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(exportMemoryTwice, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(exportMemoryTwice, null);
             final Instance instance = instantiatedSource.instance();
             try {
                 final InteropLibrary lib = InteropLibrary.getUncached();
                 final Object exports = lib.readMember(instance, "exports");
-                final Object memoryABuffer = lib.execute(lib.readMember(lib.readMember(exports, "a"), "buffer"));
-                final Object memoryBBuffer = lib.execute(lib.readMember(lib.readMember(exports, "b"), "buffer"));
+                final Object memoryABuffer = lib.readMember(exports, "a");
+                final Object memoryBBuffer = lib.readMember(exports, "b");
                 lib.writeArrayElement(memoryABuffer, 0, (byte) 42);
                 final byte readValue = lib.asByte(lib.readArrayElement(memoryBBuffer, 0));
                 Assert.assertEquals("Written value should correspond to read value", (byte) 42, readValue);
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException | InvalidArrayIndexException e) {
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | InvalidArrayIndexException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -352,14 +386,22 @@ public class WasmJsApiSuite {
         final byte[] exportMemoryTwice = compileWat("exportTableTwice", "(module (table 1 funcref) (export \"a\" (table 0)) (export \"b\" (table 0)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(exportMemoryTwice, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(exportMemoryTwice, null);
             final Instance instance = instantiatedSource.instance();
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                final Object f = new Executable(args -> 42);
-                lib.execute(lib.readMember(lib.readMember(exports, "a"), "set"), 0, f);
-                final Object readValue = lib.execute(lib.readMember(lib.readMember(exports, "b"), "get"), 0);
+                final Object f = new WasmFunctionInstance(context, null,
+                                Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                                    @Override
+                                    public Object execute(VirtualFrame frame) {
+                                        return 42;
+                                    }
+                                }));
+                final Object writeTable = wasm.readMember("table_write");
+                final Object readTable = wasm.readMember("table_read");
+                lib.execute(writeTable, lib.readMember(exports, "a"), 0, f);
+                final Object readValue = lib.execute(readTable, lib.readMember(exports, "b"), 0);
                 Assert.assertEquals("Written function should correspond ro read function", 42, lib.asInt(lib.execute(readValue)));
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -371,8 +413,8 @@ public class WasmJsApiSuite {
     public void testImportOrder() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Module module = wasm.compile(binaryWithMixedImports);
-            final Sequence<ModuleImportDescriptor> moduleImports = module.imports();
+            final WasmModule module = wasm.moduleDecode(binaryWithMixedImports);
+            final Sequence<ModuleImportDescriptor> moduleImports = WebAssembly.moduleImports(module);
             String[] expected = new String[]{"f1", "g1", "t", "m", "g2", "f2"};
             try {
                 Assert.assertEquals("Must import all members.", 6L, moduleImports.getArraySize());
@@ -409,14 +451,15 @@ public class WasmJsApiSuite {
     public void testTableInstanceOutOfBoundsGet() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithMixedExports, null);
             final Instance instance = instantiatedSource.instance();
             final InteropLibrary lib = InteropLibrary.getUncached();
 
             // We should be able to get element 1.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 0);
+                final Object readTable = wasm.readMember("table_read");
+                lib.execute(readTable, lib.readMember(exports, "t"), 0);
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -424,7 +467,8 @@ public class WasmJsApiSuite {
             // But not element 2.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 1);
+                final Object readTable = wasm.readMember("table_read");
+                lib.execute(readTable, lib.readMember(exports, "t"), 1);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -438,11 +482,12 @@ public class WasmJsApiSuite {
     public void testTableInstanceOutOfBoundsSet() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithMixedExports, null);
             final Instance instance = instantiatedSource.instance();
             final InteropLibrary lib = InteropLibrary.getUncached();
 
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
+                            null,
                             null,
                             Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
                                 @Override
@@ -454,7 +499,8 @@ public class WasmJsApiSuite {
             // We should be able to set element 1.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "set"), 0, functionInstance);
+                final Object writeTable = wasm.readMember("table_write");
+                lib.execute(writeTable, lib.readMember(exports, "t"), 0, functionInstance);
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -462,7 +508,8 @@ public class WasmJsApiSuite {
             // But not element 2.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 1, functionInstance);
+                final Object writeTable = wasm.readMember("table_write");
+                lib.execute(writeTable, lib.readMember(exports, "t"), 1, functionInstance);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -476,14 +523,15 @@ public class WasmJsApiSuite {
     public void testTableInstanceGrowLimit() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithMixedExports, null);
             final Instance instance = instantiatedSource.instance();
             final InteropLibrary lib = InteropLibrary.getUncached();
 
             // We should be able to grow the table to 10,000,000.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "grow"), 9999999);
+                final Object grow = wasm.readMember("table_grow");
+                lib.execute(grow, lib.readMember(exports, "t"), 9999999);
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -491,7 +539,8 @@ public class WasmJsApiSuite {
             // But growing to 10,000,001 should fail.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "grow"), 1);
+                final Object grow = wasm.readMember("table_grow");
+                lib.execute(grow, lib.readMember(exports, "t"), 1);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -505,12 +554,12 @@ public class WasmJsApiSuite {
     public void testCustomSections() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Module module = wasm.compile(binaryWithCustomSections);
+            final WasmModule module = wasm.moduleDecode(binaryWithCustomSections);
             try {
-                checkCustomSections(new byte[][]{}, module.customSections(""));
-                checkCustomSections(new byte[][]{}, module.customSections("zero"));
-                checkCustomSections(new byte[][]{{1, 3, 5}}, module.customSections("odd"));
-                checkCustomSections(new byte[][]{{2, 4}, {6}}, module.customSections("even"));
+                checkCustomSections(new byte[][]{}, WebAssembly.customSections(module, ""));
+                checkCustomSections(new byte[][]{}, WebAssembly.customSections(module, "zero"));
+                checkCustomSections(new byte[][]{{1, 3, 5}}, WebAssembly.customSections(module, "odd"));
+                checkCustomSections(new byte[][]{{2, 4}, {6}}, WebAssembly.customSections(module, "even"));
             } catch (InvalidArrayIndexException ex) {
                 throw new RuntimeException(ex);
             }
@@ -537,9 +586,9 @@ public class WasmJsApiSuite {
             final WebAssembly wasm = new WebAssembly(context);
             // Should not throw an exception i.e. is a valid module
             // (despite the name section may not be formed correctly).
-            wasm.compile(binaryWithEmptyNameSection);
-            wasm.compile(binaryWithTruncatedNameSection);
-            wasm.compile(binaryWithNameSectionWithInvalidIndex);
+            wasm.moduleDecode(binaryWithEmptyNameSection);
+            wasm.moduleDecode(binaryWithTruncatedNameSection);
+            wasm.moduleDecode(binaryWithNameSectionWithInvalidIndex);
         });
     }
 
@@ -558,13 +607,11 @@ public class WasmJsApiSuite {
     public void testMemoryBufferMessages() throws IOException {
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
-            Module module = wasm.compile(binaryWithMemoryExport);
-            Instance instance = wasm.instantiate(module, new Dictionary());
+            WasmModule module = wasm.moduleDecode(binaryWithMemoryExport);
+            Instance instance = wasm.moduleInstantiate(module, new Dictionary());
             try {
                 Object exports = InteropLibrary.getUncached(instance).readMember(instance, "exports");
-                Object memory = InteropLibrary.getUncached(exports).readMember(exports, "memory");
-                Object bufferGetter = InteropLibrary.getUncached(memory).readMember(memory, "buffer");
-                Object buffer = InteropLibrary.getUncached(bufferGetter).execute(bufferGetter);
+                Object buffer = InteropLibrary.getUncached(exports).readMember(exports, "memory");
 
                 long bufferSize = 4 * Sizes.MEMORY_PAGE_SIZE;
                 InteropLibrary interop = InteropLibrary.getUncached(buffer);
@@ -708,6 +755,102 @@ public class WasmJsApiSuite {
                 assertThrowsIBOE(() -> interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 7));
             } catch (InteropException ex) {
                 Assert.fail(ex.getMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testTableImport() throws IOException, InterruptedException {
+        // Exports table with a function
+        final byte[] exportTable = compileWat("exportTable", "(module" +
+                        "(func $f0 (result i32) i32.const 42)" +
+                        "(table 1 1 funcref)" +
+                        "(export \"table\" (table 0))" +
+                        "(elem (i32.const 0) $f0)" +
+                        ")");
+
+        // Imports table and exports function that invokes functions from the table
+        final byte[] importTable = compileWat("importTable", "(module" +
+                        "(type (func (param i32) (result i32)))" +
+                        "(type (func (result i32)))" +
+                        "(import \"tableImport\" \"table\" (table 1 1 funcref))" +
+                        "(func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))" +
+                        "(export \"testFunc\" (func 0))" +
+                        ")");
+
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Instance exportInstance = wasm.moduleInstantiate(exportTable, null).instance();
+            try {
+                Object exports = InteropLibrary.getUncached().readMember(exportInstance, "exports");
+                Object exportedTable = InteropLibrary.getUncached().readMember(exports, "table");
+
+                Dictionary importObject = new Dictionary();
+                Dictionary tableImport = new Dictionary();
+                tableImport.addMember("table", exportedTable);
+                importObject.addMember("tableImport", tableImport);
+
+                Instance importInstance = wasm.moduleInstantiate(importTable, importObject).instance();
+
+                exports = InteropLibrary.getUncached().readMember(importInstance, "exports");
+                Object testFunc = InteropLibrary.getUncached().readMember(exports, "testFunc");
+                Object result = InteropLibrary.getUncached().execute(testFunc, 0);
+
+                Assert.assertEquals("Return value should be 42", 42, result);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryAllocationFailure() {
+        // Memory allocation should either succeed or throw an interop
+        // exception (not an internal error like OutOfMemoryError).
+        try {
+            Object[] memories = new Object[5];
+            for (int i = 0; i < memories.length; i++) {
+                memories[i] = WebAssembly.memAlloc(32767, 32767);
+            }
+        } catch (AbstractTruffleException ex) {
+            Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));
+        }
+    }
+
+    @Test
+    public void testFuncTypeTable() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithTableExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Object funcType = wasm.readMember("func_type");
+                final WasmTable table = (WasmTable) instance.exports().readMember("defaultTable");
+                final Object fn = WebAssembly.tableRead(table, 0);
+                InteropLibrary interop = InteropLibrary.getUncached(funcType);
+                Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fn));
+                // set + get should not break func_type()
+                WebAssembly.tableWrite(table, 0, fn);
+                final Object fnAgain = WebAssembly.tableRead(table, 0);
+                Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fnAgain));
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testFuncTypeExport() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.moduleInstantiate(binaryWithMemoryExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Object funcType = wasm.readMember("func_type");
+                final Object fn = instance.exports().readMember("readZero");
+                Assert.assertEquals("func_type", "0()i32", InteropLibrary.getUncached(funcType).execute(funcType, fn));
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
             }
         });
     }
@@ -869,20 +1012,90 @@ public class WasmJsApiSuite {
 
     // (module
     // (type $t0 (func (result i32)))
-    // (global $global (import "host" "defaultGlobal") i32)
-    // (func $readGlobal (export "readGlobal") (type $t0) (result i32)
-    // get_global $global
+    // (global $global1 (import "host" "defaultGlobal") i32)
+    // (global $global2 i32 (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result i32)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result i32)
+    // get_global $global2
     // )
     // )
-    private static final byte[] binaryWithGlobalImport = new byte[]{
+    private static final byte[] binaryWithGlobalImportI32 = new byte[]{
                     (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
                     (byte) 0x01, (byte) 0x7f, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
                     (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7f,
-                    (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x0e, (byte) 0x01, (byte) 0x0a, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64,
-                    (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00,
-                    (byte) 0x23, (byte) 0x00, (byte) 0x0b, (byte) 0x00, (byte) 0x19, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x01, (byte) 0x0d, (byte) 0x01,
-                    (byte) 0x00, (byte) 0x0a, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x02,
-                    (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7f, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result i64)))
+    // (global $global1 (import "host" "defaultGlobal") i64)
+    // (global $global2 i64 (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result i64)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result i64)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportI64 = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7e, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7e,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7e, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result f32)))
+    // (global $global1 (import "host" "defaultGlobal") f32)
+    // (global $global2 f32 (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result f32)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result f32)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportF32 = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7d, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7d,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7d, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result f64)))
+    // (global $global1 (import "host" "defaultGlobal") f64)
+    // (global $global2 f64 (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result f64)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result f64)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportF64 = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7c, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7c,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7c, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
     };
 
     // (module

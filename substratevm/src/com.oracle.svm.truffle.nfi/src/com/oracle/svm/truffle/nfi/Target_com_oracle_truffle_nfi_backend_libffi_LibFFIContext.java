@@ -26,7 +26,6 @@ package com.oracle.svm.truffle.nfi;
 
 import static com.oracle.svm.truffle.nfi.NativeSignature.ExecuteHelper;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
@@ -39,6 +38,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.NewEmptyArrayTransformer;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
@@ -51,9 +51,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-
 @TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
 
@@ -61,19 +58,18 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
 
     // clear these fields, they will be re-filled by patchContext
     @Alias @RecomputeFieldValue(kind = Kind.Reset) private long nativeContext;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeMapResetter.class) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[] simpleTypeMap;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeMapResetter.class) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[] arrayTypeMap;
-
-    private static class TypeMapResetter implements RecomputeFieldValue.CustomFieldValueComputer {
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            return new Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.values().length];
-        }
-    }
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayTransformer.class) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[] simpleTypeMap;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayTransformer.class) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[] arrayTypeMap;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType cachedEnvType;
 
     @Alias
     native long getNativeEnv();
+
+    @Alias
+    native boolean attachThread();
+
+    @Alias
+    native void detachThread();
 
     @Alias
     native Target_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer createClosureNativePointer(long nativeClosure, long codePointer, CallTarget callTarget,
@@ -220,7 +216,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
         } else {
             Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol ret = Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol.create(language, library, name,
                             lookup(nativeContext, library.handle, name));
-            return KnownIntrinsics.convertUnknownValue(ret, TruffleObject.class);
+            return ret;
         }
     }
 

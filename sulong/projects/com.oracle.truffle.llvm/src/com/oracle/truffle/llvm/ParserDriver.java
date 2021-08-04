@@ -29,18 +29,6 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.io.IOException;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-
-import org.graalvm.polyglot.io.ByteSequence;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
@@ -65,6 +53,7 @@ import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.InternalLibraryLocator;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
@@ -85,6 +74,16 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
+import org.graalvm.polyglot.io.ByteSequence;
+
+import java.io.IOException;
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.stream.Collectors;
 
 /**
  * Drives a parsing request.
@@ -96,24 +95,24 @@ final class ParserDriver {
     /**
      * Parses a {@code source} and all its (explicit and implicit) dependencies.
      *
-     * @return a {@link CallTarget} that on execute initializes (i.e., initalize globals, run
+     * @return a {@link CallTarget} that on execute initializes (i.e., initialize globals, run
      *         constructors, etc.) the module represented by {@code source} and all dependencies.
      */
-    public static CallTarget parse(LLVMContext context, AtomicInteger bitcodeID, Source source) {
+    public static CallTarget parse(LLVMContext context, BitcodeID bitcodeID, Source source) {
         return new ParserDriver(context, bitcodeID).parseWithDependencies(source);
     }
 
     private final LLVMContext context;
     private final LLVMLanguage language;
-    private final AtomicInteger nextFreeBitcodeID;
+    private final BitcodeID bitcodeID;
     // Dependencies can either be Source or the call target if the library
     // has already been parsed.
     private final ArrayList<Object> dependencies = new ArrayList<>();
 
-    private ParserDriver(LLVMContext context, AtomicInteger moduleID) {
+    private ParserDriver(LLVMContext context, BitcodeID bitcodeID) {
         this.context = context;
         this.language = context.getLanguage();
-        this.nextFreeBitcodeID = moduleID;
+        this.bitcodeID = bitcodeID;
     }
 
     /**
@@ -332,7 +331,12 @@ final class ParserDriver {
         if (index == -1) {
             return name;
         }
-        return name.substring(0, index);
+        String substring = name.substring(0, index);
+        if (substring.equals("sulong")) {
+            // use common name on all platforms
+            return "libsulong";
+        }
+        return substring;
     }
 
     /**
@@ -348,7 +352,6 @@ final class ParserDriver {
         verifyBitcodeSource(source, targetDataLayout, targetTriple);
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         LLVMScope fileScope = new LLVMScope();
-        int bitcodeID = nextFreeBitcodeID.getAndIncrement();
         LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module),
                         binaryParserResult.getLocator());
         LLVMParser parser = new LLVMParser(source, runtime);
@@ -462,7 +465,7 @@ final class ParserDriver {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
                 // only create a source if the library has not already been parsed.
-                TruffleFile file = createTruffleFile(lib, null, binaryParserResult.getLocator(), "<dependency library>");
+                TruffleFile file = createTruffleFile(lib, null, binaryParserResult.getLocator(), libraryName);
                 CallTarget calls = language.getCachedLibrary(file.getPath());
                 if (calls != null && !dependencies.contains(calls)) {
                     dependencies.add(calls);
@@ -539,7 +542,7 @@ final class ParserDriver {
             return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
         } else {
             // check if the functions should be resolved eagerly or lazily.
-            boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
+            boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING) && !context.getEnv().getOptions().get(SulongEngineOption.AOTCacheStore);
             LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), dependencies, source, language);
             return LLVMLanguage.createCallTarget(loadModules);
         }

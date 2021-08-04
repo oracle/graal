@@ -274,10 +274,6 @@ public final class ThreadLocalAllocation {
         return end.subtract(top);
     }
 
-    static boolean isThreadLocalAllocationSpace(Space space) {
-        return (space == HeapImpl.getHeapImpl().getYoungGeneration().getEden());
-    }
-
     static void disableAndFlushForAllThreads() {
         VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableAndFlushForAllThreads");
 

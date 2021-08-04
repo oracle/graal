@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -57,20 +58,21 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.nfi.backend.libffi.FunctionExecuteNode.SignatureExecuteNode;
+import com.oracle.truffle.nfi.backend.libffi.LibFFIClosure.MonomorphicClosureInfo;
+import com.oracle.truffle.nfi.backend.libffi.LibFFIClosure.PolymorphicClosureInfo;
+import com.oracle.truffle.nfi.backend.libffi.LibFFIType.ArrayType;
+import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
+import com.oracle.truffle.nfi.backend.libffi.LibFFIType.Direction;
+import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory;
-import com.oracle.truffle.nfi.backend.libffi.FunctionExecuteNode.SignatureExecuteNode;
-import com.oracle.truffle.nfi.backend.libffi.LibFFIClosure.MonomorphicClosureInfo;
-import com.oracle.truffle.nfi.backend.libffi.LibFFIClosure.PolymorphicClosureInfo;
+
 import static com.oracle.truffle.nfi.backend.libffi.LibFFISignature.SignatureBuilder.NOT_VARARGS;
-import com.oracle.truffle.nfi.backend.libffi.LibFFIType.ArrayType;
-import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
-import com.oracle.truffle.nfi.backend.libffi.LibFFIType.Direction;
-import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
 
 /**
  * Runtime object representing native signatures. Instances of this class can not be cached in
@@ -80,7 +82,7 @@ import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
  * {@link CachedSignatureInfo}. Two {@link LibFFISignature} objects that have the same
  * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
-@ExportLibrary(NFIBackendSignatureLibrary.class)
+@ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class LibFFISignature {
 
     @TruffleBoundary
@@ -106,7 +108,8 @@ final class LibFFISignature {
     }
 
     @ExportMessage(limit = "3")
-    Object call(Object functionPointer, Object[] args,
+    @GenerateAOT.Exclude
+    static Object call(LibFFISignature self, Object functionPointer, Object[] args,
                     @CachedLibrary("functionPointer") InteropLibrary interop,
                     @Cached BranchProfile toNative,
                     @Cached BranchProfile error,
@@ -122,7 +125,7 @@ final class LibFFISignature {
             error.enter();
             throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
         }
-        return functionExecute.execute(pointer, this, args);
+        return functionExecute.execute(pointer, self, args);
     }
 
     @ExportMessage

@@ -23,20 +23,13 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Node that simulates espresso statements for debugging support.
  */
-public final class EspressoStatementNode extends EspressoInstrumentableNode {
+public final class EspressoStatementNode extends BaseEspressoStatementNode implements BciProvider {
 
     private final int startBci;
     private final int lineNumber;
@@ -47,50 +40,15 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        return StaticObject.NULL;
-    }
-
-    @Override
     public SourceSection getSourceSection() {
-        Source s = getBytecodesNode().getSource();
-        if (s != null) {
-            return s.createSection(lineNumber);
-        } else {
-            // TODO should this really happen? If there is a line number table
-            // shouldn't there also be a source file?
-            return null;
-        }
-    }
-
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.StatementTag.class;
-    }
-
-    public BytecodeNode getBytecodesNode() {
-        // parent is normally the BytecodeNode.InstrumentationSupport
-        // parents parent is normally the BytecodeNode
-        Node parent = getParent();
-
-        while (parent instanceof WrapperNode || parent instanceof BytecodeNode.InstrumentationSupport) {
-            parent = parent.getParent();
-        }
-        assert !(parent instanceof WrapperNode);
-        return (BytecodeNode) parent;
+        Source s = getBytecodeNode().getSource();
+        // when there is a line number table we also have a source
+        assert s != null;
+        return s.createSection(lineNumber);
     }
 
     @Override
-    public int getCurrentBCI(@SuppressWarnings("unused") Frame frame) {
+    public int getBci(@SuppressWarnings("unused") Frame frame) {
         return startBci;
-    }
-
-    @Override
-    public Method getMethod() {
-        return getBytecodesNode().getMethod();
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return getBytecodesNode().getContext();
     }
 }

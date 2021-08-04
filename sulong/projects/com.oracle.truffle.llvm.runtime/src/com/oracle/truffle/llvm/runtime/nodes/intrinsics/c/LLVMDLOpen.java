@@ -53,23 +53,29 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_GLOBAL;
+import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_LAZY;
+import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_LOCAL;
+import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_NOW;
+
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMDLOpen extends LLVMIntrinsic {
 
     public enum RTLDFlags {
-        RTLD_DEFAULT,       // Linux Max/Darwin
+        RTLD_OPEN_DEFAULT,       // Linux Max/Darwin
         RTLD_LAZY,          // 1 1
         RTLD_NOW,           // 2 2
         RTLD_GLOBAL,        // 256 8
-        RTLD_LOCAL;         // 0 4
+        RTLD_LOCAL,         // 0 4
+        RTLD_FIRST;        // - 100
 
         public boolean isActive(RTLDFlags phase) {
             return phase == this;
         }
     }
 
-    @ExportLibrary(LLVMAsForeignLibrary.class)
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 1)
     protected static final class LLVMDLHandler {
         final Object library;
 
@@ -99,14 +105,21 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
                     @Cached() LLVMReadStringNode readStr,
                     @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         // Default settings for RTLD flags.
-        RTLDFlags globalOrLocal = RTLDFlags.RTLD_LOCAL;
+        RTLDFlags globalOrLocal = RTLD_LOCAL;
+        RTLDFlags lazyOrNow = RTLD_NOW;
+        boolean hasFirstFlag;
+
         // Check for flag settings for each platform.
         PlatformCapability<?> sysContextExt = LLVMLanguage.getLanguage().getCapability(PlatformCapability.class);
         if (sysContextExt.isGlobalDLOpenFlagSet(flag)) {
-            globalOrLocal = RTLDFlags.RTLD_GLOBAL;
+            globalOrLocal = RTLD_GLOBAL;
         }
+        if (sysContextExt.isLazyDLOpenFlagSet(flag)) {
+            lazyOrNow = RTLD_LAZY;
+        }
+        hasFirstFlag = sysContextExt.isFirstDLOpenFlagSet(flag);
         try {
-            return LLVMManagedPointer.create(new LLVMDLHandler(loadLibrary(ctx, globalOrLocal, flag, file, readStr)));
+            return LLVMManagedPointer.create(new LLVMDLHandler(loadLibrary(ctx, globalOrLocal, lazyOrNow, hasFirstFlag, flag, file, readStr)));
         } catch (RuntimeException e) {
             ctx.setDLError(1);
             return LLVMNativePointer.createNull();
@@ -114,7 +127,15 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
     }
 
     @TruffleBoundary
-    protected Object loadLibrary(LLVMContext ctx, RTLDFlags globalOrLocal, int flag, Object file, LLVMReadStringNode readStr) {
+    protected Object loadLibrary(LLVMContext ctx, RTLDFlags globalOrLocal, RTLDFlags lazyOrNow, boolean hasFirstFlag, int flag, Object file, LLVMReadStringNode readStr) {
+        if (file.equals(LLVMNativePointer.createNull())) {
+            if (ctx.getMainLibrary() != null && (lazyOrNow.isActive(RTLD_LAZY) || hasFirstFlag)) {
+                return ctx.getMainLibrary();
+            } else {
+                return LLVMNativePointer.createNull();
+            }
+        }
+
         String filename = readStr.executeWithTarget(file);
         Path path = Paths.get(filename);
         TruffleFile truffleFile;

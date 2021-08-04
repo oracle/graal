@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -35,6 +37,8 @@ import java.lang.reflect.Modifier;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 
 public final class ParserField {
+
+    private final Assumption redefineAssumption = Truffle.getRuntime().createAssumption();
 
     public static final ParserField[] EMPTY_ARRAY = new ParserField[0];
     // re-use the Constants.ACC_FINALIZER flag to mark hidden fields
@@ -49,6 +53,10 @@ public final class ParserField {
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
+    public ParserField withFlags(int newFlags) {
+        return new ParserField(flags | newFlags, name, type, attributes);
+    }
+
     public int getFlags() {
         return flags;
     }
@@ -59,6 +67,10 @@ public final class ParserField {
 
     public Symbol<Type> getType() {
         return type;
+    }
+
+    public Assumption getRedefineAssumption() {
+        return redefineAssumption;
     }
 
     public Attribute[] getAttributes() {
@@ -80,7 +92,38 @@ public final class ParserField {
         return Modifier.isStatic(flags);
     }
 
+    public boolean isFinal() {
+        return Modifier.isFinal(flags);
+    }
+
     public JavaKind getKind() {
         return Types.getJavaKind(type);
+    }
+
+    public Class<?> getPropertyType() {
+        if (type.length() == 1) {
+            char ch = (char) type.byteAt(0);
+            switch (ch) {
+                case 'Z':
+                    return boolean.class;
+                case 'C':
+                    return char.class;
+                case 'F':
+                    return float.class;
+                case 'D':
+                    return double.class;
+                case 'B':
+                    return byte.class;
+                case 'S':
+                    return short.class;
+                case 'I':
+                    return int.class;
+                case 'J':
+                    return long.class;
+                default:
+                    throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
+            }
+        }
+        return Object.class;
     }
 }

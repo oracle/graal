@@ -30,7 +30,7 @@ import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFro
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callGetFactory;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callSignalRegistrationRequest;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callUnregister;
-import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
+import static org.graalvm.nativebridge.jni.JNIUtil.getBinaryName;
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.DataInputStream;
@@ -56,9 +56,10 @@ import org.graalvm.compiler.hotspot.management.LibGraalMBean;
 import org.graalvm.compiler.hotspot.management.JMXFromLibGraalEntryPoints;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.libgraal.jni.JNI;
-import org.graalvm.libgraal.jni.JNIExceptionWrapper;
-import org.graalvm.libgraal.jni.JNIUtil;
+import org.graalvm.nativebridge.jni.JNI;
+import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
+import org.graalvm.nativebridge.jni.JNIExceptionWrapper.ExceptionHandler;
+import org.graalvm.nativebridge.jni.JNIUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -392,7 +393,7 @@ class MBeanProxy<T extends DynamicMBean> {
         } finally {
             UnmanagedMemory.free(classDataPointer);
             // LinkageError is allowed, the class may be already defined
-            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, LinkageError.class);
+            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env, ExceptionHandler.allowExceptions(LinkageError.class));
         }
     }
 

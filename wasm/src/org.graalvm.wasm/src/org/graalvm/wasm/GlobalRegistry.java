@@ -40,13 +40,12 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.globals.WasmGlobal;
 
 /**
  * The global registry holds the global values in the WebAssembly engine instance.
@@ -63,13 +62,13 @@ public class GlobalRegistry {
     // Such an assumption can be invalidated if the late-linking causes this array
     // to be replaced with a larger array.
     @CompilationFinal(dimensions = 0) private long[] globals;
-    @CompilationFinal(dimensions = 1) private Object[] externalGlobals;
+    @CompilationFinal(dimensions = 1) private WasmGlobal[] externalGlobals;
     private int globalCount;
     private int externalGlobalCount;
 
     public GlobalRegistry() {
         this.globals = new long[INITIAL_GLOBALS_SIZE];
-        this.externalGlobals = new Object[INITIAL_GLOBALS_SIZE];
+        this.externalGlobals = new WasmGlobal[INITIAL_GLOBALS_SIZE];
         this.globalCount = 0;
         this.externalGlobalCount = 0;
     }
@@ -88,7 +87,7 @@ public class GlobalRegistry {
 
     private void ensureExternalGlobalCapacity() {
         if (externalGlobalCount == externalGlobals.length) {
-            final Object[] nExternalGlobals = new Object[externalGlobals.length * 2];
+            final WasmGlobal[] nExternalGlobals = new WasmGlobal[externalGlobals.length * 2];
             System.arraycopy(externalGlobals, 0, nExternalGlobals, 0, nExternalGlobals.length);
             externalGlobals = nExternalGlobals;
         }
@@ -102,7 +101,7 @@ public class GlobalRegistry {
         return idx;
     }
 
-    public int allocateExternalGlobal(Object object) {
+    public int allocateExternalGlobal(WasmGlobal object) {
         ensureExternalGlobalCapacity();
         externalGlobals[externalGlobalCount] = object;
         int idx = -externalGlobalCount - 1;
@@ -112,60 +111,56 @@ public class GlobalRegistry {
 
     public int loadAsInt(int address) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                return (int) InteropLibrary.getUncached().readMember(global, "value");
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            return (int) global.getValue();
+        }
+        return (int) globals[address];
+    }
+
+    public int loadFloatAsInt(int address) {
+        if (address < 0) {
+            final WasmGlobal global = externalGlobals[-address - 1];
+            return Float.floatToRawIntBits((float) global.getValue());
         }
         return (int) globals[address];
     }
 
     public long loadAsLong(int address) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                return (long) InteropLibrary.getUncached().readMember(global, "value");
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            return (long) global.getValue();
+        }
+        return globals[address];
+    }
+
+    public long loadDoubleAsLong(int address) {
+        if (address < 0) {
+            final WasmGlobal global = externalGlobals[-address - 1];
+            return Double.doubleToRawLongBits((double) global.getValue());
         }
         return globals[address];
     }
 
     public float loadAsFloat(int address) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                return (float) InteropLibrary.getUncached().readMember(global, "value");
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            return (float) global.getValue();
         }
         return Float.intBitsToFloat((int) globals[address]);
     }
 
     public double loadAsDouble(int address) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                return (double) InteropLibrary.getUncached().readMember(global, "value");
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            return (double) global.getValue();
         }
         return Double.longBitsToDouble(globals[address]);
     }
 
     public void storeInt(int address, int value) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                InteropLibrary.getUncached().writeMember(global, "value", value);
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            global.setValue(value);
         } else {
             globals[address] = value;
         }
@@ -173,12 +168,8 @@ public class GlobalRegistry {
 
     public void storeLong(int address, long value) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                InteropLibrary.getUncached().writeMember(global, "value", value);
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            global.setValue(value);
         } else {
             globals[address] = value;
         }
@@ -186,12 +177,8 @@ public class GlobalRegistry {
 
     public void storeFloat(int address, float value) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                InteropLibrary.getUncached().writeMember(global, "value", value);
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            global.setValue(value);
         } else {
             globals[address] = Float.floatToRawIntBits(value);
         }
@@ -199,12 +186,8 @@ public class GlobalRegistry {
 
     public void storeFloatWithInt(int address, int value) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                InteropLibrary.getUncached().writeMember(global, "value", Float.intBitsToFloat(value));
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            global.setValue(value);
         } else {
             globals[address] = value;
         }
@@ -212,12 +195,8 @@ public class GlobalRegistry {
 
     public void storeDouble(int address, double value) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                InteropLibrary.getUncached().writeMember(global, "value", value);
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            global.setValue(value);
         } else {
             globals[address] = Double.doubleToRawLongBits(value);
         }
@@ -225,12 +204,8 @@ public class GlobalRegistry {
 
     public void storeDoubleWithLong(int address, long value) {
         if (address < 0) {
-            final Object global = externalGlobals[-address - 1];
-            try {
-                InteropLibrary.getUncached().writeMember(global, "value", Double.longBitsToDouble(value));
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-                throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Global does not have a value attribute: %s", global);
-            }
+            final WasmGlobal global = externalGlobals[-address - 1];
+            global.setValue(value);
         } else {
             globals[address] = value;
         }
@@ -249,8 +224,9 @@ public class GlobalRegistry {
         return other;
     }
 
-    public Object externalGlobal(int address) {
+    public WasmGlobal externalGlobal(int address) {
         if (address >= 0) {
+            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Global at address " + address + " is not external.");
         }
         return externalGlobals[-address - 1];

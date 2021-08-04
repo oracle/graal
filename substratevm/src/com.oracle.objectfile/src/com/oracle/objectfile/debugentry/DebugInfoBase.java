@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -29,10 +29,12 @@ package com.oracle.objectfile.debugentry;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
@@ -89,7 +91,7 @@ public abstract class DebugInfoBase {
     /**
      * List of class entries detailing class info for primary ranges.
      */
-    private LinkedList<TypeEntry> types = new LinkedList<>();
+    private List<TypeEntry> types = new ArrayList<>();
     /**
      * index of already seen classes.
      */
@@ -97,7 +99,7 @@ public abstract class DebugInfoBase {
     /**
      * List of class entries detailing class info for primary ranges.
      */
-    private LinkedList<ClassEntry> primaryClasses = new LinkedList<>();
+    private List<ClassEntry> primaryClasses = new ArrayList<>();
     /**
      * index of already seen classes.
      */
@@ -109,7 +111,7 @@ public abstract class DebugInfoBase {
     /**
      * List of of files which contain primary or secondary ranges.
      */
-    private LinkedList<FileEntry> files = new LinkedList<>();
+    private List<FileEntry> files = new ArrayList<>();
     /**
      * Flag set to true if heap references are stored as addresses relative to a heap base register
      * otherwise false.
@@ -236,40 +238,33 @@ public abstract class DebugInfoBase {
              */
             String fileName = debugCodeInfo.fileName();
             Path filePath = debugCodeInfo.filePath();
-            Path cachePath = debugCodeInfo.cachePath();
-            String className = TypeEntry.canonicalize(debugCodeInfo.className());
-            String methodName = debugCodeInfo.methodName();
-            String symbolName = debugCodeInfo.symbolNameForMethod();
-            String paramSignature = debugCodeInfo.paramSignature();
-            String returnTypeName = TypeEntry.canonicalize(debugCodeInfo.returnTypeName());
+            String className = TypeEntry.canonicalize(debugCodeInfo.ownerType());
+            String methodName = debugCodeInfo.name();
             int lo = debugCodeInfo.addressLo();
             int hi = debugCodeInfo.addressHi();
             int primaryLine = debugCodeInfo.line();
-            boolean isDeoptTarget = debugCodeInfo.isDeoptTarget();
-            int modifiers = debugCodeInfo.getModifiers();
 
             /* Search for a method defining this primary range. */
             ClassEntry classEntry = ensureClassEntry(className);
-            FileEntry fileEntry = ensureFileEntry(fileName, filePath, cachePath);
-            Range primaryRange = classEntry.makePrimaryRange(methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntry, lo, hi, primaryLine, modifiers, isDeoptTarget);
+            MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
+            Range primaryRange = new Range(stringTable, methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
                 String fileNameAtLine = debugLineInfo.fileName();
                 Path filePathAtLine = debugLineInfo.filePath();
-                String classNameAtLine = TypeEntry.canonicalize(debugLineInfo.className());
-                String methodNameAtLine = debugLineInfo.methodName();
-                String symbolNameAtLine = debugLineInfo.symbolNameForMethod();
+                String classNameAtLine = TypeEntry.canonicalize(debugLineInfo.ownerType());
+                String methodNameAtLine = debugLineInfo.name();
                 int loAtLine = lo + debugLineInfo.addressLo();
                 int hiAtLine = lo + debugLineInfo.addressHi();
                 int line = debugLineInfo.line();
-                Path cachePathAtLine = debugLineInfo.cachePath();
                 /*
                  * Record all subranges even if they have no line or file so we at least get a
                  * symbol for them and don't see a break in the address range.
                  */
-                FileEntry subFileEntry = ensureFileEntry(fileNameAtLine, filePathAtLine, cachePathAtLine);
-                Range subRange = new Range(classNameAtLine, methodNameAtLine, symbolNameAtLine, stringTable, subFileEntry, loAtLine, hiAtLine, line, primaryRange);
+                ClassEntry subClassEntry = ensureClassEntry(classNameAtLine);
+                MethodEntry subMethodEntry = subClassEntry.ensureMethodEntryForDebugRangeInfo(debugLineInfo, this, debugContext);
+                Range subRange = new Range(stringTable, subMethodEntry, loAtLine, hiAtLine, line, primaryRange);
                 classEntry.indexSubRange(subRange);
                 try (DebugContext.Scope s = debugContext.scope("Subranges")) {
                     debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]", classNameAtLine, methodNameAtLine, filePathAtLine, fileNameAtLine, line, loAtLine, hiAtLine);
@@ -394,10 +389,12 @@ public abstract class DebugInfoBase {
         return fileEntry;
     }
 
-    protected FileEntry ensureFileEntry(String fileName, Path filePath, Path cachePath) {
+    protected FileEntry ensureFileEntry(DebugFileInfo debugFileInfo) {
+        String fileName = debugFileInfo.fileName();
         if (fileName == null || fileName.length() == 0) {
             return null;
         }
+        Path filePath = debugFileInfo.filePath();
         Path fileAsPath;
         if (filePath == null) {
             fileAsPath = Paths.get(fileName);
@@ -407,7 +404,7 @@ public abstract class DebugInfoBase {
         /* Reuse any existing entry. */
         FileEntry fileEntry = findFile(fileAsPath);
         if (fileEntry == null) {
-            fileEntry = addFileEntry(fileName, filePath, cachePath);
+            fileEntry = addFileEntry(fileName, filePath, debugFileInfo.cachePath());
         }
         return fileEntry;
     }
@@ -431,16 +428,16 @@ public abstract class DebugInfoBase {
         return byteOrder;
     }
 
-    public LinkedList<TypeEntry> getTypes() {
+    public List<TypeEntry> getTypes() {
         return types;
     }
 
-    public LinkedList<ClassEntry> getPrimaryClasses() {
+    public List<ClassEntry> getPrimaryClasses() {
         return primaryClasses;
     }
 
     @SuppressWarnings("unused")
-    public LinkedList<FileEntry> getFiles() {
+    public List<FileEntry> getFiles() {
         return files;
     }
 

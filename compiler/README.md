@@ -91,7 +91,7 @@ mx ideinit
 This will generate Eclipse, IntelliJ, and NetBeans project configurations.
 Further information on how to import these project configurations into individual IDEs can be found on the [IDEs](docs/IDEs.md) page.
 
-The [Ideal Graph Visualizer](https://www.graalvm.org/docs/reference-manual/tools/#ideal-graph-visualizer)(IGV) is very useful in terms of visualizing the compiler's intermediate representation (IR).
+The [Ideal Graph Visualizer](https://www.graalvm.org/advanced-tools/#ideal-graph-visualizer)(IGV) is very useful in terms of visualizing the compiler's intermediate representation (IR).
 IGV is available on [OTN](https://www.oracle.com/downloads/graalvm-downloads.html).
 You can get a quick insight into this tool by running the commands below.
 The first command launches the tool and the second runs one of the unit tests included in the code base with extra options to dump the compiler IR for all methods compiled.

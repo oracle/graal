@@ -61,7 +61,7 @@ public class BigEndianTest {
     }
 
     private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
-    private static final String FILENAME = "O0.bc";
+    private static final String FILENAME = "bitcode-O0.bc";
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
 

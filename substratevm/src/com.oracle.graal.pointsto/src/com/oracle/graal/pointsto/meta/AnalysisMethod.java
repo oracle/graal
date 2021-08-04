@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -59,6 +60,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AtomicUtils;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
@@ -79,21 +81,25 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     public final ResolvedJavaMethod wrapped;
 
     private final int id;
+    private final boolean hasNeverInlineDirective;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
     private final String qualifiedName;
     private MethodTypeFlow typeFlow;
     private final AnalysisType declaringClass;
 
-    private boolean isRootMethod;
+    private final AtomicBoolean isRootMethod = new AtomicBoolean();
     private boolean isIntrinsicMethod;
     private Object entryPointData;
-    private boolean isInvoked;
-    private boolean isImplementationInvoked;
+    private final AtomicBoolean isInvoked = new AtomicBoolean();
+    private final AtomicBoolean isImplementationInvoked = new AtomicBoolean();
+    private boolean isInlined;
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
-    private static final Object GRAPH_CACHE_CLEARED = "cleared";
+    private static final Object GRAPH_CACHE_CLEARED = "cleared by cleanupAfterAnalysis";
+
+    private StructuredGraph analyzedGraph;
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
@@ -109,6 +115,8 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         this.wrapped = wrapped;
         this.id = universe.nextMethodId.getAndIncrement();
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
+
+        hasNeverInlineDirective = universe.hostVM().hasNeverInlineDirective(wrapped);
 
         if (PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options())) {
             startTrackInvocations();
@@ -174,6 +182,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         typeFlow = null;
         invokedBy = null;
         implementationInvokedBy = null;
+        contextInsensitiveInvoke.set(null);
+        if (parsedGraphCacheState.get() instanceof AnalysisParsedGraph) {
+            parsedGraphCacheState.set(GRAPH_CACHE_CLEARED);
+        }
     }
 
     public void startTrackInvocations() {
@@ -212,16 +224,15 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         startTrackInvocations();
     }
 
-    public void registerAsInvoked(InvokeTypeFlow invoke) {
-        isInvoked = true;
+    public boolean registerAsInvoked(InvokeTypeFlow invoke) {
         if (invokedBy != null && invoke != null) {
             invokedBy.put(invoke, Boolean.TRUE);
         }
+        return AtomicUtils.atomicMark(isInvoked);
     }
 
-    public void registerAsImplementationInvoked(InvokeTypeFlow invoke) {
+    public boolean registerAsImplementationInvoked(InvokeTypeFlow invoke) {
         assert !Modifier.isAbstract(getModifiers());
-        isImplementationInvoked = true;
         if (implementationInvokedBy != null && invoke != null) {
             implementationInvokedBy.put(invoke, Boolean.TRUE);
         }
@@ -229,8 +240,17 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         /*
          * The class constant of the declaring class is used for exception metadata, so marking a
          * method as invoked also makes the declaring class reachable.
+         *
+         * Even though the class could in theory be marked as reachable only if we successfully mark
+         * the method as invoked, it would have an unwanted side effect, where this method could
+         * return before the class gets marked as reachable.
          */
         getDeclaringClass().registerAsReachable();
+        return AtomicUtils.atomicMark(isImplementationInvoked);
+    }
+
+    public void registerAsInlined() {
+        isInlined = true;
     }
 
     /** Get the set of all callers for this method, as inferred by the static analysis. */
@@ -263,40 +283,48 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         return isIntrinsicMethod;
     }
 
-    public void registerAsRootMethod() {
-        isRootMethod = true;
-
-        /*
-         * The class constant of the declaring class is used for exception metadata, so marking a
-         * method as invoked also makes the declaring class reachable.
-         */
+    /**
+     * Registers this method as a root for the analysis.
+     *
+     * The class constant of the declaring class is used for exception metadata, so marking a method
+     * as invoked also makes the declaring class reachable.
+     *
+     * Class is always marked as reachable regardless of the success of the atomic mark, same reason
+     * as in {@link AnalysisMethod#registerAsImplementationInvoked(InvokeTypeFlow)}.
+     */
+    public boolean registerAsRootMethod() {
         getDeclaringClass().registerAsReachable();
+        return AtomicUtils.atomicMark(isRootMethod);
     }
 
     public boolean isRootMethod() {
-        return isRootMethod;
+        return isRootMethod.get();
     }
 
     public boolean isSimplyInvoked() {
-        return isInvoked;
+        return isInvoked.get();
     }
 
     public boolean isSimplyImplementationInvoked() {
-        return isImplementationInvoked;
+        return isImplementationInvoked.get();
     }
 
     /**
      * Returns true if this method is ever used as the target of a call site.
      */
     public boolean isInvoked() {
-        return isIntrinsicMethod || isEntryPoint() || isInvoked;
+        return isIntrinsicMethod || isRootMethod() || isInvoked.get();
     }
 
     /**
      * Returns true if the method body can ever be executed.
      */
     public boolean isImplementationInvoked() {
-        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod || isEntryPoint() || isImplementationInvoked);
+        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod || isRootMethod() || isImplementationInvoked.get());
+    }
+
+    public boolean isReachable() {
+        return isImplementationInvoked() || isInlined;
     }
 
     @Override
@@ -457,12 +485,12 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
     @Override
     public boolean canBeInlined() {
-        return true;
+        return !hasNeverInlineDirective();
     }
 
     @Override
     public boolean hasNeverInlineDirective() {
-        return wrapped.hasNeverInlineDirective();
+        return hasNeverInlineDirective;
     }
 
     @Override
@@ -556,13 +584,8 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     /**
      * Ensures that the method has been parsed, i.e., that the {@link StructuredGraph Graal IR} for
      * the method is available.
-     * 
-     * @param clearCache if true, the cached graph is cleared, and no more calls to this method are
-     *            allowed. This reduces the memory footprint, since Graal IR graphs are typically
-     *            large.
-     * @return The successfully parsed graph, or null if clearCache was true in a previous call.
      */
-    public AnalysisParsedGraph ensureGraphParsed(BigBang bb, boolean clearCache) {
+    public AnalysisParsedGraph ensureGraphParsed(BigBang bb) {
         while (true) {
             Object curState = parsedGraphCacheState.get();
 
@@ -592,16 +615,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
                     AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
 
                     /*
-                     * Must be called before any other thread can access the graph, i.e., before the
-                     * graph is published and the lock is released.
-                     */
-                    bb.getHostVM().methodAfterParsingHook(bb, this, graph.getGraph());
-
-                    /*
                      * Since we still hold the parsing lock, the transition form "parsing" to
                      * "parsed" cannot fail.
                      */
-                    boolean result = parsedGraphCacheState.compareAndSet(lock, clearCache ? GRAPH_CACHE_CLEARED : graph);
+                    boolean result = parsedGraphCacheState.compareAndSet(lock, graph);
                     AnalysisError.guarantee(result, "State transition failed");
 
                     return graph;
@@ -627,21 +644,29 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
                 lock.unlock();
 
             } else if (curState instanceof AnalysisParsedGraph) {
-                AnalysisParsedGraph result = (AnalysisParsedGraph) curState;
-                if (clearCache) {
-                    parsedGraphCacheState.set(GRAPH_CACHE_CLEARED);
-                }
-                return result;
-
-            } else if (curState == GRAPH_CACHE_CLEARED) {
-                return null;
+                return (AnalysisParsedGraph) curState;
 
             } else if (curState instanceof Throwable) {
                 throw AnalysisError.shouldNotReachHere("parsing had failed in another thread", (Throwable) curState);
+
+            } else if (curState == GRAPH_CACHE_CLEARED) {
+                return null;
 
             } else {
                 throw AnalysisError.shouldNotReachHere("Unknown state: " + curState);
             }
         }
+    }
+
+    /**
+     * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
+     * static analysis.
+     */
+    public StructuredGraph getAnalyzedGraph() {
+        return analyzedGraph;
+    }
+
+    public void setAnalyzedGraph(StructuredGraph analyzedGraph) {
+        this.analyzedGraph = analyzedGraph;
     }
 }

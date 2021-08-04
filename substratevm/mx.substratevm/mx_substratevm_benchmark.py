@@ -149,7 +149,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     def name(self):
         return 'renaissance-native-image'
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'renaissance'
 
     def renaissance_harness_lib_name(self):
@@ -174,26 +174,20 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     def renaissance_additional_lib(self, lib):
         return mx.library(lib).get_path(True)
 
-    def extra_agent_run_arg(self, benchmark, args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args)
-        if user_args:
-            return user_args + [benchmark]
-        else:
-            return ['-r', '1'] + [benchmark]
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        # remove -r X argument from image run args
+        return ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
 
-    def extra_profile_run_arg(self, benchmark, args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args)
-        if user_args:
-            return user_args + [benchmark]
-        else:
-            return ['-r', '1'] + [benchmark]
+    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        # remove -r X argument from image run args
+        return ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
 
-    def extra_agent_profile_run_arg(self, benchmark, args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args)
-        if user_args:
-            return user_args + [benchmark]
-        else:
-            return ['-r', '5'] + [benchmark]
+    def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        # remove -r X argument from image run args
+        return ['-r', '10'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
 
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
@@ -203,7 +197,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
             return []
 
     def extra_image_build_argument(self, benchmark, args):
-        default_args = _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _DACAPO_EXTRA_IMAGE_BUILD_ARGS else []
+        default_args = _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS else []
         return default_args + super(RenaissanceNativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
@@ -438,7 +432,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
     def daCapoSuiteTitle(self):
         return super(DaCapoNativeImageBenchmarkSuite, self).suite_title()
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'dacapo'
 
     def daCapoIterations(self):
@@ -447,28 +441,20 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
 
-    def extra_agent_run_arg(self, benchmark, args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args)
-        if user_args:
-            return [benchmark] + user_args
-        else:
-            return [benchmark] + ['-n', '1']
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
 
-    def extra_profile_run_arg(self, benchmark, args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args)
-        if user_args:
-            return [benchmark] + user_args
-        else:
-            # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
-            return [benchmark] + ['-n', '1']
+    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
 
-    def extra_agent_profile_run_arg(self, benchmark, args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args)
-        if user_args:
-            return [benchmark] + user_args
-        else:
-            # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
-            return [benchmark] + ['-n', '5']
+    def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return ['-n', '10'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
 
     def skip_agent_assertions(self, benchmark, args):
         default_args = _DACAPO_SKIP_AGENT_ASSERTIONS[benchmark] if benchmark in _DACAPO_SKIP_AGENT_ASSERTIONS else []
@@ -571,7 +557,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
             return lib.get_path(True)
         return None
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'scala-dacapo'
 
     def daCapoIterations(self):
@@ -580,14 +566,20 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
 
-    def extra_agent_run_arg(self, benchmark, args):
-        return [benchmark] + super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args)
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
 
-    def extra_profile_run_arg(self, benchmark, args):
-        return [benchmark] + super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args)
+    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
 
-    def extra_agent_profile_run_arg(self, benchmark, args):
-        return [benchmark] + super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args)
+    def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
+        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '10']
 
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
@@ -621,21 +613,37 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
                 cp += ':' +  super(ScalaDaCapoNativeImageBenchmarkSuite, self).additional_lib(lib)
         return cp
 
-
     def successPatterns(self):
         return super(ScalaDaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
             _successful_stage_pattern
         ]
 
-
     @staticmethod
     def substitution_path():
-        bench_suite = mx.suite('substratevm')
-        root_dir = mx.join(bench_suite.dir, 'mxbuild')
-        path = os.path.abspath(mx.join(root_dir, 'src', 'com.oracle.svm.bench', 'bin'))
+        path = mx.project('com.oracle.svm.bench').classpath_repr()
         if not mx.exists(path):
             mx.abort('Path to substitutions for scala dacapo not present: ' + path + '. Did you build all of substratevm?')
         return path
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoNativeImageBenchmarkSuite())
+
+
+class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+    """
+    Console applications suite for Native Image
+    """
+
+    def name(self):
+        return 'console-native-image'
+
+    def benchSuiteName(self, bmSuiteArgs=None):
+        return 'console'
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        args = super(ConsoleNativeImageBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
+        self.benchmark_name = benchmarks[0]
+        return args
+
+
+mx_benchmark.add_bm_suite(ConsoleNativeImageBenchmarkSuite())

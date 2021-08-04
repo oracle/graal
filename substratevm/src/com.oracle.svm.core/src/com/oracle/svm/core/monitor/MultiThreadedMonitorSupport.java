@@ -39,11 +39,9 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.svm.core.thread.JavaContinuations;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -59,12 +57,14 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
@@ -118,7 +118,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * Types that are used to implement the secondary storage for monitor slots cannot themselves
      * use the additionalMonitors map. That could result in recursive manipulation of the
      * additionalMonitors map which could lead to table corruptions and double insertion of a
-     * monitor for the same object. Therefore these types will alawys get a monitor slot.
+     * monitor for the same object. Therefore these types will always get a monitor slot.
      */
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final Set<Class<?>> FORCE_MONITOR_SLOT_TYPES;
@@ -164,6 +164,16 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * SplittableRandomAccessors.
              */
             monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors"));
+
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                /*
+                 * PhantomCleanable.remove() synchronizes on an instance of PhantomCleanable. When
+                 * the secondary storage monitors map is modified it can trigger a
+                 * slow-path-new-instance allocation which in turn can trigger a GC which processes
+                 * all the pending cleaners.
+                 */
+                monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
+            }
 
             FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
         } catch (ClassNotFoundException e) {
@@ -426,7 +436,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected ReentrantLock getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset) {
-        ReentrantLock existingMonitor = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
+        ReentrantLock existingMonitor = (ReentrantLock) BarrieredAccess.readObject(obj, monitorOffset);
         if (existingMonitor != null || !createIfNotExisting) {
             assert existingMonitor == null || isMonitorLock(existingMonitor);
             return existingMonitor;
@@ -437,7 +447,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             return newMonitor;
         }
         /* We lost the race, use the lock some other thread installed. */
-        return KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
+        return (ReentrantLock) BarrieredAccess.readObject(obj, monitorOffset);
     }
 
     protected ReentrantLock getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {

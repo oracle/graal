@@ -47,13 +47,12 @@ import java.util.function.Supplier;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
-class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     Instrument api;
     InstrumentInfo info;
@@ -73,12 +72,10 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     LocalLocation[] contextThreadLocalLocations;
 
     PolyglotInstrument(PolyglotEngineImpl engine, InstrumentCache cache) {
-        super(engine.impl);
         this.engine = engine;
         this.cache = cache;
     }
 
-    @Override
     public OptionDescriptors getOptions() {
         try {
             engine.checkState();
@@ -123,7 +120,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         return engine;
     }
 
-    void ensureInitialized() {
+    private void ensureInitialized() {
         if (!initialized) {
             synchronized (instrumentLock) {
                 if (!initialized) {
@@ -230,7 +227,6 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         }
     }
 
-    @Override
     public <T> T lookup(Class<T> serviceClass) {
         try {
             engine.checkState();
@@ -249,21 +245,18 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         }
     }
 
-    @Override
     public String getId() {
         return cache.getId();
     }
 
-    @Override
     public String getName() {
         return cache.getName();
     }
 
-    @Override
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
-            return engine.creatorApi.getVersion();
+            return engine.getVersion();
         } else {
             return version;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,14 @@ public final class SteppingInfo {
     private long stepOutKlassId = -1;
     private final boolean isPopFrames;
     private final boolean isForceEarlyReturn;
+    private final DebuggerCommand.Kind stepKind;
 
-    public SteppingInfo(int requestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn) {
+    public SteppingInfo(int requestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn, DebuggerCommand.Kind stepKind) {
         this.requestId = requestId;
         this.suspendPolicy = suspendPolicy;
         this.isPopFrames = isPopFrames;
         this.isForceEarlyReturn = isForceEarlyReturn;
+        this.stepKind = stepKind;
     }
 
     public int getRequestId() {
@@ -67,5 +69,9 @@ public final class SteppingInfo {
 
     public boolean isStepOutFrame(long methodId, long klassId) {
         return stepOutMethodId == methodId && stepOutKlassId == klassId;
+    }
+
+    public DebuggerCommand.Kind getStepKind() {
+        return stepKind;
     }
 }

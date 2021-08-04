@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,12 @@
  */
 package org.graalvm.compiler.replacements.jdk9.test;
 
-import jdk.vm.ci.code.TargetDescription;
-import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
-import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeReplacementsTest extends MethodSubstitutionTest {
-
-    private static final TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
 
     static class Container {
         public volatile boolean booleanField;
@@ -1094,5 +1089,30 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetPutCharUnaligned");
         test("unsafeGetPutIntUnaligned");
         test("unsafeGetPutLongUnaligned");
+    }
+
+    public static Object unsafeGetUncompressedObject(long address) {
+        return unsafe.getUncompressedObject(address);
+    }
+
+    @Test
+    public void testUnsafeGetUncompressionObject() {
+        testGraph("unsafeGetUncompressedObject");
+        // Allocate some memory and fill it with non-zero values.
+        final int size = 32;
+        final long address = unsafe.allocateMemory(size);
+        unsafe.setMemory(address, size, (byte) 0x23);
+
+        // The only thing we can do is check for null-ness.
+        // So, store a null somewhere.
+        unsafe.putAddress(address + 16, 0);
+
+        Object nullObj = unsafe.getUncompressedObject(address + 16);
+        if (nullObj != null) {
+            throw new InternalError("should be null");
+        }
+
+        test("unsafeGetUncompressedObject", address + 16);
+        unsafe.freeMemory(address);
     }
 }

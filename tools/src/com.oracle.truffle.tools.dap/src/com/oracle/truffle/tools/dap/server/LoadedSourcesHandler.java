@@ -30,6 +30,7 @@ import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.dap.types.DebugProtocolClient;
 import com.oracle.truffle.tools.dap.types.LoadedSourceEvent;
+
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -145,12 +146,20 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
         return src;
     }
 
-    private static String getPath(Source source) {
+    private String getPath(Source source) {
         String path = source.getPath();
         if (path == null) {
             URI uri = source.getURI();
             if (uri.isAbsolute()) {
                 path = uri.getPath();
+            }
+        } else {
+            if (!source.getURI().isAbsolute()) {
+                try {
+                    path = context.getEnv().getTruffleFile(path).getAbsoluteFile().toUri().toString();
+                } catch (SecurityException ex) {
+                    // Can not resolve relative path
+                }
             }
         }
         return path;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -55,23 +56,30 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -179,6 +187,8 @@ public abstract class Accessor {
         public abstract ExecutionSignature prepareForAOT(RootNode rootNode);
 
         public abstract void setPolyglotEngine(RootNode rootNode, Object engine);
+
+        public abstract boolean countsTowardsStackTraceLimit(RootNode rootNode);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -219,8 +229,6 @@ public abstract class Accessor {
 
         public abstract void checkInteropType(Object result);
 
-        public abstract boolean isInteropType(Object result);
-
         public abstract boolean isExecutableObject(Object value);
 
         public abstract Object createDefaultNodeObject(Node node);
@@ -233,6 +241,43 @@ public abstract class Accessor {
 
         public abstract Object createDefaultIterator(Object receiver);
 
+    }
+
+    public abstract static class HostSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.host.HostAccessor$HostImpl";
+
+        protected HostSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract TruffleLanguage<?> createDefaultHostLanguage(AbstractPolyglotImpl polyglot, AbstractHostAccess access);
+
+        public abstract boolean isHostBoundaryValue(Object value);
+
+        public abstract Object convertPrimitiveLossLess(Object value, Class<?> requestedType);
+
+        public abstract Object convertPrimitiveLossy(Object value, Class<?> requestedType);
+
+        public abstract boolean isDisconnectedHostProxy(Object value);
+
+        public abstract boolean isDisconnectedHostObject(Object obj);
+
+        public abstract Object unboxDisconnectedHostObject(Object hostValue);
+
+        public abstract Object unboxDisconnectedHostProxy(Object hostValue);
+
+        public abstract Object toDisconnectedHostObject(Object hostValue);
+
+        public abstract Object toDisconnectedHostProxy(Proxy hostValue);
+
+        public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence);
+
+        public abstract Object getHostNull();
+
+        public abstract boolean isPrimitiveTarget(Class<?> c);
+
+        public abstract boolean isGuestToHostRootNode(RootNode root);
     }
 
     public abstract static class EngineSupport extends Support {
@@ -321,11 +366,13 @@ public abstract class Accessor {
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
-        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config);
+        public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, Map<String, Object> config, boolean initializeCreatorContext);
 
         public abstract Object enterInternalContext(Node node, Object polyglotContext);
 
         public abstract void leaveInternalContext(Node node, Object polyglotContext, Object prev);
+
+        public abstract Object evalInternalContext(Node node, Object polyglotContext, Source source, boolean allowInternal);
 
         public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
 
@@ -361,9 +408,9 @@ public abstract class Accessor {
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
-        public abstract boolean isHostException(Throwable exception);
+        public abstract boolean isHostException(Object polyglotLanguageContext, Throwable exception);
 
-        public abstract Throwable asHostException(Throwable exception);
+        public abstract Throwable asHostException(Object polyglotLanguageContext, Throwable exception);
 
         public abstract Object getCurrentHostContext();
 
@@ -411,17 +458,15 @@ public abstract class Accessor {
 
         public abstract Set<String> getValidMimeTypes(Object engineObject, String language);
 
-        public abstract Object asHostObject(Object value);
+        public abstract Object asHostObject(Object languageContext, Object value);
 
-        public abstract boolean isHostObject(Object value);
+        public abstract boolean isHostObject(Object languageContext, Object value);
 
-        public abstract boolean isHostFunction(Object value);
+        public abstract boolean isHostFunction(Object languageContext, Object value);
 
-        public abstract boolean isHostSymbol(Object guestObject);
+        public abstract boolean isHostSymbol(Object languageContext, Object guestObject);
 
         public abstract <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
-
-        public abstract Object convertPrimitive(Object value, Class<?> requestedType);
 
         public abstract <T extends TruffleLanguage<?>> LanguageReference<T> lookupLanguageReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
 
@@ -472,6 +517,8 @@ public abstract class Accessor {
 
         public abstract void onSourceCreated(Source source);
 
+        public abstract void registerOnDispose(Object engineObject, Closeable closeable);
+
         public abstract String getReinitializedPath(TruffleFile truffleFile);
 
         public abstract URI getReinitializedURI(TruffleFile truffleFile);
@@ -498,7 +545,7 @@ public abstract class Accessor {
 
         public abstract Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext);
 
-        public abstract boolean isHostToGuestRootNode(RootNode rootNode);
+        public abstract boolean skipEngineValidation(RootNode rootNode);
 
         public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
 
@@ -526,7 +573,12 @@ public abstract class Accessor {
 
         public abstract boolean isContextCancelling(Object polyglotContext);
 
-        public abstract <T, G> Iterator<T> mergeHostGuestFrames(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
+        public abstract Future<Void> pause(Object polyglotContext);
+
+        public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
+
+        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object instrumentEnv, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor);
 
         public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides);
@@ -554,6 +606,19 @@ public abstract class Accessor {
         public abstract Future<Void> submitThreadLocal(Object polyglotLanguageContext, Object sourcePolyglotObject, Thread[] threads, ThreadLocalAction action, boolean needsEnter);
 
         public abstract Object getContext(Object polyglotLanguageContext);
+
+        public abstract ClassLoader getStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass);
+
+        public abstract void setStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl);
+
+        public abstract ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> getGeneratorCache(Object polyglotLanguageInstance);
+
+        public abstract boolean areStaticObjectSafetyChecksRelaxed(Object polyglotLanguageInstance);
+
+        public abstract String getStaticObjectStorageStrategy(Object polyglotLanguageInstance);
+
+        public abstract Object getHostContext(Object valueContext);
+
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -806,6 +871,8 @@ public abstract class Accessor {
 
         public abstract Collection<CallTarget> getLoadedCallTargets(Object instrumentationHandler);
 
+        public abstract Object getPolyglotInstrument(Object instrumentEnv);
+
     }
 
     public abstract static class FrameSupport extends Support {
@@ -873,6 +940,16 @@ public abstract class Accessor {
         }
 
         public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
+    }
+
+    public abstract static class SomSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.staticobject.SomAccessor";
+
+        protected SomSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
     }
 
     public abstract static class RuntimeSupport {
@@ -980,6 +1057,10 @@ public abstract class Accessor {
             TruffleJDKServices.addUses(service);
         }
 
+        public void addReads(Class<?> client) {
+            TruffleJDKServices.addReads(client);
+        }
+
         public Object getUnnamedModule(ClassLoader classLoader) {
             return TruffleJDKServices.getUnnamedModule(classLoader);
         }
@@ -992,6 +1073,25 @@ public abstract class Accessor {
             return TruffleJDKServices.isNonTruffleClass(clazz);
         }
 
+        public void fullFence() {
+            TruffleJDKServices.fullFence();
+        }
+
+        public void acquireFence() {
+            TruffleJDKServices.acquireFence();
+        }
+
+        public void releaseFence() {
+            TruffleJDKServices.releaseFence();
+        }
+
+        public void loadLoadFence() {
+            TruffleJDKServices.loadLoadFence();
+        }
+
+        public void storeStoreFence() {
+            TruffleJDKServices.storeStoreFence();
+        }
     }
 
 // A separate class to break the cycle such that Accessor can fully initialize
@@ -1007,6 +1107,7 @@ public abstract class Accessor {
         private static final Accessor.IOSupport IO;
         private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
+        private static final Accessor.HostSupport HOST;
         private static final Accessor.RuntimeSupport RUNTIME;
 
         static {
@@ -1021,6 +1122,7 @@ public abstract class Accessor {
             IO = loadSupport(IOSupport.IMPL_CLASS_NAME);
             FRAMES = loadSupport(FrameSupport.IMPL_CLASS_NAME);
             ENGINE = loadSupport(EngineSupport.IMPL_CLASS_NAME);
+            HOST = loadSupport(HostSupport.IMPL_CLASS_NAME);
             RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
         }
 
@@ -1040,35 +1142,35 @@ public abstract class Accessor {
     private static final Accessor.JDKSupport JDKSERVICES = new JDKSupport();
 
     protected Accessor() {
-        switch (this.getClass().getName()) {
-            case "com.oracle.truffle.api.LanguageAccessor":
-            case "com.oracle.truffle.api.TruffleAccessor":
-            case "com.oracle.truffle.api.nodes.NodeAccessor":
-            case "com.oracle.truffle.api.instrumentation.InstrumentAccessor":
-            case "com.oracle.truffle.api.source.SourceAccessor":
-            case "com.oracle.truffle.api.interop.InteropAccessor":
-            case "com.oracle.truffle.api.exception.ExceptionAccessor":
-            case "com.oracle.truffle.api.io.IOAccessor":
-            case "com.oracle.truffle.api.frame.FrameAccessor":
-            case "com.oracle.truffle.polyglot.EngineAccessor":
-            case "com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor":// OK, classes
-                                                                            // initializing
-                                                                            // accessors
-                break;
-            case "com.oracle.truffle.api.debug.Debugger$AccessorDebug":
-            case "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor":
-            case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
-            case "com.oracle.truffle.api.test.polyglot.TestAPIAccessor":
-            case "com.oracle.truffle.api.impl.TVMCIAccessor":
-            case "com.oracle.truffle.api.impl.DefaultRuntimeAccessor":
-            case "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor":
-            case "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor":
-            case "com.oracle.truffle.api.dsl.DSLAccessor":
-            case "com.oracle.truffle.api.library.LibraryAccessor":// OK, classes allowed to use
-                                                                  // accessors
-                break;
-            default:
-                throw new IllegalStateException(this.getClass().getName());
+        String thisClassName = this.getClass().getName();
+        if ("com.oracle.truffle.api.LanguageAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.TruffleAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.nodes.NodeAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.instrumentation.InstrumentAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.source.SourceAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.interop.InteropAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.exception.ExceptionAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.io.IOAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.frame.FrameAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.host.HostAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.polyglot.EngineAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor".equals(thisClassName)) {
+            // OK, classes initializing accessors
+        } else if ("com.oracle.truffle.api.debug.Debugger$AccessorDebug".equals(thisClassName) ||
+                        "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.test.polyglot.TestAPIAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
+                        "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||
+                        "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName)) {
+            // OK, classes allowed to use accessors
+        } else {
+            throw new IllegalStateException(thisClassName);
         }
     }
 
@@ -1108,6 +1210,10 @@ public abstract class Accessor {
         return Constants.RUNTIME;
     }
 
+    public final HostSupport hostSupport() {
+        return Constants.HOST;
+    }
+
     public final IOSupport ioSupport() {
         return Constants.IO;
     }
@@ -1131,7 +1237,7 @@ public abstract class Accessor {
     /**
      * Returns a {@link TVMCI} obtained from {@link TruffleRuntime}.
      *
-     * NOTE: this method is called reflectively by {@code TruffleFeature} to initialize
+     * NOTE: this method is called reflectively by {@code TruffleBaseFeature} to initialize
      * {@code tvmci} instance.
      */
     private static TVMCI getTVMCI() {

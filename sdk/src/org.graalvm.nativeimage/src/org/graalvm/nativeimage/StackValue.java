@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,12 +100,14 @@ public final class StackValue {
 
     /**
      * Reserves a block of memory in the stack frame of the method that calls this intrinsic. The
-     * returned pointer is aligned on a word boundary. If the requested size is 0, the method
-     * returns {@code null}. The size must be a compile time constant. If the call to this method is
-     * in a loop, always the same pointer is returned. In other words: this method does not allocate
-     * memory; it returns the address of a fixed-size block of memory that is reserved in the stack
-     * frame when the method starts execution. The memory is not initialized. Two distinct calls of
-     * this method return different pointers.
+     * returned pointer is aligned to the same alignment required by the operating system for stack
+     * frames. If the requested size is 0, the method returns {@code null}. The size must be a
+     * compile time constant.
+     * 
+     * If the call to this method is in a loop, always the same pointer is returned. In other words:
+     * this method does not allocate memory; it returns the address of a fixed-size block of memory
+     * that is reserved in the stack frame when the method starts execution. The memory is not
+     * initialized. Two distinct calls of this method return different pointers.
      *
      * @since 19.0
      */

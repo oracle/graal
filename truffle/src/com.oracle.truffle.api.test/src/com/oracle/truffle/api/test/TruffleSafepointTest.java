@@ -50,6 +50,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -107,6 +108,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
@@ -119,7 +121,7 @@ public class TruffleSafepointTest {
     private static ExecutorService service;
     private static final AtomicBoolean CANCELLED = new AtomicBoolean();
 
-    private static final int TIMEOUT_SECONDS = 60;
+    private static final int TIMEOUT_SECONDS = 300;
     private static final boolean VERBOSE = false;
     /*
      * Rerun all thread configurations asynchronously. This flag is intended to be used for
@@ -296,9 +298,6 @@ public class TruffleSafepointTest {
 
     @Test
     public void testSynchronousRecursiveError() throws InterruptedException, AssertionError, ExecutionException {
-        // GR-29896 does not yet work on SVM.
-        Assume.assumeFalse(TruffleOptions.AOT);
-
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
@@ -464,9 +463,6 @@ public class TruffleSafepointTest {
 
     @Test
     public void testHasPendingSideEffectingActions() {
-        // GR-29896 does not yet work on SVM.
-        Assume.assumeFalse(TruffleOptions.AOT);
-
         AtomicReference<Thread> thread = new AtomicReference<>();
         CountDownLatch waitSideEffectsDisabled = new CountDownLatch(1);
         CountDownLatch waitSubmitted = new CountDownLatch(1);
@@ -569,9 +565,6 @@ public class TruffleSafepointTest {
 
     @Test
     public void testException() {
-        // GR-29896 does not yet work on SVM.
-        Assume.assumeFalse(TruffleOptions.AOT);
-
         forEachConfig((threads, events) -> {
 
             AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(null);
@@ -1023,9 +1016,15 @@ public class TruffleSafepointTest {
     @Test
     public void testContextCancellation() {
         forEachConfig((threads, events) -> {
+            List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
                 return false;
+            }, new Consumer<Throwable>() {
+                @Override
+                public void accept(Throwable throwable) {
+                    exceptions.add(throwable);
+                }
             })) {
                 AtomicBoolean closed = new AtomicBoolean();
                 List<Future<?>> threadLocals = new ArrayList<>();
@@ -1055,6 +1054,11 @@ public class TruffleSafepointTest {
                 // using instrumented nodes here.
                 setup.stopped.set(true);
                 waitOrFail(closing);
+            }
+            for (Throwable exception : exceptions) {
+                if (!(exception instanceof ThreadDeath)) {
+                    throw new AssertionError(exception);
+                }
             }
         });
     }
@@ -1134,9 +1138,6 @@ public class TruffleSafepointTest {
 
     @Test
     public void testNonSideEffectInvalidErrorThrown() throws InterruptedException {
-        // GR-29896 does not yet work on SVM.
-        Assume.assumeFalse(TruffleOptions.AOT);
-
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
@@ -1330,6 +1331,122 @@ public class TruffleSafepointTest {
                 assertActionsAnyOrder(threads, events, runnable);
             }
         });
+    }
+
+    @Test
+    public void testNoSafepointAfterThreadDispose() {
+        final ThreadLocal<Boolean> tl = new ThreadLocal<>();
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+
+            @Override
+            @TruffleBoundary
+            protected void initializeThread(LanguageContext context, Thread thread) {
+                tl.set(Boolean.TRUE);
+            }
+
+            @Override
+            @TruffleBoundary
+            protected void disposeThread(LanguageContext context, Thread thread) {
+                tl.set(Boolean.FALSE);
+            }
+
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+
+        });
+
+        forEachConfig((threads, events) -> {
+            CountDownLatch awaitThreadStart = new CountDownLatch(1);
+            AtomicBoolean threadsStopped = new AtomicBoolean();
+            try (TestSetup setup = setupSafepointLoop(threads, new NodeCallable() {
+
+                @TruffleBoundary
+                public boolean call(@SuppressWarnings("hiding") TestSetup setup, TestRootNode node) {
+                    try {
+                        List<Throwable> errors = Collections.synchronizedList(new ArrayList<>());
+                        List<Thread> polyglotThreads = new ArrayList<>();
+                        try {
+                            for (int i = 0; i < threads; i++) {
+                                Thread t = node.setup.env.createThread(() -> {
+                                    do {
+                                        TruffleContext context = node.setup.env.getContext();
+                                        TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+                                        boolean prevSideEffects = safepoint.setAllowSideEffects(false);
+                                        try {
+                                            context.leaveAndEnter(null, () -> {
+                                                // nothing to do. the important bit is that enter
+                                                // sets
+                                                // the
+                                                // cached thread local
+                                                return null;
+                                            });
+                                        } finally {
+                                            safepoint.setAllowSideEffects(prevSideEffects);
+                                        }
+                                    } while (!threadsStopped.get());
+                                });
+                                t.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+                                    public void uncaughtException(@SuppressWarnings("hiding") Thread t, Throwable e) {
+                                        threadsStopped.set(true);
+                                        e.printStackTrace();
+                                        errors.add(e);
+                                    }
+                                });
+                                t.start();
+                                polyglotThreads.add(t);
+                            }
+                        } finally {
+                            awaitThreadStart.countDown();
+                        }
+
+                        for (Thread thread : polyglotThreads) {
+                            thread.join();
+                        }
+                        for (Throwable t : errors) {
+                            throw new AssertionError("thread threw error ", t);
+                        }
+
+                        return true;
+                    } catch (InterruptedException e1) {
+                        throw new AssertionError(e1);
+                    }
+                }
+
+            })) {
+
+                try {
+                    awaitThreadStart.await();
+
+                    // important to let leaving and submitting race against each other
+                    threadsStopped.set(true);
+
+                    List<Future<?>> futures = new ArrayList<>();
+                    for (int i = 0; i < events; i++) {
+                        futures.add(setup.env.submitThreadLocal(null, new ThreadLocalAction(true, false) {
+                            @Override
+                            protected void perform(Access access) {
+                                assertEquals(Boolean.TRUE, tl.get());
+                            }
+                        }));
+                    }
+                    for (Future<?> future : futures) {
+                        try {
+                            future.get();
+                        } catch (ExecutionException e) {
+                            throw new AssertionError(e);
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+                setup.stopAndAwait();
+            }
+        });
+
+        ProxyLanguage.setDelegate(new ProxyLanguage());
     }
 
     @FunctionalInterface
@@ -1558,14 +1675,11 @@ public class TruffleSafepointTest {
         }
     }
 
-    static boolean isGraalRuntime() {
-        return Truffle.getRuntime().getName().contains("Graal");
-    }
-
     protected Context createTestContext() {
         Context.Builder b = Context.newBuilder();
         b.allowExperimentalOptions(true);
-        if (isGraalRuntime()) {
+        b.allowCreateThread(true);
+        if (AbstractPolyglotTest.isGraalRuntime()) {
             b.option("engine.CompileImmediately", "true");
             b.option("engine.BackgroundCompilation", "false");
         }

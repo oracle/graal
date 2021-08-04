@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
      * @param flags
      * @param fildes
      * @param off
-     * @see #execute(Object, Object, Object, Object, Object, Object)
+     * @see #executeGeneric(Object, Object, Object, Object, Object, Object)
      */
     @Specialization
     protected long doOp(LLVMNativePointer addr, long len, long prot, long flags, long fildes, long off,
@@ -65,7 +65,8 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
     }
 
     @Specialization
-    protected long doOp(long addr, long len, long prot, long flags, long fildes, long off) {
-        return execute(LLVMNativePointer.create(addr), len, prot, flags, fildes, off);
+    protected long doOp(long addr, long len, long prot, long flags, long fildes, long off,
+                    @CachedLanguage LLVMLanguage language) {
+        return doOp(LLVMNativePointer.create(addr), len, prot, flags, fildes, off, language);
     }
 }

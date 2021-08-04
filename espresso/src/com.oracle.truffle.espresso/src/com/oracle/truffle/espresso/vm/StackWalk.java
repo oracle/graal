@@ -41,10 +41,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
-public class StackWalk {
+public final class StackWalk {
     // -1 and 0 are reserved values.
     private final AtomicLong walkerIds = new AtomicLong(1);
 
@@ -111,9 +111,9 @@ public class StackWalk {
      *         {@code java.lang.StackStreamFactory.AbstractStackWalker#doStackWalk(long, int, int, int,
      *         int)} .
      */
-    public StaticObject fetchFirstBatch(@Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
+    public StaticObject fetchFirstBatch(@JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
                     int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
+                    @JavaType(Object[].class) StaticObject frames,
                     Meta meta) {
         assert synchronizedConstants(meta);
         FrameWalker fw = new FrameWalker(meta, mode);
@@ -136,10 +136,10 @@ public class StackWalk {
      * @return The position in the buffer at the end of fetching.
      */
     public int fetchNextBatch(
-                    @SuppressWarnings("unused") @Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
+                    @SuppressWarnings("unused") @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
                     long mode, long anchor,
                     int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
+                    @JavaType(Object[].class) StaticObject frames,
                     Meta meta) {
         assert synchronizedConstants(meta);
         FrameWalker fw = getAnchored(anchor);
@@ -345,7 +345,7 @@ public class StackWalk {
                 fillFrame(frameInstance, m, index);
             } else {
                 // Only class info is needed.
-                frames.putObject(m.getDeclaringKlass().mirror(), index, meta);
+                meta.getInterpreterToVM().setArrayObject(m.getDeclaringKlass().mirror(), index, frames);
             }
         }
 

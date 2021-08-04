@@ -291,17 +291,15 @@ insight.on("source", -> (env) {
 })
 puts("Ruby: Hooks are ready!")
 
-config = Truffle::Interop.hash_keys_as_members({
+insight.on("enter", -> (ctx, frame) {
+    puts("minusOne #{frame.n}")
+}, {
   roots: true,
   rootNameFilter: "minusOne",
   sourceFilter: -> (src) {
     return src.name == "agent-fib.js"
   }
 })
-
-insight.on("enter", -> (ctx, frame) {
-    puts("minusOne #{frame.n}")
-}, config)
 ```
 
 The above is an example of a script that prints out value of variable `n`

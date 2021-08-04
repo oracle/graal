@@ -35,7 +35,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -83,7 +83,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         // method might have been redefined or removed by redefinition
         if (resolutionSeed.isRemovedByRedefition()) {
             Klass receiverKlass = hasReceiver ? ((StaticObject) basicArgs[0]).getKlass() : resolutionSeed.getDeclaringKlass();
-            resolutionSeed = ClassRedefinition.handleRemovedMethod(resolutionSeed, receiverKlass);
+            resolutionSeed = ClassRedefinition.handleRemovedMethod(resolutionSeed, receiverKlass, hasReceiver ? ((StaticObject) basicArgs[0]) : null);
         }
 
         Method target = linker.linkTo(resolutionSeed, args);

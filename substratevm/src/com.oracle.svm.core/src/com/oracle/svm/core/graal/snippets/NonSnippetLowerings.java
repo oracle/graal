@@ -30,8 +30,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -65,6 +67,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -75,7 +78,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -171,13 +174,18 @@ public abstract class NonSnippetLowerings {
             }
             outArguments.addAll(exceptionArguments);
         }
-        assert descriptor != null && descriptor.getArgumentTypes().length == outArguments.size();
+        VMError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind " + exceptionKind);
+        assert descriptor.getArgumentTypes().length == outArguments.size();
         return descriptor;
     }
 
     private class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
         @Override
         public void lower(BytecodeExceptionNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
+                return;
+            }
+
             StructuredGraph graph = node.graph();
             List<ValueNode> arguments = new ArrayList<>();
             ForeignCallDescriptor descriptor = lookupBytecodeException(node.getExceptionKind(), node.getArguments(), graph, tool,
@@ -192,6 +200,10 @@ public abstract class NonSnippetLowerings {
     private class ThrowBytecodeExceptionLowering implements NodeLoweringProvider<ThrowBytecodeExceptionNode> {
         @Override
         public void lower(ThrowBytecodeExceptionNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
+                return;
+            }
+
             StructuredGraph graph = node.graph();
             List<ValueNode> arguments = new ArrayList<>();
             ForeignCallDescriptor descriptor = lookupBytecodeException(node.getExceptionKind(), node.getArguments(), graph, tool,
@@ -201,7 +213,7 @@ public abstract class NonSnippetLowerings {
             foreignCallNode.setStateDuring(node.stateBefore());
             node.replaceAndDelete(foreignCallNode);
 
-            DeadEndNode deadEnd = graph.add(new DeadEndNode());
+            LoweredDeadEndNode deadEnd = graph.add(new LoweredDeadEndNode());
             foreignCallNode.setNext(deadEnd);
         }
     }
@@ -254,6 +266,17 @@ public abstract class NonSnippetLowerings {
                     if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]),
                                         callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
+                    } else if (!targetMethod.hasCodeOffsetInImage()) {
+                        /*
+                         * The target method is not included in the image. This means that it was
+                         * also not needed for the deoptimization entry point. Thus, we are certain
+                         * that this branch will fold away. If not, we will fail later on.
+                         *
+                         * Also lower the MethodCallTarget below to avoid recursive lowering error
+                         * messages. The invoke and call target are actually dead and will be
+                         * removed by a subsequent dead code elimination pass.
+                         */
+                        loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
                     } else {
                         /*
                          * In runtime-compiled code, we emit indirect calls via the respective heap
@@ -278,18 +301,12 @@ public abstract class NonSnippetLowerings {
                      * We are calling an abstract method with no implementation, i.e., the
                      * closed-world analysis showed that there is no concrete receiver ever
                      * allocated. This must be dead code.
-                     */
-                    FixedGuardNode unreachedGuard = graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true));
-                    graph.addBeforeFixed(node, unreachedGuard);
-                    // Recursive lowering
-                    unreachedGuard.lower(tool);
-
-                    /*
+                     *
                      * Also lower the MethodCallTarget below to avoid recursive lowering error
                      * messages. The invoke and call target are actually dead and will be removed by
                      * a subsequent dead code elimination pass.
                      */
-                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
+                    loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
 
                 } else {
                     int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
@@ -313,6 +330,22 @@ public abstract class NonSnippetLowerings {
                     hub.lower(tool);
                 }
             }
+        }
+
+        private CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, JavaType[] signature, SharedMethod method,
+                        CallingConvention.Type callType, InvokeKind invokeKind) {
+            StructuredGraph graph = node.graph();
+            FixedGuardNode unreachedGuard = graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true));
+            graph.addBeforeFixed(node, unreachedGuard);
+            // Recursive lowering
+            unreachedGuard.lower(tool);
+
+            /*
+             * Also lower the MethodCallTarget below to avoid recursive lowering error messages. The
+             * invoke and call target are actually dead and will be removed by a subsequent dead
+             * code elimination pass.
+             */
+            return graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), returnStamp, signature, method, callType, invokeKind));
         }
     }
 

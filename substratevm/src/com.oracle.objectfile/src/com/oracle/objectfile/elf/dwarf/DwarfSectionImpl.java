@@ -39,6 +39,7 @@ import com.oracle.objectfile.elf.ELFObjectFile;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -257,19 +258,24 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
-    protected int putAsciiStringBytes(String s, byte[] buffer, int pos) {
-        return putAsciiStringBytes(s, 0, buffer, pos);
+    protected static int countUTF8Bytes(String s) {
+        return countUTF8Bytes(s, 0);
     }
 
-    protected int putAsciiStringBytes(String s, int startChar, byte[] buffer, int p) {
+    protected static int countUTF8Bytes(String s, int startChar) {
+        byte[] bytes = s.substring(startChar).getBytes(StandardCharsets.UTF_8);
+        return bytes.length;
+    }
+
+    protected int putUTF8StringBytes(String s, byte[] buffer, int pos) {
+        return putUTF8StringBytes(s, 0, buffer, pos);
+    }
+
+    protected int putUTF8StringBytes(String s, int startChar, byte[] buffer, int p) {
         int pos = p;
-        for (int l = startChar; l < s.length(); l++) {
-            char c = s.charAt(l);
-            if (c > 127) {
-                throw new RuntimeException("oops : expected ASCII string! " + s);
-            }
-            buffer[pos++] = (byte) c;
-        }
+        byte[] bytes = s.substring(startChar).getBytes(StandardCharsets.UTF_8);
+        System.arraycopy(bytes, 0, buffer, pos, bytes.length);
+        pos += bytes.length;
         buffer[pos++] = '\0';
         return pos;
     }

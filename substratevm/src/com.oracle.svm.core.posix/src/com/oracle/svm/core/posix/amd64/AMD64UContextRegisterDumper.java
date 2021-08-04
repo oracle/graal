@@ -61,49 +61,49 @@ class AMD64UContextRegisterDumper implements UContextRegisterDumper {
     @Override
     public void dumpRegisters(Log log, ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_gregs();
-        dumpReg(log, "RAX ", gregs.read(GregEnum.REG_RAX.getCValue()));
-        dumpReg(log, "RBX ", gregs.read(GregEnum.REG_RBX.getCValue()));
-        dumpReg(log, "RCX ", gregs.read(GregEnum.REG_RCX.getCValue()));
-        dumpReg(log, "RDX ", gregs.read(GregEnum.REG_RDX.getCValue()));
-        dumpReg(log, "RBP ", gregs.read(GregEnum.REG_RBP.getCValue()));
-        dumpReg(log, "RSI ", gregs.read(GregEnum.REG_RSI.getCValue()));
-        dumpReg(log, "RDI ", gregs.read(GregEnum.REG_RDI.getCValue()));
-        dumpReg(log, "RSP ", gregs.read(GregEnum.REG_RSP.getCValue()));
-        dumpReg(log, "R8  ", gregs.read(GregEnum.REG_R8.getCValue()));
-        dumpReg(log, "R9  ", gregs.read(GregEnum.REG_R9.getCValue()));
-        dumpReg(log, "R10 ", gregs.read(GregEnum.REG_R10.getCValue()));
-        dumpReg(log, "R11 ", gregs.read(GregEnum.REG_R11.getCValue()));
-        dumpReg(log, "R12 ", gregs.read(GregEnum.REG_R12.getCValue()));
-        dumpReg(log, "R13 ", gregs.read(GregEnum.REG_R13.getCValue()));
-        dumpReg(log, "R14 ", gregs.read(GregEnum.REG_R14.getCValue()));
-        dumpReg(log, "R15 ", gregs.read(GregEnum.REG_R15.getCValue()));
-        dumpReg(log, "EFL ", gregs.read(GregEnum.REG_EFL.getCValue()));
-        dumpReg(log, "RIP ", gregs.read(GregEnum.REG_RIP.getCValue()));
+        dumpReg(log, "RAX ", gregs.read(GregEnum.REG_RAX()));
+        dumpReg(log, "RBX ", gregs.read(GregEnum.REG_RBX()));
+        dumpReg(log, "RCX ", gregs.read(GregEnum.REG_RCX()));
+        dumpReg(log, "RDX ", gregs.read(GregEnum.REG_RDX()));
+        dumpReg(log, "RBP ", gregs.read(GregEnum.REG_RBP()));
+        dumpReg(log, "RSI ", gregs.read(GregEnum.REG_RSI()));
+        dumpReg(log, "RDI ", gregs.read(GregEnum.REG_RDI()));
+        dumpReg(log, "RSP ", gregs.read(GregEnum.REG_RSP()));
+        dumpReg(log, "R8  ", gregs.read(GregEnum.REG_R8()));
+        dumpReg(log, "R9  ", gregs.read(GregEnum.REG_R9()));
+        dumpReg(log, "R10 ", gregs.read(GregEnum.REG_R10()));
+        dumpReg(log, "R11 ", gregs.read(GregEnum.REG_R11()));
+        dumpReg(log, "R12 ", gregs.read(GregEnum.REG_R12()));
+        dumpReg(log, "R13 ", gregs.read(GregEnum.REG_R13()));
+        dumpReg(log, "R14 ", gregs.read(GregEnum.REG_R14()));
+        dumpReg(log, "R15 ", gregs.read(GregEnum.REG_R15()));
+        dumpReg(log, "EFL ", gregs.read(GregEnum.REG_EFL()));
+        dumpReg(log, "RIP ", gregs.read(GregEnum.REG_RIP()));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true, calleeMustBe = false)
     public PointerBase getHeapBase(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_gregs();
-        return WordFactory.pointer(gregs.read(GregEnum.REG_R14.getCValue()));
+        return WordFactory.pointer(gregs.read(GregEnum.REG_R14()));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true, calleeMustBe = false)
     public PointerBase getThreadPointer(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_gregs();
-        return WordFactory.pointer(gregs.read(GregEnum.REG_R15.getCValue()));
+        return WordFactory.pointer(gregs.read(GregEnum.REG_R15()));
     }
 
     @Override
     public PointerBase getSP(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_gregs();
-        return WordFactory.pointer(gregs.read(GregEnum.REG_RSP.getCValue()));
+        return WordFactory.pointer(gregs.read(GregEnum.REG_RSP()));
     }
 
     @Override
     public PointerBase getIP(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_gregs();
-        return WordFactory.pointer(gregs.read(GregEnum.REG_RIP.getCValue()));
+        return WordFactory.pointer(gregs.read(GregEnum.REG_RIP()));
     }
 }

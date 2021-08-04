@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class TypeDescriptorTest {
@@ -76,7 +77,21 @@ public class TypeDescriptorTest {
                     TypeDescriptor.ITERATOR,
                     TypeDescriptor.ITERABLE,
                     TypeDescriptor.HASH,
+                    TypeDescriptor.DATE,
+                    TypeDescriptor.TIME,
+                    TypeDescriptor.TIME_ZONE,
+                    TypeDescriptor.DURATION,
+                    TypeDescriptor.META_OBJECT,
+                    TypeDescriptor.EXCEPTION
     };
+
+    @BeforeClass
+    public static void setUpClass() {
+        TypeDescriptor noType = TypeDescriptor.intersection();
+        TypeDescriptor predefinedAndNoType = TypeDescriptor.union(TypeDescriptor.union(PREDEFINED), noType);
+        TypeDescriptor any = TypeDescriptor.union(TypeDescriptor.ANY, TypeDescriptor.INSTANTIABLE, TypeDescriptor.EXECUTABLE);
+        Assert.assertEquals("Seems you added a new TypeDescriptor type but didn't update the TypeDescriptorTest#PREDEFINED field.", any, predefinedAndNoType);
+    }
 
     @Test
     public void testCreate() {
@@ -393,6 +408,95 @@ public class TypeDescriptorTest {
         TypeDescriptor hashBoolToString = TypeDescriptor.hash(TypeDescriptor.BOOLEAN, TypeDescriptor.STRING);
         union = TypeDescriptor.union(hashStringToNumber, hashBoolToString);
         Assert.assertFalse(union.toString(), union.isUnion());
+    }
+
+    @Test
+    public void testSubtract() {
+        TypeDescriptor noType = TypeDescriptor.intersection();
+        for (TypeDescriptor a : PREDEFINED) {
+            for (TypeDescriptor b : PREDEFINED) {
+                if (a == TypeDescriptor.ARRAY && b == TypeDescriptor.ITERABLE) {
+                    continue;
+                }
+                TypeDescriptor expected = a.equals(b) ? noType : a;
+                Assert.assertEquals(expected, a.subtract(b));
+            }
+        }
+
+        // Unions
+        TypeDescriptor numOrStrOrObj = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        TypeDescriptor strOrObj = TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        Assert.assertEquals(strOrObj, numOrStrOrObj.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(TypeDescriptor.OBJECT, numOrStrOrObj.subtract(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
+        Assert.assertEquals(noType, numOrStrOrObj.subtract(numOrStrOrObj));
+        TypeDescriptor numOrBool = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN);
+        Assert.assertEquals(strOrObj, strOrObj.subtract(numOrBool));
+        TypeDescriptor iterNum = TypeDescriptor.iterator(TypeDescriptor.NUMBER);
+        TypeDescriptor numOrIterNum = TypeDescriptor.union(TypeDescriptor.NUMBER, iterNum);
+        Assert.assertEquals(TypeDescriptor.NUMBER, numOrIterNum.subtract(iterNum));
+        Assert.assertEquals(iterNum, numOrIterNum.subtract(TypeDescriptor.NUMBER));
+        TypeDescriptor hashNumStr = TypeDescriptor.hash(TypeDescriptor.NUMBER, TypeDescriptor.STRING);
+        TypeDescriptor numOrHashNumStr = TypeDescriptor.union(TypeDescriptor.NUMBER, hashNumStr);
+        Assert.assertEquals(TypeDescriptor.NUMBER, numOrHashNumStr.subtract(hashNumStr));
+        Assert.assertEquals(hashNumStr, numOrHashNumStr.subtract(TypeDescriptor.NUMBER));
+        TypeDescriptor arrNum = TypeDescriptor.array(TypeDescriptor.NUMBER);
+        TypeDescriptor numOrArrNum = TypeDescriptor.union(TypeDescriptor.NUMBER, arrNum);
+        Assert.assertEquals(TypeDescriptor.NUMBER, numOrArrNum.subtract(arrNum));
+        Assert.assertEquals(arrNum, numOrArrNum.subtract(TypeDescriptor.NUMBER));
+        TypeDescriptor numOrHashOrArrOrIt = TypeDescriptor.union(TypeDescriptor.NUMBER, iterNum, hashNumStr, arrNum);
+        Assert.assertEquals(TypeDescriptor.union(iterNum, hashNumStr, arrNum), numOrHashOrArrOrIt.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(TypeDescriptor.union(TypeDescriptor.NUMBER, hashNumStr, arrNum), numOrHashOrArrOrIt.subtract(iterNum));
+        Assert.assertEquals(TypeDescriptor.union(TypeDescriptor.NUMBER, iterNum, arrNum), numOrHashOrArrOrIt.subtract(hashNumStr));
+        Assert.assertEquals(TypeDescriptor.union(TypeDescriptor.NUMBER, iterNum, hashNumStr), numOrHashOrArrOrIt.subtract(arrNum));
+        TypeDescriptor numOrIterNumOrStr = TypeDescriptor.union(TypeDescriptor.NUMBER,
+                        TypeDescriptor.iterator(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
+        Assert.assertEquals(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.iterator(TypeDescriptor.NUMBER)),
+                        numOrIterNumOrStr.subtract(TypeDescriptor.iterator(TypeDescriptor.STRING)));
+
+        // Intersections
+        TypeDescriptor numAndStrAndObj = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        TypeDescriptor strAndObj = TypeDescriptor.intersection(TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        Assert.assertEquals(strAndObj, numAndStrAndObj.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(TypeDescriptor.OBJECT, numAndStrAndObj.subtract(TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
+        Assert.assertEquals(noType, numAndStrAndObj.subtract(numAndStrAndObj));
+        TypeDescriptor numAndBool = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN);
+        Assert.assertEquals(strAndObj, strAndObj.subtract(numAndBool));
+        TypeDescriptor numAndIterNum = TypeDescriptor.intersection(TypeDescriptor.NUMBER, iterNum);
+        Assert.assertEquals(TypeDescriptor.NUMBER, numAndIterNum.subtract(iterNum));
+        Assert.assertEquals(iterNum, numAndIterNum.subtract(TypeDescriptor.NUMBER));
+        TypeDescriptor numAndHashNumStr = TypeDescriptor.intersection(TypeDescriptor.NUMBER, hashNumStr);
+        Assert.assertEquals(TypeDescriptor.NUMBER, numAndHashNumStr.subtract(hashNumStr));
+        Assert.assertEquals(hashNumStr, numAndHashNumStr.subtract(TypeDescriptor.NUMBER));
+        TypeDescriptor numAndArrNum = TypeDescriptor.intersection(TypeDescriptor.NUMBER, arrNum);
+        Assert.assertEquals(TypeDescriptor.NUMBER, numAndArrNum.subtract(arrNum));
+        Assert.assertEquals(arrNum, numAndArrNum.subtract(TypeDescriptor.NUMBER));
+        TypeDescriptor numAndHashAndArrAndIt = TypeDescriptor.intersection(TypeDescriptor.NUMBER, iterNum, hashNumStr, arrNum);
+        Assert.assertEquals(TypeDescriptor.intersection(iterNum, hashNumStr, arrNum), numAndHashAndArrAndIt.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(TypeDescriptor.intersection(TypeDescriptor.NUMBER, hashNumStr, arrNum), numAndHashAndArrAndIt.subtract(iterNum));
+        Assert.assertEquals(TypeDescriptor.intersection(TypeDescriptor.NUMBER, iterNum, arrNum), numAndHashAndArrAndIt.subtract(hashNumStr));
+        Assert.assertEquals(TypeDescriptor.intersection(TypeDescriptor.NUMBER, iterNum, hashNumStr), numAndHashAndArrAndIt.subtract(arrNum));
+        TypeDescriptor numAndIterNumAndStr = TypeDescriptor.intersection(TypeDescriptor.NUMBER,
+                        TypeDescriptor.iterator(TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
+        Assert.assertEquals(TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.iterator(TypeDescriptor.NUMBER)),
+                        numAndIterNumAndStr.subtract(TypeDescriptor.iterator(TypeDescriptor.STRING)));
+
+        // Any type
+        TypeDescriptor predefinedAndNoType = TypeDescriptor.union(TypeDescriptor.union(PREDEFINED), noType);
+        TypeDescriptor expected = predefinedAndNoType.subtract(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.EXECUTABLE, TypeDescriptor.INSTANTIABLE));
+        Assert.assertEquals(expected, TypeDescriptor.ANY.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(noType, TypeDescriptor.ANY.subtract(predefinedAndNoType));
+
+        // Examples
+        TypeDescriptor unionNumOrStrOrObj = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        Assert.assertEquals(TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.OBJECT), unionNumOrStrOrObj.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(TypeDescriptor.OBJECT, unionNumOrStrOrObj.subtract(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
+        TypeDescriptor intersectionNumOrStrOrObj = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        Assert.assertEquals(TypeDescriptor.intersection(TypeDescriptor.STRING, TypeDescriptor.OBJECT), intersectionNumOrStrOrObj.subtract(TypeDescriptor.NUMBER));
+        Assert.assertEquals(TypeDescriptor.OBJECT, intersectionNumOrStrOrObj.subtract(TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING)));
+        Assert.assertEquals(TypeDescriptor.array(TypeDescriptor.STRING),
+                        TypeDescriptor.array(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).subtract(TypeDescriptor.array(TypeDescriptor.NUMBER)));
+        Assert.assertEquals(TypeDescriptor.array(TypeDescriptor.STRING),
+                        TypeDescriptor.array(TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING)).subtract(TypeDescriptor.array(TypeDescriptor.NUMBER)));
     }
 
     @Test

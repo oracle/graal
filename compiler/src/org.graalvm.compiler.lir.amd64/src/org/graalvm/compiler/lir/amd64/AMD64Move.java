@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -541,32 +541,30 @@ public class AMD64Move {
         move((AMD64Kind) result.getPlatformKind(), crb, masm, result, input);
     }
 
-    public static void move(AMD64Kind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+    private static void move(AMD64Kind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(moveKind, masm, result, input);
+                return;
             } else if (isStackSlot(result)) {
                 reg2stack(moveKind, crb, masm, result, asRegister(input));
-            } else {
-                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
+                return;
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
                 stack2reg(moveKind, crb, masm, asRegister(result), input);
-            } else {
-                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
+                return;
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
                 const2reg(crb, masm, asRegister(result), asJavaConstant(input), moveKind);
+                return;
             } else if (isStackSlot(result)) {
                 const2stack(crb, masm, result, asJavaConstant(input));
-            } else {
-                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
+                return;
             }
-        } else {
-            throw GraalError.shouldNotReachHere("input=" + input + " input.class=" + input.getClass().getName());
         }
+        throw GraalError.shouldNotReachHere("input=" + input + " input.class=" + input.getClass().getName() + " " + "result=" + result + " result.class=" + result.getClass().getName());
     }
 
     private static void reg2reg(AMD64Kind kind, AMD64MacroAssembler masm, Value result, Value input) {
@@ -659,6 +657,7 @@ public class AMD64Move {
          * long register when unsafe casts occurred (e.g., for a write barrier where arithmetic
          * operations are then performed on the pointer).
          */
+        assert !result.getRegisterCategory().equals(AMD64.MASK) : "no general const-to-mask moves supported";
         switch (input.getJavaKind().getStackKind()) {
             case Int:
                 // Do not optimize with an XOR as this instruction may be between

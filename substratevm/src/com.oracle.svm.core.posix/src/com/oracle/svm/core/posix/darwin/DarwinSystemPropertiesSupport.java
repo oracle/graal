@@ -109,7 +109,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
 @AutomaticFeature
 class DarwinSystemPropertiesFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(SystemPropertiesSupport.class, new DarwinSystemPropertiesSupport());
     }
 }

@@ -1,7 +1,13 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Language Safepoint Tutorial
+permalink: /graalvm-as-a-platform/language-implementation-framework/Safepoint/
+---
 # Truffle Language Safepoint Tutorial
 
-As of 21.1 Truffle has support for guest language safepoints. 
-Truffle safepoints allow to interrupt the guest language execution to perform thread local actions submitted by a language or tool. 
+As of 21.1 Truffle has support for guest language safepoints.
+Truffle safepoints allow to interrupt the guest language execution to perform thread local actions submitted by a language or tool.
 A safepoint is a location during the guest language execution where the state is consistent and other operations can read its state.
 
 This replaces previous instrumentation or assumption-based approaches to safepoints, which required the code to be invalidated for a thread local action to be performed.
@@ -21,11 +27,11 @@ Common use-cases of Truffle language safepoints are:
 
 ## Language Support
 
-Safepoints are explicitly polled by invoking the `TruffleSafepoint.poll(Node)` method. 
-A Truffle guest language implementation must ensure that a safepoint is polled repeatedly within a constant time interval. 
-For example, a single arithmetic expression completes within a constant number of CPU cycles. 
-However, a loop that summarizes values over an array uses a non-constant time dependent on the actual array size. 
-This typically means that safepoints are best polled at the end of loops and at the end of function or method calls to cover recursion. 
+Safepoints are explicitly polled by invoking the `TruffleSafepoint.poll(Node)` method.
+A Truffle guest language implementation must ensure that a safepoint is polled repeatedly within a constant time interval.
+For example, a single arithmetic expression completes within a constant number of CPU cycles.
+However, a loop that summarizes values over an array uses a non-constant time dependent on the actual array size.
+This typically means that safepoints are best polled at the end of loops and at the end of function or method calls to cover recursion.
 In addition, any guest language code that blocks the execution, like guest language locks, need to use the  `TruffleSafepoint.setBlocked(Interrupter)` API to allow cooperative polling of safepoints while the thread is waiting.
 
 Please read more details on what steps language implementations need to take to support thread local actions in the [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleSafepoint.html).
@@ -53,11 +59,11 @@ Read more in the [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/tr
 
 ## Current Limitations
 
-There is currently no way to run thread local actions while the thread is executing in boundary annotated methods unless the method cooperatively polls safepoints or uses the blocking API. 
-Unfortunately it is not always possible to cooperatively poll safepoints, for example, if the code currently executes third party native code. 
-A future improvement will allow to run code for other threads while they are blocked. 
+There is currently no way to run thread local actions while the thread is executing in boundary annotated methods unless the method cooperatively polls safepoints or uses the blocking API.
+Unfortunately it is not always possible to cooperatively poll safepoints, for example, if the code currently executes third party native code.
+A future improvement will allow to run code for other threads while they are blocked.
 This is one of the reasons why it is recommended to use `ThreadLocalAction.Access.getThread()` instead of directly using `Thread.currentThread()`.
-When the native call returns it needs to wait for any thread local action that is currently executing for this thread. 
+When the native call returns it needs to wait for any thread local action that is currently executing for this thread.
 This will enable to collect guest language stack traces from other threads while they are blocked by uncooperative native code.
 Currently the action will be performed on the next safepoint location when the native code returns.
 
@@ -65,7 +71,7 @@ Currently the action will be performed on the next safepoint location when the n
 
 There are several debug options available:
 
-### Excercise safepoints with SafepointALot 
+### Excercise safepoints with SafepointALot
 
 SafepointALot is a tool to exercise every safepoint of an application and collect statistics.
 
@@ -90,12 +96,12 @@ DeltaBlue: 540
    All threads           48384054 |            0.425 us           0.1 us       42281.1 us
 ```
 
-It is recommended for guest language implementations to try to stay below 1ms on average. 
+It is recommended for guest language implementations to try to stay below 1ms on average.
 Note that precise timing can depend on CPU and interruptions by the GC.
 Since GC times are included in the safepoint interval times, it is expected that the maximum is close to the maximum GC interruption time.
 Future versions of this tool will be able to exclude GC interruption times from this statistic.
 
-### Trace thread local actions 
+### Trace thread local actions
 
 The option `--engine.TraceThreadLocalActions` allows to trace all thread local actions of any origin.
 
@@ -173,8 +179,8 @@ Prints the following output:
 
 ## Further Reading
 
-Daloze, Benoit, Chris Seaton, Daniele Bonetta, and Hanspeter Mössenböck. 
-"Techniques and applications for guest-language safepoints." 
+Daloze, Benoit, Chris Seaton, Daniele Bonetta, and Hanspeter Mössenböck.
+"Techniques and applications for guest-language safepoints."
 In Proceedings of the 10th Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs and Systems, pp. 1-10. 2015.
 
 [https://dl.acm.org/doi/abs/10.1145/2843915.2843921](https://dl.acm.org/doi/abs/10.1145/2843915.2843921)

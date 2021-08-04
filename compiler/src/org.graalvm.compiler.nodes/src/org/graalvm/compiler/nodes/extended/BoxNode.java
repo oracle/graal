@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,8 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -70,6 +70,8 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
 
+    private boolean hasIdentity;
+
     private BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
         this(TYPE, value, resultType, boxingKind);
     }
@@ -89,6 +91,23 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
             return new PureBoxNode(value, resultType, boxingKind);
         }
         return new AllocatingBoxNode(value, resultType, boxingKind);
+    }
+
+    /**
+     * @see #setHasIdentity()
+     */
+    public boolean hasIdentity() {
+        return hasIdentity;
+    }
+
+    /**
+     * Mark this boxing node as "identity preserving" such that it will not be escape analyzed or
+     * commoned with another boxing node that shares the same {@linkplain #getValue() input value}.
+     */
+    public void setHasIdentity() {
+        // A trusted box should never have identity
+        assert !(getValue() instanceof TrustedBoxedValue) : this + ": " + getValue();
+        this.hasIdentity = true;
     }
 
     @Override
@@ -123,6 +142,10 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
     @Override
     public void virtualize(VirtualizerTool tool) {
+        if (hasIdentity) {
+            // Cannot virtualize a box node that preserves identity
+            return;
+        }
         ValueNode alias = tool.getAlias(getValue());
 
         VirtualBoxingNode newVirtual = createVirtualBoxingNode();

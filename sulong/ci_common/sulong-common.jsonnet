@@ -39,8 +39,8 @@
   },
 
   defBuild(b):: $.build_template + b + {
-    assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name]
-  },
+    assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
+  } + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
 
   jdk8:: common.oraclejdk8 + {
     jdk:: "jdk8",
@@ -54,6 +54,22 @@
     },
   },
 
+  labsjdk_ce_16: common["labsjdk-ce-16"] {
+    jdk:: "jdk16",
+    downloads+: {
+      # FIXME: do we really need to set EXTRA_JAVA_HOMES to an empty list?
+      EXTRA_JAVA_HOMES: { pathlist: [] },
+    },
+  },
+
+  labsjdk_ee_11: common["labsjdk-ee-11"] {
+    jdk:: "jdk11",
+  },
+
+  labsjdk_ee_16: common["labsjdk-ee-16"] {
+    jdk:: "jdk16",
+  },
+
   linux_amd64:: linux_amd64 + sulong_deps.linux,
   linux_aarch64:: linux_aarch64 + sulong_deps.linux,
   darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
@@ -61,6 +77,10 @@
 
   gate:: {
     targets+: ["gate"],
+  },
+
+  daily:: {
+    targets+: ["daily"],
   },
 
   weekly:: {
@@ -84,6 +104,8 @@
     if std.length(s) > 0 then
       std.asciiLower(s[0]) + s[1:]
     else s,
+
+  Description(description):: { description_text:: description },
 
   gateTags(tags):: $.mxCommand + {
     # sorted and unique
@@ -110,7 +132,7 @@
       # enforcing `tags` to be a string makes it easier to copy and paste from the ci config file
       assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self);
       [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
-  },
+  } + self.Description("Run mx gate --tags " + tags),
 
   sulong_weekly_notifications:: {
     notify_groups:: ["sulong"],
@@ -135,6 +157,7 @@
       CLANG_CC: "clang-3.8",
       CLANG_CXX: "clang-3.8 --driver-mode=g++",
       CLANG_LLVM_OBJCOPY: "objcopy",
+      CLANG_LLVM_CONFIG: "llvm-config",
       CLANG_NO_OPTNONE: "1",
       CFLAGS: "-Wno-error",
     },
@@ -179,25 +202,6 @@
   },
 
   llvmBundled:: {},
-
-  llvm4_darwin_fix:: {
-    # FIXME: We prune `null` entries to produce the original result.
-    # Eventually, we should canonicalize this.
-    environment: std.prune(super.environment + {
-      CPPFLAGS: "-g",
-      CFLAGS: null,
-      CLANG_LLVM_OBJCOPY: null,
-    }),
-    timelimit: "0:45:00",
-  },
-
-  llvmBundled_darwin_fix: {
-    # nothing to do
-    environment+: {
-      LD_LIBRARY_PATH: "$BUILD_DIR/main/sulong/mxbuild/darwin-amd64/SULONG_LLVM_ORG/lib:$LD_LIBRARY_PATH",
-    },
-    timelimit: "0:45:00",
-  },
 
   requireGCC:: {
     packages+: {

@@ -146,7 +146,7 @@ static void serialize_ret_string(struct __TruffleContextInternal *ctx, JNIEnv *e
         *((const char **) retPtr) = strdup(chars);
         (*env)->ReleaseStringUTFChars(env, str, chars);
     } else if ((*env)->IsInstanceOf(env, ret, ctx->NativeString)) {
-        *((const char **) retPtr) = (const char *) (*env)->GetLongField(env, ret, ctx->NativeString_nativePointer);
+        *((const char **) retPtr) = (const char *)(intptr_t)(*env)->GetLongField(env, ret, ctx->NativeString_nativePointer);
     } else {
         // unsupported type
         *((void **) retPtr) = NULL;
@@ -285,8 +285,8 @@ static void invoke_closure_void_ret(ffi_cif *cif, void *ret, void **args, void *
 }
 
 jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject receiver, jobject callTarget, void (*invoke_closure)(ffi_cif *cif, void *ret, void **args, void *user_data)) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
-    ffi_cif *cif = (ffi_cif*) (*env)->GetLongField(env, signature, ctx->LibFFISignature_cif);
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
+    ffi_cif *cif = (ffi_cif*)(intptr_t)(*env)->GetLongField(env, signature, ctx->LibFFISignature_cif);
 
     jobject sigInfo;
     jobjectArray argTypes;
@@ -325,7 +325,7 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject r
 
     ffi_prep_closure_loc(&data->closure, cif, invoke_closure, data, code);
 
-    return (*env)->CallObjectMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_createClosureNativePointer, (jlong) data, (jlong) code, callTarget, signature, receiver);
+    return (*env)->CallObjectMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_createClosureNativePointer, (jlong)(intptr_t)data, (jlong)(intptr_t)code, callTarget, signature, receiver);
 }
 
 JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_allocateClosureObjectRet(JNIEnv *env, jclass self, jlong nativeContext, jobject signature, jobject callTarget, jobject receiver) {
@@ -346,7 +346,7 @@ JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIConte
 
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer_freeClosure(JNIEnv *env, jclass self, jlong ptr) {
-    struct closure_data *data = (struct closure_data *) ptr;
+    struct closure_data *data = (struct closure_data *)(intptr_t)ptr;
     (*env)->DeleteWeakGlobalRef(env, data->callTarget);
     if (data->receiver) {
         (*env)->DeleteWeakGlobalRef(env, data->receiver);

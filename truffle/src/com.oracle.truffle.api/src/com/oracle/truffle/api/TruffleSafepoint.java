@@ -357,9 +357,9 @@ public abstract class TruffleSafepoint {
     public interface Interrupter {
 
         /**
-         * Sets the interrupted state on a foreign thread. No locks are held while this method is
-         * invoked, but it is still not recommended to run complex or guest language code to
-         * implement this method.
+         * Sets the interrupted state on a foreign thread. Internal locks are held while this method
+         * is invoked, therefore this method must not block or run complex or guest language code
+         * that could cause deadlocks.
          *
          * @param thread the thread to interrupt
          *
@@ -370,8 +370,9 @@ public abstract class TruffleSafepoint {
         /**
          * Resets the interrupted state when executing on a thread after the thread was interrupted.
          * If a thread was interrupted it is guaranteed to be reset at least once, but might be
-         * reset multiple times. Implementations of this method must not acquire any other locks or
-         * run guest language code, as an implementation specific lock is held while executing.
+         * reset multiple times. Internal locks are held while this method is invoked, therefore
+         * this method must not block or run complex or guest language code that could cause
+         * deadlocks.
          *
          * @since 21.1
          */

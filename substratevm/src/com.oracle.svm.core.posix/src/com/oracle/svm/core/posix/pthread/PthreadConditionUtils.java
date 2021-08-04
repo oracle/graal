@@ -82,7 +82,7 @@ public class PthreadConditionUtils {
              * microsecond-granularity without prior rounding to milliseconds.
              */
             Time.timeval tv = StackValue.get(Time.timeval.class);
-            Time.gettimeofday(tv, WordFactory.nullPointer());
+            Time.NoTransitions.gettimeofday(tv, WordFactory.nullPointer());
             result.set_tv_sec(tv.tv_sec());
             result.set_tv_nsec(TimeUtils.microsToNanos(tv.tv_usec()));
         }

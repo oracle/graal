@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ public final class JDWPSetup {
 
     private DebuggerController controller;
 
-    public void setup(Debugger debugger, DebuggerController control, JDWPOptions options, JDWPContext context, Object mainThread) {
-        control.initialize(debugger, options, context, mainThread);
+    public void setup(Debugger debugger, DebuggerController control, JDWPOptions options, JDWPContext context, Object mainThread, VMEventListener vmEventListener) {
+        control.initialize(debugger, options, context, mainThread, vmEventListener);
         this.controller = control;
     }
 

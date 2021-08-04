@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class RegexParser {
@@ -520,11 +519,14 @@ public final class RegexParser {
             toExpand.getParent().asSequence().replace(toExpand.getSeqIndex(), createGroup(null, false, false, false, null));
         }
         // unroll optional part ( x{0,3} -> (x(x(x|)|)|) )
-        // In Ruby, loops are repeated until a fixed point in the observable state is reached.
-        // We can simulate this by dropping empty guards in small bounded loops, such as is the
-        // case for unrolled loops.
+        // In flavor like Python or Ruby, loops can be repeated past the point where the position in
+        // the string keeps advancing (i.e. we are matching at least one character per iteration).
+        // In Ruby, this can happen for as long as the state of capture groups is being changed by
+        // each iteration. In Python, an extra empty iteration is run because there is no
+        // backtracking after failing the empty check. We can emulate this behavior by dropping
+        // empty guards in small bounded loops, such as is the case for unrolled loops.
         createOptional(toExpand, quantifier, unroll && quantifier.getMin() > 0, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1,
-                        source.getOptions().getFlavor() != RubyFlavor.INSTANCE);
+                        !source.getOptions().getFlavor().canHaveEmptyLoopIterations());
         if (!unroll || quantifier.isInfiniteLoop()) {
             ((Group) curTerm).setLoop(true);
         }
@@ -623,10 +625,10 @@ public final class RegexParser {
         while (lexer.hasNext()) {
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
-            if (source.getOptions().getFlavor() != RubyFlavor.INSTANCE && token.kind != Token.Kind.quantifier && curTerm != null && curTerm.isBackReference() &&
+            if (!source.getOptions().getFlavor().nestedCaptureGroupsKeptOnLoopReentry() && token.kind != Token.Kind.quantifier && curTerm != null && curTerm.isBackReference() &&
                             curTerm.asBackReference().isNestedOrForwardReference() && !isNestedInLookBehindAssertion(curTerm)) {
-                // In JavaScript, nested/forward back-references are dropped as no-ops.
-                // However, in Ruby, they are valid, since the contents of capture groups
+                // In JavaScript, nested backreferences are dropped as no-ops.
+                // However, in Python and Ruby, they are valid, since the contents of capture groups
                 // are not cleared when re-entering a loop.
                 removeCurTerm();
             } else if (token.kind != Token.Kind.quantifier) {
@@ -791,10 +793,12 @@ public final class RegexParser {
             return;
         }
         boolean curTermIsZeroWidthGroup = curTerm.isGroup() && curTerm.asGroup().isAlwaysZeroWidth();
-        if (source.getOptions().getFlavor() == RubyFlavor.INSTANCE) {
-            // In Ruby, we cannot remove optional zero-width groups or lookaround assertions as Ruby
-            // will admit executing them even though they match the empty string, because they can
-            // change the state of capture groups.
+        if (source.getOptions().getFlavor().canHaveEmptyLoopIterations()) {
+            // In flavors like Python or Ruby, we cannot remove optional zero-width groups or
+            // lookaround assertions as those should be executed even though they will only match
+            // the empty string. These expressions could change the state of capture groups and
+            // the empty checks in these dialects either a) check the state of the capture groups
+            // and/or b) do not backtrack when the empty check fails.
             if (quantifier.getMin() == 0 && curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing()) {
                 removeCurTerm();
                 return;

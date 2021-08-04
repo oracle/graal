@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import org.graalvm.collections.EconomicSet;
 
 /**
@@ -44,18 +45,18 @@ import org.graalvm.collections.EconomicSet;
  */
 public class LLVMLocalScope extends LLVMScope {
 
-    private final EconomicSet<Integer> ids;
+    private final EconomicSet<BitcodeID> ids;
 
     public LLVMLocalScope() {
         super();
         this.ids = EconomicSet.create();
     }
 
-    public void addID(int id) {
+    public void addID(BitcodeID id) {
         ids.add(id);
     }
 
-    public boolean containID(int id) {
+    public boolean containID(BitcodeID id) {
         return ids.contains(id);
     }
 }

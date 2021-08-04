@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1024;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -45,13 +44,15 @@ import org.graalvm.compiler.nodes.calc.FloatDivNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.SqrtNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-@NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}", cycles = CYCLES_UNKNOWN, size = SIZE_1)
+@NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}", cycles = CYCLES_1024, cyclesRationale = "stub based math intrinsics all have roughly the same high cycle count", size = SIZE_1)
 public final class BinaryMathIntrinsicNode extends BinaryNode implements ArithmeticLIRLowerable, Lowerable {
 
     public static final NodeClass<BinaryMathIntrinsicNode> TYPE = NodeClass.create(BinaryMathIntrinsicNode.class);
@@ -122,37 +123,49 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
         if (c != null) {
             return c;
         }
-        if (forY.isConstant()) {
-            double yValue = forY.asJavaConstant().asDouble();
-            // If the second argument is positive or negative zero, then the result is 1.0.
-            if (yValue == 0.0D) {
-                return ConstantNode.forDouble(1);
-            }
 
-            // If the second argument is 1.0, then the result is the same as the first argument.
-            if (yValue == 1.0D) {
-                return x;
-            }
+        switch (getOperation()) {
+            case POW:
+                if (forY.isConstant()) {
+                    double yValue = forY.asJavaConstant().asDouble();
+                    // If the second argument is positive or negative zero, then the result is 1.0.
+                    if (yValue == 0.0D) {
+                        return ConstantNode.forDouble(1);
+                    }
 
-            // If the second argument is NaN, then the result is NaN.
-            if (Double.isNaN(yValue)) {
-                return ConstantNode.forDouble(Double.NaN);
-            }
+                    // If the second argument is 1.0, then the result is the same as the first
+                    // argument.
+                    if (yValue == 1.0D) {
+                        return x;
+                    }
 
-            // x**-1 = 1/x
-            if (yValue == -1.0D) {
-                return new FloatDivNode(ConstantNode.forDouble(1), x);
-            }
+                    // If the second argument is NaN, then the result is NaN.
+                    if (Double.isNaN(yValue)) {
+                        return ConstantNode.forDouble(Double.NaN);
+                    }
 
-            // x**2 = x*x
-            if (yValue == 2.0D) {
-                return new MulNode(x, x);
-            }
+                    // x**-1 = 1/x
+                    if (yValue == -1.0D) {
+                        return new FloatDivNode(ConstantNode.forDouble(1), x);
+                    }
 
-            // x**0.5 = sqrt(x)
-            if (yValue == 0.5D && x.stamp(view) instanceof FloatStamp && ((FloatStamp) x.stamp(view)).lowerBound() >= 0.0D) {
-                return SqrtNode.create(x, view);
-            }
+                    // x**2 = x*x
+                    if (yValue == 2.0D) {
+                        return new MulNode(x, x);
+                    }
+
+                    // x**0.5 = sqrt(x)
+                    if (JavaVersionUtil.JAVA_SPEC >= 17) {
+                        // Note that Math.pow(Double.MAX_VALUE, 0.5) returns different value than
+                        // Math.sqrt(Double.MAX_VALUE) until Java 17.
+                        if (yValue == 0.5D && x.stamp(view) instanceof FloatStamp && ((FloatStamp) x.stamp(view)).lowerBound() >= 0.0D) {
+                            return SqrtNode.create(x, view);
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
         }
         return this;
     }

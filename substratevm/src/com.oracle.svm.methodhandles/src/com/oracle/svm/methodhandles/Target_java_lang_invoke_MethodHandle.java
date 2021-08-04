@@ -40,6 +40,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.util.VMError;
@@ -75,15 +76,17 @@ final class Target_java_lang_invoke_MethodHandle {
     @Substitute(polymorphicSignature = true)
     Object invokeBasic(Object... args) throws Throwable {
         Target_java_lang_invoke_MemberName memberName = internalMemberName();
+        Object ret;
         if (memberName != null) { /* Direct method handle */
-            return Util_java_lang_invoke_MethodHandle.invokeInternal(memberName, type, args);
+            ret = Util_java_lang_invoke_MethodHandle.invokeInternal(memberName, type, args);
         } else { /* Interpretation mode */
             Target_java_lang_invoke_LambdaForm form = internalForm();
             Object[] interpreterArguments = new Object[args.length + 1];
             interpreterArguments[0] = this;
             System.arraycopy(args, 0, interpreterArguments, 1, args.length);
-            return form.interpretWithArguments(interpreterArguments);
+            ret = form.interpretWithArguments(interpreterArguments);
         }
+        return MethodHandleUtils.cast(ret, type.returnType());
     }
 
     @Substitute(polymorphicSignature = true)
@@ -126,7 +129,7 @@ final class Util_java_lang_invoke_MethodHandle {
         if (hasReceiver) {
             methodType = methodType.insertParameterTypes(0, memberName.getDeclaringClass());
         }
-        return invokeInternal(memberName, methodType, Arrays.copyOf(args, args.length - 1));
+        return MethodHandleUtils.cast(invokeInternal(memberName, methodType, Arrays.copyOf(args, args.length - 1)), methodType.returnType());
     }
 
     static Object invokeInternal(Target_java_lang_invoke_MemberName memberName, MethodType methodType, Object... args) throws Throwable {

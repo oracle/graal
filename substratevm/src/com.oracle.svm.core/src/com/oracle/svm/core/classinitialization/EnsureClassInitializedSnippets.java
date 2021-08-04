@@ -68,7 +68,7 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
          */
         ClassInitializationInfo infoNonNull = (ClassInitializationInfo) PiNode.piCastNonNull(info, SnippetAnchorNode.anchor());
 
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY, !infoNonNull.isInitialized())) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY, !infoNonNull.isInitialized())) {
             callInitialize(INITIALIZE, infoNonNull, DynamicHub.toClass(hub));
         }
     }

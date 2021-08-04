@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Language Implementation Framework
+permalink: /graalvm-as-a-platform/language-implementation-framework/
+---
 # Truffle Language Implementation Framework
 
 The Truffle language implementation framework (henceforth "Truffle") is an open source library for building tools and programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
@@ -11,12 +17,12 @@ The Truffle bits are uploaded to [Maven central](https://mvnrepository.com/artif
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>20.3.0</version> <!-- or any later version -->
+    <version>21.2.0</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>20.3.0</version>
+    <version>21.2.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -44,7 +50,7 @@ Consider reading [these publications](https://github.com/oracle/graal/blob/maste
 Implementing a language using Truffle offers a way to interoperate with other "Truffle" languages.
 To learn more about verifying that your language is a valid polyglot citizen, read more about using the [Polyglot TCK](./TCK.md).
 Somewhat related topics worth exploring are [Truffle Libraries](./TruffleLibraries.md), as well as how to use them to implement a language [interoperability](./InteropMigration.md).
-Languages implemented with Truffle can also be embedded in Java host applications using the [Polyglot API](https://www.graalvm.org/docs/reference-manual/embed-languages/).
+Languages implemented with Truffle can also be embedded in Java host applications using the [Polyglot API](https://graalvm.org/reference-manual/embed-languages/).
 
 To better understand how to improve the performance of your language please consult the documentation on [profiling](./Profiling.md) and [optimizing](./Optimizing.md) your language.
 Also, to better understand how to use Truffle's automated monomorphization feature (i.e., splitting), look at the [related documentation](./splitting/Monomorphization.md).

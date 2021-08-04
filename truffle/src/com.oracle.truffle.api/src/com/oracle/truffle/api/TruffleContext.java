@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.PolyglotException;
@@ -52,6 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * A handle on a context of a set of Truffle languages. This context handle is designed to be used
@@ -94,11 +96,11 @@ public final class TruffleContext implements AutoCloseable {
         } : null;
     }
     final Object polyglotContext;
-    final boolean closeable;
+    final boolean creator;
 
-    TruffleContext(Object polyglotContext, boolean closeable) {
+    TruffleContext(Object polyglotContext, boolean creator) {
         this.polyglotContext = polyglotContext;
-        this.closeable = closeable;
+        this.creator = creator;
     }
 
     /*
@@ -106,7 +108,7 @@ public final class TruffleContext implements AutoCloseable {
      */
     private TruffleContext() {
         this.polyglotContext = null;
-        this.closeable = false;
+        this.creator = false;
     }
 
     /**
@@ -165,9 +167,12 @@ public final class TruffleContext implements AutoCloseable {
      * times from the same thread. If the context is currently not entered by any thread then it is
      * allowed be entered by an arbitrary thread. Entering the context from two or more different
      * threads at the same time is possible, unless one of the loaded languages denies access to the
-     * thread, in which case an {@link IllegalStateException} is thrown. The result of the enter
-     * function is unspecified and must only be passed to {@link #leave(Node, Object)}. The result
-     * value must not be stored permanently.
+     * thread, in which case an {@link IllegalStateException} is thrown.
+     * <p>
+     * If the current thread was not previously entered in any context, the enter function returns
+     * {@code null}. If the return value is not {@code null}, the result of the enter function is
+     * unspecified and must only be passed to {@link #leave(Node, Object)}. The result value must
+     * not be stored permanently.
      * <p>
      * An adopted node may be passed to allow perform optimizations on the fast-path. If a
      * <code>null</code> node is passed then entering a context will result in a
@@ -191,6 +196,66 @@ public final class TruffleContext implements AutoCloseable {
                 verifyEnter(prev);
             }
             return prev;
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Evaluates a source in an inner context and returns the result. If the context is not an inner
+     * context and e.g. accessed using {@link Env#getContext()} an {@link IllegalStateException} is
+     * thrown. In such a case {@link Env#parseInternal(Source, String...)} should be used instead to
+     * evaluate sources.
+     * <p>
+     * No context or the parent creator context must be entered to evaluate sources in a
+     * {@link TruffleContext} otherwise an {@link IllegalStateException} will be thrown. In order to
+     * ensure that all values are accessed from their respective contexts only, any non-primitive
+     * value returned by the evaluation will be wrapped and enter this context for each interop
+     * message sent. Parameters to interop messages will enter and leave the parent context when
+     * they are accessed. If the result is a primitive value, then the value is directly returned.
+     * <p>
+     * This method has access to all public and internal languages the creator context has access
+     * to. This corresponds to the set of languages returned by {@link Env#getInternalLanguages()}.
+     * If a language cannot be accessed then an {@link IllegalArgumentException} is thrown. If a
+     * language is not yet initialized in the inner context, it will get automatically initialized.
+     * <p>
+     * This method is designed to be used in compiled code paths. This method may be used from
+     * multiple threads at the same time. The result of this method must not be cached, instead the
+     * {@link Source} object should be cached.
+     * <p>
+     *
+     * @throws IllegalArgumentException if the given language of the source cannot be accessed.
+     * @throws IllegalStateException if an invalid context is entered or the context is already
+     *             closed.
+     * @param node a partial evaluation constant node context used to optimize this operation. Can
+     *            be <code>null</code> if not available.
+     * @param source the source to evaluate
+     * @since 21.3
+     */
+    public Object evalInternal(Node node, Source source) {
+        CompilerAsserts.partialEvaluationConstant(node);
+        try {
+            return LanguageAccessor.engineAccess().evalInternalContext(node, polyglotContext, source, true);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * The same as {@link #evalInternal(Node, Source)}, but only public languages are accessible.
+     *
+     * @throws IllegalArgumentException if the given language of the source cannot be accessed.
+     * @throws IllegalStateException if an invalid context is entered or the context is already
+     *             closed.
+     * @param node a partial evaluation constant node context used to optimize this operation. Can
+     *            be <code>null</code> if not available.
+     * @param source the source to evaluate
+     * @since 21.3
+     */
+    public Object evalPublic(Node node, Source source) {
+        CompilerAsserts.partialEvaluationConstant(node);
+        try {
+            return LanguageAccessor.engineAccess().evalInternalContext(node, polyglotContext, source, false);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -257,6 +322,50 @@ public final class TruffleContext implements AutoCloseable {
     public boolean isCancelling() {
         try {
             return LanguageAccessor.engineAccess().isContextCancelling(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Pause execution on all threads for this context. This call does not wait for the threads to
+     * be actually paused. Instead, a future is returned that can be used to wait for the execution
+     * to be paused. The future is completed when all active threads are paused. New threads entered
+     * after this point are paused immediately after entering until
+     * {@link TruffleContext#resume(Future)} is called.
+     *
+     * @return a future that can be used to wait for the execution to be paused. Also, the future is
+     *         used to resume execution by passing it to the {@link TruffleContext#resume(Future)}
+     *         method.
+     *
+     * @since 21.2
+     */
+    @TruffleBoundary
+    public Future<Void> pause() {
+        try {
+            return LanguageAccessor.engineAccess().pause(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Resume previously paused execution on all threads for this context. The execution will not
+     * resume if {@link TruffleContext#pause()} was called multiple times and for some of the other
+     * calls resume was not called yet.
+     *
+     * @param pauseFuture pause future returned by a previous call to
+     *            {@link TruffleContext#pause()}.
+     *
+     * @throws IllegalArgumentException in case the passed pause future was not obtained by a
+     *             previous call to {@link TruffleContext#pause()} on this context.
+     *
+     * @since 21.2
+     */
+    @TruffleBoundary
+    public void resume(Future<Void> pauseFuture) {
+        try {
+            LanguageAccessor.engineAccess().resume(polyglotContext, pauseFuture);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -373,7 +482,7 @@ public final class TruffleContext implements AutoCloseable {
     @Override
     @TruffleBoundary
     public void close() {
-        if (!closeable) {
+        if (!creator) {
             throw new UnsupportedOperationException("This context instance has no permission to close. " +
                             "Only the original creator of the truffle context or instruments can close.");
         }
@@ -415,7 +524,7 @@ public final class TruffleContext implements AutoCloseable {
      */
     @TruffleBoundary
     public void closeCancelled(Node closeLocation, String message) {
-        if (!closeable) {
+        if (!creator) {
             throw new UnsupportedOperationException("This context instance has no permission to close. " +
                             "Only the original creator of the truffle context or instruments can close.");
         }
@@ -439,7 +548,7 @@ public final class TruffleContext implements AutoCloseable {
      */
     @TruffleBoundary
     public void closeResourceExhausted(Node location, String message) {
-        if (!closeable) {
+        if (!creator) {
             throw new UnsupportedOperationException("This context instance has no permission to cancel. " +
                             "Only the original creator of the truffle context or instruments can close.");
         }
@@ -459,6 +568,7 @@ public final class TruffleContext implements AutoCloseable {
 
         private final Env sourceEnvironment;
         private Map<String, Object> config;
+        private boolean initializeCreatorContext = true;
 
         Builder(Env env) {
             this.sourceEnvironment = env;
@@ -480,6 +590,17 @@ public final class TruffleContext implements AutoCloseable {
         }
 
         /**
+         * Specifies whether the creating language context should be initialized in the new context.
+         * By default the creating language will get initialized.
+         *
+         * @since 21.3
+         */
+        public Builder initializeCreatorContext(boolean enabled) {
+            this.initializeCreatorContext = enabled;
+            return this;
+        }
+
+        /**
          * Builds the new context instance.
          *
          * @since 0.27
@@ -487,7 +608,7 @@ public final class TruffleContext implements AutoCloseable {
         @TruffleBoundary
         public TruffleContext build() {
             try {
-                return LanguageAccessor.engineAccess().createInternalContext(sourceEnvironment.getPolyglotLanguageContext(), config);
+                return LanguageAccessor.engineAccess().createInternalContext(sourceEnvironment.getPolyglotLanguageContext(), config, initializeCreatorContext);
             } catch (Throwable t) {
                 throw Env.engineToLanguageException(t);
             }

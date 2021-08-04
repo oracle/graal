@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 21.3.0
+* Reimplemented CPUSampler to use the Truffle language safepoints thus deprecating several API functions.
+* Support for hash interoperability in Insight - no need to use `Truffle::Interop.hash_keys_as_members` anymore
+
 ## Version 21.1.0
 
 * Use `--heap.dump=/path/to/file/to/generate.hprof` to enable [Heap Dumping via Insight](docs/Insight-Manual.md#Heap-Dumping)

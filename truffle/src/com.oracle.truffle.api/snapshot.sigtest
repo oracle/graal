@@ -59,6 +59,15 @@ meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.Strin
 meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String,java.lang.Throwable)
 meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.Throwable)
 meth public static void bailout(java.lang.String)
+meth public static void blackhole(boolean)
+meth public static void blackhole(byte)
+meth public static void blackhole(char)
+meth public static void blackhole(double)
+meth public static void blackhole(float)
+meth public static void blackhole(int)
+meth public static void blackhole(java.lang.Object)
+meth public static void blackhole(long)
+meth public static void blackhole(short)
 meth public static void ensureVirtualized(java.lang.Object)
 meth public static void ensureVirtualizedHere(java.lang.Object)
 meth public static void interpreterOnly(java.lang.Runnable)
@@ -231,21 +240,26 @@ meth public int hashCode()
 meth public java.lang.Object enter()
  anno 0 java.lang.Deprecated()
 meth public java.lang.Object enter(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.Object evalInternal(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.source.Source)
+meth public java.lang.Object evalPublic(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.source.Source)
+meth public java.util.concurrent.Future<java.lang.Void> pause()
 meth public void close()
 meth public void closeCancelled(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public void closeResourceExhausted(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public void leave(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public void leave(java.lang.Object)
  anno 0 java.lang.Deprecated()
+meth public void resume(java.util.concurrent.Future<java.lang.Void>)
 supr java.lang.Object
-hfds CONTEXT_ASSERT_STACK,EMPTY,closeable,polyglotContext
+hfds CONTEXT_ASSERT_STACK,EMPTY,creator,polyglotContext
 
 CLSS public final com.oracle.truffle.api.TruffleContext$Builder
  outer com.oracle.truffle.api.TruffleContext
 meth public com.oracle.truffle.api.TruffleContext build()
 meth public com.oracle.truffle.api.TruffleContext$Builder config(java.lang.String,java.lang.Object)
+meth public com.oracle.truffle.api.TruffleContext$Builder initializeCreatorContext(boolean)
 supr java.lang.Object
-hfds config,sourceEnvironment
+hfds config,initializeCreatorContext,sourceEnvironment
 
 CLSS public abstract interface com.oracle.truffle.api.TruffleException
  anno 0 java.lang.Deprecated()
@@ -534,6 +548,7 @@ meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(java.l
 meth public org.graalvm.options.OptionValues getOptions()
 meth public void addToHostClassPath(com.oracle.truffle.api.TruffleFile)
 meth public void exportSymbol(java.lang.String,java.lang.Object)
+meth public void registerOnDispose(java.io.Closeable)
 meth public void registerService(java.lang.Object)
 meth public void setCurrentWorkingDirectory(com.oracle.truffle.api.TruffleFile)
 supr java.lang.Object
@@ -585,8 +600,6 @@ meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String[] byteMimeTypes()
 meth public abstract !hasdefault java.lang.String[] characterMimeTypes()
 meth public abstract !hasdefault java.lang.String[] dependentLanguages()
-meth public abstract !hasdefault java.lang.String[] mimeType()
- anno 0 java.lang.Deprecated()
 meth public abstract java.lang.String name()
 
 CLSS public final com.oracle.truffle.api.TruffleLogger
@@ -774,6 +787,8 @@ meth public abstract boolean isVirtualFrame()
 meth public abstract com.oracle.truffle.api.CallTarget getCallTarget()
 meth public abstract com.oracle.truffle.api.frame.Frame getFrame(com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
 meth public abstract com.oracle.truffle.api.nodes.Node getCallNode()
+meth public boolean isCompilationRoot()
+meth public int getCompilationTier()
 
 CLSS public final static !enum com.oracle.truffle.api.frame.FrameInstance$FrameAccess
  outer com.oracle.truffle.api.frame.FrameInstance
@@ -869,6 +884,14 @@ meth public abstract void putShort(byte[],int,short)
 meth public final boolean inBounds(byte[],int,int)
 meth public static com.oracle.truffle.api.memory.ByteArraySupport bigEndian()
 meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
+supr java.lang.Object
+
+CLSS public final com.oracle.truffle.api.memory.MemoryFence
+meth public static void acquire()
+meth public static void full()
+meth public static void loadLoad()
+meth public static void release()
+meth public static void storeStore()
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.nodes.BlockNode<%0 extends com.oracle.truffle.api.nodes.Node>
@@ -1226,6 +1249,7 @@ meth public static <%0 extends java.lang.Object> {%%0} findFirstNodeInstance(com
 meth public static <%0 extends java.lang.Object> {%%0} findParent(com.oracle.truffle.api.nodes.Node,java.lang.Class<{%%0}>)
 meth public static <%0 extends java.lang.Object> {%%0}[] concat({%%0}[],{%%0}[])
 meth public static <%0 extends java.lang.annotation.Annotation> {%%0} findAnnotation(java.lang.Class<?>,java.lang.Class<{%%0}>)
+meth public static boolean assertRecursion(com.oracle.truffle.api.nodes.Node,int)
 meth public static boolean forEachChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.NodeVisitor)
 meth public static boolean isReplacementSafe(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static boolean replaceChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
@@ -1275,6 +1299,7 @@ meth public java.lang.Object initialLoopStatus()
 CLSS public abstract com.oracle.truffle.api.nodes.RootNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.frame.FrameDescriptor)
+meth protected boolean countsTowardsStackTraceLimit()
 meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
 meth protected boolean isTrivial()
@@ -1362,7 +1387,7 @@ meth public static java.lang.String findLanguage(java.net.URL) throws java.io.IO
 meth public static java.lang.String findMimeType(com.oracle.truffle.api.TruffleFile) throws java.io.IOException
 meth public static java.lang.String findMimeType(java.net.URL) throws java.io.IOException
 supr java.lang.Object
-hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,URI_SCHEME,cachedPolyglotSource,computedURI,textMap
+hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_EMPTY,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,URI_SCHEME,cachedPolyglotSource,computedURI,textMap
 
 CLSS public final com.oracle.truffle.api.source.Source$LiteralBuilder
  outer com.oracle.truffle.api.source.Source

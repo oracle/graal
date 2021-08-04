@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,11 +49,8 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
-import org.graalvm.compiler.graph.Graph.Options;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -1065,17 +1062,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Must be overridden by subclasses that implement {@link Simplifiable}. The implementation in
-     * {@link Node} exists to obviate the need to cast a node before invoking
-     * {@link Simplifiable#simplify(SimplifierTool)}.
-     *
-     * @param tool
-     */
-    public void simplify(SimplifierTool tool) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
      * @param newNode the result of cloning this node or {@link Unsafe#allocateInstance(Class) raw
      *            allocating} a copy of this node
      * @param type the type of edges to process
@@ -1167,10 +1153,10 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     public boolean verify() {
-        assertTrue(isAlive(), "cannot verify inactive nodes (id=%d)", id);
+        assertTrue(isAlive(), "cannot verify inactive node %s", this);
         assertTrue(graph() != null, "null graph");
         verifyInputs();
-        if (Options.VerifyGraalGraphEdges.getValue(getOptions())) {
+        if (graph.verifyGraphEdges) {
             verifyEdges();
         }
         return true;
@@ -1417,7 +1403,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * @param other a node of exactly the same type as this node
      * @return true if the data fields of this object and {@code other} are equal
      */
-    public boolean valueEquals(Node other) {
+    public final boolean valueEquals(Node other) {
         return getNodeClass().dataEquals(this, other);
     }
 
@@ -1426,7 +1412,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * {@linkplain Successor control-flow} edges.
      *
      */
-    public boolean dataFlowEquals(Node other) {
+    public final boolean dataFlowEquals(Node other) {
         return this == other || nodeClass == other.getNodeClass() && this.valueEquals(other) && nodeClass.equalInputs(this, other);
     }
 

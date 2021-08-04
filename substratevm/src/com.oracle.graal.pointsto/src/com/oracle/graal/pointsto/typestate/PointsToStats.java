@@ -84,11 +84,11 @@ import com.oracle.graal.pointsto.flow.SourceTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.UnknownTypeFlow;
 import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -102,7 +102,6 @@ public class PointsToStats {
     public static void init(BigBang bb) {
         registerTypeState(bb, EmptyTypeState.SINGLETON);
         registerTypeState(bb, NullTypeState.SINGLETON);
-        registerTypeState(bb, UnknownTypeState.SINGLETON);
         reportStatistics = bb.reportAnalysisStatistics();
     }
 
@@ -156,7 +155,7 @@ public class PointsToStats {
 
         typeFlowBuilders.stream().filter(Objects::nonNull).filter(b -> !b.isMaterialized()).collect(Collectors.groupingBy(TypeFlowBuilder::getFlowClass)).forEach((flowClass, providers) -> {
             doWrite(out, String.format("%-35s\t%-10d\n",
-                            flowClass.getSimpleName(), providers.size()));
+                            ClassUtil.getUnqualifiedName(flowClass), providers.size()));
         });
 
         doWrite(out, String.format("\n%-35s\n", "Removed flows"));
@@ -177,7 +176,7 @@ public class PointsToStats {
                 sourceStr = source.toString();
             }
             doWrite(out, String.format("%-35s\t%-10s\n",
-                            provider.getFlowClass().getSimpleName(), sourceStr));
+                            ClassUtil.getUnqualifiedName(provider.getFlowClass()), sourceStr));
         });
 
     }
@@ -278,7 +277,7 @@ public class PointsToStats {
             return;
         }
 
-        if (state.isUnknown() || state.isEmpty()) {
+        if (state.isEmpty()) {
             return;
         }
 
@@ -291,7 +290,7 @@ public class PointsToStats {
             return;
         }
 
-        if (state.isUnknown() || state.isEmpty()) {
+        if (state.isEmpty()) {
             return;
         }
 
@@ -353,16 +352,10 @@ public class PointsToStats {
     }
 
     private static int objectsCount(TypeState state) {
-        if (state == UnknownTypeState.SINGLETON) {
-            return 0;
-        }
         return state.objectsCount();
     }
 
     private static int typesCount(TypeState state) {
-        if (state == UnknownTypeState.SINGLETON) {
-            return 0;
-        }
         return state.typesCount();
     }
 
@@ -501,8 +494,6 @@ public class PointsToStats {
             return "AllInstantiated(" + formatType(flow.getDeclaredType(), true) + ")";
         } else if (flow instanceof AllSynchronizedTypeFlow) {
             return "AllSynchronized";
-        } else if (flow instanceof UnknownTypeFlow) {
-            return "Unknown";
         } else if (flow instanceof FieldSinkTypeFlow) {
             FieldSinkTypeFlow sink = (FieldSinkTypeFlow) flow;
             return "FieldSink(" + formatField(sink.getSource()) + ")";
@@ -597,7 +588,7 @@ public class PointsToStats {
             MonitorEnterTypeFlow monitor = (MonitorEnterTypeFlow) flow;
             return "MonitorEnter @ " + formatMethod(monitor.getMethod());
         } else {
-            return flow.getClass().getSimpleName() + "@" + formatSource(flow);
+            return ClassUtil.getUnqualifiedName(flow.getClass()) + "@" + formatSource(flow);
         }
     }
 
@@ -615,7 +606,7 @@ public class PointsToStats {
         } else if (source == null) {
             return "<no-source>";
         } else {
-            return source.getClass().getSimpleName();
+            return ClassUtil.getUnqualifiedName(source.getClass());
         }
     }
 
@@ -644,10 +635,6 @@ public class PointsToStats {
             return "<Null>";
         }
 
-        if (s.isUnknown()) {
-            return "<Unknown>";
-        }
-
         String canBeNull = s.canBeNull() ? "null" : "!null";
         String types = s.typesStream().map(JavaType::getUnqualifiedName).sorted().collect(Collectors.joining(", "));
 
@@ -661,10 +648,6 @@ public class PointsToStats {
         }
         if (s.isNull()) {
             return "<Null>";
-        }
-
-        if (s.isUnknown()) {
-            return "<Unknown>";
         }
 
         String sKind = s.isAllocation() ? "Alloc" : s.isConstant() ? "Const" : s.isSingleTypeState() ? "Single" : s.isMultiTypeState() ? "Multi" : "";

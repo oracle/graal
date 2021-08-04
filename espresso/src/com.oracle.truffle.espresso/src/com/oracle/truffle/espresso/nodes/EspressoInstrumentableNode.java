@@ -43,13 +43,11 @@ import com.oracle.truffle.espresso.impl.Method;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
-public abstract class EspressoInstrumentableNode extends Node implements InstrumentableNode, ContextAccess {
+public abstract class EspressoInstrumentableNode extends Node implements BciProvider, InstrumentableNode, ContextAccess {
 
     public abstract Object execute(VirtualFrame frame);
 
     public abstract Method getMethod();
-
-    public abstract int getCurrentBCI(Frame frame);
 
     public final boolean isInstrumentable() {
         return true;
@@ -72,7 +70,7 @@ public abstract class EspressoInstrumentableNode extends Node implements Instrum
     public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
         // construct the current scope with valid local variables information
         Method method = getMethod();
-        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(getCurrentBCI(frame));
+        Local[] liveLocals = method.getLocalVariableTable().getLocalsAt(getBci(frame));
         if (liveLocals.length == 0) {
             // class was compiled without a local variable table
             // include "this" in method arguments throughout the method

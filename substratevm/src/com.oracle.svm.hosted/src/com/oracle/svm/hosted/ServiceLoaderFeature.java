@@ -42,6 +42,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.option.OptionUtils;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -154,8 +155,8 @@ public class ServiceLoaderFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         // TODO write a more sophisticated include/exclude filter to handle cases like GR-27605 ?
-        servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
-        serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
+        servicesToSkip.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServices.getValue().values()));
+        serviceProvidersToSkip.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values()));
     }
 
     @Override
@@ -288,7 +289,10 @@ public class ServiceLoaderFeature implements Feature {
 
             Class<?> implementationClass = access.findClassByName(implementationClassName);
             if (implementationClass == null) {
-                throw UserError.abort("Could not find registered service implementation class `%s` for service `%s`", implementationClassName, serviceClassName);
+                if (trace) {
+                    System.out.println("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+                }
+                continue;
             }
             try {
                 access.getMetaAccess().lookupJavaType(implementationClass);
@@ -314,7 +318,10 @@ public class ServiceLoaderFeature implements Feature {
                  * such a service would lead to a ServiceConfigurationError.
                  */
                 implementationClass.getDeclaredConstructor();
-            } catch (NoSuchMethodException ex) {
+            } catch (ReflectiveOperationException | NoClassDefFoundError ex) {
+                if (trace) {
+                    System.out.println("  cannot resolve a nullary constructor for " + implementationClassName + ": " + ex.getMessage());
+                }
                 continue;
             }
 

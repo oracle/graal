@@ -40,9 +40,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents a node in the call tree built up by sampling the shadow stack. Additional data can be
- * attached to this class through the template parameter, allowing individual tools to attached
- * needed data to the call tree.
+ * Represents a node in the call tree built up by sampling the stack. Additional data can be
+ * attached to this class through the template parameter, allowing individual tools to attach needed
+ * data to the call tree.
  *
  * @param <T> The type of data that should be associated with this node.
  * @since 0.30
@@ -192,6 +192,24 @@ public final class ProfilerNode<T> {
             }
             destinationChild.deepMergeChildrenFrom(child, mergePayload, payloadFactory);
         }
+    }
+
+    void deepMergeNodeToChildren(ProfilerNode<T> node, BiConsumer<T, T> mergePayload, Supplier<T> payloadFactory) {
+        final StackTraceEntry childSourceLocation = node.getSourceLocation();
+        final T childPayload = node.getPayload();
+        ProfilerNode<T> destinationChild = findBySourceLocation(childSourceLocation);
+        if (destinationChild == null) {
+            T destinationPayload = payloadFactory.get();
+            mergePayload.accept(childPayload, destinationPayload);
+            destinationChild = new ProfilerNode<>(this, childSourceLocation, destinationPayload);
+            if (children == null) {
+                children = new HashMap<>();
+            }
+            children.put(childSourceLocation, destinationChild);
+        } else {
+            mergePayload.accept(childPayload, destinationChild.getPayload());
+        }
+        destinationChild.deepMergeChildrenFrom(node, mergePayload, payloadFactory);
     }
 
     private ProfilerNode<T> findBySourceLocation(StackTraceEntry targetSourceLocation) {

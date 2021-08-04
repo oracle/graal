@@ -44,7 +44,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
-import com.oracle.svm.core.graal.nodes.UnreachableNode;
+import org.graalvm.compiler.nodes.UnreachableNode;
 
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 

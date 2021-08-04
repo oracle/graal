@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T> {
 
@@ -79,7 +80,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
 
     @Override
     public String toString() {
-        return "<" + valueType.getSimpleName().toLowerCase() + ">*";
+        return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase() + ">*";
     }
 
     public static class Strings extends LocatableMultiOptionValue<String> {

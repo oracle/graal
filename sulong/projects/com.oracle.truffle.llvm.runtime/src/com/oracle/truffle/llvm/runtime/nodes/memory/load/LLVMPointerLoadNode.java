@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -75,6 +76,7 @@ public abstract class LLVMPointerLoadNode extends LLVMLoadNode {
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected LLVMPointer doIndirectedForeign(LLVMManagedPointer addr, long offset,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             return nativeRead.readPointer(addr.getObject(), addr.getOffset() + offset);
@@ -96,8 +98,9 @@ public abstract class LLVMPointerLoadNode extends LLVMLoadNode {
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected LLVMPointer doIndirectedForeign(LLVMManagedPointer addr,
-                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
-        return nativeRead.readPointer(addr.getObject(), addr.getOffset());
+                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary read) {
+        return read.readPointer(addr.getObject(), addr.getOffset());
     }
 }

@@ -32,12 +32,13 @@ import java.nio.ByteOrder;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.word.LocationIdentity;
 
@@ -111,7 +112,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     // this is never a valid access of an arbitrary address.
                     if ((field != null && field.getJavaKind() == this.accessKind() &&
                                     !field.isInternal() /* Ensure this is a true java field. */)) {
-                        assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
+                        assert graph().isBeforeStage(StageFlag.FLOATING_READS) : "cannot add more precise memory location after floating read phase";
                         return cloneAsFieldAccess(graph().getAssumptions(), field, isVolatile());
                     }
                 }
@@ -125,7 +126,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                      * outside of the body of the array. This seems to be benign.
                      */
                     LocationIdentity identity = NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getJavaKind());
-                    assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
+                    assert graph().isBeforeStage(StageFlag.FLOATING_READS) : "cannot add more precise memory location after floating read phase";
                     return cloneAsArrayAccess(offset(), identity, isVolatile());
                 }
             }

@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -42,10 +41,10 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -93,10 +92,9 @@ public class HostedUniverse implements Universe {
 
     public synchronized HostedMethod createDeoptTarget(HostedMethod method) {
         if (method.compilationInfo.getDeoptTargetMethod() == null) {
-            HostedMethod deoptTarget = new HostedMethod(this, method.getWrapped(), method.getDeclaringClass(), method.getSignature(), method.getConstantPool(), method.getExceptionHandlers());
+            HostedMethod deoptTarget = new HostedMethod(this, method.getWrapped(), method.getDeclaringClass(), method.getSignature(), method.getConstantPool(), method.getExceptionHandlers(), method);
             assert method.staticAnalysisResults != null;
             deoptTarget.staticAnalysisResults = method.staticAnalysisResults;
-            method.compilationInfo.setDeoptTarget(deoptTarget);
         }
         return method.compilationInfo.getDeoptTargetMethod();
     }
@@ -223,12 +221,8 @@ public class HostedUniverse implements Universe {
         return bb;
     }
 
-    public ConstantReflectionProvider getConstantReflectionProvider() {
-        return bb.getConstantReflectionProvider();
-    }
-
-    public ConstantFieldProvider getConstantFieldProvider() {
-        return bb.getConstantFieldProvider();
+    public AnalysisConstantReflectionProvider getConstantReflectionProvider() {
+        return (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
     }
 
     @Override

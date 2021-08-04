@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Dynamic Object Model
+permalink: /graalvm-as-a-platform/language-implementation-framework/DynamicObjectModel/
+---
 # Dynamic Object Model
 
 This guide demonstrates how to get started with using the [DynamicObject](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) and [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) APIs introduced with GraalVM 20.2.0.

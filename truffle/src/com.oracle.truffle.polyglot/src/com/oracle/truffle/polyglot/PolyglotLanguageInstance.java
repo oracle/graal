@@ -40,27 +40,32 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
-
-import java.util.List;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.graalvm.polyglot.Source;
-
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import com.oracle.truffle.polyglot.PolyglotValue.InteropCodeCache;
+import org.graalvm.collections.Pair;
+import org.graalvm.polyglot.Source;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 final class PolyglotLanguageInstance implements VMObject {
 
@@ -68,12 +73,16 @@ final class PolyglotLanguageInstance implements VMObject {
     final TruffleLanguage<Object> spi;
 
     private final PolyglotSourceCache sourceCache;
-    final Map<Class<?>, InteropCodeCache> valueCodeCache;
-    final Map<Object, Object> hostInteropCodeCache;
+    private final Map<Class<?>, PolyglotValueDispatch> valueCache;
+    private final Map<Class<?>, CallTarget> callTargetCache;
 
+    final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
     private volatile OptionValuesImpl firstOptionValues;
     private volatile boolean multiContextInitialized;
     private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per language instance.");
+
+    final Map<Class<?>, ClassLoader> staticObjectClassLoaders = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = new ConcurrentHashMap<>();
 
     /**
      * Direct language lookups in the current language.
@@ -96,8 +105,8 @@ final class PolyglotLanguageInstance implements VMObject {
     PolyglotLanguageInstance(PolyglotLanguage language) {
         this.language = language;
         this.sourceCache = new PolyglotSourceCache();
-        this.valueCodeCache = new ConcurrentHashMap<>();
-        this.hostInteropCodeCache = new ConcurrentHashMap<>();
+        this.valueCache = new ConcurrentHashMap<>();
+        this.callTargetCache = new ConcurrentHashMap<>();
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
             LANGUAGE.initializeLanguage(spi, language.info, language, this);
@@ -125,6 +134,15 @@ final class PolyglotLanguageInstance implements VMObject {
             }
         }
         this.directLanguageSupplier = PolyglotReferences.createAlwaysSingleLanguage(language, this);
+        PolyglotValueDispatch.createDefaultValues(getImpl(), this, this.valueCache);
+    }
+
+    CallTarget lookupCallTarget(Class<? extends RootNode> rootNodeClass) {
+        return callTargetCache.get(rootNodeClass);
+    }
+
+    CallTarget installCallTarget(RootNode rootNode) {
+        return callTargetCache.computeIfAbsent(rootNode.getClass(), (r) -> Truffle.getRuntime().createCallTarget(rootNode));
     }
 
     public PolyglotEngineImpl getEngine() {
@@ -157,7 +175,7 @@ final class PolyglotLanguageInstance implements VMObject {
         if (!language.engine.singleContext.isValid() && language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
             if (!multiContextInitialized) {
                 multiContextInitialized = true;
-                language.engine.initializeMultiContext(null);
+                language.engine.initializeMultiContext();
                 this.singleContext.invalidate();
                 LANGUAGE.initializeMultiContext(spi);
             }
@@ -221,6 +239,60 @@ final class PolyglotLanguageInstance implements VMObject {
 
     void listCachedSources(Collection<Source> sources) {
         sourceCache.listCachedSources(this, sources);
+    }
+
+    PolyglotValueDispatch lookupValueCache(PolyglotContextImpl context, Object guestValue) {
+        PolyglotValueDispatch cache = valueCache.get(guestValue.getClass());
+        if (cache == null) {
+            Object prev = language.engine.enterIfNeeded(context, true);
+            try {
+                cache = lookupValueCacheImpl(guestValue);
+            } finally {
+                language.engine.leaveIfNeeded(prev, context);
+            }
+        }
+        return cache;
+    }
+
+    private synchronized PolyglotValueDispatch lookupValueCacheImpl(Object guestValue) {
+        PolyglotValueDispatch cache = valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValueDispatch>() {
+            public PolyglotValueDispatch apply(Class<?> t) {
+                return PolyglotValueDispatch.createInteropValue(PolyglotLanguageInstance.this, (TruffleObject) guestValue, guestValue.getClass());
+            }
+        });
+        return cache;
+    }
+
+    /*
+     * Called from TruffleBaseFeature.StaticObjectSupport.
+     */
+    static Collection<PolyglotLanguageInstance> getActiveInstances() {
+        Set<PolyglotLanguageInstance> instances = new HashSet<>();
+        for (Object o : PolyglotEngineImpl.findActiveEngines()) {
+            collectInstances(((PolyglotEngineImpl) o), instances);
+        }
+        collectInstances(PolyglotImpl.getInstance().getPreinitializedEngine(), instances);
+        return instances;
+    }
+
+    private static void collectInstances(PolyglotEngineImpl engine, Collection<PolyglotLanguageInstance> foundInstances) {
+        for (PolyglotLanguage language : engine.idToLanguage.values()) {
+            foundInstances.addAll(language.getInstancePool());
+        }
+        collectInstances(engine.getPreInitializedContext(), foundInstances);
+        for (PolyglotContextImpl context : engine.collectAliveContexts()) {
+            collectInstances(context, foundInstances);
+        }
+    }
+
+    private static void collectInstances(PolyglotContextImpl context, Collection<PolyglotLanguageInstance> foundInstances) {
+        for (PolyglotLanguage language : context.engine.idToLanguage.values()) {
+            PolyglotLanguageContext languageContext = context.getContext(language);
+            PolyglotLanguageInstance instance = languageContext.getLanguageInstanceOrNull();
+            if (instance != null) {
+                foundInstances.add(instance);
+            }
+        }
     }
 
 }

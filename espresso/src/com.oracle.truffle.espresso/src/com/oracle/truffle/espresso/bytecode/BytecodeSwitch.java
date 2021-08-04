@@ -28,7 +28,7 @@ package com.oracle.truffle.espresso.bytecode;
  */
 public abstract class BytecodeSwitch {
 
-    public int getAlignedBci(int bci) {
+    public static int getAlignedBci(int bci) {
         return (bci + 4) & 0xfffffffc;
     }
 

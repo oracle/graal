@@ -35,14 +35,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * This class assigns each type an id, determines stamp metadata, and generates the information
@@ -197,10 +197,13 @@ public class TypeCheckBuilder {
      */
     private static void generateHeightOrderHelper(int depth, HostedType type, Map<HostedType, List<HostedType>> subtypeMap, Map<HostedType, Integer> heightMap, Set<HostedType> allTypes) {
         assert allTypes.contains(type);
-        heightMap.compute(type, (k, currentHeight) -> Integer.max(depth, currentHeight));
 
-        for (HostedType subtype : subtypeMap.get(type)) {
-            generateHeightOrderHelper(depth + 1, subtype, subtypeMap, heightMap, allTypes);
+        Integer currentHeight = heightMap.get(type);
+        if (depth > currentHeight) {
+            heightMap.put(type, depth);
+            for (HostedType subtype : subtypeMap.get(type)) {
+                generateHeightOrderHelper(depth + 1, subtype, subtypeMap, heightMap, allTypes);
+            }
         }
     }
 
@@ -1725,11 +1728,9 @@ public class TypeCheckBuilder {
 
         static boolean compareTypeIDResults(List<HostedType> types) {
             if (!SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
-                int numTypes = types.size();
-                for (int i = 0; i < numTypes; i++) {
-                    HostedType superType = types.get(i);
-                    for (int j = 0; j < numTypes; j++) {
-                        HostedType checkedType = types.get(j);
+                Set<String> mismatchedTypes = ConcurrentHashMap.newKeySet();
+                types.parallelStream().forEach(superType -> {
+                    for (HostedType checkedType : types) {
                         boolean hostedCheck = superType.isAssignableFrom(checkedType);
                         boolean runtimeCheck = runtimeIsAssignableFrom(superType, checkedType);
                         boolean checksMatch = hostedCheck == runtimeCheck;
@@ -1740,9 +1741,13 @@ public class TypeCheckBuilder {
                             message.append(String.format("checked type: %s\n", checkedType.toString()));
                             message.append(String.format("hosted check: %b\n", hostedCheck));
                             message.append(String.format("runtime check: %b\n", runtimeCheck));
-                            VMError.shouldNotReachHere(message.toString());
+                            mismatchedTypes.add(message.toString());
                         }
                     }
+                });
+                if (!mismatchedTypes.isEmpty()) {
+                    mismatchedTypes.forEach(System.err::println);
+                    throw new AssertionError("Verification of type assignment failed");
                 }
             }
             return true;
@@ -1753,10 +1758,7 @@ public class TypeCheckBuilder {
             int typeCheckRange = Short.toUnsignedInt(superType.getTypeCheckRange());
             int typeCheckSlot = Short.toUnsignedInt(superType.getTypeCheckSlot());
             int checkedTypeID = Short.toUnsignedInt(checkedType.getTypeCheckSlots()[typeCheckSlot]);
-            if (UnsignedMath.belowThan(checkedTypeID - typeCheckStart, typeCheckRange)) {
-                return true;
-            }
-            return false;
+            return UnsignedMath.belowThan(checkedTypeID - typeCheckStart, typeCheckRange);
         }
     }
 }

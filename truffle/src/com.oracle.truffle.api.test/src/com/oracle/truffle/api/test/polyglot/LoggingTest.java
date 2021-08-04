@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1152,6 +1152,45 @@ public class LoggingTest {
             Assert.assertEquals(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()), handler1.getLog());
             Assert.assertEquals(Collections.singletonList(new AbstractMap.SimpleImmutableEntry<>(Level.FINEST, "bound")), handler2.getLog());
         }
+    }
+
+    @Test
+    @SuppressWarnings({"unused", "try"})
+    public void testInterpreterOnlyWarning() {
+        String warnInterpreterOnlyValue = System.getProperty("polyglot.engine.WarnInterpreterOnly");
+        if (warnInterpreterOnlyValue != null) {
+            System.getProperties().remove("polyglot.engine.WarnInterpreterOnly");
+        }
+        try {
+            TestHandler handler = new TestHandler();
+            try (Context ctx = Context.newBuilder().logHandler(handler).build()) {
+                boolean hasMessage = hasInterpreterOnlyWarning(handler.getLog());
+                boolean graalRuntime = AbstractPolyglotTest.isGraalRuntime();
+                Assert.assertTrue(graalRuntime ? !hasMessage : hasMessage);
+            }
+            try (Context ctx = Context.newBuilder().option("engine.WarnInterpreterOnly", "true").logHandler(handler).build()) {
+                boolean hasMessage = hasInterpreterOnlyWarning(handler.getLog());
+                boolean graalRuntime = AbstractPolyglotTest.isGraalRuntime();
+                Assert.assertTrue(graalRuntime ? !hasMessage : hasMessage);
+            }
+            try (Context ctx = Context.newBuilder().option("engine.WarnInterpreterOnly", "false").logHandler(handler).build()) {
+                Assert.assertFalse(hasInterpreterOnlyWarning(handler.getLog()));
+            }
+        } finally {
+            if (warnInterpreterOnlyValue != null) {
+                System.setProperty("polyglot.engine.WarnInterpreterOnly", warnInterpreterOnlyValue);
+            }
+        }
+    }
+
+    private static boolean hasInterpreterOnlyWarning(Iterable<Map.Entry<Level, String>> log) {
+        for (Map.Entry<Level, String> record : log) {
+            String message = record.getValue();
+            if (message.startsWith("The polyglot context is using an implementation that does not support runtime compilation.")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @SuppressWarnings("all")

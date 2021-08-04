@@ -258,7 +258,7 @@ public abstract class BaseSuiteHarness {
     }
 
     protected Predicate<? super Path> getIsSulongFilter() {
-        return p -> CommonTestUtils.isSulong.test(p) && TestEngineConfig.getInstance().canExecute(p);
+        return CommonTestUtils.isSulong;
     }
 
     protected Predicate<? super Path> getIsExecutableFilter() {
@@ -299,8 +299,8 @@ public abstract class BaseSuiteHarness {
     private static final int PERCENT = 100;
 
     protected static void printStatistics(String name, Path source, Path config, Predicate<Path> filter) {
-        Set<Path> whiteList = getListEntries(source, config, CommonTestUtils.isIncludeFile);
-        Set<Path> blackList = getListEntries(source, config, CommonTestUtils.isExcludeFile);
+        Set<Path> includeList = getListEntries(source, config, CommonTestUtils.isIncludeFile);
+        Set<Path> excludeList = getListEntries(source, config, CommonTestUtils.isExcludeFile);
         Set<Path> files = CommonTestUtils.getFiles(source);
         Map<String, Integer> statisticTotalFiles = CommonTestUtils.supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
         Map<String, Integer> statisticTotalNoExcludeFiles = CommonTestUtils.supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
@@ -316,9 +316,9 @@ public abstract class BaseSuiteHarness {
             }
         }
 
-        // count available test files minus blackList
+        // count available test files minus excludeList
         for (Path f : files) {
-            if (filter.test(f) && !blackList.contains(f)) {
+            if (filter.test(f) && !excludeList.contains(f)) {
                 String fileEnding = CommonTestUtils.getFileEnding(f.toString());
                 if (CommonTestUtils.supportedFiles.contains(fileEnding)) {
                     statisticTotalNoExcludeFiles.put(fileEnding, statisticTotalNoExcludeFiles.get(fileEnding) + 1);
@@ -327,7 +327,7 @@ public abstract class BaseSuiteHarness {
         }
 
         // count running test files
-        for (Path f : whiteList) {
+        for (Path f : includeList) {
             if (filter.test(f)) {
                 String fileEnding = CommonTestUtils.getFileEnding(f.toString());
                 if (CommonTestUtils.supportedFiles.contains(fileEnding)) {
@@ -378,7 +378,7 @@ public abstract class BaseSuiteHarness {
             }
             return results;
         } catch (IOException e) {
-            throw new AssertionError("Error creating whitelist.", e);
+            throw new AssertionError("Error creating test filter list.", e);
         }
     }
 }

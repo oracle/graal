@@ -76,11 +76,6 @@ public abstract class LongArrayLoadNode extends QuickNode {
 
     @Specialization(guards = "array.isEspressoObject()")
     long doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayLong(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
+        return getBytecodeNode().getInterpreterToVM().getArrayLong(index, array);
     }
 }

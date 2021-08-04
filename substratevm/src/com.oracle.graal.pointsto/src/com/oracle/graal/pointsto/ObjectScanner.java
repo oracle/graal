@@ -30,13 +30,10 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -61,27 +58,22 @@ public abstract class ObjectScanner {
 
     protected final BigBang bb;
     private final ReusableSet scannedObjects;
-    protected final Deque<WorklistEntry> worklist;
-    /**
-     * Used to track whether all work has been completed or not.
-     */
-    private final AtomicLong workInProgressCount = new AtomicLong(0);
+    private final CompletionExecutor executor;
+    private final Deque<WorklistEntry> worklist;
 
-    public ObjectScanner(BigBang bigbang, ReusableSet scannedObjects) {
+    public ObjectScanner(BigBang bigbang, CompletionExecutor executor, ReusableSet scannedObjects) {
         this.bb = bigbang;
-        this.worklist = new ConcurrentLinkedDeque<>();
+        if (executor != null) {
+            this.executor = executor;
+            this.worklist = null;
+        } else {
+            this.executor = null;
+            this.worklist = new ConcurrentLinkedDeque<>();
+        }
         this.scannedObjects = scannedObjects;
     }
 
-    public void scanBootImageHeapRoots(CompletionExecutor executor) {
-        scanBootImageHeapRoots(executor, null, null);
-    }
-
     public void scanBootImageHeapRoots(Comparator<AnalysisField> fieldComparator, Comparator<BytecodePosition> embeddedRootComparator) {
-        scanBootImageHeapRoots(null, fieldComparator, embeddedRootComparator);
-    }
-
-    private void scanBootImageHeapRoots(CompletionExecutor exec, Comparator<AnalysisField> fieldComparator, Comparator<BytecodePosition> embeddedRootComparator) {
         // scan the original roots
         // the original roots are all the static fields, of object type, that were accessed
         Collection<AnalysisField> fields = bb.getUniverse().getFields();
@@ -91,8 +83,8 @@ public abstract class ObjectScanner {
             fields = fieldsList;
         }
         for (AnalysisField field : fields) {
-            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isInImageHeap()) {
-                execute(exec, () -> scanRootField(field));
+            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isRead()) {
+                execute(() -> scanRootField(field));
             }
         }
 
@@ -100,27 +92,17 @@ public abstract class ObjectScanner {
         Map<JavaConstant, BytecodePosition> embeddedRoots = bb.getUniverse().getEmbeddedRoots();
         if (embeddedRootComparator != null) {
             embeddedRoots.entrySet().stream().sorted(Map.Entry.comparingByValue(embeddedRootComparator))
-                            .forEach(entry -> execute(exec, () -> scanEmbeddedRoot(entry.getKey(), entry.getValue())));
+                            .forEach(entry -> execute(() -> scanEmbeddedRoot(entry.getKey(), entry.getValue())));
         } else {
-            embeddedRoots.forEach((key, value) -> execute(exec, () -> scanEmbeddedRoot(key, value)));
+            embeddedRoots.forEach((key, value) -> execute(() -> scanEmbeddedRoot(key, value)));
         }
 
-        finish(exec);
+        finish();
     }
 
-    private void execute(CompletionExecutor exec, Runnable runnable) {
-        if (exec != null) {
-            workInProgressCount.incrementAndGet();
-            exec.execute(new CompletionExecutor.DebugContextRunnable() {
-                @Override
-                public void run(DebugContext debug) {
-                    try {
-                        runnable.run();
-                    } finally {
-                        workInProgressCount.decrementAndGet();
-                    }
-                }
-            });
+    private void execute(Runnable runnable) {
+        if (executor != null) {
+            executor.execute(debug -> runnable.run());
         } else {
             runnable.run();
         }
@@ -271,8 +253,12 @@ public abstract class ObjectScanner {
                 forScannedConstant(value, reason);
             } finally {
                 scannedObjects.release(valueObj);
-                workInProgressCount.incrementAndGet();
-                worklist.push(new WorklistEntry(previous, value, reason));
+                WorklistEntry worklistEntry = new WorklistEntry(previous, value, reason);
+                if (executor != null) {
+                    executor.execute(debug -> doScan(worklistEntry));
+                } else {
+                    worklist.push(worklistEntry);
+                }
             }
         }
     }
@@ -341,7 +327,7 @@ public abstract class ObjectScanner {
             if (type.isInstanceClass()) {
                 /* Scan constant's instance fields. */
                 for (AnalysisField field : type.getInstanceFields(true)) {
-                    if (field.getJavaKind() == JavaKind.Object && field.isInImageHeap()) {
+                    if (field.getJavaKind() == JavaKind.Object && field.isRead()) {
                         assert !Modifier.isStatic(field.getModifiers());
                         scanField(field, entry.constant, entry);
                     }
@@ -362,50 +348,8 @@ public abstract class ObjectScanner {
      * Processing fields can issue new fields to be scanned so we always add the check for workitems
      * at the end of the worklist.
      */
-    protected void finish(CompletionExecutor exec) {
-        if (exec != null) {
-            // We add a task which checks for workitems in the worklist, we keep it adding as long
-            // there are more workitems available.
-            exec.execute(new CompletionExecutor.DebugContextRunnable() {
-                @Override
-                public void run(DebugContext ignored) {
-                    if (workInProgressCount.get() > 0) {
-                        int worklistLength = worklist.size();
-                        while (!worklist.isEmpty()) {
-                            int poolSize = exec.isSequential() ? 1 : exec.getExecutorService().getPoolSize();
-                            // Put workitems into buckets to avoid overhead for scheduling
-                            int bucketSize = Integer.max(1, Integer.max(worklistLength, worklist.size()) / (2 * poolSize));
-                            final ArrayList<WorklistEntry> items = new ArrayList<>();
-                            while (!worklist.isEmpty() && items.size() < bucketSize) {
-                                items.add(worklist.remove());
-                            }
-                            exec.execute(new CompletionExecutor.DebugContextRunnable() {
-                                @Override
-                                public void run(DebugContext ignored2) {
-                                    Iterator<WorklistEntry> it = items.iterator();
-                                    try {
-                                        while (it.hasNext()) {
-                                            try {
-                                                doScan(it.next());
-                                            } finally {
-                                                workInProgressCount.decrementAndGet();
-                                            }
-                                        }
-                                    } finally {
-                                        // Push back leftover elements (In exception case)
-                                        while (it.hasNext()) {
-                                            worklist.push(it.next());
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                        // Put ourself into the queue to re-check the worklist
-                        exec.execute(this);
-                    }
-                }
-            });
-        } else {
+    protected void finish() {
+        if (executor == null) {
             while (!worklist.isEmpty()) {
                 int size = worklist.size();
                 for (int i = 0; i < size; i++) {

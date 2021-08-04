@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,22 +26,23 @@ package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.word.LocationIdentity;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
 @NodeInfo(nameTemplate = "Write#{p#location/s}")
-public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Canonicalizable {
+public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Simplifiable {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
 
@@ -84,20 +85,28 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (tool.canonicalizeReads() && hasExactlyOneUsage() && next() instanceof WriteNode) {
-            WriteNode write = (WriteNode) next();
-            if (write.lastLocationAccess == this && write.getAddress() == getAddress() && getAccessStamp(NodeView.DEFAULT).isCompatible(write.getAccessStamp(NodeView.DEFAULT))) {
-                write.setLastLocationAccess(getLastLocationAccess());
-                return write;
-            }
-        }
-        return this;
-    }
-
-    @Override
     public final LocationIdentity getKilledLocationIdentity() {
         return killedLocationIdentity;
     }
 
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (tool.canonicalizeReads() && hasExactlyOneUsage() && next() instanceof WriteNode) {
+            WriteNode write = (WriteNode) next();
+            if (write.lastLocationAccess == this && write.getAddress() == getAddress() && getAccessStamp(NodeView.DEFAULT).isCompatible(write.getAccessStamp(NodeView.DEFAULT))) {
+                write.setLastLocationAccess(getLastLocationAccess());
+                tool.addToWorkList(inputs());
+                tool.addToWorkList(next());
+                tool.addToWorkList(predecessor());
+                graph().removeFixed(this);
+            }
+        }
+        // reinterpret means nothing writing to an array - we simply write the bytes
+        if (NamedLocationIdentity.isArrayLocation(location) && value() instanceof ReinterpretNode) {
+            tool.addToWorkList(value());
+            tool.addToWorkList(((ReinterpretNode) value()).getValue());
+            tool.addToWorkList(this);
+            setValue(((ReinterpretNode) value()).getValue());
+        }
+    }
 }

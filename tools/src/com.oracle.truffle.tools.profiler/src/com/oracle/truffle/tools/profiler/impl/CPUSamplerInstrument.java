@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -31,8 +33,6 @@ import org.graalvm.polyglot.Instrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUSampler;
-
-import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
 
 /**
  * The {@linkplain TruffleInstrument instrument} for the CPU sampler.
@@ -56,7 +56,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static final String ID = "cpusampler";
-    static final String VERSION = "0.4.0";
+    static final String VERSION = "0.5.0";
     private CPUSampler sampler;
     private static ProfilerToolFactory<CPUSampler> factory;
 
@@ -112,21 +112,18 @@ public class CPUSamplerInstrument extends TruffleInstrument {
             sampler.setStackLimit(env.getOptions().get(CPUSamplerCLI.STACK_LIMIT));
             sampler.setFilter(getSourceSectionFilter(env));
             sampler.setGatherSelfHitTimes(env.getOptions().get(GATHER_HIT_TIMES));
-            sampler.setMode(env.getOptions().get(CPUSamplerCLI.MODE));
             sampler.setCollecting(true);
         }
         env.registerService(sampler);
     }
 
     private static SourceSectionFilter getSourceSectionFilter(Env env) {
-        final CPUSampler.Mode mode = env.getOptions().get(CPUSamplerCLI.MODE);
-        final boolean statements = mode == CPUSampler.Mode.STATEMENTS;
         final boolean internals = env.getOptions().get(CPUSamplerCLI.SAMPLE_INTERNAL);
         final Object[] filterRootName = env.getOptions().get(CPUSamplerCLI.FILTER_ROOT);
         final Object[] filterFile = env.getOptions().get(CPUSamplerCLI.FILTER_FILE);
         final String filterMimeType = env.getOptions().get(CPUSamplerCLI.FILTER_MIME_TYPE);
         final String filterLanguage = env.getOptions().get(CPUSamplerCLI.FILTER_LANGUAGE);
-        return CPUSamplerCLI.buildFilter(true, statements, false, internals, filterRootName, filterFile, filterMimeType, filterLanguage);
+        return CPUSamplerCLI.buildFilter(true, false, false, internals, filterRootName, filterFile, filterMimeType, filterLanguage);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -61,16 +61,16 @@ public final class AArch64HotSpotLoadConfigValueOp extends AArch64LIRInstruction
             masm.adrpAdd(reg);
             switch (kind) {
                 case BYTE:
-                    masm.ldrs(32, 8, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));
+                    masm.ldrs(32, 8, reg, AArch64Address.createBaseRegisterOnlyAddress(8, reg));
                     break;
                 case WORD:
-                    masm.ldrs(32, 16, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));
+                    masm.ldrs(32, 16, reg, AArch64Address.createBaseRegisterOnlyAddress(16, reg));
                     break;
                 case DWORD:
-                    masm.ldr(32, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));
+                    masm.ldr(32, reg, AArch64Address.createBaseRegisterOnlyAddress(32, reg));
                     break;
                 case QWORD:
-                    masm.ldr(64, reg, AArch64Address.createBaseRegisterOnlyAddress(reg));
+                    masm.ldr(64, reg, AArch64Address.createBaseRegisterOnlyAddress(64, reg));
                     break;
                 default:
                     throw GraalError.unimplemented();

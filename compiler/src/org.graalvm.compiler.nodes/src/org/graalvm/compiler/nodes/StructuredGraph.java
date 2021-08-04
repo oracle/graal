@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -154,12 +154,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     /**
      * Different stages of the compilation regarding the status of various graph properties.
      */
-    public enum StageFlags {
-        AFTER_FLOATING_READ_PHASE,
-        AFTER_FIXED_READ_PHASE,
-        AFTER_VALUE_PROXY_REMOVAL,
-        AFTER_EXPAND_LOGIC,
-        AFTER_FINAL_CANONICALIZATION
+    public enum StageFlag {
+        PARTIAL_ESCAPE,
+        HIGH_TIER,
+        FLOATING_READS,
+        GUARD_MOVEMENT,
+        FIXED_READS,
+        VALUE_PROXY_REMOVAL,
+        EXPAND_LOGIC,
+        FINAL_CANONICALIZATION
     }
 
     public static class ScheduleResult {
@@ -355,7 +358,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private final CompilationIdentifier compilationId;
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
-    private EnumSet<StageFlags> stageFlags = EnumSet.noneOf(StageFlags.class);
+    private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
     private FrameStateVerification frameStateVerification;
 
     /**
@@ -676,30 +679,47 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     @Override
     protected Graph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, DebugContext debugForCopy) {
-        return copy(newName, duplicationMapCallback, compilationId, debugForCopy);
+        return copy(newName, rootMethod, getOptions(), duplicationMapCallback, compilationId, debugForCopy, trackNodeSourcePosition);
+    }
+
+    /**
+     * Creates a copy of this graph with the new option values.
+     *
+     * If a node contains an array of objects, only shallow copy of the field is applied.
+     *
+     * @param newName the name of the copy, used for debugging purposes (can be null)
+     * @param duplicationMapCallback consumer of the duplication map created during the copying
+     * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
+     *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
+     *            accessed by multiple threads).
+     * @param options the option values for the graph copy
+     */
+    public StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, DebugContext debugForCopy, OptionValues options) {
+        return copy(newName, rootMethod, options, duplicationMapCallback, compilationId, debugForCopy, trackNodeSourcePosition);
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
+    private StructuredGraph copy(String newName, ResolvedJavaMethod rootMethodForCopy, OptionValues optionsForCopy, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback,
+                    CompilationIdentifier newCompilationId, DebugContext debugForCopy, boolean trackNodeSourcePositionForCopy) {
         AllowAssumptions allowAssumptions = allowAssumptions();
         StructuredGraph copy = new StructuredGraph(newName,
-                        method(),
+                        rootMethodForCopy,
                         entryBCI,
                         assumptions == null ? null : new Assumptions(),
                         speculationLog,
                         useProfilingInfo,
                         isSubstitution,
                         methods != null ? new ArrayList<>(methods) : null,
-                        trackNodeSourcePosition,
+                        trackNodeSourcePositionForCopy,
                         newCompilationId,
-                        getOptions(), debugForCopy, null, callerContext);
+                        optionsForCopy, debugForCopy, null, callerContext);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
         }
         copy.hasUnsafeAccess = hasUnsafeAccess;
         copy.setGuardsStage(getGuardsStage());
         copy.stageFlags = EnumSet.copyOf(stageFlags);
-        copy.trackNodeSourcePosition = trackNodeSourcePosition;
+        copy.trackNodeSourcePosition = trackNodeSourcePositionForCopy;
         if (fields != null) {
             copy.fields = createFieldSet(fields);
         }
@@ -724,7 +744,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      *            accessed by multiple threads).
      */
     public StructuredGraph copyWithIdentifier(CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
-        return copy(name, null, newCompilationId, debugForCopy);
+        return copy(name, rootMethod, getOptions(), null, newCompilationId, debugForCopy, trackNodeSourcePosition);
+    }
+
+    public StructuredGraph copy(ResolvedJavaMethod rootMethodForCopy, OptionValues optionsForCopy, DebugContext debugForCopy, boolean trackNodeSourcePositionForCopy) {
+        return copy(name, rootMethodForCopy, optionsForCopy, null, compilationId, debugForCopy, trackNodeSourcePositionForCopy);
     }
 
     public ParameterNode getParameter(int index) {
@@ -979,44 +1003,21 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.guardsStage = guardsStage;
     }
 
-    public boolean isAfterFloatingReadPhase() {
-        return stageFlags.contains(StageFlags.AFTER_FLOATING_READ_PHASE);
+    public boolean isAfterStage(StageFlag state) {
+        return stageFlags.contains(state);
     }
 
-    public boolean isAfterFixedReadPhase() {
-        return stageFlags.contains(StageFlags.AFTER_FIXED_READ_PHASE);
+    public boolean isBeforeStage(StageFlag state) {
+        return !isAfterStage(state);
     }
 
-    public void setAfterFloatingReadPhase() {
-        stageFlags.add(StageFlags.AFTER_FLOATING_READ_PHASE);
+    public void setAfterStage(StageFlag state) {
+        assert isBeforeStage(state) : "Cannot set after state " + state + " since the graph is already in that state";
+        stageFlags.add(state);
     }
 
-    public void setAfterFixReadPhase() {
-        stageFlags.add(StageFlags.AFTER_FIXED_READ_PHASE);
-    }
-
-    public boolean hasValueProxies() {
-        return !stageFlags.contains(StageFlags.AFTER_VALUE_PROXY_REMOVAL);
-    }
-
-    public void setAfterValueProxyRemoval() {
-        stageFlags.add(StageFlags.AFTER_VALUE_PROXY_REMOVAL);
-    }
-
-    public boolean isAfterExpandLogic() {
-        return stageFlags.contains(StageFlags.AFTER_EXPAND_LOGIC);
-    }
-
-    public void setAfterExpandLogic() {
-        stageFlags.add(StageFlags.AFTER_EXPAND_LOGIC);
-    }
-
-    public boolean isAfterFinalCanonicalization() {
-        return stageFlags.contains(StageFlags.AFTER_FINAL_CANONICALIZATION);
-    }
-
-    public void setAfterFinalCanonicalization() {
-        stageFlags.add(StageFlags.AFTER_FINAL_CANONICALIZATION);
+    public EnumSet<StageFlag> getStageFlags() {
+        return stageFlags;
     }
 
     /**
@@ -1285,7 +1286,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected void afterRegister(Node node) {
-        assert hasValueProxies() || !(node instanceof ValueProxyNode);
+        assert !isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode);
         if (GraalOptions.TraceInlining.getValue(getOptions())) {
             if (node instanceof Invokable) {
                 ((Invokable) node).updateInliningLogAfterRegister(this);

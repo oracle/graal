@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,10 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -52,7 +53,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
 
     public static final NodeClass<LoopBeginNode> TYPE = NodeClass.create(LoopBeginNode.class);
-    protected double loopFrequency;
+    private LoopFrequencyData profileData;
     protected double loopOrigFrequency;
     protected int nextEndIndex;
     protected int unswitches;
@@ -62,6 +63,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
+    protected boolean stripMinedOuter;
+    protected boolean stripMinedInner;
     /**
      * Flag to indicate that this loop must not be detected as a counted loop.
      */
@@ -94,7 +97,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public LoopBeginNode() {
         super(TYPE);
-        loopFrequency = 1;
+        profileData = LoopFrequencyData.DEFAULT;
         loopOrigFrequency = 1;
         unswitches = 0;
         splits = 0;
@@ -115,6 +118,26 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
             }
         }
         disableCounted = disableCountedBasedOnSpeculation;
+    }
+
+    public boolean canEndsSafepoint() {
+        return canEndsSafepoint;
+    }
+
+    public void setStripMinedInner(boolean stripMinedInner) {
+        this.stripMinedInner = stripMinedInner;
+    }
+
+    public void setStripMinedOuter(boolean stripMinedOuter) {
+        this.stripMinedOuter = stripMinedOuter;
+    }
+
+    public boolean isStripMinedInner() {
+        return stripMinedInner;
+    }
+
+    public boolean isStripMinedOuter() {
+        return stripMinedOuter;
     }
 
     public boolean canNeverOverflow() {
@@ -197,13 +220,16 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.loopOrigFrequency = loopOrigFrequency;
     }
 
-    public double loopFrequency() {
-        return loopFrequency;
+    public LoopFrequencyData profileData() {
+        return profileData;
     }
 
-    public void setLoopFrequency(double loopFrequency) {
-        assert loopFrequency >= 1.0;
-        this.loopFrequency = loopFrequency;
+    public double loopFrequency() {
+        return profileData.getLoopFrequency();
+    }
+
+    public void setLoopFrequency(LoopFrequencyData newProfileData) {
+        this.profileData = newProfileData;
     }
 
     /**

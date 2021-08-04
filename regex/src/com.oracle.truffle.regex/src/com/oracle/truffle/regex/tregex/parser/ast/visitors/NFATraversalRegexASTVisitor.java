@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
@@ -325,28 +324,28 @@ public abstract class NFATraversalRegexASTVisitor {
                             } else if (pathIsGroupExit(element)) {
                                 quantifierGuardsLoop.set(quantifier.getIndex());
                             } else {
-                                assert pathIsGroupRubyEscape(element);
+                                assert pathIsGroupEscape(element);
                                 quantifierGuardsExited.set(quantifier.getIndex());
                             }
                         }
                         if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
                             if (pathIsGroupEnter(element)) {
                                 quantifierGuards.add(QuantifierGuard.createEnterZeroWidth(quantifier));
-                            } else if (pathIsGroupExit(element) && ((ast.getOptions().getFlavor() == RubyFlavor.INSTANCE) || !root.isCharacterClass())) {
+                            } else if (pathIsGroupExit(element) && ((ast.getOptions().getFlavor().canHaveEmptyLoopIterations()) || !root.isCharacterClass())) {
                                 quantifierGuards.add(QuantifierGuard.createExitZeroWidth(quantifier));
-                            } else if (pathIsGroupRubyEscape(element)) {
+                            } else if (pathIsGroupEscape(element)) {
                                 quantifierGuards.add(QuantifierGuard.createEscapeZeroWidth(quantifier));
                             }
                         }
                     }
-                    if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && group.isCapturing()) {
+                    if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
                         if (pathIsGroupEnter(element)) {
                             quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
                         } else if (pathIsGroupPassThrough(element)) {
                             quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
                             quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
                         } else {
-                            assert pathIsGroupExit(element) || pathIsGroupRubyEscape(element);
+                            assert pathIsGroupExit(element) || pathIsGroupEscape(element);
                             quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
                         }
                     }
@@ -387,7 +386,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     captureGroupUpdates.set(b);
                     captureGroupClears.clear(b);
                 }
-                if (ast.getOptions().getFlavor() != RubyFlavor.INSTANCE) {
+                if (!ast.getOptions().getFlavor().nestedCaptureGroupsKeptOnLoopReentry()) {
                     if (pathIsGroupEnter(element) && group.hasQuantifier() && group.hasEnclosedCaptureGroups()) {
                         int lo = Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow());
                         int hi = Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1);
@@ -402,9 +401,9 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private boolean doAdvance() {
         // emptyLoopIterations tells us how many extra empty iterations of a loop do we admit.
-        // In Ruby, we admit 1, while in other dialects, we admit 0. This extra iteration
+        // In Ruby and Python, we admit 1, while in other dialects, we admit 0. This extra iteration
         // will not match any characters, but it might store an empty string in a capture group.
-        int extraEmptyLoopIterations = ast.getOptions().getFlavor() == RubyFlavor.INSTANCE ? 1 : 0;
+        int extraEmptyLoopIterations = ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ? 1 : 0;
         if (cur.isDead() || insideLoops.get(cur, 0) > extraEmptyLoopIterations) {
             return retreat();
         }
@@ -596,20 +595,20 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                         insideEmptyGuardGroup.remove(group);
                     }
-                } else if (ast.getOptions().getFlavor() == RubyFlavor.INSTANCE && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() &&
+                } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() &&
                                 (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
-                    // In Ruby, when we finish an iteration of a loop, there is an empty check.
-                    // If we pass the empty check, we return to the beginning of the loop where we
-                    // get to make a non-deterministic choice as to whether we want to start another
-                    // iteration of the loop (so far the same as ECMAScript). However, if we fail
-                    // the empty check, we continue to the expression that follows the loop. We
-                    // implement this by introducing two transitions, one leading to the start of
-                    // the loop (empty check passes) and one escaping past the loop (empty check
-                    // fails). The two transitions are then annotated with complementary guards
-                    // (exitZeroWidth and escapeZeroWidth, respectively), so that at runtime, only
-                    // one of the two transitions will be admissible. The clause below lets us
+                    // In Ruby (and also in Python), when we finish an iteration of a loop, there is
+                    // an empty check. If we pass the empty check, we return to the beginning of the
+                    // loop where we get to make a non-deterministic choice as to whether we want to
+                    // start another iteration of the loop (so far the same as ECMAScript). However,
+                    // if we fail // the empty check, we continue to the expression that follows the
+                    // loop. We implement this by introducing two transitions, one leading to the
+                    // start of the loop (empty check passes) and one escaping past the loop (empty
+                    // check fails). The two transitions are then annotated with complementary
+                    // guards (exitZeroWidth and escapeZeroWidth, respectively), so that at runtime,
+                    // only one of the two transitions will be admissible. The clause below lets us
                     // generate the second transition by replacing the loop exit with a loop escape.
-                    curPath.add(pathToGroupRubyEscape(lastVisited));
+                    curPath.add(pathToGroupEscape(lastVisited));
                     if (advanceTerm(group)) {
                         return true;
                     } else {
@@ -695,9 +694,9 @@ public abstract class NFATraversalRegexASTVisitor {
     private static final long PATH_GROUP_ACTION_ENTER = 1L << PATH_GROUP_ACTION_OFFSET;
     private static final long PATH_GROUP_ACTION_EXIT = 1L << PATH_GROUP_ACTION_OFFSET + 1;
     private static final long PATH_GROUP_ACTION_PASS_THROUGH = 1L << PATH_GROUP_ACTION_OFFSET + 2;
-    private static final long PATH_GROUP_ACTION_RUBY_ESCAPE = 1L << PATH_GROUP_ACTION_OFFSET + 3;
+    private static final long PATH_GROUP_ACTION_ESCAPE = 1L << PATH_GROUP_ACTION_OFFSET + 3;
     private static final long PATH_GROUP_ACTION_ENTER_OR_PASS_THROUGH = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_PASS_THROUGH;
-    private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH | PATH_GROUP_ACTION_RUBY_ESCAPE;
+    private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH | PATH_GROUP_ACTION_ESCAPE;
 
     /**
      * Create a new path element containing the given node.
@@ -740,10 +739,10 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     /**
-     * Convert the given path element to a group-Ruby-escape.
+     * Convert the given path element to a group-escape.
      */
-    private static long pathToGroupRubyEscape(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_CLEAR_MASK) | PATH_GROUP_ACTION_RUBY_ESCAPE;
+    private static long pathToGroupEscape(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_CLEAR_MASK) | PATH_GROUP_ACTION_ESCAPE;
     }
 
     /**
@@ -766,8 +765,8 @@ public abstract class NFATraversalRegexASTVisitor {
         return (pathElement & PATH_GROUP_ACTION_PASS_THROUGH) != 0;
     }
 
-    private static boolean pathIsGroupRubyEscape(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_RUBY_ESCAPE) != 0;
+    private static boolean pathIsGroupEscape(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_ESCAPE) != 0;
     }
 
     /**
@@ -836,7 +835,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 } else if (pathIsGroupPassThrough(element)) {
                     System.out.println(String.format("PASSTHROUGH %s", group));
                 } else {
-                    System.out.println(String.format("RUBY ESCAPE %s", group));
+                    System.out.println(String.format("ESCAPE      %s", group));
                 }
             } else {
                 System.out.println(String.format("NODE        %s", pathGetNode(element)));

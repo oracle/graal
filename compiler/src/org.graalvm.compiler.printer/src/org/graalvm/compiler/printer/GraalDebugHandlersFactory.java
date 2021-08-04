@@ -64,9 +64,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
             handlers.add(new GraphPrinterDumpHandler((debug, graph) -> createStringPrinter(snippetReflection)));
         }
         handlers.add(new NodeDumper());
-        if (DebugOptions.PrintCFG.getValue(options) || DebugOptions.PrintBackendCFG.getValue(options)) {
-            handlers.add(new CFGPrinterObserver());
-        }
+        handlers.add(new CFGPrinterObserver());
         handlers.add(new NoDeadCodeVerifyHandler());
         if (DebugOptions.PrintBlockMapping.getValue(options)) {
             handlers.add(new BciBlockMappingDumpHandler());
@@ -76,7 +74,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
 
     private static class NodeDumper implements DebugDumpHandler {
         @Override
-        public void dump(DebugContext debug, Object object, String format, Object... arguments) {
+        public void dump(Object object, DebugContext debug, boolean forced, String format, Object... arguments) {
             if (debug.isLogEnabled()) {
                 if (object instanceof Node) {
                     Node node = (Node) object;

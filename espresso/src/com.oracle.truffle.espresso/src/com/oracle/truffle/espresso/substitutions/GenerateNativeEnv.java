@@ -35,8 +35,8 @@ import java.lang.annotation.Target;
  * @see com.oracle.truffle.espresso.vm.VM
  * @see com.oracle.truffle.espresso.jni.JniEnv
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.TYPE)
 public @interface GenerateNativeEnv {
     /**
      * @return The annotation used to mark methods that are part of the implemented native
@@ -45,11 +45,7 @@ public @interface GenerateNativeEnv {
     Class<?> target();
 
     /**
-     * Annotate a class that already has {@link GenerateNativeEnv} so that a native env pointer is
-     * artificially added to the signature.
+     * Prepend the native env pointer to the signature.
      */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.TYPE})
-    @interface PrependEnv {
-    }
+    boolean prependEnv() default false;
 }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.c.function;
 
-import com.oracle.svm.core.ParsingReason;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -33,6 +32,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -57,7 +58,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -66,9 +67,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticFeature
 public class CEntryPointSupport implements GraalFeature {
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, ParsingReason reason) {
-        registerEntryPointActionsPlugins(invocationPlugins);
-        registerCurrentIsolatePlugins(invocationPlugins);
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+        registerEntryPointActionsPlugins(plugins.getInvocationPlugins());
+        registerCurrentIsolatePlugins(plugins.getInvocationPlugins());
     }
 
     private static void registerEntryPointActionsPlugins(InvocationPlugins plugins) {
@@ -86,7 +87,7 @@ public class CEntryPointSupport implements GraalFeature {
                 if (!ensureJavaThreadNode.isConstant()) {
                     b.bailout("Parameter ensureJavaThread of enterAttachThread must be a compile time constant");
                 }
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, ensureJavaThreadNode.asJavaConstant().asInt() != 0));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, ensureJavaThreadNode.asJavaConstant().asInt() != 0, false));
                 return true;
             }
         });
@@ -100,14 +101,14 @@ public class CEntryPointSupport implements GraalFeature {
         r.register1("enterIsolate", Isolate.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate, false));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate));
                 return true;
             }
         });
-        r.register1("enterIsolateFromCrashHandler", Isolate.class, new InvocationPlugin() {
+        r.register1("enterAttachThreadFromCrashHandler", Isolate.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate, true));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, true));
                 return true;
             }
         });
@@ -168,10 +169,10 @@ public class CEntryPointSupport implements GraalFeature {
                  * FailFatally does not return, so we can cut out any control flow afterwards and
                  * set the probability of the IfNode that leads to this branch.
                  */
-                DeadEndNode deadEndNode = b.add(new DeadEndNode());
+                LoweredDeadEndNode deadEndNode = b.add(new LoweredDeadEndNode());
                 AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(deadEndNode);
                 if (prevBegin != null && prevBegin.predecessor() instanceof IfNode) {
-                    ((IfNode) prevBegin.predecessor()).setProbability(prevBegin, BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY);
+                    ((IfNode) prevBegin.predecessor()).setProbability(prevBegin, BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROFILE);
                 }
                 return true;
             }

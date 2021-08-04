@@ -42,6 +42,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
@@ -90,7 +91,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @CompilationFinal RootCallTarget mainFunctionCallTarget;
     final String sourceName;
-    final int bitcodeID;
+    final BitcodeID bitcodeID;
     final Source source;
     @CompilationFinal ContextReference<LLVMContext> ctxRef;
 
@@ -208,9 +209,15 @@ public final class LoadModulesNode extends LLVMRootNode {
             }
 
             LLVMScope scope = loadModule(frame, context);
-            // Only the root library (not a dependency) will scope a non-null scope.
+            context.addSourceForCache(bitcodeID, source);
+
+            // Only the root library (not a dependency) will have a non-null scope.
             if (scope != null) {
-                return new SulongLibrary(sourceName, scope, main, context, parserRuntime.getLocator());
+                SulongLibrary library = new SulongLibrary(sourceName, scope, main, context, parserRuntime.getLocator());
+                if (main != null) {
+                    context.setMainLibrary(library);
+                }
+                return library;
             }
         }
         return null;
@@ -226,7 +233,7 @@ public final class LoadModulesNode extends LLVMRootNode {
             BitSet visited;
             ArrayDeque<CallTarget> que = null;
             LLVMScope resultScope = null;
-            RTLDFlags localOrGlobal = RTLDFlags.RTLD_DEFAULT;
+            RTLDFlags localOrGlobal = RTLDFlags.RTLD_OPEN_DEFAULT;
 
             // check for arguments for dlOpen
             if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof RTLDFlags)) {
@@ -262,10 +269,11 @@ public final class LoadModulesNode extends LLVMRootNode {
              * The scope is built in parsing order, which requires breadth-first with a que.
              */
             if (LLVMLoadingPhase.BUILD_SCOPES.isActive(phase)) {
-                if (!visited.get(bitcodeID)) {
-                    visited.set(bitcodeID);
+                int id = bitcodeID.getId();
+                if (!visited.get(id)) {
+                    visited.set(id);
                     addIDToLocalScope(localScope, bitcodeID);
-                    if (RTLDFlags.RTLD_DEFAULT.isActive(localOrGlobal)) {
+                    if (RTLDFlags.RTLD_OPEN_DEFAULT.isActive(localOrGlobal)) {
                         initScopes.execute(context.getGlobalScope());
                         initScopes.execute(localScope);
                         // create the returning scope.
@@ -293,7 +301,7 @@ public final class LoadModulesNode extends LLVMRootNode {
             }
 
             if (context.isLibraryAlreadyLoaded(bitcodeID)) {
-                if (RTLDFlags.RTLD_DEFAULT.isActive(localOrGlobal)) {
+                if (RTLDFlags.RTLD_OPEN_DEFAULT.isActive(localOrGlobal)) {
                     return resultScope;
                 } else {
                     return localScope;
@@ -356,7 +364,7 @@ public final class LoadModulesNode extends LLVMRootNode {
             }
 
             if (LLVMLoadingPhase.ALL == phase) {
-                if (RTLDFlags.RTLD_DEFAULT.isActive(localOrGlobal)) {
+                if (RTLDFlags.RTLD_OPEN_DEFAULT.isActive(localOrGlobal)) {
                     return resultScope;
                 } else {
                     return localScope;
@@ -370,8 +378,9 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @TruffleBoundary
     private void executeInitialiseSymbol(LLVMContext context, BitSet visited) {
-        if (!visited.get(bitcodeID)) {
-            visited.set(bitcodeID);
+        int id = bitcodeID.getId();
+        if (!visited.get(id)) {
+            visited.set(id);
             for (CallTarget d : dependencies) {
                 if (d != null) {
                     callDependencies.call(d, LLVMLoadingPhase.INIT_SYMBOLS, visited);
@@ -384,8 +393,9 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @TruffleBoundary
     private void executeInitialiseExternal(LLVMContext context, BitSet visited, LLVMLocalScope localScope, RTLDFlags rtldFlags) {
-        if (!visited.get(bitcodeID)) {
-            visited.set(bitcodeID);
+        int id = bitcodeID.getId();
+        if (!visited.get(id)) {
+            visited.set(id);
             for (CallTarget d : dependencies) {
                 if (d != null) {
                     callDependencies.call(d, LLVMLoadingPhase.INIT_EXTERNALS, visited, localScope, rtldFlags);
@@ -396,8 +406,9 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     private void executeInitialiseGlobals(LLVMContext context, BitSet visited, VirtualFrame frame) {
-        if (!visited.get(bitcodeID)) {
-            visited.set(bitcodeID);
+        int id = bitcodeID.getId();
+        if (!visited.get(id)) {
+            visited.set(id);
             for (CallTarget d : dependencies) {
                 if (d != null) {
                     callDependencies.call(d, LLVMLoadingPhase.INIT_GLOBALS, visited);
@@ -409,8 +420,9 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @TruffleBoundary
     private void executeInitialiseOverwrite(LLVMContext context, BitSet visited, LLVMLocalScope localScope, RTLDFlags rtldFlags) {
-        if (!visited.get(bitcodeID)) {
-            visited.set(bitcodeID);
+        int id = bitcodeID.getId();
+        if (!visited.get(id)) {
+            visited.set(id);
             for (CallTarget d : dependencies) {
                 if (d != null) {
                     callDependencies.call(d, LLVMLoadingPhase.INIT_OVERWRITE, visited, localScope, rtldFlags);
@@ -421,8 +433,9 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     private void executeInitialiseContext(BitSet visited, VirtualFrame frame) {
-        if (!visited.get(bitcodeID)) {
-            visited.set(bitcodeID);
+        int id = bitcodeID.getId();
+        if (!visited.get(id)) {
+            visited.set(id);
             for (CallTarget d : dependencies) {
                 if (d != null) {
                     callDependencies.call(d, LLVMLoadingPhase.INIT_CONTEXT, visited);
@@ -433,8 +446,9 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     private void executeInitialiseModule(LLVMContext context, BitSet visited, VirtualFrame frame) {
-        if (!visited.get(bitcodeID)) {
-            visited.set(bitcodeID);
+        int id = bitcodeID.getId();
+        if (!visited.get(id)) {
+            visited.set(id);
             for (CallTarget d : dependencies) {
                 if (d != null) {
                     callDependencies.call(d, LLVMLoadingPhase.INIT_MODULE, visited);
@@ -446,8 +460,9 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @TruffleBoundary
     private void executeDone(LLVMContext context, BitSet visited) {
-        if (!visited.get(bitcodeID)) {
-            visited.set(bitcodeID);
+        int id = bitcodeID.getId();
+        if (!visited.get(id)) {
+            visited.set(id);
             for (CallTarget d : dependencies) {
                 if (d != null) {
                     callDependencies.call(d, LLVMLoadingPhase.INIT_DONE, visited);
@@ -473,8 +488,8 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     @TruffleBoundary
-    private static void addIDToLocalScope(LLVMLocalScope localScope, int id) {
-        localScope.addID(id);
+    private static void addIDToLocalScope(LLVMLocalScope localScope, BitcodeID bitcodeID) {
+        localScope.addID(bitcodeID);
     }
 
     @TruffleBoundary

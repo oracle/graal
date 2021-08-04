@@ -130,7 +130,7 @@ public final class CodeAttribute extends Attribute {
                 return (LocalVariableTable) attr;
             }
         }
-        return LocalVariableTable.EMPTY;
+        return LocalVariableTable.EMPTY_LVT;
     }
 
     public LocalVariableTable getLocalvariableTypeTable() {
@@ -139,7 +139,7 @@ public final class CodeAttribute extends Attribute {
                 return (LocalVariableTable) attr;
             }
         }
-        return LocalVariableTable.EMPTY;
+        return LocalVariableTable.EMPTY_LVTT;
     }
 
     public int bciToLineNumber(int bci) {
@@ -165,10 +165,6 @@ public final class CodeAttribute extends Attribute {
     public void print(Klass klass, PrintStream out) {
         try {
             new BytecodeStream(code).printBytecode(klass, out);
-            out.println("\n");
-            if (getStackMapFrame() != null) {
-                getStackMapFrame().print(klass, out);
-            }
         } catch (Throwable e) {
             throw EspressoError.unexpected("Throw during printing. Aborting...", e);
         }

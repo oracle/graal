@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.reports;
 import static com.oracle.graal.pointsto.reports.ReportUtils.fieldComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.positionComparator;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -44,8 +43,8 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
 
-    public static void print(BigBang bigbang, String path, String reportName) {
-        ReportUtils.report("analysis heap histogram", path + File.separatorChar + "reports", "analysis_heap_histogram_" + reportName, "txt",
+    public static void print(BigBang bigbang, String reportsPath, String reportName) {
+        ReportUtils.report("analysis heap histogram", reportsPath, "analysis_heap_histogram_" + reportName, "txt",
                         writer -> AnalysisHeapHistogramPrinter.doPrint(writer, bigbang));
     }
 
@@ -71,7 +70,7 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
     private final Map<AnalysisType, Integer> histogram = new HashMap<>();
 
     private AnalysisHeapHistogramPrinter(BigBang bigbang) {
-        super(bigbang, new ReusableSet());
+        super(bigbang, null, new ReusableSet());
     }
 
     @Override

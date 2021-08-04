@@ -359,6 +359,11 @@ public @interface Cached {
      * exported library messages. If no sharing is desired then the {@link Cached cached} parameter
      * can be annotated with {@link Exclusive exclusive}. The DSL will indicate sharing
      * opportunities to the user by showing a warning.
+     * <p>
+     * Shared caches with reference types must never return <code>null</code> for their initializer
+     * when they are used in guards, because the <code>null</code> value is reserved for the
+     * uninitialized state. An {@link AssertionError} will be thrown at runtime if that is the case.
+     * Shared caches with primitive types must not be used at all in guards.
      *
      * @see Exclusive
      * @since 19.0

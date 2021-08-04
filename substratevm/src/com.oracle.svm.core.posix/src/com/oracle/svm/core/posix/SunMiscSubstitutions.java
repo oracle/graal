@@ -392,25 +392,25 @@ class IgnoreSIGPIPEFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new IgnoreSIGPIPEStartupHook());
+    }
+}
 
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new Runnable() {
+final class IgnoreSIGPIPEStartupHook implements Runnable {
 
-            @Override
-            /**
-             * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide
-             * signal whose default action is to terminate the process, will instead return an error
-             * code from the specific write operation.
-             *
-             * From pipe(7}: If all file descriptors referring to the read end of a pipe have been
-             * closed, then a write(2) will cause a SIGPIPE signal to be generated for the calling
-             * process. If the calling process is ignoring this signal, then write(2) fails with the
-             * error EPIPE.
-             */
-            public void run() {
-                final Signal.SignalDispatcher signalResult = Signal.signal(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
-                VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
-            }
-        });
+    /**
+     * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide signal whose
+     * default action is to terminate the process, will instead return an error code from the
+     * specific write operation.
+     *
+     * From pipe(7}: If all file descriptors referring to the read end of a pipe have been closed,
+     * then a write(2) will cause a SIGPIPE signal to be generated for the calling process. If the
+     * calling process is ignoring this signal, then write(2) fails with the error EPIPE.
+     */
+    @Override
+    public void run() {
+        final SignalDispatcher signalResult = Signal.signal(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
+        VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
     }
 }
 
@@ -424,7 +424,7 @@ final class Target_jdk_internal_misc_VM {
         final long minDiffSecs = -maxDiffSecs;
 
         Time.timeval tv = StackValue.get(Time.timeval.class);
-        int status = Time.gettimeofday(tv, WordFactory.nullPointer());
+        int status = Time.NoTransitions.gettimeofday(tv, WordFactory.nullPointer());
         assert status != -1 : "linux error";
         long seconds = tv.tv_sec();
         long nanos = tv.tv_usec() * 1000;

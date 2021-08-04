@@ -27,6 +27,8 @@ package org.graalvm.compiler.hotspot.meta;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -43,7 +45,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
-import org.graalvm.compiler.replacements.nodes.MacroNode;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -54,12 +56,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final GraalHotSpotVMConfig config;
-    private final Predicate<ResolvedJavaType> intrinsificationPredicate;
+
+    /**
+     * Predicates that determine which types may be intrinsified.
+     */
+    private final List<Predicate<ResolvedJavaType>> intrinsificationPredicates = new ArrayList<>();
 
     HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration) {
         this.graalRuntime = graalRuntime;
         this.config = config;
-        this.intrinsificationPredicate = runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass());
+        registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
     }
 
     @Override
@@ -76,11 +82,11 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     @Override
     public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
         for (Node node : newNodes) {
-            if (node instanceof MacroNode) {
+            if (node instanceof MacroInvokable) {
                 // MacroNode based plugins can only be used for inlining since they
                 // require a valid bci should they need to replace themselves with
                 // an InvokeNode during lowering.
-                assert plugin.inlineOnly() : String.format("plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroNode.class.getSimpleName(), node, plugin);
+                assert plugin.inlineOnly() : String.format("plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroInvokable.class.getSimpleName(), node, plugin);
             }
         }
         if (GraalOptions.ImmutableCode.getValue(b.getOptions())) {
@@ -109,14 +115,22 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     @Override
+    public void registerIntrinsificationPredicate(Predicate<ResolvedJavaType> predicate) {
+        intrinsificationPredicates.add(predicate);
+    }
+
+    @Override
     public boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
-        if (!intrinsificationPredicate.test(declaringClass)) {
+        boolean ok = false;
+        for (Predicate<ResolvedJavaType> p : intrinsificationPredicates) {
+            ok |= p.test(declaringClass);
+        }
+        if (!ok) {
             if (graalRuntime.isBootstrapping()) {
                 throw GraalError.shouldNotReachHere("Class declaring a method for which a Graal intrinsic is available should be trusted for intrinsification: " + declaringClass.toJavaName());
             }
             return false;
         }
         return true;
-
     }
 }

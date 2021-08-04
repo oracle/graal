@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,16 +26,31 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class MethodEntry extends MemberEntry {
-    TypeEntry[] paramTypes;
-    String[] paramNames;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
 
-    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers) {
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
+public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> {
+    final TypeEntry[] paramTypes;
+    final String[] paramNames;
+    public final boolean isDeoptTarget;
+    boolean isInRange;
+
+    final String symbolName;
+    private String signature;
+
+    public MethodEntry(FileEntry fileEntry, String symbolName, String methodName, ClassEntry ownerType,
+                    TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers,
+                    boolean isDeoptTarget, boolean isInRange) {
         super(fileEntry, methodName, ownerType, valueType, modifiers);
         assert ((paramTypes == null && paramNames == null) ||
                         (paramTypes != null && paramNames != null && paramTypes.length == paramNames.length));
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
+        this.isDeoptTarget = isDeoptTarget;
+        this.isInRange = isInRange;
+        this.symbolName = symbolName;
     }
 
     public String methodName() {
@@ -58,6 +73,10 @@ public class MethodEntry extends MemberEntry {
         return paramTypes[idx];
     }
 
+    public TypeEntry[] getParamTypes() {
+        return paramTypes;
+    }
+
     public String getParamTypeName(int idx) {
         assert paramTypes != null;
         assert idx < paramTypes.length;
@@ -72,26 +91,69 @@ public class MethodEntry extends MemberEntry {
         return paramNames[idx];
     }
 
-    public boolean match(String methodName, String paramSignature, String returnTypeName) {
-        if (!methodName.equals(this.memberName)) {
-            return false;
+    public boolean isInRange() {
+        return isInRange;
+    }
+
+    /**
+     * Sets {@code isInRange} and ensures that the {@code fileEntry} is up to date. If the
+     * MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry will point
+     * to the original source file, thus it will be wrong for substituted methods. As a result when
+     * setting a MethodEntry as isInRange we also make sure that its fileEntry reflects the file
+     * info associated with the corresponding Range.
+     *
+     * @param debugInfoBase
+     * @param debugRangeInfo
+     */
+    public void setInRangeAndUpdateFileEntry(DebugInfoBase debugInfoBase, DebugRangeInfo debugRangeInfo) {
+        if (isInRange) {
+            assert fileEntry == debugInfoBase.ensureFileEntry(debugRangeInfo);
+            return;
         }
-        if (!returnTypeName.equals(valueType.getTypeName())) {
-            return false;
+        isInRange = true;
+        /*
+         * If the MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry
+         * will point to the original source file, thus it will be wrong for substituted methods. As
+         * a result when setting a MethodEntry as isInRange we also make sure that its fileEntry
+         * reflects the file info associated with the corresponding Range.
+         */
+        fileEntry = debugInfoBase.ensureFileEntry(debugRangeInfo);
+    }
+
+    public String getSymbolName() {
+        return symbolName;
+    }
+
+    private String getSignature() {
+        if (signature == null) {
+            signature = Arrays.stream(paramTypes).map(TypeEntry::getTypeName).collect(Collectors.joining(", "));
         }
-        int paramCount = getParamCount();
-        if (paramCount == 0) {
-            return paramSignature.trim().length() == 0;
+        return signature;
+    }
+
+    public int compareTo(String methodName, String paramSignature, String returnTypeName) {
+        int nameComparison = memberName.compareTo(methodName);
+        if (nameComparison != 0) {
+            return nameComparison;
         }
-        String[] paramTypeNames = paramSignature.split((","));
-        if (paramCount != paramTypeNames.length) {
-            return false;
+        int typeComparison = valueType.getTypeName().compareTo(returnTypeName);
+        if (typeComparison != 0) {
+            return typeComparison;
         }
-        for (int i = 0; i < paramCount; i++) {
-            if (!paramTypeNames[i].trim().equals(getParamTypeName(i))) {
-                return false;
-            }
+        return getSignature().compareTo(paramSignature);
+    }
+
+    @Override
+    public int compareTo(MethodEntry other) {
+        assert other != null;
+        int nameComparison = methodName().compareTo(other.methodName());
+        if (nameComparison != 0) {
+            return nameComparison;
         }
-        return true;
+        int typeComparison = valueType.getTypeName().compareTo(other.valueType.getTypeName());
+        if (typeComparison != 0) {
+            return typeComparison;
+        }
+        return getSignature().compareTo(other.getSignature());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,16 +76,6 @@ final class DynamicObjectSupport {
     static void trimToSize(DynamicObject object, Shape thisShape, Shape otherShape) {
         trimObjectStore(object, thisShape, otherShape);
         trimPrimitiveStore(object, thisShape, otherShape);
-    }
-
-    static void growAndSetShape(DynamicObject object, Shape thisShape, Shape otherShape) {
-        grow(object, thisShape, otherShape);
-        ACCESS.setShape(object, otherShape);
-    }
-
-    static void resizeAndSetShape(DynamicObject object, Shape thisShape, Shape otherShape) {
-        resize(object, thisShape, otherShape);
-        ACCESS.setShape(object, otherShape);
     }
 
     private static void growObjectStore(DynamicObject object, Shape oldShape, Shape newShape) {

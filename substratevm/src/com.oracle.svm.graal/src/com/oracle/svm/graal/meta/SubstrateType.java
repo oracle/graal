@@ -428,12 +428,12 @@ public class SubstrateType extends NodeClass implements SharedType {
 
     @Override
     public boolean isLinked() {
-        throw VMError.unimplemented();
+        return true;  // types are always linked
     }
 
     @Override
     public void link() {
-        throw VMError.unimplemented();
+        // do nothing
     }
 
     @Override
@@ -451,6 +451,7 @@ public class SubstrateType extends NodeClass implements SharedType {
         return SubstrateMetaAccess.singleton().lookupJavaType(Cloneable.class).isAssignableFrom(this);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         throw VMError.unimplemented();
@@ -498,8 +499,8 @@ public class SubstrateType extends NodeClass implements SharedType {
     @SuppressWarnings("deprecation")
     @Override
     public com.oracle.truffle.api.nodes.NodeFieldAccessor getParentField() {
-        return SubstrateNodeFieldAccessor
-                        .fromSubstrateField(getNodeFields(field -> DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("parent")).iterator().next());
+        return SubstrateNodeFieldAccessor.fromSubstrateField(
+                        getNodeFields(field -> DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("parent")).iterator().next());
     }
 
     @SuppressWarnings("deprecation")

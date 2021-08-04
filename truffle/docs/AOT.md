@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle AOT Compilation
+permalink: /graalvm-as-a-platform/language-implementation-framework/AOT/
+---
 # Truffle AOT Tutorial
 
 Many statically compiled languages, like C are designed to be compilable without prior execution.

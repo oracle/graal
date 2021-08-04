@@ -33,7 +33,6 @@ import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
@@ -45,7 +44,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
-    static final String noServerOption = SubstrateOptions.NO_SERVER;
+
+    /* Defunct legacy options that we have to accept to maintain backward compatibility */
+    static final String noServerOption = "--no-server";
     static final String verboseServerOption = "--verbose-server";
     static final String serverOptionPrefix = "--server-";
 
@@ -72,7 +73,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(helpText);
                 nativeImage.showNewline();
-                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage);
+                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, false);
                 nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
                 nativeImage.showNewline();
@@ -81,9 +82,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--version":
                 args.poll();
                 singleArgumentCheck(args, headArg);
-                String message = "GraalVM Version " + NativeImage.graalvmVersion;
-                if (!NativeImage.graalvmConfig.isEmpty()) {
-                    message += " " + NativeImage.graalvmConfig;
+                String message;
+                if (NativeImage.IS_AOT) {
+                    message = System.getProperty("java.vm.version");
+                } else {
+                    message = "native-image " + NativeImage.graalvmVersion + " " + NativeImage.graalvmConfig;
                 }
                 message += " (Java Version " + javaRuntimeVersion + ")";
                 nativeImage.showMessage(message);
@@ -93,6 +96,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(helpExtraText);
+                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
+                nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showNewline();
                 System.exit(0);
@@ -106,6 +111,28 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
                 processClasspathArgs(cpArgs);
+                return true;
+            case "-p":
+            case "--module-path":
+                args.poll();
+                String mpArgs = args.poll();
+                if (mpArgs == null) {
+                    NativeImage.showError(headArg + " requires module path specification");
+                }
+                processModulePathArgs(mpArgs);
+                return true;
+            case "-m":
+            case "--module":
+                args.poll();
+                String mainClassModuleArg = args.poll();
+                if (mainClassModuleArg == null) {
+                    NativeImage.showError(headArg + " requires module name");
+                }
+                String[] mainClassModuleArgParts = mainClassModuleArg.split("/", 2);
+                if (mainClassModuleArgParts.length > 1) {
+                    nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClassModuleArgParts[1]);
+                }
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + mainClassModuleArgParts[0]);
                 return true;
             case "--configurations-path":
                 args.poll();
@@ -163,6 +190,13 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError(headArg + " requires resource regular expression");
                 }
                 nativeImage.addExcludeConfig(Pattern.compile(excludeJar), Pattern.compile(excludeConfig));
+                return true;
+            case "--diagnostics-mode":
+                args.poll();
+                nativeImage.setDiagnostics(true);
+                nativeImage.addPlainImageBuilderArg("-H:+DiagnosticsMode");
+                nativeImage.addPlainImageBuilderArg("-H:DiagnosticsDir=" + nativeImage.diagnosticsDir);
+                System.out.println("# Diagnostics mode enabled: image-build reports are saved to " + nativeImage.diagnosticsDir);
                 return true;
         }
 
@@ -240,6 +274,14 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (headArg.startsWith(serverOptionPrefix)) {
             args.poll();
             NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
+            String serverOptionCommand = headArg.substring(serverOptionPrefix.length());
+            if (!serverOptionCommand.startsWith("session=")) {
+                /*
+                 * All but the --server-session=... option used to exit(0). We want to simulate that
+                 * behaviour for proper backward compatibility.
+                 */
+                System.exit(0);
+            }
             return true;
         }
         return false;
@@ -250,6 +292,12 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Conform to `java` command empty cp entry handling. */
             String cpEntry = cp.isEmpty() ? "." : cp;
             nativeImage.addCustomImageClasspath(cpEntry);
+        }
+    }
+
+    private void processModulePathArgs(String mpArgs) {
+        for (String mpEntry : mpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
+            nativeImage.addImageModulePath(Paths.get(mpEntry), false);
         }
     }
 

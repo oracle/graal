@@ -34,62 +34,37 @@ package com.oracle.objectfile.debugentry;
 
 public class Range {
     private static final String CLASS_DELIMITER = ".";
-    private FileEntry fileEntry;
-    private String className;
-    private String methodName;
-    private String symbolName;
-    private String paramSignature;
-    private String returnTypeName;
-    private String fullMethodName;
-    private String fullMethodNameWithParams;
-    private int lo;
-    private int hi;
-    private int line;
-    private boolean isDeoptTarget;
-    private int modifiers;
+    private final MethodEntry methodEntry;
+    private final String fullMethodNameWithParams;
+    private final int lo;
+    private final int hi;
+    private final int line;
     /*
      * This is null for a primary range.
      */
-    private Range primary;
+    private final Range primary;
 
     /*
      * Create a primary range.
      */
-    public Range(String className, String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry fileEntry, int lo, int hi, int line,
-                    int modifiers, boolean isDeoptTarget) {
-        this(className, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntry, lo, hi, line, modifiers, isDeoptTarget, null);
-    }
-
-    /*
-     * Create a secondary range.
-     */
-    public Range(String className, String methodName, String symbolName, StringTable stringTable, FileEntry fileEntry, int lo, int hi, int line,
-                    Range primary) {
-        this(className, methodName, symbolName, "", "", stringTable, fileEntry, lo, hi, line, 0, false, primary);
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line) {
+        this(stringTable, methodEntry, lo, hi, line, null);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    private Range(String className, String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry fileEntry, int lo, int hi, int line,
-                    int modifiers, boolean isDeoptTarget, Range primary) {
-        this.fileEntry = fileEntry;
-        if (fileEntry != null) {
-            stringTable.uniqueDebugString(fileEntry.getFileName());
-            stringTable.uniqueDebugString(fileEntry.getPathName());
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary) {
+        assert methodEntry != null;
+        if (methodEntry.fileEntry != null) {
+            stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
+            stringTable.uniqueDebugString(methodEntry.fileEntry.getPathName());
         }
-        this.className = stringTable.uniqueString(className);
-        this.methodName = stringTable.uniqueString(methodName);
-        this.symbolName = stringTable.uniqueString(symbolName);
-        this.paramSignature = stringTable.uniqueString(paramSignature);
-        this.returnTypeName = stringTable.uniqueString(returnTypeName);
-        this.fullMethodName = stringTable.uniqueString(constructClassAndMethodName());
+        this.methodEntry = methodEntry;
         this.fullMethodNameWithParams = stringTable.uniqueString(constructClassAndMethodNameWithParams());
         this.lo = lo;
         this.hi = hi;
         this.line = line;
-        this.isDeoptTarget = isDeoptTarget;
-        this.modifiers = modifiers;
         this.primary = primary;
     }
 
@@ -106,15 +81,15 @@ public class Range {
     }
 
     public String getClassName() {
-        return className;
+        return methodEntry.ownerType.typeName;
     }
 
     public String getMethodName() {
-        return methodName;
+        return methodEntry.memberName;
     }
 
     public String getSymbolName() {
-        return symbolName;
+        return methodEntry.getSymbolName();
     }
 
     public int getHi() {
@@ -130,7 +105,7 @@ public class Range {
     }
 
     public String getFullMethodName() {
-        return fullMethodName;
+        return constructClassAndMethodName();
     }
 
     public String getFullMethodNameWithParams() {
@@ -138,28 +113,28 @@ public class Range {
     }
 
     public boolean isDeoptTarget() {
-        return isDeoptTarget;
+        return methodEntry.isDeoptTarget;
     }
 
     private String getExtendedMethodName(boolean includeClass, boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
-        if (includeReturnType && returnTypeName.length() > 0) {
-            builder.append(returnTypeName);
+        if (includeReturnType && methodEntry.valueType.typeName.length() > 0) {
+            builder.append(methodEntry.valueType.typeName);
             builder.append(' ');
         }
-        if (includeClass && className != null) {
-            builder.append(className);
+        if (includeClass && getClassName() != null) {
+            builder.append(getClassName());
             builder.append(CLASS_DELIMITER);
         }
-        builder.append(methodName);
+        builder.append(getMethodName());
         if (includeParams) {
             builder.append('(');
-            builder.append(paramSignature);
+            builder.append(String.join(", ", methodEntry.paramNames));
             builder.append(')');
         }
         if (includeReturnType) {
             builder.append(" ");
-            builder.append(returnTypeName);
+            builder.append(methodEntry.valueType.typeName);
         }
         return builder.toString();
     }
@@ -172,32 +147,24 @@ public class Range {
         return getExtendedMethodName(true, true, false);
     }
 
-    public String getMethodReturnTypeName() {
-        return returnTypeName;
-    }
-
-    public String getParamSignature() {
-        return paramSignature;
-    }
-
     public FileEntry getFileEntry() {
-        return fileEntry;
-    }
-
-    public void setFileEntry(FileEntry fileEntry) {
-        this.fileEntry = fileEntry;
+        return methodEntry.fileEntry;
     }
 
     public int getModifiers() {
-        return modifiers;
+        return methodEntry.modifiers;
     }
 
     @Override
     public String toString() {
-        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), fileEntry.getFullName(), line);
+        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), methodEntry.getFullFileName(), line);
     }
 
     public String getFileName() {
-        return fileEntry.getFileName();
+        return methodEntry.getFileName();
+    }
+
+    public MethodEntry getMethodEntry() {
+        return methodEntry;
     }
 }

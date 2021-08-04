@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.EnvType;
 import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
@@ -55,6 +56,8 @@ class LibFFIContext {
 
     final LibFFILanguage language;
     Env env;
+
+    final TruffleLogger attachThreadLogger;
 
     private long nativeContext;
     private final ThreadLocal<NativeEnv> nativeEnv = ThreadLocal.withInitial(new NativeEnvSupplier());
@@ -99,6 +102,7 @@ class LibFFIContext {
     LibFFIContext(LibFFILanguage language, Env env) {
         this.language = language;
         this.env = env;
+        this.attachThreadLogger = env.getLogger("attachCurrentThread");
     }
 
     void patchEnv(Env newEnv) {
@@ -108,6 +112,24 @@ class LibFFIContext {
     // called from native
     long getNativeEnv() {
         return nativeEnv.get().pointer;
+    }
+
+    // called from native, and only from a "new" thread that can not be entered already
+    boolean attachThread() {
+        try {
+            Object ret = env.getContext().enter(null);
+            assert ret == null : "thread already entered";
+            return true;
+        } catch (Throwable t) {
+            // can't enter the context (e.g. because of a single-threaded language being active)
+            attachThreadLogger.severe(t.getMessage());
+            return false;
+        }
+    }
+
+    // called from native immediately before detaching that thread from the VM
+    void detachThread() {
+        env.getContext().leave(null, null);
     }
 
     void initialize() {
@@ -191,12 +213,14 @@ class LibFFIContext {
         int pointerIdx = NativeSimpleType.POINTER.ordinal();
 
         assert simpleTypeMap[idx] == null : "initializeSimpleType called twice for " + simpleType;
-        if (language.simpleTypeMap[idx] == null) {
-            assert language.arrayTypeMap[idx] == null;
-            language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
-            language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
-            if (idx == pointerIdx) {
-                language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
+        synchronized (language) {
+            if (language.simpleTypeMap[idx] == null) {
+                assert language.arrayTypeMap[idx] == null;
+                language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
+                language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
+                if (idx == pointerIdx) {
+                    language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
+                }
             }
         }
         simpleTypeMap[idx] = new LibFFIType(language.simpleTypeMap[idx], ffiType);

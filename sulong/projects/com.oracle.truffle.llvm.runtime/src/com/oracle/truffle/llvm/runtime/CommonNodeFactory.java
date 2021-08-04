@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.runtime;
-
-import java.math.BigInteger;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -219,6 +217,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMNegateNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorCompareNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessElemPtrSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
@@ -257,6 +256,10 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Collection;
+
 public class CommonNodeFactory {
 
     public CommonNodeFactory() {
@@ -270,6 +273,8 @@ public class CommonNodeFactory {
                 return LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.cast(value));
             } else if (value instanceof LLVMGlobal || value instanceof LLVMFunction) {
                 return LLVMAccessSymbolNodeGen.create((LLVMSymbol) value);
+            } else if (value instanceof LLVMElemPtrSymbol) {
+                return LLVMAccessElemPtrSymbolNodeGen.create((LLVMElemPtrSymbol) value);
             } else {
                 throw new AssertionError(value.getClass());
             }
@@ -518,6 +523,44 @@ public class CommonNodeFactory {
                 return nodeFactory.createTypedElementPointer(indexedTypeLength, currentType, currentAddress, indexNode);
             }
         }
+    }
+
+    /**
+     * Create an expression node that, when executed, will provide an address where the respective
+     * argument should either be copied from or copied into. This is important when passing struct
+     * arguments by value, this node uses getelementptr to infer the location from the source types
+     * into the destination frame slot.
+     *
+     * @param baseAddress Base address from which to calculate the offsets.
+     * @param sourceType Type to index into.
+     * @param indices List of indices to reach a member or element from the base address.
+     */
+    public static LLVMExpressionNode getTargetAddress(LLVMExpressionNode baseAddress, Type sourceType, Collection<Long> indices, NodeFactory nf, DataLayout dataLayout) {
+        int indicesSize = indices.size();
+        Long[] indicesArr = new Long[indicesSize];
+        LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indicesSize];
+
+        int i = indicesSize - 1;
+        for (Long idx : indices) {
+            indicesArr[i] = idx;
+            indexNodes[i] = CommonNodeFactory.createLiteral(idx, PrimitiveType.I64);
+            i--;
+        }
+        assert i == -1;
+
+        PrimitiveType[] indexTypes = new PrimitiveType[indicesSize];
+        Arrays.fill(indexTypes, PrimitiveType.I64);
+
+        LLVMExpressionNode nestedGEPs = CommonNodeFactory.createNestedElementPointerNode(
+                        nf,
+                        dataLayout,
+                        indexNodes,
+                        indicesArr,
+                        indexTypes,
+                        baseAddress,
+                        sourceType);
+
+        return nestedGEPs;
     }
 
     public static LLVMExpressionNode createNestedElementPointerNode(

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -540,11 +540,6 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
             nevv = f.apply(old != 0, value);
         } while (!compareAndSwapI8(location, address, old, (byte) (nevv ? 1 : 0)).isSwap());
         return old != 0;
-    }
-
-    @Override
-    public void fullFence() {
-        unsafe.fullFence();
     }
 
     @Override

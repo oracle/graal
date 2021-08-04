@@ -201,31 +201,44 @@ public interface DebugInfoProvider {
     }
 
     interface DebugMethodInfo extends DebugMemberInfo {
+        /**
+         * @return a string identifying the method parameters.
+         */
+        String paramSignature();
+
+        /**
+         * @return an array of Strings identifying the method parameters.
+         */
         List<String> paramTypes();
 
+        /**
+         * @return an array of Strings with the method parameters' names.
+         */
         List<String> paramNames();
-    }
-
-    /**
-     * Access details of a specific compiled method.
-     */
-    interface DebugCodeInfo extends DebugFileInfo {
-        void debugContext(Consumer<DebugContext> action);
-
-        /**
-         * @return the fully qualified name of the class owning the compiled method.
-         */
-        String className();
-
-        /**
-         * @return the name of the compiled method including signature.
-         */
-        String methodName();
 
         /**
          * @return the symbolNameForMethod string
          */
         String symbolNameForMethod();
+
+        /**
+         * @return true if this method has been compiled in as a deoptimization target
+         */
+        boolean isDeoptTarget();
+    }
+
+    /**
+     * Access details of a compiled method producing the code in a specific
+     * {@link com.oracle.objectfile.debugentry.Range}.
+     */
+    interface DebugRangeInfo extends DebugMethodInfo {
+    }
+
+    /**
+     * Access details of a specific compiled method.
+     */
+    interface DebugCodeInfo extends DebugRangeInfo {
+        void debugContext(Consumer<DebugContext> action);
 
         /**
          * @return the lowest address containing code generated for the method represented as an
@@ -251,16 +264,6 @@ public interface DebugInfoProvider {
         Stream<DebugLineInfo> lineInfoProvider();
 
         /**
-         * @return a string identifying the method parameters.
-         */
-        String paramSignature();
-
-        /**
-         * @return a string identifying the method return type.
-         */
-        String returnTypeName();
-
-        /**
          * @return the size of the method frame between prologue and epilogue.
          */
         int getFrameSize();
@@ -270,13 +273,6 @@ public interface DebugInfoProvider {
          *         to an empty frame
          */
         List<DebugFrameSizeChange> getFrameSizeChanges();
-
-        /**
-         * @return true if this method has been compiled in as a deoptimization target
-         */
-        boolean isDeoptTarget();
-
-        int getModifiers();
     }
 
     /**
@@ -302,22 +298,7 @@ public interface DebugInfoProvider {
      * Access details of code generated for a specific outer or inlined method at a given line
      * number.
      */
-    interface DebugLineInfo extends DebugFileInfo {
-        /**
-         * @return the fully qualified name of the class owning the outer or inlined method.
-         */
-        String className();
-
-        /**
-         * @return the name of the outer or inlined method including signature.
-         */
-        String methodName();
-
-        /**
-         * @return the symbolNameForMethod string
-         */
-        String symbolNameForMethod();
-
+    interface DebugLineInfo extends DebugRangeInfo {
         /**
          * @return the lowest address containing code generated for an outer or inlined code segment
          *         reported at this line represented as an offset into the code segment.

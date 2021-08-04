@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
-    public static final SubstrateForeignCallDescriptor FOREIGN_POLL = SnippetRuntime.findForeignCall(SubstrateThreadLocalHandshake.class, "pollStub", false, TLAB_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor FOREIGN_POLL = SnippetRuntime.findForeignCall(SubstrateThreadLocalHandshake.class, "pollStub", true, TLAB_LOCATIONS);
 
     static final SubstrateThreadLocalHandshake SINGLETON = new SubstrateThreadLocalHandshake();
 
@@ -73,8 +73,6 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Platforms(Platform.HOSTED_ONLY.class)//
     private static final ThreadLocal<TruffleSafepointImpl> HOSTED_STATE = ThreadLocal.withInitial(() -> SINGLETON.getThreadState(Thread.currentThread()));
-
-    private static final boolean EXCEPTIONS_SUPPORTED = false;
 
     @Override
     public void poll(Node location) {
@@ -97,14 +95,6 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
         try {
             invokeProcessHandshake(location);
         } catch (Throwable t) {
-
-            // See GR-29896 for the problem why this is disabled.
-            // this block should be removed if the issue is fixed.
-            if (!EXCEPTIONS_SUPPORTED) {
-                Log.log().string("Warning: exceptions thrown in guest safepoints are currently ignored on SVM.").newline().flush();
-                Log.log().exception(t);
-                return;
-            }
 
             /*
              * We need to deoptimize the caller here as the caller is likely not prepared for an

@@ -32,6 +32,7 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
@@ -40,10 +41,11 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * A {@link ClassRegistry} maps type names to resolved {@link Klass} instances. Each class loader is
@@ -52,6 +54,86 @@ import com.oracle.truffle.espresso.substitutions.Host;
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
 public abstract class ClassRegistry implements ContextAccess {
+
+    /**
+     * Storage class used to propagate information in the case of special kinds of class definition
+     * (hidden, anonymous or with a specified protection domain).
+     * 
+     * Regular class definitions will use the {@link #EMPTY} instance.
+     * 
+     * Hidden and Unsafe anonymous classes are handled by not registering them in the class loader
+     * registry.
+     */
+    public static final class ClassDefinitionInfo {
+        public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, null, null, false, false);
+
+        // Constructor for regular definition, but with a specified protection domain
+        public ClassDefinitionInfo(StaticObject protectionDomain) {
+            this(protectionDomain, null, null, null, null, false, false);
+        }
+
+        // Constructor for Unsafe anonymous class definition.
+        public ClassDefinitionInfo(StaticObject protectionDomain, ObjectKlass hostKlass, StaticObject[] patches) {
+            this(protectionDomain, hostKlass, patches, null, null, false, false);
+        }
+
+        // Constructor for Hidden class definition.
+        public ClassDefinitionInfo(StaticObject protectionDomain, ObjectKlass dynamicNest, StaticObject classData, boolean isStrongHidden) {
+            this(protectionDomain, null, null, dynamicNest, classData, true, isStrongHidden);
+        }
+
+        private ClassDefinitionInfo(StaticObject protectionDomain,
+                        ObjectKlass hostKlass,
+                        StaticObject[] patches,
+                        ObjectKlass dynamicNest,
+                        StaticObject classData,
+                        boolean isHidden,
+                        boolean isStrongHidden) {
+            this.protectionDomain = protectionDomain;
+            this.hostKlass = hostKlass;
+            this.patches = patches;
+            this.dynamicNest = dynamicNest;
+            this.classData = classData;
+            this.isHidden = isHidden;
+            this.isStrongHidden = isStrongHidden;
+        }
+
+        public final StaticObject protectionDomain;
+
+        // Unsafe Anonymous class
+        public final ObjectKlass hostKlass;
+        public final StaticObject[] patches;
+
+        // Hidden class
+        public final ObjectKlass dynamicNest;
+        public final StaticObject classData;
+        public final boolean isHidden;
+        public final boolean isStrongHidden;
+
+        public boolean addedToRegistry() {
+            return !isAnonymousClass() && (!isHidden() || isStrongHidden());
+        }
+
+        public boolean isAnonymousClass() {
+            return hostKlass != null;
+        }
+
+        public boolean isHidden() {
+            return isHidden;
+        }
+
+        public boolean isStrongHidden() {
+            return isStrongHidden;
+        }
+
+        public int patchFlags(int classFlags) {
+            int flags = classFlags;
+            if (isHidden()) {
+                flags |= Constants.ACC_IS_HIDDEN_CLASS;
+            }
+            return flags;
+        }
+    }
 
     private static final DebugTimer KLASS_PROBE = DebugTimer.create("klass probe");
     private static final DebugTimer KLASS_DEFINE = DebugTimer.create("klass define");
@@ -223,7 +305,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     protected abstract void loadKlassCacheHitsInc();
 
-    public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
+    public abstract @JavaType(ClassLoader.class) StaticObject getClassLoader();
 
     public List<Klass> getLoadedKlasses() {
         ArrayList<Klass> klasses = new ArrayList<>(classes.size());
@@ -249,29 +331,39 @@ public abstract class ClassRegistry implements ContextAccess {
         return entry.klass();
     }
 
+    public final ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
+        return defineKlass(typeOrNull, bytes, ClassDefinitionInfo.EMPTY);
+    }
+
     @SuppressWarnings("try")
-    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
+    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
         Meta meta = getMeta();
         String strType = typeOrNull == null ? null : typeOrNull.toString();
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(getContext().getTimers())) {
-            parserKlass = getParserKlass(bytes, strType);
+            parserKlass = getParserKlass(bytes, strType, info);
         }
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 
-        Klass maybeLoaded = findLoadedKlass(type);
-        if (maybeLoaded != null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
+        if (info.addedToRegistry()) {
+            Klass maybeLoaded = findLoadedKlass(type);
+            if (maybeLoaded != null) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
+            }
         }
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
-        return createAndPutKlass(meta, parserKlass, type, superKlassType);
+        ObjectKlass klass = createKlass(meta, parserKlass, type, superKlassType, info);
+        if (info.addedToRegistry()) {
+            registerKlass(klass, type);
+        }
+        return klass;
     }
 
-    private ParserKlass getParserKlass(byte[] bytes, String strType) {
+    private ParserKlass getParserKlass(byte[] bytes, String strType, ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), strType, context, info);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
@@ -285,7 +377,7 @@ public abstract class ClassRegistry implements ContextAccess {
     }
 
     @SuppressWarnings("try")
-    private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
+    private ObjectKlass createKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType, ClassDefinitionInfo info) {
         TypeStack chain = stack.get();
 
         ObjectKlass superKlass = null;
@@ -323,34 +415,55 @@ public abstract class ClassRegistry implements ContextAccess {
         } finally {
             chain.pop();
         }
+
+        if (getContext().getJavaVersion().java16OrLater() && superKlass != null) {
+            if (superKlass.isFinalFlagSet()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is a subclass of final class " + superKlassType);
+            }
+        }
+
         ObjectKlass klass;
 
         try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
-            klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
+            LinkedKlass linkedKlass = LinkedKlass.create(getEspressoLanguage(), parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+            klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
-        if (superKlass != null && !Klass.checkAccess(superKlass, klass)) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superclass " + superKlassType);
-        }
-
-        for (ObjectKlass interf : superInterfaces) {
-            if (interf != null && !Klass.checkAccess(interf, klass)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superinterface " + interf.getType());
+        if (superKlass != null) {
+            if (!Klass.checkAccess(superKlass, klass)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superclass " + superKlassType);
+            }
+            if (!superKlass.permittedSubclassCheck(klass)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is not a permitted subclass of class " + superKlassType);
             }
         }
 
+        for (ObjectKlass interf : superInterfaces) {
+            if (interf != null) {
+                if (!Klass.checkAccess(interf, klass)) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superinterface " + interf.getType());
+                }
+                if (!interf.permittedSubclassCheck(klass)) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is not a permitted subclass of interface " + superKlassType);
+                }
+            }
+        }
+
+        return klass;
+    }
+
+    private void registerKlass(ObjectKlass klass, Symbol<Type> type) {
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
         ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
 
         EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
 
         getRegistries().recordConstraint(type, klass, getClassLoader());
+        getRegistries().onKlassDefined(klass);
         if (defineKlassListener != null) {
             defineKlassListener.onKlassDefined(klass);
         }
-        return klass;
     }
 
     private ObjectKlass loadKlassRecursively(Meta meta, Symbol<Type> type, boolean notInterface) {
@@ -372,9 +485,27 @@ public abstract class ClassRegistry implements ContextAccess {
         return (ObjectKlass) klass;
     }
 
-    public void onClassRenamed(ObjectKlass oldKlass, Symbol<Symbol.Name> newName) {
-        Symbol<Symbol.Type> newType = context.getTypes().fromName(newName);
-        classes.put(newType, new ClassRegistries.RegistryEntry(oldKlass));
+    public void onClassRenamed(ObjectKlass renamedKlass) {
+        // this method is constructed so that any existing class loader constraint
+        // for the new type is removed from the class registries first. This allows
+        // a clean addition of a new class loader constraint for the new type for a
+        // different klass object.
+
+        // The old type of the renamed klass object will not be handled within this
+        // method. There are two possible ways in which the old type is handled, 1)
+        // if another renamed class instance now has the old type, it will also go
+        // through this method directly or 2) if no klass instance has the new type
+        // the old klass instance will be marked as removed and will follow a direct
+        // path to ClassRegistries.removeUnloadedKlassConstraint().
+
+        Klass loadedKlass = findLoadedKlass(renamedKlass.getType());
+        if (loadedKlass != null) {
+            context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
+        }
+
+        classes.put(renamedKlass.getType(), new ClassRegistries.RegistryEntry(renamedKlass));
+        // record the new loading constraint
+        context.getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
     }
 
     public void onInnerClassRemoved(Symbol<Symbol.Type> type) {

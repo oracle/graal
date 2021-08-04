@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -68,6 +67,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -87,6 +87,7 @@ import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ClassIsArrayNode;
 import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
@@ -293,6 +294,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerLatin1IndexOf((StringLatin1IndexOfNode) n);
             } else if (n instanceof StringUTF16IndexOfNode) {
                 lowerUTF16IndexOf((StringUTF16IndexOfNode) n);
+            } else if (n instanceof ArrayIndexOfDispatchNode) {
+                lowerArrayIndexOf((ArrayIndexOfDispatchNode) n, tool);
             } else if (n instanceof UnpackEndianHalfNode) {
                 lowerSecondHalf((UnpackEndianHalfNode) n);
             } else if (n instanceof VolatileReadNode || n instanceof VolatileWriteNode) {
@@ -364,6 +367,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             n.graph().add(snippetLower);
             n.graph().replaceFixedWithFixed(n, snippetLower);
         }
+    }
+
+    private static void lowerArrayIndexOf(ArrayIndexOfDispatchNode dispatchNode, LoweringTool tool) {
+        StructuredGraph graph = dispatchNode.graph();
+        ForeignCallNode call = graph.add(new ForeignCallNode(tool.getForeignCalls(), dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
+        graph.replaceFixed(dispatchNode, call);
     }
 
     private void lowerBinaryMath(BinaryMathIntrinsicNode math, LoweringTool tool) {
@@ -572,7 +581,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (!elementType.isJavaLangObject()) {
                     TypeReference typeReference = TypeReference.createTrusted(storeIndexed.graph().getAssumptions(), elementType);
                     LogicNode typeTest = graph.addOrUniqueWithInputs(InstanceOfNode.create(typeReference, value));
-                    condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
+                    condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
                 }
             } else {
                 /*
@@ -580,9 +589,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                  * introduced earlier.
                  */
                 ValueNode arrayClass = createReadHub(graph, array, tool);
-                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
+                boolean isKnownObjectArray = arrayType != null && !arrayType.getType().getComponentType().isPrimitive();
+                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed);
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
-                condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
+                condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             }
         }
         BarrierType barrierType = barrierSet.arrayStoreBarrierType(storageKind);
@@ -644,7 +654,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         final LogicNode isNull = graph.addOrUniqueWithInputs(IsNullNode.create(value));
         final EndNode trueEnd = graph.add(new EndNode());
         final EndNode falseEnd = graph.add(new EndNode());
-        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, 0.5));
+        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, BranchProbabilityData.unknown()));
         final MergeNode merge = graph.add(new MergeNode());
         merge.addForwardEnd(trueEnd);
         merge.addForwardEnd(falseEnd);
@@ -662,7 +672,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub) {
         StructuredGraph graph = loadHub.graph();
-        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), loadHub);
+        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), false, loadHub);
         graph.replaceFixed(loadHub, hub);
     }
 
@@ -795,7 +805,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerUnsafeMemoryLoadNode(UnsafeMemoryLoadNode load) {
         StructuredGraph graph = load.graph();
         JavaKind readKind = load.getKind();
-        assert readKind != JavaKind.Object;
         Stamp loadStamp = loadStamp(load.stamp(NodeView.DEFAULT), readKind, false);
         AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(load.getAddress()));
         ReadNode memoryRead = graph.add(new ReadNode(address, load.getLocationIdentity(), loadStamp, BarrierType.NONE));
@@ -913,7 +922,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                         } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                             // Constant.illegal is always the defaultForKind, so it is skipped
                             JavaKind valueKind = value.getStackKind();
-                            JavaKind storageKind = virtual.entryKind(tool.getProviders().getMetaAccessExtensionProvider(), i);
+                            JavaKind storageKind = virtual.entryKind(tool.getMetaAccessExtensionProvider(), i);
 
                             // Truffle requires some leniency in terms of what can be put where:
                             assert valueKind.getStackKind() == storageKind.getStackKind() ||
@@ -1108,6 +1117,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return stamp;
     }
 
+    public final ValueNode implicitLoadConvertWithBooleanCoercionIfNecessary(StructuredGraph graph, JavaKind kind, ValueNode value) {
+        return performBooleanCoercionIfNecessary(implicitLoadConvert(graph, kind, value), kind);
+    }
+
     public final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
         return implicitLoadConvert(graph, kind, value, true);
     }
@@ -1212,7 +1225,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);
 
-    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
+    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor);
 
     protected ValueNode proxyIndex(AccessIndexedNode n, ValueNode index, ValueNode array, LoweringTool tool) {
         StructuredGraph graph = index.graph();

@@ -27,12 +27,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class InvokeHandleNode extends QuickNode {
 
@@ -47,6 +49,7 @@ public final class InvokeHandleNode extends QuickNode {
     private final int argCount;
     private final int parameterCount;
     private final JavaKind rKind;
+    private final boolean returnsPrimitiveType;
 
     public InvokeHandleNode(Method method, Klass accessingKlass, int top, int curBCI) {
         super(top, curBCI);
@@ -58,6 +61,7 @@ public final class InvokeHandleNode extends QuickNode {
         this.parameterCount = method.getParameterCount();
         this.rKind = method.getReturnKind();
         this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
+        this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
     }
 
     @Override
@@ -68,12 +72,10 @@ public final class InvokeHandleNode extends QuickNode {
         }
         BytecodeNode.popBasicArgumentsWithArray(primitives, refs, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
         Object result = intrinsic.processReturnValue(intrinsic.call(args), rKind);
+        if (!returnsPrimitiveType) {
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
+        }
         return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getReturnKind());
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return method.getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

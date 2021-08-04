@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,20 @@
  */
 package org.graalvm.compiler.nodes;
 
+import java.util.Iterator;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeStack;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.meta.Constant;
@@ -239,4 +244,76 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         return true;
     }
 
+    /**
+     * Determines whether this node is recursively equal to the other node while ignoring
+     * differences in {@linkplain org.graalvm.compiler.graph.Node.Successor control-flow} edges and
+     * inputs of the given {@code ignoredInputType}. Recursive equality is only applied to
+     * {@link FloatingNode}s reachable via inputs; {@link FixedNode}s are only considered equal if
+     * they are the same node.
+     *
+     * WARNING: This method is useful only in very particular contexts, and only for limited
+     * purposes. For example, it might be used to check if two values are equal up to memory or
+     * guard inputs. Some external knowledge about the memory graph, data flow, control flow, etc.,
+     * is required to interpret the meaning of this "equality". It is <b>not</b> legal in general to
+     * replace one of the "equal" nodes with the other.
+     */
+    public boolean recursivelyDataFlowEqualsUpTo(FloatingNode that, InputType ignoredInputType) {
+        if (this == that) {
+            return true;
+        }
+        if (this.getNodeClass() != that.getNodeClass() || !this.valueEquals(that)) {
+            return false;
+        }
+
+        NodeBitMap visited = new NodeBitMap(graph());
+        /*
+         * "These" nodes are the ones recursively reachable from this, "those" are the ones
+         * recursively reachable from that.
+         *
+         * Invariants: These two stacks always have the same size. Their elements at corresponding
+         * positions are never null, have equal node classes, are value equal but not reference
+         * equal, and come from matching input positions of nodes further down the stack.
+         */
+        NodeStack these = new NodeStack();
+        NodeStack those = new NodeStack();
+        these.push(this);
+        those.push(that);
+        while (!these.isEmpty()) {
+            assert !those.isEmpty();
+            Node thisNode = these.pop();
+            Node thatNode = those.pop();
+            if (visited.isMarked(thisNode)) {
+                continue;
+            }
+            visited.mark(thisNode);
+            Iterator<Position> theseInputs = thisNode.inputPositions().iterator();
+            Iterator<Position> thoseInputs = thatNode.inputPositions().iterator();
+            while (theseInputs.hasNext() && thoseInputs.hasNext()) {
+                Position thisPos = theseInputs.next();
+                Position thatPos = thoseInputs.next();
+                if (thisPos.getIndex() != thatPos.getIndex() || thisPos.getSubIndex() != thatPos.getSubIndex()) {
+                    return false;
+                }
+                assert thisPos.getInputType() == thatPos.getInputType();
+                if (thisPos.getInputType() == ignoredInputType) {
+                    continue;
+                }
+                Node thisInput = thisPos.get(thisNode);
+                Node thatInput = thatPos.get(thatNode);
+                if (thisInput == thatInput) {
+                    continue;
+                }
+                if (thisInput == null || thatInput == null || thisInput.getNodeClass() != thatInput.getNodeClass() || !(thisInput instanceof FloatingNode) || !thisInput.valueEquals(thatInput)) {
+                    return false;
+                }
+                these.push(thisInput);
+                those.push(thatInput);
+            }
+            if (theseInputs.hasNext() || thoseInputs.hasNext()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

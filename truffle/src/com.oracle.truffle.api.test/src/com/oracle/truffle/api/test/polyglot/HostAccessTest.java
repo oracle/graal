@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -369,6 +370,41 @@ public class HostAccessTest {
         int[] array = new int[]{1, 2, 3};
         Value value = context.asValue(array);
         assertSame(array, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    @Test
+    public void testBufferAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowBufferAccess(true));
+        assertBufferAccessEnabled(context);
+    }
+
+    @Test
+    public void testBufferAccessEnabledHostAccessCloned() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowBufferAccess(true).build();
+        setupEnv(HostAccess.newBuilder(hostAccess));
+        assertBufferAccessEnabled(context);
+    }
+
+    private static void assertBufferAccessEnabled(Context context) {
+        ByteBuffer buffer = ByteBuffer.allocate(2);
+        buffer.put((byte) 42);
+        Value value = context.asValue(buffer);
+        assertTrue(value.hasBufferElements());
+        assertTrue(value.isBufferWritable());
+        assertEquals(2, value.getBufferSize());
+        assertEquals(42, value.readBufferByte(0));
+        value.writeBufferByte(1, (byte) 24);
+        assertEquals(24, value.readBufferByte(1));
+        ValueAssert.assertValue(value, false, Trait.BUFFER_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    @Test
+    public void testBufferAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowBufferAccess(false));
+        ByteBuffer buffer = ByteBuffer.allocate(2);
+        Value value = context.asValue(buffer);
+        assertSame(buffer, value.asHostObject());
         ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 

@@ -45,7 +45,7 @@ public final class WindowsVMThreads extends VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    protected OSThreadHandle getCurrentOSThreadHandle() {
+    public OSThreadHandle getCurrentOSThreadHandle() {
         WinBase.HANDLE pseudoThreadHandle = Process.GetCurrentThread();
         WinBase.HANDLE pseudoProcessHandle = Process.GetCurrentProcess();
 
@@ -68,10 +68,16 @@ public final class WindowsVMThreads extends VMThreads {
     @Override
     protected void joinNoTransition(OSThreadHandle osThreadHandle) {
         WinBase.HANDLE handle = (WinBase.HANDLE) osThreadHandle;
-        int status = SynchAPI.WaitForSingleObjectNoTransition(handle, SynchAPI.INFINITE());
+        int status = SynchAPI.NoTransitions.WaitForSingleObject(handle, SynchAPI.INFINITE());
         VMError.guarantee(status == SynchAPI.WAIT_OBJECT_0(), "Joining thread failed.");
         status = WinBase.CloseHandle(handle);
         VMError.guarantee(status != 0, "Closing the thread handle failed.");
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void nativeSleep(int milliseconds) {
+        SynchAPI.NoTransitions.Sleep(milliseconds);
     }
 
     /**

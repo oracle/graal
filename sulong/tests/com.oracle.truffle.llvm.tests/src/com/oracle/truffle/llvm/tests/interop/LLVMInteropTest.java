@@ -43,6 +43,7 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -63,7 +64,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.Platform;
@@ -75,6 +75,12 @@ import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 
 @RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class LLVMInteropTest {
+
+    @Before
+    public void bundledOnly() {
+        TestOptions.assumeBundledLLVM();
+    }
+
     @Test
     public void test001() {
         try (Runner runner = new Runner("interop001.c")) {
@@ -1677,7 +1683,7 @@ public class LLVMInteropTest {
     }
 
     private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop").toPath();
-    public static final String FILENAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
+    public static final String FILENAME = "toolchain-plain.so";
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
         Map<String, String> map = TestEngineConfig.getInstance().getContextOptions();

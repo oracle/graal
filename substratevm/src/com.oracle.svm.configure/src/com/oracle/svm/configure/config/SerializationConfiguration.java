@@ -29,19 +29,38 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
-public class SerializationConfiguration implements JsonPrintable {
+public class SerializationConfiguration implements ConfigurationBase {
 
     private static final String KEY_SEPARATOR = "|";
 
     private final Set<String> serializations = ConcurrentHashMap.newKeySet();
 
+    public SerializationConfiguration() {
+    }
+
+    public SerializationConfiguration(SerializationConfiguration other) {
+        this.serializations.addAll(other.serializations);
+    }
+
+    public void removeAll(SerializationConfiguration other) {
+        serializations.removeAll(other.serializations);
+    }
+
     public void add(String serializationTargetClass, String customTargetConstructorClass) {
-        serializations.add(serializationTargetClass + (customTargetConstructorClass != null ? KEY_SEPARATOR + customTargetConstructorClass : ""));
+        serializations.add(mapNameAndConstructor(serializationTargetClass, customTargetConstructorClass));
+    }
+
+    public boolean contains(String serializationTargetClass, String customTargetConstructorClass) {
+        return serializations.contains(mapNameAndConstructor(serializationTargetClass, customTargetConstructorClass));
+    }
+
+    private static String mapNameAndConstructor(String serializationTargetClass, String customTargetConstructorClass) {
+        return serializationTargetClass + (customTargetConstructorClass != null ? KEY_SEPARATOR + customTargetConstructorClass : "");
     }
 
     @Override
@@ -62,6 +81,12 @@ public class SerializationConfiguration implements JsonPrintable {
             prefix = ",";
         }
         writer.unindent().newline();
-        writer.append(']').newline();
+        writer.append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return serializations.isEmpty();
+    }
+
 }

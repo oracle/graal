@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 import os
 import shutil
 import stat
+import tempfile
 from argparse import ArgumentParser
 from collections import defaultdict
 
@@ -509,16 +510,47 @@ def emscripten_init(args):
     parser = ArgumentParser(prog='mx emscripten-init', description='initialize the Emscripten environment.')
     parser.add_argument('config_path', help='path of the config file to be generated')
     parser.add_argument('emsdk_path', help='path of the emsdk')
+    parser.add_argument('--local', action='store_true', help='Generates config file for local dev environment')
     args = parser.parse_args(args)
     config_path = os.path.join(os.getcwd(), args.config_path)
     emsdk_path = args.emsdk_path
+
+    llvm_root = os.path.join(emsdk_path, "llvm", "git", "build_master_64", "bin")
+    binaryen_root = os.path.join(emsdk_path, "binaryen", "master_64bit_binaryen")
+    emscripten_root = os.path.join(emsdk_path, "emscripten", "master")
+    node_js = os.path.join(emsdk_path, "node", "12.9.1_64bit", "bin", "node")
+
+    if args.local:
+        llvm_root = os.path.join(emsdk_path, "upstream", "bin")
+        binaryen_root = os.path.join(emsdk_path, "upstream", "lib")
+        emscripten_root = os.path.join(emsdk_path, "upstream", "emscripten")
+        node_js = os.path.join(emsdk_path, "node", "14.15.5_64bit", "bin", "node")
+
     mx.log("Generating Emscripten configuration...")
     mx.log("Config file path:    " + str(config_path))
     mx.log("Emscripten SDK path: " + str(emsdk_path))
-    cmd = os.path.join(_suite.dir, "generate_em_config")
-    mx.log("Path to the script:  " + cmd)
-    if mx.run([cmd, config_path, emsdk_path], nonZeroIsFatal=False) != 0:
-        mx.abort("Error generating the Emscripten configuration.")
+
+    with open(config_path, "w") as fp:
+        fp.write("LLVM_ROOT='" + llvm_root + "'" + os.linesep)
+        fp.write("BINARYEN_ROOT='" + binaryen_root + "'" + os.linesep)
+        fp.write("EMSCRIPTEN_ROOT='" + emscripten_root + "'" + os.linesep)
+        fp.write("NODE_JS='" + node_js + "'" + os.linesep)
+        fp.write("COMPILER_ENGINE=NODE_JS" + os.linesep)
+        fp.write("JS_ENGINES=[NODE_JS]")
+
+    mx.log("Successfully generated Emscripten config file at " + str(config_path))
+    mx.log("Triggering cache generation...")
+
+    temp_dir = tempfile.mkdtemp()
+    test_file = os.path.join(temp_dir, "test.c")
+    with open(test_file, "w") as fp:
+        fp.write("int main() { return 0; }")
+    cmd = os.path.join(emscripten_root, "emcc")
+
+    if mx.run([cmd, test_file], nonZeroIsFatal=True) != 0:
+        mx.abort("Error while triggering cache generation")
+    shutil.rmtree(temp_dir)
+    mx.log("Successfully initialized Emscripten")
 
 
 @mx.command(_suite.name, "wasm")

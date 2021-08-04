@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -100,6 +101,20 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return compilable;
     }
 
+    @FunctionalInterface
+    protected interface FrameFunction {
+        Object execute(VirtualFrame frame);
+    }
+
+    protected RootNode toRootNode(FrameFunction f) {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return f.execute(frame);
+            }
+        };
+    }
+
     protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments) {
         return assertPartialEvalEquals(expected, actual, arguments, true);
     }
@@ -140,6 +155,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
 
     private static TruffleCompilationTask newTask() {
         return new TruffleCompilationTask() {
+            final TruffleInlining inlining = new TruffleInlining();
+
             @Override
             public boolean isCancelled() {
                 return false;
@@ -148,6 +165,16 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             @Override
             public boolean isLastTier() {
                 return true;
+            }
+
+            @Override
+            public TruffleInliningData inliningData() {
+                return inlining;
+            }
+
+            @Override
+            public boolean hasNextTier() {
+                return false;
             }
         };
     }
@@ -213,8 +240,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             }
             final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
             final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
-                            new TruffleInlining(),
-                            compilationId, speculationLog, null);
+                            compilationId, speculationLog,
+                            new TruffleCompilerImpl.CancellableTruffleCompilationTask(newTask()));
             return partialEvaluator.evaluate(request);
         } catch (Throwable e) {
             throw debug.handle(e);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ public class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
     private static final int INITIAL_TARGETS_SIZE = 32;
 
+    private final WasmContext context;
     private final WasmModule module;
 
     /**
@@ -105,7 +106,8 @@ public class RuntimeState {
         }
     }
 
-    public RuntimeState(WasmModule module) {
+    public RuntimeState(WasmContext context, WasmModule module) {
+        this.context = context;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
         this.targets = new CallTarget[INITIAL_TARGETS_SIZE];
@@ -138,6 +140,10 @@ public class RuntimeState {
             throw CompilerDirectives.shouldNotReachHere("Can only switch to failed state when linking is in-progress.");
         }
         this.linkState = Linker.LinkState.failed;
+    }
+
+    public WasmContext context() {
+        return context;
     }
 
     public boolean isNonLinked() {

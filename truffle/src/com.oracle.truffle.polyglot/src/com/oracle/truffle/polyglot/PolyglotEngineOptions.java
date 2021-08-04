@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,9 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.Option;
+import org.graalvm.options.OptionType;
+
+import java.util.function.Function;
 
 @Option.Group(PolyglotEngineImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {
@@ -60,6 +63,10 @@ final class PolyglotEngineOptions {
      */
     @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.INTERNAL, help = "Propagates exceptions thrown by instruments.")//
     static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Propagates cancel execution exception into UncaughtExceptionHandler. " +
+                    "For testing purposes only.")//
+    static final OptionKey<Boolean> TriggerUncaughtExceptionHandlerForCancel = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Show internal frames specific to the language implementation in stack traces.")//
     static final OptionKey<Boolean> ShowInternalStackFrames = new OptionKey<>(false);
@@ -89,4 +96,40 @@ final class PolyglotEngineOptions {
                     "Prints the stack trace for all threads for a time interval. By default 0, which disables the output.")//
     static final OptionKey<Long> TraceStackTraceInterval = new OptionKey<>(0L);
 
+    @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
+                    "Print warning when the engine is using a default Truffle runtime.")//
+    static final OptionKey<Boolean> WarnInterpreterOnly = new OptionKey<>(true);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Use pre-initialized context when it's available.")//
+    static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts")//
+    static final OptionKey<Boolean> RelaxStaticObjectSafetyChecks = new OptionKey<>(false);
+
+    enum StaticObjectStorageStrategies {
+        DEFAULT,
+        ARRAY_BASED,
+        FIELD_BASED
+    }
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Set the storage strategy used by the Static Object Model. Accepted values are: ['default', 'array-based', 'field-based']")//
+    static final OptionKey<StaticObjectStorageStrategies> StaticObjectStorageStrategy = new OptionKey<>(StaticObjectStorageStrategies.DEFAULT,
+                    new OptionType<>("strategy", new Function<String, StaticObjectStorageStrategies>() {
+                        @Override
+                        public StaticObjectStorageStrategies apply(String s) {
+                            switch (s) {
+                                case "default":
+                                    return StaticObjectStorageStrategies.DEFAULT;
+                                case "array-based":
+                                    return StaticObjectStorageStrategies.ARRAY_BASED;
+                                case "field-based":
+                                    return StaticObjectStorageStrategies.FIELD_BASED;
+                                default:
+                                    throw new IllegalArgumentException("Unexpected value for engine option 'SomStorageStrategy': " + s);
+                            }
+                        }
+                    }));
 }

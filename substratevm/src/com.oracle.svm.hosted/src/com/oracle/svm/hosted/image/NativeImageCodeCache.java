@@ -40,6 +40,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -160,7 +161,7 @@ public abstract class NativeImageCodeCache {
                 }
             }
         }
-        dataSection.close();
+        dataSection.close(HostedOptionValues.singleton());
     }
 
     public void addConstantsToHeap() {
@@ -283,6 +284,19 @@ public abstract class NativeImageCodeCache {
         FrameInfoQueryResult targetFrame = result.getFrameInfo();
         if (targetFrame == null || !targetFrame.isDeoptEntry() || targetFrame.getEncodedBci() != encodedBci) {
             return error(method, encodedBci, "entry point found, but wrong property");
+        }
+
+        /*
+         * DeoptEntries corresponding to explicit instructions must have registered exception
+         * handlers and DeoptEntries corresponding to exception objects cannot.
+         */
+        if (!targetFrame.duringCall()) {
+            boolean hasExceptionHandler = result.getExceptionOffset() != 0;
+            if (!targetFrame.rethrowException() && !hasExceptionHandler) {
+                return error(method, encodedBci, "no exception handler registered for deopt entry");
+            } else if (targetFrame.rethrowException() && hasExceptionHandler) {
+                return error(method, encodedBci, "exception handler registered for rethrowException");
+            }
         }
 
         /*

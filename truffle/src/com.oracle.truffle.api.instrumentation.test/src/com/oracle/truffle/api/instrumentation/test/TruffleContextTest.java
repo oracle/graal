@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,26 +60,56 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.LanguageSPIOrderTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class TruffleContextTest extends AbstractPolyglotTest {
+
+    @Rule public TestName testNameRule = new TestName();
+
+    @After
+    public void checkInterrupted() {
+        Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());
+    }
 
     @Test
     public void testCreate() {
@@ -115,13 +146,14 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
     @Test
     public void testParallelForceClose() throws InterruptedException {
-        setupEnv(Context.newBuilder().allowAllAccess(true).build(), new ProxyLanguage() {
+        setupEnv(Context.newBuilder().allowAllAccess(true).option("engine.TriggerUncaughtExceptionHandlerForCancel", "true").build(),
+                        new ProxyLanguage() {
 
-            @Override
-            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-                return true;
-            }
-        });
+                            @Override
+                            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                                return true;
+                            }
+                        });
 
         TruffleContext tc = languageEnv.newContextBuilder().build();
         List<Thread> threads = new ArrayList<>();
@@ -198,6 +230,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             assertSame(getCancelExecutionLocation(e), node);
             assertEquals("testreason", ((Throwable) e).getMessage());
         });
+
         tc.leave(null, prev);
     }
 
@@ -305,6 +338,31 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testCancellingUncaughtExceptionHandler() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        setupEnv(Context.newBuilder().allowAllAccess(true).err(out).build(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                RootNode rootNode;
+                String command = request.getSource().getCharacters().toString();
+                switch (command) {
+                    case "controller":
+                        rootNode = new ControllerNode(languageInstance);
+                        break;
+                    case "worker":
+                        rootNode = new WorkerNode(languageInstance);
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("Unknown request: " + command);
+                }
+                return Truffle.getRuntime().createCallTarget(rootNode);
+            }
+        });
+        context.eval(Source.newBuilder(ProxyLanguage.ID, "controller", "test").buildLiteral());
+        assertFalse(out.toString().contains(getCancelExecutionClass().getName()));
+    }
+
+    @Test
     public void testContextHierarchy() {
         setupEnv();
 
@@ -383,6 +441,268 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testInitializeCreatorContext() {
+        setupEnv();
+        TruffleContext innerContext = languageEnv.newContextBuilder().initializeCreatorContext(false).build();
+        Object prev = innerContext.enter(null);
+        assertFails(() -> ProxyLanguage.getCurrentContext(), IllegalStateException.class);
+        innerContext.leave(null, prev);
+
+        innerContext = languageEnv.newContextBuilder().initializeCreatorContext(true).build();
+        prev = innerContext.enter(null);
+        assertNotNull(ProxyLanguage.getCurrentContext());
+        innerContext.leave(null, prev);
+    }
+
+    @Test
+    public void testEvalInnerContextEvalErrors() {
+        setupEnv();
+
+        // regualar context must not be used
+        TruffleContext currentContext = languageEnv.getContext();
+        assertFails(() -> currentContext.evalInternal(null, newTruffleSource()), IllegalStateException.class, (e) -> {
+            assertEquals("Only created inner contexts can be used to evaluate sources. " +
+                            "Use TruffleLanguage.Env.parseInternal(Source) or TruffleInstrument.Env.parse(Source) instead.", e.getMessage());
+        });
+
+        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+
+        // inner context must not be entered for eval
+        Object prev = innerContext.enter(null);
+        assertFails(() -> innerContext.evalInternal(null, newTruffleSource()), IllegalStateException.class, (e) -> {
+            assertEquals("Invalid parent context entered. " +
+                            "The parent creator context or no context must be entered to evaluate code in an inner context.", e.getMessage());
+        });
+        innerContext.leave(null, prev);
+
+        assertFails(() -> innerContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder("foobarbazz$_", "", "").build()), IllegalArgumentException.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id 'foobarbazz$_' is not installed. Installed languages are:"));
+        });
+    }
+
+    @Test
+    public void testEvalInnerContextError() throws InteropException {
+        EvalContextTestException innerException = new EvalContextTestException();
+        EvalContextTestObject outerObject = new EvalContextTestObject();
+        setupLanguageThatReturns(() -> {
+            throw innerException;
+        });
+
+        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+        innerException.expectedContext = innerContext;
+        outerObject.expectedContext = languageEnv.getContext();
+
+        try {
+            innerContext.evalInternal(null, newTruffleSource());
+            fail();
+        } catch (AbstractTruffleException e) {
+
+            // arguments of the parent context are entered in the outer context
+            Object result = InteropLibrary.getUncached().execute(e, outerObject);
+
+            // and return values are entered again in the inner context
+            result = InteropLibrary.getUncached().execute(result, outerObject);
+
+            try {
+                InteropLibrary.getUncached().throwException(result);
+                fail();
+            } catch (AbstractTruffleException innerEx) {
+                result = InteropLibrary.getUncached().execute(innerEx, outerObject);
+            }
+        }
+        assertEquals(3, innerException.executeCount);
+        assertEquals(3, outerObject.executeCount);
+    }
+
+    @SuppressWarnings("serial")
+    @ExportLibrary(InteropLibrary.class)
+    static class EvalContextTestException extends AbstractTruffleException {
+
+        TruffleContext expectedContext;
+        int executeCount = 0;
+
+        @ExportMessage
+        @TruffleBoundary
+        final boolean isException() {
+            assertTrue(expectedContext.isEntered());
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final RuntimeException throwException() {
+            assertTrue(expectedContext.isEntered());
+            throw this;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final boolean isExecutable() {
+            assertTrue(expectedContext.isEntered());
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final Object execute(Object[] args) {
+            assertTrue(expectedContext.isEntered());
+            for (Object object : args) {
+                try {
+                    InteropLibrary.getUncached().execute(object);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            }
+            executeCount++;
+            return this;
+        }
+    }
+
+    @Test
+    public void testPublicEvalInnerContext() {
+        // test that primitive values can just be passed through
+        setupLanguageThatReturns(() -> 42);
+        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+        Object result = innerContext.evalPublic(null, newTruffleSource());
+        assertEquals(42, result);
+
+        com.oracle.truffle.api.source.Source internal = com.oracle.truffle.api.source.Source.newBuilder(LanguageSPIOrderTest.INTERNAL, "", "test").build();
+        assertFails(() -> innerContext.evalPublic(null, internal), IllegalArgumentException.class);
+    }
+
+    @Test
+    public void testEvalInnerContext() throws InteropException {
+        // test that primitive values can just be passed through
+        setupLanguageThatReturns(() -> 42);
+        TruffleContext innerContext = languageEnv.newContextBuilder().build();
+        Object result = innerContext.evalInternal(null, newTruffleSource());
+        assertEquals(42, result);
+
+        // test that objects that cross the boundary are entered in the inner context
+        EvalContextTestObject innerObject = new EvalContextTestObject();
+        EvalContextTestObject outerObject = new EvalContextTestObject();
+        setupLanguageThatReturns(() -> innerObject);
+        innerContext = languageEnv.newContextBuilder().build();
+        innerObject.expectedContext = innerContext;
+        outerObject.expectedContext = this.languageEnv.getContext();
+
+        result = innerContext.evalInternal(null, newTruffleSource());
+        assertNotEquals("must be wrapped", result, innerObject);
+
+        // arguments of the parent context are entered in the outer context
+        result = InteropLibrary.getUncached().execute(result, outerObject);
+
+        // and return values are entered again in the inner context
+        result = InteropLibrary.getUncached().execute(result, outerObject);
+
+        assertEquals(2, innerObject.executeCount);
+        assertEquals(2, outerObject.executeCount);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class EvalContextTestObject implements TruffleObject {
+
+        TruffleContext expectedContext;
+        int executeCount = 0;
+
+        @ExportMessage
+        @TruffleBoundary
+        final boolean isExecutable() {
+            assertTrue(expectedContext.isEntered());
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final Object execute(Object[] args) {
+            assertTrue(expectedContext.isEntered());
+            for (Object object : args) {
+                try {
+                    InteropLibrary.getUncached().execute(object);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            }
+            executeCount++;
+            return this;
+        }
+
+    }
+
+    @Test
+    public void testNoInitializeMultiContextForInnerContext() {
+        AtomicBoolean multiContextInitialized = new AtomicBoolean(false);
+        setupEnv(Context.create(), new ProxyLanguage() {
+
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            }
+
+            @Override
+            protected void initializeMultipleContexts() {
+                multiContextInitialized.set(true);
+            }
+
+            @Override
+            protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+                return true;
+            }
+        });
+        TruffleContext internalContext = languageEnv.newContextBuilder().initializeCreatorContext(false).build();
+        assertFalse(multiContextInitialized.get());
+        internalContext.evalInternal(null, com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").build());
+        assertTrue(multiContextInitialized.get());
+    }
+
+    @Test
+    public void testInitializeMultiContextForInnerContext() {
+        AtomicBoolean multiContextInitialized = new AtomicBoolean(false);
+        setupEnv(Context.create(), new ProxyLanguage() {
+
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            }
+
+            @Override
+            protected void initializeMultipleContexts() {
+                multiContextInitialized.set(true);
+            }
+
+            @Override
+            protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+                return true;
+            }
+        });
+        languageEnv.newContextBuilder().initializeCreatorContext(true).build();
+        assertTrue(multiContextInitialized.get());
+    }
+
+    private void setupLanguageThatReturns(Supplier<Object> supplier) {
+        setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return get();
+                    }
+
+                    @TruffleBoundary
+                    private Object get() {
+                        return supplier.get();
+                    }
+                });
+            }
+        });
+    }
+
+    private static com.oracle.truffle.api.source.Source newTruffleSource() {
+        return com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "test").build();
+    }
+
+    @Test
     public void testLeaveAndEnterInnerContext() {
         setupEnv();
 
@@ -434,6 +754,64 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             return (Node) m.invoke(t);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("Failed to invoke CancelExecution.getLocation.", e);
+        }
+    }
+
+    private static final class ControllerNode extends RootNode {
+
+        ControllerNode(TruffleLanguage<?> language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeImpl();
+        }
+
+        @TruffleBoundary
+        private Object executeImpl() {
+            TruffleLanguage.Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+            TruffleContext creatorContext = env.newContextBuilder().build();
+            CountDownLatch running = new CountDownLatch(1);
+            Thread t = env.createThread(() -> {
+                CallTarget target = ProxyLanguage.getCurrentContext().getEnv().parsePublic(com.oracle.truffle.api.source.Source.newBuilder(
+                                ProxyLanguage.ID, "worker", "worker").build());
+                running.countDown();
+                target.call();
+            }, creatorContext);
+            try {
+                t.start();
+                running.await();
+                creatorContext.closeCancelled(this, "Stopping");
+                t.join();
+                return true;
+            } catch (InterruptedException ie) {
+                return false;
+            }
+        }
+    }
+
+    private static final class WorkerNode extends RootNode {
+
+        WorkerNode(TruffleLanguage<?> language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeImpl();
+        }
+
+        @TruffleBoundary
+        private Object executeImpl() {
+            while (true) {
+                try {
+                    Thread.sleep(1_000);
+                    TruffleSafepoint.poll(this);
+                } catch (InterruptedException ie) {
+                    // Ignore InterruptedException, wait for ThreadDeath.
+                }
+            }
         }
     }
 }

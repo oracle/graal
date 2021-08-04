@@ -67,7 +67,7 @@ public class DebugContextTest {
             public List<DebugHandler> createHandlers(OptionValues options) {
                 return Arrays.asList(new DebugDumpHandler() {
                     @Override
-                    public void dump(DebugContext ignore, Object object, String format, Object... arguments) {
+                    public void dump(Object object, DebugContext ignore, boolean forced, String format, Object... arguments) {
                         dumpOutput.format("Dumping %s with label \"%s\"%n", object, String.format(format, arguments));
                     }
                 }, new DebugVerifyHandler() {

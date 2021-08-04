@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,5 +105,23 @@ public class MathFunctionBenchmark extends BenchmarkBase {
     @Benchmark
     public void strictMathSqrt(ThreadState state, Blackhole blackhole) {
         blackhole.consume(StrictMath.sqrt(state.k));
+    }
+
+    @Benchmark
+    public void mathSignum(ThreadState state, Blackhole blackhole) {
+        double[] data = state.data;
+        for (int i = 0; i < data.length; i++) {
+            double[] result = state.result;
+            result[i] = Math.signum(data[i]);
+        }
+    }
+
+    @Benchmark
+    public void mathCopySign(ThreadState state, Blackhole blackhole) {
+        double[] data = state.data;
+        for (int i = 0; i < data.length; i++) {
+            double[] result = state.result;
+            result[i] = Math.copySign(data[i], data[i] + 1.0D);
+        }
     }
 }

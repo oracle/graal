@@ -436,7 +436,7 @@ public abstract class AArch64ASIMDAssembler {
 
         public static ASIMDSize fromVectorKind(PlatformKind kind) {
             assert kind instanceof AArch64Kind;
-            assert kind.getVectorLength() > 0;
+            assert kind.getVectorLength() > 1;
             int bitSize = kind.getSizeInBytes() * Byte.SIZE;
             assert bitSize == 32 || bitSize == 64 || bitSize == 128;
             return bitSize == 128 ? FullReg : HalfReg;
@@ -487,7 +487,7 @@ public abstract class AArch64ASIMDAssembler {
             }
         }
 
-        private static ElementSize fromSize(int size) {
+        public static ElementSize fromSize(int size) {
             switch (size) {
                 case 8:
                     return Byte;
@@ -519,7 +519,13 @@ public abstract class AArch64ASIMDAssembler {
 
     public enum ASIMDInstruction {
 
-        /* Advanced SIMD extract. (C4-356). */
+        /* Cryptographic AES (C4-341). */
+        AESE(0b00100 << 12),
+        AESD(0b00101 << 12),
+        AESMC(0b00110 << 12),
+        AESIMC(0b00111 << 12),
+
+        /* Advanced SIMD extract (C4-356). */
         EXT(0b00 << 22),
 
         /* Advanced SIMD copy (C4-356). */
@@ -530,6 +536,8 @@ public abstract class AArch64ASIMDAssembler {
 
         /* Advanced SIMD two-register miscellaneous (C4-361). */
         /* size xx */
+        REV64(0b00000 << 12),
+        REV16(0b00001 << 12),
         CNT(0b00101 << 12),
         CMGT_ZERO(0b01000 << 12),
         CMEQ_ZERO(0b01001 << 12),
@@ -541,13 +549,21 @@ public abstract class AArch64ASIMDAssembler {
         FCVTL(0b10111 << 12),
         SCVTF(0b11101 << 12),
         /* size 1x */
+        FCMGT_ZERO(0b01100 << 12),
+        FCMEQ_ZERO(0b01101 << 12),
+        FCMLT_ZERO(0b01110 << 12),
         FABS(0b01111 << 12),
         FCVTZS(0b11011 << 12),
         /* UBit 1, size xx */
+        REV32(UBit | 0b00000 << 12),
+        CMGE_ZERO(UBit | 0b01000 << 12),
+        CMLE_ZERO(UBit | 0b01001 << 12),
         NEG(UBit | 0b01011 << 12),
         /* UBit 1, size 00 */
         NOT(UBit | 0b00101 << 12),
         /* UBit 1, size 1x */
+        FCMGE_ZERO(UBit | 0b01100 << 12),
+        FCMLE_ZERO(UBit | 0b01101 << 12),
         FNEG(UBit | 0b01111 << 12),
         FSQRT(UBit | 0b11111 << 12),
 
@@ -555,8 +571,9 @@ public abstract class AArch64ASIMDAssembler {
         SADDLV(0b00011 << 12),
         ADDV(0b11011 << 12),
         UADDLV(UBit | 0b00011 << 12),
+        UMAXV(UBit | 0b01010 << 12),
 
-        /* Advanced SIMD three different (C4-365) */
+        /* Advanced SIMD three different (C4-365). */
         SMLAL(0b1000 << 12),
         SMLSL(0b1010 << 12),
         UMLAL(UBit | 0b1000 << 12),
@@ -572,6 +589,7 @@ public abstract class AArch64ASIMDAssembler {
         SMAX(0b01100 << 11),
         SMIN(0b01101 << 11),
         ADD(0b10000 << 11),
+        CMTST(0b10001 << 11),
         MLA(0b10010 << 11),
         MUL(0b10011 << 11),
         /* size 0x */
@@ -601,11 +619,19 @@ public abstract class AArch64ASIMDAssembler {
         /* UBit 1, size 0x */
         FMUL(UBit | 0b11011 << 11),
         FCMGE(UBit | 0b11100 << 11),
+        FACGE(UBit | 0b11101 << 11),
         FDIV(UBit | 0b11111 << 11),
         /* UBit 1, size 00 */
         EOR(UBit | 0b00011 << 11),
+        /* UBit 1, size 01 */
+        BSL(UBit | 0b00011 << 11),
+        /* UBit 1, size 10 */
+        BIT(UBit | 0b00011 << 11),
+        /* UBit 1, size 11 */
+        BIF(UBit | 0b00011 << 11),
         /* UBit 1, size 1x */
         FCMGT(UBit | 0b11100 << 11),
+        FACGT(UBit | 0b11101 << 11),
 
         /* Advanced SIMD shift by immediate (C4-371). */
         SSHR(0b00000 << 11),
@@ -678,9 +704,22 @@ public abstract class AArch64ASIMDAssembler {
         return (size == ASIMDSize.FullReg ? 1 : 0) << 30;
     }
 
+    private void cryptographicAES(ASIMDInstruction instr, Register dst, Register src) {
+        int baseEncoding = 0b01001110_00_10100_00000_10_00000_00000;
+        emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rn(src));
+    }
+
     private void scalarThreeSameEncoding(ASIMDInstruction instr, int eSizeEncoding, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b01_0_11110_00_1_00000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
+    }
+
+    public void scalarShiftByImmEncoding(ASIMDInstruction instr, int imm7, Register dst, Register src) {
+        assert (imm7 & 0b1111_111) == imm7;
+        assert (imm7 & 0b1111_111) != 0;
+        assert (imm7 & 0b0000_111) != imm7;
+        int baseEncoding = 0b01_0_111110_0000_000_00000_1_00000_00000;
+        emitInt(instr.encoding | baseEncoding | imm7 << 16 | rd(dst) | rs1(src));
     }
 
     private void copyEncoding(ASIMDInstruction instr, boolean setQBit, ElementSize eSize, Register dst, Register src, int index) {
@@ -728,6 +767,7 @@ public abstract class AArch64ASIMDAssembler {
     public void shiftByImmEncoding(ASIMDInstruction instr, boolean setQBit, int imm7, Register dst, Register src) {
         assert (imm7 & 0b1111_111) == imm7;
         assert (imm7 & 0b1111_111) != 0;
+        assert (imm7 & 0b0000_111) != imm7;
         int baseEncoding = 0b0_0_0_011110_0000_000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(setQBit) | imm7 << 16 | rd(dst) | rs1(src));
     }
@@ -810,6 +850,58 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.7 AES single round decryption.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void aesd(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicAES(ASIMDInstruction.AESD, dst, src);
+    }
+
+    /**
+     * C7.2.8 AES single round encryption.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void aese(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicAES(ASIMDInstruction.AESE, dst, src);
+    }
+
+    /**
+     * C7.2.9 AES inverse mix columns.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void aesimc(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicAES(ASIMDInstruction.AESIMC, dst, src);
+    }
+
+    /**
+     * C7.2.10 AES mix columns.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void aesmc(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicAES(ASIMDInstruction.AESMC, dst, src);
+    }
+
+    /**
      * C7.2.11 Bitwise and vector.<br>
      *
      * <code>for i in 0..n-1 do dst[i] = src1[i] & src2[i]</code>
@@ -860,6 +952,69 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.BIC, size, elemSize01, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.22 Bitwise insert if false.<br>
+     * This instruction inserts each bit from the first source register into the destination
+     * register if the corresponding bit of the second source register is 0, otherwise leave the bit
+     * in the destination register unchanged.
+     *
+     * <code>for i in 0..n-1 do dst[i] = src2[i] == 0 ? src1[i] : dst[i] </code>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void bifVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        threeSameEncoding(ASIMDInstruction.BIF, size, elemSize11, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.23 Bitwise insert if true.<br>
+     * This instruction inserts each bit from the first source register into the destination
+     * register if the corresponding bit of the second source register is 1, otherwise leave the bit
+     * in the destination register unchanged.
+     *
+     * <code>for i in 0..n-1 do dst[i] = src2[i] == 1 ? src1[i] : dst[i] </code>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void bitVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        threeSameEncoding(ASIMDInstruction.BIT, size, elemSize10, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.24 Bitwise select.<br>
+     * This instruction sets each bit in the destination register to the corresponding bit from the
+     * first source register when the original destination bit was 1, otherwise from the second
+     * source register.
+     *
+     * <code>for i in 0..n-1 do dst[i] = dst[i] == 1 ? src1[i] : src2[i]</code>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void bslVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        threeSameEncoding(ASIMDInstruction.BSL, size, elemSize01, dst, src1, src2);
     }
 
     /**
@@ -922,6 +1077,26 @@ public abstract class AArch64ASIMDAssembler {
         assert usesMultipleLanes(size, eSize);
 
         threeSameEncoding(ASIMDInstruction.CMGE, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.30 Compare signed greater than or equal to zero.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] >= src[i] == 0 ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void cmgeZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize);
+
+        twoRegMiscEncoding(ASIMDInstruction.CMGE_ZERO, size, elemSizeXX(eSize), dst, src);
     }
 
     /**
@@ -1008,6 +1183,26 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.35 Compare signed less than or equal to zero.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] = src[i] <= 0 ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void cmleZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize);
+
+        twoRegMiscEncoding(ASIMDInstruction.CMLE_ZERO, size, elemSizeXX(eSize), dst, src);
+    }
+
+    /**
      * C7.2.36 Compare signed less than zero.<br>
      * <p>
      * For elements which the comparison is true, all bits of the corresponding dst lane are set to
@@ -1025,6 +1220,27 @@ public abstract class AArch64ASIMDAssembler {
         assert usesMultipleLanes(size, eSize);
 
         twoRegMiscEncoding(ASIMDInstruction.CMLT_ZERO, size, elemSizeXX(eSize), dst, src);
+    }
+
+    /**
+     * C7.2.37 Compare bitwise test bits nonzero.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] = (src1[i] & src2[i]) == 0 ? 0 : -1</code>
+     *
+     * @param size register size.
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void cmtstVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert usesMultipleLanes(size, eSize);
+
+        threeSameEncoding(ASIMDInstruction.CMTST, size, elemSizeXX(eSize), dst, src1, src2);
     }
 
     /**
@@ -1173,6 +1389,71 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.47 Floating-point absolute compare greater than or equal.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] = fp_abs(src1[i]) >= fp_abs(src2[i]) ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void facgeVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        threeSameEncoding(ASIMDInstruction.FACGE, size, elemSize0X(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.48 Floating-point absolute compare greater than.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] = fp_abs(src1[i]) > fp_abs(src2[i]) ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void facgtVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        threeSameEncoding(ASIMDInstruction.FACGT, size, elemSize1X(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.48 Floating-point absolute compare greater than.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code> dst = fp_abs(src1) > fp_abs(src2) > -1 : 0</code>
+     *
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void facgtSSS(ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        scalarThreeSameEncoding(ASIMDInstruction.FACGT, elemSize1X(eSize), dst, src1, src2);
+    }
+
+    /**
      * C7.2.49 floating point add vector.<br>
      *
      * <code>for i in 0..n-1 do dst[i] = fp_add(src1[i], src2[i])</code>
@@ -1216,6 +1497,28 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.57 Floating-point compare equal to zero.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] = src[i] == 0 ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void fcmeqZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.FCMEQ_ZERO, size, elemSize1X(eSize), dst, src);
+    }
+
+    /**
      * C7.2.58 Floating-point compare greater than or equal.<br>
      * <p>
      * For elements which the comparison is true, all bits of the corresponding dst lane are set to
@@ -1239,6 +1542,28 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.59 Floating-point compare greater than or equal to zero.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] >= src[i] == 0 ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void fcmgeZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.FCMGE_ZERO, size, elemSize1X(eSize), dst, src);
+    }
+
+    /**
      * C7.2.60 Floating-point compare greater than.<br>
      * <p>
      * For elements which the comparison is true, all bits of the corresponding dst lane are set to
@@ -1259,6 +1584,72 @@ public abstract class AArch64ASIMDAssembler {
         assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
 
         threeSameEncoding(ASIMDInstruction.FCMGT, size, elemSize1X(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.61 Floating-point compare greater than zero.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] > src[i] == 0 ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void fcmgtZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.FCMGT_ZERO, size, elemSize1X(eSize), dst, src);
+    }
+
+    /**
+     * C7.2.64 Floating-point compare less than or equal to zero.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] <= src[i] == 0 ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void fcmleZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.FCMLE_ZERO, size, elemSize1X(eSize), dst, src);
+    }
+
+    /**
+     * C7.2.65 Floating-point compare less than zero.<br>
+     * <p>
+     * For elements which the comparison is true, all bits of the corresponding dst lane are set to
+     * 1. Otherwise, if the comparison is false, then the corresponding dst lane is cleared.
+     *
+     * <code>for i in 0..n-1 do dst[i] < src[i] == 0 ? -1 : 0</code>
+     *
+     * @param size register size.
+     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord.
+     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
+     *            performed on more than one element).
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void fcmltZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.FCMLT_ZERO, size, elemSize1X(eSize), dst, src);
     }
 
     /**
@@ -1539,17 +1930,16 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] += int_multiply(src1[i], src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size.
+     * @param eSize element size. Cannot be ElementSize.DoubleWord.
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
      */
     public void mlaVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-
         assert dst.getRegisterCategory().equals(SIMD);
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
+        assert eSize != ElementSize.DoubleWord;
 
         threeSameEncoding(ASIMDInstruction.MLA, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1560,17 +1950,16 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] -= int_multiply(src1[i], src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size.
+     * @param eSize element size. Cannot be ElementSize.DoubleWord.
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
      */
     public void mlsVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-
         assert dst.getRegisterCategory().equals(SIMD);
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
+        assert eSize != ElementSize.DoubleWord;
 
         threeSameEncoding(ASIMDInstruction.MLS, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1594,7 +1983,7 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] = int_mul(src1[i], src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size.
+     * @param eSize element size. Cannot be ElementSize.DoubleWord.
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
@@ -1603,6 +1992,7 @@ public abstract class AArch64ASIMDAssembler {
         assert dst.getRegisterCategory().equals(SIMD);
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
+        assert eSize != ElementSize.DoubleWord;
 
         threeSameEncoding(ASIMDInstruction.MUL, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1702,6 +2092,58 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.ORR, size, elemSize10, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.219 Reverse elements in 16-bit halfwords.<br>
+     * This instruction reverses the order of 8-bit elements in each halfword.
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void rev16VV(ASIMDSize size, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        twoRegMiscEncoding(ASIMDInstruction.REV16, size, elemSize00, dst, src);
+    }
+
+    /**
+     * C7.2.220 Reverse elements in 32-bit words.<br>
+     * This instruction reverses the order of elements of size revGranularity in each 32-bit word.
+     *
+     *
+     * @param size register size.
+     * @param revGranularity within each element at what granularity the bits should be reversed.
+     *            Can be of size Byte of HalfWord
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void rev32VV(ASIMDSize size, ElementSize revGranularity, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert revGranularity == ElementSize.Byte || revGranularity == ElementSize.HalfWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.REV32, size, elemSizeXX(revGranularity), dst, src);
+    }
+
+    /**
+     * C7.2.221 Reverse elements in 64-bit words.<br>
+     * This instruction reverses the order of elements of size revGranularity in each 64-bit word.
+     *
+     * @param size register size.
+     * @param revGranularity within each element at what granularity the bits should be reversed.
+     *            DoubleWord is not allowed.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void rev64VV(ASIMDSize size, ElementSize revGranularity, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert revGranularity != ElementSize.DoubleWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.REV64, size, elemSizeXX(revGranularity), dst, src);
     }
 
     /**
@@ -2010,10 +2452,31 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register. Should not be null.
      */
     public void uaddlvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
         assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for uaddlv";
         assert elementSize != ElementSize.DoubleWord : "Invalid lane width for uaddlv";
 
         acrossLanesEncoding(ASIMDInstruction.UADDLV, size, elemSizeXX(elementSize), dst, src);
+    }
+
+    /**
+     * C7.2.362 Unsigned maximum across vector.<br>
+     *
+     * <code>dst = uint_max(src[0], ..., src[n]).</code>
+     *
+     * @param size register size.
+     * @param elementSize width of each operand.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void umaxvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for umaxv";
+        assert elementSize != ElementSize.DoubleWord : "Invalid lane width for umaxv";
+
+        acrossLanesEncoding(ASIMDInstruction.UMAXV, size, elemSizeXX(elementSize), dst, src);
     }
 
     /**
@@ -2127,9 +2590,33 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.392 unsigned shift right (immediate).<br>
+     * C7.2.392 unsigned shift right (immediate) scalar.<br>
      *
      * <code>for i in 0..n-1 do dst[i] = src[i] >>> imm</code>
+     *
+     * @param eSize element size. Must be ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shiftAmt shift right amount.
+     */
+    public void ushrSSI(ElementSize eSize, Register dst, Register src, int shiftAmt) {
+        assert eSize == ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        /* Accepted shift range */
+        assert shiftAmt > 0 && shiftAmt <= eSize.nbits;
+
+        /* shift = eSize.nbits * 2 - imm7 */
+        int imm7 = eSize.nbits * 2 - shiftAmt;
+
+        scalarShiftByImmEncoding(ASIMDInstruction.USHR, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.392 unsigned shift right (immediate) vector.<br>
+     *
+     * <code>dst = src >>> imm</code>
      *
      * @param size register size.
      * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
@@ -2159,16 +2646,16 @@ public abstract class AArch64ASIMDAssembler {
      * From the manual: "This instruction reads each vector element from the source SIMD&FP
      * register, narrows each value to half the original width, and writes the register..."
      *
-     * @param srcESize source element size. Cannot be ElementSize.Byte. The destination element size
-     *            will be half this width.
+     * @param dstESize destination element size. Cannot be ElementSize.DoubleWord. The source
+     *            element size is twice this width.
      * @param dst SIMD register.
      * @param src SIMD register.
      */
-    public void xtnVV(ElementSize srcESize, Register dst, Register src) {
+    public void xtnVV(ElementSize dstESize, Register dst, Register src) {
         assert dst.getRegisterCategory().equals(SIMD);
         assert src.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.Byte;
+        assert dstESize != ElementSize.DoubleWord;
 
-        twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(srcESize), dst, src);
+        twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(dstESize), dst, src);
     }
 }

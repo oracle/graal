@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -222,6 +226,25 @@ public class AOTTutorial {
         }
 
         /**
+         * Also language libraries can be prepared for AOT. However, in order for that to work the
+         * library needs to declare {@link GenerateAOT} on the library declaration. And library
+         * exports need to enable use for AOT with {@link ExportLibrary#useForAOT()}.
+         */
+        @Specialization(limit = "3", guards = "useLibrary()")
+        Object doAddLibrary(Object left, Object right,
+                        @CachedLibrary("left") AddLibrary addLib) {
+            return addLib.add(left, right);
+        }
+
+        static boolean useLibrary() {
+            /*
+             * This library is not really useful and only here to show-case how to use libraries
+             * with AOT.
+             */
+            return false;
+        }
+
+        /**
          * Even though this is a static language we should still support dynamic Truffle interop
          * values. Since interop libraries require dynamic parameters to be initialized we need to
          * exclude it from AOT by using the {@link GenerateAOT.Exclude} annotation. This means that
@@ -247,6 +270,37 @@ public class AOTTutorial {
             } catch (InteropException e) {
                 throw CompilerDirectives.shouldNotReachHere();
             }
+        }
+
+    }
+
+    /**
+     * An example of a custom library that supports AOT.
+     */
+    @GenerateLibrary
+    @GenerateAOT
+    public abstract static class AddLibrary extends Library {
+
+        public abstract Object add(Object receiver, Object other);
+
+    }
+
+    /**
+     * An example for library export that supports AOT. Note that this also works with dynamic
+     * dispatched receiver types, default types. A priority must be specified to determine the order
+     * of the AOT exports for AOT preparation.
+     * <p>
+     * The receiver type must be final for that to work, otherwise the generated code might not be
+     * ideal. There can be any number of exports specified, they are loaded eagerly when AOT is used
+     * for the first time even without instances of {@link Addable} used.
+     */
+    @ExportLibrary(value = AddLibrary.class, useForAOT = true, useForAOTPriority = 42)
+    public static final class Addable {
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        Object add(Object other) {
+            return 42;
         }
 
     }
@@ -286,7 +340,8 @@ public class AOTTutorial {
                  */
                 Class<?> returnType = String.class;
 
-                // we assume that the parser produced the following AST for the body of the program
+                // we assume that the parser produced the following AST for the body of the
+                // program
                 // this is equivalent to (arg0 + arg1) + arg2
                 BaseNode body = AddNodeGen.create(AddNodeGen.create(new ArgumentNode(0), new ArgumentNode(1)), new ArgumentNode(2));
                 return Truffle.getRuntime().createCallTarget(new AOTRootNode(this, body, returnType, argumentTypes));
@@ -299,7 +354,8 @@ public class AOTTutorial {
 
     @Test
     public void testAOT() {
-        // The log output is Graal specific and therefore can only be asserted in a Graal runtime.
+        // The log output is Graal specific and therefore can only be asserted in a Graal
+        // runtime.
         Assume.assumeTrue(isGraalRuntime());
 
         ByteArrayOutputStream log = new ByteArrayOutputStream();
@@ -318,7 +374,8 @@ public class AOTTutorial {
             assertTrue(beforeExecute, beforeExecute.contains("[engine] opt done     sample"));
 
             // we can compile the function and it is executed compiled immediately.
-            // note that if we would use any other types than the ones used during AOT preparation
+            // note that if we would use any other types than the ones used during AOT
+            // preparation
             // the code would deoptimize and the initialized specialization profile would be
             // automatically reset.
             String result = v.execute(1, 3, "2").asString();

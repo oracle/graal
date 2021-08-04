@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -46,16 +47,31 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeField(type = long.class, name = "structSize")
 public abstract class LLVMStructStoreNode extends LLVMStoreNode {
 
+    protected final boolean isRecursive;
+
     public abstract long getStructSize();
 
     @Child private LLVMMemMoveNode memMove;
 
-    protected LLVMStructStoreNode(LLVMMemMoveNode memMove) {
+    protected LLVMStructStoreNode(LLVMMemMoveNode memMove, boolean isRecursive) {
         this.memMove = memMove;
+        this.isRecursive = isRecursive;
+    }
+
+    protected LLVMStructStoreNode(LLVMMemMoveNode memMove) {
+        this(memMove, false);
+    }
+
+    protected LLVMStructStoreNode() {
+        this(false);
+    }
+
+    protected LLVMStructStoreNode(boolean isRecursive) {
+        this(null, isRecursive);
     }
 
     public LLVMStructStoreNode createRecursive() {
-        return LLVMStructStoreNodeGen.create(memMove, null, null, getStructSize());
+        return LLVMStructStoreNodeGen.create((LLVMMemMoveNode) ((Node) memMove).deepCopy(), null, null, getStructSize());
     }
 
     /**
@@ -93,7 +109,7 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
         memMove.executeWithTarget(address, toNative.executeWithTarget(value), getStructSize());
     }
 
-    @Specialization
+    @Specialization(guards = "!isRecursive")
     protected void doVarArgCompoundValue(LLVMNativePointer address, LLVMVarArgCompoundValue value,
                     @Cached("createRecursive()") LLVMStructStoreNode recursionNode) {
         recursionNode.executeWithTarget(address, value.getAddr());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,10 +54,13 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -70,6 +73,7 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -105,7 +109,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     @Successor AbstractBeginNode trueSuccessor;
     @Successor AbstractBeginNode falseSuccessor;
     @Input(InputType.Condition) LogicNode condition;
-    protected double trueSuccessorProbability;
+    protected BranchProbabilityData profileData;
 
     public LogicNode condition() {
         return condition;
@@ -116,16 +120,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         condition = x;
     }
 
-    public IfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
-        this(condition, BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor), trueSuccessorProbability);
+    public IfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, BranchProbabilityData profileData) {
+        this(condition, BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor), profileData);
     }
 
-    public IfNode(LogicNode condition, AbstractBeginNode trueSuccessor, AbstractBeginNode falseSuccessor, double trueSuccessorProbability) {
+    public IfNode(LogicNode condition, AbstractBeginNode trueSuccessor, AbstractBeginNode falseSuccessor, BranchProbabilityData profileData) {
         super(TYPE, StampFactory.forVoid());
         this.condition = condition;
         this.falseSuccessor = falseSuccessor;
         this.trueSuccessor = trueSuccessor;
-        setTrueSuccessorProbability(trueSuccessorProbability);
+        this.profileData = profileData;
     }
 
     /**
@@ -147,7 +151,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     public double getTrueSuccessorProbability() {
-        return this.trueSuccessorProbability;
+        return profileData.getDesignatedSuccessorProbability();
     }
 
     public void setTrueSuccessor(AbstractBeginNode node) {
@@ -170,14 +174,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return istrue ? trueSuccessor : falseSuccessor;
     }
 
-    public void setTrueSuccessorProbability(double prob) {
+    public void setTrueSuccessorProbability(BranchProbabilityData profileData) {
+        double prob = profileData.getDesignatedSuccessorProbability();
         assert prob >= -0.000000001 && prob <= 1.000000001 : "Probability out of bounds: " + prob;
-        trueSuccessorProbability = Math.min(1.0, Math.max(0.0, prob));
+        double trueSuccessorProbability = Math.min(1.0, Math.max(0.0, prob));
+        this.profileData = profileData.copy(trueSuccessorProbability);
+    }
+
+    protected BranchProbabilityData trueSuccessorProfile() {
+        return profileData;
     }
 
     @Override
     public double probability(AbstractBeginNode successor) {
-        return successor == trueSuccessor ? trueSuccessorProbability : 1 - trueSuccessorProbability;
+        return successor == trueSuccessor ? getTrueSuccessorProbability() : 1 - getTrueSuccessorProbability();
     }
 
     @Override
@@ -252,21 +262,22 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         AbstractBeginNode oldFalseSuccessor = falseSuccessor;
         trueSuccessor = oldFalseSuccessor;
         falseSuccessor = oldTrueSuccessor;
-        trueSuccessorProbability = 1 - trueSuccessorProbability;
+        double trueSuccessorProbability = 1 - getTrueSuccessorProbability();
+        profileData = profileData.copy(trueSuccessorProbability);
         setCondition(((LogicNegationNode) condition).getValue());
     }
 
     @Override
     public void simplify(SimplifierTool tool) {
         if (trueSuccessor().next() instanceof DeoptimizeNode) {
-            if (trueSuccessorProbability != 0) {
+            if (getTrueSuccessorProbability() != 0) {
                 CORRECTED_PROBABILITIES.increment(getDebug());
-                trueSuccessorProbability = 0;
+                profileData = BranchProbabilityNode.NEVER_TAKEN_PROFILE;
             }
         } else if (falseSuccessor().next() instanceof DeoptimizeNode) {
-            if (trueSuccessorProbability != 1) {
+            if (getTrueSuccessorProbability() != 1) {
                 CORRECTED_PROBABILITIES.increment(getDebug());
-                trueSuccessorProbability = 1;
+                profileData = BranchProbabilityNode.ALWAYS_TAKEN_PROFILE;
             }
         }
 
@@ -311,8 +322,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         !(((IfNode) falseSuccessor().next()).falseSuccessor() instanceof LoopExitNode)) {
             AbstractBeginNode intermediateBegin = falseSuccessor();
             IfNode nextIf = (IfNode) intermediateBegin.next();
-            double probabilityB = (1.0 - this.trueSuccessorProbability) * nextIf.trueSuccessorProbability;
-            if (this.trueSuccessorProbability < probabilityB) {
+            double probabilityB = (1.0 - this.getTrueSuccessorProbability()) * nextIf.getTrueSuccessorProbability();
+            if (this.getTrueSuccessorProbability() < probabilityB) {
                 // Reordering of those two if statements is beneficial from the point of view of
                 // their probabilities.
                 if (prepareForSwap(tool, condition(), nextIf.condition())) {
@@ -332,12 +343,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     intermediateBegin.setNodeSourcePosition(bothFalseBegin.getNodeSourcePosition());
                     bothFalseBegin.setNodeSourcePosition(intermediateBeginPosition);
 
-                    nextIf.setTrueSuccessorProbability(probabilityB);
+                    ProfileSource combinedSource = profileData.getProfileSource().combine(nextIf.profileData.getProfileSource());
+                    nextIf.setTrueSuccessorProbability(BranchProbabilityData.create(probabilityB, combinedSource));
                     if (probabilityB == 1.0) {
-                        this.setTrueSuccessorProbability(0.0);
+                        this.setTrueSuccessorProbability(BranchProbabilityData.create(0.0, combinedSource));
                     } else {
-                        double newProbability = this.trueSuccessorProbability / (1.0 - probabilityB);
-                        this.setTrueSuccessorProbability(Math.min(1.0, newProbability));
+                        double newProbability = this.getTrueSuccessorProbability() / (1.0 - probabilityB);
+                        this.setTrueSuccessorProbability(BranchProbabilityData.create(Math.min(1.0, newProbability), combinedSource));
                     }
                     return;
                 }
@@ -502,7 +514,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Override
     public boolean isNonInitializedProfile() {
-        return getTrueSuccessorProbability() == 0.5d;
+        return !ProfileSource.isTrusted(profileSource());
+    }
+
+    @Override
+    public ProfileSource profileSource() {
+        return profileData.getProfileSource();
+    }
+
+    @Override
+    public BranchProbabilityData getProfileData() {
+        return profileData;
     }
 
     @Override
@@ -678,7 +700,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                             ifNode2.setTrueSuccessor(null);
                             ifNode2.setFalseSuccessor(null);
 
-                            IfNode newIfNode = graph().add(new IfNode(below, falseSucc, trueSucc, 1 - trueSuccessorProbability));
+                            IfNode newIfNode = graph().add(new IfNode(below, falseSucc, trueSucc, profileData.negated()));
                             // Remove the < 0 test.
                             tool.deleteBranch(trueSuccessor);
                             graph().removeSplit(this, falseSuccessor);
@@ -723,7 +745,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         ifNode2.setTrueSuccessor(null);
                         ifNode2.setFalseSuccessor(null);
 
-                        IfNode newIfNode = graph().add(new IfNode(below, trueSucc, falseSucc, trueSuccessorProbability));
+                        IfNode newIfNode = graph().add(new IfNode(below, trueSucc, falseSucc, profileData));
                         // Remove the < -C1 test.
                         tool.deleteBranch(trueSuccessor);
                         graph().removeSplit(this, falseSuccessor);
@@ -875,6 +897,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      */
     private boolean removeOrMaterializeIf(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
+        MergeNode blockingMerge = null;
+        if (trueSuccessor().next() instanceof ReturnNode && falseSuccessor().next() instanceof AbstractEndNode) {
+            AbstractMergeNode am = ((AbstractEndNode) falseSuccessor.next()).merge();
+            if (am instanceof MergeNode) {
+                blockingMerge = (MergeNode) am;
+            }
+        } else if (falseSuccessor().next() instanceof ReturnNode && trueSuccessor().next() instanceof AbstractEndNode) {
+            AbstractMergeNode am = ((AbstractEndNode) trueSuccessor().next()).merge();
+            if (am instanceof MergeNode) {
+                blockingMerge = (MergeNode) am;
+            }
+        }
+        if (blockingMerge != null) {
+            if (blockingMerge.next() instanceof ReturnNode) {
+                AbstractMergeNode.duplicateReturnThroughMerge(blockingMerge);
+            }
+        }
         if (trueSuccessor().next() instanceof AbstractEndNode && falseSuccessor().next() instanceof AbstractEndNode) {
             AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
             AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
@@ -944,7 +983,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 LoopExitNode loopExitNode = graph().add(new LoopExitNode(loopBegin));
                 loopExitNode.setStateAfter(stateAfter);
                 graph().addBeforeFixed(this, loopExitNode);
-                if (graph().hasValueProxies() && needsProxy) {
+                if (graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) && needsProxy) {
                     value = graph().addOrUnique(new ValueProxyNode(value, loopExitNode));
                 }
             }
@@ -977,7 +1016,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         //           | Merge +---------+Phi|
         //           +-------+         +---+
         // @formatter:on
-        if (this.graph().hasValueProxies()) {
+        if (this.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             if (trueSuccessor instanceof LoopExitNode && falseSuccessor instanceof LoopExitNode) {
                 assert ((LoopExitNode) trueSuccessor).loopBegin() == ((LoopExitNode) falseSuccessor).loopBegin();
                 /*
@@ -1079,7 +1118,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return true;
         }
 
-        if (graph().isAfterFixedReadPhase()) {
+        if (graph().isAfterStage(StageFlag.FIXED_READS)) {
             if (value instanceof ParameterNode) {
                 // Assume Parameters are always evaluated but only apply this logic to graphs after
                 // inlining. Checking for ParameterNode causes it to apply to graphs which are going
@@ -1110,7 +1149,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (value != null) {
             return value;
         }
-        if (!graph().isAfterExpandLogic()) {
+        if (graph().isBeforeStage(StageFlag.EXPAND_LOGIC)) {
             /*
              * !isAfterExpandLogic() => Cannot spawn NormalizeCompareNodes after lowering in the
              * ExpandLogicPhase.
@@ -1139,7 +1178,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 negateConditionalCondition = true;
             }
             if (otherValue != null && otherValue.isConstant()) {
-                double shortCutProbability = probability(trueSuccessor());
+                BranchProbabilityData shortCutProbability = trueSuccessorProfile();
                 LogicNode newCondition = LogicNode.or(condition(), negateCondition, conditional.condition(), negateConditionalCondition, shortCutProbability);
                 return graph().unique(new ConditionalNode(newCondition, constant, otherValue));
             }
@@ -1409,13 +1448,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         connectEnds(falseEnds, phi, phiValues, oldFalseSuccessor, merge, tool);
         connectEnds(trueEnds, phi, phiValues, oldTrueSuccessor, merge, tool);
 
-        if (this.trueSuccessorProbability == 0.0) {
+        if (this.getTrueSuccessorProbability() == 0.0) {
             for (AbstractEndNode endNode : trueEnds) {
                 propagateZeroProbability(endNode);
             }
         }
 
-        if (this.trueSuccessorProbability == 1.0) {
+        if (this.getTrueSuccessorProbability() == 1.0) {
             for (AbstractEndNode endNode : falseEnds) {
                 propagateZeroProbability(endNode);
             }
@@ -1447,21 +1486,21 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (node instanceof IfNode) {
                 IfNode ifNode = (IfNode) node;
                 if (ifNode.trueSuccessor() == prev) {
-                    if (ifNode.trueSuccessorProbability == 0.0) {
+                    if (ifNode.getTrueSuccessorProbability() == 0.0) {
                         return;
-                    } else if (ifNode.trueSuccessorProbability == 1.0) {
+                    } else if (ifNode.getTrueSuccessorProbability() == 1.0) {
                         continue;
                     } else {
-                        ifNode.setTrueSuccessorProbability(0.0);
+                        ifNode.setTrueSuccessorProbability(BranchProbabilityNode.NEVER_TAKEN_PROFILE);
                         return;
                     }
                 } else if (ifNode.falseSuccessor() == prev) {
-                    if (ifNode.trueSuccessorProbability == 1.0) {
+                    if (ifNode.getTrueSuccessorProbability() == 1.0) {
                         return;
-                    } else if (ifNode.trueSuccessorProbability == 0.0) {
+                    } else if (ifNode.getTrueSuccessorProbability() == 0.0) {
                         continue;
                     } else {
-                        ifNode.setTrueSuccessorProbability(1.0);
+                        ifNode.setTrueSuccessorProbability(BranchProbabilityNode.ALWAYS_TAKEN_PROFILE);
                         return;
                     }
                 } else {
@@ -1579,12 +1618,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public boolean setProbability(AbstractBeginNode successor, double value) {
+    public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData profileData) {
         if (successor == this.trueSuccessor()) {
-            this.setTrueSuccessorProbability(value);
+            this.setTrueSuccessorProbability(profileData);
             return true;
         } else if (successor == this.falseSuccessor()) {
-            this.setTrueSuccessorProbability(1.0 - value);
+            this.setTrueSuccessorProbability(profileData.negated());
             return true;
         }
         return false;

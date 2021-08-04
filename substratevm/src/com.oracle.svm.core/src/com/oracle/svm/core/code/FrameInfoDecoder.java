@@ -283,6 +283,14 @@ public class FrameInfoDecoder {
         return TypeConversion.asS4(encodedBci >> BCI_SHIFT);
     }
 
+    protected static boolean decodeDuringCall(long encodedBci) {
+        return (encodedBci & DURING_CALL_MASK) != 0;
+    }
+
+    protected static boolean decodeRethrowException(long encodedBci) {
+        return (encodedBci & RETHROW_EXCEPTION_MASK) != 0;
+    }
+
     public static String readableBci(long encodedBci) {
         return decodeBci(encodedBci) +
                         ((encodedBci & DURING_CALL_MASK) != 0 ? " duringCall" : "") +

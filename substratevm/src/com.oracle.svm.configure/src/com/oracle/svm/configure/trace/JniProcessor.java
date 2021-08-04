@@ -71,7 +71,7 @@ class JniProcessor extends AbstractProcessor {
             if (!advisor.shouldIgnore(lazyValue(forNameString), callerClassLazyValue)) {
                 if (function.equals("FindClass")) {
                     configuration.getOrCreateType(forNameString);
-                } else if (!lookupName.startsWith("com/sun/proxy/$Proxy")) { // DefineClass
+                } else if (!AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(lookupName).matches()) { // DefineClass
                     logWarning("Unsupported JNI function DefineClass used to load class " + forNameString);
                 }
             }
@@ -103,7 +103,7 @@ class JniProcessor extends AbstractProcessor {
             case "GetStaticFieldID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
-                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false, false);
+                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false);
                 if (!declaringClassOrClazz.equals(clazz)) {
                     config.getOrCreateType(clazz);
                 }
@@ -124,7 +124,7 @@ class JniProcessor extends AbstractProcessor {
             case "FromReflectedField": {
                 expectSize(args, 1);
                 String name = (String) args.get(0);
-                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false, false);
+                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false);
                 break;
             }
             case "ToReflectedMethod":

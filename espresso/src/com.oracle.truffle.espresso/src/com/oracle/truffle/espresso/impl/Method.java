@@ -41,6 +41,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.function.IntFunction;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
@@ -55,10 +56,6 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.ffi.NativeAccess;
-import com.oracle.truffle.espresso.ffi.NativeSignature;
-import com.oracle.truffle.espresso.ffi.NativeType;
-import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -76,11 +73,15 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
 import com.oracle.truffle.espresso.jdwp.api.LocalVariableTableRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -91,6 +92,7 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeMethodNode;
+import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -129,15 +131,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private final Method proxy;
     private String genericSignature;
 
+    // always null unless the raw signature exposed for this method should be
+    // different from the one in the linkedKlass
+    private final Symbol<Signature> rawSignature;
+
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
     @CompilationFinal private volatile MethodVersion methodVersion;
 
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
-
-    public Method identity() {
-        return proxy == null ? this : proxy;
-    }
 
     // Multiple maximally-specific interface methods. Fail on call.
     @CompilationFinal private boolean poisonPill = false;
@@ -145,8 +147,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // Whether we need to use an additional frame slot for monitor unlock on kill.
     @CompilationFinal private byte usesMonitors = -1;
 
-    // can have a different constant pool than it's declaring class
+    public Method identity() {
+        return proxy == null ? this : proxy;
+    }
 
+    @Override
+    public Symbol<Name> getName() {
+        return getLinkedMethod().getName();
+    }
+
+    // can have a different constant pool than it's declaring class
     public ConstantPool getConstantPool() {
         return getRuntimeConstantPool();
     }
@@ -169,7 +179,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Symbol<Signature> getRawSignature() {
-        return descriptor;
+        if (rawSignature != null) {
+            return rawSignature;
+        }
+        return getLinkedMethod().getRawSignature();
     }
 
     public Symbol<Type>[] getParsedSignature() {
@@ -180,7 +193,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private Source source;
 
     Method(Method method) {
-        super(method.getRawSignature(), method.getName());
+        this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
         this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
 
@@ -203,7 +216,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private Method(Method method, CodeAttribute split) {
-        super(method.getRawSignature(), method.getName());
+        this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
         this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
 
@@ -229,9 +242,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
-        super(rawSignature, linkedMethod.getName());
         this.methodVersion = new MethodVersion(pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
         this.declaringKlass = declaringKlass;
+        this.rawSignature = rawSignature;
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -649,6 +662,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return Signatures.parameterCount(getParsedSignature(), false);
     }
 
+    public int getArgumentCount() {
+        return getParameterCount() + (isStatic() ? 0 : 1);
+    }
+
     public static Method getHostReflectiveMethodRoot(StaticObject seed, Meta meta) {
         assert seed.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(seed.getKlass());
         StaticObject curMethod = seed;
@@ -864,7 +881,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (attribute != null) {
             return attribute.getLocalvariableTable();
         }
-        return LocalVariableTable.EMPTY;
+        return LocalVariableTable.EMPTY_LVT;
     }
 
     public LocalVariableTable getLocalVariableTypeTable() {
@@ -872,7 +889,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (attribute != null) {
             return attribute.getLocalvariableTypeTable();
         }
-        return LocalVariableTable.EMPTY;
+        return LocalVariableTable.EMPTY_LVTT;
     }
 
     /**
@@ -948,6 +965,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getName().toString();
     }
 
+    @TruffleBoundary
+    public String getInteropString() {
+        return getNameAsString() + AbstractLookupNode.METHOD_SELECTION_SEPARATOR + getRawSignature();
+    }
+
     public String getSignatureAsString() {
         return getRawSignature().toString();
     }
@@ -996,49 +1018,98 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return genericSignature;
     }
 
-    private final Field.StableBoolean hasActiveBreakpoints = new Field.StableBoolean(false);
+    private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
 
-    private MethodBreakpoint[] infos = new MethodBreakpoint[0];
+    private MethodHook[] hooks = new MethodHook[0];
 
-    public boolean hasActiveBreakpoint() {
-        return hasActiveBreakpoints.get();
+    public boolean hasActiveHook() {
+        return hasActiveHook.get();
     }
 
-    public MethodBreakpoint[] getMethodBreakpointInfos() {
-        return infos;
+    public synchronized MethodHook[] getMethodHooks() {
+        return Arrays.copyOf(hooks, hooks.length);
     }
 
-    public void addMethodBreakpointInfo(MethodBreakpoint info) {
-        hasActiveBreakpoints.set(true);
-        if (infos.length == 0) {
-            infos = new MethodBreakpoint[]{info};
+    public synchronized void addMethodHook(MethodHook info) {
+        hasActiveHook.set(true);
+        if (hooks.length == 0) {
+            hooks = new MethodHook[]{info};
             return;
         }
 
-        infos = Arrays.copyOf(infos, infos.length + 1);
-        infos[infos.length - 1] = info;
+        hooks = Arrays.copyOf(hooks, hooks.length + 1);
+        hooks[hooks.length - 1] = info;
     }
 
-    public void removeMethodBreakpointInfo(int requestId) {
+    private void expectActiveHooks() {
+        if (hooks.length == 0) {
+            throw new RuntimeException("Method: " + getNameAsString() + " expected to contain method hook");
+        }
+    }
+
+    public synchronized void removeActiveHook(int requestId) {
+        expectActiveHooks();
+        boolean removed = false;
         // shrink the array to avoid null values
-        if (infos.length == 0) {
-            throw new RuntimeException("Method: " + getNameAsString() + " should contain method breakpoint info");
-        } else if (infos.length == 1) {
-            infos = new MethodBreakpoint[0];
-            hasActiveBreakpoints.set(false);
+        if (hooks.length == 1) {
+            // make sure it's the right hook
+            if (hooks[0].getRequestId() == requestId) {
+                hooks = new MethodHook[0];
+                hasActiveHook.set(false);
+                removed = true;
+            }
         } else {
             int removeIndex = -1;
-            for (int i = 0; i < infos.length; i++) {
-                if (infos[i].getRequestId() == requestId) {
+            for (int i = 0; i < hooks.length; i++) {
+                if (hooks[i].getRequestId() == requestId) {
                     removeIndex = i;
                     break;
                 }
             }
-            MethodBreakpoint[] temp = new MethodBreakpoint[infos.length - 1];
-            for (int i = 0; i < temp.length; i++) {
-                temp[i] = i < removeIndex ? infos[i] : infos[i + 1];
+            if (removeIndex != -1) {
+                MethodHook[] temp = new MethodHook[hooks.length - 1];
+                for (int i = 0; i < temp.length; i++) {
+                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+                }
+                hooks = temp;
+                removed = true;
             }
-            infos = temp;
+        }
+        if (!removed) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
+        }
+    }
+
+    public synchronized void removeActiveHook(MethodHook hook) {
+        expectActiveHooks();
+        boolean removed = false;
+        // shrink the array to avoid null values
+        if (hooks.length == 1) {
+            // make sure it's the right hook
+            if (hooks[0] == hook) {
+                hooks = new MethodHook[0];
+                hasActiveHook.set(false);
+                removed = true;
+            }
+        } else {
+            int removeIndex = -1;
+            for (int i = 0; i < hooks.length; i++) {
+                if (hooks[i] == hook) {
+                    removeIndex = i;
+                    break;
+                }
+            }
+            if (removeIndex != -1) {
+                MethodHook[] temp = new MethodHook[hooks.length - 1];
+                for (int i = 0; i < temp.length; i++) {
+                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+                }
+                hooks = temp;
+                removed = true;
+            }
+        }
+        if (!removed) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
         }
     }
 
@@ -1078,9 +1149,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public MethodVersion getMethodVersion() {
-        // block execution during class redefinition
-        ClassRedefinition.check();
-
         MethodVersion version = methodVersion;
         if (!version.getAssumption().isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1103,6 +1171,73 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public boolean isRemovedByRedefition() {
         return !removedByRedefinition.isValid();
+    }
+
+    public StaticObject makeMirror() {
+        Meta meta = getMeta();
+        Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+        StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleParameterAnnotations = getAttribute(Name.RuntimeVisibleParameterAnnotations);
+        StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Name.RuntimeVisibleTypeAnnotations);
+        StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawAnnotationDefault = getAttribute(Name.AnnotationDefault);
+        StaticObject annotationDefault = rawAnnotationDefault != null
+                        ? StaticObject.wrap(rawAnnotationDefault.getData(), meta)
+                        : StaticObject.NULL;
+        final Klass[] rawParameterKlasses = resolveParameterKlasses();
+        StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
+                        getParameterCount(),
+                        new IntFunction<StaticObject>() {
+                            @Override
+                            public StaticObject apply(int j) {
+                                return rawParameterKlasses[j].mirror();
+                            }
+                        });
+
+        final Klass[] rawCheckedExceptions = getCheckedExceptions();
+        StaticObject guestCheckedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int j) {
+                return rawCheckedExceptions[j].mirror();
+            }
+        });
+
+        SignatureAttribute signatureAttribute = (SignatureAttribute) getAttribute(Name.Signature);
+        StaticObject guestGenericSignature = StaticObject.NULL;
+        if (signatureAttribute != null) {
+            String sig = getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
+            guestGenericSignature = meta.toGuestString(sig);
+        }
+
+        StaticObject instance = meta.java_lang_reflect_Method.allocateInstance();
+
+        meta.java_lang_reflect_Method_init.invokeDirect(
+                        /* this */ instance,
+                        /* declaringClass */ getDeclaringKlass().mirror(),
+                        /* name */ getContext().getStrings().intern(getName()),
+                        /* parameterTypes */ parameterTypes,
+                        /* returnType */ resolveReturnKlass().mirror(),
+                        /* checkedExceptions */ guestCheckedExceptions,
+                        /* modifiers */ getMethodModifiers(),
+                        /* slot */ getVTableIndex(),
+                        /* signature */ guestGenericSignature,
+
+                        /* annotations */ runtimeVisibleAnnotations,
+                        /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
+                        /* annotationDefault */ annotationDefault);
+        meta.HIDDEN_METHOD_KEY.setHiddenObject(instance, this);
+        meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        return instance;
     }
 
     public final class MethodVersion implements MethodRef {
@@ -1328,7 +1463,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public boolean hasVariableTable() {
-            return getLocalVariableTable() != LocalVariableTable.EMPTY;
+            return getLocalVariableTable() != LocalVariableTable.EMPTY_LVT;
         }
 
         @Override
@@ -1372,23 +1507,28 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public MethodBreakpoint[] getMethodBreakpointInfos() {
-            return getMethod().getMethodBreakpointInfos();
+        public MethodHook[] getMethodHooks() {
+            return getMethod().getMethodHooks();
         }
 
         @Override
-        public void addMethodBreakpointInfo(MethodBreakpoint info) {
-            getMethod().addMethodBreakpointInfo(info);
+        public void addMethodHook(MethodHook info) {
+            getMethod().addMethodHook(info);
         }
 
         @Override
-        public void removeMethodBreakpointInfo(int requestId) {
-            getMethod().removeMethodBreakpointInfo(requestId);
+        public void removedMethodHook(int requestId) {
+            getMethod().removeActiveHook(requestId);
         }
 
         @Override
-        public boolean hasActiveBreakpoint() {
-            return getMethod().hasActiveBreakpoint();
+        public void removedMethodHook(MethodHook hook) {
+            getMethod().removeActiveHook(hook);
+        }
+
+        @Override
+        public boolean hasActiveHook() {
+            return getMethod().hasActiveHook();
         }
 
         @Override

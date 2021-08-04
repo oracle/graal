@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.graph.Node;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -33,7 +33,7 @@ import jdk.vm.ci.code.BytecodePosition;
 
 public class MergeTypeFlow extends TypeFlow<BytecodePosition> {
 
-    public MergeTypeFlow(ValueNode node) {
+    public MergeTypeFlow(Node node) {
         super(node.getNodeSourcePosition(), null);
     }
 

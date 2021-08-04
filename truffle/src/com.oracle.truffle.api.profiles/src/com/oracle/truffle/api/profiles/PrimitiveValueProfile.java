@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,6 +97,7 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
      *
      * @since 0.10
      */
+    @SuppressWarnings("deprecation")
     public static PrimitiveValueProfile createEqualityProfile() {
         if (Profile.isProfilingEnabled()) {
             return Enabled.create();

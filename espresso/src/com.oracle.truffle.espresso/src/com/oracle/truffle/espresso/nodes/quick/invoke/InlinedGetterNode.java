@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ public class InlinedGetterNode extends QuickNode {
     private static final int INSTANCE_GETTER_BCI = 1;
     private static final int STATIC_GETTER_BCI = 0;
 
-    final Field field;
+    final Field.FieldVersion fieldVersion;
     final Method inlinedMethod;
     protected final int statementIndex;
 
@@ -49,10 +49,10 @@ public class InlinedGetterNode extends QuickNode {
     InlinedGetterNode(Method inlinedMethod, int top, int callerBCI, int statementIndex) {
         super(top, callerBCI);
         this.inlinedMethod = inlinedMethod;
-        this.field = getInlinedField(inlinedMethod);
+        this.fieldVersion = getInlinedField(inlinedMethod);
         this.statementIndex = statementIndex;
-        getFieldNode = AbstractGetFieldNode.create(this.field);
-        assert field.isStatic() == inlinedMethod.isStatic();
+        getFieldNode = AbstractGetFieldNode.create(this.fieldVersion);
+        assert fieldVersion.getField().isStatic() == inlinedMethod.isStatic();
     }
 
     public static InlinedGetterNode create(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
@@ -67,23 +67,18 @@ public class InlinedGetterNode extends QuickNode {
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = field.isStatic()
-                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
+        BytecodeNode root = getBytecodeNode();
+        StaticObject receiver = fieldVersion.getField().isStatic()
+                        ? fieldVersion.getField().getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(BytecodeNode.popObject(refs, top - 1));
         return (getResultAt() - top) + getFieldNode.getField(frame, primitives, refs, root, receiver, getResultAt(), statementIndex);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return field.getKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {
         return inlinedMethod.isStatic() ? top : (top - 1);
     }
 
-    private static Field getInlinedField(Method inlinedMethod) {
+    private static Field.FieldVersion getInlinedField(Method inlinedMethod) {
         BytecodeStream code = new BytecodeStream(inlinedMethod.getOriginalCode());
         if (inlinedMethod.isStatic()) {
             return inlinedMethod.getRuntimeConstantPool().resolvedFieldAt(inlinedMethod.getDeclaringKlass(), code.readCPI(STATIC_GETTER_BCI));

@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk.localization;
 
 // Checkstyle: stop
+
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
@@ -56,26 +57,27 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
-import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
+import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -117,21 +119,13 @@ import sun.util.resources.LocaleData;
  */
 public abstract class LocalizationFeature implements Feature {
 
-    protected final boolean optimizedMode = optimizedMode();
+    protected final boolean optimizedMode = LocalizationSupport.optimizedMode();
 
     private final boolean substituteLoadLookup = Options.LocalizationSubstituteLoadLookup.getValue();
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
     private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? new ForkJoinPool(Runtime.getRuntime().availableProcessors()) : null;
-
-    public static boolean optimizedMode() {
-        return Options.LocalizationOptimizedMode.getValue();
-    }
-
-    public static boolean jvmMode() {
-        return !optimizedMode();
-    }
 
     /**
      * The Locale that the native image is built for. Currently, switching the Locale at run time is
@@ -163,7 +157,7 @@ public abstract class LocalizationFeature implements Feature {
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
 
         @Option(help = "Optimize the resource bundle lookup using a simple map.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(true);
+        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(JavaVersionUtil.JAVA_SPEC == 8);
 
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
@@ -302,7 +296,7 @@ public abstract class LocalizationFeature implements Feature {
             /*- Fallthrough to also allow adding custom locales */
         }
         List<String> invalid = new ArrayList<>();
-        for (String tag : Options.IncludeLocales.getValue().values()) {
+        for (String tag : OptionUtils.flatten(",", Options.IncludeLocales.getValue().values())) {
             Locale locale = parseLocaleFromTag(tag);
             if (locale != null) {
                 locales.add(locale);
@@ -415,8 +409,7 @@ public abstract class LocalizationFeature implements Feature {
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
                         "sun.util.logging.resources.logging",
-                        "sun.util.resources.TimeZoneNames",
-                        "sun.text.resources.FormatData"
+                        "sun.util.resources.TimeZoneNames"
         };
         for (String bundleName : alwaysRegisteredResourceBundles) {
             prepareBundle(bundleName);
@@ -463,29 +456,16 @@ public abstract class LocalizationFeature implements Feature {
 
         boolean somethingFound = false;
         for (Locale locale : wantedLocales) {
-            ResourceBundle resourceBundle;
+            List<ResourceBundle> resourceBundle;
             try {
-                resourceBundle = ModuleSupport.getResourceBundle(baseName, locale, Thread.currentThread().getContextClassLoader());
+                resourceBundle = ImageSingletons.lookup(ClassLoaderSupport.class).getResourceBundle(baseName, locale);
             } catch (MissingResourceException mre) {
-                if (!baseName.contains("/")) {
-                    // fallthrough
-                    continue;
-                }
-                // Due to a possible bug in the JDK, bundle names not following proper naming
-                // convention
-                // need to be
-                // converted to fully qualified class names before loading can succeed.
-                // see GR-24211
-                String dotBundleName = baseName.replace("/", ".");
-                try {
-                    resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, locale, Thread.currentThread().getContextClassLoader());
-                } catch (MissingResourceException ex) {
-                    // fallthrough
-                    continue;
-                }
+                continue;
             }
-            somethingFound = true;
-            prepareBundle(baseName, resourceBundle, locale);
+            somethingFound = !resourceBundle.isEmpty();
+            for (ResourceBundle bundle : resourceBundle) {
+                prepareBundle(baseName, bundle, locale);
+            }
         }
 
         if (!somethingFound) {
@@ -505,7 +485,9 @@ public abstract class LocalizationFeature implements Feature {
             String errorMessage = "The bundle named: " + baseName + ", has not been found. " +
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
-            trace(errorMessage);
+            // Checkstyle: stop
+            System.out.println(errorMessage);
+            // Checkstyle: resume
         }
     }
 
@@ -516,7 +498,7 @@ public abstract class LocalizationFeature implements Feature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        trace("Adding bundle " + bundleName);
+        trace("Adding bundle " + bundleName + ", locale " + locale);
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
          * down to the root.

@@ -23,11 +23,15 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -61,33 +65,23 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 // @formatter:on
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
-    private static final java.lang.reflect.Method isInterrupted;
-    static {
-        try {
-            isInterrupted = Thread.class.getDeclaredMethod("isInterrupted", boolean.class);
-            isInterrupted.setAccessible(true);
-        } catch (Throwable e) {
-            throw EspressoError.shouldNotReachHere();
-        }
-    }
 
     public static void incrementThreadCounter(StaticObject thread, Field hiddenField) {
         assert hiddenField.isHidden();
-        Long counter = (Long) hiddenField.getHiddenObject(thread);
-        if (counter == null) {
-            counter = 0L;
+        AtomicLong atomicCounter = (AtomicLong) hiddenField.getHiddenObject(thread);
+        if (atomicCounter == null) {
+            hiddenField.setHiddenObject(thread, atomicCounter = new AtomicLong());
         }
-        ++counter;
-        hiddenField.setHiddenObject(thread, counter);
+        atomicCounter.incrementAndGet();
     }
 
     public static long getThreadCounter(StaticObject thread, Field hiddenField) {
         assert hiddenField.isHidden();
-        Long counter = (Long) hiddenField.getHiddenObject(thread);
-        if (counter == null) {
-            counter = 0L;
+        AtomicLong atomicCounter = (AtomicLong) hiddenField.getHiddenObject(thread);
+        if (atomicCounter == null) {
+            return 0L;
         }
-        return counter;
+        return atomicCounter.get();
     }
 
     public enum State {
@@ -159,17 +153,17 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution
-    public static @Host(Thread.class) StaticObject currentThread(@InjectMeta Meta meta) {
+    public static @JavaType(Thread.class) StaticObject currentThread(@InjectMeta Meta meta) {
         return meta.getContext().getCurrentThread();
     }
 
     @Substitution
-    public static @Host(Thread[].class) StaticObject getThreads(@InjectMeta Meta meta) {
+    public static @JavaType(Thread[].class) StaticObject getThreads(@InjectMeta Meta meta) {
         return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads());
     }
 
     @Substitution
-    public static @Host(StackTraceElement[][].class) StaticObject dumpThreads(@Host(Thread[].class) StaticObject threads, @InjectMeta Meta meta) {
+    public static @JavaType(StackTraceElement[][].class) StaticObject dumpThreads(@JavaType(Thread[].class) StaticObject threads, @InjectMeta Meta meta) {
         if (StaticObject.isNull(threads)) {
             throw meta.throwNullPointerException();
         }
@@ -182,88 +176,88 @@ public final class Target_java_lang_Thread {
         return StaticObject.createArray(meta.java_lang_StackTraceElement.array().array(), toWrap);
     }
 
-    @TruffleBoundary
-    @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void start0(@Host(Thread.class) StaticObject self,
-                    // Checkstyle: stop
-                    @GuestCall(target = "java_lang_Thread_exit") DirectCallNode threadExit,
-                    // Checkstyle: resume
-                    @InjectMeta Meta meta) {
-        EspressoContext context = meta.getContext();
-        if (context.multiThreadingEnabled()) {
-            // Thread.start() is synchronized.
-            KillStatus killStatus = getKillStatus(self);
-            if (killStatus != null || context.isClosing()) {
+    abstract static class Start0 extends Node {
+        abstract void execute(@JavaType(Thread.class) StaticObject self);
 
-                self.getLock().lock();
-                try {
-                    meta.java_lang_Thread_threadStatus.setInt(self, State.TERMINATED.value);
-                    // Notify waiting threads you were terminated
-                    self.getLock().signalAll();
-                } finally {
-                    self.getLock().unlock();
-                }
+        @Specialization
+        @TruffleBoundary
+        void doCached(@JavaType(Thread.class) StaticObject self,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().java_lang_Thread_exit.getCallTarget())") DirectCallNode threadExit) {
+            Meta meta = context.getMeta();
+            if (context.multiThreadingEnabled()) {
+                // Thread.start() is synchronized.
+                KillStatus killStatus = getKillStatus(self);
+                if (killStatus != null || context.isClosing()) {
 
-                return;
-            }
-            setThreadStop(self, KillStatus.NORMAL);
-            if (getSuspendLock(self) == null) {
-                initSuspendLock(self);
-            }
-            Thread hostThread = context.getEnv().createThread(new Runnable() {
-                @Override
-                public void run() {
+                    self.getLock().lock();
                     try {
-                        context.getVM().attachThread(Thread.currentThread());
-                        try {
-                            // Initialize TLS related to __ctype_b_loc to avoid glibc crashes.
-                            meta.getNativeAccess().prepareThread();
-                            // Execute the payload
-                            self.getKlass().vtableLookup(meta.java_lang_Thread_run.getVTableIndex()).invokeDirect(self);
-                            checkDeprecatedState(meta, self);
-                        } catch (EspressoException uncaught) {
-                            meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
-                        }
-                    } catch (EspressoExitException exit) {
-                        /* Suppress */
+                        meta.java_lang_Thread_threadStatus.setInt(self, State.TERMINATED.value);
+                        // Notify waiting threads you were terminated
+                        self.getLock().signalAll();
                     } finally {
-                        terminate(self, threadExit, meta);
-                        if (context.isClosing()) {
-                            // Ignore exceptions that arise during closing.
-                            return;
+                        self.getLock().unlock();
+                    }
+
+                    return;
+                }
+                setThreadStop(self, KillStatus.NORMAL);
+                if (getSuspendLock(self) == null) {
+                    initSuspendLock(self);
+                }
+                Thread hostThread = context.getEnv().createThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            context.getVM().attachThread(Thread.currentThread());
+                            try {
+                                // Execute the payload
+                                self.getKlass().vtableLookup(meta.java_lang_Thread_run.getVTableIndex()).invokeDirect(self);
+                                checkDeprecatedState(meta, self);
+                            } catch (EspressoException uncaught) {
+                                meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
+                            }
+                        } catch (EspressoExitException exit) {
+                            /* Suppress */
+                        } finally {
+                            terminate(self, threadExit, meta);
+                            if (context.isClosing()) {
+                                // Ignore exceptions that arise during closing.
+                                return;
+                            }
                         }
                     }
-                }
-            });
+                });
 
-            meta.HIDDEN_HOST_THREAD.setHiddenObject(self, hostThread);
-            hostThread.setDaemon(meta.java_lang_Thread_daemon.getBoolean(self));
-            meta.java_lang_Thread_threadStatus.setInt(self, State.RUNNABLE.value);
-            hostThread.setPriority(meta.java_lang_Thread_priority.getInt(self));
-            if (isInterrupted(self, false)) {
-                hostThread.interrupt();
-            }
-            context.registerThread(hostThread, self);
-            String guestName = Target_java_lang_Thread.getThreadName(meta, self);
-            context.getLogger().fine(() -> {
-                long guestId = Target_java_lang_Thread.getThreadId(meta, self);
-                return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
-            });
-            hostThread.setName(guestName);
-            hostThread.start();
-        } else {
-            String reason = context.getMultiThreadingDisabledReason();
-            Klass threadKlass = self.getKlass();
-            EspressoLanguage.getCurrentContext().getLogger().warning(() -> {
+                meta.HIDDEN_HOST_THREAD.setHiddenObject(self, hostThread);
+                hostThread.setDaemon(meta.java_lang_Thread_daemon.getBoolean(self));
+                meta.java_lang_Thread_threadStatus.setInt(self, State.RUNNABLE.value);
+                hostThread.setPriority(meta.java_lang_Thread_priority.getInt(self));
+                if (isInterrupted(self, false)) {
+                    hostThread.interrupt();
+                }
+                context.registerThread(hostThread, self);
                 String guestName = Target_java_lang_Thread.getThreadName(meta, self);
-                String className = threadKlass.getExternalName();
-                return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
-            });
-            if (threadKlass == meta.java_lang_ref_Finalizer$FinalizerThread || threadKlass == meta.java_lang_ref_Reference$ReferenceHandler || isSystemInnocuousThread(self, meta)) {
-                // no exception: bootstrap code cannot recover from this
+                context.getLogger().fine(() -> {
+                    long guestId = Target_java_lang_Thread.getThreadId(meta, self);
+                    return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+                });
+                hostThread.setName(guestName);
+                hostThread.start();
             } else {
-                meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "Thread support is disabled: " + reason);
+                String reason = context.getMultiThreadingDisabledReason();
+                Klass threadKlass = self.getKlass();
+                EspressoLanguage.getCurrentContext().getLogger().warning(() -> {
+                    String guestName = Target_java_lang_Thread.getThreadName(meta, self);
+                    String className = threadKlass.getExternalName();
+                    return "Thread.start() called on " + className + " / " + guestName + " but thread support is disabled: " + reason;
+                });
+                if (threadKlass == meta.java_lang_ref_Finalizer$FinalizerThread || threadKlass == meta.java_lang_ref_Reference$ReferenceHandler || isSystemInnocuousThread(self, meta)) {
+                    // no exception: bootstrap code cannot recover from this
+                } else {
+                    meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "Thread support is disabled: " + reason);
+                }
             }
         }
     }
@@ -282,7 +276,7 @@ public final class Target_java_lang_Thread {
         terminate(thread, null, meta);
     }
 
-    private static void terminate(@Host(Thread.class) StaticObject self, DirectCallNode threadExit, Meta meta) {
+    private static void terminate(@JavaType(Thread.class) StaticObject self, DirectCallNode threadExit, Meta meta) {
         setThreadStop(self, KillStatus.EXITING);
         try {
             if (threadExit != null) {
@@ -331,7 +325,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static void setPriority0(@Host(Thread.class) StaticObject self, int newPriority) {
+    public static void setPriority0(@JavaType(Thread.class) StaticObject self, int newPriority) {
         // Priority is set in the guest field in Thread.setPriority().
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
@@ -341,18 +335,23 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean isAlive(@Host(Thread.class) StaticObject self) {
+    public static boolean isAlive(@JavaType(Thread.class) StaticObject self) {
         int state = self.getKlass().getMeta().java_lang_Thread_threadStatus.getInt(self);
         return state != State.NEW.value && state != State.TERMINATED.value;
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self,
-                    // Checkstyle: stop
-                    @GuestCall(target = "sun_misc_VM_toThreadState") DirectCallNode toThreadState,
-                    // Checkstyle: resume
-                    @InjectMeta Meta meta) {
-        return (StaticObject) toThreadState.call(meta.java_lang_Thread_threadStatus.getInt(self));
+    abstract static class GetState extends Node {
+        abstract @JavaType(internalName = "Ljava/lang/Thread$State;") StaticObject execute(@JavaType(Thread.class) StaticObject self);
+
+        @Specialization
+        @JavaType(internalName = "Ljava/lang/Thread$State;")
+        StaticObject execute(@JavaType(Thread.class) StaticObject self,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
+            Meta meta = context.getMeta();
+            return (StaticObject) toThreadState.call(meta.java_lang_Thread_threadStatus.getInt(self));
+        }
     }
 
     @SuppressWarnings("unused")
@@ -363,7 +362,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution
-    public static boolean holdsLock(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
+    public static boolean holdsLock(@JavaType(Object.class) StaticObject object, @InjectMeta Meta meta) {
         if (StaticObject.isNull(object)) {
             throw meta.throwNullPointerException();
         }
@@ -398,7 +397,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void interrupt0(@Host(Object.class) StaticObject self) {
+    public static void interrupt0(@JavaType(Object.class) StaticObject self) {
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
@@ -407,17 +406,15 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean clear) {
+    public static boolean isInterrupted(@JavaType(Thread.class) StaticObject self, boolean clear) {
         boolean result = checkInterrupt(self);
         if (clear) {
             Thread hostThread = getHostFromGuestThread(self);
+            EspressoError.guarantee(hostThread == Thread.currentThread(), "Thread#isInterrupted(true) is only supported for the current thread.");
             if (hostThread != null && hostThread.isInterrupted()) {
-                try {
-                    callHostThreadIsInterrupted(hostThread);
-                } catch (Throwable e) {
-                    throw EspressoError.shouldNotReachHere(e);
-                }
+                Thread.interrupted();
             }
             setInterrupt(self, false);
         }
@@ -425,14 +422,9 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    private static void callHostThreadIsInterrupted(Thread hostThread) throws IllegalAccessException, InvocationTargetException {
-        isInterrupted.invoke(hostThread, true);
-    }
-
-    @TruffleBoundary
     @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
-    public static void resume0(@Host(Object.class) StaticObject self) {
+    public static void resume0(@JavaType(Object.class) StaticObject self) {
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
             return;
@@ -446,7 +438,7 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
-    public static void suspend0(@Host(Object.class) StaticObject toSuspend) {
+    public static void suspend0(@JavaType(Object.class) StaticObject toSuspend) {
         toSuspend.getKlass().getContext().invalidateNoSuspend("Calling Thread.suspend()");
         SuspendLock lock = getSuspendLock(toSuspend);
         if (lock == null) {
@@ -460,7 +452,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void stop0(@Host(Object.class) StaticObject self, @Host(Object.class) StaticObject throwable) {
+    public static void stop0(@JavaType(Object.class) StaticObject self, @JavaType(Object.class) StaticObject throwable) {
         self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
         killThread(self);
         setInterrupt(self, true);
@@ -474,13 +466,13 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void setNativeName(@Host(Object.class) StaticObject self, @Host(String.class) StaticObject name,
+    public static void setNativeName(@JavaType(Object.class) StaticObject self, @JavaType(String.class) StaticObject name,
                     @InjectMeta Meta meta) {
         Thread hostThread = getHostFromGuestThread(self);
         hostThread.setName(meta.toHostString(name));
     }
 
-    public static Thread getHostFromGuestThread(@Host(Object.class) StaticObject self) {
+    public static Thread getHostFromGuestThread(@JavaType(Object.class) StaticObject self) {
         return (Thread) self.getKlass().getMeta().HIDDEN_HOST_THREAD.getHiddenObject(self);
     }
 
@@ -559,14 +551,14 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    private static SuspendLock getSuspendLock(@Host(Object.class) StaticObject self) {
+    private static SuspendLock getSuspendLock(@JavaType(Object.class) StaticObject self) {
         return (SuspendLock) self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK.getHiddenObject(self);
     }
 
     /**
      * Synchronizes on Target_ class to avoid deadlock when locking on thread object.
      */
-    private static synchronized SuspendLock initSuspendLock(@Host(Object.class) StaticObject self) {
+    private static synchronized SuspendLock initSuspendLock(@JavaType(Object.class) StaticObject self) {
         SuspendLock lock = getSuspendLock(self);
         if (lock == null) {
             lock = new SuspendLock();

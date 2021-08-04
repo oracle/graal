@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 return "callee:interpreter";
             }
             boundary();
-            if (GraalCompilerDirectives.inFirstTier()) {
+            if (GraalCompilerDirectives.hasNextTier()) {
                 return "callee:first-tier";
             }
             if (CompilerDirectives.inCompilationRoot()) {
@@ -122,7 +122,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         @Override
         public Object execute(VirtualFrame frame) {
             body.iteration = 0;
-            if (GraalCompilerDirectives.inFirstTier()) {
+            if (GraalCompilerDirectives.hasNextTier()) {
                 this.firstTierCallCount += 1;
             }
             final Object result = loop.execute(frame);
@@ -161,7 +161,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 if (CompilerDirectives.inInterpreter()) {
                     return "break:interpreter";
                 }
-                if (GraalCompilerDirectives.inFirstTier()) {
+                if (GraalCompilerDirectives.hasNextTier()) {
                     return "break:first-tier";
                 }
                 return "break:second-tier";
@@ -169,7 +169,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
             if (CompilerDirectives.inInterpreter()) {
                 return "continue:interpreter";
             }
-            if (GraalCompilerDirectives.inFirstTier()) {
+            if (GraalCompilerDirectives.hasNextTier()) {
                 return "continue:first-tier";
             }
             return "continue:last-tier";
@@ -284,7 +284,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         }
         rootTarget.call();
         Assert.assertEquals("break:second-tier", rootTarget.call());
-        Assert.assertEquals(9, rootNode.firstTierCallCount);
+        Assert.assertEquals(10, rootNode.firstTierCallCount);
     }
 
 }

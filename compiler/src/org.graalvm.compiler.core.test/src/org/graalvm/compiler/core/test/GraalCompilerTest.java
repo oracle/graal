@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -483,7 +483,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void assertOptimizedAway(StructuredGraph g) {
-        Assert.assertEquals(0, g.getNodes().filter(NotOptimizedNode.class).count());
+        Assert.assertEquals("nodes to be optimized away", 0, g.getNodes().filter(NotOptimizedNode.class).count());
     }
 
     protected void assertConstantReturn(StructuredGraph graph, int value) {
@@ -836,6 +836,20 @@ public abstract class GraalCompilerTest extends GraalTest {
             ResolvedJavaMethod method = getResolvedJavaMethod(name);
             Object receiver = method.isStatic() ? null : this;
             return test(options, method, receiver, args);
+        } catch (AssumptionViolatedException e) {
+            // Suppress so that subsequent calls to this method within the
+            // same Junit @Test annotated method can proceed.
+            return null;
+        }
+    }
+
+    protected final Result test(OptionValues options, Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
+        try {
+            ResolvedJavaMethod method = getResolvedJavaMethod(name);
+            Object receiver = method.isStatic() ? null : this;
+            Result expect = executeExpected(method, receiver, args);
+            testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
+            return expect;
         } catch (AssumptionViolatedException e) {
             // Suppress so that subsequent calls to this method within the
             // same Junit @Test annotated method can proceed.

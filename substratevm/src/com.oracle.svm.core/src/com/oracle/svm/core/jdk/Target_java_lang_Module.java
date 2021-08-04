@@ -26,21 +26,24 @@ package com.oracle.svm.core.jdk;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.List;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
 @TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module {
+
     @SuppressWarnings("static-method")
     @Substitute
-    @TargetElement(name = "getResourceAsStream")
     public InputStream getResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+        ResourceStorageEntry entry = Resources.get(name);
+        if (entry == null) {
+            return null;
+        } else {
+            return new ByteArrayInputStream(entry.getData().get(0));
+        }
     }
 
     /*

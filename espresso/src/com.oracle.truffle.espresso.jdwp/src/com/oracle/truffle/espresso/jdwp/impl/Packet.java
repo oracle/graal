@@ -82,7 +82,7 @@ public final class Packet {
      */
     public static Packet fromByteArray(byte[] b) throws IOException, ConnectionClosedException {
         if (b.length < 11) {
-            if (Thread.currentThread().isInterrupted()) {
+            if (Thread.currentThread().isInterrupted() || b.length == 0) {
                 throw new ConnectionClosedException();
             }
             throw new IOException("packet is insufficient size");

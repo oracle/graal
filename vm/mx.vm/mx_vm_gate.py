@@ -33,6 +33,7 @@ import mx_sdk_vm_impl
 
 import functools
 import re
+import glob
 from mx_gate import Task
 
 from os import environ, listdir, remove, linesep
@@ -96,14 +97,17 @@ def gate_body(args, tasks):
                     # Ensure that fatal errors in libgraal route back to HotSpot
                     testdir = mkdtemp()
                     try:
+                        scratch_dir = join(testdir, 'scratch')
                         cmd = [java_exe,
                                 '-XX:+UseJVMCICompiler',
                                 '-XX:+UseJVMCINativeLibrary',
+                                '-XX:+PrintFlagsFinal',
                                 '-Dlibgraal.CrashAt=length,hashCode',
                                 '-Dlibgraal.CrashAtIsFatal=true',
-                                '-jar', mx.library('DACAPO').get_path(True), 'avrora']
+                                '-jar', mx.library('DACAPO').get_path(True), 'avrora', '--preserve', '--scratch-directory', scratch_dir]
                         out = mx.OutputCapture()
-                        exitcode = mx.run(cmd, cwd=testdir, nonZeroIsFatal=False, out=out)
+                        with mx_compiler.DaCapoWrapper(scratch_dir):
+                            exitcode = mx.run(cmd, cwd=testdir, nonZeroIsFatal=False, out=out)
                         if exitcode == 0:
                             if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
                                 # Executing a VM that does not configure fatal errors handling
@@ -112,17 +116,23 @@ def gate_body(args, tasks):
                             else:
                                 mx.abort('Expected following command to result in non-zero exit code: ' + ' '.join(cmd))
                         else:
-                            hs_err = None
-                            testdir_entries = listdir(testdir)
-                            for name in testdir_entries:
-                                if name.startswith('hs_err_pid') and name.endswith('.log'):
-                                    hs_err = join(testdir, name)
-                            if hs_err is None:
-                                mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(testdir_entries))
-                            with open(join(testdir, hs_err)) as fp:
-                                contents = fp.read()
-                            if 'Fatal error in JVMCI' not in contents:
-                                mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
+                            seen_libjvmci_log = False
+                            hs_errs = glob.glob(join(testdir, 'hs_err_pid*.log'))
+                            if not hs_errs:
+                                mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(listdir(testdir)))
+                            for hs_err in hs_errs:
+                                with open(join(testdir, hs_err)) as fp:
+                                    contents = fp.read()
+                                if 'libjvmci' in hs_err:
+                                    seen_libjvmci_log = True
+                                    if 'Fatal error: Forced crash' not in contents:
+                                        mx.abort('Expected "Fatal error: Forced crash" to be in contents of ' + hs_err + ':' + linesep + contents)
+                                else:
+                                    if 'Fatal error in JVMCI' not in contents:
+                                        mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
+                            if 'JVMCINativeLibraryErrorFile' in out.data and not seen_libjvmci_log:
+                                mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(testdir)))
+
                     finally:
                         mx.rmtree(testdir)
 
@@ -261,7 +271,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-cp',
             cp,
-            '--no-server',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
             '-H:Path={}'.format(svmbuild),

@@ -43,19 +43,25 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.util.Providers;
@@ -63,12 +69,14 @@ import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -90,7 +98,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins,
                     CompilationIdentifier compilationId) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null);
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, SubstrateOptions.parseOnce());
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
@@ -98,8 +106,13 @@ public class SubstrateGraphKit extends GraphKit {
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
     }
 
+    @Override
+    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null);
+    }
+
     public SubstrateLoweringProvider getLoweringProvider() {
-        return (SubstrateLoweringProvider) providers.getLowerer();
+        return (SubstrateLoweringProvider) getLowerer();
     }
 
     public FrameStateBuilder getFrameState() {
@@ -156,7 +169,7 @@ public class SubstrateGraphKit extends GraphKit {
         return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), args);
     }
 
-    public ValueNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
+    public InvokeWithExceptionNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
         return startInvokeWithException(targetMethod, kind, frameState, bci(), arguments);
     }
 
@@ -175,7 +188,18 @@ public class SubstrateGraphKit extends GraphKit {
 
         }
 
-        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature, SubstrateCallingConventionType.NativeCall);
+        /*
+         * For CFunction calls that return a value smaller than int, we must assume that the C
+         * compiler generated code that returns a value that is in the int range. In GraalVM, we
+         * have the invariant that all values smaller than int are represented by int. To preserve
+         * this invariant, some special handling is needed as we cannot rely on the native C
+         * compiler doing this for us.
+         */
+        JavaKind javaReturnKind = signature.getReturnKind();
+        JavaKind cReturnKind = javaReturnKind.getStackKind();
+        JavaType returnType = signature.getReturnType(null);
+        Stamp returnStamp = returnStamp(returnType, cReturnKind);
+        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, SubstrateCallingConventionType.NativeCall);
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
@@ -183,45 +207,55 @@ public class SubstrateGraphKit extends GraphKit {
             append(epilogue);
             epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
-            DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
-            deoptEntry.setStateAfter(invoke.stateAfter());
+            /*
+             * Since this deoptimization is occurring in an custom graph, assume there are no
+             * exception handlers and directly unwind.
+             */
+            int bci = invoke.stateAfter().bci;
+            appendWithUnwind(new DeoptEntryNode(), bci);
         }
 
-        /*
-         * Sign extend or zero the upper bits of a return value smaller than an int to preserve the
-         * invariant that all such values are represented by an int in the VM. We cannot rely on the
-         * native C compiler doing this for us.
-         */
-        return getLoweringProvider().implicitLoadConvert(getGraph(), asKind(signature.getReturnType(null)), invoke);
+        ValueNode result = invoke;
+        if (javaReturnKind != cReturnKind) {
+            // Narrow the int value that we received from the C-side to 1 or 2 bytes.
+            assert javaReturnKind.getByteCount() < cReturnKind.getByteCount();
+            result = append(new NarrowNode(result, javaReturnKind.getByteCount() << 3));
+        }
+
+        // Sign or zero extend to get a clean int value. If a boolean result is expected, the int
+        // value is coerced to true or false.
+        return getLoweringProvider().implicitLoadConvertWithBooleanCoercionIfNecessary(getGraph(), asKind(returnType), result);
     }
 
     public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, CallingConvention.Type callType) {
         assert arguments.size() == signature.getParameterCount(false);
+        assert callType != SubstrateCallingConventionType.NativeCall : "return kind and stamp would be incorrect";
+        JavaKind returnKind = signature.getReturnKind();
+        Stamp returnStamp = returnStamp(signature.getReturnType(null), returnKind);
+        return createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, returnKind, callType);
+    }
+
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind, CallingConvention.Type callType) {
         frameState.clearStack();
 
-        Stamp stamp = returnStamp(signature);
         int bci = bci();
-
         CallTargetNode callTarget = getGraph().add(
-                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(stamp), signature.toParameterTypes(null), null,
+                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
                                         callType, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         // Insert framestate.
-        frameState.pushReturn(signature.getReturnKind(), invoke);
+        frameState.pushReturn(returnKind, invoke);
         FrameState stateAfter = frameState.create(bci, invoke);
         invoke.setStateAfter(stateAfter);
         return invoke;
     }
 
-    public Stamp returnStamp(Signature signature) {
-        JavaType returnType = signature.getReturnType(null);
-        JavaKind returnKind = signature.getReturnKind();
-
+    private Stamp returnStamp(JavaType returnType, JavaKind returnKind) {
         if (returnKind == JavaKind.Object && returnType instanceof ResolvedJavaType) {
             return StampFactory.object(TypeReference.createTrustedWithoutAssumptions((ResolvedJavaType) returnType));
         } else {
-            return getLoweringProvider().loadStamp(StampFactory.forKind(returnKind), signature.getReturnKind());
+            return getLoweringProvider().loadStamp(StampFactory.forKind(returnKind), returnKind);
         }
     }
 
@@ -293,6 +327,34 @@ public class SubstrateGraphKit extends GraphKit {
             exceptionState.setRethrowException(true);
             unwindMergeNode.setStateAfter(exceptionState.create(BytecodeFrame.AFTER_EXCEPTION_BCI, unwindMergeNode));
         }
+    }
+
+    /**
+     * Appends the provided node to the control flow graph. The exception edge is connected to an
+     * {@link UnwindNode}, i.e., the exception is not handled in this method.
+     */
+    protected <T extends WithExceptionNode> T appendWithUnwind(T withExceptionNode, int bci) {
+        WithExceptionNode appended = append(withExceptionNode);
+        assert appended == withExceptionNode;
+
+        if (withExceptionNode instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) withExceptionNode;
+            stateSplit.setStateAfter(frameState.create(bci, stateSplit));
+        }
+
+        AbstractBeginNode noExceptionEdge = add(withExceptionNode.createNextBegin());
+        withExceptionNode.setNext(noExceptionEdge);
+        ExceptionObjectNode exceptionEdge = createExceptionObjectNode(frameState, bci);
+        withExceptionNode.setExceptionEdge(exceptionEdge);
+
+        assert lastFixedNode == null;
+        lastFixedNode = exceptionEdge;
+        append(new UnwindNode(exceptionEdge));
+
+        assert lastFixedNode == null;
+        lastFixedNode = noExceptionEdge;
+
+        return withExceptionNode;
     }
 
     public void appendStateSplitProxy(FrameState state) {

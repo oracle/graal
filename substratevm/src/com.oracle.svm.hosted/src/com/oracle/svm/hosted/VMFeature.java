@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,6 +33,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -53,14 +53,26 @@ public class VMFeature implements Feature {
     private static final String valueSeparator = "=";
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(VM.class, createVMSingletonValue());
+    }
+
+    protected VM createVMSingletonValue() {
+        String config = System.getProperty("org.graalvm.config", "CE");
+        return new VM(config);
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
-            System.out.println("# Building image for target platform: " + ImageSingletons.lookup(Platform.class).getClass().getName());
-            if (ImageSingletons.contains(CCompilerInvoker.class)) {
-                System.out.println("# Using native toolchain:");
-                ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.dump(x -> System.out.println("#   " + x));
-            }
-            System.out.println("# Using CLibrary: " + ImageSingletons.lookup(LibCBase.class).getClass().getName());
+            ReportUtils.report("compilation-target information", SubstrateOptions.reportsPath(), "target_info", "txt", out -> {
+                out.println("Building image for target platform: " + ImageSingletons.lookup(Platform.class).getClass().getName());
+                if (ImageSingletons.contains(CCompilerInvoker.class)) {
+                    out.println("Using native toolchain:");
+                    ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.dump(x -> out.println("   " + x));
+                }
+                out.println("Using CLibrary: " + ImageSingletons.lookup(LibCBase.class).getClass().getName());
+            });
         }
 
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
@@ -69,10 +81,13 @@ public class VMFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        CGlobalDataFeature.singleton().registerWithGlobalSymbol(CGlobalDataFactory.createCString(VM.class.getName() + valueSeparator + VM.VERSION, VERSION_INFO_SYMBOL_NAME));
+        CGlobalDataFeature.singleton().registerWithGlobalSymbol(
+                        CGlobalDataFactory.createCString(VM.class.getName() + valueSeparator +
+                                        ImageSingletons.lookup(VM.class).version, VERSION_INFO_SYMBOL_NAME));
 
         addCGlobalDataString("Target.Platform", ImageSingletons.lookup(Platform.class).getClass().getName());
         addCGlobalDataString("Target.LibC", ImageSingletons.lookup(LibCBase.class).getClass().getName());
+        addCGlobalDataString("Java.Version", System.getProperty("java.version"));
 
         addCGlobalDataString("Target.Libraries", String.join("|", nativeLibraries.getLibraries()));
         addCGlobalDataString("Target.StaticLibraries", nativeLibraries.getStaticLibraries().stream().map(Path::getFileName).map(Path::toString).collect(Collectors.joining("|")));
@@ -81,10 +96,11 @@ public class VMFeature implements Feature {
         }
 
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
-            System.out.println("# Static libraries:");
-            Path current = Paths.get(".").toAbsolutePath();
-            nativeLibraries.getStaticLibraries().stream().map(current::relativize).map(Path::toString).forEach(x -> System.out.println("#   " + x));
-            System.out.println("# Other libraries: " + String.join(",", nativeLibraries.getLibraries()));
+            ReportUtils.report("native-library information", SubstrateOptions.reportsPath(), "native_library_info", "txt", out -> {
+                out.println("Static libraries:");
+                nativeLibraries.getStaticLibraries().stream().map(ReportUtils::getCWDRelativePath).map(Path::toString).forEach(x -> out.println("   " + x));
+                out.println("Other libraries: " + String.join(",", nativeLibraries.getLibraries()));
+            });
         }
 
         CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);

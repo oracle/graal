@@ -33,11 +33,11 @@ public final class JavaVersion {
     private static final String HOST_VERSION = System.getProperty("java.version");
     public static final boolean HOST_COMPACT_STRINGS = !HOST_VERSION.startsWith("1.");
 
-    public static final int LATEST_SUPPORTED = 11;
+    public static final int LATEST_SUPPORTED = 17;
 
     private final int version;
 
-    JavaVersion(int version) {
+    public JavaVersion(int version) {
         this.version = version;
     }
 
@@ -51,6 +51,26 @@ public final class JavaVersion {
 
     public boolean java11OrLater() {
         return version >= 11;
+    }
+
+    public boolean java11OrEarlier() {
+        return version <= 11;
+    }
+
+    public boolean java15OrLater() {
+        return version >= 15;
+    }
+
+    public boolean java16OrLater() {
+        return version >= 16;
+    }
+
+    public boolean java17OrLater() {
+        return version >= 17;
+    }
+
+    public boolean inRange(int low, int high) {
+        return version >= low && version <= high;
     }
 
     public boolean modulesEnabled() {

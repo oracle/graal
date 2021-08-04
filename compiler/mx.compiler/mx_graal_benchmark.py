@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -150,7 +150,11 @@ _graal_variants = [
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
     ('limit-truffle-inlining', ['-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dpolyglot.engine.Splitting=false', '-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
-    ('no-truffle-bg-comp', ['-Dpolyglot.engine.BackgroundCompilation=false'], 0)
+    ('no-truffle-bg-comp', ['-Dpolyglot.engine.BackgroundCompilation=false'], 0),
+    ('avx0', ['-XX:UseAVX=0'], 11),
+    ('avx1', ['-XX:UseAVX=1'], 11),
+    ('avx2', ['-XX:UseAVX=2'], 11),
+    ('avx3', ['-XX:UseAVX=3'], 11)
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
@@ -180,7 +184,7 @@ class DebugValueBenchmarkMixin(object):
     def getBenchmarkName(self):
         raise NotImplementedError()
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         raise NotImplementedError()
 
     def shorten_vm_flags(self, args):
@@ -391,7 +395,7 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin, Me
 class DaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
     """DaCapo 9.12 (Bach) benchmark suite implementation."""
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return "dacapo"
 
 
@@ -401,7 +405,7 @@ mx_benchmark.add_bm_suite(DaCapoTimingBenchmarkSuite())
 class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
     """Scala DaCapo benchmark suite implementation."""
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return "scala-dacapo"
 
 
@@ -414,17 +418,19 @@ class JMHNativeImageBenchmarkMixin(mx_sdk_benchmark.NativeImageBenchmarkMixin):
         # JMH does HotSpot-specific field offset checks in class initializers
         return ['--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal'] + super(JMHNativeImageBenchmarkMixin, self).extra_image_build_argument(benchmark, args)
 
-    def extra_run_arg(self, benchmark, args):
+    def extra_run_arg(self, benchmark, args, image_run_args):
         # JMH does not support forks with native-image. In the distant future we can capture this case.
-        return ['-f0'] + super(JMHNativeImageBenchmarkMixin, self).extra_run_arg(benchmark, args)
+        return ['-f0'] + super(JMHNativeImageBenchmarkMixin, self).extra_run_arg(benchmark, args, image_run_args)
 
-    def extra_agent_run_arg(self, benchmark, args):
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
         # Don't waste time and energy collecting reflection config.
-        return ['-f0', '-wi', '1', '-i1'] + super(JMHNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args)
+        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        return ['-f0', '-wi', '1', '-i1'] + mx_sdk_benchmark.strip_args_with_number(['-wi', '-i'], user_args)
 
-    def extra_profile_run_arg(self, benchmark, args):
+    def extra_profile_run_arg(self, benchmark, args, image_run_args):
         # Don't waste time profiling the same code but still wait for compilation on HotSpot.
-        return ['-f0', '-wi', '1', '-i5'] + super(JMHNativeImageBenchmarkMixin, self).extra_profile_run_arg(benchmark, args)
+        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        return ['-f0', '-wi', '1', '-i5'] + mx_sdk_benchmark.strip_args_with_number(['-wi', '-i'], user_args)
 
     def benchmarkName(self):
         return self.name()

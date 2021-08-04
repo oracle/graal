@@ -60,7 +60,7 @@ public final class LLVMPThreadThreadIntrinsics {
         protected int doIntrinsic(LLVMPointer thread, LLVMPointer startRoutine, LLVMPointer arg,
                         @Cached LLVMI64StoreNode store,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(startRoutine, arg, context, true);
+            LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(startRoutine, arg, context);
             final Thread t = context.getpThreadContext().createThread(init);
             if (t == null) {
                 return LLVMAMD64Error.EAGAIN;
@@ -92,9 +92,9 @@ public final class LLVMPThreadThreadIntrinsics {
 
         @Specialization
         @TruffleBoundary
-        protected Object doIntrinsic(long threadId,
+        protected Object doIntrinsic(long threadID,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            final Thread thread = context.getpThreadContext().getThread(threadId);
+            final Thread thread = context.getpThreadContext().getThread(threadID);
             if (thread != null) {
                 try {
                     thread.join();
@@ -104,7 +104,11 @@ public final class LLVMPThreadThreadIntrinsics {
                 }
             }
 
-            return context.getpThreadContext().getThreadReturnValue(threadId);
+            LLVMPThreadContext pthreadContext = context.getpThreadContext();
+            Object threadReturnValue = pthreadContext.getThreadReturnValue(threadID);
+            pthreadContext.clearThreadReturnValue(threadID);
+            pthreadContext.clearThreadID(threadID);
+            return threadReturnValue;
         }
     }
 
@@ -159,6 +163,9 @@ public final class LLVMPThreadThreadIntrinsics {
         protected int doIntrinsic(long threadID, LLVMPointer buffer, long targetLen,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
             Thread thread = context.getpThreadContext().getThread(threadID);
+            if (thread == null) {
+                return LLVMAMD64Error.ERANGE;
+            }
             byte[] byteString = getThreadNameAsBytes(thread);
             long bytesWritten = 0;
             for (int i = 0; i < byteString.length && i < targetLen - 1; i++) {
@@ -174,6 +181,11 @@ public final class LLVMPThreadThreadIntrinsics {
 
         @TruffleBoundary
         protected byte[] getThreadNameAsBytes(Thread thread) {
+            if (thread == null) {
+                throw new IllegalStateException("The thread is null");
+            } else if (thread.getName() == null) {
+                throw new IllegalStateException("The thread's name is null");
+            }
             return thread.getName().getBytes();
         }
     }

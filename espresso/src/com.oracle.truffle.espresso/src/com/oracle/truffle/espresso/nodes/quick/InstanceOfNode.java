@@ -39,7 +39,7 @@ public final class InstanceOfNode extends QuickNode {
         super(top, curBCI);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
-        this.typeCheckNode = TypeCheckNodeGen.create(typeToCheck.getContext());
+        this.typeCheckNode = TypeCheckNodeGen.create();
     }
 
     @Override
@@ -48,10 +48,5 @@ public final class InstanceOfNode extends QuickNode {
         boolean result = StaticObject.notNull(receiver) && typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass());
         BytecodeNode.putKind(primitives, refs, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
     }
 }

@@ -24,13 +24,21 @@
  */
 package com.oracle.svm.hosted.dashboard;
 
-import com.oracle.svm.hosted.dashboard.ToJson.JsonObject;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonArray;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonString;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonNumber;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonValue;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.core.util.VMError;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.graalvm.graphio.GraphOutput;
+import org.graalvm.graphio.GraphStructure;
+import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
@@ -65,28 +73,19 @@ import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
 import com.oracle.graal.pointsto.flow.SourceTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.UnknownTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-
-import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
-import org.graalvm.graphio.GraphStructure;
-import org.graalvm.graphio.GraphOutput;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonArray;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonNumber;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonObject;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonString;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonValue;
 
 import jdk.vm.ci.code.BytecodePosition;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Creates a JSON representation of the pointsto graph, in the format expected by the dashboard. The
@@ -443,7 +442,6 @@ class PointsToJsonObject extends JsonObject {
             names.put(FieldSinkTypeFlow.class, "fieldSink");
             names.put(InitialParamTypeFlow.class, "initialParam");
             names.put(InitialReceiverTypeFlow.class, "initialReceiver");
-            names.put(UnknownTypeFlow.class, "unknown");
         }
 
         /**
@@ -836,9 +834,6 @@ class PointsToJsonObject extends JsonObject {
      */
     private static ArrayList<String> serializeTypeState(TypeState typeState) {
         ArrayList<String> types = new ArrayList<>();
-        if (typeState.getClass().getSimpleName().equals("UnknownTypeState")) {
-            return types;
-        }
         for (AnalysisType type : typeState.types()) {
             types.add(type.toJavaName());
         }

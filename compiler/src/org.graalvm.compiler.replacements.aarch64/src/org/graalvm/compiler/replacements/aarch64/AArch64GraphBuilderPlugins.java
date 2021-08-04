@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
+import org.graalvm.compiler.nodes.calc.CopySignNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.calc.MaxNode;
 import org.graalvm.compiler.nodes.calc.MinNode;
@@ -46,6 +47,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.StringLatin1Substitutions;
+import org.graalvm.compiler.replacements.StringUTF16Substitutions;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
@@ -60,8 +63,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
-    public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerForeignCallMath, boolean useFMAIntrinsics,
-                    OptionValues options) {
+    public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, boolean useFMAIntrinsics, OptionValues options) {
         register(plugins, replacements, registerForeignCallMath, useFMAIntrinsics, options);
     }
 
@@ -155,6 +157,21 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             });
         }
         registerMinMax(r);
+
+        r.register2("copySign", float.class, float.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
+                b.addPush(JavaKind.Float, new CopySignNode(magnitude, sign));
+                return true;
+            }
+        });
+        r.register2("copySign", double.class, double.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
+                b.addPush(JavaKind.Double, new CopySignNode(magnitude, sign));
+                return true;
+            }
+        });
     }
 
     private static void registerFMA(Registration r) {
@@ -256,16 +273,19 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode other) {
-            ValueNode valueLength = b.add(new ArrayLengthNode(value));
-            ValueNode otherLength = b.add(new ArrayLengthNode(other));
+            ValueNode nonNullValue = b.nullCheckedValue(value);
+            ValueNode nonNullOther = b.nullCheckedValue(other);
+
+            ValueNode valueLength = b.add(new ArrayLengthNode(nonNullValue));
+            ValueNode otherLength = b.add(new ArrayLengthNode(nonNullOther));
             if (swapped) {
                 /*
                  * Swapping array arguments because intrinsic expects order to be byte[]/char[] but
                  * kind arguments stay in original order.
                  */
-                b.addPush(JavaKind.Int, new ArrayCompareToNode(other, value, otherLength, valueLength, valueKind, otherKind));
+                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullOther, nonNullValue, otherLength, valueLength, valueKind, otherKind));
             } else {
-                b.addPush(JavaKind.Int, new ArrayCompareToNode(value, other, valueLength, otherLength, valueKind, otherKind));
+                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullValue, nonNullOther, valueLength, otherLength, valueKind, otherKind));
             }
             return true;
         }
@@ -277,6 +297,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.register2("compareTo", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte));
             r.register2("compareToUTF16", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char));
+            r.registerMethodSubstitution(StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, int.class);
         }
     }
 
@@ -286,6 +307,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.register2("compareTo", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char));
             r.register2("compareToLatin1", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true));
+            r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfCharUnsafe", byte[].class, int.class, int.class, int.class);
         }
     }
 

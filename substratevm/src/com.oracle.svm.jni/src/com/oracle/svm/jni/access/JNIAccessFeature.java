@@ -41,7 +41,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
@@ -49,6 +48,7 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
@@ -105,8 +105,6 @@ public class JNIAccessFeature implements Feature {
 
     private final Map<JNINativeLinkage, JNINativeLinkage> nativeLinkages = new ConcurrentHashMap<>();
 
-    private boolean haveJavaRuntimeReflectionSupport;
-
     public static class Options {
         @Option(help = "Print JNI methods added to generated image")//
         public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
@@ -127,7 +125,7 @@ public class JNIAccessFeature implements Feature {
 
         ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(registry, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
-                        ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFiles.JNI_NAME);
+                        ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
     }
 
     private class JNIRuntimeAccessibilitySupportImpl implements JNIRuntimeAccess.JNIRuntimeAccessibilitySupport, ReflectionRegistry {
@@ -144,8 +142,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
-            UserError.guarantee(!allowUnsafeAccess, "Unsafe access cannot be controlled through JNI configuration.");
+        public void register(boolean finalIsWritable, Field... fields) {
             abortIfSealed();
             for (Field field : fields) {
                 boolean writable = finalIsWritable || !Modifier.isFinal(field.getModifiers());
@@ -168,7 +165,6 @@ public class JNIAccessFeature implements Feature {
 
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         this.nativeLibraries = access.getNativeLibraries();
-        this.haveJavaRuntimeReflectionSupport = ImageSingletons.contains(RuntimeReflectionSupport.class);
 
         varargsCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.VARARGS, false);
         arrayCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.ARRAY, false);
@@ -312,6 +308,7 @@ public class JNIAccessFeature implements Feature {
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), access);
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
         jniClass.addFieldIfAbsent(field.getName(), name -> new JNIAccessibleField(jniClass, name, field.getJavaKind(), field.getModifiers()));
+        field.registerAsJNIAccessed();
         field.registerAsRead(null);
         if (writable) {
             field.registerAsWritten(null);
@@ -364,10 +361,5 @@ public class JNIAccessFeature implements Feature {
                 access.registerAsImmutable(method); // for constant address to use as identifier
             }
         }
-    }
-
-    @Fold
-    public boolean haveJavaRuntimeReflectionSupport() {
-        return haveJavaRuntimeReflectionSupport;
     }
 }

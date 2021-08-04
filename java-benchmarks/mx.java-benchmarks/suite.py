@@ -1,19 +1,43 @@
 suite = {
-  "mxversion" : "5.287.0",
+  "mxversion" : "5.301.0",
   "name": "java-benchmarks",
 
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "PETCLINIC_0.0.1": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.0.1-SNAPSHOT.zip"],
-      "sha1": "8b05d51414a63d63ffc4b2e0ca7a240e1950b839",
+    "TIKA_1.0.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.6.zip"],
+      "sha1": "bf34a3b2ef72025125a4925b6327506076110537",
       "packedResource": True,
     },
 
-    "SHOPCART_0.3.1": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.1.zip"],
-      "sha1": "a15ab9e66da1cefc7cff6b1464038f29481e8d7a",
+    "PETCLINIC_0.1.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.6.zip"],
+      "sha1": "a27e41c3f4718b6d66ac0d39728f931dcfb2c613",
+      "packedResource": True,
+    },
+
+    "SHOPCART_0.3.5": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.5.zip"],
+      "sha1": "da961b7b81c161fda51ac1939a983cbfc95a5b28",
+      "packedResource": True,
+    },
+
+    "SPRING_HW_1.0.1": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-1.0.1.zip"],
+      "sha1": "6c3b2d41dc0df793bd39150270b50e36578c27e0",
+      "packedResource": True,
+    },
+
+    "QUARKUS_HW_1.0.1": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.1.zip"],
+      "sha1": "3b647ae68654264745bb32d09422a0c3c45f850a",
+      "packedResource": True,
+    },
+
+    "MICRONAUT_HW_1.0.1": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.1.zip"],
+      "sha1": "d933a93ac89a6b351e8fb12a32e990a3213e55ae",
       "packedResource": True,
     },
 
@@ -303,7 +327,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JMH_1_21",
-        "SCALAFMT"
       ],
       "javaCompliance" : "8+",
       "checkPackagePrefix" : "false",
@@ -325,6 +348,26 @@ suite = {
       "workingSets" : "Graal,Bench",
       "testProject" : True,
     },
+    "org.graalvm.bench.console" : {
+      "subDir" : "java",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "SCALAFMT"
+      ],
+      "javaCompliance" : "8+",
+      "checkPackagePrefix" : "false",
+      "workingSets" : "Graal,Bench",
+      "testProject" : True,
+    },
+  },
+
+  "imports" : {
+    "suites": [
+      {
+        "name" : "sdk",
+        "subdir": True
+      }
+    ]
   },
 
   "distributions" : {
@@ -337,6 +380,12 @@ suite = {
     "GRAAL_BENCH_SHOOTOUT" : {
       "subDir" : "java",
       "dependencies" : ["org.graalvm.bench.shootouts"],
+      "testDistribution" : True,
+      "maven": False,
+    },
+    "GRAAL_BENCH_CONSOLE" : {
+      "subDir" : "java",
+      "dependencies" : ["org.graalvm.bench.console"],
       "testDistribution" : True,
       "maven": False,
     }

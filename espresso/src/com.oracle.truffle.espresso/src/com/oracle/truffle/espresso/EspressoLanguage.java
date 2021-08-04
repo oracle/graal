@@ -25,17 +25,24 @@ package com.oracle.truffle.espresso;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
+import com.oracle.truffle.api.staticobject.StaticProperty;
+import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -82,8 +89,21 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     private long startupClockNanos = 0;
 
+    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array");
+    // This field should be static final, but until we move the static object model we cannot have a
+    // SubstrateVM feature which will allow us to set the right field offsets at image build time.
+    @CompilerDirectives.CompilationFinal //
+    private static StaticShape<StaticObjectFactory> arrayShape;
+
+    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty("foreignObject");
+    // This field should be static final, but until we move the static object model we cannot have a
+    // SubstrateVM feature which will allow us to set the right field offsets at image build time.
+    @CompilerDirectives.CompilationFinal //
+    private static StaticShape<StaticObjectFactory> foreignShape;
+
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
+        JavaKind.ensureInitialized();
         Name.ensureInitialized();
         Type.ensureInitialized();
         Signature.ensureInitialized();
@@ -207,4 +227,45 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.disposeThread(thread);
     }
 
+    public static StaticProperty getArrayProperty() {
+        return ARRAY_PROPERTY;
+    }
+
+    public StaticShape<StaticObjectFactory> getArrayShape() {
+        if (arrayShape == null) {
+            return initializeArrayShape();
+        }
+        return arrayShape;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private StaticShape<StaticObjectFactory> initializeArrayShape() {
+        synchronized (EspressoLanguage.class) {
+            if (arrayShape == null) {
+                arrayShape = StaticShape.newBuilder(this).property(ARRAY_PROPERTY, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
+            }
+            return arrayShape;
+        }
+    }
+
+    public static StaticProperty getForeignProperty() {
+        return FOREIGN_PROPERTY;
+    }
+
+    public StaticShape<StaticObjectFactory> getForeignShape() {
+        if (foreignShape == null) {
+            return initializeForeignShape();
+        }
+        return foreignShape;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private StaticShape<StaticObjectFactory> initializeForeignShape() {
+        synchronized (EspressoLanguage.class) {
+            if (foreignShape == null) {
+                foreignShape = StaticShape.newBuilder(this).property(FOREIGN_PROPERTY, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
+            }
+            return foreignShape;
+        }
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import com.oracle.truffle.regex.tregex.nfa.PureNFAIndex;
 import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
+import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -163,7 +164,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         String pattern = srcStr.substring(firstSlash + 1, lastSlash);
         String flags = srcStr.substring(lastSlash + 1);
         // ECMAScript-specific: the 'u' flag changes the encoding
-        if (optBuilder.getFlavor() == null && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW && flags.indexOf('u') >= 0) {
+        if (optBuilder.getFlavor() == ECMAScriptFlavor.INSTANCE && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW && flags.indexOf('u') >= 0) {
             optBuilder.encoding(Encodings.UTF_16);
         }
         return new RegexSource(pattern, flags, optBuilder.build(), source);
@@ -172,12 +173,12 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     private Object createRegexObject(RegexSource source) {
         if (source.getOptions().isValidate()) {
             RegexFlavor flavor = source.getOptions().getFlavor();
-            if (flavor != null) {
-                RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
-                flavorProcessor.validate();
-            } else {
+            if (flavor == ECMAScriptFlavor.INSTANCE) {
                 RegexValidator validator = new RegexValidator(source);
                 validator.validate();
+            } else {
+                RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
+                flavorProcessor.validate();
             }
             return TruffleNull.INSTANCE;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -71,6 +71,6 @@ int test_va_list_callback(int (*callback)(va_list *, void *), void *libHandle, .
     return res;
 }
 
-int test_va_list_callback3(int (*callback)(va_list *, void *), void *libHandle, int a0, int a1, int a2, void *sa) {
-    return test_va_list_callback(callback, libHandle, a0, a1, a2, sa);
+int test_va_list_callback4(int (*callback)(va_list *, void *), void *libHandle, int a0, int a1, int a2, void *saNative, void *saManaged) {
+    return test_va_list_callback(callback, libHandle, a0, a1, a2, saNative, polyglot_as_StructA(saManaged));
 }

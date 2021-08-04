@@ -79,7 +79,7 @@ import com.oracle.svm.core.code.IsolateEnterStub;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -505,13 +505,13 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             kit.appendStateSplitProxy(exception.stateAfter());
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
             kit.append(leave);
-            kit.append(new DeadEndNode());
+            kit.append(new LoweredDeadEndNode());
         } else {
             ResolvedJavaType throwable = providers.getMetaAccess().lookupJavaType(Throwable.class);
             ResolvedJavaType handler = providers.getMetaAccess().lookupJavaType(entryPointData.getExceptionHandler());
             ResolvedJavaMethod[] handlerMethods = handler.getDeclaredMethods();
             UserError.guarantee(handlerMethods.length == 1 && handlerMethods[0].isStatic(),
-                            "Exception handler class must declare exactly one static method: % -> %s", targetMethod, handler);
+                            "Exception handler class must declare exactly one static method: %s -> %s", targetMethod, handler);
             JavaType[] handlerParameterTypes = handlerMethods[0].toParameterTypes();
             UserError.guarantee(handlerParameterTypes.length == 1 &&
                             ((ResolvedJavaType) handlerParameterTypes[0]).isAssignableFrom(throwable),
@@ -539,7 +539,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             kit.createReturn(returnValue, returnValue.getStackKind());
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
-            kit.append(new DeadEndNode());
+            kit.append(new LoweredDeadEndNode());
             kit.endInvokeWithException();
 
             kit.inlineAsIntrinsic(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
@@ -557,7 +557,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
             IsNullNode isNull = kit.unique(new IsNullNode(returnValue));
-            kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY);
+            kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
             kit.thenPart();
             ResolvedJavaType enumExceptionType = metaAccess.lookupJavaType(RuntimeException.class);
             NewInstanceNode enumException = kit.append(new NewInstanceNode(enumExceptionType, true));
@@ -569,7 +569,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             kit.appendStateSplitProxy(kit.getFrameState());
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException);
             kit.append(leave);
-            kit.append(new DeadEndNode());
+            kit.append(new LoweredDeadEndNode());
             kit.endIf();
 
             // Always return enum values as a signed word because it should never be a problem if
