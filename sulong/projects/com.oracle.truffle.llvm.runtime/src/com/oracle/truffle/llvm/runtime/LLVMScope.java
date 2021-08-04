@@ -48,7 +48,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ExportLibrary(InteropLibrary.class)
@@ -259,23 +259,21 @@ public class LLVMScope implements TruffleObject {
     @ExportMessage
     Object readMember(String globalName,
                     @Cached BranchProfile exception,
+                    @Cached LLVMPointerDataEscapeNode escape,
                     @CachedLibrary("this") InteropLibrary self) throws UnknownIdentifierException {
 
         if (contains(globalName)) {
             LLVMSymbol symbol = get(globalName);
-            if (symbol != null && symbol.isFunction()) {
+            if (symbol != null) {
                 try {
                     LLVMPointer value = LLVMContext.get(self).getSymbol(symbol);
                     if (value != null) {
-                        return LLVMManagedPointer.cast(value).getObject();
+                        return escape.executeWithTarget(value);
                     }
                 } catch (LLVMLinkerException | LLVMIllegalSymbolIndexException e) {
                     // fallthrough
                 }
-                exception.enter();
-                throw UnknownIdentifierException.create(globalName);
             }
-            return symbol;
         }
         exception.enter();
         throw UnknownIdentifierException.create(globalName);
