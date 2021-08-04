@@ -210,7 +210,11 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState",
                         Collections.emptyList());
 
-        profilingEnabled = Truffle.getRuntime().isProfilingEnabled();
+        profilingEnabled = false;
+    }
+
+    public void setProfilingEnabled(boolean profilingEnabled) {
+        this.profilingEnabled = profilingEnabled;
     }
 
     @Override
@@ -223,6 +227,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         }
 
         // clean up the language cache
+        invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotFastThreadLocals", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "resetNativeImageState",
                         Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "resetNativeImageState",
@@ -235,7 +240,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                         Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "resetNativeImageState",
                         Collections.singletonList(ClassLoader.class), imageClassLoader);
-        invokeStaticMethod("com.oracle.truffle.api.nodes.Node", "resetNativeImageState", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.api.source.Source", "resetNativeImageState", Collections.emptyList());
         // clean up cached object layouts
         invokeStaticMethod("com.oracle.truffle.object.LayoutImpl", "resetNativeImageState", Collections.emptyList());
@@ -342,12 +346,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
         if (firstAnalysisRun) {
             firstAnalysisRun = false;
-            Object keep = invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl",
-                            "resetSingleContextState", Collections.singleton(boolean.class), false);
             invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine",
                             Collections.emptyList());
-            invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "restoreSingleContextState",
-                            Collections.singleton(Object.class), keep);
             invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
                             Collections.emptyList());
             access.requireAnalysisIteration();
@@ -675,35 +675,6 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
 }
 
 // Checkstyle: stop
-
-@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
-
-    /**
-     * Truffle code can run during image generation, i.e., one or many contexts can be used during
-     * image generation. Truffle optimizes the case where only one context is ever created, and also
-     * stores additional information regarding which thread or threads used the context. We need to
-     * start with a completely fresh specialization state. To simplify that, all static state that
-     * stores context information is abstracted in the SingleContextState class, and it is enough to
-     * recompute a single static field to a new SingleContextState instance.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", isFinal = true) //
-    static Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState singleContextState;
-}
-
-@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextThreadLocal", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_PolyglotContextThreadLocal {
-
-    /**
-     * Don't store any threads in the image.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Thread activeSingleThread;
-}
-
-@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
-}
 
 // If allowProcess() is disabled at build time, then we ensure that
 // ProcessBuilder is not reachable.

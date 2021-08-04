@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 
@@ -53,5 +54,9 @@ public abstract class LLVMRootNode extends RootNode {
         // stackAccess is not a child node, thus we have to prepare it manually. Consider
         stackAccess.prepareForAOT(getLanguage(LLVMLanguage.class), this);
         return null;
+    }
+
+    public final LLVMContext getContext() {
+        return LLVMContext.get(this);
     }
 }

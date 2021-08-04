@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi.test.parser.backend;
 
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -72,8 +71,7 @@ public class TestLibrary implements TruffleObject {
     }
 
     @ExportMessage
-    Object readMember(String name,
-                    @CachedLanguage NFITestBackend backend) {
-        return backend.tools.createBindableSymbol(new TestSymbol(name));
+    Object readMember(String name) {
+        return NFITestBackend.get(null).tools.createBindableSymbol(new TestSymbol(name));
     }
 }

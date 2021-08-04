@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -420,8 +419,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         Object createWrapper(LLVMPointer pointer,
-                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
-                        @Cached(value = "createVAListPointerWrapperFactoryCached(language)", uncached = "createVAListPointerWrapperFactoryUncached(language)") VAListPointerWrapperFactory wrapperFactory) {
+                        @Cached(value = "createVAListPointerWrapperFactory(true)", uncached = "createVAListPointerWrapperFactory(false)") VAListPointerWrapperFactory wrapperFactory) {
             return wrapperFactory.execute(pointer);
         }
 
@@ -430,12 +428,8 @@ public class LLVMVaListStorage implements TruffleObject {
             return o;
         }
 
-        public static VAListPointerWrapperFactory createVAListPointerWrapperFactoryCached(@CachedLanguage LLVMLanguage language) {
-            return language.getCapability(PlatformCapability.class).createNativeVAListWrapper(true);
-        }
-
-        public static VAListPointerWrapperFactory createVAListPointerWrapperFactoryUncached(@CachedLanguage LLVMLanguage language) {
-            return language.getCapability(PlatformCapability.class).createNativeVAListWrapper(false);
+        public static VAListPointerWrapperFactory createVAListPointerWrapperFactory(boolean cached) {
+            return LLVMLanguage.get(null).getCapability(PlatformCapability.class).createNativeVAListWrapper(cached);
         }
 
     }
@@ -447,8 +441,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         LLVMPointer allocate(long size,
-                        @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
-                        @Cached(value = "createVarargsAreaStackAllocationNode(language)", allowUncached = true) VarargsAreaStackAllocationNode allocNode) {
+                        @Cached(value = "createVarargsAreaStackAllocationNode()", allowUncached = true) VarargsAreaStackAllocationNode allocNode) {
             // N.B. Using FrameAccess.READ_WRITE may lead to throwing NPE, nevertheless using the
             // safe
             // FrameAccess.READ_ONLY is not sufficient as some nodes below need to write to the
@@ -460,8 +453,9 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @SuppressWarnings("static-method")
-        VarargsAreaStackAllocationNode createVarargsAreaStackAllocationNode(LLVMLanguage lang) {
+        VarargsAreaStackAllocationNode createVarargsAreaStackAllocationNode() {
             DataLayout dataLayout = getDataLayout();
+            LLVMLanguage lang = LLVMLanguage.get(null);
             return lang.getActiveConfiguration().createNodeFactory(lang, dataLayout).createVarargsAreaStackAllocation();
         }
 

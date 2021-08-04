@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -189,7 +187,6 @@ public abstract class LLVMForeignCallNode extends RootNode {
         }
     }
 
-    @CompilationFinal private ContextReference<LLVMContext> ctxRef;
     protected final LLVMInteropType.Structured returnBaseType;
 
     @Child LLVMGetStackFromThreadNode getStack;
@@ -219,11 +216,7 @@ public abstract class LLVMForeignCallNode extends RootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object result;
-        if (ctxRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            ctxRef = lookupContextReference(LLVMLanguage.class);
-        }
-        LLVMThreadingStack threadingStack = ctxRef.get().getThreadingStack();
+        LLVMThreadingStack threadingStack = LLVMContext.get(this).getThreadingStack();
         LLVMStack stack = getStack.executeWithTarget(threadingStack, Thread.currentThread());
         try {
             result = doCall(frame, stack);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,8 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension.WellKnownNativeFunctionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -49,8 +47,7 @@ public abstract class LLVMPosixCallNode extends LLVMNode {
     }
 
     protected WellKnownNativeFunctionNode createFunctionNode() {
-        LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-        NativeContextExtension nativeContextExtension = context.getContextExtension(NativeContextExtension.class);
+        NativeContextExtension nativeContextExtension = getContext().getContextExtension(NativeContextExtension.class);
         return nativeContextExtension.getWellKnownNativeFunction("__sulong_posix_" + name, signature);
     }
 

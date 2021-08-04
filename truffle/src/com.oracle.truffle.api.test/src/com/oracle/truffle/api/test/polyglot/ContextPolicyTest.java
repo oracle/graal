@@ -62,20 +62,15 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -85,10 +80,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
-import com.oracle.truffle.api.test.polyglot.ContextPolicyTestFactory.SupplierAccessorNodeGen;
 
 public class ContextPolicyTest {
 
@@ -636,60 +629,28 @@ public class ContextPolicyTest {
         }
     }
 
-    @GenerateUncached
-    abstract static class SupplierAccessor extends Node {
-
-        @SuppressWarnings("rawtypes")
-        public final <T extends TruffleLanguage> LanguageReference<T> getLanguageReference0(Class<T> languageClass) {
-            return lookupLanguageReference(languageClass);
-        }
-
-        public final <C, T extends TruffleLanguage<C>> ContextReference<C> getContextReference0(Class<T> languageClass) {
-            return lookupContextReference(languageClass);
-        }
-
-        public abstract void execute();
-
-        @Specialization
-        void s0() {
-
-        }
-
-    }
-
     @ExportLibrary(InteropLibrary.class)
     static class SharedObject implements TruffleObject {
 
         final TruffleContext context;
-        final TruffleLanguage<?> expectedLanguage;
+        final BaseLanguage expectedLanguage;
         final Env expectedEnvironment;
         final CallTarget target;
 
         @TruffleBoundary
-        SharedObject(TruffleContext context, TruffleLanguage<?> language, Env env) {
+        SharedObject(TruffleContext context, BaseLanguage language, Env env) {
             this.context = context;
             this.expectedLanguage = language;
             this.expectedEnvironment = env;
             this.target = Truffle.getRuntime().createCallTarget(new RootNode(language) {
                 @Child InteropLibrary library = InteropLibrary.getFactory().createDispatched(5);
-                @Child SupplierAccessor accessor = SupplierAccessorNodeGen.create();
-                @CompilationFinal private LanguageReference<? extends Object> cachedLanguageReference;
-                @CompilationFinal private ContextReference<? extends Object> cachedContextReference;
 
                 @SuppressWarnings("unchecked")
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    if (cachedLanguageReference == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        cachedLanguageReference = lookupLanguageReference0(accessor);
-                    }
-                    if (cachedContextReference == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        cachedContextReference = lookupContextReference0(accessor);
-                    }
                     Object[] args = frame.getArguments();
 
-                    doAssertions(accessor, cachedLanguageReference, cachedContextReference);
+                    doAssertions();
 
                     if (args.length > 0) {
                         try {
@@ -723,16 +684,12 @@ public class ContextPolicyTest {
         @SuppressWarnings("unchecked")
         @ExportMessage
         Object execute(Object[] args,
-                        @CachedLibrary(limit = "5") InteropLibrary library,
-                        @Cached SupplierAccessor accessor,
-                        @Cached(value = "this.lookupLanguageReference0(accessor)", allowUncached = true) LanguageReference<? extends Object> cachedLanguageSupplier,
-                        @Cached(value = "this.lookupContextReference0(accessor)", allowUncached = true) ContextReference<? extends Object> cachedContextSupplier,
-                        @Cached(value = "this.getContextReference()", allowUncached = true) ContextReference<Env> contextReference)
+                        @CachedLibrary(limit = "5") InteropLibrary library)
                         throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
 
             Object prev = enterInner();
             try {
-                doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier, contextReference);
+                doAssertions();
 
                 target.call(args);
 
@@ -747,20 +704,9 @@ public class ContextPolicyTest {
         }
 
         @TruffleBoundary
-        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier,
-                        ContextReference<Env> contextReference) {
-            doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier);
-            assertSame(expectedEnvironment, contextReference.get());
-        }
-
-        @TruffleBoundary
-        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier) {
-            assertSame(expectedLanguage, lookupLanguageReference0(accessor).get());
-            assertSame(expectedEnvironment, lookupContextReference0(accessor).get());
-            assertSame(expectedLanguage, cachedLanguageSupplier.get());
-            assertSame(expectedEnvironment, cachedContextSupplier.get());
-            assertSame(cachedLanguageSupplier, lookupLanguageReference0(accessor));
-            assertSame(cachedContextSupplier, lookupContextReference0(accessor));
+        private void doAssertions() {
+            assertSame(expectedLanguage, expectedLanguage.getLanguageReference().get(null));
+            assertSame(expectedEnvironment, expectedLanguage.getContextReference0().get(null));
         }
 
         @TruffleBoundary
@@ -776,69 +722,28 @@ public class ContextPolicyTest {
             Object prev = null;
             if (context != null) {
                 prev = context.enter(null);
-                assertSame(expectedLanguage, ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()));
-                assertSame(expectedEnvironment, ExclusiveLanguage0.getCurrentContext(expectedLanguage.getClass()));
+                doAssertions();
             }
             return prev;
         }
-
-        @TruffleBoundary
-        private void doAssertions(LanguageReference<?> languageSupplier) {
-            assertSame(expectedLanguage, ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()));
-            assertSame(languageSupplier.get(), expectedLanguage);
-        }
-
-        @SuppressWarnings("rawtypes")
-        LanguageReference<? extends Object> lookupLanguageReference0(SupplierAccessor node) {
-            Object prev = enterInner();
-            try {
-                LanguageReference<?> o = node.getLanguageReference0(expectedLanguage.getClass());
-                doAssertions(o);
-                return o;
-            } finally {
-                leaveInner(prev);
-            }
-        }
-
-        @SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
-        ContextReference<Env> getContextReference() {
-            Object prev = enterInner();
-            try {
-                // ensure initialized
-                return ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()).getContextReference();
-            } finally {
-                leaveInner(prev);
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        ContextReference<? extends Object> lookupContextReference0(SupplierAccessor node) {
-            Object prev = enterInner();
-            try {
-                return node.getContextReference0(expectedLanguage.getClass());
-            } finally {
-                leaveInner(prev);
-            }
-        }
-
     }
 
     static class LanguageRootNode extends RootNode {
 
-        private final Class<? extends TruffleLanguage<Env>> languageClass;
+        private final BaseLanguage language;
 
         private final boolean innerContext;
 
         @SuppressWarnings("unchecked")
-        protected LanguageRootNode(TruffleLanguage<?> language, boolean innerContext) {
+        protected LanguageRootNode(BaseLanguage language, boolean innerContext) {
             super(language);
-            this.languageClass = (Class<? extends TruffleLanguage<Env>>) language.getClass();
+            this.language = language;
             this.innerContext = innerContext;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Env env = ExclusiveLanguage0.getCurrentContext(languageClass);
+            Env env = language.getContextReference0().get(this);
             TruffleContext context = null;
             if (innerContext) {
                 context = env.newContextBuilder().build();
@@ -850,8 +755,8 @@ public class ContextPolicyTest {
             try {
                 SharedObject obj = new SharedObject(
                                 context,
-                                ExclusiveLanguage0.getCurrentLanguage(languageClass),
-                                ExclusiveLanguage0.getCurrentContext(languageClass));
+                                language.getLanguageReference().get(null),
+                                language.getContextReference0().get(null));
                 return obj;
             } finally {
                 if (context != null) {
@@ -862,8 +767,15 @@ public class ContextPolicyTest {
         }
     }
 
+    abstract static class BaseLanguage extends TruffleLanguage<Env> {
+
+        abstract LanguageReference<? extends BaseLanguage> getLanguageReference();
+
+        abstract ContextReference<Env> getContextReference0();
+    }
+
     @Registration(id = EXCLUSIVE0, name = EXCLUSIVE0, contextPolicy = ContextPolicy.EXCLUSIVE)
-    public static class ExclusiveLanguage0 extends TruffleLanguage<Env> {
+    public static class ExclusiveLanguage0 extends BaseLanguage {
 
         public ExclusiveLanguage0() {
             languageInstances.add(this);
@@ -895,15 +807,18 @@ public class ContextPolicyTest {
             contextDispose.add(this);
         }
 
-        @TruffleBoundary
-        public static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
-            return TruffleLanguage.getCurrentLanguage(languageClass);
+        @Override
+        ContextReference<Env> getContextReference0() {
+            return CONTEXT_REF;
         }
 
-        @TruffleBoundary
-        public static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
-            return TruffleLanguage.getCurrentContext(languageClass);
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
         }
+
+        static final ContextReference<Env> CONTEXT_REF = ContextReference.create(ExclusiveLanguage0.class);
+        static final LanguageReference<ExclusiveLanguage0> REFERENCE = LanguageReference.create(ExclusiveLanguage0.class);
 
     }
 
@@ -921,6 +836,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new ExclusiveLanguage1OptionDescriptors();
         }
+
+        @Override
+        ContextReference<Env> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<Env> CONTEXT_REF = ContextReference.create(ExclusiveLanguage1.class);
+        static final LanguageReference<ExclusiveLanguage1> REFERENCE = LanguageReference.create(ExclusiveLanguage1.class);
     }
 
     @Registration(id = REUSE0, name = REUSE0, contextPolicy = ContextPolicy.REUSE)
@@ -937,6 +865,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new ReuseLanguage0OptionDescriptors();
         }
+
+        @Override
+        ContextReference<Env> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<Env> CONTEXT_REF = ContextReference.create(ReuseLanguage0.class);
+        static final LanguageReference<ReuseLanguage0> REFERENCE = LanguageReference.create(ReuseLanguage0.class);
     }
 
     @Registration(id = REUSE1, name = REUSE1, contextPolicy = ContextPolicy.REUSE)
@@ -953,6 +894,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new ReuseLanguage1OptionDescriptors();
         }
+
+        @Override
+        ContextReference<Env> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<Env> CONTEXT_REF = ContextReference.create(ReuseLanguage1.class);
+        static final LanguageReference<ReuseLanguage1> REFERENCE = LanguageReference.create(ReuseLanguage1.class);
     }
 
     @Registration(id = SHARED0, name = SHARED0, contextPolicy = ContextPolicy.SHARED)
@@ -969,6 +923,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new SharedLanguage0OptionDescriptors();
         }
+
+        @Override
+        ContextReference<Env> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<Env> CONTEXT_REF = ContextReference.create(SharedLanguage0.class);
+        static final LanguageReference<SharedLanguage0> REFERENCE = LanguageReference.create(SharedLanguage0.class);
     }
 
     @Registration(id = SHARED1, name = SHARED1, contextPolicy = ContextPolicy.SHARED)
@@ -985,6 +952,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new SharedLanguage1OptionDescriptors();
         }
+
+        @Override
+        ContextReference<Env> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<Env> CONTEXT_REF = ContextReference.create(SharedLanguage1.class);
+        static final LanguageReference<SharedLanguage1> REFERENCE = LanguageReference.create(SharedLanguage1.class);
     }
 
 }

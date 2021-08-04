@@ -283,7 +283,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        return lookupContextReference(ProxyLanguage.class).get().env.lookupHostSymbol(clazz.getName());
+                        return LanguageContext.get(this).env.lookupHostSymbol(clazz.getName());
                     }
                 });
             }

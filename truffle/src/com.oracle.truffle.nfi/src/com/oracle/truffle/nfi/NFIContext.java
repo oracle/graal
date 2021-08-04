@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
@@ -113,5 +115,11 @@ final class NFIContext {
         }
 
         return null;
+    }
+
+    private static final ContextReference<NFIContext> REFERENCE = ContextReference.create(NFILanguage.class);
+
+    static NFIContext get(Node node) {
+        return REFERENCE.get(node);
     }
 }

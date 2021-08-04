@@ -30,12 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
@@ -61,16 +59,14 @@ public abstract class LLVMI8LoadNode extends LLVMLoadNode {
 
         public abstract byte executeWithTarget(LLVMPointer receiver, long offset);
 
-        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-        protected byte doI8Native(LLVMNativePointer addr, long offset,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getI8(this, addr.asNative() + offset);
+        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        protected byte doI8Native(LLVMNativePointer addr, long offset) {
+            return getLanguage().getLLVMMemory().getI8(this, addr.asNative() + offset);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        @Specialization(guards = "isAutoDerefHandle(addr)")
         protected byte doI8DerefHandle(LLVMNativePointer addr, long offset,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             return doI8Managed(getReceiver.execute(addr), offset, nativeRead);
         }
@@ -83,16 +79,14 @@ public abstract class LLVMI8LoadNode extends LLVMLoadNode {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-    protected byte doI8Native(LLVMNativePointer addr,
-                    @CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().getI8(this, addr);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected byte doI8Native(LLVMNativePointer addr) {
+        return getLanguage().getLLVMMemory().getI8(this, addr);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)")
+    @Specialization(guards = "isAutoDerefHandle(addr)")
     protected byte doI8DerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doI8Managed(getReceiver.execute(addr), nativeRead);
     }

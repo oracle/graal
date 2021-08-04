@@ -59,6 +59,7 @@ import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
+import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
@@ -94,7 +95,7 @@ public class SLRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert lookupContextReference(SLLanguage.class).get() != null;
+        assert SLContext.get(this) != null;
         return bodyNode.executeGeneric(frame);
     }
 

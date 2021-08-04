@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,18 +34,14 @@ import java.io.IOException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -53,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen.GetSourceFileNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen.GetSourceStringNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
@@ -108,16 +105,14 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
         CallTarget doCached(String id, String code,
                         @Cached("id") @SuppressWarnings("unused") String cachedId,
                         @Cached("code") @SuppressWarnings("unused") String cachedCode,
-                        @CachedContext(LLVMLanguage.class) @SuppressWarnings("unused") ContextReference<LLVMContext> ctxRef,
-                        @Cached("uncached(cachedId, cachedCode, ctxRef)") CallTarget callTarget) {
+                        @Cached("uncached(cachedId, cachedCode)") CallTarget callTarget) {
             return callTarget;
         }
 
         @TruffleBoundary
         @Specialization(replaces = "doCached")
-        CallTarget uncached(String id, String code,
-                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
-            LLVMContext ctx = ctxRef.get();
+        CallTarget uncached(String id, String code) {
+            LLVMContext ctx = getContext();
             Env env = ctx.getEnv();
             LanguageInfo lang = env.getPublicLanguages().get(id);
             if (lang == null) {
@@ -132,11 +127,10 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
 
         @TruffleBoundary
         @Specialization
-        CallTarget uncached(String id, String filename,
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        CallTarget uncached(String id, String filename) {
             try {
                 // never cache, since the file content could change between invocations
-                Env env = ctx.getEnv();
+                Env env = getContext().getEnv();
                 Source sourceObject = Source.newBuilder(id, env.getPublicTruffleFile(filename)).build();
                 return env.parsePublic(sourceObject);
             } catch (IOException ex) {

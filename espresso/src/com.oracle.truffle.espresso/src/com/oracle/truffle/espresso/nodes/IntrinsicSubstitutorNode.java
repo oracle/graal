@@ -29,10 +29,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     @Child private JavaSubstitution substitution;
@@ -45,7 +44,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
 
     public IntrinsicSubstitutorNode(JavaSubstitution.Factory factory, Method method) {
         super(method.getMethodVersion());
-        this.substitution = factory.create(EspressoLanguage.getCurrentContext().getMeta());
+        this.substitution = factory.create(getContext().getMeta());
         if (substitution.shouldSplit()) {
             this.nbSplits = DebugCounter.create("Splits for: " + Arrays.toString(factory.getMethodNames()));
         } else {

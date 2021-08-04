@@ -97,7 +97,7 @@ public class GR31558 extends AbstractPolyglotTest {
                 String src = request.getSource().getCharacters().toString();
                 RootCallTarget invokeTestApi;
                 if ("testFunction".equals(src)) {
-                    invokeTestApi = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.getCurrentLanguage()) {
+                    invokeTestApi = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
                         @Override
                         public Object execute(VirtualFrame frame) {
                             try {

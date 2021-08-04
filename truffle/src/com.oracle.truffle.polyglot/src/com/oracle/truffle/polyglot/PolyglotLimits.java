@@ -52,10 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -65,7 +61,6 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 
 /**
  * Limits objects that backs the {@link ResourceLimits} API object.
@@ -101,45 +96,17 @@ final class PolyglotLimits {
         final EngineLimits limits;
         final EventContext eventContext;
         final PolyglotEngineImpl engine;
-        final FrameSlot readContext;
-        final ConditionProfile needsLookup = ConditionProfile.create();
-        final FrameDescriptor descriptor;
         @CompilationFinal private boolean seenInnerContext;
 
         StatementIncrementNode(EventContext context, EngineLimits limits) {
             this.limits = limits;
             this.eventContext = context;
             this.engine = limits.engine;
-            if (!engine.singleThreadPerContext.isValid() || !engine.singleContext.isValid()) {
-                descriptor = context.getInstrumentedNode().getRootNode().getFrameDescriptor();
-                readContext = descriptor.findOrAddFrameSlot(CACHED_CONTEXT, FrameSlotKind.Object);
-            } else {
-                readContext = null;
-                descriptor = null;
-            }
         }
 
         @Override
         protected void onEnter(VirtualFrame frame) {
-            PolyglotContextImpl currentContext;
-            if (readContext == null || frame.getFrameDescriptor() != descriptor) {
-                currentContext = getLimitContext();
-            } else {
-                try {
-                    Object readValue = frame.getObject(readContext);
-                    if (needsLookup.profile(readValue == descriptor.getDefaultValue())) {
-                        currentContext = getLimitContext();
-                        frame.setObject(readContext, currentContext);
-                    } else {
-                        currentContext = (PolyglotContextImpl) readValue;
-                    }
-                } catch (FrameSlotTypeException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    currentContext = getLimitContext();
-                    frame.setObject(readContext, currentContext);
-                }
-            }
-
+            PolyglotContextImpl currentContext = getLimitContext();
             long count;
             if (engine.singleThreadPerContext.isValid()) {
                 count = --currentContext.statementCounter;
@@ -153,7 +120,7 @@ final class PolyglotLimits {
         }
 
         private PolyglotContextImpl getLimitContext() {
-            PolyglotContextImpl context = PolyglotContextImpl.currentEntered(engine);
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(engine);
             if (engine.noInnerContexts.isValid() || context.parent == null) {
                 // fast path for no inner contexts
                 return context;

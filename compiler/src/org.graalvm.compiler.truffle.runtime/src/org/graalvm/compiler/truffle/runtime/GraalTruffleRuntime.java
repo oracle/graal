@@ -100,6 +100,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
+import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -416,6 +417,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return m;
     }
 
+    /*
+     * Make sure the libgraal version HSTruffleCompilerRuntime.resolveType of this method stays in
+     * sync with this method.
+     */
     @Override
     public ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required) {
         Class<?> c = lookupTypes.get(className);
@@ -1188,5 +1193,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     protected Object getFieldValue(ResolvedJavaField resolvedJavaField, Object obj) {
         throw new UnsupportedOperationException();
     }
+
+    protected abstract AbstractFastThreadLocal getFastThreadLocalImpl();
 
 }

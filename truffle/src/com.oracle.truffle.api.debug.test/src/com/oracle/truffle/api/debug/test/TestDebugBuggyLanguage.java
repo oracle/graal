@@ -145,7 +145,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
             @Override
             protected Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
-                return ProxyLanguage.getCurrentLanguage().getClass();
+                return ProxyLanguage.get(null).getClass();
             }
 
             @Override

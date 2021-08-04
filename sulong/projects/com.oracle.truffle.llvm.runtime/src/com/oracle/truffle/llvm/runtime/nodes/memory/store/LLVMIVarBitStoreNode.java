@@ -30,12 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -85,15 +83,13 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
         public abstract void executeWithTarget(LLVMPointer receiver, long offset, LLVMIVarBit value);
 
-        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-        protected void doOp(LLVMNativePointer addr, long offset, LLVMIVarBit value,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putIVarBit(this, addr.asNative() + offset, value);
+        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        protected void doOp(LLVMNativePointer addr, long offset, LLVMIVarBit value) {
+            getLanguage().getLLVMMemory().putIVarBit(this, addr.asNative() + offset, value);
         }
 
-        @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(language, addr)"})
+        @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(addr)"})
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, LLVMIVarBit value,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @Cached("createRecursive()") LLVMIVarBitOffsetStoreNode store) {
             store.executeWithTarget(getReceiver.execute(addr), offset, value);
@@ -112,15 +108,13 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-    protected void doOp(LLVMNativePointer addr, LLVMIVarBit value,
-                    @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putIVarBit(this, addr, value);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected void doOp(LLVMNativePointer addr, LLVMIVarBit value) {
+        getLanguage().getLLVMMemory().putIVarBit(this, addr, value);
     }
 
-    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(language, addr)"})
+    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(addr)"})
     protected static void doOpDerefHandle(LLVMNativePointer addr, LLVMIVarBit value,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached("createRecursive()") LLVMIVarBitStoreNode store) {
         store.executeWithTarget(getReceiver.execute(addr), value);

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -225,9 +224,9 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
-    Object getNativeType(@CachedLanguage LLVMLanguage language) {
+    Object getNativeType(@CachedLibrary("this") NativeTypeLibrary self) {
         // This method should never be invoked
-        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, findDataLayoutFromCurrentFrame()));
+        return LLVMLanguage.get(self).getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, findDataLayoutFromCurrentFrame()));
     }
 
     // LLVMManagedReadLibrary implementation
@@ -671,9 +670,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
-    void toNative(@SuppressWarnings("unused") @CachedLanguage() LLVMLanguage language,
-                    @Cached(value = "this.createAllocaNode(language)", uncached = "this.createAllocaNodeUncached(language)") LLVMExpressionNode allocaNode,
-                    @Cached StackAllocationNode stackAllocationNode,
+    void toNative(@Cached StackAllocationNode stackAllocationNode,
+                    @Cached(value = "this.createAllocaNode(stackAllocationNode.getLanguage())", uncached = "this.createAllocaNodeUncached(stackAllocationNode.getLanguage())") LLVMExpressionNode allocaNode,
                     @Cached LLVMI64OffsetStoreNode i64RegSaveAreaStore,
                     @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,
                     @Cached LLVM80BitFloatOffsetStoreNode fp80bitRegSaveAreaStore,
@@ -885,7 +883,6 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
             @TruffleBoundary
             @GenerateAOT.Exclude // recursion cut
             static void copyToManaged(NativeVAListWrapper source, LLVMX86_64VaListStorage dest,
-                            @SuppressWarnings("unused") @CachedLanguage() LLVMLanguage language,
                             @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode,
                             @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary,
                             @Cached(value = "getVAListTypeSize(stackAllocationNode)", allowUncached = true) long vaListTypeSize) {

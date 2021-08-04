@@ -30,13 +30,11 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
@@ -62,24 +60,22 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
 
         public abstract long executeWithTarget(LLVMPointer receiver, long offset) throws UnexpectedResultException;
 
-        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-        protected long doI64Native(LLVMNativePointer addr, long offset,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getI64(this, addr.asNative() + offset);
+        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        protected long doI64Native(LLVMNativePointer addr, long offset) {
+            return getLanguage().getLLVMMemory().getI64(this, addr.asNative() + offset);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)
+        @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = UnexpectedResultException.class)
         protected long doI64DerefHandle(LLVMNativePointer addr, long offset,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) throws UnexpectedResultException {
             return doI64Managed(getReceiver.execute(addr), offset, nativeRead);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doI64DerefHandle")
+        @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doI64DerefHandle")
         protected Object doGenericI64DerefHandle(LLVMNativePointer addr, long offset,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             return doGenericI64Managed(getReceiver.execute(addr), offset, nativeRead);
         }
@@ -99,24 +95,21 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-    protected long doI64Native(LLVMNativePointer addr,
-                    @CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().getI64(this, addr);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected long doI64Native(LLVMNativePointer addr) {
+        return getLanguage().getLLVMMemory().getI64(this, addr);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)
+    @Specialization(guards = "isAutoDerefHandle(addr)", rewriteOn = UnexpectedResultException.class)
     protected long doI64DerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) throws UnexpectedResultException {
         return doI64Managed(getReceiver.execute(addr), nativeRead);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doI64DerefHandle")
+    @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doI64DerefHandle")
     protected Object doGenericI64DerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doGenericI64Managed(getReceiver.execute(addr), nativeRead);
     }

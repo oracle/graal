@@ -31,11 +31,8 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.IntValueProfile;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -51,26 +48,24 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
 
     @Specialization
     protected long doOp(long code, long addr,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMPointerStoreNode store) {
-        return exec(code, LLVMNativePointer.create(addr), context, store);
+        return exec(code, LLVMNativePointer.create(addr), store);
     }
 
     @Specialization
     protected long doOp(long code, LLVMPointer addr,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMPointerStoreNode store) {
-        return exec(code, addr, context, store);
+        return exec(code, addr, store);
     }
 
-    private long exec(long code, LLVMPointer addr, LLVMContext context, LLVMPointerStoreNode store) throws AssertionError {
+    private long exec(long code, LLVMPointer addr, LLVMPointerStoreNode store) throws AssertionError {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS: {
-                context.setThreadLocalStorage(addr);
+                getContext().setThreadLocalStorage(addr);
                 return 0;
             }
             case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
-                LLVMPointer tls = context.getThreadLocalStorage();
+                LLVMPointer tls = getContext().getThreadLocalStorage();
                 store.executeWithTarget(addr, tls);
                 return 0;
             }

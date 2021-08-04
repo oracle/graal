@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -34,7 +34,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -87,7 +86,7 @@ public abstract class ByteArrayStoreNode extends QuickNode {
     })
     void doBufferLike(StaticObject array, int index, byte value,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile outOfBoundsProfile,
                     @Cached BranchProfile readOnlyProfile) {
         try {
@@ -111,7 +110,7 @@ public abstract class ByteArrayStoreNode extends QuickNode {
     })
     void doArrayLike(StaticObject array, int index, byte value,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile exceptionProfile,
                     @Cached ConditionProfile isByteArrayProfile) {
         if (isByteArrayProfile.profile(array.getKlass() == context.getMeta()._byte_array)) {

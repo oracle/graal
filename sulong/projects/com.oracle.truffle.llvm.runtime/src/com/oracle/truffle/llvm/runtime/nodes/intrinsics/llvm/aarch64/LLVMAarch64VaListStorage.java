@@ -35,7 +35,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -287,9 +286,9 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
-    Object getNativeType(@CachedLanguage LLVMLanguage language) {
+    Object getNativeType() {
         // This method should never be invoked
-        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, findDataLayoutFromCurrentFrame()));
+        return LLVMLanguage.get(null).getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, findDataLayoutFromCurrentFrame()));
     }
 
     // LLVMManagedReadLibrary implementation
@@ -625,13 +624,15 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     }
 
     @SuppressWarnings("static-method")
-    LLVMExpressionNode createAllocaNode(LLVMLanguage language) {
+    LLVMExpressionNode createAllocaNode() {
         DataLayout dataLayout = findDataLayoutFromCurrentFrame();
+        LLVMLanguage language = LLVMLanguage.get(null);
         return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
     }
 
-    LLVMExpressionNode createAllocaNodeUncached(LLVMLanguage language) {
+    LLVMExpressionNode createAllocaNodeUncached() {
         DataLayout dataLayout = findDataLayoutFromCurrentFrame();
+        LLVMLanguage language = LLVMLanguage.get(null);
         LLVMExpressionNode alloca = language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
         if (alloca instanceof LLVMGetStackSpaceInstruction) {
             ((LLVMGetStackSpaceInstruction) alloca).setStackAccess(rootNode.getStackAccess());
@@ -642,8 +643,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
-    void toNative(@SuppressWarnings("unused") @CachedLanguage() LLVMLanguage language,
-                    @Cached(value = "this.createAllocaNode(language)", uncached = "this.createAllocaNodeUncached(language)") LLVMExpressionNode allocaNode,
+    void toNative(@Cached(value = "this.createAllocaNode()", uncached = "this.createAllocaNodeUncached()") LLVMExpressionNode allocaNode,
                     @Cached StackAllocationNode stackAllocationNode,
                     @Cached LLVMI64OffsetStoreNode i64RegSaveAreaStore,
                     @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,

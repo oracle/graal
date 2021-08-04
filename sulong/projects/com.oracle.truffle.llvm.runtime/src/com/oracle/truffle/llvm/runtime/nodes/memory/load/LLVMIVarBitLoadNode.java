@@ -30,13 +30,11 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -59,20 +57,18 @@ public abstract class LLVMIVarBitLoadNode extends LLVMLoadNode {
 
     public abstract int getBitWidth();
 
-    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-    protected LLVMIVarBit doIVarBitNative(LLVMNativePointer addr,
-                    @CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().getIVarBit(this, addr, getBitWidth());
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected LLVMIVarBit doIVarBitNative(LLVMNativePointer addr) {
+        return getLanguage().getLLVMMemory().getIVarBit(this, addr, getBitWidth());
     }
 
     LLVMIVarBitLoadNode createRecursive() {
         return LLVMIVarBitLoadNodeGen.create(true, null, getBitWidth());
     }
 
-    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(language, addr)"})
+    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(addr)"})
     protected LLVMIVarBit doIVarBitDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached("createRecursive()") LLVMIVarBitLoadNode load) {
         return load.executeWithTarget(getReceiver.execute(addr));
     }

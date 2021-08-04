@@ -23,13 +23,11 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -49,7 +47,7 @@ public final class Target_java_lang_Object {
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    abstract static class Init extends Node {
+    abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);
 
@@ -59,7 +57,7 @@ public final class Target_java_lang_Object {
 
         @Specialization(guards = "hasFinalizer(self)")
         void registerFinalizer(@JavaType(Object.class) StaticObject self,
-                        @SuppressWarnings("unused") @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_ref_Finalizer_register.getCallTarget())") DirectCallNode register) {
             register.call(self);
         }

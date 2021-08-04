@@ -98,7 +98,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     }
 
     private void ensureLinked() {
-        WasmContext.getCurrent().linker().tryLink(this);
+        WasmContext.get(null).linker().tryLink(this);
     }
 
     @ExportMessage
@@ -145,7 +145,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
         long longValue = ((Number) value).longValue();
-        WasmContext.getCurrent().globals().storeLong(address, longValue);
+        WasmContext.get(null).globals().storeLong(address, longValue);
     }
 
     @ExportMessage
@@ -181,7 +181,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     private static Object readGlobal(WasmInstance instance, SymbolTable symbolTable, int globalIndex) {
         final int address = instance.globalAddress(globalIndex);
-        final GlobalRegistry globals = WasmContext.getCurrent().globals();
+        final GlobalRegistry globals = WasmContext.get(null).globals();
         final byte type = symbolTable.globalValueType(globalIndex);
         switch (type) {
             case WasmType.I32_TYPE:

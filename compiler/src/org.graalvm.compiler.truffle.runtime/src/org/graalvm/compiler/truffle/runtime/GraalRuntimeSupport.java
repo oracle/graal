@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
+import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -240,4 +241,14 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     public Object getFieldValue(Object resolvedJavaField, Object obj) {
         return GraalTruffleRuntime.getRuntime().getFieldValue((ResolvedJavaField) resolvedJavaField, obj);
     }
+
+    @Override
+    public AbstractFastThreadLocal getContextThreadLocal() {
+        AbstractFastThreadLocal local = GraalTruffleRuntime.getRuntime().getFastThreadLocalImpl();
+        if (local == null) {
+            return super.getContextThreadLocal();
+        }
+        return local;
+    }
+
 }

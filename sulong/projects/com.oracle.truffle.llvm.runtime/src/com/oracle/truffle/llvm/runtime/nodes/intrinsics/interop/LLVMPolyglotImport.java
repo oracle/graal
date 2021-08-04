@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -41,13 +40,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "name", type = LLVMExpressionNode.class)
@@ -59,12 +56,11 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
                     @Cached LLVMReadStringNode readString,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached("createToLLVM()") ForeignToLLVM toLLVM,
-                    @Cached BranchProfile notFound,
-                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                    @Cached BranchProfile notFound) {
         String symbolName = readString.executeWithTarget(name);
 
         try {
-            Object ret = interop.readMember(ctx.getEnv().getPolyglotBindings(), symbolName);
+            Object ret = interop.readMember(getContext().getEnv().getPolyglotBindings(), symbolName);
             return toLLVM.executeWithTarget(ret);
         } catch (UnknownIdentifierException ex) {
             notFound.enter();

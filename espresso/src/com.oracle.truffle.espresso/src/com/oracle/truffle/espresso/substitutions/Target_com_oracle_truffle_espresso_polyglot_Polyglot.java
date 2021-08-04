@@ -26,9 +26,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -37,10 +35,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -63,8 +59,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     // region Polyglot#cast
 
     @Substitution
-    abstract static class Cast extends Node {
-        @CompilationFinal ContextReference<EspressoContext> contextRef;
+    abstract static class Cast extends SubstitutionNode {
 
         abstract @JavaType(Object.class) StaticObject execute(
                         @JavaType(Class.class) StaticObject targetClass,
@@ -80,20 +75,16 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached BranchProfile reWrappingProfile,
                         @Cached TypeCheckNode typeCheckNode,
                         @Cached CastImpl castImpl) {
-            if (contextRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.contextRef = lookupContextReference(EspressoLanguage.class);
-            }
             if (StaticObject.isNull(targetClass)) {
                 nullTargetClassProfile.enter();
-                Meta meta = contextRef.get().getMeta();
+                Meta meta = getMeta();
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
             if (StaticObject.isNull(value) || typeCheckNode.executeTypeCheck(cachedTargetKlass, value.getKlass())) {
                 return value;
             }
             reWrappingProfile.enter();
-            return castImpl.execute(contextRef.get(), cachedTargetKlass, value);
+            return castImpl.execute(getContext(), cachedTargetKlass, value);
         }
 
         @TruffleBoundary
@@ -108,7 +99,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @GenerateUncached
-    abstract static class CastImpl extends Node {
+    abstract static class CastImpl extends SubstitutionNode {
 
         static final int LIMIT = 3;
 

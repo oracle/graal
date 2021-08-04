@@ -67,16 +67,18 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.benchmark.InterpreterCallBenchmark.BenchmarkState;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@Warmup(iterations = 30, time = 1)
+@Warmup(iterations = 400, time = 1)
+@SuppressWarnings("deprecation")
 public class EngineBenchmark extends TruffleBenchmark {
 
     static final String TEST_LANGUAGE = "benchmark-test-language";
@@ -502,6 +504,12 @@ public class EngineBenchmark extends TruffleBenchmark {
             this.env = env;
         }
 
+        static final ContextReference<BenchmarkContext> REFERENCE = ContextReference.create(BenchmarkTestLanguage.class);
+
+        static BenchmarkContext get(Node node) {
+            return REFERENCE.get(node);
+        }
+
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -514,14 +522,15 @@ public class EngineBenchmark extends TruffleBenchmark {
             this.iterations = iterations;
         }
 
+        @SuppressWarnings("deprecation")
         @ExportMessage
         @ExplodeLoop
         final Object execute(Object[] arguments,
-                        @Cached("this.iterations") int cachedIterations,
-                        @CachedContext(BenchmarkTestLanguage.class) ContextReference<BenchmarkContext> context) {
+                        @CachedLibrary("this") InteropLibrary lib,
+                        @Cached("this.iterations") int cachedIterations) {
             int sum = 0;
             for (int i = 0; i < cachedIterations; i++) {
-                sum += context.get().index;
+                sum += BenchmarkContext.get(lib).index;
             }
             // usage value so it is not collected.
             CompilerDirectives.blackhole(sum);

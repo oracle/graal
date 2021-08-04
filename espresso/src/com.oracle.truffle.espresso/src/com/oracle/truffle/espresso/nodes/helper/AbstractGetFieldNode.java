@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes.helper;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -33,7 +33,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class AbstractGetFieldNode extends Node {
+public abstract class AbstractGetFieldNode extends Node implements ContextAccess {
     final Field.FieldVersion fieldVersion;
     final String fieldName;
     final int slotCount;
@@ -54,6 +54,10 @@ public abstract class AbstractGetFieldNode extends Node {
         this.fieldVersion = fieldVersion;
         this.fieldName = getField().getNameAsString();
         this.slotCount = getField().getKind().getSlotCount();
+    }
+
+    public final EspressoContext getContext() {
+        return EspressoContext.get(this);
     }
 
     Field getField() {
@@ -118,7 +122,7 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     int doForeignValue(StaticObject receiver,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         try {
             return interopLibrary.asInt(receiver.rawForeignObject());
@@ -132,7 +136,7 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(context)"}, limit = "CACHED_LIBRARY_LIMIT")
     int doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
@@ -172,7 +176,7 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     boolean doForeignValue(StaticObject receiver,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         try {
             return interopLibrary.asBoolean(receiver.rawForeignObject());
@@ -186,7 +190,7 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(context)"}, limit = "CACHED_LIBRARY_LIMIT")
     boolean doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
@@ -226,7 +230,7 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     char doForeignValue(StaticObject receiver,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         try {
             String foreignString = interopLibrary.asString(receiver.rawForeignObject());
@@ -246,7 +250,7 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(context)"}, limit = "CACHED_LIBRARY_LIMIT")
     char doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
@@ -286,7 +290,7 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     short doForeignValue(StaticObject receiver,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         try {
             return interopLibrary.asShort(receiver.rawForeignObject());
@@ -300,7 +304,7 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(context)"}, limit = "CACHED_LIBRARY_LIMIT")
     short doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
@@ -340,7 +344,7 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     byte doForeignValue(StaticObject receiver,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         try {
             return interopLibrary.asByte(receiver.rawForeignObject());
@@ -354,7 +358,7 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(context)"}, limit = "CACHED_LIBRARY_LIMIT")
     byte doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
@@ -394,7 +398,7 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     long doForeignValue(StaticObject receiver,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         try {
             return interopLibrary.asLong(receiver.rawForeignObject());
@@ -408,7 +412,7 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(context)"}, limit = "CACHED_LIBRARY_LIMIT")
     long doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
@@ -448,7 +452,7 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     float doForeignValue(StaticObject receiver,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         try {
             return interopLibrary.asFloat(receiver.rawForeignObject());
@@ -462,7 +466,7 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(context)"}, limit = "CACHED_LIBRARY_LIMIT")
     float doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
@@ -502,7 +506,7 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "isValueField(context)"})
     double doForeignValue(StaticObject receiver,
                     @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         try {
             return interopLibrary.asDouble(receiver.rawForeignObject());
@@ -516,7 +520,7 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()", "!isValueField(context)"}, limit = "CACHED_LIBRARY_LIMIT")
     double doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {
@@ -561,7 +565,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     @Specialization(guards = "receiver.isForeignObject()", limit = "CACHED_LIBRARY_LIMIT")
     StaticObject doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, context, error);
         try {

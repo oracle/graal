@@ -518,7 +518,7 @@ final class PolyglotThreadLocalActions {
         protected void acceptImpl(PolyglotTLAccess access) {
             PolyglotThreadInfo thread;
             synchronized (context) {
-                thread = context.getCachedThreadInfo();
+                thread = context.getCurrentThreadInfo();
             }
             thread.setSafepointActive(true);
             try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64Error;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
@@ -46,11 +43,10 @@ public final class LLVMPThreadKeyIntrinsics {
     public abstract static class LLVMPThreadKeyCreate extends LLVMBuiltin {
 
         @Specialization
-        protected int doIntrinsic(LLVMPointer destructor,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        protected int doIntrinsic(LLVMPointer destructor) {
             // add new key-value to key-storage, which is a
             // hashmap(key-value->hashmap(thread-id->specific-value))
-            return context.getpThreadContext().createPThreadKey(destructor);
+            return getContext().getpThreadContext().createPThreadKey(destructor);
         }
     }
 
@@ -58,8 +54,8 @@ public final class LLVMPThreadKeyIntrinsics {
     public abstract static class LLVMPThreadKeyDelete extends LLVMBuiltin {
 
         @Specialization
-        protected int doIntrinsic(int key, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            context.getpThreadContext().deletePThreadKey(key);
+        protected int doIntrinsic(int key) {
+            getContext().getpThreadContext().deletePThreadKey(key);
             return 0;
         }
     }
@@ -68,8 +64,8 @@ public final class LLVMPThreadKeyIntrinsics {
     public abstract static class LLVMPThreadGetSpecific extends LLVMBuiltin {
 
         @Specialization
-        protected LLVMPointer doIntrinsic(int key, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            final LLVMPointer value = context.getpThreadContext().getSpecific(key);
+        protected LLVMPointer doIntrinsic(int key) {
+            final LLVMPointer value = getContext().getpThreadContext().getSpecific(key);
             return value != null ? value : LLVMNativePointer.createNull();
         }
     }
@@ -80,8 +76,8 @@ public final class LLVMPThreadKeyIntrinsics {
 
         // [EINVAL] if key is not valid
         @Specialization
-        protected int doIntrinsic(int key, LLVMPointer value, @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            if (!context.getpThreadContext().setSpecific(key, value)) {
+        protected int doIntrinsic(int key, LLVMPointer value) {
+            if (!getContext().getpThreadContext().setSpecific(key, value)) {
                 return LLVMAMD64Error.EINVAL;
             } else {
                 return 0;
