@@ -27,13 +27,13 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import java.lang.ref.Reference;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.truffle.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
-import org.graalvm.compiler.truffle.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.meta.JavaConstant;

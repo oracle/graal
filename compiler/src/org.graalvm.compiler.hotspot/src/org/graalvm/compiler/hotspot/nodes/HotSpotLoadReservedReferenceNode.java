@@ -22,43 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.nodes;
+package org.graalvm.compiler.hotspot.nodes;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.JavaWriteNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * Stores {@code JavaThread::_jvmci_reserved_oop0} of the current thread.
+ * Loads {@code JavaThread::_jvmci_reserved_oop0} for the current thread.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public final class HotSpotStoreReservedReferenceNode extends AbstractStateSplit implements Lowerable {
+public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<HotSpotStoreReservedReferenceNode> TYPE = NodeClass.create(HotSpotStoreReservedReferenceNode.class);
+    static final LocationIdentity JVMCI_RESERVED_REFERENCE = NamedLocationIdentity.mutable("JavaThread::<JVMCIReservedOop0>");
+
+    public static final NodeClass<HotSpotLoadReservedReferenceNode> TYPE = NodeClass.create(HotSpotLoadReservedReferenceNode.class);
 
     private final WordTypes wordTypes;
-    @Input protected ValueNode value;
 
     private final int jvmciReservedReference0Offset;
 
-    public HotSpotStoreReservedReferenceNode(WordTypes wordTypes, ValueNode value, int jvmciReservedReference0Offset) {
-        super(TYPE, StampFactory.forVoid());
-        this.value = value;
+    public HotSpotLoadReservedReferenceNode(MetaAccessProvider metaAccess, WordTypes wordTypes, int jvmciReservedReference0Offset) {
+        super(TYPE, StampFactory.object(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(Object[].class))));
         this.wordTypes = wordTypes;
         this.jvmciReservedReference0Offset = jvmciReservedReference0Offset;
     }
@@ -67,10 +69,14 @@ public final class HotSpotStoreReservedReferenceNode extends AbstractStateSplit 
     public void lower(LoweringTool tool) {
         CurrentJavaThreadNode thread = graph().unique(new CurrentJavaThreadNode(wordTypes));
         AddressNode address = graph().unique(new OffsetAddressNode(thread, graph().unique(ConstantNode.forLong(jvmciReservedReference0Offset))));
-        JavaWriteNode write = graph().add(new JavaWriteNode(JavaKind.Object, address, HotSpotLoadReservedReferenceNode.JVMCI_RESERVED_REFERENCE, value, BarrierType.NONE, false));
-        write.setStateAfter(stateAfter());
-        graph().replaceFixedWithFixed(this, write);
-        tool.getLowerer().lower(write, tool);
+        JavaReadNode read = graph().add(new JavaReadNode(JavaKind.Object, address, JVMCI_RESERVED_REFERENCE, BarrierType.NONE, false));
+        /*
+         * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise they will
+         * conservatively be forced at a fixed location.
+         */
+        read.setGuard(graph().start());
+        graph().replaceFixedWithFixed(this, read);
+        tool.getLowerer().lower(read, tool);
     }
 
 }
