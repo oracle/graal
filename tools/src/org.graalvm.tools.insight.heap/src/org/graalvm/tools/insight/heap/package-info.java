@@ -41,7 +41,7 @@
  * When embedding GraalVM dynamic languages in Java applications via
  * {@link org.graalvm.polyglot.Context} one can enabled not only GraalVM
  * {@link org.graalvm.tools.insight.Insight} scripts. One can also enable {@code heap} object in the
- * Insight scripts and capture the generated heaps in supplied {@link OutputStream} use:
+ * Insight scripts and capture the generated heaps in supplied {@link java.io.OutputStream} use:
  * 
  * {@codesnippet org.graalvm.tools.insight.test.heap.HeapObjectStreamTest}
  * 
