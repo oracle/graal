@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -56,7 +57,23 @@ import com.oracle.truffle.sl.runtime.SLBigNumber;
 @NodeInfo(shortName = "/")
 public abstract class SLDivNode extends SLBinaryNode {
 
-    @Specialization(rewriteOn = ArithmeticException.class)
+    /*
+     * This specialization handles nodes that have a "constant-at-runtime" divisor.
+     * For constant divisiors, the JIT can perform strength reduction and turn
+     * the division into a set of multiplication/shifts by constants.
+     * This is especially profitable for divisions with constant-at-runtime divisors
+     * that are executed in a hot loop.
+     * The limit of 3 specializations is arbitrary, no effort has been spent to find
+     * a sweet spot, as this is just meant as an example use case for @Cached.
+     */
+    @Specialization(guards = {"right == cachedRight"}, limit = "3", 
+                    rewriteOn = ArithmeticException.class)
+    protected long divCached(long left, long right, 
+             @Cached("right") long cachedRight) throws ArithmeticException {
+        return div(left, cachedRight);
+    }
+
+    @Specialization(replaces = "divCached", rewriteOn = ArithmeticException.class)
     protected long div(long left, long right) throws ArithmeticException {
         long result = left / right;
         /*
