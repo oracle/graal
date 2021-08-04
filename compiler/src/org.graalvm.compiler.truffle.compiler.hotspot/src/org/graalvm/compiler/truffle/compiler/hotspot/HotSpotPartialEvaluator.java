@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -75,10 +74,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        WordTypes wordTypes = config.lastTier().providers().getWordTypes();
         HotSpotTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification,
                         (HotSpotKnownTruffleTypes) getKnownTruffleTypes());
-        HotSpotTruffleGraphBuilderPlugins.registerHotspotThreadLocalPEPlugins(invocationPlugins, wordTypes, this);
     }
 
     @SuppressWarnings("serial")

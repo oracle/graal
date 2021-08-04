@@ -63,33 +63,6 @@ final class HotSpotTruffleGraphBuilderPlugins {
     }
 
     /**
-     * These HotSpot thread local plugins are intended for partial evaluation.
-     */
-    static void registerHotspotThreadLocalPEPlugins(InvocationPlugins plugins, WordTypes wordTypes, HotSpotPartialEvaluator pe) {
-        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
-        tl.register1("get", InvocationPlugin.Receiver.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                int jvmciReservedReference0Offset = pe.getJvmciReservedReference0Offset();
-                GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
-                b.addPush(JavaKind.Object, new HotSpotLoadReservedReferenceNode(b.getMetaAccess(), wordTypes, jvmciReservedReference0Offset));
-                return true;
-            }
-
-        });
-        tl.register2("set", InvocationPlugin.Receiver.class, Object[].class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
-                            ValueNode value) {
-                int jvmciReservedReference0Offset = pe.getJvmciReservedReference0Offset();
-                GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
-                b.add(new HotSpotStoreReservedReferenceNode(wordTypes, value, jvmciReservedReference0Offset));
-                return true;
-            }
-        });
-    }
-
-    /**
      * These HotSpot thread local plugins are intended for the interpreter access stubs.
      */
     static void registerHotspotThreadLocalStubPlugins(InvocationPlugins plugins, WordTypes wordTypes, int jvmciReservedReference0Offset) {
