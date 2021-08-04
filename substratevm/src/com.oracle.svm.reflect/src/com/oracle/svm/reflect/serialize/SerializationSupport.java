@@ -37,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
 import com.oracle.svm.core.util.VMError;
 
 public class SerializationSupport implements SerializationRegistry {

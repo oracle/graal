@@ -22,13 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.reflect.target;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
+import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
+import com.oracle.svm.reflect.serialize.SerializationRegistry;
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "AccessorGenerator")
 public final class Target_jdk_internal_reflect_AccessorGenerator {

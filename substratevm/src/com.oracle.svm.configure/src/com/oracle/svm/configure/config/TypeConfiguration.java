@@ -36,8 +36,6 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.util.UserError;
 
-import jdk.vm.ci.meta.JavaKind;
-
 public class TypeConfiguration implements ConfigurationBase {
     private final ConcurrentMap<String, ConfigurationType> types = new ConcurrentHashMap<>();
 
@@ -73,28 +71,7 @@ public class TypeConfiguration implements ConfigurationBase {
     }
 
     public ConfigurationType getOrCreateType(String qualifiedForNameString) {
-        assert qualifiedForNameString.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
-        assert !qualifiedForNameString.endsWith("[]") : "Requires Class.forName syntax, for example '[Ljava.lang.String;'";
-        String s = qualifiedForNameString;
-        int n = 0;
-        while (n < s.length() && s.charAt(n) == '[') {
-            n++;
-        }
-        if (n > 0) { // transform to Java source syntax
-            StringBuilder sb = new StringBuilder(s.length() + n);
-            if (s.charAt(n) == 'L' && s.charAt(s.length() - 1) == ';') {
-                sb.append(s, n + 1, s.length() - 1); // cut off leading '[' and 'L' and trailing ';'
-            } else if (n == s.length() - 1) {
-                sb.append(JavaKind.fromPrimitiveOrVoidTypeChar(s.charAt(n)).getJavaName());
-            } else {
-                throw new IllegalArgumentException();
-            }
-            for (int i = 0; i < n; i++) {
-                sb.append("[]");
-            }
-            s = sb.toString();
-        }
-        return types.computeIfAbsent(s, ConfigurationType::new);
+        return types.computeIfAbsent(SignatureUtil.toInternalClassName(qualifiedForNameString), ConfigurationType::new);
     }
 
     @Override
