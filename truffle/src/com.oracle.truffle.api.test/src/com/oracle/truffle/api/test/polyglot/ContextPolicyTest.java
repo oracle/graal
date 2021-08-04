@@ -755,8 +755,8 @@ public class ContextPolicyTest {
             try {
                 SharedObject obj = new SharedObject(
                                 context,
-                                language.getLanguageReference().get(this),
-                                language.getContextReference0().get(this));
+                                language.getLanguageReference().get(null),
+                                language.getContextReference0().get(null));
                 return obj;
             } finally {
                 if (context != null) {
