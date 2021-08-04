@@ -728,7 +728,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * for compilation.
      */
     public final boolean compile(boolean lastTierCompilation) {
-        if (!needsCompile(lastTierCompilation)) {
+        boolean lastTier = !engine.firstTierOnly && lastTierCompilation;
+        if (!needsCompile(lastTier)) {
             return true;
         }
         if (!isSubmittedForCompilation()) {
@@ -742,7 +743,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (!needsCompile(lastTierCompilation)) {
+                if (!needsCompile(lastTier)) {
                     return true;
                 }
 
@@ -754,14 +755,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
                     try {
                         assert compilationTask == null;
-                        this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
+                        this.compilationTask = task = runtime().submitForCompilation(this, lastTier);
                     } catch (RejectedExecutionException e) {
                         return false;
                     }
                 }
             }
             if (task != null) {
-                runtime().getListener().onCompilationQueued(this, lastTierCompilation ? 2 : 1);
+                runtime().getListener().onCompilationQueued(this, lastTier ? 2 : 1);
                 return maybeWaitForTask(task);
             }
         }

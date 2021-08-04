@@ -37,6 +37,7 @@ import java.util.stream.IntStream;
 
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.junit.Assert;
 import org.junit.Before;
@@ -113,6 +114,24 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         target.call(2);
         assertCompiled(rootNode.getOSRTarget());
         Assert.assertTrue(rootNode.wasRepeatingCalledCompiled());
+    }
+
+    @Theory
+    public void testNoInliningForLatency(OSRLoopFactory factory) {
+        setupContext("engine.MultiTier", "false", "engine.Mode", "latency");
+        TestRootNode rootNode = new TestRootNode(osrThreshold, factory, new CallsTargetRepeatingNode(
+                        (OptimizedDirectCallNode) runtime.createDirectCallNode(runtime.createCallTarget(new RootNode(null) {
+                            @Override
+                            public Object execute(VirtualFrame frame) {
+                                if (CompilerDirectives.inCompiledCode() && !CompilerDirectives.inCompilationRoot()) {
+                                    Assert.fail("Must not inline into OSR compilation on latency mode.");
+                                }
+                                return 42;
+                            }
+                        }))));
+        CallTarget target = runtime.createCallTarget(rootNode);
+        target.call(osrThreshold + 1);
+        assertCompiled(rootNode.getOSRTarget());
     }
 
     @SuppressWarnings("try")
@@ -758,4 +777,22 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     }
 
+    private static final class CallsTargetRepeatingNode extends TestRepeatingNode implements RepeatingNode {
+
+        final OptimizedDirectCallNode callNode;
+        int count;
+
+        private CallsTargetRepeatingNode(OptimizedDirectCallNode callNode) {
+            this.callNode = callNode;
+        }
+
+        @Override
+        public boolean executeRepeating(VirtualFrame frame) {
+            callNode.call(frame.getArguments());
+            if (CompilerDirectives.inCompiledCode() && count++ < 5) {
+                return false;
+            }
+            return true;
+        }
+    }
 }
