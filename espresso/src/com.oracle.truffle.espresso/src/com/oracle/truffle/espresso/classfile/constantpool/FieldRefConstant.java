@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
-import java.util.logging.Level;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -127,13 +126,7 @@ public interface FieldRefConstant extends MemberRefConstant {
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, meta.toGuestString(name));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field)) {
-                Meta meta = pool.getContext().getMeta();
-                meta.getContext().getLogger().log(Level.WARNING,
-                                "Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
-                                                " throws IllegalAccessError");
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
-            }
+            MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, field, pool.getContext().getMeta());
 
             field.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), field.getDeclaringKlass().getDefiningClassLoader());
 
