@@ -26,7 +26,6 @@ package org.graalvm.tools.insight.heap.instrument;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -38,10 +37,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -118,25 +113,6 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-    }
-
-    static <Interface> Interface maybeProxy(Class<Interface> type, Interface delegate) {
-        if (TruffleOptions.AOT) {
-            return delegate;
-        } else {
-            return proxy(type, delegate);
-        }
-    }
-
-    private static <Interface> Interface proxy(Class<Interface> type, Interface delegate) {
-        InvocationHandler handler = (Object proxy, Method method, Object[] args) -> {
-            try {
-                return method.invoke(delegate, args);
-            } catch (InvocationTargetException ex) {
-                throw ex.getCause();
-            }
-        };
-        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, handler));
     }
 
     @Override

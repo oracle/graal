@@ -26,6 +26,7 @@ package org.graalvm.tools.insight.test.heap;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -43,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,22 +52,23 @@ import org.junit.Test;
 public class HeapObjectStreamTest {
 
     private Value heap;
-    private ByteArrayOutputStream out;
+    private ByteArrayOutputStream heapOutput;
 
     @Before
     public void prepareHeap() throws Exception {
         Context.Builder b = Context.newBuilder();
         Context ctx = InsightObjectFactory.newContext(b);
 
+        // BEGIN: org.graalvm.tools.insight.test.heap.HeapObjectStreamTest
         Map<String, Instrument> instruments = ctx.getEngine().getInstruments();
         Instrument heapInstrument = instruments.get("heap");
-        assertNotNull("Instrument was found", heapInstrument);
 
         @SuppressWarnings("unchecked")
-        Consumer<OutputStream> osSetup = heapInstrument.lookup(Consumer.class);
-        assertNotNull("Consumer for OutputStream", osSetup);
+        Consumer<OutputStream> consumeOutput = heapInstrument.lookup(Consumer.class);
 
-        osSetup.accept(out = new ByteArrayOutputStream());
+        heapOutput = new ByteArrayOutputStream();
+        consumeOutput.accept(heapOutput);
+        // END: org.graalvm.tools.insight.test.heap.HeapObjectStreamTest
 
         heap = InsightObjectFactory.readObject(ctx, "heap");
         assertFalse("Heap object is defined", heap.isNull());
@@ -76,6 +79,7 @@ public class HeapObjectStreamTest {
         @SuppressWarnings("unchecked")
         Consumer<OutputStream> osSetup = heap.getContext().getEngine().getInstruments().get("heap").lookup(Consumer.class);
         assertNotNull("Consumer for OutputStream", osSetup);
+        assertTrue("Hidden behind proxy: " + osSetup, Proxy.isProxyClass(osSetup.getClass()));
 
         try {
             osSetup.accept(null);
@@ -111,11 +115,11 @@ public class HeapObjectStreamTest {
                         new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
         });
 
-        String header = new String(out.toByteArray(), 0, 18);
+        String header = new String(heapOutput.toByteArray(), 0, 18);
         assertEquals("JAVA PROFILE 1.0.1", header);
 
-        if (out.size() < 3000) {
-            fail("Heap dump should be generated to the stream: " + out.size());
+        if (heapOutput.size() < 3000) {
+            fail("Heap dump should be generated to the stream: " + heapOutput.size());
         }
 
     }
