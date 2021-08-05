@@ -448,6 +448,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         public abstract LLVMPointer executeWithTarget(long size, Frame frame);
 
+        @Specialization
         LLVMPointer allocate(long size, Frame frame,
                         @Cached(value = "createVarargsAreaStackAllocationNode()", allowUncached = true) VarargsAreaStackAllocationNode allocNode) {
             assert frame instanceof VirtualFrame;
