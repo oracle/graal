@@ -46,6 +46,11 @@ suite = {
       "sha1" : "e39957904b7e79caf4fa54f30e8e4ee74d4e9e37",
     },
 
+    "DACAPO_MR1_BACH" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-MR1-bach.jar"],
+      "sha1" : "9cf63ef9620032b47f1a4897fe910755596b371a",
+    },
+
     "DACAPO_SCALA" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar"],
       "sha1" : "59b64c974662b5cf9dbd3cf9045d293853dd7a51",
