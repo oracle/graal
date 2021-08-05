@@ -470,6 +470,26 @@ public final class Management extends NativeEnv {
         return -1L;
     }
 
+    @ManagementImpl
+    @TruffleBoundary
+    public int GetLongAttributes(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject obj,
+                    /* jmmLongAttribute* */ @Pointer TruffleObject atts,
+                    int count,
+                    /* long* */ @Pointer TruffleObject result) {
+        int numAtts = 0;
+        ByteBuffer attsBuffer = NativeUtils.directByteBuffer(atts, count, JavaKind.Int);
+        ByteBuffer resBuffer = NativeUtils.directByteBuffer(result, count, JavaKind.Long);
+        for (int i = 0; i < count; i++) {
+            int att = attsBuffer.getInt();
+            long res = GetLongAttribute(obj, att);
+            resBuffer.putLong(res);
+            if (res != -1L) {
+                numAtts++;
+            }
+        }
+        return numAtts;
+    }
+
     private boolean JMM_VERBOSE_GC_state = false;
     private boolean JMM_VERBOSE_CLASS_state = false;
     private boolean JMM_THREAD_CONTENTION_MONITORING_state = false;
