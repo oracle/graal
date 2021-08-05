@@ -42,8 +42,6 @@ package org.graalvm.wasm.globals;
 
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.api.ValueType;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
 
 public class ExportedWasmGlobal extends WasmGlobal {
     private final GlobalRegistry globals;
@@ -56,23 +54,22 @@ public class ExportedWasmGlobal extends WasmGlobal {
     }
 
     @Override
-    public Object getValue() {
-        switch (getValueType()) {
-            case i32:
-                return globals.loadAsInt(address);
-            case i64:
-                return globals.loadAsLong(address);
-            case f32:
-                return globals.loadAsFloat(address);
-            case f64:
-                return globals.loadAsDouble(address);
-        }
-        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Should not reach here");
+    public int loadAsInt() {
+        return globals.loadAsInt(address);
     }
 
     @Override
-    public void setValue(Object value) {
-        // TODO (GR-32924): Implement setter for imported globals
-        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Should not reach here");
+    public long loadAsLong() {
+        return globals.loadAsLong(address);
+    }
+
+    @Override
+    public void storeInt(int value) {
+        globals.storeInt(address, value);
+    }
+
+    @Override
+    public void storeLong(long value) {
+        globals.storeLong(address, value);
     }
 }

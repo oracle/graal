@@ -1612,28 +1612,18 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         // mutable.
         // This is taken care of by validation during wat to wasm compilation.
         switch (type) {
-            case WasmType.I32_TYPE: {
+            case WasmType.I32_TYPE:
+            case WasmType.F32_TYPE: {
                 int value = popInt(stack, stackPointer);
                 int address = instance().globalAddress(index);
                 context.globals().storeInt(address, value);
                 break;
             }
-            case WasmType.I64_TYPE: {
-                long value = pop(stack, stackPointer);
-                int address = instance().globalAddress(index);
-                context.globals().storeLong(address, value);
-                break;
-            }
-            case WasmType.F32_TYPE: {
-                int value = popInt(stack, stackPointer);
-                int address = instance().globalAddress(index);
-                context.globals().storeFloatWithInt(address, value);
-                break;
-            }
+            case WasmType.I64_TYPE:
             case WasmType.F64_TYPE: {
                 long value = pop(stack, stackPointer);
                 int address = instance().globalAddress(index);
-                context.globals().storeDoubleWithLong(address, value);
+                context.globals().storeLong(address, value);
                 break;
             }
             default: {
@@ -1647,27 +1637,17 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         byte type = instance().symbolTable().globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         switch (type) {
-            case WasmType.I32_TYPE: {
+            case WasmType.I32_TYPE:
+            case WasmType.F32_TYPE: {
                 int address = instance().globalAddress(index);
                 int value = context.globals().loadAsInt(address);
                 pushInt(stack, stackPointer, value);
                 break;
             }
-            case WasmType.I64_TYPE: {
-                int address = instance().globalAddress(index);
-                long value = context.globals().loadAsLong(address);
-                push(stack, stackPointer, value);
-                break;
-            }
-            case WasmType.F32_TYPE: {
-                int address = instance().globalAddress(index);
-                int value = context.globals().loadFloatAsInt(address);
-                pushInt(stack, stackPointer, value);
-                break;
-            }
+            case WasmType.I64_TYPE:
             case WasmType.F64_TYPE: {
                 int address = instance().globalAddress(index);
-                long value = context.globals().loadDoubleAsLong(address);
+                long value = context.globals().loadAsLong(address);
                 push(stack, stackPointer, value);
                 break;
             }

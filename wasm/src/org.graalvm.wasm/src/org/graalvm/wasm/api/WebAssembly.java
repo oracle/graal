@@ -508,28 +508,22 @@ public class WebAssembly extends Dictionary {
 
     public static WasmGlobal globalAlloc(ValueType valueType, boolean mutable, Object value) {
         InteropLibrary valueInterop = InteropLibrary.getUncached(value);
-        Object wasmValue;
         try {
             switch (valueType) {
                 case i32:
-                    wasmValue = valueInterop.asInt(value);
-                    break;
+                    return new DefaultWasmGlobal(valueType, mutable, valueInterop.asInt(value));
                 case i64:
-                    wasmValue = valueInterop.asLong(value);
-                    break;
+                    return new DefaultWasmGlobal(valueType, mutable, valueInterop.asLong(value));
                 case f32:
-                    wasmValue = valueInterop.asFloat(value);
-                    break;
+                    return new DefaultWasmGlobal(valueType, mutable, Float.floatToRawIntBits(valueInterop.asFloat(value)));
                 case f64:
-                    wasmValue = valueInterop.asDouble(value);
-                    break;
+                    return new DefaultWasmGlobal(valueType, mutable, Double.doubleToRawLongBits(valueInterop.asDouble(value)));
                 default:
                     throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid value type");
             }
         } catch (UnsupportedMessageException ex) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Cannot convert value to the specified value type");
         }
-        return new DefaultWasmGlobal(valueType, mutable, wasmValue);
     }
 
     private static Object globalRead(Object[] args) {
@@ -542,7 +536,17 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Object globalRead(WasmGlobal global) {
-        return global.getValue();
+        switch (global.getValueType()) {
+            case i32:
+                return global.loadAsInt();
+            case i64:
+                return global.loadAsLong();
+            case f32:
+                return Float.intBitsToFloat(global.loadAsInt());
+            case f64:
+                return Double.longBitsToDouble(global.loadAsLong());
+        }
+        throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Incorrect internal Global type");
     }
 
     private static Object globalWrite(Object[] args) {
@@ -564,24 +568,27 @@ public class WebAssembly extends Dictionary {
                 if (!(value instanceof Integer)) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 }
+                global.storeInt((int) value);
                 break;
             case i64:
                 if (!(value instanceof Long)) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 }
+                global.storeLong((long) value);
                 break;
             case f32:
                 if (!(value instanceof Float)) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 }
+                global.storeInt(Float.floatToRawIntBits((float) value));
                 break;
             case f64:
                 if (!(value instanceof Double)) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 }
+                global.storeLong(Double.doubleToRawLongBits((double) value));
                 break;
         }
-        global.setValue(value);
         return WasmVoidResult.getInstance();
     }
 }
