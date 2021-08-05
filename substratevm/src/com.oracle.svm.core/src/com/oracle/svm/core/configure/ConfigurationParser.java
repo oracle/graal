@@ -39,7 +39,12 @@ import java.util.Set;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public abstract class ConfigurationParser {
-    private final Map<String, Set<String>> seenUnknownAttributes = new HashMap<>();
+    private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
+    private final boolean strictConfiguration;
+
+    protected ConfigurationParser(boolean strictConfiguration) {
+        this.strictConfiguration = strictConfiguration;
+    }
 
     public void parseAndRegister(Path path) throws IOException {
         try (Reader reader = Files.newBufferedReader(path)) {
@@ -75,20 +80,20 @@ public abstract class ConfigurationParser {
         unknownAttributes.removeAll(requiredAttrs);
         unknownAttributes.removeAll(optionalAttrs);
 
-        if (seenUnknownAttributes.containsKey(type)) {
-            unknownAttributes.removeAll(seenUnknownAttributes.get(type));
+        if (seenUnknownAttributesByType.containsKey(type)) {
+            unknownAttributes.removeAll(seenUnknownAttributesByType.get(type));
         }
 
         if (unknownAttributes.size() > 0) {
-            String message = "WARNING: Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
-            if (ConfigurationFiles.Options.StrictConfig.getValue()) {
+            String message = "Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
+            if (strictConfiguration) {
                 throw new JSONParserException(message);
             } else {
                 // Checkstyle: stop
-                System.err.println(message);
+                System.err.println("WARNING: " + message);
                 // Checkstyle: resume
             }
-            Set<String> unknownAttributesForType = seenUnknownAttributes.computeIfAbsent(type, key -> new HashSet<>());
+            Set<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> new HashSet<>());
             unknownAttributesForType.addAll(unknownAttributes);
         }
     }

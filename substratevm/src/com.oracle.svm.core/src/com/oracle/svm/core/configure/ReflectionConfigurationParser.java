@@ -48,12 +48,16 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
 
     private final ReflectionConfigurationParserDelegate<T> delegate;
     private final boolean allowIncompleteClasspath;
+    private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
+                    "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
+                    "allDeclaredClasses", "allPublicClasses", "methods", "fields");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
-        this(delegate, false);
+        this(delegate, false, true);
     }
 
-    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate, boolean allowIncompleteClasspath) {
+    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate, boolean allowIncompleteClasspath, boolean strictConfiguration) {
+        super(strictConfiguration);
         this.delegate = delegate;
         this.allowIncompleteClasspath = allowIncompleteClasspath;
     }
@@ -72,10 +76,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     private void parseClass(Map<String, Object> data) {
-        List<String> optionalAttrs = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
-                        "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                        "allDeclaredClasses", "allPublicClasses", "methods", "fields");
-        checkAttributes(data, "reflection class descriptor object", Collections.singleton("name"), optionalAttrs);
+        checkAttributes(data, "reflection class descriptor object", Collections.singleton("name"), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
 
         Object classObject = data.get("name");
         String className = asString(classObject, "name");
@@ -153,7 +154,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     private void parseField(Map<String, Object> data, T clazz) {
-        checkAttributes(data, "reflection field descriptor object", Collections.singleton("name"), Collections.singleton("allowWrite"));
+        checkAttributes(data, "reflection field descriptor object", Collections.singleton("name"), Arrays.asList("allowWrite", "allowUnsafeAccess"));
         String fieldName = asString(data.get("name"), "name");
         boolean allowWrite = data.containsKey("allowWrite") && asBoolean(data.get("allowWrite"), "allowWrite");
 
@@ -176,8 +177,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         checkAttributes(data, "reflection method descriptor object", Collections.singleton("name"), Collections.singleton("parameterTypes"));
         String methodName = asString(data.get("name"), "name");
         List<T> methodParameterTypes = null;
-        if (data.containsKey("parameterTypes")) {
-            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(data.get("parameterTypes"),
+        Object parameterTypes = data.get("parameterTypes");
+        if (parameterTypes != null) {
+            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(parameterTypes,
                             "Attribute 'parameterTypes' must be a list of type names"));
             if (methodParameterTypes == null) {
                 return;

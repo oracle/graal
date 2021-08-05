@@ -43,7 +43,8 @@ import com.oracle.svm.core.util.json.JSONParserException;
 public final class ProxyConfigurationParser extends ConfigurationParser {
     private final Consumer<String[]> interfaceListConsumer;
 
-    public ProxyConfigurationParser(Consumer<String[]> interfaceListConsumer) {
+    public ProxyConfigurationParser(Consumer<String[]> interfaceListConsumer, boolean strictConfiguration) {
+        super(strictConfiguration);
         this.interfaceListConsumer = interfaceListConsumer;
     }
 
@@ -89,7 +90,7 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
 
     private void parseWithPredicatedConfig(Map<String, Object> proxyConfigObject) {
         checkAttributes(proxyConfigObject, "proxy descriptor object", Collections.singleton("interfaces"));
-        parseInterfaceList(asList(proxyConfigObject.get("interfaces"), "interfaces must be an array of fully qualified interface names"));
+        parseInterfaceList(asList(proxyConfigObject.get("interfaces"), "\"interfaces\" must be an array of fully qualified interface names"));
     }
 
 }

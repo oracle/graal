@@ -36,7 +36,8 @@ import com.oracle.svm.core.util.json.JSONParser;
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final ResourcesRegistry registry;
 
-    public <T> ResourceConfigurationParser(ResourcesRegistry registry) {
+    public <T> ResourceConfigurationParser(ResourcesRegistry registry, boolean strictConfiguration) {
+        super(strictConfiguration);
         this.registry = registry;
     }
 

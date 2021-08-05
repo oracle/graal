@@ -30,8 +30,9 @@ import java.io.Reader;
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.svm.core.util.json.JSONParser;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+
+import com.oracle.svm.core.util.json.JSONParser;
 
 public class SerializationConfigurationParser extends ConfigurationParser {
 
@@ -40,7 +41,8 @@ public class SerializationConfigurationParser extends ConfigurationParser {
 
     private final RuntimeSerializationSupport serializationSupport;
 
-    public SerializationConfigurationParser(RuntimeSerializationSupport serializationSupport) {
+    public SerializationConfigurationParser(RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
+        super(strictConfiguration);
         this.serializationSupport = serializationSupport;
     }
 
