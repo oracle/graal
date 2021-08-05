@@ -27,7 +27,7 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,8 +60,7 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
         writer.append('[').indent();
         String prefix = "";
         List<SerializationConfigurationType> list = new ArrayList<>(serializations);
-        list.sort(Comparator.comparing(SerializationConfigurationType::getQualifiedJavaName)
-                        .thenComparing(SerializationConfigurationType::getQualifiedCustomTargetConstructorJavaName));
+        Collections.sort(list);
         for (SerializationConfigurationType type : list) {
             writer.append(prefix).newline();
             type.printJson(writer);

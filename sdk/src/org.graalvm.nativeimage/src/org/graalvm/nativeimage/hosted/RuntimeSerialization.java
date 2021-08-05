@@ -63,6 +63,15 @@ public final class RuntimeSerialization {
         ImageSingletons.lookup(RuntimeSerializationSupport.class).register(classes);
     }
 
+    /**
+     * Makes the provided class available for serialization at runtime, using the customTargetConstructorClazz.
+     *
+     * @since 21.3
+     */
+    public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(clazz, customTargetConstructorClazz);
+    }
+
     private RuntimeSerialization() {
     }
 }

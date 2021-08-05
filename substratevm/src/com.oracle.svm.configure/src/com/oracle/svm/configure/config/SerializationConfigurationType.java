@@ -29,9 +29,10 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.Objects;
 
-public class SerializationConfigurationType implements JsonPrintable {
+public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
 
     private final String qualifiedJavaName;
     private final String qualifiedCustomTargetConstructorJavaName;
@@ -81,5 +82,15 @@ public class SerializationConfigurationType implements JsonPrintable {
     @Override
     public int hashCode() {
         return Objects.hash(qualifiedJavaName, qualifiedCustomTargetConstructorJavaName);
+    }
+
+    @Override
+    public int compareTo(SerializationConfigurationType other) {
+        int compareName = qualifiedJavaName.compareTo(other.qualifiedJavaName);
+        if (compareName != 0) {
+            return compareName;
+        }
+        Comparator<String> nullsFirstCompare = Comparator.nullsFirst(Comparator.naturalOrder());
+        return nullsFirstCompare.compare(qualifiedCustomTargetConstructorJavaName, other.qualifiedCustomTargetConstructorJavaName);
     }
 }

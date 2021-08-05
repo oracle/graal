@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeSerialization;
@@ -98,7 +97,6 @@ public class SerializationRegistrationTest {
     }
 }
 
-@AutomaticFeature
 class SerializationRegistrationTestFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
