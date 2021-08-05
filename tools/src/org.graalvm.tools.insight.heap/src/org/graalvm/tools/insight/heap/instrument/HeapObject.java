@@ -48,7 +48,9 @@ import org.graalvm.tools.insight.heap.HeapDump;
 final class HeapObject implements TruffleObject, SymbolProvider, Consumer<OutputStream> {
     private final TruffleInstrument.Env env;
     private final String path;
+    /* @GuardedBy(this) */
     private OutputStream sink;
+    /* @GuardedBy(this) */
     private HeapDump.Builder generator;
 
     HeapObject(TruffleInstrument.Env env, String path) {
@@ -57,24 +59,12 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
     }
 
     @Override
-    public Map<String, ? extends Object> symbolsWithValues() throws Exception {
-        if (path == null && sink == null) {
+    public synchronized Map<String, ? extends Object> symbolsWithValues() throws Exception {
+        if (path == null && getSink() == null) {
             return Collections.emptyMap();
         } else {
             return Collections.singletonMap("heap", this);
         }
-    }
-
-    synchronized HeapDump.Builder getGenerator() throws IOException {
-        if (generator == null) {
-            if (sink == null) {
-                TruffleFile file = env.getTruffleFile(path);
-                final OutputStream rawStream = file.newOutputStream();
-                sink = new BufferedOutputStream(rawStream);
-            }
-            generator = HeapDump.newHeapBuilder(sink);
-        }
-        return generator;
     }
 
     @TruffleBoundary
@@ -107,9 +97,14 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
         throw UnsupportedMessageException.create();
     }
 
-    void close() {
+    synchronized void close() {
         try {
-            generator.close();
+            final HeapDump.Builder g = getGeneratorOrNull();
+            if (g != null) {
+                g.close();
+            }
+            setGenerator(null);
+            setSink(null);
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -117,17 +112,48 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
 
     @Override
     @TruffleBoundary
-    public void accept(OutputStream t) {
+    public synchronized void accept(OutputStream t) {
         if (t == null) {
             throw new NullPointerException();
         }
         if (path != null) {
             throw new IllegalStateException("Cannot use path (" + path + ") and stream (" + t + ") at once");
         }
-        if (sink != null) {
-            throw new IllegalStateException("Cannot set stream twice: " + sink);
-        }
-        sink = t;
+        close();
+        setSink(t);
     }
 
+    synchronized HeapDump.Builder getGenerator() throws IOException {
+        HeapDump.Builder g = getGeneratorOrNull();
+        if (g == null) {
+            if (getSink() == null) {
+                TruffleFile file = env.getTruffleFile(path);
+                final OutputStream rawStream = file.newOutputStream();
+                setSink(new BufferedOutputStream(rawStream));
+            }
+            g = HeapDump.newHeapBuilder(getSink());
+            setGenerator(g);
+        }
+        return g;
+    }
+
+    private HeapDump.Builder getGeneratorOrNull() throws IOException {
+        assert Thread.holdsLock(this);
+        return generator;
+    }
+
+    private void setGenerator(HeapDump.Builder generator) {
+        assert Thread.holdsLock(this);
+        this.generator = generator;
+    }
+
+    private void setSink(OutputStream sink) {
+        assert Thread.holdsLock(this);
+        this.sink = sink;
+    }
+
+    private OutputStream getSink() {
+        assert Thread.holdsLock(this);
+        return sink;
+    }
 }
