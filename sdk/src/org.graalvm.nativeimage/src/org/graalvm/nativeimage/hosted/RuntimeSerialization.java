@@ -46,8 +46,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 /**
- * This class provides methods that can be called before and during analysis,
- * to register classes for serialization at image runtime.
+ * This class provides methods that can be called before and during analysis, to register classes
+ * for serialization at image runtime.
  *
  * @since 21.3
  */
