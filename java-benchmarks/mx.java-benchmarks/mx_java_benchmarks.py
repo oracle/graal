@@ -1621,25 +1621,21 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return "graal-compiler"
 
     def renaissanceLibraryName(self):
-        return "RENAISSANCE_{}".format(self.renaissanceVersionToRun())
+        return "RENAISSANCE_{}".format(self.version())
 
     def renaissanceIterations(self):
         benchmarks = _renaissanceConfig.copy()
-        if self.renaissanceVersionToRun() == "0.9.0":
+        if self.version() == "0.9.0":
             del benchmarks["scala-doku"]  # was introduced in 0.10.0
         return benchmarks
 
-    def renaissanceVersionToRun(self):
-        current_version = self.defaultRenaissanceVersion()
-        version_to_run = self.desiredVersion() if self.desiredVersion() else current_version
-        if version_to_run not in self.availableRenaissanceVersions():
-            mx.abort("Available Renaissance versions are : {}".format(self.availableRenaissanceVersions()))
-        return version_to_run
+    def version(self):
+        return super(RenaissanceBenchmarkSuite, self).version()
 
-    def defaultRenaissanceVersion(self):
+    def defaultSuiteVersion(self):
         return "0.11.0"
 
-    def availableRenaissanceVersions(self):
+    def availableSuiteVersions(self):
         return ["0.9.0", "0.10.0", "0.11.0"]
 
     def renaissancePath(self):
@@ -1696,7 +1692,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                     "benchmark": ("<benchmark>", str),
                     "benchmark-configuration": ("<config>", str),
                     "bench-suite": self.benchSuiteName(),
-                    "bench-suite-version": self.renaissanceVersionToRun(),
+                    "bench-suite-version": self.version(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "warmup",
