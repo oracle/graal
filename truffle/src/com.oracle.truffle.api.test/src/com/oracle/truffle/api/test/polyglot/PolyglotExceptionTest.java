@@ -95,11 +95,28 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
+    @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("serial")
-    private static class TestGuestError extends AbstractTruffleException {
+    static class TestGuestError extends AbstractTruffleException {
+
+        String exceptionMessage;
 
         TestGuestError() {
             super("MyError");
+        }
+
+        @ExportMessage
+        boolean hasExceptionMessage() {
+            return exceptionMessage != null;
+        }
+
+        @ExportMessage
+        Object getExceptionMessage() throws UnsupportedMessageException {
+            if (exceptionMessage != null) {
+                return exceptionMessage;
+            } else {
+                throw UnsupportedMessageException.create();
+            }
         }
     }
 
@@ -586,6 +603,33 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         future.get();
         executorService.shutdownNow();
         executorService.awaitTermination(100, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void testExceptionMessage() {
+        try (Context ctx = Context.create()) {
+            TestGuestError guestError = new TestGuestError();
+            guestError.exceptionMessage = "interop exception message";
+            CauseErrorTruffleObject causeError = new CauseErrorTruffleObject();
+            causeError.thrownError = guestError;
+            Value throwError = ctx.asValue(causeError);
+            try {
+                throwError.execute();
+                Assert.fail();
+            } catch (PolyglotException e) {
+                Assert.assertEquals("interop exception message", e.getMessage());
+                Assert.assertTrue(e.isGuestException());
+            }
+
+            guestError.exceptionMessage = null;
+            try {
+                throwError.execute();
+                Assert.fail();
+            } catch (PolyglotException e) {
+                Assert.assertEquals("MyError", e.getMessage());
+                Assert.assertTrue(e.isGuestException());
+            }
+        }
     }
 
     abstract static class BaseNode extends Node {
