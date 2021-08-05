@@ -562,24 +562,7 @@ public class AArch64Move {
     static void const2reg(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, JavaConstant input) {
         switch (input.getJavaKind().getStackKind()) {
             case Int:
-                final int value = input.asInt();
-                int maskedValue;
-                switch (input.getJavaKind()) {
-                    case Boolean:
-                    case Byte:
-                        maskedValue = value & 0xFF;
-                        break;
-                    case Char:
-                    case Short:
-                        maskedValue = value & 0xFFFF;
-                        break;
-                    case Int:
-                        maskedValue = value;
-                        break;
-                    default:
-                        throw GraalError.shouldNotReachHere();
-                }
-                masm.mov(result, maskedValue);
+                masm.mov(result, input.asInt());
                 break;
             case Long:
                 masm.mov(result, input.asLong());
@@ -587,46 +570,26 @@ public class AArch64Move {
             case Float:
                 if (AArch64MacroAssembler.isFloatImmediate(input.asFloat()) && result.getRegisterCategory().equals(SIMD)) {
                     masm.fmov(32, result, input.asFloat());
-                } else if (crb.compilationResult.isImmutablePIC()) {
+                } else if (result.getRegisterCategory().equals(CPU)) {
+                    masm.mov(result, Float.floatToRawIntBits(input.asFloat()));
+                } else {
                     try (ScratchRegister scr = masm.getScratchRegister()) {
                         Register scratch = scr.getRegister();
                         masm.mov(scratch, Float.floatToRawIntBits(input.asFloat()));
                         masm.fmov(32, result, scratch);
-                    }
-                } else {
-                    try (ScratchRegister scr = masm.getScratchRegister()) {
-                        Register scratch = scr.getRegister();
-                        crb.asFloatConstRef(input);
-                        masm.adrpAdd(scratch);
-                        if (result.getRegisterCategory().equals(CPU)) {
-                            masm.ldr(32, result, AArch64Address.createBaseRegisterOnlyAddress(32, scratch));
-                        } else {
-                            assert result.getRegisterCategory().equals(SIMD);
-                            masm.fldr(32, result, AArch64Address.createBaseRegisterOnlyAddress(32, scratch));
-                        }
                     }
                 }
                 break;
             case Double:
                 if (AArch64MacroAssembler.isDoubleImmediate(input.asDouble()) && result.getRegisterCategory().equals(SIMD)) {
                     masm.fmov(64, result, input.asDouble());
-                } else if (crb.compilationResult.isImmutablePIC()) {
+                } else if (result.getRegisterCategory().equals(CPU)) {
+                    masm.mov(result, Double.doubleToRawLongBits(input.asDouble()));
+                } else {
                     try (ScratchRegister scr = masm.getScratchRegister()) {
                         Register scratch = scr.getRegister();
                         masm.mov(scratch, Double.doubleToRawLongBits(input.asDouble()));
                         masm.fmov(64, result, scratch);
-                    }
-                } else {
-                    try (ScratchRegister scr = masm.getScratchRegister()) {
-                        Register scratch = scr.getRegister();
-                        crb.asDoubleConstRef(input);
-                        masm.adrpAdd(scratch);
-                        if (result.getRegisterCategory().equals(CPU)) {
-                            masm.ldr(64, result, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
-                        } else {
-                            assert result.getRegisterCategory().equals(SIMD);
-                            masm.fldr(64, result, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
-                        }
                     }
                 }
                 break;
@@ -770,7 +733,7 @@ public class AArch64Move {
                 }
             } else {
                 // if ptr is null it still has to be null after compression
-                masm.cmp(64, ptr, 0);
+                masm.compare(64, ptr, 0);
                 masm.csel(64, resultRegister, ptr, base, AArch64Assembler.ConditionFlag.NE);
                 masm.sub(64, resultRegister, resultRegister, base);
                 if (encoding.hasShift()) {
