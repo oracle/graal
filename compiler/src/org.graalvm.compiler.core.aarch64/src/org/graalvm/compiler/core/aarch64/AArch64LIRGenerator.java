@@ -462,14 +462,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      *
      * @param left Integer kind. Non null.
      * @param right Integer kind. Non null.
-     * @param trueValue Integer kind. Non null.
-     * @param falseValue Integer kind. Non null.
+     * @param trueValue Arbitrary value, same type as falseValue. Non null.
+     * @param falseValue Arbitrary value, same type as trueValue. Non null.
      * @return virtual register containing trueValue if (left & right) == 0, else falseValue.
      */
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
-        assert ((AArch64Kind) left.getPlatformKind()).isInteger() && ((AArch64Kind) right.getPlatformKind()).isInteger();
-        assert ((AArch64Kind) trueValue.getPlatformKind()).isInteger() && ((AArch64Kind) falseValue.getPlatformKind()).isInteger();
+        assert left.getPlatformKind() == right.getPlatformKind() && ((AArch64Kind) left.getPlatformKind()).isInteger();
+        assert trueValue.getPlatformKind() == falseValue.getPlatformKind();
         ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
         Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
 
