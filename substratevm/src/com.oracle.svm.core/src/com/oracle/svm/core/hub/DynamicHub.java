@@ -1342,7 +1342,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws ClassNotFoundException {
         Class<?> result = ClassForNameSupport.forNameOrNull(name, loader);
-        if (result == null && loader != null && PredefinedClassesSupport.supportsBytecodes()) {
+        if (result == null && loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
             result = loader.loadClass(name); // may throw
         }
         if (result == null) {
