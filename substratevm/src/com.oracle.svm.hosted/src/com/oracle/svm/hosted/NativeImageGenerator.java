@@ -926,12 +926,12 @@ public class NativeImageGenerator {
         SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
                         annotationSubstitutions, additionalSubstitutions);
 
-        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, buildExecutor, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
+        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, buildExecutor, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions, loader.platform);
 
         automaticSubstitutions.init(loader, originalMetaAccess);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
-        return new AnalysisUniverse(hostVM, target.wordJavaKind, loader.platform, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
+        return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
                         new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind())));
     }
 
