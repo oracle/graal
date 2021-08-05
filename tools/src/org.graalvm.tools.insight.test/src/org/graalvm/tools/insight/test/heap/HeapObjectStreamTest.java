@@ -42,7 +42,6 @@ import org.graalvm.tools.insight.test.heap.HeapApi.StackEvent;
 import static org.graalvm.tools.insight.test.heap.HeapApi.invokeDump;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -90,20 +89,6 @@ public class HeapObjectStreamTest {
     }
 
     @Test
-    public void cannotSetStreamMultipleTimes() {
-        @SuppressWarnings("unchecked")
-        Consumer<OutputStream> osSetup = heap.getContext().getEngine().getInstruments().get("heap").lookup(Consumer.class);
-        assertNotNull("Consumer for OutputStream", osSetup);
-
-        try {
-            osSetup.accept(new ByteArrayOutputStream());
-            fail("Stream cannot be set twice!");
-        } catch (IllegalStateException ex) {
-            assertNotEquals("Right message found", -1, ex.getMessage().indexOf("Cannot set stream twice"));
-        }
-    }
-
-    @Test
     public void dumpToStream() throws Exception {
         Source nullSource = new Source(null, null, null, null, null);
         invokeDump(heap, 1, new Event[]{
@@ -118,9 +103,24 @@ public class HeapObjectStreamTest {
         String header = new String(heapOutput.toByteArray(), 0, 18);
         assertEquals("JAVA PROFILE 1.0.1", header);
 
-        if (heapOutput.size() < 3000) {
+        final int heapSize = heapOutput.size();
+        if (heapSize < 3000) {
             fail("Heap dump should be generated to the stream: " + heapOutput.size());
         }
 
+        @SuppressWarnings("unchecked")
+        Consumer<OutputStream> osSetup = heap.getContext().getEngine().getInstruments().get("heap").lookup(Consumer.class);
+        assertNotNull("Consumer for OutputStream", osSetup);
+        final ByteArrayOutputStream anotherStream = new ByteArrayOutputStream();
+
+        osSetup.accept(anotherStream);
+        invokeDump(heap, 1, new Event[]{
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
+        });
+
+        assertEquals("Size of first stream remains unchaged", heapSize, heapOutput.size());
+
+        String anotherHeader = new String(anotherStream.toByteArray(), 0, 18);
+        assertEquals("JAVA PROFILE 1.0.1", anotherHeader);
     }
 }
