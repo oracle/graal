@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
@@ -51,6 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode, OptimizedAssumptionDependency {
     protected final SubstrateOptimizedCallTarget callTarget;
+    private String nameSuffix = "";
 
     protected SubstrateOptimizedCallTargetInstalledCode(SubstrateOptimizedCallTarget callTarget) {
         super(null);
@@ -97,8 +99,13 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     @Override
+    public void setCompilationId(CompilationIdentifier id) {
+        nameSuffix = " (" + id.toString(CompilationIdentifier.Verbosity.ID) + ')';
+    }
+
+    @Override
     public String getName() {
-        return callTarget.getName();
+        return callTarget.getName() + nameSuffix;
     }
 
     @Override
@@ -157,8 +164,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         long start = callTarget.installedCode.entryPoint;
         if (start != 0) {
             SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = WordFactory.pointer(start);
-            Object result = target.invoke(callTarget, args);
-            return result;
+            return target.invoke(callTarget, args);
         } else {
             return callTarget.invokeCallBoundary(args);
         }
