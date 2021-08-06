@@ -72,12 +72,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 final class ServiceWatcher {
 
     private static final String PREFIX = "META-INF/services/";
 
     private final Map<String, Set<String>> services = new HashMap<>(4);
+    private final WatchEvent.Kind<?>[] WATCH_KINDS = new WatchEvent.Kind[]{
+                    StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_DELETE,
+                    StandardWatchEventKinds.ENTRY_MODIFY,
+                    StandardWatchEventKinds.OVERFLOW};
 
     private WatcherThread serviceWatcherThread;
     private URLWatcher urlWatcher;
@@ -216,6 +222,8 @@ final class ServiceWatcher {
 
         private final WatchService watchService;
         private final Map<ResourceInfo, ServiceWatcher.State> watchActions = Collections.synchronizedMap(new HashMap<>());
+        private final Map<ResourceInfo, List<ResourceInfo>> deletedFolderMap = new HashMap<>();
+        private final Map<ResourceInfo, List<ResourceInfo>> createdFolderMap = new HashMap<>();
 
         private WatcherThread() throws IOException {
             super("hotswap-watcher-1");
@@ -224,8 +232,54 @@ final class ServiceWatcher {
         }
 
         public void addWatch(String resourceName, Path dir, Runnable callback) throws IOException {
-            dir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE);
-            watchActions.put(new ResourceInfo(dir, resourceName), new ServiceWatcher.State(calculateChecksum(dir, resourceName), callback));
+            // register watch on parent folder
+            ResourceInfo resourceInfo = new ResourceInfo(dir, resourceName);
+            dir.register(watchService, WATCH_KINDS);
+            watchActions.put(resourceInfo, new ServiceWatcher.State(calculateChecksum(dir, resourceName), callback));
+
+            // also register an ENTRY_DELETE listener on the parents parent folder to manage
+            // recreation on folders correctly
+            dir.getParent().register(watchService, WATCH_KINDS);
+            ResourceInfo parentInfo = new ResourceInfo(dir.getParent(), dir.getFileName().toString(), resourceInfo, resourceInfo);
+            addDeletedFolder(parentInfo);
+        }
+
+        private void addDeletedFolder(ResourceInfo info) {
+            List<ResourceInfo> list = deletedFolderMap.get(info);
+            if (list == null) {
+                list = new ArrayList<>();
+                deletedFolderMap.put(info, list);
+            }
+            // check if resource with same leaf is already registered
+            boolean present = false;
+            for (ResourceInfo resourceInfo : list) {
+                if (resourceInfo.leaf == info.leaf) {
+                    present = true;
+                    break;
+                }
+            }
+            if (!present) {
+                list.add(info);
+            }
+        }
+
+        private void addCreatedFolder(ResourceInfo info) {
+            List<ResourceInfo> list = createdFolderMap.get(info);
+            if (list == null) {
+                list = new ArrayList<>();
+                createdFolderMap.put(info, list);
+            }
+            // check if resource with same leaf is already registered
+            boolean present = false;
+            for (ResourceInfo resourceInfo : list) {
+                if (resourceInfo.leaf == info.leaf) {
+                    present = true;
+                    break;
+                }
+            }
+            if (!present) {
+                list.add(info);
+            }
         }
 
         @Override
@@ -235,6 +289,10 @@ final class ServiceWatcher {
                 while ((key = watchService.take()) != null) {
                     for (WatchEvent<?> event : key.pollEvents()) {
                         if (event.kind() == StandardWatchEventKinds.OVERFLOW) {
+                            // OK, let's do a directory scan for watch files
+                            for (ResourceInfo resourceInfo : watchActions.keySet()) {
+                                scanDir(resourceInfo);
+                            }
                             continue;
                         }
                         String fileName = event.context().toString();
@@ -248,27 +306,81 @@ final class ServiceWatcher {
                         }
                         // object used for comparison with cache
                         ResourceInfo resourceInfo = new ResourceInfo(watchPath, fileName);
+                        // resourceInfo.watchPath + "/" + resourceInfo.resourceName);
                         if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
                             if (watchActions.containsKey(resourceInfo)) {
-                                // IDEs will typically perform a delete -> create on build
-                                // so we need to re-register the path to the service when/if
-                                // the resource has been recreated again
-                                watchForRecreation(resourceInfo, watchActions.get(resourceInfo));
+                                // IDE sometimes perform a delete -> create cycle
+                                // we only fire actions when the resource was modified,
+                                // so no need for further actions here
+                                continue;
+                            } else if (deletedFolderMap.containsKey(resourceInfo)) {
+                                // get list tracked under this folder and remove
+                                // from cache, since we only track current state
+                                List<ResourceInfo> resourceInfos = deletedFolderMap.remove(resourceInfo);
+                                for (ResourceInfo info : resourceInfos) {
+                                    // The parent folder was deleted, so we must recursively
+                                    // register creation listeners in the parent folder
+                                    // hierarchy to handle recreation of folders.
+                                    // We must also register a new deletion listener on the
+                                    // parent to handle recursive deletion of a file tree.
+                                    Path path = info.watchPath;
+                                    boolean folderExist = false;
+                                    while (!folderExist && path != null) {
+                                        File file = path.toFile();
+                                        // keep track of file tree
+                                        ResourceInfo newInfo = new ResourceInfo(path.getParent(), path.toFile().getName(), info, info.leaf);
+                                        try {
+                                            path.register(watchService, WATCH_KINDS);
+                                            path.getParent().register(watchService, WATCH_KINDS);
+                                            addCreatedFolder(info);
+                                            addDeletedFolder(newInfo);
+                                            if (file.exists() && file.canRead()) {
+                                                // watch in place
+                                                folderExist = true;
+                                            }
+                                        } catch (IOException e) {
+                                            // parent folder also deleted, continue search
+                                        }
+                                        info = newInfo;
+                                        path = path.getParent();
+                                    }
+                                }
                             }
                             continue;
                         }
                         if (watchActions.containsKey(resourceInfo)) {
-                            ServiceWatcher.State state = watchActions.get(resourceInfo);
-                            byte[] existingChecksum = state.getChecksum();
-                            byte[] newChecksum = state.updateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
-                            if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
-                                try {
-                                    state.getAction().run();
-                                } catch (Throwable t) {
-                                    // Checkstyle: stop warning message from guest code
-                                    System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
-                                    // Checkstyle: resume warning message from guest code
-                                    t.printStackTrace();
+                            detectChange(resourceInfo);
+                            continue;
+                        }
+                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+                            // check for parent folder recreation
+                            if (createdFolderMap.containsKey(resourceInfo)) {
+                                // remove tracking of recreated folder
+                                List<ResourceInfo> resourceInfos = createdFolderMap.remove(resourceInfo);
+                                for (ResourceInfo info : resourceInfos) {
+                                    // remove tracking of parent folder
+                                    ResourceInfo parentResource = new ResourceInfo(info.watchPath.getParent(), info.watchPath.toFile().getName());
+                                    deletedFolderMap.remove(parentResource);
+
+                                    // recursively follow creation until leaf resource
+                                    ResourceInfo current = info;
+                                    while (current.child != null) {
+                                        try {
+                                            current.child.watchPath.register(watchService, WATCH_KINDS);
+                                            if (current.child.child != null) {
+                                                addCreatedFolder(current.child);
+                                            }
+                                            // watch for folder deletion
+                                            current.watchPath.register(watchService, WATCH_KINDS);
+                                            addDeletedFolder(current);
+                                            // we could miss creation events inside the
+                                            // folder, so kick off a directory scan
+                                            scanDir(current.child);
+                                        } catch (IOException e) {
+                                            // continue search
+                                        }
+                                        current = current.child;
+                                    }
                                 }
                             }
                         }
@@ -280,50 +392,33 @@ final class ServiceWatcher {
             }
         }
 
-        private void watchForRecreation(ResourceInfo resourceInfo, ServiceWatcher.State state) {
-            // wait for the file to be recreated in another thread since
-            // we don't want to block the handling of other events
-            Thread recreationCheckThread = new Thread(() -> {
-                // max waiting time is 10 min.
-                long stopWaiting = System.currentTimeMillis() + 10 * 60 * 1000;
-
+        private void detectChange(ResourceInfo resourceInfo) {
+            ServiceWatcher.State state = watchActions.get(resourceInfo);
+            byte[] existingChecksum = state.getChecksum();
+            byte[] newChecksum = state.updateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
+            if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
                 try {
-                    Path resourcePath = resourceInfo.watchPath.resolve(resourceInfo.resourceName);
-                    boolean recreated = false;
-                    while (!recreated && System.currentTimeMillis() < stopWaiting) {
-                        File file = resourcePath.toFile();
-                        if (file.exists() && file.canRead()) {
-                            recreated = true;
-                        } else {
-                            Thread.sleep(5);
-                        }
-                    }
-                    if (recreated) {
-                        // compare recreated resource with info to see if actual changes were made
-                        byte[] existingChecksum = state.getChecksum();
-                        byte[] newChecksum = calculateChecksum(resourceInfo.watchPath, resourceInfo.resourceName);
-                        if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
-                            state.updateChecksum(newChecksum);
-                            // fire the change listener
-                            try {
-                                state.getAction().run();
-                            } catch (Throwable t) {
-                                // Checkstyle: stop warning message from guest code
-                                System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
-                                // Checkstyle: resume warning message from guest code
-                                t.printStackTrace();
-                            }
-                        }
-                        // re-add watch on parent path
-                        resourceInfo.watchPath.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_DELETE);
-                    }
-                } catch (Exception e) {
-
+                    state.getAction().run();
+                } catch (Throwable t) {
+                    // Checkstyle: stop warning message from guest code
+                    System.err.println("[HotSwap API]: Unexpected exception while running resource change action for: " + resourceInfo.resourceName);
+                    // Checkstyle: resume warning message from guest code
+                    t.printStackTrace();
                 }
-            });
-            recreationCheckThread.setDaemon(true);
-            recreationCheckThread.start();
+            }
+        }
 
+        private void scanDir(ResourceInfo info) {
+            try (Stream<Path> list = Files.list(info.watchPath)) {
+                list.forEach((path) -> {
+                    ResourceInfo resourceInfo = new ResourceInfo(info.watchPath, path.toFile().getName());
+                    if (watchActions.containsKey(resourceInfo)) {
+                        detectChange(resourceInfo);
+                    }
+                });
+            } catch (IOException e) {
+                // ignore deleted or invalid files here
+            }
         }
     }
 
@@ -349,10 +444,18 @@ final class ServiceWatcher {
     private static final class ResourceInfo {
         private final Path watchPath;
         private final String resourceName;
+        private ResourceInfo child;
+        private ResourceInfo leaf;
 
         private ResourceInfo(Path watchPath, String resourceName) {
             this.watchPath = watchPath;
             this.resourceName = resourceName;
+        }
+
+        public ResourceInfo(Path watchPath, String resourceName, ResourceInfo child, ResourceInfo leaf) {
+            this(watchPath, resourceName);
+            this.child = child;
+            this.leaf = leaf;
         }
 
         @Override
@@ -384,10 +487,6 @@ final class ServiceWatcher {
 
         public byte[] updateChecksum(Path watchPath, String resourceName) {
             return checksum = calculateChecksum(watchPath, resourceName);
-        }
-
-        public void updateChecksum(byte[] newChecksum) {
-            checksum = newChecksum;
         }
 
         public byte[] getChecksum() {
