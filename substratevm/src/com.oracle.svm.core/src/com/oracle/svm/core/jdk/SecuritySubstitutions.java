@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 
 import java.net.URL;
 import java.security.AccessControlContext;
-import java.security.AccessControlException;
 import java.security.CodeSource;
-import java.security.DomainCombiner;
 import java.security.Permission;
 import java.security.PermissionCollection;
 import java.security.Permissions;
@@ -41,19 +39,23 @@ import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.Provider;
 import java.security.SecureRandom;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -63,6 +65,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -82,93 +87,106 @@ import sun.security.util.SecurityConstants;
 final class Target_java_security_AccessController {
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action) throws Throwable {
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    public static <T> T doPrivileged(PrivilegedAction<T> action) throws Throwable {
+        return executePrivileged(action, null, Target_jdk_internal_reflect_Reflection.getCallerClass());
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    public static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) throws Throwable {
+        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        AccessControlContext acc = checkContext(context, caller);
+        return executePrivileged(action, acc, caller);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    public static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Throwable {
+        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        return executePrivileged(action, null, caller);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Throwable {
+        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        AccessControlContext acc = checkContext(context, caller);
+        return executePrivileged(action, acc, caller);
+    }
+
+    @Substitute
+    static AccessControlContext getStackAccessControlContext() {
+        return StackAccessControlContextVisitor.getFromStack();
+    }
+
+    @Substitute
+    static AccessControlContext getInheritedAccessControlContext() {
+        return SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class).inheritedAccessControlContext;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    private static ProtectionDomain getProtectionDomain(final Class<?> caller) {
+        return caller.getProtectionDomain();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    static <T> T executePrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
+        if (action == null) {
+            throw new NullPointerException("Null action");
+        }
+
+        if (context != null && context.equals(AccessControllerUtil.NO_CONTEXT_SINGLETON)) {
+            VMError.shouldNotReachHere("Invoked AccessControlContext was replaced at build time but wasn't reinitialized at run time.");
+        }
+
+        AccessControllerUtil.PrivilegedStack.push(context, caller);
         try {
             return action.run();
-        } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+        } catch (Exception e) {
+            throw AccessControllerUtil.wrapCheckedException(e);
+        } finally {
+            AccessControllerUtil.PrivilegedStack.pop();
         }
     }
 
     @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedAction<T> action) throws Throwable {
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
+        if (action == null) {
+            throw new NullPointerException("Null action");
+        }
+
+        if (context != null && context.equals(AccessControllerUtil.NO_CONTEXT_SINGLETON)) {
+            VMError.shouldNotReachHere("Invoked AccessControlContext was replaced at build time but wasn't reinitialized at run time.");
+        }
+
+        AccessControllerUtil.PrivilegedStack.push(context, caller);
         try {
             return action.run();
-        } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+        } catch (Exception e) {
+            throw AccessControllerUtil.wrapCheckedException(e);
+        } finally {
+            AccessControllerUtil.PrivilegedStack.pop();
         }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) throws Throwable {
-        try {
-            return action.run();
-        } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    @SuppressWarnings("unused")
+    static AccessControlContext checkContext(AccessControlContext context, Class<?> caller) {
+        // check if caller is authorized to create context
+        if (System.getSecurityManager() != null) {
+            throw VMError.shouldNotReachHere("Needs to be implemented when SecurityManager is supported");
         }
-    }
-
-    @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context, Permission... perms) throws Throwable {
-        try {
-            return action.run();
-        } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
-        }
-    }
-
-    @Substitute
-    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Throwable {
-        try {
-            return action.run();
-        } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
-        }
-    }
-
-    @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action) throws Throwable {
-        try {
-            return action.run();
-        } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
-        }
-    }
-
-    @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action, AccessControlContext context, Permission... perms) throws Throwable {
-        try {
-            return action.run();
-        } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
-        }
-    }
-
-    @Substitute
-    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Throwable {
-        try {
-            return action.run();
-        } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
-        }
-    }
-
-    @Substitute
-    private static void checkPermission(Permission perm) throws AccessControlException {
-    }
-
-    @Substitute
-    private static AccessControlContext getContext() {
-        return AccessControllerUtil.NO_CONTEXT_SINGLETON;
-    }
-
-    @Substitute
-    private static AccessControlContext createWrapper(DomainCombiner combiner, Class<?> caller, AccessControlContext parent, AccessControlContext context, Permission[] perms) {
-        return AccessControllerUtil.NO_CONTEXT_SINGLETON;
+        return context;
     }
 }
 
 @InternalVMMethod
+@SuppressWarnings("unused")
 class AccessControllerUtil {
 
     static final AccessControlContext NO_CONTEXT_SINGLETON;
@@ -181,6 +199,111 @@ class AccessControllerUtil {
         }
     }
 
+    static class INNOCUOUS_ACC {
+        static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> new AccessControlContext(new ProtectionDomain[]{new ProtectionDomain(null, null)}));
+
+        static AccessControlContext get() {
+            return acc.get();
+        }
+
+        static void set(AccessControlContext ctx) {
+        }
+    }
+
+    static class NO_PERMISSIONS_CONTEXT {
+        static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(new Permission[0]));
+
+        static AccessControlContext get() {
+            return acc.get();
+        }
+
+        static void set(AccessControlContext ctx) {
+        }
+    }
+
+    static class GET_CLASS_LOADER_CONTEXT {
+        static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(new RuntimePermission("getClassLoader")));
+
+        static AccessControlContext get() {
+            return acc.get();
+        }
+
+        static void set(AccessControlContext ctx) {
+        }
+    }
+
+    static class GET_LOOKUP_CONTEXT {
+        static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(new RuntimePermission("dynalink.getLookup")));
+
+        static AccessControlContext get() {
+            return acc.get();
+        }
+
+        static void set(AccessControlContext ctx) {
+        }
+    }
+
+    public static class PrivilegedStack {
+
+        public static class StackElement {
+            protected AccessControlContext context;
+            protected Class<?> caller;
+
+            StackElement(AccessControlContext context, Class<?> caller) {
+                this.context = context;
+                this.caller = caller;
+            }
+
+            public AccessControlContext getContext() {
+                return context;
+            }
+
+            public Class<?> getCaller() {
+                return caller;
+            }
+        }
+
+        @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ArrayDeque> stack = FastThreadLocalFactory.createObject(ArrayDeque.class);
+
+        @SuppressWarnings("unchecked")
+        private static ArrayDeque<StackElement> getStack() {
+            ArrayDeque<StackElement> tmp = stack.get();
+            if (tmp == null) {
+                tmp = new ArrayDeque<>();
+                stack.set(tmp);
+            }
+            return tmp;
+        }
+
+        public static void push(AccessControlContext context, Class<?> caller) {
+            getStack().push(new StackElement(context, caller));
+        }
+
+        public static void pop() {
+            getStack().pop();
+        }
+
+        public static AccessControlContext peekContext() {
+            return Objects.requireNonNull(getStack().peek()).getContext();
+        }
+
+        public static Class<?> peekCaller() {
+            return Objects.requireNonNull(getStack().peek()).getCaller();
+        }
+
+        public static int length() {
+            return getStack().size();
+        }
+    }
+
+    public static AccessControlContext contextWithPermissions(Permission... perms) {
+        Permissions permissions = new Permissions();
+        for (Permission perm : perms) {
+            permissions.add(perm);
+        }
+        return new AccessControlContext(new ProtectionDomain[]{new ProtectionDomain(null, permissions)});
+    }
+
     static Throwable wrapCheckedException(Throwable ex) {
         if (ex instanceof Exception && !(ex instanceof RuntimeException)) {
             return new PrivilegedActionException((Exception) ex);
@@ -191,6 +314,7 @@ class AccessControllerUtil {
 }
 
 @AutomaticFeature
+@SuppressWarnings({"unused"})
 class AccessControlContextFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -206,9 +330,14 @@ class AccessControlContextFeature implements Feature {
 }
 
 @TargetClass(java.security.AccessControlContext.class)
+@SuppressWarnings({"unused"})
 final class Target_java_security_AccessControlContext {
-
     @Alias protected boolean isPrivileged;
+    @Alias protected boolean isAuthorized;
+
+    @Alias
+    Target_java_security_AccessControlContext(ProtectionDomain[] context, AccessControlContext privilegedContext) {
+    }
 }
 
 @TargetClass(SecurityManager.class)
@@ -391,6 +520,7 @@ final class Target_javax_crypto_JceSecurity_IdentityWrapper {
 class JceSecurityAccessor {
     private static volatile SecureRandom RANDOM;
 
+    @SuppressWarnings({"unused"})
     static SecureRandom get() {
         SecureRandom result = RANDOM;
         if (result == null) {
@@ -488,6 +618,7 @@ final class Target_java_security_Policy_PolicyInfo {
 }
 
 @TargetClass(java.security.Policy.class)
+@SuppressWarnings({"unused"})
 final class Target_java_security_Policy {
 
     @Delete @TargetElement(onlyWith = JDK8OrEarlier.class) //
@@ -585,6 +716,7 @@ final class Target_sun_security_provider_PolicySpiFile {
 
 @Delete("Substrate VM does not use SecurityManager, so loading a security policy file would be misleading")
 @TargetClass(className = "sun.security.provider.PolicyFile")
+@SuppressWarnings({"unused"})
 final class Target_sun_security_provider_PolicyFile {
 }
 
@@ -661,5 +793,6 @@ final class Target_sun_security_jca_Providers {
 }
 
 /** Dummy class to have a class with the file's name. */
+@SuppressWarnings({"unused"})
 public final class SecuritySubstitutions {
 }

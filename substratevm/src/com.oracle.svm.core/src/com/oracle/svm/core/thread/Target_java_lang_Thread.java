@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,7 +137,7 @@ public final class Target_java_lang_Thread {
      * inherit a (more or less random) access control context.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private AccessControlContext inheritedAccessControlContext;
+    public AccessControlContext inheritedAccessControlContext;
 
     @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
@@ -274,7 +274,7 @@ public final class Target_java_lang_Thread {
         this.unsafeParkEvent = new AtomicReference<>();
         this.sleepParkEvent = new AtomicReference<>();
         /* Initialize the rest of the Thread object. */
-        JavaThreads.initializeNewThread(this, groupArg, targetArg, nameArg, stackSizeArg);
+        JavaThreads.initializeNewThread(this, groupArg, targetArg, nameArg, stackSizeArg, null);
     }
 
     @Alias
@@ -296,8 +296,8 @@ public final class Target_java_lang_Thread {
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.unsafeParkEvent = new AtomicReference<>();
         this.sleepParkEvent = new AtomicReference<>();
-        /* Initialize the rest of the Thread object, ignoring `acc` and `inheritThreadLocals`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
+        /* Initialize the rest of the Thread object, ignoring `inheritThreadLocals`. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
     }
 
     @Substitute
@@ -318,8 +318,8 @@ public final class Target_java_lang_Thread {
 
         checkCharacteristics(characteristics);
 
-        /* Initialize the rest of the Thread object, ignoring `acc` and `characteristics`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
+        /* Initialize the rest of the Thread object, ignoring `characteristics`. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
     }
 
     /**
