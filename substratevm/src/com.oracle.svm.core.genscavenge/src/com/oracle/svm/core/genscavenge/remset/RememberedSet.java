@@ -44,9 +44,9 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * A remembered set keeps track where the image heap or old generation has references to the young
- * generation. When collecting the young generation, the remembered set is used to avoid having to
- * scan through the whole image heap and old generation.
+ * A remembered set keeps track of references between generations (from the old generation to the
+ * young generation, or from the image heap to the runtime heap). During collections, the remembered
+ * set is used to avoid scanning the entire image heap and old generation.
  */
 public interface RememberedSet {
     @Fold
@@ -107,22 +107,24 @@ public interface RememberedSet {
 
     /**
      * Marks an object as dirty. May only be called for objects for which remembered set tracking is
-     * enabled. This tells the GC that the object may contain a reference to the young generation.
+     * enabled. This tells the GC that the object may contain a reference to another generation
+     * (from old generation to young generation, or from image heap to runtime heap).
      */
     @AlwaysInline("GC performance")
     void dirtyCardForAlignedObject(Object object, boolean verifyOnly);
 
     /**
      * Marks an object as dirty. May only be called for objects for which remembered set tracking is
-     * enabled. This tells the GC that the object may contain a reference to the young generation.
+     * enabled. This tells the GC that the object may contain a reference to another generation
+     * (from old generation to young generation, or from image heap to runtime heap).
      */
     @AlwaysInline("GC performance")
     void dirtyCardForUnalignedObject(Object object, boolean verifyOnly);
 
     /**
-     * Marks the {@code holderObject} as dirty if {@code object} is in the young generation. May
-     * only be called for {@code holderObject}s for which remembered set tracking is enabled. This
-     * tells the GC that the {@code holderObject} may contain a reference to the young generation.
+     * Marks the {@code holderObject} as dirty if needed according to the location of
+     * {@code object}. May only be called for {@code holderObject}s for which remembered set
+     * tracking is enabled.
      */
     @AlwaysInline("GC performance")
     void dirtyCardIfNecessary(Object holderObject, Object object);
@@ -130,17 +132,17 @@ public interface RememberedSet {
     /**
      * Walks all dirty objects in an aligned chunk.
      */
-    void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor);
+    void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**
      * Walks all dirty objects in an unaligned chunk.
      */
-    void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor);
+    void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**
      * Walks all dirty objects in a {@link Space}.
      */
-    void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor);
+    void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**
      * Verify the remembered set for an aligned chunk.

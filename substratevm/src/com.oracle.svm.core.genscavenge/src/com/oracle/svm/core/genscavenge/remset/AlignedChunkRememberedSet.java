@@ -125,7 +125,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
-    public static void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor) {
+    public static void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         Pointer cardTableStart = getCardTableStart(chunk);
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
@@ -135,7 +135,9 @@ final class AlignedChunkRememberedSet {
 
         for (UnsignedWord index = WordFactory.zero(); index.belowThan(indexLimit); index = index.add(1)) {
             if (CardTable.isDirty(cardTableStart, index)) {
-                CardTable.setClean(cardTableStart, index);
+                if (clean) {
+                    CardTable.setClean(cardTableStart, index);
+                }
 
                 Pointer ptr = FirstObjectTable.getFirstObjectImprecise(fotStart, objectsStart, objectsLimit, index);
                 Pointer cardLimit = CardTable.indexToMemoryPointer(objectsStart, index.add(1));
