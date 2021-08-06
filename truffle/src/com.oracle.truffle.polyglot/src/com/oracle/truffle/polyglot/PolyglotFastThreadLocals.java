@@ -57,6 +57,7 @@ import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
+import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 
 // 0: PolyglotThreadInfo
 // 1: PolyglotContextImpl
@@ -169,6 +170,7 @@ final class PolyglotFastThreadLocals {
 
     @SuppressWarnings("unchecked")
     public static TruffleLanguage<Object> getLanguage(Node node, int index, Class<?> languageClass) {
+        assert validSharing(node);
         if (CompilerDirectives.inCompiledCode()) {
             PolyglotLanguageInstance instance = resolveLanguageInstance(node, index);
             if (instance != null) {
@@ -179,6 +181,7 @@ final class PolyglotFastThreadLocals {
     }
 
     public static Object getLanguageContext(Node node, int index) {
+        assert validSharing(node);
         Class<?> contextClass = null;
         if (CompilerDirectives.inCompiledCode()) {
             PolyglotLanguageInstance instance = resolveLanguageInstance(node, index);
@@ -191,6 +194,22 @@ final class PolyglotFastThreadLocals {
             contextClass = findContextClass(node, index);
         }
         return IMPL.fastGet(index, contextClass, true);
+    }
+
+    private static boolean validSharing(Node node) {
+        PolyglotEngineImpl engine = resolveEngine(node);
+        if (engine == null) {
+            return true;
+        }
+        PolyglotContextImpl context = getContext(null);
+        if (context == null) {
+            // no current context, let us be optimistic that this is fine
+            return true;
+        }
+        if (context.engine != engine) {
+            throw EngineImpl.invalidSharingError(context.engine);
+        }
+        return true;
     }
 
     private static CachedReferences lookupReferences(Class<? extends TruffleLanguage<?>> language) {
