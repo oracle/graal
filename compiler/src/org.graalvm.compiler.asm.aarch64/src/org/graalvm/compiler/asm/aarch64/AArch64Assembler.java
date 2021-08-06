@@ -463,7 +463,7 @@ public abstract class AArch64Assembler extends Assembler {
     private static final int LoadStoreQuadWordTransferSizeOffset = 23;
     private static final int LoadStoreFpFlagOffset = 26;
     private static final int LoadLiteralImmOffset = 5;
-    private static final int LoadFlag = 0b1 << 22;
+    protected static final int LoadFlag = 0b1 << 22;
 
     private static final int LoadStorePairSignedOffsetOp = 0b101_0_010 << 23;
     private static final int LoadStorePairPostIndexOp = 0b101_0_001 << 23;
