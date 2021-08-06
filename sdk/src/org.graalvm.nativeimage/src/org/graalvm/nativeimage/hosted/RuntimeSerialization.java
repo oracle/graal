@@ -64,7 +64,13 @@ public final class RuntimeSerialization {
     }
 
     /**
-     * Makes the provided class available for serialization at runtime, using the customTargetConstructorClazz.
+     * Makes the provided class available for serialization at runtime but uses the provided
+     * customTargetConstructorClazz for deserialization.
+     * <p>
+     * In some cases an application might explicitly make calls to
+     * {@code ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall)}
+     * where the passed `constructorToCall` differs from what would automatically be used if regular
+     * deserialization of `cl` would happen. This method exists to also support such usecases.
      *
      * @since 21.3
      */
