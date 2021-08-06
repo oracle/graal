@@ -32,6 +32,21 @@
 /**
  * Support for generating {@code .hprof} files in <a target="_blank" href=
  * "http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/manual.html">
- * Java Profiler Heap Dump Format</a>.
+ * Java Profiler Heap Dump Format</a> and a
+ * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument} to capture <em>heap dumps</em>
+ * from Truffle languages.
+ * 
+ * <h3>Embedding into Java Applications</h3>
+ * 
+ * When embedding GraalVM dynamic languages in Java applications via
+ * {@link org.graalvm.polyglot.Context} one can enabled not only GraalVM
+ * {@link org.graalvm.tools.insight.Insight} scripts. One can also enable {@code heap} object in the
+ * Insight scripts and capture the generated heaps in supplied {@link java.io.OutputStream} use:
+ * 
+ * {@codesnippet org.graalvm.tools.insight.test.heap.HeapObjectStreamTest}
+ * 
+ * Whenever {@code heap.dump(...)} is called to <a target="_blank" href=
+ * "https://github.com/oracle/graal/blob/master/tools/docs/Insight-Manual.md#heap-dumping">perform
+ * cooperative heap dumping</a>, the output is sent to the registered {@link java.io.OutputStream}
  */
 package org.graalvm.tools.insight.heap;

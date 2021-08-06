@@ -24,13 +24,25 @@
  */
 package org.graalvm.tools.insight.test.heap;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.tools.insight.test.InsightObjectFactory;
+import org.graalvm.tools.insight.test.heap.HeapApi.At;
+import org.graalvm.tools.insight.test.heap.HeapApi.Event;
+import org.graalvm.tools.insight.test.heap.HeapApi.Source;
+import org.graalvm.tools.insight.test.heap.HeapApi.StackElement;
+import org.graalvm.tools.insight.test.heap.HeapApi.StackEvent;
+import org.graalvm.tools.insight.test.heap.HeapApi.UnrelatedEvent;
+import static org.graalvm.tools.insight.test.heap.HeapApi.invokeDump;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,18 +60,14 @@ public class HeapObjectTest {
         assertFalse("Heap object is defined", heap.isNull());
     }
 
-    private Object invokeDump(Integer depth, Object[] args) {
-        return heap.invokeMember("dump", new Config("1.0", depth, args));
-    }
-
     @Test
     public void noEvents() throws Exception {
-        invokeDump(null, new Event[0]);
+        invokeDump(heap, null, new Event[0]);
     }
 
     @Test
     public void noEventsAndDepth() throws Exception {
-        invokeDump(10, new Event[0]);
+        invokeDump(heap, 10, new Event[0]);
     }
 
     @Test
@@ -75,7 +83,7 @@ public class HeapObjectTest {
     @Test
     public void stackMustBeThere() throws Exception {
         try {
-            invokeDump(Integer.MAX_VALUE, new Event[]{
+            invokeDump(heap, Integer.MAX_VALUE, new Event[]{
                             new UnrelatedEvent()
             });
             fail("Should fail");
@@ -87,7 +95,7 @@ public class HeapObjectTest {
     @Test
     public void stackNeedsToBeAnArray() throws Exception {
         try {
-            invokeDump(1, new Event[]{
+            invokeDump(heap, 1, new Event[]{
                             new StackEvent("any")
             });
             fail("Should fail");
@@ -98,11 +106,11 @@ public class HeapObjectTest {
 
     @Test
     public void atMustBePresent() throws Exception {
-        invokeDump(1, new Event[]{
+        invokeDump(heap, 1, new Event[]{
                         new StackEvent(new Object[0])
         });
         try {
-            invokeDump(1, new Event[]{
+            invokeDump(heap, 1, new Event[]{
                             new StackEvent(new Object[]{new UnrelatedEvent()})
             });
             fail("Should fail");
@@ -112,9 +120,25 @@ public class HeapObjectTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void cannotAssignStreamWhenPathProvided() throws Exception {
+        Instrument heapInstrument = heap.getContext().getEngine().getInstruments().get("heap");
+        Consumer<OutputStream> consumer = heapInstrument.lookup(Consumer.class);
+        assertNotNull("Consumer of OutputStream found", consumer);
+        try {
+            consumer.accept(new ByteArrayOutputStream());
+            fail("There should be an exception when setting output stream");
+        } catch (IllegalStateException ex) {
+            assertNotEquals("Right message found", -1, ex.getMessage().indexOf("Cannot use path"));
+            assertNotEquals("Right message found", -1, ex.getMessage().indexOf("and stream"));
+            assertNotEquals("Right message found", -1, ex.getMessage().indexOf("at once"));
+        }
+    }
+
+    @Test
     public void nonNullAt() throws Exception {
         try {
-            invokeDump(1, new Event[]{
+            invokeDump(heap, 1, new Event[]{
                             new StackEvent(new StackElement[]{new StackElement(null, null)})
             });
             fail("Expeting failure");
@@ -126,12 +150,12 @@ public class HeapObjectTest {
     @Test
     public void everythingIsOK() throws Exception {
         Source nullSource = new Source(null, null, null, null, null);
-        invokeDump(1, new Event[]{
+        invokeDump(heap, 1, new Event[]{
                         new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
         });
 
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
-        invokeDump(1, new Event[]{
+        invokeDump(heap, 1, new Event[]{
                         new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
         });
     }
@@ -145,84 +169,4 @@ public class HeapObjectTest {
         }
     }
 
-    public abstract static class Event {
-    }
-
-    public static final class UnrelatedEvent extends Event {
-        @HostAccess.Export public final int a = 3;
-        @HostAccess.Export public final int b = 4;
-        @HostAccess.Export public final int c = 5;
-    }
-
-    public static final class StackEvent extends Event {
-        @HostAccess.Export public final Object stack;
-
-        StackEvent(Object stack) {
-            this.stack = stack;
-        }
-    }
-
-    public static final class StackElement extends Event {
-        @HostAccess.Export public final Object at;
-        @HostAccess.Export public final Object frame;
-
-        StackElement(Object at, Object frame) {
-            this.at = at;
-            this.frame = frame;
-        }
-    }
-
-    public static final class Source {
-        @HostAccess.Export public final String name;
-        @HostAccess.Export public final String mimeType;
-        @HostAccess.Export public final String language;
-        @HostAccess.Export public final String uri;
-        @HostAccess.Export public final String characters;
-
-        Source(String name, String mimeType, String language, String uri, String characters) {
-            this.name = name;
-            this.mimeType = mimeType;
-            this.language = language;
-            this.uri = uri;
-            this.characters = characters;
-        }
-    }
-
-    public static final class At {
-        @HostAccess.Export public final String name;
-        @HostAccess.Export public final Source source;
-        @HostAccess.Export public final Integer line;
-        @HostAccess.Export public final Integer charIndex;
-        @HostAccess.Export public final Integer charLength;
-
-        At(String name, Source source, Integer line, Integer charIndex, Integer charLength) {
-            this.name = name;
-            this.source = source;
-            this.line = line;
-            this.charIndex = charIndex;
-            this.charLength = charLength;
-        }
-    }
-
-    public static final class Config {
-        @HostAccess.Export public final String format;
-        @HostAccess.Export public final Integer depth;
-        @HostAccess.Export public final Object[] events;
-
-        Config(String format, Integer depth, Object... events) {
-            this.format = format;
-            this.depth = depth;
-            this.events = events;
-        }
-    }
-
-    public static final class NoDepthConfig {
-        @HostAccess.Export public final String format;
-        @HostAccess.Export public final Object[] events;
-
-        NoDepthConfig(String format, Object[] events) {
-            this.format = format;
-            this.events = events;
-        }
-    }
 }
