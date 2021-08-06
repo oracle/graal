@@ -149,7 +149,7 @@ public final class CodeInfoAccess {
             case CodeInfo.STATE_CODE_CONSTANTS_LIVE:
                 return "code constants live";
             case CodeInfo.STATE_NON_ENTRANT:
-                return "non entrant";
+                return "non-entrant";
             case CodeInfo.STATE_READY_FOR_INVALIDATION:
                 return "ready for invalidation";
             case CodeInfo.STATE_PARTIALLY_FREED:

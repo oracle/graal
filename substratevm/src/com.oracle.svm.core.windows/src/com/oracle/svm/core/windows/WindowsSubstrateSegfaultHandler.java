@@ -59,6 +59,10 @@ class WindowsSubstrateSegfaultHandlerFeature implements Feature {
 }
 
 class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
+    private static final int EX_READ = 0;
+    private static final int EX_WRITE = 1;
+    private static final int EX_EXECUTE = 8;
+
     @Override
     protected void install() {
         /*
@@ -116,15 +120,15 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         int numParameters = exceptionRecord.NumberParameters();
         if ((exceptionCode == EXCEPTION_ACCESS_VIOLATION() || exceptionCode == EXCEPTION_IN_PAGE_ERROR()) && numParameters >= 2) {
             CLongPointer exInfo = exceptionRecord.ExceptionInformation();
-            long exParam0 = exInfo.addressOf(0).read();
-            if (exParam0 == 0) {
+            long operation = exInfo.addressOf(0).read();
+            if (operation == EX_READ) {
                 log.string(", reading address");
-            } else if (exParam0 == 1) {
+            } else if (operation == EX_WRITE) {
                 log.string(", writing address");
-            } else if (exParam0 == 8) {
+            } else if (operation == EX_EXECUTE) {
                 log.string(", data execution prevention violation at address");
             } else {
-                log.string(", ExceptionInformation=").zhex(exParam0);
+                log.string(", ExceptionInformation=").zhex(operation);
             }
             log.string(" ").zhex(exInfo.addressOf(1).read());
         } else {

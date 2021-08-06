@@ -32,8 +32,16 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 
 public abstract class VMLockSupport {
+    /**
+     * Returns an array that contains all {@link VMMutex} objects that are present in the image or
+     * null if that information is not available.
+     */
     public abstract VMMutex[] getMutexes();
 
+    /**
+     * Returns an array that contains all {@link VMCondition} objects that are present in the image
+     * or null if that information is not available.
+     */
     public abstract VMCondition[] getConditions();
 
     public static class DumpVMMutexes extends DiagnosticThunk {
