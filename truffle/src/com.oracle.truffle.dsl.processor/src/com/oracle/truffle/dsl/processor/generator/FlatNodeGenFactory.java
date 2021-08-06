@@ -332,7 +332,11 @@ public class FlatNodeGenFactory {
             if (o instanceof SpecializationData) {
                 currentSpecialization = (SpecializationData) o;
             }
-            relevantSpecializations.add(currentSpecialization);
+
+            // type guards do not belong to any specialization
+            if (!(o instanceof TypeGuard) && !(o instanceof GuardExpression)) {
+                relevantSpecializations.add(currentSpecialization);
+            }
             currentElements.add(o);
             usedBits += currentBits;
         }
@@ -979,7 +983,7 @@ public class FlatNodeGenFactory {
         reset.getModifiers().remove(ABSTRACT);
         builder = reset.createBuilder();
 
-        for (StateBitSet set : multiState.getSets()) {
+        for (StateBitSet set : multiState.all) {
             if (set.contains(AOT_PREPARED)) {
                 builder.tree(set.createLoad(frameState));
                 builder.startIf();
@@ -1003,8 +1007,8 @@ public class FlatNodeGenFactory {
             }
 
             if (resetCaches.size() > 0) {
-                builder.tree(multiState.createLoad(frameState, specialization));
-                builder.startIf().tree(multiState.createContains(frameState, new Object[]{specialization})).end();
+                builder.tree(multiState.createLoadAll(frameState, specialization));
+                builder.startIf().tree(multiState.createContainsAll(frameState, new Object[]{specialization})).end();
                 builder.startBlock();
                 for (CacheExpression cache : resetCaches) {
                     builder.startStatement();
@@ -1478,6 +1482,20 @@ public class FlatNodeGenFactory {
         return specializations;
     }
 
+    private List<Object> getFallbackState() {
+        List<Object> fallbackState = new ArrayList<>();
+        List<SpecializationData> specializations = getFallbackSpecializations();
+        for (SpecializationData specialization : specializations) {
+            fallbackState.add(specialization);
+            for (GuardExpression guard : specialization.getGuards()) {
+                if (guardNeedsStateBit(specialization, guard)) {
+                    fallbackState.add(specialization.getGuards());
+                }
+            }
+        }
+        return fallbackState;
+    }
+
     private Element createFallbackGuard() {
         boolean frameUsed = false;
 
@@ -1500,7 +1518,8 @@ public class FlatNodeGenFactory {
         fallbackNeedsState = false;
         fallbackNeedsFrame = frameUsed;
 
-        multiState.createLoad(frameState, specializations.toArray()); // already loaded
+        Object[] fallbackSpecializations = getFallbackState().toArray();
+        multiState.createLoad(frameState, fallbackSpecializations); // already loaded
         multiState.addParametersTo(frameState, method);
         frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
 
@@ -3209,9 +3228,13 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = parent.create();
         int ifCount = 0;
         if (specialization.isFallback()) {
+            Object[] fallbackState = getFallbackState().toArray();
+            if (fallbackNeedsState) {
+                builder.tree(multiState.createLoad(frameState, fallbackState));
+            }
             builder.startIf().startCall(createFallbackName());
             if (fallbackNeedsState) {
-                multiState.addReferencesTo(frameState, builder, getFallbackSpecializations().toArray());
+                multiState.addReferencesTo(frameState, builder, fallbackState);
             }
             if (fallbackNeedsFrame) {
                 if (frameState.get(FRAME_VALUE) != null) {
@@ -5397,6 +5420,10 @@ public class FlatNodeGenFactory {
             return length;
         }
 
+        public CodeTree createContainsAll(FrameState frameState, Object[] elements) {
+            return createContainsImpl(all, frameState, elements);
+        }
+
         void declareFields(CodeTypeElement clazz) {
             for (StateBitSet bitSet : all) {
                 bitSet.declareFields(clazz);
@@ -5454,8 +5481,12 @@ public class FlatNodeGenFactory {
         }
 
         CodeTree createLoad(FrameState frameState, Object... relevantObjects) {
+            return createLoadImpl(getSets(), frameState, relevantObjects);
+        }
+
+        private static CodeTree createLoadImpl(List<? extends BitSet> sets, FrameState frameState, Object... relevantObjects) {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-            for (BitSet bitSet : getSets()) {
+            for (BitSet bitSet : sets) {
                 for (Object object : relevantObjects) {
                     if (bitSet.contains(object)) {
                         builder.tree(bitSet.createLoad(frameState));
@@ -5464,6 +5495,10 @@ public class FlatNodeGenFactory {
                 }
             }
             return builder.build();
+        }
+
+        CodeTree createLoadAll(FrameState frameState, Object... relevantObjects) {
+            return createLoadImpl(all, frameState, relevantObjects);
         }
 
         CodeTree createLoad(FrameState frameState, List<SpecializationData> specializations) {
