@@ -44,6 +44,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.truffle.api.staticobject.StaticProperty;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -107,6 +109,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -623,6 +626,62 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             }
         }
     }
+}
+
+@TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
+    public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+
+        private static final int svmArrayBaseOffset;
+        private static final int svmArrayIndexScale;
+
+        // We have to use reflection to access private members instead of aliasing them
+        // in the substitution class since substitutions are present only in runtime
+        private static final Method staticPropertyKindGetInternalKind;
+        private static final byte objectStaticPropertyKindByte;
+
+        static {
+            try {
+                // Checkstyle: stop
+                Class<?> staticPropertyKindClass = Class.forName("com.oracle.truffle.api.staticobject.StaticPropertyKind");
+                staticPropertyKindGetInternalKind = ReflectionUtil.lookupMethod(StaticProperty.class, "getInternalKind");
+                Object objectStaticPropertyKind = ReflectionUtil.readField(staticPropertyKindClass, "Object", null);
+                Method staticPropertyKindToByte = ReflectionUtil.lookupMethod(staticPropertyKindClass, "toByte");
+                objectStaticPropertyKindByte = (byte) staticPropertyKindToByte.invoke(objectStaticPropertyKind);
+                // Checkstyle: resume
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+
+            // Find SVM array base offset and array index scale
+            svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Object);
+            svmArrayIndexScale = ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.Object);
+        }
+
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated,
+                        Object receiver, Object originalValue) {
+            int offset = (int) originalValue;
+            StaticProperty receiverStaticProperty = (StaticProperty) receiver;
+            try {
+                byte internalKindByte = (byte) staticPropertyKindGetInternalKind.invoke(receiverStaticProperty);
+
+                // Re-computation is performed only if the kind is Object:
+                // First, reverse the offset computation to find the index, and then
+                // redo the offset computation with the SVM base offset and scale
+                if (internalKindByte == objectStaticPropertyKindByte) {
+                    int index = (offset - Unsafe.ARRAY_OBJECT_BASE_OFFSET) / Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+                    return svmArrayBaseOffset + svmArrayIndexScale * index;
+                }
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+            return originalValue;
+        }
+    }
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
+    int offset;
 }
 
 @TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator", onlyWith = TruffleBaseFeature.IsEnabled.class)
