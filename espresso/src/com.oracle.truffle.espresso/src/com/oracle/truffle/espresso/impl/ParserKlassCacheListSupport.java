@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -45,40 +46,37 @@ public final class ParserKlassCacheListSupport {
         this.types = types;
     }
 
-    public void processFile(Path path) {
+    public List<Symbol<Symbol.Type>> getUserSpecifiedTypeList(Path path) {
+        if (typeList != null) {
+            return typeList;
+        }
+
         if (path.toString().isEmpty()) {
-            return;
+            return new ArrayList<>();
         }
         try {
-            List<Symbol<Symbol.Type>> typeList = Files.readAllLines(path)
+            typeList = Files.readAllLines(path)
                     .stream()
                     .filter(s -> !s.isEmpty() && !s.startsWith("//"))
                     .map(types::getOrCreate)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
-            setTypeList(typeList);
+            return typeList;
         } catch (IOException e) {
             throw EspressoError.unexpected("ParserKlassCacheListProvider failed reading the class list from the specified file", e);
         }
     }
 
-    public List<Symbol<Symbol.Type>> getTypeList(JavaVersion version) {
-        if (typeList == null) {
-            if (version.java8OrEarlier()) {
-                setDefaultJava8ClassList();
-            } else {
-                setDefaultJava11ClassList();
-            }
+    public List<Symbol<Symbol.Type>> getDefaultTypeList(JavaVersion version) {
+        if (version.java8OrEarlier()) {
+            return getDefaultJava8ClassList();
+        } else {
+            return getDefaultJava11ClassList();
         }
-        return typeList;
     }
 
-    private void setTypeList(List<Symbol<Symbol.Type>> typeList) {
-        this.typeList = Collections.unmodifiableList(typeList);
-    }
-
-    private void setDefaultJava8ClassList() {
-        typeList = Collections.unmodifiableList(Arrays.asList(
+    private List<Symbol<Symbol.Type>> getDefaultJava8ClassList() {
+        return Collections.unmodifiableList(Arrays.asList(
                 types.getOrCreate("Lcom/oracle/truffle/espresso/polyglot/ArityException;"),
                 types.getOrCreate("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;"),
                 types.getOrCreate("Lcom/oracle/truffle/espresso/polyglot/ForeignException;"),
@@ -508,8 +506,8 @@ public final class ParserKlassCacheListSupport {
         ));
     }
 
-    private void setDefaultJava11ClassList() {
-        typeList = Collections.unmodifiableList(Arrays.asList(
+    private List<Symbol<Symbol.Type>> getDefaultJava11ClassList() {
+        return Collections.unmodifiableList(Arrays.asList(
                 types.getOrCreate("Lcom/oracle/truffle/espresso/polyglot/ArityException;"),
                 types.getOrCreate("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;"),
                 types.getOrCreate("Lcom/oracle/truffle/espresso/polyglot/ForeignException;"),

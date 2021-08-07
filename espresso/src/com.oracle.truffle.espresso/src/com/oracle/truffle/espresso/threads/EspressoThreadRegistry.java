@@ -35,10 +35,13 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.VM;
 
 public final class EspressoThreadRegistry implements ContextAccess {
@@ -332,6 +335,18 @@ public final class EspressoThreadRegistry implements ContextAccess {
             long guestId = getThreadAccess().getThreadId(mainThread);
             return String.format("createMainThread: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
         });
+    }
+
+    public void stopThreads() {
+        synchronized (activeThreadLock) {
+            activeThreads.forEach(t -> {
+                try {
+                    Target_java_lang_Thread.terminate(t, getMeta());
+                } catch (Exception e) {
+                    logger.warning("EspressoThreadManager failed to stop a running thread");
+                }
+            });
+        }
     }
 
     public boolean isMainThreadCreated() {

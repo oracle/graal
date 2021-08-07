@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -84,11 +85,8 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-<<<<<<< HEAD
 import com.oracle.truffle.espresso.jdwp.api.Ids;
-=======
 import com.oracle.truffle.espresso.impl.ParserKlassCacheListSupport;
->>>>>>> Experimental Java 11 support
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -141,9 +139,15 @@ public final class EspressoContext {
 
     // region Runtime
     @CompilationFinal private ClassRegistries registries;
+<<<<<<< HEAD
     private final StringTable strings;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
+=======
+    @CompilationFinal private StringTable strings;
+    @CompilationFinal private Substitutions substitutions;
+    @CompilationFinal private MethodHandleIntrinsics methodHandleIntrinsics;
+>>>>>>> Implement VM boot during pre-initialization
     @CompilationFinal private ClassHierarchyOracle classHierarchyOracle;
     // endregion Runtime
 
@@ -311,8 +315,11 @@ public final class EspressoContext {
         this.env = env;
 
         this.registries = new ClassRegistries(this);
+        this.strings = new StringTable(this);
+        this.substitutions = new Substitutions(this);
+        this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
 
-        this.threadManager = new EspressoThreadManager(this);
+        this.threadRegistry = new EspressoThreadRegistry(this);
         this.referenceDrainer = new EspressoReferenceDrainer(this);
 
         boolean softExit = env.getOptions().get(EspressoOptions.SoftExit);
@@ -461,13 +468,15 @@ public final class EspressoContext {
         startupClockNanos = System.nanoTime();
         FinalizationSupport.ensureInitialized();
 
+        // Boot classpath needs to be preserved after pre-initialization in order to compare it with the runtime environment
+        // After patching of the pre-initialized context in runtime, we have to drop the old boot classpath
         this.bootClasspath = null;
+
+        spawnVM();
         if (isPreinitialization) {
-            preInitialize();
-            // spawnVM();
-            afterPreinitialization();
+            populateParserKlassCache();
+            prepareForSerialization();
         } else {
-            spawnVM();
             this.initialized = true;
             // enable JDWP instrumenter only if options are set (assumed valid if non-null)
             if (JDWPOptions != null) {
@@ -502,52 +511,53 @@ public final class EspressoContext {
     }
 
     @SuppressWarnings("try")
-    public void preInitialize() {
+    private void populateParserKlassCache() {
         long initStartTimeNanos = System.nanoTime();
-        initVmProperties();
 
-        if (getJavaVersion().modulesEnabled()) {
-            registries.initJavaBaseModule();
-            registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
-        }
-
-        // Spawn JNI first, then the VM.
-        try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
-            this.nativeAccess = spawnNativeAccess();
-            this.vm = VM.create(getJNI()); // Mokapot is loaded
-            vm.attachThread(Thread.currentThread());
-            this.javaVersion = vm.getJavaVersion();
-        }
-
-        try (DebugCloseable metaInit = META_INIT.scope(timers)) {
-            this.meta = new Meta(this);
-        }
-
-        try (DebugCloseable cacheInit = KNOWN_CLASS_INIT.scope(timers)) {
+        try (DebugCloseable parserKlassCacheInit = KNOWN_CLASS_INIT.scope(timers)) {
             if (getEnv().getOptions().get(EspressoOptions.UseParserKlassCache)) {
-                Path classListPath = getEnv().getOptions().get(EspressoOptions.ParserKlassCacheList);
                 ParserKlassCacheListSupport parserKlassCacheSupport = new ParserKlassCacheListSupport(getTypes());
-                parserKlassCacheSupport.processFile(classListPath);
-                for (Symbol<Type> type : parserKlassCacheSupport.getTypeList(getJavaVersion())) {
-                    getLogger().log(Level.FINE, "ParserKlassCacheList: Attempting to read class: {0}", type.toString());
-                    ClasspathFile cpFile = getBootClasspath().readClassFile(type);
-                    if (cpFile != null) {
-                        ClassRegistry.ClassDefinitionInfo info = ClassRegistry.ClassDefinitionInfo.EMPTY;
-                        getCache().getOrCreateParserKlass(registries.getBootClassRegistry().getClassLoader(), type.toString(), cpFile.contents, this, info);
-                    } else {
-                        getLogger().log(Level.WARNING, "Pre-initialization failed to read class: {0}", type.toString());
-                    }
+                for (Symbol<Type> type : parserKlassCacheSupport.getDefaultTypeList(getJavaVersion())) {
+                    addEntryToParserKlassCache(type, true);
+                }
+                getCache().seal();
+                Path classListPath = getEnv().getOptions().get(EspressoOptions.ParserKlassCacheList);
+                for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
+                    addEntryToParserKlassCache(type, false);
                 }
             }
         }
 
         initDoneTimeNanos = System.nanoTime();
         long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
-        getLogger().log(Level.FINE, "Context pre-initialized in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+        getLogger().log(Level.FINE, "Populated parser cache in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
     }
 
-    private void afterPreinitialization() {
+    private void addEntryToParserKlassCache(Symbol<Type> type, boolean isDefault) {
+        if (isDefault) {
+            getLogger().log(Level.FINE, "Populating parser cache with type: {0}", type.toString());
+        } else {
+            getLogger().log(Level.FINE, "Populating parser cache with user-specified type: {0}", type.toString());
+        }
+        ClasspathFile cpFile = getBootClasspath().readClassFile(type);
+        if (cpFile != null) {
+            ClassRegistry.ClassDefinitionInfo info = ClassRegistry.ClassDefinitionInfo.EMPTY;
+            getCache().getOrCreateParserKlass(registries.getBootClassRegistry().getClassLoader(), type.toString(), cpFile.contents, this, info);
+        } else {
+            getLogger().log(Level.WARNING, "User-specified parse list processor failed to read class: {0}", type.toString());
+        }
+    }
+
+    private void prepareForSerialization() {
+        getLogger().log(Level.FINE, "Preparing context for serialization");
+
         getCache().seal();
+        try {
+            this.referenceDrainer.joinReferenceDrain();
+        } catch (InterruptedException e) {
+            getLogger().log(Level.FINE, "An error occurred while joining reference drainer");
+        }
+        this.threadManager.stopThreads();
         this.bootClasspath.closeEntries();
 
         getJNI().dispose();
@@ -557,20 +567,36 @@ public final class EspressoContext {
         this.jimageLibrary = null;
         this.vm = null;
 
-//        this.threadManager = null;
-//        this.outOfMemory = null;
-//        this.stackOverflow = null;
-//        this.shutdownManager = null;
+        this.threadManager = null;
+        this.referenceDrainer = null;
+        this.outOfMemory = null;
+        this.stackOverflow = null;
+        this.shutdownManager = null;
+        this.meta = null;
 
-        // FIXME (ivan-ristovic) Alternative to make sure that GC collects WeakRefs
-        for (int i = 0; i < 10; i++) {
+        this.registries = null;
+        this.strings = null;
+        this.substitutions = null;
+        this.methodHandleIntrinsics = null;
+        this.topBindings = null;
+        this.agents = null;
+
+        this.modulesInitialized = false;
+        this.metaInitialized = false;
+
+        // FIXME (ivan-ristovic) Make sure GC collects WeakRefs
+        for (int i = 0; i < 15; i++) {
             System.gc();
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw EspressoError.shouldNotReachHere(e);
             }
         }
+
+        // FIXME (ivan-ristovic) Ensure that Truffle WeakReferences are cleared
+
+        getLogger().log(Level.FINE, "Finished post-initialization cleanup");
     }
 
     @SuppressWarnings("try")
@@ -689,8 +715,6 @@ public final class EspressoContext {
             this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance, meta);
             meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
-
-            getCache().seal();
 
             // Create application (system) class loader.
             StaticObject systemClassLoader = null;
@@ -972,7 +996,9 @@ public final class EspressoContext {
     }
 
     public void unregisterThread(StaticObject self) {
-        threadRegistry.unregisterThread(self);
+        if (threadManager != null) {
+            threadRegistry.unregisterThread(self);
+        }
         if (shouldReportVMEvents) {
             eventListener.threadDied(self);
         }
@@ -1025,15 +1051,19 @@ public final class EspressoContext {
     }
 
     public void doExit(int code) {
-        shutdownManager.doExit(code);
+        if (shutdownManager != null) {
+            shutdownManager.doExit(code);
+        }
     }
 
     public void destroyVM(boolean killThreads) {
-        shutdownManager.destroyVM(killThreads);
+        if (shutdownManager != null) {
+            shutdownManager.destroyVM(killThreads);
+        }
     }
 
     public boolean isClosing() {
-        return shutdownManager.isClosing();
+        return shutdownManager == null || shutdownManager.isClosing();
     }
 
     public int getExitStatus() {

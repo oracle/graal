@@ -190,8 +190,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private @Pointer TruffleObject mokapotEnvPtr;
 
     // libjava must be loaded after mokapot.
-    @CompilerDirectives.CompilationFinal //
-    private @Pointer TruffleObject javaLibrary;
+    private final @Pointer TruffleObject javaLibrary;
 
     private static String stringify(List<Path> paths) {
         StringJoiner joiner = new StringJoiner(File.pathSeparator);

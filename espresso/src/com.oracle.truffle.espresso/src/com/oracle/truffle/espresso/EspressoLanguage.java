@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
@@ -63,9 +62,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
-import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @Registration(id = EspressoLanguage.ID, //
                 name = EspressoLanguage.NAME, //
@@ -208,8 +204,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             return false;
         }
 
-        return true;
-
+        // TODO (ivan-ristovic) Boot classpath equivallence check
         // Check if boot classpath is the same
 //        Classpath oldBootClassPath = context.getBootClasspath();
 //        Classpath newBootClassPath = new Classpath(newProperties.bootClasspath()
@@ -218,6 +213,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 //                .collect(Collectors.joining(File.pathSeparator))
 //        );
 //        return oldBootClassPath.toString().equals(newBootClassPath.toString());
+
+        return true;
     }
 
     @Override
