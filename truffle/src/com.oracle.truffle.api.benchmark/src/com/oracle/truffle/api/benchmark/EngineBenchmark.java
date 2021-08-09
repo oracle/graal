@@ -77,7 +77,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@Warmup(iterations = 400, time = 1)
+@Warmup(iterations = 30, time = 1)
 @SuppressWarnings("deprecation")
 public class EngineBenchmark extends TruffleBenchmark {
 
