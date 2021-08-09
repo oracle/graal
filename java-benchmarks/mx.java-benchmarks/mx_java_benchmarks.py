@@ -547,6 +547,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def subgroup(self):
         return "graal-compiler"
 
+    def name(self):
+        raise NotImplementedError()
+
     def daCapoClasspathEnvVarName(self):
         raise NotImplementedError()
 
@@ -565,6 +568,15 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def daCapoIterations(self):
         raise NotImplementedError()
 
+    def daCapoSizes(self):
+        raise NotImplementedError()
+
+    def existingSizes(self):
+        return list(dict.fromkeys([s for bench, sizes in self.daCapoSizes().items() for s in sizes]))
+
+    def workloadSize(self):
+        raise NotImplementedError()
+
     def validateEnvironment(self):
         if not self.daCapoPath():
             raise RuntimeError(
@@ -577,10 +589,23 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-n", default=None)
+        parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
+
+        if args.size:
+            if args.size not in self.existingSizes():
+                mx.abort("Unknown workload size '{}'. "
+                         "Existing benchmark sizes are: {}".format(args.size, ','.join(self.existingSizes())))
+
+            if args.size != self.workloadSize():
+                mx.abort("Mismatch between suite-defined workload size ('{}') "
+                         "and user-provided one ('{}')!".format(self.workloadSize(), args.size))
+
+        otherArgs = ["-s", self.workloadSize()] + remaining
+
         if args.n:
             if args.n.isdigit():
-                return ["-n", args.n] + remaining
+                return ["-n", args.n] + otherArgs
             if args.n == "-1":
                 return None
         else:
@@ -589,7 +614,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 return None
             else:
                 iterations = iterations + self.getExtraIterationCount(iterations)
-                return ["-n", str(iterations)] + remaining
+                return ["-n", str(iterations)] + otherArgs
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -648,9 +673,12 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        bench_list = [key for key, value in self.daCapoIterations().items() if value != -1]
-        if java_home_jdk().javaCompliance >= '9' and "batik" in bench_list:
-            # batik crashes on JDK9+. This is fixed in the upcoming dacapo chopin release
+        # filter out unsupported sizes and disabled benchmarks
+        bench_list = [b for b, it in self.daCapoIterations().items() if self.workloadSize() in self.daCapoSizes().get(b, []) and it != -1]
+
+        if java_home_jdk().javaCompliance >= '9' and "batik" in bench_list \
+                and self.version() in ["9.12-bach", "9.12-MR1-bach"]:
+            # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
             bench_list.remove("batik")
         return bench_list
 
@@ -744,43 +772,97 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
 
 _daCapoIterations = {
-    "avrora"     : 20,
-    "batik"      : 40,
-    "eclipse"    : -1,
-    "fop"        : 40,
-    "h2"         : 25,
-    "jython"     : 40,
-    "luindex"    : 15,
-    "lusearch"   : 40,
-    "pmd"        : 30,
-    "sunflow"    : 35,
-    "tomcat"     : -1, # Stopped working as of 8u92
-    "tradebeans" : -1,
-    "tradesoap"  : -1,
-    "xalan"      : 30,
+    "avrora"      : 20,
+    "batik"       : 40,
+    "eclipse"     : -1,
+    "fop"         : 40,
+    "h2"          : 25,
+    "jython"      : 40,
+    "luindex"     : 15,
+    "lusearch"    : 40,
+    "lusearch-fix": -1,
+    "pmd"         : 30,
+    "sunflow"     : 35,
+    "tomcat"      : -1,
+    "tradebeans"  : 40,  # TODO tune
+    "tradesoap"   : 30,  # TODO tune and check potential error in iteration 1
+    "xalan"       : 30,
+}
+
+
+_daCapoSizes = {
+    "avrora":     ["default", "small", "large"],
+    "batik":      ["default", "small", "large"],
+    "eclipse":    ["default", "small", "large"],
+    "fop":        ["default", "small"],
+    "h2":         ["default", "small", "large", "huge"],
+    "jython":     ["default", "small", "large"],
+    "luindex":    ["default", "small"],
+    "lusearch":   ["default", "small", "large"],
+    "sunflow":    ["default", "small", "large"],
+    "tradebeans": ["default", "small", "large", "huge"],
+    "tradesoap":  ["default", "small", "large", "huge"],
+    "xalan":      ["default", "small", "large"]
 }
 
 
 class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
-    """DaCapo 9.12 (Bach) benchmark suite implementation."""
+    """DaCapo benchmark suite implementation."""
 
     def name(self):
-        return "dacapo"
+        if self.workloadSize() == "default":
+            return "dacapo"
+        else:
+            return "dacapo-{}".format(self.workloadSize())
 
     def version(self):
-        return '9.12-bach'
+        return super(DaCapoBenchmarkSuite, self).version()
+
+    def defaultSuiteVersion(self):
+        return "9.12-MR1-bach"
+
+    def availableSuiteVersions(self):
+        return ["9.12-bach", "9.12-MR1-bach"]
+
+    def workloadSize(self):
+        return "default"
 
     def daCapoSuiteTitle(self):
-        return "DaCapo 9.12"
+        title = None
+        if self.version() == "9.12-bach":
+            title = "DaCapo 9.12"
+        elif self.version() == "9.12-MR1-bach":
+            title = "DaCapo 9.12-MR1"
+        return title
 
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_CP"
 
     def daCapoLibraryName(self):
-        return "DACAPO"
+        if self.version() == "9.12-bach":  # 2009 release
+            return "DACAPO"
+        elif self.version() == "9.12-MR1-bach":  # 2018 maintenance release
+            return "DACAPO_MR1_BACH"
+        else:
+            return None
 
     def daCapoIterations(self):
-        return _daCapoIterations
+        iterations = _daCapoIterations.copy()
+        if self.version() == "9.12-bach":
+            del iterations["eclipse"]
+            del iterations["tradebeans"]
+            del iterations["tradesoap"]
+            del iterations["lusearch-fix"]
+            # Stopped working as of 8u92 on the initial release
+            del iterations["tomcat"]
+
+        if self.workloadSize() == "small":
+            # Ensure sufficient warmup by doubling the number of default iterations for the small configuration
+            iterations = {k: (2 * int(v)) if v != -1 else v for k, v in iterations.items()}
+        return iterations
+
+    def daCapoSizes(self):
+        return _daCapoSizes
 
     def flakySuccessPatterns(self):
         return [
@@ -793,7 +875,31 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
         ]
 
 
+class DacapoSmallBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'small' configuration."""
+
+    def workloadSize(self):
+        return "small"
+
+
+class DacapoLargeBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'large' configuration."""
+
+    def workloadSize(self):
+        return "large"
+
+
+class DacapoHugeBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'huge' configuration."""
+
+    def workloadSize(self):
+        return "huge"
+
+
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoSmallBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoLargeBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoHugeBenchmarkSuite())
 
 
 class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
@@ -991,6 +1097,9 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def daCapoLibraryName(self):
         return "DACAPO_SCALA"
+
+    def workloadSize(self):
+        return "default"
 
     def daCapoIterations(self):
         result = _daCapoScalaConfig.copy()
