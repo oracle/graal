@@ -30,38 +30,67 @@ import jdk.vm.ci.meta.JavaType;
 
 /**
  * Provides a capability for asserting whether nodes, types or classes are or are not raw words (as
- * opposed to Objects). All methods will either return {@code true} in case the assertion holds or
- * throw an exception if it does not. Users are not supposed to catch the exception and make
- * decisions based on it.
+ * opposed to Objects).
+ * <p>
+ * All methods will either return {@code true} in case the assertion holds or throw an exception if
+ * it does not. Users are not supposed to catch the exception and make decisions based on it. This
+ * is a debugging tool. Only use it for assertions and verification.
+ * </p>
+ *
+ * <h1>Motivation</h1>
+ *
+ * We do not want to leak {@link org.graalvm.compiler.word.WordTypes} to arbitrary places, because
+ * those should be handled at the very beginning of the pipeline (i.e., during graph building). On
+ * the other hand, we would like to detect cases where this failed to issue proper error messages
+ * instead of doing the wrong thing and maybe or maybe not failing arbitrarily. Thus, we only give
+ * access to assertions instead of the full features.
  */
 public interface WordAssertions {
     /**
      * Asserts that a given node has a word type.
+     *
+     * @return {@code true}
+     * @throws Error if the assertion doe not hold
      */
     boolean assertIsWord(ValueNode node);
 
     /**
      * Asserts that a given type is a word type.
+     *
+     * @return {@code true}
+     * @throws Error if the assertion doe not hold
      */
     boolean assertIsWord(JavaType type);
 
     /**
      * Asserts that a given class is a word class.
+     *
+     * @return {@code true}
+     * @throws Error if the assertion doe not hold
      */
     boolean assertIsWord(Class<?> clazz);
 
     /**
      * Asserts that a given node has not a word type.
+     *
+     * @return {@code true}
+     * @throws Error if the assertion doe not hold
      */
     boolean assertIsNoWord(ValueNode node);
 
     /**
      * Asserts that a given type is not a word type.
+     *
+     * @return {@code true}
+     * @throws Error if the assertion doe not hold
      */
     boolean assertIsNoWord(JavaType type);
 
     /**
      * Asserts that a given class is not a word class.
+     *
+     * @return {@code true}
+     * @throws Error if the assertion doe not hold
      */
     boolean assertIsNoWord(Class<?> clazz);
 }
