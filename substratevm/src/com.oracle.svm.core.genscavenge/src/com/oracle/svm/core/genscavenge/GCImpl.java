@@ -815,7 +815,7 @@ public final class GCImpl implements GC {
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxInfo != null) {
-                    blackenDirtyImageHeapChunkRoots(info.getFirstAlignedImageHeapChunk(), info.getFirstUnalignedImageHeapChunk());
+                    blackenDirtyImageHeapChunkRoots(auxInfo.getFirstAlignedImageHeapChunk(), auxInfo.getFirstUnalignedImageHeapChunk());
                 }
             }
         } finally {
