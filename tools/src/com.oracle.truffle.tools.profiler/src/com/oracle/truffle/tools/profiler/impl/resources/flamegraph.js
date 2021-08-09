@@ -92,7 +92,7 @@ function zoom_child(sample) {
 
     r.width.baseVal.value = width;
 
-    update_text_parts(e, r, t, width - 3, sample.n);
+    update_text_parts(e, r, t, width - 3, name_for_sample(sample));
 }
 
 function zoom_parent(sample) {
@@ -110,7 +110,7 @@ function zoom_parent(sample) {
 
         r.width.baseVal.value = width;
 
-        update_text_parts(e, r, t, width - 3, sample.n.replace(/\\([^(]*\\)$/,""));
+        update_text_parts(e, r, t, width - 3, name_for_sample(sample).replace(/\\([^(]*\\)$/,""));
     }
 }
 
@@ -195,7 +195,7 @@ function fg_search(term) {
     let c = iter.next();
     while (!c.done) {
         let sample = c.value;
-        if (sample.n.match(re)) {
+        if (name_for_sample(sample).match(re)) {
             sample.searchMatch = true;
             search_matches.push(sample);
             let e = fg_element_for_sample(sample);
@@ -309,9 +309,9 @@ function fg_update_color(color_type) {
 
 function fg_color_for_sample(color_type, sample) {
     if (color_type == "fg") {
-        return color_for_name(0, sample.n);
+        return color_for_name(0, name_for_sample(sample));
     } else if (color_type == "bl") {
-        return color_for_name(sample.l, sample.n);
+        return color_for_name(sample.l, name_for_sample(sample));
     } else if (color_type = "bc") {
         return color_for_compilation(sample.i, sample.c);
     }

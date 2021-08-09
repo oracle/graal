@@ -23,7 +23,7 @@ function h_update_search() {
     }
     for (let i = 0; i < histogramData.length; i++) {
         let bar = histogramData[i];
-        if (bar.n.match(re)) {
+        if (name_for_sample(bar).match(re)) {
             bar.searchMatch = true;
             let e = h_element_for_id(i);
             if (e != null) {
@@ -63,7 +63,7 @@ function h_highlight(e) {
         let bar = histogram_entry_for_id(e.getAttribute("id").substring(2));
         reset_search();
         hilight_element = e;
-        search(bar.n);
+        search(name_for_sample(bar));
     }
 }
 
@@ -129,7 +129,7 @@ function h_update_bar(id, bar) {
         let t = e.lastElementChild;
         r.width.baseVal.value = width;
         r.style.fill = fg_color_for_sample(color_type, bar);
-        t.textContent = bar.n;
+        t.textContent = name_for_sample(bar);
         let t_width = t.textLength.baseVal.value;
         if (t_width < width - 6) {
             // If the text fits in the bar, put it there.
@@ -146,10 +146,10 @@ function h_update_bar(id, bar) {
                 t.x.baseVal[0].value = xpad + 3 + width;
                 w = space_after;
             }
-            let x = search_text_width(w, t, bar.n, get_txt_lengths(bar.n));
+            let x = search_text_width(w, t, name_for_sample(bar), get_txt_lengths(name_for_sample(bar)));
 
             if (x > 2) {
-                t.textContent = bar.n.substring(0,x - 2) + "..";
+                t.textContent = name_for_sample(bar).substring(0,x - 2) + "..";
             } else {
                 t.textContent = "";
             }

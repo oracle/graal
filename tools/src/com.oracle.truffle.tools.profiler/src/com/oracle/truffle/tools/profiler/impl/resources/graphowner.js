@@ -170,14 +170,11 @@ function sample_and_children_depth_first(sample) {
 }
 
 function title(e) {
-    let c = child(e, "title");
-    if (c == null) {
-        let id = e.getAttribute("id").substring(2);
-        c = sample_for_id(id);
-        return c.n;
-    } else {
-        return c.firstChild.nodeValue
-    }
+    return name_for_sample(sample_for_id(e.getAttribute("id").substring(2)));
+}
+
+function name_for_sample(sample) {
+    return profileNames[sample.n];
 }
 
 function function_name(e) {

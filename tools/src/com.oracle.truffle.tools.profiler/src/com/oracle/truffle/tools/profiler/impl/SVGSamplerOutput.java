@@ -203,6 +203,9 @@ class SVGSamplerOutput {
         private Map<GraphColorMap, String> languageColors;
         private Map<GraphColorMap, Map<String, String>> colorsForNames = new HashMap<>();
         private int sampleId;
+        public final Map<String, Integer> nameHash = new HashMap<>();
+        public int nameCounter = 0;
+        public final JSONArray sampleNames = new JSONArray();
         public final JSONObject sampleData = new JSONObject();
 
         GraphOwner(StringBuilder output, CPUSampler sampler) {
@@ -274,7 +277,9 @@ class SVGSamplerOutput {
         }
 
         private void buildSampleData() {
-            sampleData.put("n", "<top>");
+            sampleData.put("n", nameCounter);
+            nameHash.put("<top>", nameCounter++);
+            sampleNames.put("<top>");
             sampleData.put("id", sampleId++);
             sampleData.put("i", 0);
             sampleData.put("c", 0);
@@ -300,7 +305,10 @@ class SVGSamplerOutput {
 
         private JSONObject threadSampelData(Thread thread, List<ProfilerNode<CPUSampler.Payload>> samples, long x) {
             JSONObject result = new JSONObject();
-            result.put("n", thread.getName());
+            result.put("n", nameHash.computeIfAbsent(thread.getName(), k -> {
+                        sampleNames.put(thread.getName());
+                        return nameCounter++;
+                    }));
             result.put("id", sampleId++);
             result.put("i", 0);
             result.put("c", 0);
@@ -322,6 +330,9 @@ class SVGSamplerOutput {
         public String samples() {
             StringBuilder result = new StringBuilder();
 
+            result.append("var profileNames = ");
+            result.append(sampleNames.toString());
+            result.append(";\n");
             result.append("var profileData = ");
             result.append(sampleData.toString());
             result.append(";\n");
@@ -347,7 +358,11 @@ class SVGSamplerOutput {
 
         public JSONObject sampleData(ProfilerNode<CPUSampler.Payload> sample, long x) {
             JSONObject result = new JSONObject();
-            result.put("n", sample.getRootName());
+            final int nameId = nameHash.computeIfAbsent(sample.getRootName(), k -> {
+                        sampleNames.put(sample.getRootName());
+                        return nameCounter++;
+                });
+            result.put("n", nameId);
             result.put("id", sampleId++);
             result.put("i", sample.getPayload().getSelfInterpretedHitCount());
             result.put("c", sample.getPayload().getSelfCompiledHitCount());
@@ -392,8 +407,8 @@ class SVGSamplerOutput {
         }
 
         private void buildColorData(JSONObject sample) {
-            colorForName(sample.getString("n"), GraphColorMap.FLAME);
-            colorForName(sample.getString("n"), GraphColorMap.values()[sample.getInt("l")]);
+            colorForName(sample.getInt("n"), GraphColorMap.FLAME);
+            colorForName(sample.getInt("n"), GraphColorMap.values()[sample.getInt("l")]);
             if (sample.has("s")) {
                 for (Object child : sample.getJSONArray("s")) {
                     buildColorData((JSONObject) child);
@@ -462,7 +477,8 @@ class SVGSamplerOutput {
             }
         }
 
-        public String colorForName(String name, GraphColorMap type) {
+        public String colorForName(int nameId, GraphColorMap type) {
+            String name = sampleNames.getString(nameId);
             Map<String, String> colors = colorsForType(type);
             if (colors.containsKey(name)) {
                 return colors.get(name);
@@ -552,75 +568,6 @@ class SVGSamplerOutput {
                 }
             }
             return color;
-        }
-
-        public String colorForLanguage(ProfilerNode<CPUSampler.Payload> sample) {
-            return colorForName(sample.getRootName(), colorMapForLanguage(sample));
-        }
-
-        public String colorForCompilation(ProfilerNode<CPUSampler.Payload> sample) {
-            return colorForCompilation(sample.getPayload().getSelfInterpretedHitCount(), sample.getPayload().getSelfCompiledHitCount());
-        }
-
-        public String colorForCompilation(List<ProfilerNode<CPUSampler.Payload>> samples) {
-            long interpreted = 0;
-            long compiled = 0;
-            for (ProfilerNode<CPUSampler.Payload> sample : samples) {
-                interpreted += sample.getPayload().getSelfInterpretedHitCount();
-                compiled = +sample.getPayload().getSelfCompiledHitCount();
-            }
-            return colorForCompilation(interpreted, compiled);
-        }
-
-        public String colorForCompilation(long interpreted, long compiled) {
-            long total = interpreted + compiled;
-            // We'll generate the color as an hsv one as this will be easiest for us to work with, but convert it to RGB as this appears to be more reliable in browsers.
-            double h = total == 0 ? 0.0 : (2.0 / 3.0) * (interpreted / total);
-            double h6 = h * 6;
-            double s = 1.0;
-            double v = 1.0;
-            double c = s * v;
-            double x = c * (1 - Math.abs((h6) % 2 - 1));
-            double m = v - c;
-            double rprime;
-            double gprime;
-            double bprime;
-            switch((int) Math.floor(h6)) {
-            case 0:
-                rprime = c;
-                gprime = x;
-                bprime = 0;
-                break;
-            case 1:
-                rprime = x;
-                gprime = c;
-                bprime = 0;
-                break;
-            case 2:
-                rprime = 0;
-                gprime = c;
-                bprime = x;
-                break;
-            case 3:
-                rprime = 0;
-                gprime = x;
-                bprime = c;
-                break;
-            case 4:
-                rprime = x;
-                gprime = 0;
-                bprime = c;
-                break;
-            default:
-                rprime = c;
-                gprime = 0;
-                bprime = x;
-                break;
-            }
-            int r = (int) ((rprime + m) * 255);
-            int g = (int) ((gprime + m) * 255);
-            int b = (int) ((bprime + m) * 255);
-            return String.format("rgb(%d, %d, %d)", r, g, b);
         }
 
         public String searchColor() {
@@ -795,9 +742,9 @@ class SVGSamplerOutput {
 
             HashMap<String, String> rectAttrs = new HashMap<>();
 
-            output.append(owner.svg.fillRectangle(x, y, width, FRAMEHEIGHT, owner.colorForName(sample.getString("n"), GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
+            output.append(owner.svg.fillRectangle(x, y, width, FRAMEHEIGHT, owner.colorForName(sample.getInt("n"), GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
 
-            String fullText = sample.getString("n");
+            String fullText = owner.sampleNames.getString(sample.getInt("n"));
 
             output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), x + 3, y - 5 + FRAMEHEIGHT, owner.abbreviate(fullText, width), null, ""));
             output.append(owner.svg.endGroup(groupAttrs));
@@ -858,7 +805,7 @@ class SVGSamplerOutput {
             histogram.removeIf(x -> (x.getInt("i") + x.getInt("c")) < minTime);
         }
 
-        private static List<JSONObject> buildHistogram(JSONObject sample) {
+        private List<JSONObject> buildHistogram(JSONObject sample) {
             Map<String, JSONObject> bars = new HashMap<>();
             buildHistogram(sample, bars);
             ArrayList<JSONObject> lines = new ArrayList<>(bars.values());
@@ -866,15 +813,15 @@ class SVGSamplerOutput {
             return lines;
         }
 
-        private static void buildHistogram(JSONObject sample, Map<String, JSONObject> bars) {
-            JSONObject bar = bars.computeIfAbsent(sample.getString("n"),
+        private void buildHistogram(JSONObject sample, Map<String, JSONObject> bars) {
+            JSONObject bar = bars.computeIfAbsent(owner.sampleNames.getString(sample.getInt("n")),
                                                   k -> {
                                                       JSONObject entry = new JSONObject();
                                                       entry.put("id", sample.getInt("id"));
                                                       entry.put("i", 0);
                                                       entry.put("c", 0);
                                                       entry.put("l", sample.getInt("l"));
-                                                      entry.put("n", sample.getString("n"));
+                                                      entry.put("n", sample.getInt("n"));
                                                       return entry;
                             });
             bar.put("i", bar.getInt("i") + sample.getInt("i"));
@@ -935,7 +882,8 @@ class SVGSamplerOutput {
         }
 
         private String drawElement(JSONObject bar, int position) {
-            String name = owner.sampleDataForId(bar.getInt("id")).getString("n");
+            int nameId = owner.sampleDataForId(bar.getInt("id")).getInt("n");
+            String name = owner.sampleNames.getString(nameId);
             long selfTime = bar.getInt("c") + bar.getInt("i");
             double width = widthPerTime * selfTime;
 
@@ -955,7 +903,7 @@ class SVGSamplerOutput {
 
             HashMap<String, String> rectAttrs = new HashMap<>();
 
-            output.append(owner.svg.fillRectangle(x1, y1, width, FRAMEHEIGHT, owner.colorForName(name, GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
+            output.append(owner.svg.fillRectangle(x1, y1, width, FRAMEHEIGHT, owner.colorForName(nameId, GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
             double afterWidth = IMAGEWIDTH - width - XPAD * 2;
             int textLength = (int) (width / (owner.fontSize() / owner.fontWidth()));
             int afterLength = (int) (afterWidth / (owner.fontSize() / owner.fontWidth()));
