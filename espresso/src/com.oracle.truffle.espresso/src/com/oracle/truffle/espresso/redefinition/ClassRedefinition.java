@@ -191,6 +191,7 @@ public final class ClassRedefinition {
                 case CLASS_NAME_CHANGED:
                 case ADD_METHOD:
                 case REMOVE_METHOD:
+                case SCHEMA_CHANGE:
                     doRedefineClass(packet, refreshSubClasses);
                     return 0;
                 case NEW_CLASS:
@@ -210,8 +211,6 @@ public final class ClassRedefinition {
                         packet.info.setKlass(newKlass);
                     }
                     return 0;
-                case SCHEMA_CHANGE:
-                    return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
                 case CLASS_MODIFIERS_CHANGE:
                     return ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED;
                 case HIERARCHY_CHANGE:
@@ -243,47 +242,6 @@ public final class ClassRedefinition {
             throw new RedefintionNotSupportedException(ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED);
         }
 
-        // detect field changes
-        Field[] oldFields = oldKlass.getDeclaredFields();
-        ParserField[] newFields = newParserKlass.getFields();
-
-        if (oldFields.length != newFields.length) {
-            throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
-        }
-
-        for (int i = 0; i < oldFields.length; i++) {
-            Field oldField = oldFields[i];
-            // search for a new corresponding field
-            boolean found = false;
-            for (int j = 0; j < newFields.length; j++) {
-                ParserField newField = newFields[j];
-                // first look for a perfect match
-                if (isUnchangedField(oldField, newField)) {
-                    // A nested anonymous inner class may contain a field reference to the outer
-                    // class instance. Since we match against the patched (inner class rename rules
-                    // applied) if the current class was patched (renamed) the resulting outer
-                    // field pointer will have a changed type. Hence we should mark it as a changed
-                    // object type field.
-                    Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldField.getType().toString());
-                    if (isPatched && matcher.matches()) {
-                        // TODO
-                        result = ClassChange.SCHEMA_CHANGE;
-                    }
-                    found = true;
-                    break;
-                } else if (oldField.getName() == newField.getName() && oldField.getType() == newField.getType()) {
-                    // OK, compatible field change that doesn't change the layout
-                    // TODO
-                } else if (oldField.getName() == newField.getName()) {
-                    // incompatible field change requires remove + add field
-                    // TODO
-                }
-            }
-            if (!found) {
-                throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
-            }
-        }
-
         // detect method changes (including constructors)
         ParserMethod[] newParserMethods = newParserKlass.getMethods();
         List<Method> oldMethods = new ArrayList<>(Arrays.asList(oldKlass.getDeclaredMethods()));
@@ -297,11 +255,11 @@ public final class ClassRedefinition {
             constantPoolChanged = true;
         }
         Iterator<Method> oldIt = oldMethods.iterator();
+        Iterator<ParserMethod> newIt = newMethods.iterator();
         while (oldIt.hasNext()) {
             Method oldMethod = oldIt.next();
             ParserMethod oldParserMethod = oldMethod.getLinkedMethod().getParserMethod();
             // verify that there is a new corresponding method
-            Iterator<ParserMethod> newIt = newMethods.iterator();
             while (newIt.hasNext()) {
                 ParserMethod newMethod = newIt.next();
                 if (isSameMethod(oldParserMethod, newMethod)) {
@@ -378,6 +336,68 @@ public final class ClassRedefinition {
             result = ClassChange.CLASS_NAME_CHANGED;
         }
 
+        // detect field changes
+        Field[] oldFields = oldKlass.getDeclaredFields();
+        ParserField[] newFields = newParserKlass.getFields();
+
+        ArrayList<Field> oldFieldsList = new ArrayList<>(Arrays.asList(oldFields));
+        ArrayList<ParserField> newFieldsList = new ArrayList<>(Arrays.asList(newFields));
+
+        Iterator<Field> oldFieldsIt = oldFieldsList.iterator();
+        Iterator<ParserField> newFieldsIt = newFieldsList.iterator();
+
+        while (oldFieldsIt.hasNext()) {
+            Field oldField = oldFieldsIt.next();
+            // search for a new corresponding field
+            while (newFieldsIt.hasNext()) {
+                ParserField newField = newFieldsIt.next();
+                // first look for a perfect match
+                if (isUnchangedField(oldField, newField)) {
+                    // A nested anonymous inner class may contain a field reference to the outer
+                    // class instance. Since we match against the patched (inner class rename rules
+                    // applied) if the current class was patched (renamed) the resulting outer
+                    // field pointer will have a changed type. Hence we should mark it as a new
+                    // field.
+                    Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldField.getType().toString());
+                    if (isPatched && matcher.matches()) {
+                        break;
+                    }
+                    oldFieldsIt.remove();
+                    newFieldsIt.remove();
+                    break;
+                } else if (oldField.getName() == newField.getName() && oldField.getType() == newField.getType()) {
+                    // OK, compatible field change that doesn't change the layout,
+                    // but it does change in a way that require all callers to re-resolve
+                    collectedChanges.addCompatibleFieldChange(oldField, newField);
+                    oldFieldsIt.remove();
+                    newFieldsIt.remove();
+                    break;
+                }
+            }
+        }
+
+        if (!newFieldsList.isEmpty()) {
+            if (isPatched) {
+                ParserField[] finalFields = finalParserKlass.getFields();
+                // lookup the final new field based on the index in the parser field array
+                for (ParserField parserField : newFieldsList) {
+                    for (int i = 0; i < newFields.length; i++) {
+                        if (parserField == newFields[i]) {
+                            collectedChanges.addNewField(finalFields[i]);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                collectedChanges.addNewFields(newFieldsList);
+            }
+            result = ClassChange.SCHEMA_CHANGE;
+        }
+
+        if (!oldFieldsList.isEmpty()) {
+            collectedChanges.addRemovedFields(oldFieldsList);
+            result = ClassChange.SCHEMA_CHANGE;
+        }
         return result;
     }
 
