@@ -62,6 +62,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import com.oracle.truffle.api.TruffleLanguage.ContextLocalFactory;
 import com.oracle.truffle.api.TruffleLanguage.ContextThreadLocalFactory;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger.LoggerCache;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -519,12 +520,12 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers) {
+        public void configureLoggers(Object vmObject, Map<String, Level> logLevels, Object... loggers) {
             for (Object loggerCache : loggers) {
                 if (logLevels == null) {
-                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForContext(polyglotContext);
+                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForVMObject(vmObject);
                 } else {
-                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForContext(polyglotContext, logLevels);
+                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForVMObject(vmObject, logLevels);
                 }
             }
         }
@@ -572,8 +573,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object createEngineLoggers(Object spi, Map<String, Level> logLevels) {
-            return TruffleLogger.createLoggerCache(spi, logLevels);
+        public Object createEngineLoggers(Object spi) {
+            return new LoggerCache(spi);
         }
 
         @Override
@@ -589,6 +590,11 @@ final class LanguageAccessor extends Accessor {
         @Override
         public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
             return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
+        }
+
+        @Override
+        public Object getLoggerCache(TruffleLogger logger) {
+            return logger.getLoggerCache();
         }
 
         @Override

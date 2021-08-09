@@ -2601,7 +2601,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             synchronized (this) {
                 res = contextBoundLoggers;
                 if (res == null) {
-                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.LoggerCache.newContextLoggerCache(this), config.logLevels);
+                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.LoggerCache.newContextLoggerCache(this));
+                    if (!this.config.logLevels.isEmpty()) {
+                        EngineAccessor.LANGUAGE.configureLoggers(this, this.config.logLevels, res);
+                    }
                     contextBoundLoggers = res;
                 }
             }
