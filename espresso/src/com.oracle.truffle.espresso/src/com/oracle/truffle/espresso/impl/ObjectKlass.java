@@ -92,18 +92,6 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private StaticObject statics;
 
-    // instance and hidden fields declared in this class and in its super classes
-    @CompilationFinal(dimensions = 1) //
-    private final Field[] fieldTable;
-
-    // points to the first element in the FieldTable that refers to a field declared in this class,
-    // or is equal to fieldTable.length if this class does not declare fields
-    private final int localFieldTableIndex;
-
-    // static fields declared in this class (no hidden fields)
-    @CompilationFinal(dimensions = 1) //
-    private final Field[] staticFieldTable;
-
     private final InnerClassesAttribute innerClasses;
 
     private final Attribute runtimeVisibleAnnotations;
@@ -159,12 +147,12 @@ public final class ObjectKlass extends Klass {
         LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
         LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
 
-        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
-        staticFieldTable = new Field[lkStaticFields.length];
+        Field[] fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
+        Field[] staticFieldTable = new Field[lkStaticFields.length];
 
         assert fieldTable.length == linkedKlass.getFieldTableLength();
         System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
-        localFieldTableIndex = skFieldTable.length;
+        int localFieldTableIndex = skFieldTable.length;
         for (int i = 0; i < lkInstanceFields.length; i++) {
             Field instanceField = new Field(this, lkInstanceFields[i], pool);
             fieldTable[localFieldTableIndex + i] = instanceField;
@@ -211,7 +199,7 @@ public final class ObjectKlass extends Klass {
         for (ObjectKlass superInterface : superInterfaces) {
             superInterface.addSubType(this);
         }
-        this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
+        this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable, fieldTable, staticFieldTable, localFieldTableIndex);
 
         // Only forcefully initialization of the mirror if necessary
         if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
@@ -375,7 +363,7 @@ public final class ObjectKlass extends Klass {
 
     private void prepare() {
         checkLoadingConstraints();
-        for (Field f : staticFieldTable) {
+        for (Field f : getKlassVersion().staticFieldTable) {
             ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
             if (a == null) {
                 continue;
@@ -517,10 +505,11 @@ public final class ObjectKlass extends Klass {
     @Override
     public Field[] getDeclaredFields() {
         // Speculate that there are no hidden fields
-        Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex);
-        int insertionIndex = staticFieldTable.length;
-        for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
-            Field f = fieldTable[i];
+        KlassVersion currentKlass = getKlassVersion();
+        Field[] declaredFields = Arrays.copyOf(currentKlass.staticFieldTable, currentKlass.staticFieldTable.length + currentKlass.fieldTable.length - currentKlass.localFieldTableIndex);
+        int insertionIndex = currentKlass.staticFieldTable.length;
+        for (int i = currentKlass.localFieldTableIndex; i < currentKlass.fieldTable.length; i++) {
+            Field f = currentKlass.fieldTable[i];
             if (!f.isHidden()) {
                 declaredFields[insertionIndex++] = f;
             }
@@ -643,19 +632,22 @@ public final class ObjectKlass extends Klass {
     }
 
     Field lookupFieldTableImpl(int slot) {
-        assert slot >= 0 && slot < fieldTable.length && !fieldTable[slot].isHidden();
-        return fieldTable[slot];
+        KlassVersion current = getKlassVersion();
+        assert slot >= 0 && slot < current.fieldTable.length && !current.fieldTable[slot].isHidden();
+        return current.fieldTable[slot];
     }
 
     Field lookupStaticFieldTableImpl(int slot) {
-        assert slot >= 0 && slot < getStaticFieldTable().length;
-        return staticFieldTable[slot];
+        KlassVersion current = getKlassVersion();
+        assert slot >= 0 && slot < current.staticFieldTable.length;
+        return current.staticFieldTable[slot];
     }
 
     public Field requireHiddenField(Symbol<Name> fieldName) {
         // Hidden fields are (usually) located at the end of the field table.
-        for (int i = fieldTable.length - 1; i >= 0; i--) {
-            Field f = fieldTable[i];
+        Field[] fTable = getKlassVersion().fieldTable;
+        for (int i = fTable.length - 1; i >= 0; i--) {
+            Field f = fTable[i];
             if (f.getName() == fieldName && f.isHidden()) {
                 return f;
             }
@@ -833,11 +825,11 @@ public final class ObjectKlass extends Klass {
     }
 
     public Field[] getFieldTable() {
-        return fieldTable;
+        return getKlassVersion().fieldTable;
     }
 
     public Field[] getStaticFieldTable() {
-        return staticFieldTable;
+        return getKlassVersion().staticFieldTable;
     }
 
     private Method lookupMirandas(Symbol<Name> methodName, Symbol<Signature> signature) {
@@ -1153,6 +1145,8 @@ public final class ObjectKlass extends Klass {
         DetectedChange change = packet.detectedChange;
         KlassVersion oldVersion = klassVersion;
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), oldVersion.pool.getClassLoader());
+
+        // class structure
         ObjectKlass[] superInterfaces = getSuperInterfaces();
         LinkedKlass[] interfaces = new LinkedKlass[superInterfaces.length];
         for (int i = 0; i < superInterfaces.length; i++) {
@@ -1160,6 +1154,14 @@ public final class ObjectKlass extends Klass {
         }
         LinkedKlass linkedKlass = LinkedKlass.redefine(parserKlass, getSuperKlass().getLinkedKlass(), interfaces, getLinkedKlass());
 
+        // fields
+        Field[] fieldTable = oldVersion.fieldTable;
+        Field[] staticFieldTable = oldVersion.staticFieldTable;
+        int localFieldTableIndex = oldVersion.localFieldTableIndex;
+
+        // TODO - handle field changes
+
+        // methods
         Method[][] itable = oldVersion.itable;
         Method[] vtable = oldVersion.vtable;
         ObjectKlass[] iKlassTable;
@@ -1227,7 +1229,7 @@ public final class ObjectKlass extends Klass {
             refreshSubClasses.addAll(getSubTypes());
         }
 
-        klassVersion = new KlassVersion(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+        klassVersion = new KlassVersion(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable, fieldTable, staticFieldTable, localFieldTableIndex);
 
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
@@ -1279,6 +1281,10 @@ public final class ObjectKlass extends Klass {
     public void onSuperKlassUpdate() {
         KlassVersion oldVersion = klassVersion;
 
+        Field[] fieldTable = oldVersion.fieldTable;
+        Field[] staticFieldTable = oldVersion.staticFieldTable;
+        int localFieldTableIndex = oldVersion.localFieldTableIndex;
+
         Method[][] itable = oldVersion.itable;
         Method[] vtable;
         ObjectKlass[] iKlassTable;
@@ -1297,7 +1303,7 @@ public final class ObjectKlass extends Klass {
             itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
         }
 
-        klassVersion = new KlassVersion(oldVersion.pool, oldVersion.linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+        klassVersion = new KlassVersion(oldVersion.pool, oldVersion.linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable, fieldTable, staticFieldTable, localFieldTableIndex);
 
         // flush caches before invalidating to avoid races
         // a potential thread fetching new reflection data
@@ -1352,8 +1358,21 @@ public final class ObjectKlass extends Klass {
         private final ObjectKlass[] iKlassTable;
         private final Method[] declaredMethods;
         private final Method[] mirandaMethods;
+        // instance and hidden fields declared in this class and in its super classes
+        @CompilationFinal(dimensions = 1) //
+        private final Field[] fieldTable;
 
-        KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods, Method[] mirandaMethods, Method[] vtable, Method[][] itable, ObjectKlass[] iKlassTable) {
+        // points to the first element in the FieldTable that refers to a field declared in this class,
+        // or is equal to fieldTable.length if this class does not declare fields
+        private final int localFieldTableIndex;
+
+        // static fields declared in this class (no hidden fields)
+        @CompilationFinal(dimensions = 1) //
+        private final Field[] staticFieldTable;
+
+        KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods,Method[] mirandaMethods,
+                     Method[] vtable, Method[][] itable, ObjectKlass[] iKlassTable,
+                     Field[] fieldTable, Field[] staticFieldTable, int localFieldTableIndex) {
             this.assumption = Truffle.getRuntime().createAssumption();
             this.pool = pool;
             this.linkedKlass = linkedKlass;
@@ -1362,6 +1381,9 @@ public final class ObjectKlass extends Klass {
             this.itable = itable;
             this.vtable = vtable;
             this.iKlassTable = iKlassTable;
+            this.fieldTable = fieldTable;
+            this.staticFieldTable = staticFieldTable;
+            this.localFieldTableIndex = localFieldTableIndex;
         }
 
         public Assumption getAssumption() {
