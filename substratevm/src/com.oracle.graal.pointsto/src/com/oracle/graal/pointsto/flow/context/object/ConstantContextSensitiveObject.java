@@ -27,7 +27,7 @@ package com.oracle.graal.pointsto.flow.context.object;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -68,11 +68,11 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
      * Constructor used for the merged constant object, i.e., after the number of individual
      * constant objects for a type has reached the maximum number of recorded constants threshold.
      */
-    public ConstantContextSensitiveObject(BigBang bb, AnalysisType type) {
+    public ConstantContextSensitiveObject(PointsToAnalysis bb, AnalysisType type) {
         this(bb, type, null);
     }
 
-    public ConstantContextSensitiveObject(BigBang bb, AnalysisType type, JavaConstant constant) {
+    public ConstantContextSensitiveObject(PointsToAnalysis bb, AnalysisType type, JavaConstant constant) {
         super(bb.getUniverse(), type, AnalysisObjectKind.ConstantContextSensitive);
         assert bb.trackConcreteAnalysisObjects(type);
         this.constant = constant;
@@ -94,7 +94,7 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
 
     /** The object has been in contact with an context insensitive object in an union operation. */
     @Override
-    public void noteMerge(BigBang bb) {
+    public void noteMerge(PointsToAnalysis bb) {
         assert bb.analysisPolicy().isMergingEnabled();
 
         if (!merged) {
@@ -122,7 +122,7 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
     }
 
     @Override
-    public boolean isEmptyObjectArrayConstant(BigBang bb) {
+    public boolean isEmptyObjectArrayConstant(PointsToAnalysis bb) {
         if (this.isMergedConstantObject()) {
             return false;
         }

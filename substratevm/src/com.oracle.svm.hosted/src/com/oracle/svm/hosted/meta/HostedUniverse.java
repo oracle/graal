@@ -30,7 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.Signature;
  * Nothing is added later on during compilation of methods.
  */
 public class HostedUniverse implements Universe {
-    protected final NativeImageStaticAnalysisEngine analysis;
+    protected final Inflation bb;
 
     protected final Map<AnalysisType, HostedType> types = new HashMap<>();
     protected final Map<AnalysisField, HostedField> fields = new HashMap<>();
@@ -75,8 +75,8 @@ public class HostedUniverse implements Universe {
     protected List<HostedMethod> orderedMethods;
     protected List<HostedField> orderedFields;
 
-    public HostedUniverse(NativeImageStaticAnalysisEngine analysis) {
-        this.analysis = analysis;
+    public HostedUniverse(Inflation bb) {
+        this.bb = bb;
     }
 
     public HostedType getType(JavaKind kind) {
@@ -105,12 +105,12 @@ public class HostedUniverse implements Universe {
 
     @Override
     public SVMHost hostVM() {
-        return analysis.getHostVM();
+        return bb.getHostVM();
     }
 
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
-        return analysis.getProviders().getSnippetReflection();
+        return bb.getProviders().getSnippetReflection();
     }
 
     @Override
@@ -217,12 +217,12 @@ public class HostedUniverse implements Universe {
         return orderedMethods;
     }
 
-    public NativeImageStaticAnalysisEngine getStaticAnalysis() {
-        return analysis;
+    public Inflation getStaticAnalysis() {
+        return bb;
     }
 
     public AnalysisConstantReflectionProvider getConstantReflectionProvider() {
-        return (AnalysisConstantReflectionProvider) analysis.getConstantReflectionProvider();
+        return (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
     }
 
     @Override
@@ -232,6 +232,6 @@ public class HostedUniverse implements Universe {
 
     @Override
     public HostedType objectType() {
-        return types.get(analysis.getUniverse().objectType());
+        return types.get(bb.getUniverse().objectType());
     }
 }

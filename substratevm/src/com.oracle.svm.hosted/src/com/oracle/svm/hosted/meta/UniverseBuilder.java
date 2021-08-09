@@ -40,7 +40,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
 
-import com.oracle.graal.pointsto.StaticAnalysisEngine;
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -365,13 +365,13 @@ public class UniverseBuilder {
                     ClassInitializerFunctionPointerHolder.class,
                     FillerObject.class));
 
-    private void collectMonitorFieldInfo(StaticAnalysisEngine analysis) {
+    private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* No locking information needed in single-threaded mode. */
             return;
         }
 
-        HostedConfiguration.instance().collectMonitorFieldInfo(analysis, hUniverse, getImmutableTypes());
+        HostedConfiguration.instance().collectMonitorFieldInfo(bb, hUniverse, getImmutableTypes());
     }
 
     private Set<AnalysisType> getImmutableTypes() {
@@ -852,7 +852,7 @@ public class UniverseBuilder {
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         for (HostedType type : hUniverse.getTypes()) {
-            hUniverse.analysis.getHeartbeatCallback().run();
+            hUniverse.bb.getHeartbeatCallback().run();
 
             int layoutHelper;
             int monitorOffset = 0;

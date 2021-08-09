@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import java.util.Collection;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -42,17 +42,17 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
         super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
-    protected AbstractSpecialInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, AbstractSpecialInvokeTypeFlow original) {
+    protected AbstractSpecialInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractSpecialInvokeTypeFlow original) {
         super(bb, methodFlows, original);
     }
 
     @Override
-    public boolean addState(BigBang bb, TypeState add, boolean postFlow) {
+    public boolean addState(PointsToAnalysis bb, TypeState add, boolean postFlow) {
         throw AnalysisError.shouldNotReachHere("The SpecialInvokeTypeFlow should not be updated directly.");
     }
 
     @Override
-    public void update(BigBang bb) {
+    public void update(PointsToAnalysis bb) {
         throw AnalysisError.shouldNotReachHere("The SpecialInvokeTypeFlow should not be updated directly.");
     }
 
@@ -69,17 +69,17 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
     }
 
     @Override
-    public abstract void onObservedUpdate(BigBang bb);
+    public abstract void onObservedUpdate(PointsToAnalysis bb);
 
     @Override
-    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         assert this.isClone();
         /* When the receiver flow saturates start observing the flow of the receiver type. */
         replaceObservedWith(bb, receiverType);
     }
 
     @Override
-    public abstract Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb);
+    public abstract Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb);
 
     @Override
     public String toString() {

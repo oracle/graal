@@ -29,6 +29,10 @@ import java.util.BitSet;
 import java.util.Iterator;
 
 import com.oracle.graal.pointsto.BigBang;
+import org.graalvm.compiler.options.OptionValues;
+
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -202,7 +206,7 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public TypeState exactTypeState(BigBang unused, AnalysisType exactType) {
+    public TypeState exactTypeState(PointsToAnalysis unused, AnalysisType exactType) {
         if (containsType(exactType)) {
             AnalysisObject[] resultObjects = objectsArray(exactType);
             return new SingleTypeState(bb, canBeNull, bb.analysisPolicy().makeProperties(bb, resultObjects), resultObjects);
@@ -212,7 +216,7 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public TypeState forCanBeNull(BigBang unused, boolean resultCanBeNull) {
+    public TypeState forCanBeNull(PointsToAnalysis unused, boolean resultCanBeNull) {
         if (resultCanBeNull == this.canBeNull()) {
             return this;
         } else {
@@ -328,13 +332,13 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public boolean closeToAllInstantiated(StaticAnalysisEngine analysis) {
-        if (analysis == null) {
+    public boolean closeToAllInstantiated(BigBang bb) {
+        if (!(bb instanceof PointsToAnalysis)) {
             return false;
         }
-        BigBang bb = (BigBang) analysis;
+        PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
         if (typesCount > 200) {
-            MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypes();
+            MultiTypeState allInstState = (MultiTypeState) pointsToAnalysis.getAllInstantiatedTypes();
             return typesCount * 100L / allInstState.typesCount > 75;
         }
 

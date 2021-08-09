@@ -28,7 +28,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.graal.pointsto.StaticAnalysisEngine;
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -105,9 +105,9 @@ public interface HostVM {
 
     void checkType(ResolvedJavaType type, AnalysisUniverse universe);
 
-    void methodAfterParsingHook(StaticAnalysisEngine analysis, AnalysisMethod method, StructuredGraph graph);
+    void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
 
-    void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
+    void methodBeforeTypeFlowCreationHook(PointsToAnalysis bb, AnalysisMethod method, StructuredGraph graph);
 
     default boolean hasNeverInlineDirective(@SuppressWarnings("unused") ResolvedJavaMethod method) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */

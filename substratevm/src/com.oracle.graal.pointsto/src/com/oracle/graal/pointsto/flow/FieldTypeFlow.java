@@ -28,7 +28,7 @@ import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -74,7 +74,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
-    public TypeFlow<AnalysisField> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<AnalysisField> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         // return this field flow
         throw shouldNotReachHere("The field flow should not be cloned. Use Load/StoreFieldTypeFlow.");
     }
@@ -85,7 +85,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /*
          * When a field store is saturated conservatively assume that the field state can contain
          * any subtype of its declared type.
@@ -94,7 +94,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     /** The filter flow is used for unsafe writes and initialized on demand. */
-    public FieldFilterTypeFlow filterFlow(BigBang bb) {
+    public FieldFilterTypeFlow filterFlow(PointsToAnalysis bb) {
         assert source.isUnsafeAccessed() : "Filter flow requested for non unsafe accessed field.";
 
         if (filterFlow == null) {

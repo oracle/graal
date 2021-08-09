@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -49,7 +49,7 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
-    public TypeFlow<AnalysisType> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<AnalysisType> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         throw shouldNotReachHere("The mixed elements flow should not be cloned. Use Load/StoreFlows.");
     }
 
@@ -59,7 +59,7 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /*
          * When an array store is saturated conservatively assume that the array can contain any
          * subtype of its declared type.
@@ -68,7 +68,7 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState update) {
+    public TypeState filter(PointsToAnalysis bb, TypeState update) {
         if (declaredType.equals(bb.getObjectType())) {
             /* No need to filter. */
             return update;

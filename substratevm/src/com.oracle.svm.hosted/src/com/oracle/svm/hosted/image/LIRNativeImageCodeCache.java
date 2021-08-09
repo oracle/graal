@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -84,7 +84,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @SuppressWarnings("try")
     @Override
-    public void layoutMethods(DebugContext debug, String imageName, NativeImageStaticAnalysisEngine analysis, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, String imageName, Inflation bb, ForkJoinPool threadPool) {
 
         try (Indent indent = debug.logAndIndent("layout methods")) {
 

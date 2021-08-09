@@ -102,31 +102,31 @@ public abstract class AnalysisPolicy {
     public abstract boolean isMergingEnabled();
 
     /** Note type state merge. */
-    public abstract void noteMerge(BigBang bb, TypeState t);
+    public abstract void noteMerge(PointsToAnalysis bb, TypeState t);
 
     /** Note analysis object state merge. */
-    public abstract void noteMerge(BigBang bb, AnalysisObject... a);
+    public abstract void noteMerge(PointsToAnalysis bb, AnalysisObject... a);
 
     /** Note analysis object state merge. */
-    public abstract void noteMerge(BigBang bb, AnalysisObject o);
+    public abstract void noteMerge(PointsToAnalysis bb, AnalysisObject o);
 
     /** Specifies if an allocation site should be modeled context sensitively. */
-    public abstract boolean isContextSensitiveAllocation(BigBang bb, AnalysisType type, AnalysisContext allocationContext);
+    public abstract boolean isContextSensitiveAllocation(PointsToAnalysis bb, AnalysisType type, AnalysisContext allocationContext);
 
     /** Create a heap allocated object abstraction. */
-    public abstract AnalysisObject createHeapObject(BigBang bb, AnalysisType objectType, BytecodeLocation allocationSite, AnalysisContext allocationContext);
+    public abstract AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisType objectType, BytecodeLocation allocationSite, AnalysisContext allocationContext);
 
     /** Create a constant object abstraction. */
-    public abstract AnalysisObject createConstantObject(BigBang bb, JavaConstant constant, AnalysisType exactType);
+    public abstract AnalysisObject createConstantObject(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType);
 
     /** Create an allocation site given the BCI and method. */
-    public abstract BytecodeLocation createAllocationSite(BigBang bb, int bci, AnalysisMethod method);
+    public abstract BytecodeLocation createAllocationSite(PointsToAnalysis bb, int bci, AnalysisMethod method);
 
     /**
      * Create the allocation site given a unique key and method. The BCI might be duplicated due to
      * Graal method substitutions and inlining. Then we use a unique object key.
      */
-    public BytecodeLocation createAllocationSite(BigBang bb, Object key, AnalysisMethod method) {
+    public BytecodeLocation createAllocationSite(PointsToAnalysis bb, Object key, AnalysisMethod method) {
         return createAllocationSite(bb, BytecodeLocation.keyToBci(key), method);
     }
 
@@ -143,7 +143,7 @@ public abstract class AnalysisPolicy {
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
 
     @SuppressWarnings("unused")
-    public int makeProperties(StaticAnalysisEngine analysis, AnalysisObject... objects) {
+    public int makeProperties(BigBang bb, AnalysisObject... objects) {
         /* The default analysis policy doesn't use properties. */
         return 0;
     }

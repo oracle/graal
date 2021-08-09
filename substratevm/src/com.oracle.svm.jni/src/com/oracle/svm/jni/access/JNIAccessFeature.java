@@ -36,6 +36,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -320,18 +322,8 @@ public class JNIAccessFeature implements Feature {
             MaterializedConstantFields.singleton().register(field);
         }
 
-        NativeImageStaticAnalysisEngine staticAnalysisEngine = access.getStaticAnalysisEngine();
-        staticAnalysisEngine.registerAsJNIAccessed(field, writable);
-        // Same as BigBang.addSystemField() and BigBang.addSystemStaticField():
-        // create type flows for any subtype of the field's declared type
         BigBang bb = access.getBigBang();
-        TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(bb, true);
-        if (field.isStatic()) {
-            declaredTypeFlow.addUse(bb, field.getStaticFieldFlow());
-        } else {
-            FieldTypeFlow instanceFieldFlow = field.getDeclaringClass().getContextInsensitiveAnalysisObject().getInstanceFieldFlow(bb, field, writable);
-            declaredTypeFlow.addUse(bb, instanceFieldFlow);
-        }
+        bb.registerAsJNIAccessed(field, writable);
     }
 
     @Override

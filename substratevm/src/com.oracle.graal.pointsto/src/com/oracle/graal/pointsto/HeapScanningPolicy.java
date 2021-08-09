@@ -47,10 +47,10 @@ import jdk.vm.ci.meta.JavaConstant;
 public abstract class HeapScanningPolicy {
 
     /** Decide if the constant will be stored in the global constant registry. */
-    public abstract boolean trackConstant(StaticAnalysisEngine analysis, JavaConstant constant);
+    public abstract boolean trackConstant(BigBang bb, JavaConstant constant);
 
     /** Decide if the constant will be processed by the object scanner. */
-    public abstract boolean scanConstant(StaticAnalysisEngine analysis, JavaConstant constant);
+    public abstract boolean scanConstant(BigBang bb, JavaConstant constant);
 
     public static HeapScanningPolicy scanAll() {
         return new ScanAllPolicy();
@@ -63,12 +63,12 @@ public abstract class HeapScanningPolicy {
     /** Scan all constants. */
     static class ScanAllPolicy extends HeapScanningPolicy {
         @Override
-        public boolean trackConstant(StaticAnalysisEngine analysis, JavaConstant constant) {
+        public boolean trackConstant(BigBang bb, JavaConstant constant) {
             return true;
         }
 
         @Override
-        public boolean scanConstant(StaticAnalysisEngine analysis, JavaConstant constant) {
+        public boolean scanConstant(BigBang bb, JavaConstant constant) {
             return true;
         }
     }
@@ -103,8 +103,8 @@ public abstract class HeapScanningPolicy {
         }
 
         @Override
-        public boolean trackConstant(StaticAnalysisEngine analysis, JavaConstant constant) {
-            AnalysisType type = analysis.getMetaAccess().lookupJavaType(constant.getClass());
+        public boolean trackConstant(BigBang bb, JavaConstant constant) {
+            AnalysisType type = bb.getMetaAccess().lookupJavaType(constant.getClass());
             SkipData data = skipTypes.get(type);
             if (data != null) {
                 if (data.seenForTracking) {
@@ -117,8 +117,8 @@ public abstract class HeapScanningPolicy {
         }
 
         @Override
-        public boolean scanConstant(StaticAnalysisEngine analysis, JavaConstant constant) {
-            AnalysisType type = ObjectScanner.constantType(analysis, constant);
+        public boolean scanConstant(BigBang bb, JavaConstant constant) {
+            AnalysisType type = ObjectScanner.constantType(bb, constant);
             SkipData data = skipTypes.get(type);
             if (data != null) {
                 if (data.seenForScanning) {

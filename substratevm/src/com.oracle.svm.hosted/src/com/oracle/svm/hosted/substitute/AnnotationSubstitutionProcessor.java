@@ -44,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -238,7 +238,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     /**
      * Eagerly register all target fields of recomputed value fields as unsafe accessed.
      */
-    public void processComputedValueFields(NativeImageStaticAnalysisEngine bb) {
+    public void processComputedValueFields(Inflation bb) {
         for (ResolvedJavaField field : fieldSubstitutions.values()) {
             if (field instanceof ComputedValue) {
                 ComputedValue cvField = (ComputedValue) field;

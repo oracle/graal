@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
-import com.oracle.graal.pointsto.StaticAnalysisEngine;
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -66,7 +66,7 @@ public class CompletionExecutor {
     public ExecutorService executorService;
     private final Runnable heartbeatCallback;
 
-    private StaticAnalysisEngine analysis;
+    private BigBang bb;
     private Timing timing;
     private Object vmConfig;
 
@@ -82,8 +82,8 @@ public class CompletionExecutor {
         void print();
     }
 
-    public CompletionExecutor(StaticAnalysisEngine analysis, ForkJoinPool forkJoin, Runnable heartbeatCallback) {
-        this.analysis = analysis;
+    public CompletionExecutor(BigBang bb, ForkJoinPool forkJoin, Runnable heartbeatCallback) {
+        this.bb = bb;
         this.heartbeatCallback = heartbeatCallback;
         executorService = forkJoin;
         state = new AtomicReference<>(State.UNUSED);
@@ -102,7 +102,7 @@ public class CompletionExecutor {
         postedOperations.reset();
         completedOperations.reset();
         postedBeforeStart.clear();
-        vmConfig = analysis.getHostVM().getConfiguration();
+        vmConfig = bb.getHostVM().getConfiguration();
     }
 
     /**
@@ -151,7 +151,7 @@ public class CompletionExecutor {
 
                 if (isSequential()) {
                     heartbeatCallback.run();
-                    try (DebugContext debug = command.getDebug(analysis.getOptions(), analysis.getDebugHandlerFactories());
+                    try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
                                     Scope s = debug.scope("Operation")) {
                         command.run(debug);
                     }
@@ -174,21 +174,21 @@ public class CompletionExecutor {
 
     @SuppressWarnings("try")
     public void executeCommand(DebugContextRunnable command) {
-        analysis.getHostVM().installInThread(vmConfig);
+        bb.getHostVM().installInThread(vmConfig);
         long startTime = 0L;
         if (timing != null) {
             startTime = System.nanoTime();
         }
         heartbeatCallback.run();
         Throwable thrown = null;
-        try (DebugContext debug = command.getDebug(analysis.getOptions(), analysis.getDebugHandlerFactories());
+        try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
                         Scope s = debug.scope("Operation");
                         Activation a = debug.activate()) {
             command.run(debug);
         } catch (Throwable x) {
             thrown = x;
         } finally {
-            analysis.getHostVM().clearInThread();
+            bb.getHostVM().clearInThread();
             if (timing != null) {
                 long taskTime = System.nanoTime() - startTime;
                 timing.addCompleted(command, taskTime);

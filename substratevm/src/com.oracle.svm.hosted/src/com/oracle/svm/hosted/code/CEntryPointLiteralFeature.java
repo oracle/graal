@@ -29,7 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
-import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -89,14 +89,14 @@ public class CEntryPointLiteralFeature implements Feature {
     }
 
     protected UniverseMetaAccess metaAccess;
-    protected NativeImageStaticAnalysisEngine analysis;
+    protected Inflation bb;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) a;
 
         metaAccess = config.getMetaAccess();
-        analysis = config.getStaticAnalysisEngine();
+        bb = config.getStaticAnalysisEngine();
         config.registerObjectReplacer(new CEntryPointLiteralObjectReplacer());
     }
 
@@ -105,6 +105,6 @@ public class CEntryPointLiteralFeature implements Feature {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
 
         metaAccess = config.getMetaAccess();
-        analysis = null;
+        bb = null;
     }
 }

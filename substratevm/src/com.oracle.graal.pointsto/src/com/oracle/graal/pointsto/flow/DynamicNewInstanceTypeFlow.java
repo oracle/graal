@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
@@ -61,7 +61,7 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
          */
     }
 
-    private DynamicNewInstanceTypeFlow(BigBang bb, DynamicNewInstanceTypeFlow original, MethodFlowsGraph methodFlows, AnalysisContext allocationContext) {
+    private DynamicNewInstanceTypeFlow(PointsToAnalysis bb, DynamicNewInstanceTypeFlow original, MethodFlowsGraph methodFlows, AnalysisContext allocationContext) {
         super(original, methodFlows);
         this.allocationSite = original.allocationSite;
         this.allocationContext = allocationContext;
@@ -69,7 +69,7 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         AnalysisContext enclosingContext = methodFlows.context();
         AnalysisContext allocContext = bb.contextPolicy().allocationContext(enclosingContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
 
@@ -77,13 +77,13 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     }
 
     @Override
-    public void initClone(BigBang bb) {
+    public void initClone(PointsToAnalysis bb) {
         assert this.isClone();
         this.newTypeFlow.addObserver(bb, this);
     }
 
     @Override
-    public void onObservedUpdate(BigBang bb) {
+    public void onObservedUpdate(PointsToAnalysis bb) {
         /* Only a clone should be updated */
         assert this.isClone();
 
@@ -120,7 +120,7 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     }
 
     @Override
-    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         assert this.isClone();
         /* When the new-type flow saturates start observing the flow of the declared type. */
         replaceObservedWith(bb, declaredType);

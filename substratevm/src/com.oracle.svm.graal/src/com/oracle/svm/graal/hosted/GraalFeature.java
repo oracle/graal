@@ -42,7 +42,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -510,7 +510,7 @@ public final class GraalFeature implements Feature {
     }
 
     @SuppressWarnings("try")
-    private void processMethod(CallTreeNode node, Deque<CallTreeNode> worklist, NativeImageStaticAnalysisEngine analysis) {
+    private void processMethod(CallTreeNode node, Deque<CallTreeNode> worklist, Inflation bb) {
         AnalysisMethod method = node.implementationMethod;
         assert method.isImplementationInvoked();
 
@@ -524,7 +524,7 @@ public final class GraalFeature implements Feature {
 
             boolean parse = false;
 
-            DebugContext debug = analysis.getDebug();
+            DebugContext debug = bb.getDebug();
             StructuredGraph graph = method.buildGraph(debug, method, hostedProviders, Purpose.PREPARE_RUNTIME_COMPILATION);
             if (graph == null) {
                 if (!method.hasBytecodes()) {

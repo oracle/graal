@@ -31,6 +31,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -38,7 +41,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -140,11 +143,11 @@ public class HostedConfiguration {
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtime, deoptimizeAll, aSnippetReflection, executor);
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodTypeFlow) {
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodTypeFlow) {
         return new SVMMethodTypeFlowBuilder(bb, methodTypeFlow);
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, StructuredGraph graph) {
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
         return new SVMMethodTypeFlowBuilder(bb, graph);
     }
 
@@ -170,11 +173,17 @@ public class HostedConfiguration {
         }
     }
 
-    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bb, HostedUniverse universe) {
-        if (SubstrateOptions.parseOnce()) {
-            return new SubstrateStrengthenGraphs(bb, universe);
+    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(Inflation bb, HostedUniverse universe) {
+        if (bb instanceof PointsToAnalysis) {
+            PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
+            if (SubstrateOptions.parseOnce()) {
+                return new SubstrateStrengthenGraphs(pointsToAnalysis, universe);
+            } else {
+                return new StaticAnalysisResultsBuilder(pointsToAnalysis, universe);
+            }
         } else {
-            return new StaticAnalysisResultsBuilder(bb, universe);
+            /*- A custom result builder for Reachability analysis will probably have to be created */
+            throw VMError.shouldNotReachHere("Unsupported analysis type: " + bb.getClass());
         }
     }
 

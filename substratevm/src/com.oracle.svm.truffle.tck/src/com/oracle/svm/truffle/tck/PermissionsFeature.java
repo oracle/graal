@@ -48,7 +48,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -186,28 +186,28 @@ public class PermissionsFeature implements Feature {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         DebugContext debugContext = accessImpl.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
-            BigBang bb = accessImpl.getBigBang();
-            WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), analysis);
+            Inflation bb = accessImpl.getBigBang();
+            WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
             ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
                             accessImpl.getImageClassLoader(),
                             ClassUtil.getUnqualifiedName(getClass()),
                             Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
-            reflectionProxy = analysis.getMetaAccess().lookupJavaType(loadOrFail("com.oracle.svm.reflect.helpers.ReflectionProxy"));
-            reflectionFieldAccessorFactory = analysis.getMetaAccess().lookupJavaType(loadOrFail(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory"));
+            reflectionProxy = bb.getMetaAccess().lookupJavaType(loadOrFail("com.oracle.svm.reflect.helpers.ReflectionProxy"));
+            reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadOrFail(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory"));
             VMError.guarantee(reflectionProxy != null && reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
             Set<AnalysisMethod> deniedMethods = new HashSet<>();
-            deniedMethods.addAll(findMethods(analysis, SecurityManager.class, (m) -> m.getName().startsWith("check")));
-            deniedMethods.addAll(findMethods(analysis, sun.misc.Unsafe.class, (m) -> m.isPublic()));
+            deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
+            deniedMethods.addAll(findMethods(bb, sun.misc.Unsafe.class, (m) -> m.isPublic()));
             // The type of the host Java NIO FileSystem.
             // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
             // package but
             // can be directly used by a language. We need to include it into deniedMethods.
-            deniedMethods.addAll(findMethods(analysis, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
+            deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
             if (!deniedMethods.isEmpty()) {
-                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(analysis, deniedMethods, debugContext);
+                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bb, deniedMethods, debugContext);
                 List<List<AnalysisMethod>> report = new ArrayList<>();
                 Set<CallGraphFilter> contextFilters = new HashSet<>();
                 Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
@@ -255,11 +255,13 @@ public class PermissionsFeature implements Feature {
      * called method in {@code targets} or transitive caller of {@code targets} the resulting
      * {@code Map} contains an entry holding all direct callers of the method in the entry value.
      *
+     * @param bb the {@link Inflation}
      * @param bb the {@link BigBang}
      * @param targets the target methods to build call graph for
      * @param debugContext the {@link DebugContext}
      */
     private Map<AnalysisMethod, Set<AnalysisMethod>> callGraph(
+                    Inflation bb,
                     BigBang bb,
                     Set<AnalysisMethod> targets,
                     DebugContext debugContext) {
@@ -511,7 +513,7 @@ public class PermissionsFeature implements Feature {
      * @throws IllegalStateException if owner cannot be resolved
      */
     private static Set<AnalysisMethod> findMethods(BigBang bb, Class<?> owner, Predicate<ResolvedJavaMethod> filter) {
-        AnalysisType clazz = bb.forClass(owner);
+        AnalysisType clazz = bb.getMetaAccess().lookupJavaType(owner);
         if (clazz == null) {
             throw new IllegalStateException("Cannot resolve " + owner.getName() + ".");
         }

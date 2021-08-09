@@ -64,7 +64,7 @@ import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -217,7 +217,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
              * Annotations are updated in every analysis iteration, but this is a starting point. It
              * also ensures that all types used by annotations are created eagerly.
              */
-            sMethod.setAnnotationsEncoding(Inflation.encodeAnnotations(aMetaAccess, aMethod.getAnnotations(), aMethod.getDeclaredAnnotations(), null));
+            sMethod.setAnnotationsEncoding(NativeImagePointsToAnalysis.encodeAnnotations(aMetaAccess, aMethod.getAnnotations(), aMethod.getDeclaredAnnotations(), null));
         }
         return sMethod;
     }
@@ -249,7 +249,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
              * Annotations are updated in every analysis iteration, but this is a starting point. It
              * also ensures that all types used by annotations are created eagerly.
              */
-            sField.setAnnotationsEncoding(Inflation.encodeAnnotations(aMetaAccess, aField.getAnnotations(), aField.getDeclaredAnnotations(), null));
+            sField.setAnnotationsEncoding(NativeImagePointsToAnalysis.encodeAnnotations(aMetaAccess, aField.getAnnotations(), aField.getDeclaredAnnotations(), null));
         }
         return sField;
     }
@@ -376,13 +376,13 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         }
 
         for (Map.Entry<AnalysisMethod, SubstrateMethod> entry : methods.entrySet()) {
-            if (entry.getValue().setAnnotationsEncoding(Inflation.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getKey().getDeclaredAnnotations(),
+            if (entry.getValue().setAnnotationsEncoding(NativeImagePointsToAnalysis.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getKey().getDeclaredAnnotations(),
                             entry.getValue().getAnnotationsEncoding()))) {
                 result = true;
             }
         }
         for (Map.Entry<AnalysisField, SubstrateField> entry : fields.entrySet()) {
-            if (entry.getValue().setAnnotationsEncoding(Inflation.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getKey().getDeclaredAnnotations(),
+            if (entry.getValue().setAnnotationsEncoding(NativeImagePointsToAnalysis.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getKey().getDeclaredAnnotations(),
                             entry.getValue().getAnnotationsEncoding()))) {
                 result = true;
             }

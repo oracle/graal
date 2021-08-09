@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -39,12 +39,12 @@ public class InitialReceiverTypeFlow extends InitialParamTypeFlow {
     }
 
     @Override
-    public TypeFlow<AnalysisMethod> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<AnalysisMethod> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return this;
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState newState) {
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
         return newState.forNonNull(bb);
     }
 
@@ -63,7 +63,7 @@ public class InitialReceiverTypeFlow extends InitialParamTypeFlow {
     }
 
     @Override
-    public void update(BigBang bb) {
+    public void update(PointsToAnalysis bb) {
         TypeState curState = getState();
         for (TypeFlow<?> use : getUses()) {
             assert use instanceof FormalReceiverTypeFlow;

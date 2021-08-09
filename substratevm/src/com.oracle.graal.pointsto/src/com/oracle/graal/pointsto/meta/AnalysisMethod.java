@@ -41,14 +41,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.StaticAnalysisEngine;
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.util.GuardedAnnotationAccess;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
@@ -583,7 +583,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
      */
     private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
 
-    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(BigBang bb, BytecodePosition originalLocation) {
+    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation) {
         if (contextInsensitiveInvoke.get() == null) {
             InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this, originalLocation);
             boolean set = contextInsensitiveInvoke.compareAndSet(null, invoke);
@@ -608,7 +608,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
      * Ensures that the method has been parsed, i.e., that the {@link StructuredGraph Graal IR} for
      * the method is available.
      */
-    public AnalysisParsedGraph ensureGraphParsed(StaticAnalysisEngine analysis) {
+    public AnalysisParsedGraph ensureGraphParsed(BigBang bb) {
         while (true) {
             Object curState = parsedGraphCacheState.get();
 
@@ -635,7 +635,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
                         continue;
                     }
 
-                    AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(analysis, this);
+                    AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
 
                     /*
                      * Since we still hold the parsing lock, the transition form "parsing" to

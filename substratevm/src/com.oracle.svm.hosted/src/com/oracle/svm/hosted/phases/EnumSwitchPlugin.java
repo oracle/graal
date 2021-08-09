@@ -28,7 +28,7 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -99,7 +99,7 @@ final class EnumSwitchPlugin implements NodePlugin {
              */
             AnalysisMethod aMethod = (AnalysisMethod) method;
             EnumSwitchFeature feature = ImageSingletons.lookup(EnumSwitchFeature.class);
-            aMethod.ensureGraphParsed(feature.analysis);
+            aMethod.ensureGraphParsed(feature.bb);
             Boolean methodSafeForExecution = feature.methodsSafeForExecution.get(aMethod);
             assert methodSafeForExecution != null : "after-parsing hook not executed for method " + aMethod.format("%H.%n(%p)");
             if (!methodSafeForExecution.booleanValue()) {
@@ -132,7 +132,7 @@ final class EnumSwitchPluginRegistry extends IntrinsificationPluginRegistry {
 @AutomaticFeature
 final class EnumSwitchFeature implements GraalFeature {
 
-    NativeImageStaticAnalysisEngine analysis;
+    Inflation bb;
 
     final ConcurrentMap<AnalysisMethod, Boolean> methodsSafeForExecution = new ConcurrentHashMap<>();
 
@@ -140,7 +140,7 @@ final class EnumSwitchFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(EnumSwitchPluginRegistry.class, new EnumSwitchPluginRegistry());
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        analysis = access.getStaticAnalysisEngine();
+        bb = access.getStaticAnalysisEngine();
         access.getHostVM().addMethodAfterParsingHook(this::onMethodParsed);
     }
 
@@ -153,7 +153,7 @@ final class EnumSwitchFeature implements GraalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        analysis = null;
+        bb = null;
     }
 
     @Override

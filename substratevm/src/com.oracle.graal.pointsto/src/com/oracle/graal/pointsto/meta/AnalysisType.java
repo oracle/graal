@@ -39,14 +39,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.StaticAnalysisEngine;
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.BigBang.ConstantObjectsProfiler;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.PointsToAnalysis.ConstantObjectsProfiler;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -263,7 +263,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return uniqueConstant;
     }
 
-    public AnalysisObject getCachedConstantObject(BigBang bb, JavaConstant constant) {
+    public AnalysisObject getCachedConstantObject(PointsToAnalysis bb, JavaConstant constant) {
 
         /*
          * Constant caching is only used we certain analysis policies. Ideally we would store the
@@ -302,7 +302,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return result;
     }
 
-    private void mergeConstantObjects(BigBang bb) {
+    private void mergeConstantObjects(PointsToAnalysis bb) {
         ConstantContextSensitiveObject uConstant = new ConstantContextSensitiveObject(bb, this, null);
         if (UNIQUE_CONSTANT_UPDATER.compareAndSet(this, null, uConstant)) {
             constantObjectsCache.values().stream().forEach(constantObject -> {
@@ -359,8 +359,8 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         }
     }
 
-    public static boolean verifyAssignableTypes(StaticAnalysisEngine analysis) {
-        List<AnalysisType> allTypes = analysis.getUniverse().getTypes();
+    public static boolean verifyAssignableTypes(BigBang bb) {
+        List<AnalysisType> allTypes = bb.getUniverse().getTypes();
 
         Set<String> mismatchedAssignableResults = ConcurrentHashMap.newKeySet();
         allTypes.parallelStream().filter(t -> t.instantiatedTypes != null).forEach(t1 -> {
@@ -469,17 +469,17 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     /**
      * Iterates all super types for this type, where a super type is defined as any type that is
      * assignable from this type, feeding each of them to the consumer.
-     * 
+     *
      * For a class B extends A, the array type A[] is not a superclass of the array type B[]. So
      * there is no strict need to make A[] reachable when B[] is reachable. But it turns out that
      * this is puzzling for users, and there are frameworks that instantiate such arrays
      * programmatically using Array.newInstance(). To reduce the amount of manual configuration that
      * is necessary, we mark all array types of the elemental supertypes and superinterfaces also as
      * reachable.
-     * 
+     *
      * Moreover, even if B extends A doesn't imply that B[] extends A[] it does imply that
      * A[].isAssignableFrom(B[]).
-     * 
+     *
      * NOTE: This method doesn't guarantee that a super type will only be processed once. For
      * example when java.lang.Class is processed its interface java.lang.reflect.AnnotatedElement is
      * reachable directly, but also through java.lang.GenericDeclaration, so it will be processed

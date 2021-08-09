@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
@@ -150,7 +150,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
      * merged with some context sensitive objects, i.e., it now represents those objects too and
      * their corresponding data, like field and array elements flows.
      */
-    public void noteMerge(@SuppressWarnings("unused") BigBang bb) {
+    public void noteMerge(@SuppressWarnings("unused") PointsToAnalysis bb) {
         this.merged = true;
     }
 
@@ -179,7 +179,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     /** Returns the array elements type flow corresponding to an analysis object of array type. */
-    public ArrayElementsTypeFlow getArrayElementsFlow(BigBang bb, boolean isStore) {
+    public ArrayElementsTypeFlow getArrayElementsFlow(PointsToAnalysis bb, boolean isStore) {
         assert this.isObjectArray();
 
         // ensure initialization
@@ -189,25 +189,25 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     /** Returns the filter field flow corresponding to an unsafe accessed filed. */
-    public FieldFilterTypeFlow getInstanceFieldFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {
+    public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, AnalysisMethod context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed();
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
         return fieldTypeStore.writeFlow().filterFlow(bb);
     }
 
-    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {
+    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(PointsToAnalysis bb, AnalysisMethod context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.hasUnsafeFrozenTypeState();
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
         return fieldTypeStore.unsafeWriteSinkFlow(bb);
     }
 
     /** Returns the instance field flow corresponding to a filed of the object's type. */
-    public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisField field, boolean isStore) {
+    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisField field, boolean isStore) {
         return getInstanceFieldFlow(bb, null, field, isStore);
     }
 
-    public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisMethod context, AnalysisField field, boolean isStore) {
+    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisMethod context, AnalysisField field, boolean isStore) {
         assert !Modifier.isStatic(field.getModifiers());
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
@@ -215,7 +215,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return isStore ? fieldTypeStore.writeFlow() : fieldTypeStore.readFlow();
     }
 
-    final FieldTypeStore getInstanceFieldTypeStore(BigBang bb, AnalysisMethod context, AnalysisField field) {
+    final FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, AnalysisMethod context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers());
         assert bb != null && !bb.getUniverse().sealed();
 
@@ -250,7 +250,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
      * Check if a constant object wraps the empty array constant, e.g. <code> static final Object[]
      * EMPTY_ELEMENTDATA = {}</code> for ArrayList;
      */
-    public boolean isEmptyObjectArrayConstant(@SuppressWarnings("unused") BigBang bb) {
+    public boolean isEmptyObjectArrayConstant(@SuppressWarnings("unused") PointsToAnalysis bb) {
         return false;
     }
 
@@ -268,7 +268,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
      * Check if a constant object wraps the empty array constant, i.e. <code> static final Object[]
      * EMPTY_ELEMENTDATA = {}</code>;
      */
-    public static boolean isEmptyObjectArrayConstant(BigBang bb, JavaConstant constant) {
+    public static boolean isEmptyObjectArrayConstant(PointsToAnalysis bb, JavaConstant constant) {
         assert constant.getJavaKind() == JavaKind.Object;
         Object valueObj = bb.getProviders().getSnippetReflection().asObject(Object.class, constant);
         if (valueObj instanceof Object[]) {

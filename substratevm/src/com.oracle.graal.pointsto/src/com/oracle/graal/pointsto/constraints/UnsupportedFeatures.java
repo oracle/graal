@@ -31,7 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.StaticAnalysisEngine;
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
 public class UnsupportedFeatures {
@@ -86,10 +86,10 @@ public class UnsupportedFeatures {
      * Report the unsupported features. Throws {@code UnsupportedFeatureException} if unsupported
      * features are found.
      *
-     * @param analysis the core analysis object
+     * @param bb the core analysis object
      * @throws UnsupportedFeatureException if unsupported features are found
      */
-    public void report(StaticAnalysisEngine analysis) {
+    public void report(BigBang bb) {
         if (exist()) {
             List<Data> entries = new ArrayList<>(messages.values());
             Collections.sort(entries);
@@ -108,7 +108,7 @@ public class UnsupportedFeatures {
                 }
                 if (entry.method != null) {
                     printStream.println("Call path from entry point to " + entry.method.format("%H.%n(%p)") + ": ");
-                    ShortestInvokeChainPrinter.print(analysis, entry.method, printStream);
+                    ShortestInvokeChainPrinter.print(bb, entry.method, printStream);
                     printStream.println();
                 }
                 if (!singleEntry) {

@@ -45,7 +45,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.analysis.NativeImageStaticAnalysisEngine;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.phases.util.Providers;
@@ -181,23 +181,23 @@ public class FeatureImpl {
 
     abstract static class AnalysisAccessBase extends FeatureAccessImpl {
 
-        protected final NativeImageStaticAnalysisEngine analysis;
+        protected final Inflation bb;
 
-        AnalysisAccessBase(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, DebugContext debugContext) {
+        AnalysisAccessBase(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
-            this.analysis = analysis;
+            this.bb = bb;
         }
 
-        public NativeImageStaticAnalysisEngine getStaticAnalysisEngine() {
-            return analysis;
+        public Inflation getStaticAnalysisEngine() {
+            return bb;
         }
 
         public AnalysisUniverse getUniverse() {
-            return analysis.getUniverse();
+            return bb.getUniverse();
         }
 
         public AnalysisMetaAccess getMetaAccess() {
-            return analysis.getMetaAccess();
+            return bb.getMetaAccess();
         }
 
         public boolean isReachable(Class<?> clazz) {
@@ -247,8 +247,8 @@ public class FeatureImpl {
 
     public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess {
 
-        public DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, analysis, debugContext);
+        public DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, debugContext);
         }
 
         @Override
@@ -282,7 +282,7 @@ public class FeatureImpl {
         }
 
         public SVMHost getHostVM() {
-            return analysis.getHostVM();
+            return bb.getHostVM();
         }
     }
 
@@ -290,9 +290,9 @@ public class FeatureImpl {
 
         private final NativeLibraries nativeLibraries;
 
-        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, NativeLibraries nativeLibraries,
+        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
                         DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, analysis, debugContext);
+            super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
         }
 
@@ -347,9 +347,9 @@ public class FeatureImpl {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(analysis.getUniverse());
+                aField.registerAsUnsafeAccessed(bb.getUniverse());
                 /* Force the update of registered unsafe loads and stores. */
-                analysis.forceUnsafeUpdate(aField);
+                bb.forceUnsafeUpdate(aField);
                 return true;
             }
             return false;
@@ -373,9 +373,9 @@ public class FeatureImpl {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(analysis.getUniverse(), partitionKind);
+                aField.registerAsUnsafeAccessed(bb.getUniverse(), partitionKind);
                 /* Force the update of registered unsafe loads and stores. */
-                analysis.forceUnsafeUpdate(aField);
+                bb.forceUnsafeUpdate(aField);
             }
         }
 
@@ -384,7 +384,7 @@ public class FeatureImpl {
         }
 
         public void registerAsInvoked(AnalysisMethod aMethod) {
-            analysis.addRootMethod(aMethod).registerAsImplementationInvoked(null);
+            bb.addRootMethod(aMethod).registerAsImplementationInvoked(null);
         }
 
         public void registerAsCompiled(Executable method) {
@@ -401,7 +401,7 @@ public class FeatureImpl {
         }
 
         public SVMHost getHostVM() {
-            return analysis.getHostVM();
+            return bb.getHostVM();
         }
 
         public void registerHierarchyForReflectiveInstantiation(Class<?> c) {
@@ -433,9 +433,9 @@ public class FeatureImpl {
 
         private boolean requireAnalysisIteration;
 
-        public DuringAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, NativeLibraries nativeLibraries,
+        public DuringAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
                         DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, analysis, nativeLibraries, debugContext);
+            super(featureHandler, imageClassLoader, bb, nativeLibraries, debugContext);
         }
 
         @Override
@@ -451,14 +451,14 @@ public class FeatureImpl {
     }
 
     public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess {
-        public AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, analysis, debugContext);
+        public AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
 
     public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements Feature.OnAnalysisExitAccess {
-        public OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageStaticAnalysisEngine analysis, DebugContext debugContext) {
-            super(featureHandler, imageClassLoader, analysis, debugContext);
+        public OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
 
