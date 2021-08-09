@@ -76,6 +76,8 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             eventType.initialize();
             SecuritySupport.registerEvent(newEventClass);
             JfrJavaEvents.registerEventClass(newEventClass);
+            // the reflection registration for the event handler field is delayed to the JfrFeature
+            // duringAnalysis callback so it does not not race/interfere with other retransforms
             JVM.getJVM().retransformClasses(new Class<?>[]{newEventClass});
             return Boolean.TRUE;
         } catch (Throwable ex) {
