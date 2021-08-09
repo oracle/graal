@@ -68,7 +68,7 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
      * Because the CPUFeatures available vary across different JDK versions, the features are
      * queried via their name, as opposed to the actual enum.
      */
-    private static boolean isFeaturePresent(String featureName, AArch64LibCHelper.CPUFeatures cpuFeatures) {
+    private static boolean isFeaturePresent(String featureName, AArch64LibCHelper.CPUFeatures cpuFeatures, List<String> unknownFeatures) {
         switch (featureName) {
             case "FP":
                 return cpuFeatures.fFP();
@@ -88,6 +88,16 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
                 return cpuFeatures.fCRC32();
             case "LSE":
                 return cpuFeatures.fLSE();
+            case "DCPOP":
+                return cpuFeatures.fDCPOP();
+            case "SHA3":
+                return cpuFeatures.fSHA3();
+            case "SHA512":
+                return cpuFeatures.fSHA512();
+            case "SVE":
+                return cpuFeatures.fSVE();
+            case "SVE2":
+                return cpuFeatures.fSVE2();
             case "STXR_PREFETCH":
                 return cpuFeatures.fSTXRPREFETCH();
             case "A53MAC":
@@ -95,7 +105,8 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
             case "DMB_ATOMICS":
                 return cpuFeatures.fDMBATOMICS();
             default:
-                throw VMError.shouldNotReachHere("Missing feature check: " + featureName);
+                unknownFeatures.add(featureName);
+                return false;
         }
     }
 
@@ -109,10 +120,14 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
 
         AArch64LibCHelper.determineCPUFeatures(cpuFeatures);
 
+        ArrayList<String> unknownFeatures = new ArrayList<>();
         for (AArch64.CPUFeature feature : AArch64.CPUFeature.values()) {
-            if (isFeaturePresent(feature.name(), cpuFeatures)) {
+            if (isFeaturePresent(feature.name(), cpuFeatures, unknownFeatures)) {
                 features.add(feature);
             }
+        }
+        if (!unknownFeatures.isEmpty()) {
+            throw VMError.shouldNotReachHere("Native image does not support the following JVMCI CPU features: " + unknownFeatures);
         }
 
         return features;

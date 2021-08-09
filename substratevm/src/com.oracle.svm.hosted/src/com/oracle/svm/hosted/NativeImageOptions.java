@@ -50,15 +50,11 @@ public class NativeImageOptions {
 
     public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
 
-    @Option(help = "Comma separated list of CPU features that will be used for image generation. " +
-                    "The specific options available are platform dependent. " +
-                    "For AMD64, SSE and SSE2 are enabled by default. Available features are: " +
-                    "CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE3, SSSE3, SSE4A, SSE4_1, " +
-                    "SSE4_2, POPCNT, LZCNT, TSC, TSCINV, AVX, AVX2, AES, ERMS, CLMUL, BMI1, " +
-                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW, AVX512VL, " +
-                    "SHA, FMA. On AArch64, no features are enabled by default. Available features " +
-                    "are: FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
-                    "A53MAC", type = User)//
+    @Option(help = "Comma separated list of CPU features that will be enabled while building the " +
+                    "target executable, irrespective of whether they are supported by the hosted " +
+                    "environment. Note that enabling features not present within the target environment " +
+                    "may result in application crashes. The specific options available are target " +
+                    "platform dependent. See --list-cpu-features for feature list.", type = User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
