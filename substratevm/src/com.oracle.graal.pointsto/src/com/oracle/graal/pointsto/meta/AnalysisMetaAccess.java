@@ -32,7 +32,6 @@ import java.util.Optional;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -46,14 +45,6 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
     @Override
     public AnalysisType lookupJavaType(Class<?> clazz) {
         return (AnalysisType) super.lookupJavaType(clazz);
-    }
-
-    public AnalysisType lookupJavaType(String className) {
-        try {
-            return lookupJavaType(Class.forName(className));
-        } catch (ClassNotFoundException e) {
-            throw JVMCIError.shouldNotReachHere(e);
-        }
     }
 
     public Optional<AnalysisType> optionalLookupJavaType(Class<?> clazz) {

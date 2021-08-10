@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.common.JVMCIError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -242,9 +243,11 @@ public class PermissionsFeature implements Feature {
         }
     }
 
-    public Class<?> loadOrFail(String className) {
+    private Class<?> loadOrFail(String className) {
         try {
+            // Checkstyle: allow Class.forName
             return Class.forName(className);
+            // Checkstyle: disallow Class.forName
         } catch (ClassNotFoundException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }
@@ -692,7 +695,7 @@ public class PermissionsFeature implements Feature {
         private final ImageClassLoader imageClassLoader;
 
         SafeServiceLoaderRecognizer(BigBang bb, ImageClassLoader imageClassLoader) {
-            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType("java.util.ServiceLoader$LazyIterator");
+            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType(loadOrFail("java.util.ServiceLoader$LazyIterator"));
             Set<AnalysisMethod> methods = findMethods(bb, serviceLoaderIterator, (m) -> m.getName().equals("nextService"));
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup ServiceLoader$LazyIterator.nextService().");
