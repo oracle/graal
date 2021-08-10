@@ -777,15 +777,15 @@ _daCapoIterations = {
     "eclipse"     : -1,
     "fop"         : 40,
     "h2"          : 25,
-    "jython"      : 40,
-    "luindex"     : 15,
+    "jython"      : 50,
+    "luindex"     : 20,
     "lusearch"    : 40,
     "lusearch-fix": -1,
     "pmd"         : 30,
     "sunflow"     : 35,
     "tomcat"      : -1,
-    "tradebeans"  : 40,  # TODO tune
-    "tradesoap"   : 30,  # TODO tune and check potential error in iteration 1
+    "tradebeans"  : 30,
+    "tradesoap"   : 30,
     "xalan"       : 30,
 }
 
