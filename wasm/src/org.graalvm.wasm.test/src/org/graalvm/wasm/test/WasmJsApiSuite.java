@@ -804,17 +804,19 @@ public class WasmJsApiSuite {
     }
 
     @Test
-    public void testMemoryAllocationFailure() {
+    public void testMemoryAllocationFailure() throws IOException {
         // Memory allocation should either succeed or throw an interop
         // exception (not an internal error like OutOfMemoryError).
-        try {
-            Object[] memories = new Object[5];
-            for (int i = 0; i < memories.length; i++) {
-                memories[i] = WebAssembly.memAlloc(32767, 32767);
+        runTest(context -> {
+            try {
+                Object[] memories = new Object[5];
+                for (int i = 0; i < memories.length; i++) {
+                    memories[i] = WebAssembly.memAlloc(32767, 32767);
+                }
+            } catch (AbstractTruffleException ex) {
+                Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));
             }
-        } catch (AbstractTruffleException ex) {
-            Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));
-        }
+        });
     }
 
     @Test
