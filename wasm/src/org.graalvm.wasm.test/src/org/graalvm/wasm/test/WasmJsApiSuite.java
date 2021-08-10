@@ -560,23 +560,25 @@ public class WasmJsApiSuite {
                 checkCustomSections(new byte[][]{}, WebAssembly.customSections(module, "zero"));
                 checkCustomSections(new byte[][]{{1, 3, 5}}, WebAssembly.customSections(module, "odd"));
                 checkCustomSections(new byte[][]{{2, 4}, {6}}, WebAssembly.customSections(module, "even"));
-            } catch (InvalidArrayIndexException ex) {
+            } catch (InteropException ex) {
                 throw new RuntimeException(ex);
             }
         });
     }
 
-    private static void checkCustomSections(byte[][] expected, Sequence<ByteArrayBuffer> actual) throws InvalidArrayIndexException {
-        Assert.assertEquals("Custom section count", expected.length, (int) actual.getArraySize());
+    private static void checkCustomSections(byte[][] expected, Sequence<ByteArrayBuffer> actual) throws InvalidArrayIndexException, UnsupportedMessageException {
+        InteropLibrary interop = InteropLibrary.getUncached(actual);
+        Assert.assertEquals("Custom section count", expected.length, (int) interop.getArraySize(actual));
         for (int i = 0; i < expected.length; i++) {
-            checkCustomSection(expected[i], (ByteArrayBuffer) actual.readArrayElement(i));
+            checkCustomSection(expected[i], (ByteArrayBuffer) interop.readArrayElement(actual, i));
         }
     }
 
-    private static void checkCustomSection(byte[] expected, ByteArrayBuffer actual) throws InvalidArrayIndexException {
-        Assert.assertEquals("Custom section length", expected.length, (int) actual.getArraySize());
+    private static void checkCustomSection(byte[] expected, ByteArrayBuffer actual) throws InvalidArrayIndexException, UnsupportedMessageException {
+        InteropLibrary interop = InteropLibrary.getUncached(actual);
+        Assert.assertEquals("Custom section length", expected.length, (int) interop.getArraySize(actual));
         for (int i = 0; i < expected.length; i++) {
-            Assert.assertEquals("Custom section data", expected[i], actual.readArrayElement(i));
+            Assert.assertEquals("Custom section data", expected[i], interop.readArrayElement(actual, i));
         }
     }
 
