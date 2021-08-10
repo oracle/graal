@@ -15,7 +15,7 @@ Here you will find information about how to:
 ## Run Java Applications on GraalVM from the CLI
 
 Any application that runs on a Java Virtual Machine (JVM) can run on GraalVM.
-GraalVM includes a JDK based on the Java HotSpot VM, and integrates an optimizing, just-in-time (JIT) compiler, written in Java: [the GraalVM compiler](/reference-manual/compiler/).
+GraalVM includes a JDK based on the Java HotSpot VM, and integrates an optimizing, just-in-time (JIT) compiler, written in Java: [the GraalVM compiler](../reference-manual/compiler.md).
 At runtime, an application is loaded and executed normally by the JVM.
 
 In order to follow the steps in this guide, you must have GraalVM installed.
