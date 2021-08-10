@@ -70,7 +70,7 @@ import org.graalvm.wasm.memory.ByteArrayWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -234,6 +234,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ModuleExportDescriptor> moduleExports(WasmModule module) {
+        CompilerAsserts.neverPartOfCompilation();
         final ArrayList<ModuleExportDescriptor> list = new ArrayList<>();
         for (final String name : module.exportedSymbols()) {
             final WasmFunction f = module.exportedFunctions().get(name);
@@ -249,7 +250,6 @@ public class WebAssembly extends Dictionary {
                 String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType));
             } else {
-                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
         }
@@ -262,6 +262,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ModuleImportDescriptor> moduleImports(WasmModule module) {
+        CompilerAsserts.neverPartOfCompilation();
         final EconomicMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
         for (ImportDescriptor descriptor : module.importedSymbols()) {
@@ -274,7 +275,6 @@ public class WebAssembly extends Dictionary {
                     if (Objects.equals(module.importedTable(), descriptor)) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.table.name(), null));
                     } else {
-                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
                     }
                     break;
@@ -282,7 +282,6 @@ public class WebAssembly extends Dictionary {
                     if (Objects.equals(module.importedMemory(), descriptor)) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.memory.name(), null));
                     } else {
-                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Memory import inconsistent.");
                     }
                     break;
@@ -292,7 +291,6 @@ public class WebAssembly extends Dictionary {
                     list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.global.name(), valueType));
                     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
                     throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
             }
         }
@@ -432,6 +430,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public static String functionTypeToString(WasmFunction f) {
+        CompilerAsserts.neverPartOfCompilation();
         StringBuilder typeInfo = new StringBuilder();
 
         typeInfo.append(f.index());

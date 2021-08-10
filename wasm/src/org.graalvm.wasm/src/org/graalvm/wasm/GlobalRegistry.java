@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,10 @@ package org.graalvm.wasm;
 
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.globals.WasmGlobal;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * The global registry holds the global values in the WebAssembly engine instance.
@@ -225,8 +225,8 @@ public class GlobalRegistry {
     }
 
     public WasmGlobal externalGlobal(int address) {
+        CompilerAsserts.neverPartOfCompilation();
         if (address >= 0) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Global at address " + address + " is not external.");
         }
         return externalGlobals[-address - 1];
