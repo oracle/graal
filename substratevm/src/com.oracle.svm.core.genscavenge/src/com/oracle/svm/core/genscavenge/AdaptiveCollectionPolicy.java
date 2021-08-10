@@ -166,7 +166,7 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         if (previous == null || (minorCount == 0 && majorCount == 0)) {
             survivorSize = params.initialSurvivorSize;
-            edenSize = params.initialEdenSize();
+            edenSize = params.initialEdenSize;
             oldSize = params.initialOldSize();
             promoSize = UnsignedUtils.min(edenSize, oldSize);
             tenuringThreshold = UninterruptibleUtils.Math.clamp(INITIAL_TENURING_THRESHOLD, 1, HeapParameters.getMaxSurvivorSpaces() + 1);
@@ -646,11 +646,15 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         final UnsignedWord maxHeapSize;
         final UnsignedWord maxYoungSize;
         final UnsignedWord initialHeapSize;
+        final UnsignedWord initialEdenSize;
         final UnsignedWord initialSurvivorSize;
 
         static SizeParameters compute() {
             UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
-            UnsignedWord minAllSpaces = alignUp(minSpaceSize().multiply(3)); // eden, survivors, old
+            UnsignedWord minAllSpaces = minSpaceSize().multiply(2); // eden, old
+            if (HeapParameters.getMaxSurvivorSpaces() > 0) {
+                minAllSpaces = minAllSpaces.add(minSpaceSize().multiply(2)); // survivor from and to
+            }
 
             UnsignedWord maxHeap;
             long optionMax = SubstrateGCOptions.MaxHeapSize.getValue();
@@ -717,49 +721,53 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             } else {
                 initialYoung = UnsignedUtils.clamp(alignUp(initialHeap.unsignedDivide(NEW_RATIO + 1)), minSpaceSize(), maxYoung);
             }
-            /*
-             * In HotSpot, this is the reserved capacity of each of the From and To spaces, i.e.,
-             * together they occupy 2x this size. Our chunked heap doesn't reserve memory, so we use
-             * never occupy more than 1x this size for survivors except during collections. However,
-             * this is inconsistent with how we interpret the maximum size of the old generation,
-             * which we can exceed the (current) old gen size while copying during collections.
-             */
-            UnsignedWord initialSurvivor = minSpaceSize(alignUp(initialYoung.unsignedDivide(INITIAL_SURVIVOR_RATIO)));
+            UnsignedWord initialSurvivor = WordFactory.zero();
+            if (HeapParameters.getMaxSurvivorSpaces() > 0) {
+                /*
+                 * In HotSpot, this is the reserved capacity of each of the survivor From and To
+                 * spaces, i.e., together they occupy 2x this size. Our chunked heap doesn't reserve
+                 * memory, so we use never occupy more than 1x this size for survivors except during
+                 * collections. However, this is inconsistent with how we interpret the maximum size
+                 * of the old generation, which we can exceed the (current) old gen size while
+                 * copying during collections.
+                 */
+                initialSurvivor = minSpaceSize(alignUp(initialYoung.unsignedDivide(INITIAL_SURVIVOR_RATIO)));
+            }
+            UnsignedWord initialEden = minSpaceSize(alignUp(initialYoung.subtract(initialSurvivor.multiply(2))));
 
-            return new SizeParameters(maxHeap, maxYoung, initialHeap, initialSurvivor);
+            return new SizeParameters(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor);
         }
 
-        private SizeParameters(UnsignedWord maxHeapSize, UnsignedWord maxYoungSize, UnsignedWord initialHeapSize, UnsignedWord initialSurvivorSize) {
+        private SizeParameters(UnsignedWord maxHeapSize, UnsignedWord maxYoungSize, UnsignedWord initialHeapSize, UnsignedWord initialEdenSize, UnsignedWord initialSurvivorSize) {
             this.maxHeapSize = maxHeapSize;
             this.maxYoungSize = maxYoungSize;
             this.initialHeapSize = initialHeapSize;
+            this.initialEdenSize = initialEdenSize;
             this.initialSurvivorSize = initialSurvivorSize;
 
-            assert isAligned(maxHeapSize) && isAligned(maxYoungSize) && isAligned(initialHeapSize) && isAligned(initialSurvivorSize);
-            assert isAligned(maxSurvivorSize()) && isAligned(initialYoungSize()) && isAligned(initialEdenSize()) && isAligned(initialOldSize()) && isAligned(maxOldSize());
+            assert isAligned(maxHeapSize) && isAligned(maxYoungSize) && isAligned(initialHeapSize) && isAligned(initialEdenSize) && isAligned(initialSurvivorSize);
+            assert isAligned(maxSurvivorSize()) && isAligned(initialYoungSize()) && isAligned(initialOldSize()) && isAligned(maxOldSize());
 
             assert initialHeapSize.belowOrEqual(maxHeapSize);
             assert maxSurvivorSize().belowThan(maxYoungSize);
             assert maxYoungSize.add(maxOldSize()).equal(maxHeapSize);
             assert maxHeapSize.belowOrEqual(ReferenceAccess.singleton().getAddressSpaceSize());
-            assert initialEdenSize().add(initialSurvivorSize.multiply(2)).equal(initialYoungSize());
+            assert initialEdenSize.add(initialSurvivorSize.multiply(2)).equal(initialYoungSize());
             assert initialYoungSize().add(initialOldSize()).equal(initialHeapSize);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         UnsignedWord maxSurvivorSize() {
+            if (HeapParameters.getMaxSurvivorSpaces() == 0) {
+                return WordFactory.zero();
+            }
             UnsignedWord size = maxYoungSize.unsignedDivide(MIN_SURVIVOR_RATIO);
             return minSpaceSize(alignDown(size));
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         UnsignedWord initialYoungSize() {
-            return initialEdenSize().add(initialSurvivorSize.multiply(2));
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        UnsignedWord initialEdenSize() {
-            return initialSurvivorSize.multiply(2);
+            return initialEdenSize.add(initialSurvivorSize.multiply(2));
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
