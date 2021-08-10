@@ -909,7 +909,7 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
     with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
         try:
             cmd = mx.apply_command_mapper_hooks(cmd, command_mapper_hooks)
-            return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
+            return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, timeout=timeout, cwd=cwd, env=env)
         finally:
             # Collate AggratedMetricsFile
             for a in vm_args:
