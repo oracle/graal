@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -43,6 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -217,7 +217,7 @@ public class HostedUniverse implements Universe {
         return orderedMethods;
     }
 
-    public Inflation getStaticAnalysis() {
+    public Inflation getBigBang() {
         return bb;
     }
 

@@ -28,7 +28,6 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -40,6 +39,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -132,7 +132,7 @@ final class EnumSwitchPluginRegistry extends IntrinsificationPluginRegistry {
 @AutomaticFeature
 final class EnumSwitchFeature implements GraalFeature {
 
-    Inflation bb;
+    BigBang bb;
 
     final ConcurrentMap<AnalysisMethod, Boolean> methodsSafeForExecution = new ConcurrentHashMap<>();
 
@@ -140,7 +140,7 @@ final class EnumSwitchFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(EnumSwitchPluginRegistry.class, new EnumSwitchPluginRegistry());
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        bb = access.getStaticAnalysisEngine();
+        bb = access.getBigBang();
         access.getHostVM().addMethodAfterParsingHook(this::onMethodParsed);
     }
 

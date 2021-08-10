@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -445,7 +445,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        DebugContext debug = impl.getStaticAnalysisEngine().getDebug();
+        DebugContext debug = impl.getBigBang().getDebug();
 
         // Services that will not be loaded if native-image is run
         // with -XX:-UseJVMCICompiler.
@@ -501,7 +501,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             foreignCalls.lookupForeignCall(stub.getLinkage().getDescriptor());
         }
 
-        hotSpotSubstrateReplacements.encode(impl.getStaticAnalysisEngine().getOptions());
+        hotSpotSubstrateReplacements.encode(impl.getBigBang().getOptions());
         if (!RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SnippetParameterInfo.class)) {
             // Clear the saved names if assertions aren't enabled
             hotSpotSubstrateReplacements.clearSnippetParameterNames();

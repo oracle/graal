@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,10 +112,10 @@ public class ClassInitializationFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-        classInitializationSupport.setUnsupportedFeatures(access.getStaticAnalysisEngine().getUnsupportedFeatures());
+        classInitializationSupport.setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
         access.registerObjectReplacer(this::checkImageHeapInstance);
-        universe = ((FeatureImpl.DuringSetupAccessImpl) a).getStaticAnalysisEngine().getUniverse();
-        metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getStaticAnalysisEngine().getMetaAccess();
+        universe = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getUniverse();
+        metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getMetaAccess();
     }
 
     private Object checkImageHeapInstance(Object obj) {
@@ -140,7 +140,7 @@ public class ClassInitializationFeature implements GraalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : EnsureClassInitializedSnippets.FOREIGN_CALLS) {
-            access.getStaticAnalysisEngine().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
         }
     }
 
@@ -184,7 +184,7 @@ public class ClassInitializationFeature implements GraalFeature {
     @Override
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
-        String imageName = ((FeatureImpl.AfterAnalysisAccessImpl) access).getStaticAnalysisEngine().getHostVM().getImageName();
+        String imageName = ((FeatureImpl.AfterAnalysisAccessImpl) access).getBigBang().getHostVM().getImageName();
         try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 

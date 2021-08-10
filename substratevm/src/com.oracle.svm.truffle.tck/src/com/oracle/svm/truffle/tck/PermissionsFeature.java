@@ -48,7 +48,6 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -62,6 +61,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -186,7 +186,7 @@ public class PermissionsFeature implements Feature {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         DebugContext debugContext = accessImpl.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
-            Inflation bb = accessImpl.getBigBang();
+            BigBang bb = accessImpl.getBigBang();
             WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
             ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
                             accessImpl.getImageClassLoader(),
@@ -255,13 +255,11 @@ public class PermissionsFeature implements Feature {
      * called method in {@code targets} or transitive caller of {@code targets} the resulting
      * {@code Map} contains an entry holding all direct callers of the method in the entry value.
      *
-     * @param bb the {@link Inflation}
      * @param bb the {@link BigBang}
      * @param targets the target methods to build call graph for
      * @param debugContext the {@link DebugContext}
      */
     private Map<AnalysisMethod, Set<AnalysisMethod>> callGraph(
-                    Inflation bb,
                     BigBang bb,
                     Set<AnalysisMethod> targets,
                     DebugContext debugContext) {
@@ -378,7 +376,7 @@ public class PermissionsFeature implements Feature {
      * @param maxDepth maximal call trace depth
      * @param maxReports maximal number of reports
      * @param callGraph call graph obtained from
-     *            {@link PermissionsFeature#callGraph(com.oracle.graal.pointsto.BigBang, java.util.Set, org.graalvm.compiler.debug.DebugContext)}
+     *            {@link PermissionsFeature#callGraph(BigBang, java.util.Set, org.graalvm.compiler.debug.DebugContext)}
      * @param contextFilters filters removing known valid calls
      * @param visited visited methods
      * @param depth current depth
@@ -590,7 +588,7 @@ public class PermissionsFeature implements Feature {
         private final ResolvedJavaMethod threadCurrentThread;
 
         SafeInterruptRecognizer(BigBang bb) {
-            this.hostVM = (SVMHost) bb.getHostVM();
+            this.hostVM = ((SVMHost) bb.getHostVM());
 
             Set<AnalysisMethod> methods = findMethods(bb, Thread.class, (m) -> m.getName().equals("interrupt"));
             if (methods.size() != 1) {
@@ -636,7 +634,7 @@ public class PermissionsFeature implements Feature {
         private final Set<AnalysisMethod> dopriviledged;
 
         SafePrivilegedRecognizer(BigBang bb) {
-            this.hostVM = (SVMHost) bb.getHostVM();
+            this.hostVM = ((SVMHost) bb.getHostVM());
             this.dopriviledged = findMethods(bb, java.security.AccessController.class, (m) -> m.getName().equals("doPrivileged") || m.getName().equals("doPrivilegedWithCombiner"));
         }
 

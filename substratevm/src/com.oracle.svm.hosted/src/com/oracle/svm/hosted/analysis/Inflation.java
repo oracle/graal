@@ -48,6 +48,4 @@ public interface Inflation extends BigBang {
 
     @Override
     ConstantReflectionProvider getConstantReflectionProvider();
-
-    Runnable getHeartbeatCallback();
 }

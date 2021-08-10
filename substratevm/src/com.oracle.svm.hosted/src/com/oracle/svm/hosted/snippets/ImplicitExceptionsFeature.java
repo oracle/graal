@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,10 +45,10 @@ final class ImplicitExceptionsFeature implements GraalFeature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
         for (SubstrateForeignCallDescriptor descriptor : ImplicitExceptions.FOREIGN_CALLS) {
-            access.getStaticAnalysisEngine().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
         }
         for (SubstrateForeignCallDescriptor descriptor : ExceptionUnwind.FOREIGN_CALLS) {
-            access.getStaticAnalysisEngine().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
         }
     }
 

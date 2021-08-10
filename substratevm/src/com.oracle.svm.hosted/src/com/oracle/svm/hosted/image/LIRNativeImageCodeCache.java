@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -44,6 +43,7 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -84,7 +84,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @SuppressWarnings("try")
     @Override
-    public void layoutMethods(DebugContext debug, String imageName, Inflation bb, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool) {
 
         try (Indent indent = debug.logAndIndent("layout methods")) {
 

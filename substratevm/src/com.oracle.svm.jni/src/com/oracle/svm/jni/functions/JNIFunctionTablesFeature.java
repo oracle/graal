@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -154,7 +154,7 @@ public class JNIFunctionTablesFeature implements Feature {
                     JNIFieldAccessorMethod method = ImageSingletons.lookup(JNIFieldAccessorMethod.Factory.class).create(kind, isSetter, isStatic, generatedMethodClass, constantPool,
                                     wrappedMetaAccess);
                     AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
-                    access.getStaticAnalysisEngine().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
+                    access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
                     generated.add(method);
                 }
             }
@@ -167,7 +167,7 @@ public class JNIFunctionTablesFeature implements Feature {
             for (Operation op : Operation.values()) {
                 JNIPrimitiveArrayOperationMethod method = new JNIPrimitiveArrayOperationMethod(kind, op, generatedMethodClass, constantPool, wrappedMetaAccess);
                 AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
-                access.getStaticAnalysisEngine().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
+                access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
                 generated.add(method);
             }
         }
@@ -188,7 +188,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     private static CFunctionPointer prepareCallTrampoline(CompilationAccessImpl access, CallVariant variant, boolean nonVirtual) {
         JNICallTrampolineMethod trampolineMethod = JNIAccessFeature.singleton().getCallTrampolineMethod(variant, nonVirtual);
-        AnalysisMethod analysisTrampoline = access.getUniverse().getStaticAnalysis().getUniverse().lookup(trampolineMethod);
+        AnalysisMethod analysisTrampoline = access.getUniverse().getBigBang().getUniverse().lookup(trampolineMethod);
         HostedMethod hostedTrampoline = access.getUniverse().lookup(analysisTrampoline);
         hostedTrampoline.compilationInfo.setCustomParseFunction(trampolineMethod.createCustomParseFunction());
         hostedTrampoline.compilationInfo.setCustomCompileFunction(trampolineMethod.createCustomCompileFunction());
@@ -231,7 +231,7 @@ public class JNIFunctionTablesFeature implements Feature {
         for (ResolvedJavaMethod accessor : generatedMethods) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, accessor.getName());
 
-            AnalysisUniverse analysisUniverse = access.getUniverse().getStaticAnalysis().getUniverse();
+            AnalysisUniverse analysisUniverse = access.getUniverse().getBigBang().getUniverse();
             AnalysisMethod analysisMethod = analysisUniverse.lookup(accessor);
             HostedMethod hostedMethod = access.getUniverse().lookup(analysisMethod);
 

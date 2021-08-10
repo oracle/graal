@@ -29,12 +29,13 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
-import com.oracle.svm.hosted.analysis.Inflation;
+
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -89,14 +90,14 @@ public class CEntryPointLiteralFeature implements Feature {
     }
 
     protected UniverseMetaAccess metaAccess;
-    protected Inflation bb;
+    protected BigBang bb;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) a;
 
         metaAccess = config.getMetaAccess();
-        bb = config.getStaticAnalysisEngine();
+        bb = config.getBigBang();
         config.registerObjectReplacer(new CEntryPointLiteralObjectReplacer());
     }
 

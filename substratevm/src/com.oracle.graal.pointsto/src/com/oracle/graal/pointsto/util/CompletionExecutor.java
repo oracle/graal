@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -42,6 +41,8 @@ import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.options.OptionValues;
+
+import com.oracle.graal.pointsto.BigBang;
 
 import jdk.vm.ci.common.JVMCIError;
 

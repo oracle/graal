@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -261,7 +261,7 @@ public class FallbackFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        AnalysisMetaAccess metaAccess = access.getStaticAnalysisEngine().getMetaAccess();
+        AnalysisMetaAccess metaAccess = access.getBigBang().getMetaAccess();
         for (ReflectionInvocationCheck check : reflectionInvocationChecks) {
             check.trackMethod(metaAccess);
         }
@@ -286,7 +286,7 @@ public class FallbackFeature implements Feature {
         }
 
         AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
-        if (access.getStaticAnalysisEngine().getUnsupportedFeatures().exist()) {
+        if (access.getBigBang().getUnsupportedFeatures().exist()) {
             /* If we detect use of unsupported features we trigger fallback image build. */
             reportFallback(ABORT_MSG_PREFIX + " due to unsupported features");
         }

@@ -88,4 +88,6 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     SnippetReflectionProvider getSnippetReflectionProvider();
 
     DebugContext getDebug();
+
+    Runnable getHeartbeatCallback();
 }

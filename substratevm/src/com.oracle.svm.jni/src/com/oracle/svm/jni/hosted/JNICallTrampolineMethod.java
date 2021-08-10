@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -140,7 +140,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     private int getFieldOffset(HostedProviders providers) {
         HostedMetaAccess metaAccess = (HostedMetaAccess) providers.getMetaAccess();
         HostedUniverse universe = (HostedUniverse) metaAccess.getUniverse();
-        AnalysisUniverse analysisUniverse = universe.getStaticAnalysis().getUniverse();
+        AnalysisUniverse analysisUniverse = universe.getBigBang().getUniverse();
         HostedField hostedField = universe.lookup(analysisUniverse.lookup(callWrapperField));
         assert hostedField.hasLocation();
         return hostedField.getLocation();

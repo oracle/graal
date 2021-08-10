@@ -43,7 +43,7 @@ import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -113,7 +113,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     @Override
     @SuppressWarnings({"unused", "try"})
-    public void layoutMethods(DebugContext debug, String imageName, Inflation bb, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool) {
         try (Indent indent = debug.logAndIndent("layout methods")) {
             BatchExecutor executor = new BatchExecutor(bb, threadPool);
             try (StopTimer t = new Timer(imageName, "(bitcode)").start()) {
@@ -434,7 +434,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private static final class BatchExecutor {
         private CompletionExecutor executor;
 
-        private BatchExecutor(Inflation bb, ForkJoinPool threadPool) {
+        private BatchExecutor(BigBang bb, ForkJoinPool threadPool) {
             this.executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
             executor.init();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,7 +123,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     @Platforms(HOSTED_ONLY.class)
     void finishBeforeCompilation(CompilationAccessImpl access) {
         HostedUniverse hUniverse = access.getUniverse();
-        AnalysisUniverse aUniverse = access.getUniverse().getStaticAnalysis().getUniverse();
+        AnalysisUniverse aUniverse = access.getUniverse().getBigBang().getUniverse();
         varargsCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(varargsCallWrapperMethod)));
         arrayCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(arrayCallWrapperMethod)));
         valistCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(valistCallWrapperMethod)));

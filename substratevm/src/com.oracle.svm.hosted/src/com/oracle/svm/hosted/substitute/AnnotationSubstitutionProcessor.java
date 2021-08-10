@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,11 +44,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -238,7 +238,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     /**
      * Eagerly register all target fields of recomputed value fields as unsafe accessed.
      */
-    public void processComputedValueFields(Inflation bb) {
+    public void processComputedValueFields(BigBang bb) {
         for (ResolvedJavaField field : fieldSubstitutions.values()) {
             if (field instanceof ComputedValue) {
                 ComputedValue cvField = (ComputedValue) field;

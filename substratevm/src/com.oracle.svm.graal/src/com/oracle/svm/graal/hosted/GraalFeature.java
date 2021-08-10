@@ -42,6 +42,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
@@ -388,7 +389,7 @@ public final class GraalFeature implements Feature {
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
-                        config.getImageClassLoader(), ParsingReason.JITCompilation, config.getStaticAnalysisEngine().getAnnotationSubstitutionProcessor(),
+                        config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), classInitializationSupport, ConfigurationValues.getTarget());
 
         NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), runtimeConfig.getSnippetReflection(), false, true);
@@ -482,7 +483,7 @@ public final class GraalFeature implements Feature {
         worklist.addAll(methods.values());
 
         while (!worklist.isEmpty()) {
-            processMethod(worklist.removeFirst(), worklist, config.getStaticAnalysisEngine());
+            processMethod(worklist.removeFirst(), worklist, config.getBigBang());
         }
 
         SubstrateMethod[] methodsToCompileArr = new SubstrateMethod[methods.size()];
@@ -510,7 +511,7 @@ public final class GraalFeature implements Feature {
     }
 
     @SuppressWarnings("try")
-    private void processMethod(CallTreeNode node, Deque<CallTreeNode> worklist, Inflation bb) {
+    private void processMethod(CallTreeNode node, Deque<CallTreeNode> worklist, BigBang bb) {
         AnalysisMethod method = node.implementationMethod;
         assert method.isImplementationInvoked();
 

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.lambda;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.java.LambdaUtils;
 import java.util.HashSet;
 import java.util.Set;

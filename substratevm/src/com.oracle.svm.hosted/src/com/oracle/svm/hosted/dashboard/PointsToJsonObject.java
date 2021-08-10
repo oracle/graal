@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
@@ -490,8 +490,10 @@ class PointsToJsonObject extends JsonObject {
         }
         FeatureImpl.OnAnalysisExitAccessImpl config = (FeatureImpl.OnAnalysisExitAccessImpl) access;
         BigBang bb = config.getBigBang();
-        serializeMethods(bb);
-        connectFlowsToEnclosingMethods(bb);
+        VMError.guarantee(bb instanceof PointsToAnalysis, "Printing points-to statistics only make sense when point-to analysis is on.");
+        PointsToAnalysis bigbang = (PointsToAnalysis) bb;
+        serializeMethods(bigbang);
+        connectFlowsToEnclosingMethods(bigbang);
         matchInputsAndUses();
         built = true;
     }

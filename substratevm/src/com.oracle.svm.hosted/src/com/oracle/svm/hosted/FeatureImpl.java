@@ -45,6 +45,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
@@ -188,7 +189,7 @@ public class FeatureImpl {
             this.bb = bb;
         }
 
-        public Inflation getStaticAnalysisEngine() {
+        public BigBang getBigBang() {
             return bb;
         }
 
@@ -241,7 +242,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.getMethodImplementations(getStaticAnalysisEngine(), baseMethod);
+            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod);
         }
     }
 
