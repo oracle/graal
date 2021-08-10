@@ -48,6 +48,7 @@ import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -125,7 +126,9 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
 
-        switch (body.returnTypeId()) {
+        final byte returnTypeId = body.returnTypeId();
+        CompilerAsserts.partialEvaluationConstant(returnTypeId);
+        switch (returnTypeId) {
             case 0x00:
             case WasmType.VOID_TYPE: {
                 return WasmVoidResult.getInstance();
@@ -149,8 +152,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
                 return Double.longBitsToDouble(returnValue);
             }
             default:
-                errorBranch();
-                throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", body.returnTypeId());
+                throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", returnTypeId);
         }
     }
 

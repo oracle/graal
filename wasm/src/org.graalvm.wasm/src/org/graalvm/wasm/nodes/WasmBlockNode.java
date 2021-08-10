@@ -605,7 +605,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             default: {
-                                errorBranch();
                                 throw formatException("Unknown return type: %d", returnType);
                             }
                         }
@@ -736,7 +735,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             default: {
-                                errorBranch();
                                 throw formatException("Unknown return type: %d", returnType);
                             }
                         }
@@ -1639,7 +1637,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 break;
             }
             default: {
-                errorBranch();
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
             }
         }
@@ -1674,7 +1671,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 break;
             }
             default: {
-                errorBranch();
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
             }
         }
@@ -2930,7 +2926,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     args[i] = popAsDouble(stack, stackPointer);
                     break;
                 default: {
-                    errorBranch();
                     throw formatException("Unknown type: %d", type);
                 }
             }
