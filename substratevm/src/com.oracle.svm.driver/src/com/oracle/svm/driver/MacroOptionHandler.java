@@ -28,6 +28,7 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.List;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.util.ClasspathUtils;
@@ -88,7 +89,12 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (!enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
             Path builderJarsDirectory = imageJarsDirectory.resolve("builder");
             if (Files.isDirectory(builderJarsDirectory)) {
-                NativeImage.getJars(builderJarsDirectory).forEach(nativeImage::addImageBuilderClasspath);
+                List<Path> extraBuilderJars = NativeImage.getJars(builderJarsDirectory);
+                if (NativeImage.USE_NI_JPMS) {
+                    extraBuilderJars.forEach(nativeImage::addImageBuilderModulePath);
+                } else {
+                    extraBuilderJars.forEach(nativeImage::addImageBuilderClasspath);
+                }
             }
         }
 

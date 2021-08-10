@@ -233,6 +233,7 @@ public class NativeImage {
     private static final String pKeyNativeImageArgs = "NativeImageArgs";
 
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
+    private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
@@ -894,12 +895,7 @@ public class NativeImage {
         }
 
         if (config.useJavaModules()) {
-            String modulePath = config.getBuilderModulePath().stream()
-                            .map(this::canonicalize).map(Path::toString)
-                            .collect(Collectors.joining(File.pathSeparator));
-            if (!modulePath.isEmpty()) {
-                addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
-            }
+            config.getBuilderModulePath().forEach(this::addImageBuilderModulePath);
             String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
@@ -1237,7 +1233,7 @@ public class NativeImage {
             /* Bypass regular build and proceed with fallback image building */
             return 2;
         }
-        return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
+        return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
     }
 
     private static String getLocationAgnosticArgPrefix(String argPrefix) {
@@ -1394,7 +1390,8 @@ public class NativeImage {
         }
     }
 
-    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp, LinkedHashSet<Path> imagemp) {
+    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<Path> mp, ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp,
+                    LinkedHashSet<Path> imagemp) {
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
         command.add(canonicalize(config.getJavaExecutable()).toString());
@@ -1406,6 +1403,12 @@ public class NativeImage {
         if (!cp.isEmpty()) {
             command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         }
+        if (!mp.isEmpty()) {
+            List<String> strings = Arrays.asList("--module-path", mp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+            System.out.println("Using module-path: " + String.join(", ", strings));
+            command.addAll(strings);
+        }
+
         if (USE_NI_JPMS) {
             command.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
         } else {
@@ -1541,6 +1544,11 @@ public class NativeImage {
         } catch (IOException e) {
             throw showError("Invalid Path entry " + ClasspathUtils.classpathToString(path), e);
         }
+    }
+
+    public void addImageBuilderModulePath(Path modulePathEntry) {
+        System.out.println("addImageBuilderModulePath:" + modulePathEntry);
+        imageBuilderModulePath.add(canonicalize(modulePathEntry));
     }
 
     void addImageBuilderClasspath(Path classpath) {
