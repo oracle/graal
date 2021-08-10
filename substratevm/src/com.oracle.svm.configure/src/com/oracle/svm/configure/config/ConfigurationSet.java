@@ -29,6 +29,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -141,9 +142,17 @@ public class ConfigurationSet {
     }
 
     private static void loadConfig(Collection<URI> configPaths, ConfigurationParser configurationParser, Function<IOException, Exception> exceptionHandler) throws Exception {
-        for (URI path : configPaths) {
-            try (Reader reader = new InputStreamReader(path.toURL().openStream())) {
-                configurationParser.parseAndRegister(reader);
+        for (URI uri : configPaths) {
+            Path path = tryGetPath(uri);
+            try {
+                if (path != null) {
+                    // The path can be needed to find extra files, such as predefined class data
+                    configurationParser.parseAndRegister(path);
+                } else {
+                    try (Reader reader = new InputStreamReader(uri.toURL().openStream())) {
+                        configurationParser.parseAndRegister(reader);
+                    }
+                }
             } catch (IOException ioe) {
                 Exception e = ioe;
                 if (exceptionHandler != null) {
@@ -153,6 +162,14 @@ public class ConfigurationSet {
                     throw e;
                 }
             }
+        }
+    }
+
+    private static Path tryGetPath(URI uri) {
+        try {
+            return Paths.get(uri);
+        } catch (Exception e) {
+            return null;
         }
     }
 }
