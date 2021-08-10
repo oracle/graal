@@ -36,6 +36,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -65,15 +66,17 @@ public final class BytecodeOSRMetadata {
     // defer initialization of some fields until they're actually used.
     static final class LazyState {
         private final Map<Integer, OptimizedCallTarget> compilationMap;
-        @CompilationFinal private final Assumption frameVersion;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlots;
-        @CompilationFinal(dimensions = 1) private final byte[] frameTags;
+        @CompilationFinal private Assumption frameVersion;
+        @CompilationFinal(dimensions = 1) private FrameSlot[] frameSlots;
+        @CompilationFinal(dimensions = 1) private byte[] frameTags;
 
-        LazyState(Map<Integer, OptimizedCallTarget> compilationMap, Assumption frameVersion, FrameSlot[] frameSlots, byte[] frameTags) {
+        LazyState(Map<Integer, OptimizedCallTarget> compilationMap) {
             this.compilationMap = compilationMap;
-            this.frameVersion = frameVersion;
-            this.frameSlots = frameSlots;
-            this.frameTags = frameTags;
+            // We set these fields in updateFrameSlots using a concrete frame just before
+            // compilation, when the frame is (hopefully) stable.
+            this.frameVersion = null;
+            this.frameSlots = null;
+            this.frameTags = null;
         }
     }
 
@@ -82,50 +85,40 @@ public final class BytecodeOSRMetadata {
     private LazyState getLazyState() {
         LazyState currentLazyState = lazyState;
         if (currentLazyState == null) {
-            currentLazyState = ((Node) osrNode).atomic(() -> {
-                LazyState lockedLazyState = lazyState;
-                if (lockedLazyState == null) {
-                    // We're initializing the state, so create a new compilation map.
-                    lockedLazyState = lazyState = createLazy(new ConcurrentHashMap<>());
-                }
-                return lockedLazyState;
-            });
+            return getLazyStateBoundary();
         }
         return currentLazyState;
     }
 
-    private void updateFrameSlots() {
-        CompilerAsserts.neverPartOfCompilation();
-        LazyState state = getLazyState();
-        if (!Assumption.isValidAssumption(state.frameVersion)) {
-            ((Node) osrNode).atomic(() -> {
-                LazyState lockedState = getLazyState();
-                if (Assumption.isValidAssumption(lockedState.frameVersion)) {
-                    return; // Frame slots were fixed up by another thread.
-                }
-                // We're updating the existing state, so reuse the compilation map.
-                lazyState = createLazy(lockedState.compilationMap);
-            });
-        }
+    @CompilerDirectives.TruffleBoundary
+    private LazyState getLazyStateBoundary() {
+        return ((Node) osrNode).atomic(() -> {
+            LazyState lockedLazyState = lazyState;
+            if (lockedLazyState == null) {
+                lockedLazyState = lazyState = new LazyState(new ConcurrentHashMap<>());
+            }
+            return lockedLazyState;
+        });
     }
 
-    /*
-     * Create a new LazyState using the given compilationMap and the frame descriptor's current slot
-     * information.
-     */
-    private LazyState createLazy(Map<Integer, OptimizedCallTarget> compilationMap) {
+    private void updateFrameSlots(FrameWithoutBoxing frame) {
         CompilerAsserts.neverPartOfCompilation();
-        // Another thread could modify the frame in the middle of this method. If we get the frame
-        // slots before the assumption, the slots may be updated in between, and we might obtain the
-        // new (valid) assumption, despite our slots actually being stale. Get the assumption first
-        // to avoid this race.
-        Assumption newFrameVersion = frameDescriptor.getVersion();
-        FrameSlot[] newFrameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
-        byte[] newFrameTags = new byte[newFrameSlots.length];
-        for (int i = 0; i < newFrameSlots.length; i++) {
-            newFrameTags[i] = frameDescriptor.getFrameSlotKind(newFrameSlots[i]).tag;
-        }
-        return new LazyState(compilationMap, newFrameVersion, newFrameSlots, newFrameTags);
+        LazyState state = getLazyState();
+        ((Node) osrNode).atomic(() -> {
+            if (!Assumption.isValidAssumption(state.frameVersion)) {
+                // If we get the frame slots before the assumption, the slots may be updated in
+                // between, and we might obtain the new (valid) assumption, despite our slots
+                // actually being stale. Get the assumption first to avoid this race.
+                state.frameVersion = frameDescriptor.getVersion();
+                state.frameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
+            }
+            // The concrete frame can have different tags from the descriptor (e.g., when a slot is
+            // uninitialized), so we use the frame's tags to avoid deoptimizing during transfer.
+            byte[] tags = frame.getTags();
+            // The tags array lazily grows when new slots are initialized, so it could be smaller
+            // than the number of slots. Copy it into an array with the correct size.
+            state.frameTags = Arrays.copyOf(tags, state.frameSlots.length);
+        });
     }
 
     private final int osrThreshold;
@@ -149,7 +142,7 @@ public final class BytecodeOSRMetadata {
             osrTarget = ((Node) osrNode).atomic(() -> {
                 OptimizedCallTarget lockedTarget = state.compilationMap.get(target);
                 if (lockedTarget == null) {
-                    lockedTarget = createOSRTarget(target);
+                    lockedTarget = createOSRTarget(target, (FrameWithoutBoxing) parentFrame);
                     state.compilationMap.put(target, lockedTarget);
                 }
                 return lockedTarget;
@@ -168,7 +161,7 @@ public final class BytecodeOSRMetadata {
         if (osrTarget.isCompilationFailed()) {
             markCompilationFailed();
         } else {
-            requestOSRCompilation(osrTarget);
+            requestOSRCompilation(osrTarget, (FrameWithoutBoxing) parentFrame);
         }
         return null;
     }
@@ -189,16 +182,16 @@ public final class BytecodeOSRMetadata {
      * Creates an OSR call target at the given dispatch target and requests compilation. The node's
      * AST lock should be held when this is invoked.
      */
-    private OptimizedCallTarget createOSRTarget(int target) {
+    private OptimizedCallTarget createOSRTarget(int target, FrameWithoutBoxing frame) {
         TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
         OptimizedCallTarget osrTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
-        requestOSRCompilation(osrTarget); // queue it up for compilation
+        requestOSRCompilation(osrTarget, frame); // queue it up for compilation
         return osrTarget;
     }
 
-    private void requestOSRCompilation(OptimizedCallTarget osrTarget) {
+    private void requestOSRCompilation(OptimizedCallTarget osrTarget, FrameWithoutBoxing frame) {
         osrNode.prepareOSR();
-        updateFrameSlots();
+        updateFrameSlots(frame);
         osrTarget.compile(true);
         if (osrTarget.isCompilationFailed()) {
             markCompilationFailed();
@@ -225,14 +218,21 @@ public final class BytecodeOSRMetadata {
         // The frame version could have changed; if so, deoptimize and update the slots+tags.
         if (!Assumption.isValidAssumption(state.frameVersion)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            updateFrameSlots();
-            state = getLazyState();
+            updateFrameSlots(source);
+        }
+
+        byte[] sourceTags = source.getTags();
+        if (sourceTags.length != state.frameSlots.length) {
+            // In rare scenarios, slots might be added to the descriptor but the frame's tags array
+            // has not been expanded (since it is resized lazily).
+            // We need to ensure its length matches the descriptor so PE can elide bounds checks.
+            sourceTags = Arrays.copyOf(sourceTags, state.frameSlots.length);
         }
 
         for (int i = 0; i < state.frameSlots.length; i++) {
             FrameSlot slot = state.frameSlots[i];
             byte expectedTag = state.frameTags[i];
-            byte actualTag = source.getTag(slot);
+            byte actualTag = sourceTags[i];
 
             // The tag for this slot may have changed; if so, deoptimize and update it.
             boolean tagsCondition = expectedTag == actualTag;

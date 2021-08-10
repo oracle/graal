@@ -71,7 +71,7 @@ public class GraalFrameInstance implements FrameInstance {
     @TruffleBoundary
     protected Frame getFrameFrom(InspectedFrame inspectedFrame, FrameAccess access) {
         if (access == FrameAccess.READ_WRITE || access == FrameAccess.MATERIALIZE) {
-            if (inspectedFrame.isVirtual(FRAME_INDEX)) {    
+            if (inspectedFrame.isVirtual(FRAME_INDEX)) {
                 final OptimizedCallTarget callTarget = (OptimizedCallTarget) getCallTarget();
                 if (callTarget.engine.traceDeoptimizeFrame) {
                     GraalTruffleRuntime.StackTraceHelper.logHostAndGuestStacktrace("FrameInstance#getFrame(MATERIALIZE)", callTarget);
