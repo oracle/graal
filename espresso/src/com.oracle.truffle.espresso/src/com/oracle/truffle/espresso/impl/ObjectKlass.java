@@ -134,7 +134,8 @@ public final class ObjectKlass extends Klass {
     public static final int LOADED = 0;
     public static final int LINKED = 1;
     public static final int PREPARED = 2;
-    public static final int INITIALIZED = 3;
+    public static final int INITIALIZING = 3;
+    public static final int INITIALIZED = 4;
     public static final int ERRONEOUS = -1;
 
     private final StaticObject definingClassLoader;
@@ -299,6 +300,10 @@ public final class ObjectKlass extends Klass {
         return initState >= INITIALIZED;
     }
 
+    private boolean isInitializingOrInitialized() {
+        return initState >= INITIALIZING;
+    }
+
     private boolean isLinked() {
         return initState >= LINKED;
     }
@@ -324,58 +329,60 @@ public final class ObjectKlass extends Klass {
         synchronized (this) {
             // Double-check under lock
             checkErroneousInitialization();
-            if (!(isInitializedImpl())) {
-                initState = INITIALIZED;
-                try {
-                    if (getContext().isMainThreadCreated()) {
-                        if (getContext().shouldReportVMEvents()) {
-                            prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
-                            getContext().reportClassPrepared(this, prepareThread);
-                        }
+            if (isInitializingOrInitialized()) {
+                return;
+            }
+            initState = INITIALIZING;
+            try {
+                if (getContext().isMainThreadCreated()) {
+                    if (getContext().shouldReportVMEvents()) {
+                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+                        getContext().reportClassPrepared(this, prepareThread);
                     }
-                    if (!isInterface()) {
-                        /*
-                         * Next, if C is a class rather than an interface, then let SC be its
-                         * superclass and let SI1, ..., SIn be all superinterfaces of C [...] For
-                         * each S in the list [ SC, SI1, ..., SIn ], if S has not yet been
-                         * initialized, then recursively perform this entire procedure for S. If
-                         * necessary, verify and prepare S first.
-                         */
-                        if (getSuperKlass() != null) {
-                            getSuperKlass().initialize();
-                        }
-                        for (ObjectKlass interf : getSuperInterfaces()) {
-                            // Initialize all super interfaces, direct and indirect, with default
-                            // methods.
-                            interf.recursiveInitialize();
-                        }
+                }
+                if (!isInterface()) {
+                    /*
+                     * Next, if C is a class rather than an interface, then let SC be its superclass
+                     * and let SI1, ..., SIn be all superinterfaces of C [...] For each S in the
+                     * list [ SC, SI1, ..., SIn ], if S has not yet been initialized, then
+                     * recursively perform this entire procedure for S. If necessary, verify and
+                     * prepare S first.
+                     */
+                    if (getSuperKlass() != null) {
+                        getSuperKlass().initialize();
                     }
-                    // Next, execute the class or interface initialization method of C.
-                    Method clinit = getClassInitializer();
-                    if (clinit != null) {
-                        clinit.getCallTarget().call();
+                    for (ObjectKlass interf : getSuperInterfaces()) {
+                        // Initialize all super interfaces, direct and indirect, with default
+                        // methods.
+                        interf.recursiveInitialize();
                     }
-                } catch (EspressoException e) {
-                    setErroneousInitialization();
-                    StaticObject cause = e.getExceptionObject();
-                    Meta meta = getMeta();
-                    if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                        throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
-                    } else {
-                        throw e;
-                    }
-                } catch (EspressoExitException e) {
-                    setErroneousInitialization();
-                    throw e;
-                } catch (Throwable e) {
-                    getContext().getLogger().log(Level.WARNING, "Host exception during class initialization: {0}", this.getNameAsString());
-                    e.printStackTrace();
-                    setErroneousInitialization();
+                }
+                // Next, execute the class or interface initialization method of C.
+                Method clinit = getClassInitializer();
+                if (clinit != null) {
+                    clinit.getCallTarget().call();
+                }
+            } catch (EspressoException e) {
+                setErroneousInitialization();
+                StaticObject cause = e.getExceptionObject();
+                Meta meta = getMeta();
+                if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
+                    throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
+                } else {
                     throw e;
                 }
-                checkErroneousInitialization();
-                assert isInitialized();
+            } catch (EspressoExitException e) {
+                setErroneousInitialization();
+                throw e;
+            } catch (Throwable e) {
+                getContext().getLogger().log(Level.WARNING, "Host exception during class initialization: {0}", this.getNameAsString());
+                e.printStackTrace();
+                setErroneousInitialization();
+                throw e;
             }
+            checkErroneousInitialization();
+            initState = INITIALIZED;
+            assert isInitialized();
         }
     }
 

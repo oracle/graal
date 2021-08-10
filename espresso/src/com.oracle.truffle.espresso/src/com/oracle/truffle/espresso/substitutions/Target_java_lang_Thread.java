@@ -401,7 +401,10 @@ public final class Target_java_lang_Thread {
         if (hostThread == null) {
             return;
         }
-        setInterrupt(self, true);
+        if (self.getKlass().getMeta().getJavaVersion().java13OrEarlier()) {
+            // Starting from JDK 14, the interrupted status is set in java code.
+            setInterrupt(self, true);
+        }
         hostThread.interrupt();
     }
 

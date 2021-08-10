@@ -88,6 +88,10 @@ public final class JavaVersion {
         return version <= 11;
     }
 
+    public boolean java13OrEarlier() {
+        return version <= 13;
+    }
+
     public boolean java15OrLater() {
         return version >= 15;
     }
