@@ -1079,12 +1079,30 @@ _daCapoScalaConfig = {
     "tmt"         : 12
 }
 
+_daCapoScalaSizes = {
+    "actors":       ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "apparat":      ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "factorie":     ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "kiama":        ["default", "small"],
+    "scalac":       ["default", "small", "large"],
+    "scaladoc":     ["default", "small", "large"],
+    "scalap":       ["default", "small", "large"],
+    "scalariform":  ["default", "tiny", "small", "large", "huge"],
+    "scalatest":    ["default", "tiny", "small", "large", "huge"],
+    "scalaxb":      ["default", "tiny", "small", "large", "huge"],
+    "specs":        ["default", "small", "large"],
+    "tmt":          ["default", "tiny", "small", "large", "huge"]
+}
+
 
 class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
     """Scala DaCapo benchmark suite implementation."""
 
     def name(self):
-        return "scala-dacapo"
+        if self.workloadSize() == "default":
+            return "scala-dacapo"
+        else:
+            return "scala-dacapo-{}".format(self.workloadSize())
 
     def version(self):
         return "0.1.0"
@@ -1104,9 +1122,12 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
     def daCapoIterations(self):
         result = _daCapoScalaConfig.copy()
         if not java_home_jdk().javaCompliance < '11':
-            mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
+            mx.logv('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
             del result['actors']
         return result
+
+    def daCapoSizes(self):
+        return _daCapoScalaSizes
 
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
         skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
@@ -1124,8 +1145,39 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
         return vmArgs
 
 
-mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
+class ScalaDacapoSmallBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'small' configuration."""
 
+    def workloadSize(self):
+        return "small"
+
+
+class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'large' configuration."""
+
+    def workloadSize(self):
+        return "large"
+
+
+class ScalaDacapoHugeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'huge' configuration."""
+
+    def workloadSize(self):
+        return "huge"
+
+
+class ScalaDacapoGargantuanBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'gargantuan' configuration."""
+
+    def workloadSize(self):
+        return "gargantuan"
+
+
+mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoSmallBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoLargeBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoHugeBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoGargantuanBenchmarkSuite())
 
 
 _allSpecJVM2008Benches = [
