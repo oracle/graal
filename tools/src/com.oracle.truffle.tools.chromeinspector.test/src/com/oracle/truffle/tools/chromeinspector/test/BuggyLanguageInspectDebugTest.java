@@ -326,30 +326,42 @@ public class BuggyLanguageInspectDebugTest {
         void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException;
     }
 
-    private static class LanguageCallsVerifier implements BugVerifier {
+    private abstract static class ExceptionVerifier implements BugVerifier {
+
+        protected static final String getExceptionDetails(int errNum, String rootPrefix) {
+            String exception;
+            String en = Integer.toString(errNum);
+            if (errNum == 2) {
+                exception = "\"subtype\":\"error\",\"description\":\"A TruffleException\\n    at " + rootPrefix + en + " (Unknown)\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
+            } else {
+                exception = "\"description\":\"" + en + "\\n    at " + rootPrefix + en + " (Unknown)\",\"type\":\"string\",\"value\":\"" + en + "\"";
+            }
+            return "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
+                                         "\"exceptionId\":" + en + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
+                                         "\"stackTrace\":{\"callFrames\":[]}}";
+        }
+
+        public abstract void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException;
+
+    }
+
+    private static class LanguageCallsVerifier extends ExceptionVerifier {
 
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
             int objectId = 2 * errNum - 1;
-            String exception;
-            if (errNum == 2) {
-                exception = "\"description\":\"TestTruffleException A TruffleException\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
-            } else {
-                exception = "\"description\":\"" + Integer.toString(errNum) + "\",\"type\":\"string\",\"value\":\"" + Integer.toString(errNum) + "\"";
-            }
             String errObject = "ErrorObject " + errNum;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (2 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
-                                         "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
-                                                               "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
-                                                               "\"stackTrace\":{\"callFrames\":[]}}},\"id\":7}\n"));
+                                         getExceptionDetails(errNum, "") +
+                                         "},\"id\":7}\n"));
         }
     }
 
-    private static class ReadErrorVerifier implements BugVerifier {
+    private static class ReadErrorVerifier extends ExceptionVerifier {
 
         private final String errMessage;
 
@@ -360,12 +372,6 @@ public class BuggyLanguageInspectDebugTest {
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
             int objectId = 2 * errNum - 1;
-            String exception;
-            if (errNum == 2) {
-                exception = "\"description\":\"TestTruffleException A TruffleException\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
-            } else {
-                exception = "\"description\":\"" + Integer.toString(errNum) + "\",\"type\":\"string\",\"value\":\"" + Integer.toString(errNum) + "\"";
-            }
             String errObject = "ErrorObject " + errNum + " " + errMessage;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             assertTrue(tester.compareReceivedMessages(
@@ -377,32 +383,24 @@ public class BuggyLanguageInspectDebugTest {
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"B\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
-                                         "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
-                                                               "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
-                                                               "\"stackTrace\":{\"callFrames\":[]}}},\"id\":8}\n"));
+                                         getExceptionDetails(errNum, "READ") +
+                                         "},\"id\":8}\n"));
         }
     }
 
-    private static class ReadVarErrorVerifier implements BugVerifier {
+    private static class ReadVarErrorVerifier extends ExceptionVerifier {
 
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
             int objectId = 2 * errNum - 1;
-            String exception;
-            if (errNum == 2) {
-                exception = "\"description\":\"TestTruffleException A TruffleException\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
-            } else {
-                exception = "\"description\":\"" + Integer.toString(errNum) + "\",\"type\":\"string\",\"value\":\"" + Integer.toString(errNum) + "\"";
-            }
             String errObject = "ErrorObject " + errNum;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (2 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
-                                         "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
-                                                               "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
-                                                               "\"stackTrace\":{\"callFrames\":[]}}},\"id\":7}\n"));
+                                         getExceptionDetails(errNum, "") +
+                                         "},\"id\":7}\n"));
         }
     }
 
@@ -425,17 +423,11 @@ public class BuggyLanguageInspectDebugTest {
         }
     }
 
-    private static class SourceLocationVerifier implements BugVerifier {
+    private static class SourceLocationVerifier extends ExceptionVerifier {
 
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
             int objectId = 2 * errNum - 1;
-            String exception;
-            if (errNum == 2) {
-                exception = "\"description\":\"TestTruffleException A TruffleException\",\"className\":\"TestTruffleException\",\"type\":\"object\",\"value\":\"A TruffleException\"";
-            } else {
-                exception = "\"description\":\"" + Integer.toString(errNum) + "\",\"type\":\"string\",\"value\":\"" + Integer.toString(errNum) + "\"";
-            }
             String errObject = "ErrorObject " + errNum;
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             assertTrue(tester.compareReceivedMessages(
@@ -448,9 +440,8 @@ public class BuggyLanguageInspectDebugTest {
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"A\",\"value\":{\"description\":\"" + errNum + "\",\"type\":\"number\",\"value\":" + errNum + "},\"configurable\":true,\"writable\":true}," +
                                                      "{\"isOwn\":true,\"enumerable\":true,\"name\":\"B\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
-                                         "\"exceptionDetails\":{\"exception\":{" + exception + "}," +
-                                                               "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
-                                                               "\"stackTrace\":{\"callFrames\":[]}}},\"id\":8}\n"));
+                                         getExceptionDetails(errNum, "") +
+                                         "},\"id\":8}\n"));
         }
     }
 

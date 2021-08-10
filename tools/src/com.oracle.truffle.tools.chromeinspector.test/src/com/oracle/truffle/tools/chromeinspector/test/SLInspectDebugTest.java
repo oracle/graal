@@ -1980,6 +1980,8 @@ public class SLInspectDebugTest {
         assertFalse(globals.contains("foo0") || globals.contains("foo1"));
         tester.sendMessage("{\"id\":7,\"method\":\"Debugger.evaluateOnCallFrame\",\"params\":{\"callFrameId\":\"0\",\"expression\":\"function foo0() {n = 0;} function foo1() {n = 1;}\",\"silent\":true,\"includeCommandLineAPI\":true,\"objectGroup\":\"console\",\"returnByValue\":true}}");
         assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"2\",\"endColumn\":49,\"startColumn\":0,\"startLine\":0,\"length\":49,\"executionContextId\":" + id + ",\"url\":\"eval in context\",\"hash\":\"f33742b9f176a91df047f02ff7ea100fffffffff\"}}\n"));
+        assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"value\":null}},\"id\":7}\n"));
 
         // Get new global completion:
