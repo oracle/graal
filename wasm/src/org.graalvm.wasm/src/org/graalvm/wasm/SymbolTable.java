@@ -567,10 +567,20 @@ public abstract class SymbolTable {
 
     ByteArrayList functionTypeArgumentTypes(int typeIndex) {
         ByteArrayList types = new ByteArrayList();
-        for (int i = 0; i != functionTypeArgumentCount(typeIndex); ++i) {
+        int argumentTypeCount = functionTypeArgumentCount(typeIndex);
+        for (int i = 0; i != argumentTypeCount; ++i) {
             types.add(functionTypeArgumentTypeAt(typeIndex, i));
         }
         return types;
+    }
+
+    private byte[] functionTypeArgumentTypesAsArray(int typeIndex) {
+        int argumentTypeCount = functionTypeArgumentCount(typeIndex);
+        byte[] argumentTypes = new byte[argumentTypeCount];
+        for (int i = 0; i < argumentTypeCount; ++i) {
+            argumentTypes[i] = functionTypeArgumentTypeAt(typeIndex, i);
+        }
+        return argumentTypes;
     }
 
     int typeCount() {
@@ -578,7 +588,7 @@ public abstract class SymbolTable {
     }
 
     public FunctionType typeAt(int index) {
-        return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
+        return new FunctionType(functionTypeArgumentTypesAsArray(index), functionTypeReturnType(index));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {
