@@ -51,6 +51,7 @@ import org.graalvm.wasm.WasmCustomSection;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.globals.DefaultWasmGlobal;
@@ -62,6 +63,7 @@ import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.memory.ByteArrayWasmMemory;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import java.util.ArrayList;
@@ -459,7 +461,11 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min memory size exceeds implementation limit");
         }
         final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
-        return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize);
+        if (WasmContext.get(null).environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
+            return new UnsafeWasmMemory(initial, maximum, maxAllowedSize);
+        } else {
+            return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize);
+        }
     }
 
     private static Object memGrow(Object[] args) {
