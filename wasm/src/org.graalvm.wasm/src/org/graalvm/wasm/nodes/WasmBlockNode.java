@@ -1428,11 +1428,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
     }
 
-    @SuppressWarnings("unused")
     private void check(int v, int limit) {
         // This is a temporary hack to hoist values out of the loop.
         if (v >= limit) {
-            errorBranch();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "array length too large");
         }
     }
