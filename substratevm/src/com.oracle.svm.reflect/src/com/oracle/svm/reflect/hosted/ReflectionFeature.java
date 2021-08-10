@@ -25,7 +25,6 @@
 package com.oracle.svm.reflect.hosted;
 
 import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
@@ -42,6 +41,7 @@ import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;

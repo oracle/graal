@@ -43,7 +43,6 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.option.OptionUtils;
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -59,6 +58,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.analysis.Inflation;
 
 /**
  * Support for {@link ServiceLoader} on Substrate VM.

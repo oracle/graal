@@ -195,8 +195,8 @@ public class PermissionsFeature implements Feature {
                             Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
-            reflectionProxy = bb.getMetaAccess().lookupJavaType(loadOrFail("com.oracle.svm.reflect.helpers.ReflectionProxy"));
-            reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadOrFail(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory"));
+            reflectionProxy = bb.getMetaAccess().lookupJavaType(loadClassOrFail("com.oracle.svm.reflect.helpers.ReflectionProxy"));
+            reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadClassOrFail(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory"));
             VMError.guarantee(reflectionProxy != null && reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
             Set<AnalysisMethod> deniedMethods = new HashSet<>();
@@ -243,11 +243,11 @@ public class PermissionsFeature implements Feature {
         }
     }
 
-    private Class<?> loadOrFail(String className) {
+    private static Class<?> loadClassOrFail(String className) {
         try {
-            // Checkstyle: allow Class.forName
+            // Checkstyle: stop
             return Class.forName(className);
-            // Checkstyle: disallow Class.forName
+            // Checkstyle: resume
         } catch (ClassNotFoundException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }
@@ -695,7 +695,7 @@ public class PermissionsFeature implements Feature {
         private final ImageClassLoader imageClassLoader;
 
         SafeServiceLoaderRecognizer(BigBang bb, ImageClassLoader imageClassLoader) {
-            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType(loadOrFail("java.util.ServiceLoader$LazyIterator"));
+            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType(loadClassOrFail("java.util.ServiceLoader$LazyIterator"));
             Set<AnalysisMethod> methods = findMethods(bb, serviceLoaderIterator, (m) -> m.getName().equals("nextService"));
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup ServiceLoader$LazyIterator.nextService().");

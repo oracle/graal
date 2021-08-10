@@ -42,8 +42,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -83,6 +81,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -120,6 +119,7 @@ import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;

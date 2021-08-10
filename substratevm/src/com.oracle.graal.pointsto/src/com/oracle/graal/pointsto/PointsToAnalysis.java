@@ -212,6 +212,7 @@ public abstract class PointsToAnalysis implements BigBang {
         return new AnalysisType[]{metaAccess.lookupJavaType(String.class)};
     }
 
+    @Override
     public Runnable getHeartbeatCallback() {
         return heartbeatCallback;
     }
