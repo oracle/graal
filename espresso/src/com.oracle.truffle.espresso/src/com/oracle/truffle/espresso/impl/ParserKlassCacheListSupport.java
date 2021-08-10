@@ -55,12 +55,18 @@ public final class ParserKlassCacheListSupport {
             return new ArrayList<>();
         }
         try {
-            typeList = Files.readAllLines(path)
+            List<String> lines = Files.readAllLines(path)
                     .stream()
                     .filter(s -> !s.isEmpty() && !s.startsWith("//"))
-                    .map(types::getOrCreate)
-                    .filter(Objects::nonNull)
                     .collect(Collectors.toList());
+            typeList = new ArrayList<>(lines.size());
+            for (String line : lines) {
+                Symbol<Symbol.Type> type = types.getOrCreate(line);
+                if (type == null) {
+                    throw new IOException("Found invalid internal type symbol: " + line);
+                }
+                typeList.add(type);
+            }
             return typeList;
         } catch (IOException e) {
             throw EspressoError.unexpected("ParserKlassCacheListProvider failed reading the class list from the specified file", e);

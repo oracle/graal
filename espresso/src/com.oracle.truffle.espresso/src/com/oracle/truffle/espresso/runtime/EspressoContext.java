@@ -58,6 +58,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -517,13 +518,15 @@ public final class EspressoContext {
         try (DebugCloseable parserKlassCacheInit = KNOWN_CLASS_INIT.scope(timers)) {
             if (getEnv().getOptions().get(EspressoOptions.UseParserKlassCache)) {
                 ParserKlassCacheListSupport parserKlassCacheSupport = new ParserKlassCacheListSupport(getTypes());
+                StaticObject bootClassloader = registries.getBootClassRegistry().getClassLoader();
                 for (Symbol<Type> type : parserKlassCacheSupport.getDefaultTypeList(getJavaVersion())) {
-                    addEntryToParserKlassCache(type, true);
+                    addEntryToParserKlassCache(type, true, bootClassloader);
                 }
                 getCache().seal();
                 Path classListPath = getEnv().getOptions().get(EspressoOptions.ParserKlassCacheList);
+                StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
                 for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
-                    addEntryToParserKlassCache(type, false);
+                    addEntryToParserKlassCache(type, false, systemClassLoader);
                 }
             }
         }
@@ -533,16 +536,20 @@ public final class EspressoContext {
         getLogger().log(Level.FINE, "Populated parser cache in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
     }
 
-    private void addEntryToParserKlassCache(Symbol<Type> type, boolean isDefault) {
-        if (isDefault) {
+    private void addEntryToParserKlassCache(Symbol<Type> type, boolean isBoot, StaticObject loader) {
+        Classpath cp;
+        if (isBoot) {
+            cp = getBootClasspath();
             getLogger().log(Level.FINE, "Populating parser cache with type: {0}", type.toString());
         } else {
+            cp = new Classpath(getVmProperties().classpath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
             getLogger().log(Level.FINE, "Populating parser cache with user-specified type: {0}", type.toString());
         }
-        ClasspathFile cpFile = getBootClasspath().readClassFile(type);
+
+        ClasspathFile cpFile = cp.readClassFile(type);
         if (cpFile != null) {
             ClassRegistry.ClassDefinitionInfo info = ClassRegistry.ClassDefinitionInfo.EMPTY;
-            getCache().getOrCreateParserKlass(registries.getBootClassRegistry().getClassLoader(), type.toString(), cpFile.contents, this, info);
+            getCache().getOrCreateParserKlass(loader, type.toString(), cpFile.contents, this, info);
         } else {
             getLogger().log(Level.WARNING, "User-specified parse list processor failed to read class: {0}", type.toString());
         }
