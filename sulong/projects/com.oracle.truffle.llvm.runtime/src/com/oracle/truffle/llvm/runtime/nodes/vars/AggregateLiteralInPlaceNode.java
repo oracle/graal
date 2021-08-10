@@ -33,13 +33,11 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
@@ -79,9 +77,9 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
 
     @Specialization
     protected void initialize(VirtualFrame frame,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMI8OffsetStoreNode storeI8,
                     @Cached LLVMI64OffsetStoreNode storeI64) {
+        LLVMContext context = getContext();
         writePrimitives(context, storeI8, storeI64);
         writeObjects(frame, context);
     }

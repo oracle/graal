@@ -58,6 +58,6 @@ final class FieldBasedStaticShape<T> extends StaticShape<T> {
 
     @Override
     Object getStorage(Object obj, boolean primitive) {
-        return cast(obj, storageClass);
+        return cast(obj, storageClass, true);
     }
 }

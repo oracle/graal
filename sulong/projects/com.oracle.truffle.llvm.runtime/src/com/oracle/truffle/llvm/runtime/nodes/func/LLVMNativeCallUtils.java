@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,6 @@ import java.util.StringJoiner;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -51,15 +50,31 @@ public final class LLVMNativeCallUtils {
         }
     }
 
-    static Object callNativeFunction(boolean enabled, ContextReference<LLVMContext> context, InteropLibrary nativeCall, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
+    static Object callNativeFunction(boolean enabled, InteropLibrary nativeCall, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.partialEvaluationConstant(enabled);
         if (enabled) {
             if (descriptor != null) {
-                traceNativeCall(context.get(), descriptor);
+                traceNativeCall(LLVMContext.get(nativeCall), descriptor);
             }
         }
         try {
             return nativeCall.execute(function, nativeArgs);
+        } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
+        }
+    }
+
+    static Object callNativeFunction(boolean enabled, LLVMDispatchNode.NativeSymbolExecutorNode nativeSymbolExecutorNode, Object function, Object[] nativeArgs,
+                    LLVMFunctionDescriptor descriptor) {
+        CompilerAsserts.partialEvaluationConstant(enabled);
+        if (enabled) {
+            if (descriptor != null) {
+                traceNativeCall(LLVMContext.get(nativeSymbolExecutorNode), descriptor);
+            }
+        }
+        try {
+            return nativeSymbolExecutorNode.execute(function, nativeArgs);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);

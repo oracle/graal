@@ -1,0 +1,3 @@
+DYNAMIC_IMPORTS=/substratevm,/espresso
+COMPONENTS=Polybench Launcher,Native Image,Java on Truffle,LibGraal
+NATIVE_IMAGES=polybench,lib:jvmcicompiler

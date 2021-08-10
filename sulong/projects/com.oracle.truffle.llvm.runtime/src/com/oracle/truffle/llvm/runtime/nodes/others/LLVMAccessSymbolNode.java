@@ -31,12 +31,10 @@ package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -87,9 +85,9 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
      * from the frame.
      */
     @Specialization(assumptions = "singleContextAssumption()")
-    public LLVMPointer accessSingleContext(
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) throws LLVMIllegalSymbolIndexException {
-        return checkNull(context.getSymbol(symbol));
+    @GenerateAOT.Exclude
+    public LLVMPointer accessSingleContext() throws LLVMIllegalSymbolIndexException {
+        return checkNull(getContext().getSymbol(symbol));
     }
 
     @Specialization

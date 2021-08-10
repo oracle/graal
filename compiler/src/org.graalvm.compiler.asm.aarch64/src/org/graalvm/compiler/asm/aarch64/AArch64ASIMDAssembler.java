@@ -26,6 +26,8 @@ package org.graalvm.compiler.asm.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.SIMD;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.LoadFlag;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rd;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rn;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rs1;
@@ -37,6 +39,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.debug.GraalError;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.PlatformKind;
@@ -519,6 +522,19 @@ public abstract class AArch64ASIMDAssembler {
 
     public enum ASIMDInstruction {
 
+        /* Advanced SIMD load/store multiple structures (C4-296). */
+        ST1_MULTIPLE_4R(0b0010 << 12),
+        ST1_MULTIPLE_3R(0b0110 << 12),
+        ST1_MULTIPLE_1R(0b0111 << 12),
+        ST1_MULTIPLE_2R(0b1010 << 12),
+        LD1_MULTIPLE_4R(LoadFlag | 0b0010 << 12),
+        LD1_MULTIPLE_3R(LoadFlag | 0b0110 << 12),
+        LD1_MULTIPLE_1R(LoadFlag | 0b0111 << 12),
+        LD1_MULTIPLE_2R(LoadFlag | 0b1010 << 12),
+
+        /* Advanced SIMD load/store single structure (C4-299). */
+        LD1R(LoadFlag | 0b110 << 13),
+
         /* Cryptographic AES (C4-341). */
         AESE(0b00100 << 12),
         AESD(0b00101 << 12),
@@ -667,6 +683,19 @@ public abstract class AArch64ASIMDAssembler {
         return !(size == ASIMDSize.HalfReg && eSize == ElementSize.DoubleWord);
     }
 
+    /**
+     * Checks whether all registers follow one another (modulo 32 - the number of SIMD registers).
+     */
+    private static boolean assertConsecutiveSIMDRegisters(Register... regs) {
+        int numRegs = AArch64.simdRegisters.size();
+        assert regs[0].getRegisterCategory().equals(SIMD);
+        for (int i = 1; i < regs.length; i++) {
+            assert regs[i].getRegisterCategory().equals(SIMD);
+            assert (regs[i - 1].encoding + 1) % numRegs == regs[i].encoding : "registers must be consecutive";
+        }
+        return true;
+    }
+
     /* Helper values/methods for encoding instructions */
 
     private static final int ASIMDSizeOffset = 22;
@@ -704,6 +733,64 @@ public abstract class AArch64ASIMDAssembler {
         return (size == ASIMDSize.FullReg ? 1 : 0) << 30;
     }
 
+    /**
+     * Single structures encode sizes at a different spot than the traditional eSize offset
+     * ({@link #ASIMDSizeOffset}).
+     */
+    private static int singleStructureElemSizeEncoding(ASIMDInstruction instr, ElementSize eSize) {
+        int encoding;
+        switch (instr) {
+            case LD1R:
+                encoding = eSize.encoding;
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+        return encoding << 10;
+    }
+
+    private static int encodeStructureAddress(ASIMDInstruction instr, ASIMDSize size, ElementSize eSize, AArch64Address address) {
+        int postIndexEncoding;
+        int offsetEncoding;
+        Register offset;
+        switch (address.getAddressingMode()) {
+            case BASE_REGISTER_ONLY:
+                postIndexEncoding = 0;
+                offsetEncoding = 0;
+                break;
+            case REGISTER_STRUCTURE_POST_INDEXED:
+                postIndexEncoding = 0b1 << 23;
+                offset = address.getOffset();
+                assert !offset.equals(zr);
+                offsetEncoding = rs2(offset);
+                break;
+            case IMMEDIATE_STRUCTURE_POST_INDEXED:
+                postIndexEncoding = 0b1 << 23;
+                offset = address.getOffset();
+                assert offset.equals(zr);
+                assert address.getImmediateRaw() == AArch64Address.determineStructureImmediateValue(instr, size, eSize);
+                offsetEncoding = rs2(offset);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+        return postIndexEncoding | offsetEncoding | rn(address.getBase());
+    }
+
+    private void loadStoreMultipleStructures(ASIMDInstruction instr, ASIMDSize size, ElementSize eSize, Register value, AArch64Address address) {
+        int baseEncoding = 0b0_0_001100_0_0_0_00000_0000_00_00000_00000;
+        int eSizeEncoding = eSize.encoding << 10;
+        int addressEncoding = encodeStructureAddress(instr, size, eSize, address);
+        emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | addressEncoding | rd(value));
+    }
+
+    private void loadStoreSingleStructure(ASIMDInstruction instr, ASIMDSize size, ElementSize eSize, Register value, AArch64Address address) {
+        int baseEncoding = 0b0_0_001101_0_0_0_00000_000_0_00_00000_00000;
+        int eSizeEncoding = singleStructureElemSizeEncoding(instr, eSize);
+        int addressEncoding = encodeStructureAddress(instr, size, eSize, address);
+        emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | addressEncoding | rd(value));
+    }
+
     private void cryptographicAES(ASIMDInstruction instr, Register dst, Register src) {
         int baseEncoding = 0b01001110_00_10100_00000_10_00000_00000;
         emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rn(src));
@@ -714,7 +801,7 @@ public abstract class AArch64ASIMDAssembler {
         emitInt(instr.encoding | baseEncoding | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
     }
 
-    public void scalarShiftByImmEncoding(ASIMDInstruction instr, int imm7, Register dst, Register src) {
+    private void scalarShiftByImmEncoding(ASIMDInstruction instr, int imm7, Register dst, Register src) {
         assert (imm7 & 0b1111_111) == imm7;
         assert (imm7 & 0b1111_111) != 0;
         assert (imm7 & 0b0000_111) != imm7;
@@ -743,7 +830,7 @@ public abstract class AArch64ASIMDAssembler {
         emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | rd(dst) | rs1(src));
     }
 
-    public void threeDifferentEncoding(ASIMDInstruction instr, boolean setQBit, int eSizeEncoding, Register dst, Register src1, Register src2) {
+    private void threeDifferentEncoding(ASIMDInstruction instr, boolean setQBit, int eSizeEncoding, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b0_0_0_01110_00_1_00000_0000_00_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(setQBit) | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
     }
@@ -754,17 +841,17 @@ public abstract class AArch64ASIMDAssembler {
 
     }
 
-    public void modifiedImmEncoding(ImmediateOp op, ASIMDSize size, Register dst, long imm) {
+    private void modifiedImmEncoding(ImmediateOp op, ASIMDSize size, Register dst, long imm) {
         int baseEncoding = 0b0_0_0_0111100000_000_0000_0_1_00000_00000;
         int immEncoding = ASIMDImmediateTable.getEncoding(imm, op);
         emitInt(baseEncoding | qBit(size) | immEncoding | rd(dst));
     }
 
-    public void shiftByImmEncoding(ASIMDInstruction instr, ASIMDSize size, int imm7, Register dst, Register src) {
+    private void shiftByImmEncoding(ASIMDInstruction instr, ASIMDSize size, int imm7, Register dst, Register src) {
         shiftByImmEncoding(instr, size == ASIMDSize.FullReg, imm7, dst, src);
     }
 
-    public void shiftByImmEncoding(ASIMDInstruction instr, boolean setQBit, int imm7, Register dst, Register src) {
+    private void shiftByImmEncoding(ASIMDInstruction instr, boolean setQBit, int imm7, Register dst, Register src) {
         assert (imm7 & 0b1111_111) == imm7;
         assert (imm7 & 0b1111_111) != 0;
         assert (imm7 & 0b0000_111) != imm7;
@@ -1925,6 +2012,95 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.177 Load multiple single-element structures to one register.<br>
+     *
+     * This instruction loads multiple single-element structures from memory and writes the result
+     * to one register.
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst destination of first structure's value
+     * @param addr address of first structure.
+     */
+    public void ld1MultipleV(ASIMDSize size, ElementSize eSize, Register dst, AArch64Address addr) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_1R, size, eSize, dst, addr);
+    }
+
+    /**
+     * C7.2.177 Load multiple single-element structures to two registers.<br>
+     *
+     * This instruction loads multiple single-element structures from memory and writes the result
+     * to two registers. Note the two registers must be consecutive (modulo the number of SIMD
+     * registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst1 destination of first structure's value.
+     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param addr address of first structure.
+     */
+    public void ld1MultipleVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2);
+        loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_2R, size, eSize, dst1, addr);
+    }
+
+    /**
+     * C7.2.177 Load multiple single-element structures to three registers.<br>
+     *
+     * This instruction loads multiple single-element structures from memory and writes the result
+     * to three registers. Note the three registers must be consecutive (modulo the number of SIMD
+     * registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst1 destination of first structure's value.
+     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param dst3 destination of third structure's value. Must be register after dst2.
+     * @param addr address of first structure.
+     */
+    public void ld1MultipleVVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, Register dst3, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2, dst3);
+        loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_3R, size, eSize, dst1, addr);
+    }
+
+    /**
+     * C7.2.177 Load multiple single-element structures to four registers.<br>
+     *
+     * This instruction loads multiple single-element structures from memory and writes the result
+     * to four registers. Note the four registers must be consecutive (modulo the number of SIMD
+     * registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst1 destination of first structure's value.
+     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param dst3 destination of third structure's value. Must be register after dst2.
+     * @param dst4 destination of fourth structure's value. Must be register after dst3.
+     * @param addr address of first structure.
+     */
+    public void ld1MultipleVVVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, Register dst3, Register dst4, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2, dst3, dst4);
+        loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_4R, size, eSize, dst1, addr);
+    }
+
+    /**
+     * C7.2.179 Load one single-element structure and replicate to all lanes (of one register).<br>
+     *
+     * This instruction loads a single-element structure from memory and replicates the structure to
+     * all lanes of the register.
+     *
+     * @param size register size.
+     * @param eSize element size of value to replicate.
+     * @param dst SIMD register.
+     * @param addr address of structure.
+     */
+    public void ld1rV(ASIMDSize size, ElementSize eSize, Register dst, AArch64Address addr) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        loadStoreSingleStructure(ASIMDInstruction.LD1R, size, eSize, dst, addr);
+    }
+
+    /**
      * C7.2.196 Multiply-add to accumulator.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += int_multiply(src1[i], src2[i])</code>
@@ -2396,6 +2572,75 @@ public abstract class AArch64ASIMDAssembler {
         int imm7 = eSize.nbits * 2 - shiftAmt;
 
         shiftByImmEncoding(ASIMDInstruction.SSHR, size, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.321 Store multiple single-element structures from one register.<br>
+     *
+     * This instruction stores elements to memory from one register.
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src value to store in structure.
+     * @param addr address of first structure.
+     */
+    public void st1MultipleV(ASIMDSize size, ElementSize eSize, Register src, AArch64Address addr) {
+        assert src.getRegisterCategory().equals(SIMD);
+        loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_1R, size, eSize, src, addr);
+    }
+
+    /**
+     * C7.2.321 Store multiple single-element structures from two registers.<br>
+     *
+     * This instruction stores elements to memory from two registers. Note the two registers must be
+     * consecutive (modulo the number of SIMD registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src1 value to store in first structure.
+     * @param src2 value to store in second structure. Must be register after src1.
+     * @param addr address of first structure.
+     */
+    public void st1MultipleVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(src1, src2);
+        loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_2R, size, eSize, src1, addr);
+    }
+
+    /**
+     * C7.2.321 Store multiple single-element structures from three registers.<br>
+     *
+     * This instruction stores elements to memory from three registers. Note the three registers
+     * must be consecutive (modulo the number of SIMD registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src1 value to store in first structure.
+     * @param src2 value to store in second structure. Must be register after src1.
+     * @param src3 value to store in third structure. Must be register after src2.
+     * @param addr address of first structure.
+     */
+    public void st1MultipleVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(src1, src2, src3);
+        loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_3R, size, eSize, src1, addr);
+    }
+
+    /**
+     * C7.2.321 Store multiple single-element structures from four registers.<br>
+     *
+     * This instruction stores elements to memory from four registers. Note the four registers must
+     * be consecutive (modulo the number of SIMD registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src1 value to store in first structure.
+     * @param src2 value to store in second structure. Must be register after src1.
+     * @param src3 value to store in third structure. Must be register after src2.
+     * @param src4 value to store in fourth structure. Must be register after src3.
+     * @param addr address of first structure.
+     */
+    public void st1MultipleVVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, Register src4, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(src1, src2, src3, src4);
+        loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_4R, size, eSize, src1, addr);
     }
 
     /**

@@ -85,7 +85,7 @@ public final class InsightObjectFactory extends ProxyLanguage {
     protected CallTarget parse(ParsingRequest request) throws Exception {
         final Source source = request.getSource();
         String scriptName = source.getName();
-        final AgentRootNode root = new AgentRootNode(ProxyLanguage.getCurrentLanguage(), this, scriptName, source, request.getArgumentNames());
+        final AgentRootNode root = new AgentRootNode(ProxyLanguage.get(null), this, scriptName, source, request.getArgumentNames());
         return Truffle.getRuntime().createCallTarget(root);
     }
 

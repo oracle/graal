@@ -56,7 +56,6 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
@@ -249,7 +248,7 @@ public final class ClassfileParser {
 
     /**
      * Verifies that the class file version is supported.
-     * 
+     *
      * @param major the major version number
      * @param minor the minor version number
      */
@@ -324,7 +323,7 @@ public final class ClassfileParser {
     }
 
     private static EspressoException unsupportedClassVersionError(String message) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedClassVersionError, message);
     }
 

@@ -52,16 +52,9 @@ public class SubstrateCompilationIdentifier implements CompilationIdentifier {
     protected StringBuilder buildString(StringBuilder sb, Verbosity verbosity) {
         switch (verbosity) {
             case ID:
-                buildID(sb);
-                break;
             case NAME:
-                buildName(sb);
-                break;
             case DETAILED:
                 buildID(sb);
-                sb.append('[');
-                buildName(sb);
-                sb.append(']');
                 break;
             default:
                 throw new GraalError("unknown verbosity: " + verbosity);
@@ -69,12 +62,7 @@ public class SubstrateCompilationIdentifier implements CompilationIdentifier {
         return sb;
     }
 
-    protected StringBuilder buildID(StringBuilder sb) {
-        sb.append("SubstrateCompilation-");
-        return sb.append(id);
-    }
-
-    protected StringBuilder buildName(StringBuilder sb) {
-        return buildID(sb);
+    protected void buildID(StringBuilder sb) {
+        sb.append("SubstrateCompilation-").append(id);
     }
 }

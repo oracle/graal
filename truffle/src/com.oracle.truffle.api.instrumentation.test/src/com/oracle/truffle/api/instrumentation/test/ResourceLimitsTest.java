@@ -81,11 +81,23 @@ public class ResourceLimitsTest {
 
     @Test
     public void testStatementLimit() {
+        testStatementLimit(false);
+    }
+
+    @Test
+    public void testStatementLimitExplicitEnter() {
+        testStatementLimit(true);
+    }
+
+    private static void testStatementLimit(boolean explicitEnter) {
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(50, null).//
                         build();
 
         try (Context context = Context.newBuilder().resourceLimits(limits).build()) {
+            if (explicitEnter) {
+                context.enter();
+            }
             context.eval(statements(50));
             try {
                 context.eval(statements(1));

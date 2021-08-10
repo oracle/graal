@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,26 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package com.oracle.truffle.api.impl;
 
-public class MemoryDescriptor extends Dictionary {
-    private final Integer initial;
-    private final Integer maximum;
+public abstract class AbstractFastThreadLocal {
 
-    public MemoryDescriptor(Integer initial, Integer maximum) {
-        this.initial = initial;
-        this.maximum = maximum;
-        addMembers(new Object[]{
-                        "initial", this.initial,
-                        "maximum", this.maximum,
-        });
+    protected AbstractFastThreadLocal() {
     }
 
-    public int initial() {
-        return initial;
-    }
+    public abstract void set(Object[] data);
 
-    public int maximum() {
-        return maximum;
-    }
+    public abstract <C> Object[] get();
+
+    public abstract <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull);
+
 }

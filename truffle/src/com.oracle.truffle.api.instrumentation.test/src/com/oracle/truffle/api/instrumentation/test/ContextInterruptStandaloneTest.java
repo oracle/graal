@@ -104,17 +104,23 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                             @Override
                             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                                    @Child InteropLibrary library = InteropLibrary.getFactory().createDispatched(1);
+
                                     @Override
                                     public Object execute(VirtualFrame frame) {
-                                        TruffleLanguage.ContextReference<ProxyLanguage.LanguageContext> languageContext = lookupContextReference(ProxyLanguage.class);
-                                        Object javaThread = languageContext.get().getEnv().lookupHostSymbol("java.lang.Thread");
+                                        callHostSleep();
+                                        return 0;
+                                    }
+
+                                    @CompilerDirectives.TruffleBoundary
+                                    private void callHostSleep() {
+                                        Object javaThread = LanguageContext.get(this).getEnv().lookupHostSymbol("java.lang.Thread");
                                         beforeSleep.countDown();
                                         try {
-                                            InteropLibrary.getUncached().invokeMember(javaThread, "sleep", 10000);
+                                            library.invokeMember(javaThread, "sleep", 10000);
                                         } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
                                             throw new AssertionError(e);
                                         }
-                                        return 0;
                                     }
                                 });
                             }
@@ -142,6 +148,63 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
         } finally {
             executorService.shutdownNow();
             executorService.awaitTermination(100, TimeUnit.SECONDS);
+        }
+    }
+
+    private static Context staticContext;
+
+    public static void callStaticContextCancel(boolean nestedContextEntered) {
+        if (nestedContextEntered) {
+            try (Context c = Context.create()) {
+                c.enter();
+                staticContext.close(true);
+            }
+        } else {
+            staticContext.close(true);
+        }
+    }
+
+    @Test
+    public void testCancelFromHostCall() {
+        testCancelFromHostCall(false);
+    }
+
+    @Test
+    public void testCancelFromHostCallWithNestedContextEntered() {
+        testCancelFromHostCall(true);
+    }
+
+    private void testCancelFromHostCall(boolean nestedContextEntered) {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL),
+                        new ProxyLanguage() {
+                            @Override
+                            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                                    @Child InteropLibrary library = InteropLibrary.getFactory().createDispatched(1);
+
+                                    @Override
+                                    public Object execute(VirtualFrame frame) {
+                                        Object thisTestClass = ProxyLanguage.LanguageContext.get(this).getEnv().lookupHostSymbol(ContextInterruptStandaloneTest.class.getName());
+                                        try {
+                                            library.invokeMember(thisTestClass, "callStaticContextCancel", nestedContextEntered);
+                                        } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                                            throw new AssertionError(e);
+                                        }
+                                        return 0;
+                                    }
+                                });
+                            }
+                        });
+        try {
+            staticContext = context;
+            context.eval(ProxyLanguage.ID, "");
+            Assert.fail();
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
+        } finally {
+            staticContext = null;
         }
     }
 

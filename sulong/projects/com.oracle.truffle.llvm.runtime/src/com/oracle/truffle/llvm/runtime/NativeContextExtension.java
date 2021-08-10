@@ -109,6 +109,8 @@ public abstract class NativeContextExtension implements ContextExtension {
 
     public abstract Source getNativeSignatureSourceSkipStackArg(FunctionType type) throws UnsupportedNativeTypeException;
 
+    public abstract Object createSignature(Source signatureSource);
+
     public abstract Object bindSignature(LLVMFunctionCode function, Source signatureSource);
 
     public abstract Object bindSignature(long fnPtr, Source signatureSource);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.pointer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -44,9 +45,8 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-@ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = false)
 @SuppressWarnings("deprecation") // needed because the superclass implements ReferenceLibrary
 abstract class ManagedPointerLibraries extends CommonPointerLibraries {
 
@@ -80,41 +80,33 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
         }
     }
 
-    @ExportMessage(library = LLVMNativeLibrary.class)
     @ExportMessage(library = InteropLibrary.class)
     static boolean isPointer(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.object") LLVMNativeLibrary natives) {
+                    @CachedLibrary(limit = "1") LLVMNativeLibrary natives) {
         return natives.isPointer(receiver.object);
     }
 
-    @ExportMessage(library = LLVMNativeLibrary.class)
     @ExportMessage(library = InteropLibrary.class)
     static long asPointer(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.object") LLVMNativeLibrary natives) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "1") LLVMNativeLibrary natives) throws UnsupportedMessageException {
         return natives.asPointer(receiver.object) + receiver.getOffset();
     }
 
     @ExportMessage
     static void toNative(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.object") InteropLibrary interop) {
+                    @CachedLibrary(limit = "1") InteropLibrary interop) {
         interop.toNative(receiver.object);
     }
 
     @ExportMessage
-    static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.object") LLVMNativeLibrary natives) {
-        return natives.toNativePointer(receiver.object).increment(receiver.getOffset());
-    }
-
-    @ExportMessage
     static boolean isForeign(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.object") LLVMAsForeignLibrary foreigns) {
+                    @CachedLibrary(limit = "1") LLVMAsForeignLibrary foreigns) {
         return isForeignTest(receiver, foreigns);
     }
 
     @ExportMessage
     static Object asForeign(LLVMPointerImpl receiver,
-                    @CachedLibrary("receiver.object") LLVMAsForeignLibrary foreigns) {
+                    @CachedLibrary(limit = "1") LLVMAsForeignLibrary foreigns) {
         return foreigns.asForeign(receiver.object);
     }
 
@@ -154,6 +146,7 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
         abstract int execute(Object obj);
 
         @Specialization(limit = "3", rewriteOn = UnsupportedMessageException.class)
+        @GenerateAOT.Exclude
         int doUnchecked(Object obj,
                         @CachedLibrary("obj") InteropLibrary interop) throws UnsupportedMessageException {
             return interop.identityHashCode(obj);
@@ -161,12 +154,14 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
 
         @Specialization(limit = "3", guards = "!interop.hasIdentity(obj)", replaces = "doUnchecked")
         @TruffleBoundary
+        @GenerateAOT.Exclude
         int doNoIdentity(Object obj,
                         @SuppressWarnings("unused") @CachedLibrary("obj") InteropLibrary interop) {
             return System.identityHashCode(obj);
         }
 
         @Specialization(limit = "3", replaces = "doNoIdentity")
+        @GenerateAOT.Exclude
         int doChecked(Object obj,
                         @CachedLibrary("obj") InteropLibrary interop) {
             try {

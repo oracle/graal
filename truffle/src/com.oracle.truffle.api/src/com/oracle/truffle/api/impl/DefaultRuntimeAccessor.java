@@ -236,6 +236,12 @@ final class DefaultRuntimeAccessor extends Accessor {
         public Object getFieldValue(Object resolvedJavaField, Object obj) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public AbstractFastThreadLocal getContextThreadLocal() {
+            return DefaultContextThreadLocal.SINGLETON;
+        }
+
     }
 
 }

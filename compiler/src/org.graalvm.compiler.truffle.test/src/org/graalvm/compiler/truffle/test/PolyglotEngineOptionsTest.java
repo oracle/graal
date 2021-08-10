@@ -35,7 +35,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
 public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
@@ -100,7 +100,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Context ctx = setupContext(compilationThresholdOption == null ? new String[]{"engine.MultiTier", "false"}
                         : new String[]{"engine.SingleTierCompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
         ctx.eval("sl", "function test() {}");
-        SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
+        SLFunction test = SLContext.get(null).getFunctionRegistry().getFunction("test");
 
         Assert.assertFalse(isExecuteCompiled(test));
         for (int i = 0; i < iterations - 1; i++) {

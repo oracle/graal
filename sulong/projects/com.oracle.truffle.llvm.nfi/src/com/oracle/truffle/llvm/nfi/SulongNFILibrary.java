@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nfi;
 
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -67,9 +66,8 @@ final class SulongNFILibrary implements TruffleObject {
 
     @ExportMessage
     Object readMember(String name,
-                    @CachedLanguage SulongNFI language,
                     @CachedLibrary("this.library") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
         Object ret = interop.readMember(library, name);
-        return language.getTools().createBindableSymbol(ret);
+        return SulongNFI.get(interop).getTools().createBindableSymbol(ret);
     }
 }

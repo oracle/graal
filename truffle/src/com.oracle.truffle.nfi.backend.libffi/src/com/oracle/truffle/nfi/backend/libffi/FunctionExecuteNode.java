@@ -41,7 +41,6 @@
 package com.oracle.truffle.nfi.backend.libffi;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -95,8 +94,6 @@ abstract class FunctionExecuteNode extends Node {
         final CachedSignatureInfo signatureInfo;
         @Children NativeArgumentLibrary[] argLibs;
 
-        final ContextReference<LibFFIContext> ctxRef;
-
         SignatureExecuteNode(LibFFILanguage language, CachedSignatureInfo signatureInfo) {
             super(language);
             this.signatureInfo = signatureInfo;
@@ -106,8 +103,6 @@ abstract class FunctionExecuteNode extends Node {
             for (int i = 0; i < argTypes.length; i++) {
                 argLibs[i] = NativeArgumentLibrary.getFactory().create(argTypes[i]);
             }
-
-            this.ctxRef = lookupContextReference(LibFFILanguage.class);
         }
 
         @Override
@@ -134,7 +129,7 @@ abstract class FunctionExecuteNode extends Node {
             }
 
             CompilerDirectives.ensureVirtualized(buffer);
-            return signatureInfo.execute(signature, ctxRef.get(), address, buffer);
+            return signatureInfo.execute(this, signature, LibFFIContext.get(this), address, buffer);
         }
 
         @SuppressWarnings({"unchecked", "unused"})

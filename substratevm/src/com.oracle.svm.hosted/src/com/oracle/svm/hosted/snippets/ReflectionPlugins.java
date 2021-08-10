@@ -63,7 +63,7 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
@@ -204,7 +204,6 @@ public final class ReflectionPlugins {
 
     private void registerClassPlugins(InvocationPlugins plugins) {
         registerFoldInvocationPlugins(plugins, Class.class,
-                        "getClassLoader",
                         "isInterface", "isPrimitive",
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
@@ -226,6 +225,12 @@ public final class ReflectionPlugins {
                  * application class loader.
                  */
                 return processClassForName(b, targetMethod, nameNode, initializeNode);
+            }
+        });
+        r.register1("getClassLoader", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processClassGetClassLoader(b, targetMethod, receiver);
             }
         });
     }
@@ -275,7 +280,7 @@ public final class ReflectionPlugins {
             return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());
         }
         Class<?> clazz = typeResult.get();
-        if (!ClassForNameSupport.canBeFolded(clazz)) {
+        if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
 
@@ -288,6 +293,24 @@ public final class ReflectionPlugins {
             classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null, null);
         }
         return true;
+    }
+
+    /**
+     * For {@link PredefinedClassesSupport predefined classes}, the class loader is not known yet at
+     * image build time. So we must not constant fold Class.getClassLoader for such classes. But for
+     * "normal" classes, it is important to fold it because it unlocks further constant folding of,
+     * e.g., Class.forName calls.
+     */
+    private boolean processClassGetClassLoader(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+        Object classValue = unbox(b, receiver.get(false), JavaKind.Object);
+        if (!(classValue instanceof Class)) {
+            return false;
+        }
+        Class<?> clazz = (Class<?>) classValue;
+        if (PredefinedClassesSupport.isPredefined(clazz)) {
+            return false;
+        }
+        return pushConstant(b, targetMethod, () -> clazz.getName(), JavaKind.Object, clazz.getClassLoader()) != null;
     }
 
     /**

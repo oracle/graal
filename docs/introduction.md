@@ -22,7 +22,7 @@ This page provides an architectural overview of GraalVM and its runtime modes, s
 
 ## GraalVM Architecture
 
-![GraalVM architecture diagram](/img/graalvm_architecture_community.png "High-level architecture of GraalVM open ecosystem")
+![](/img/graalvm_architecture_community.png)
 
 GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](https://github.com/oracle/graal/tree/master/compiler), which is written in Java, to the HotSpot Java Virtual Machine.
 
@@ -55,7 +55,6 @@ GraalVM is available as **GraalVM Enterprise** and **GraalVM Community** edition
 GraalVM Enterprise is based on Oracle JDK while GraalVM Community is based on OpenJDK.
 
 GraalVM is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
-The base GraalVM binary including all components is experimental on Linux/ARM and Windows.
 The GraalVM distribution based on Oracle JDK 16 is experimental with [several known limitations](/release-notes/known-issues/).
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 See the [Getting Started guide](/docs/getting-started/) for installation instructions.
@@ -93,14 +92,13 @@ Runtimes:
 
 * [Node.js](/reference-manual/js/) -- the Node.js 14.16.1 runtime for JavaScript
 * [Python](/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.2 compatible
+* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.3 compatible
 * [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
 * [GraalWasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
 
 ## Licensing and Support
 
-GraalVM Community Edition is open source software built from the sources available on [GitHub](https://github.com/oracle/graal) and distributed under
-[version 2 of the GNU General Public  License with the “Classpath” Exception](https://github.com/oracle/graal/blob/master/LICENSE), which are the same terms as for Java.
+GraalVM Community Edition is open source software built from the sources available on [GitHub](https://github.com/oracle/graal) and distributed under [version 2 of the GNU General Public  License with the “Classpath” Exception](https://github.com/oracle/graal/blob/master/LICENSE), which are the same terms as for Java.
 Check the [licenses](https://github.com/oracle/graal#license) of individual GraalVM components which are generally derivative of the license of a particular language and may differ.
 GraalVM Community is free to use for any purpose and comes with no strings attached, but also no guarantees or support.
 
@@ -115,14 +113,14 @@ The following table lists production-ready and experimental features in GraalVM 
 
 | Feature | Linux AMD64 | Linux ARM64 | macOS | Windows |
 |--------------------|---------------|---------------|---------------|
-| Native Image | stable | experimental | stable | experimental |
-| LLVM runtime | stable | experimental | stable | not available |
-| LLVM toolchain | stable | experimental | stable | not available |
-| JavaScript | stable | experimental | stable | experimental |
-| Node.js  | stable | experimental | stable | experimental |
-| Java on Truffle | experimental | not available | experimental | experimental |
+| Native Image | stable | stable | stable | stable |
+| LLVM runtime | stable | stable | stable | not available |
+| LLVM toolchain | stable | stable | stable | not available |
+| JavaScript | stable | stable | stable | stable |
+| Node.js  | stable | stable | stable | stable |
+| Java on Truffle | experimental | experimental | experimental | experimental |
 | Python | experimental | not available | experimental | not available |
-| Ruby | experimental | not available | experimental | not available |
+| Ruby | experimental | experimental | experimental | not available |
 | R | experimental | not available | experimental | not available |
 | WebAssembly | experimental | experimental | experimental | experimental |
 

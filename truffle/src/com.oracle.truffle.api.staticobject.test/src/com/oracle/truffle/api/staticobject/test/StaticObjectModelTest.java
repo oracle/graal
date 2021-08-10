@@ -40,16 +40,19 @@
  */
 package com.oracle.truffle.api.staticobject.test;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
-import com.oracle.truffle.api.staticobject.StaticProperty;
-import org.graalvm.polyglot.Context;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+
+import org.graalvm.polyglot.Context;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
+import com.oracle.truffle.api.staticobject.StaticProperty;
 
 class StaticObjectModelTest {
     @Registration(id = TestLanguage.TEST_LANGUAGE_ID, name = TestLanguage.TEST_LANGUAGE_ID)
@@ -59,10 +62,6 @@ class StaticObjectModelTest {
         @Override
         protected TestContext createContext(Env env) {
             return new TestContext(this);
-        }
-
-        static TestContext getCurrentContext() {
-            return getCurrentContext(TestLanguage.class);
         }
     }
 
@@ -76,6 +75,13 @@ class StaticObjectModelTest {
         TestLanguage getLanguage() {
             return language;
         }
+
+        private static final ContextReference<TestContext> REFERENCE = ContextReference.create(TestLanguage.class);
+
+        public static TestContext get(Node node) {
+            return REFERENCE.get(node);
+        }
+
     }
 
     static class TestEnvironment implements AutoCloseable {
@@ -94,7 +100,7 @@ class StaticObjectModelTest {
                             build();
             context.initialize(TestLanguage.TEST_LANGUAGE_ID);
             context.enter();
-            testLanguage = TestLanguage.getCurrentContext().getLanguage();
+            testLanguage = TestContext.get(null).getLanguage();
             context.leave();
         }
 

@@ -386,8 +386,10 @@ public class OptionProcessorTest {
             return env;
         }
 
+        private static final ContextReference<Env> REFERENCE = ContextReference.create(OptionTestLang1.class);
+
         public static Env getCurrentContext() {
-            return getCurrentContext(OptionTestLang1.class);
+            return REFERENCE.get(null);
         }
 
     }

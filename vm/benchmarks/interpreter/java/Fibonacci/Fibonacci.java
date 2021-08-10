@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.serialize;
 
-public interface SerializationRegistry {
+public class Fibonacci {
+  static int fibonacci(int n) {
+    if (n < 1) {
+      return 0;
+    }
+    if (n <= 2) {
+      return 1;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+  }
 
-    Object getSerializationConstructorAccessor(Class<?> serializationTargetClass, Class<?> targetConstructorClass);
+  public static int run() {
+    int number = 31;
+    int fiboIs = 1346269;
 
+    int fibo = fibonacci(number);
+
+    if (fibo != fiboIs) {
+      return 1;
+    }
+    return 0;
+  }
+
+  public static void main(String[] args) {
+    run();
+  }
 }

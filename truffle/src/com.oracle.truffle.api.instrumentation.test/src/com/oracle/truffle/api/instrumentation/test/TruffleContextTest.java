@@ -101,6 +101,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.LanguageSPIOrderTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 public class TruffleContextTest extends AbstractPolyglotTest {
 
@@ -162,7 +163,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         for (int i = 0; i < 100; i++) {
             Thread t = languageEnv.createThread(() -> {
                 com.oracle.truffle.api.source.Source s = com.oracle.truffle.api.source.Source.newBuilder(InstrumentationTestLanguage.ID, "EXPRESSION", "").build();
-                CallTarget target = ProxyLanguage.getCurrentContext().getEnv().parsePublic(s);
+                CallTarget target = LanguageContext.get(null).getEnv().parsePublic(s);
                 while (true) {
                     target.call();
 
@@ -445,13 +446,19 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         setupEnv();
         TruffleContext innerContext = languageEnv.newContextBuilder().initializeCreatorContext(false).build();
         Object prev = innerContext.enter(null);
-        assertFails(() -> ProxyLanguage.getCurrentContext(), IllegalStateException.class);
-        innerContext.leave(null, prev);
+        try {
+            assertNull(ProxyLanguage.LanguageContext.get(null));
+        } finally {
+            innerContext.leave(null, prev);
+        }
 
         innerContext = languageEnv.newContextBuilder().initializeCreatorContext(true).build();
         prev = innerContext.enter(null);
-        assertNotNull(ProxyLanguage.getCurrentContext());
-        innerContext.leave(null, prev);
+        try {
+            assertNotNull(ProxyLanguage.LanguageContext.get(null));
+        } finally {
+            innerContext.leave(null, prev);
+        }
     }
 
     @Test
@@ -683,7 +690,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         return get();
@@ -770,11 +777,11 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         @TruffleBoundary
         private Object executeImpl() {
-            TruffleLanguage.Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+            TruffleLanguage.Env env = LanguageContext.get(this).getEnv();
             TruffleContext creatorContext = env.newContextBuilder().build();
             CountDownLatch running = new CountDownLatch(1);
             Thread t = env.createThread(() -> {
-                CallTarget target = ProxyLanguage.getCurrentContext().getEnv().parsePublic(com.oracle.truffle.api.source.Source.newBuilder(
+                CallTarget target = LanguageContext.get(null).getEnv().parsePublic(com.oracle.truffle.api.source.Source.newBuilder(
                                 ProxyLanguage.ID, "worker", "worker").build());
                 running.countDown();
                 target.call();

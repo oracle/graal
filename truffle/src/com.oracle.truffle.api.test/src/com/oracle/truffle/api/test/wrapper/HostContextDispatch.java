@@ -67,7 +67,7 @@ public class HostContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public void close(Object receiver, boolean interuptExecution) {
+    public void close(Object receiver, boolean cancelIfExecuting) {
 
     }
 

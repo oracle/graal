@@ -56,6 +56,7 @@ import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -131,7 +132,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
     }
 
     public TestNode parse(Source code) {
-        int preMaterialization = getCurrentContext(InstrumentablePositionsTestLanguage.class).getPreMaterialization();
+        int preMaterialization = Context.get(null).getPreMaterialization();
         return new Parser(this, code, preMaterialization).parse();
     }
 
@@ -335,7 +336,6 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
     private static final class TestRootNode extends RootNode implements TestNode {
 
         private final NodeDescriptor nodeDescriptor;
-        @CompilationFinal private ContextReference<Context> contextRef;
         @Children private TestNode[] children;
 
         TestRootNode(InstrumentablePositionsTestLanguage lang, NodeDescriptor nodeDescriptor) {
@@ -357,11 +357,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
-            if (contextRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.contextRef = lookupContextReference(InstrumentablePositionsTestLanguage.class);
-            }
-            Object returnValue = contextRef.get().nul;
+            Object returnValue = Context.get(this).nul;
             for (TestNode child : children) {
                 if (child != null) {
                     Object value = child.execute(frame);
@@ -452,12 +448,8 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         @ExplodeLoop
         @Override
         public Object execute(VirtualFrame frame) {
-            if (contextRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.contextRef = lookupContextReference(InstrumentablePositionsTestLanguage.class);
-            }
             assureChildrenResolved(false);
-            Object returnValue = contextRef.get().nul;
+            Object returnValue = Context.get(this).nul;
             for (TestNode child : children) {
                 if (child != null) {
                     Object value = child.execute(frame);
@@ -513,6 +505,12 @@ final class Context {
 
     int getPreMaterialization() {
         return preMaterialization;
+    }
+
+    private static final ContextReference<Context> REFERENCE = ContextReference.create(InstrumentablePositionsTestLanguage.class);
+
+    static Context get(Node node) {
+        return REFERENCE.get(node);
     }
 
 }

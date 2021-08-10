@@ -152,7 +152,7 @@ public class AArch64HotSpotMove {
                 }
             } else {
                 // if ptr is null it still has to be null after compression
-                masm.cmp(64, ptr, 0);
+                masm.compare(64, ptr, 0);
                 masm.csel(64, resultRegister, ptr, base, AArch64Assembler.ConditionFlag.NE);
                 masm.sub(64, resultRegister, resultRegister, base);
                 if (encoding.hasShift()) {

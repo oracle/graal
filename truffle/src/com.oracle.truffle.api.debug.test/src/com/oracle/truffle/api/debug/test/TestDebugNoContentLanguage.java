@@ -78,7 +78,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
     @Override
     protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        sourceInfo.createSource(getCurrentContext().getEnv(), source);
+        sourceInfo.createSource(LanguageContext.get(null).getEnv(), source);
         CharSequence characters = source.getCharacters();
         int varStartPos = source.getLength() - 1;
         while (varStartPos > 0) {

@@ -50,6 +50,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
@@ -136,6 +137,12 @@ public class NFITestBackend extends TruffleLanguage<Env> {
                 throw new UnsupportedOperationException("illegal access to internal language");
             }
         });
+    }
+
+    private static final LanguageReference<NFITestBackend> REFERENCE = LanguageReference.create(NFITestBackend.class);
+
+    static NFITestBackend get(Node node) {
+        return REFERENCE.get(node);
     }
 
 }

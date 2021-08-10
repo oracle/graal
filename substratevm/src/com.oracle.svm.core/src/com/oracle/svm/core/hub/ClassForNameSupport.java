@@ -58,11 +58,6 @@ public final class ClassForNameSupport {
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         return result;
     }
-
-    /** Whether a call to {@link Class#forName} for the given class can be folded to a constant. */
-    public static boolean canBeFolded(Class<?> clazz) {
-        return !PredefinedClassesSupport.isPredefined(clazz);
-    }
 }
 
 @AutomaticFeature

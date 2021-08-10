@@ -279,6 +279,9 @@ public abstract class Accessor {
 
         public abstract boolean isPrimitiveTarget(Class<?> c);
 
+        public abstract boolean isGuestToHostRootNode(RootNode root);
+
+        public abstract boolean isHostLanguage(Class<?> languageClass);
     }
 
     public abstract static class EngineSupport extends Support {
@@ -328,8 +331,6 @@ public abstract class Accessor {
         public abstract Env getLegacyLanguageEnv(Object obj, boolean nullForHost);
 
         public abstract boolean hasCurrentContext();
-
-        public abstract ContextReference<Object> getCurrentContextReference(Object polyglotLanguage);
 
         public abstract boolean isDisposed(Object polyglotLanguageContext);
 
@@ -469,13 +470,9 @@ public abstract class Accessor {
 
         public abstract <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
 
-        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> lookupLanguageReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
+        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> createContextReference(Node node, Class<T> languageClass);
 
-        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> getDirectLanguageReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
-
-        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> lookupContextReference(Object polyglotEngine, TruffleLanguage<?> language, Class<T> languageClass);
-
-        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object polyglotEngine, TruffleLanguage<?> language, Class<T> languageClass);
+        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> createLanguageReference(Node node, Class<T> targetLanguageClass);
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
 
@@ -1067,6 +1064,10 @@ public abstract class Accessor {
         public abstract Object[] getNonPrimitiveResolvedFields(Class<?> type);
 
         public abstract Object getFieldValue(Object resolvedJavaField, Object obj);
+
+        public AbstractFastThreadLocal getContextThreadLocal() {
+            return DefaultContextThreadLocal.SINGLETON;
+        }
     }
 
     public static final class JDKSupport {
@@ -1270,7 +1271,7 @@ public abstract class Accessor {
     /**
      * Returns a {@link TVMCI} obtained from {@link TruffleRuntime}.
      *
-     * NOTE: this method is called reflectively by {@code TruffleFeature} to initialize
+     * NOTE: this method is called reflectively by {@code TruffleBaseFeature} to initialize
      * {@code tvmci} instance.
      */
     private static TVMCI getTVMCI() {

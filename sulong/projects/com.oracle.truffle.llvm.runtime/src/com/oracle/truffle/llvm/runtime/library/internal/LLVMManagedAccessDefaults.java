@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.library.internal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -56,12 +55,13 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNo
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI32Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI64Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI8Node;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 abstract class LLVMManagedAccessDefaults {
 
-    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = Object.class, useForAOT = false)
     static class FallbackRead {
 
         @ExportMessage
@@ -120,7 +120,7 @@ abstract class LLVMManagedAccessDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = Object.class, useForAOT = false)
     static class FallbackWrite {
 
         @ExportMessage
@@ -179,8 +179,8 @@ abstract class LLVMManagedAccessDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = byte[].class)
-    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = byte[].class)
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = byte[].class, useForAOT = false)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = byte[].class, useForAOT = false)
     static class VirtualAlloc {
 
         private static int checkOffset(long offset) throws IndexOutOfBoundsException {
@@ -201,10 +201,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static byte readI8(byte[] obj, long offset,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                return language.getByteArraySupport().getByte(obj, checkOffset(offset));
+                return LLVMLanguage.get(self).getByteArraySupport().getByte(obj, checkOffset(offset));
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -214,10 +213,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static short readI16(byte[] obj, long offset,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                return language.getByteArraySupport().getShort(obj, checkOffset(offset));
+                return LLVMLanguage.get(self).getByteArraySupport().getShort(obj, checkOffset(offset));
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -227,10 +225,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static int readI32(byte[] obj, long offset,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                return language.getByteArraySupport().getInt(obj, checkOffset(offset));
+                return LLVMLanguage.get(self).getByteArraySupport().getInt(obj, checkOffset(offset));
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -241,10 +238,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage(name = "readGenericI64")
         static long readI64(byte[] obj, long offset,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                return language.getByteArraySupport().getLong(obj, checkOffset(offset));
+                return LLVMLanguage.get(self).getByteArraySupport().getLong(obj, checkOffset(offset));
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -254,10 +250,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static float readFloat(byte[] obj, long offset,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                return language.getByteArraySupport().getFloat(obj, checkOffset(offset));
+                return LLVMLanguage.get(self).getByteArraySupport().getFloat(obj, checkOffset(offset));
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -267,10 +262,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static double readDouble(byte[] obj, long offset,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                return language.getByteArraySupport().getDouble(obj, checkOffset(offset));
+                return LLVMLanguage.get(self).getByteArraySupport().getDouble(obj, checkOffset(offset));
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -280,18 +274,16 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static LLVMPointer readPointer(byte[] obj, long offset,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
-            return LLVMNativePointer.create(readI64(obj, offset, self, exception, language));
+                        @Shared("exception") @Cached BranchProfile exception) {
+            return LLVMNativePointer.create(readI64(obj, offset, self, exception));
         }
 
         @ExportMessage
         static void writeI8(byte[] obj, long offset, byte value,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                language.getByteArraySupport().putByte(obj, checkOffset(offset), value);
+                LLVMLanguage.get(self).getByteArraySupport().putByte(obj, checkOffset(offset), value);
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -301,10 +293,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static void writeI16(byte[] obj, long offset, short value,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                language.getByteArraySupport().putShort(obj, checkOffset(offset), value);
+                LLVMLanguage.get(self).getByteArraySupport().putShort(obj, checkOffset(offset), value);
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -314,10 +305,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static void writeI32(byte[] obj, long offset, int value,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                language.getByteArraySupport().putInt(obj, checkOffset(offset), value);
+                LLVMLanguage.get(self).getByteArraySupport().putInt(obj, checkOffset(offset), value);
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -327,10 +317,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static void writeI64(byte[] obj, long offset, long value,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                language.getByteArraySupport().putLong(obj, checkOffset(offset), value);
+                LLVMLanguage.get(self).getByteArraySupport().putLong(obj, checkOffset(offset), value);
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -340,10 +329,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static void writeFloat(byte[] obj, long offset, float value,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                language.getByteArraySupport().putFloat(obj, checkOffset(offset), value);
+                LLVMLanguage.get(self).getByteArraySupport().putFloat(obj, checkOffset(offset), value);
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -353,10 +341,9 @@ abstract class LLVMManagedAccessDefaults {
         @ExportMessage
         static void writeDouble(byte[] obj, long offset, double value,
                         @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                        @Shared("exception") @Cached BranchProfile exception,
-                        @CachedLanguage LLVMLanguage language) {
+                        @Shared("exception") @Cached BranchProfile exception) {
             try {
-                language.getByteArraySupport().putDouble(obj, checkOffset(offset), value);
+                LLVMLanguage.get(self).getByteArraySupport().putDouble(obj, checkOffset(offset), value);
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(self, "Out-of-bounds access: offset=%d, size=%d", offset, obj.length);
@@ -378,18 +365,16 @@ abstract class LLVMManagedAccessDefaults {
             @Specialization
             static void writeI64(byte[] obj, long offset, long value,
                             @CachedLibrary("obj") LLVMManagedWriteLibrary self,
-                            @Shared("exception") @Cached BranchProfile exception,
-                            @CachedLanguage LLVMLanguage language) {
-                writeLong(obj, offset, value, self, exception, language);
+                            @Shared("exception") @Cached BranchProfile exception) {
+                writeLong(obj, offset, value, self, exception, LLVMLanguage.get(self));
             }
 
-            @Specialization(limit = "3")
+            @Specialization
             static void writePointer(byte[] obj, long offset, LLVMPointer value,
-                            @CachedLibrary("value") LLVMNativeLibrary nativeLib,
-                            @Exclusive @Cached BranchProfile exception,
-                            @CachedLanguage LLVMLanguage language) {
-                LLVMNativePointer nativeValue = nativeLib.toNativePointer(value);
-                writeLong(obj, offset, nativeValue.asNative(), nativeLib, exception, language);
+                            @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
+                            @Exclusive @Cached BranchProfile exception) {
+                LLVMNativePointer nativeValue = toNativePointer.execute(value);
+                writeLong(obj, offset, nativeValue.asNative(), toNativePointer, exception, LLVMLanguage.get(toNativePointer));
             }
         }
     }

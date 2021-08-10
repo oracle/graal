@@ -72,6 +72,7 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -455,6 +456,9 @@ public class NativeImageGeneratorRunner {
         } finally {
             totalTimer.print();
             if (imageName != null && generator != null) {
+                if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
+                    generator.printImageBuildStatistics(imageName);
+                }
                 generator.reportBuildArtifacts(imageName);
             }
             NativeImageGenerator.clearSystemPropertiesForImage();

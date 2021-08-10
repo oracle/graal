@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,8 +39,8 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 @ValueType
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "foreign")
-@ExportLibrary(NativeTypeLibrary.class)
-@ExportLibrary(LLVMAsForeignLibrary.class)
+@ExportLibrary(value = NativeTypeLibrary.class, useForAOT = false)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 1)
 public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
 
     final Object foreign;

@@ -1024,7 +1024,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         assert (!dst.equals(zr) && !src.equals(zr));
         if (immediate < 0) {
             sub(size, dst, src, -immediate);
-        } else if (isAimm(immediate)) {
+        } else if (isAddSubtractImmediate(immediate, false)) {
             if (!(dst.equals(src) && immediate == 0)) {
                 super.add(size, dst, src, immediate);
             }
@@ -1071,7 +1071,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         assert (!dst.equals(sp) && !src.equals(zr));
         if (immediate < 0) {
             subs(size, dst, src, -immediate);
-        } else if (!(dst.equals(src) && immediate == 0)) {
+        } else {
             super.adds(size, dst, src, immediate);
         }
     }
@@ -1117,7 +1117,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         assert (!dst.equals(zr) && !src.equals(zr));
         if (immediate < 0) {
             add(size, dst, src, -immediate);
-        } else if (isAimm(immediate)) {
+        } else if (isAddSubtractImmediate(immediate, false)) {
             if (!(dst.equals(src) && immediate == 0)) {
                 super.sub(size, dst, src, immediate);
             }
@@ -1144,7 +1144,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         assert (!dst.equals(sp) && !src.equals(zr));
         if (immediate < 0) {
             adds(size, dst, src, -immediate);
-        } else if (!dst.equals(src) || immediate != 0) {
+        } else {
             super.subs(size, dst, src, immediate);
         }
     }
@@ -1272,54 +1272,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Add/subtract instruction encoding supports 12-bit immediate values.
-     *
-     * @param imm immediate value to be tested.
-     * @return true if immediate can be used directly for arithmetic instructions (add/sub), false
-     *         otherwise.
-     */
-    public static boolean isArithmeticImmediate(long imm) {
-        // If we have a negative immediate we just use the opposite operator. I.e.: x - (-5) == x +
-        // 5.
-        return NumUtil.isInt(Math.abs(imm)) && isAimm((int) Math.abs(imm));
-    }
-
-    /**
-     * Compare instructions are add/subtract instructions and so support 12-bit immediate values.
+     * Compare instructions are add/subtract instructions and so support unsigned 12-bit immediate
+     * values (optionally left-shifted by 12).
      *
      * @param imm immediate value to be tested.
      * @return true if immediate can be used directly with comparison instructions, false otherwise.
      */
     public static boolean isComparisonImmediate(long imm) {
-        return isArithmeticImmediate(imm);
-    }
-
-    /**
-     * Move wide immediate instruction encoding supports 16-bit immediate values which can be
-     * optionally-shifted by multiples of 16 (i.e. 0, 16, 32, 48).
-     *
-     * @return true if immediate can be moved directly into a register, false otherwise.
-     */
-    public static boolean isMovableImmediate(long imm) {
-        // // Positions of first, respectively last set bit.
-        // int start = Long.numberOfTrailingZeros(imm);
-        // int end = 64 - Long.numberOfLeadingZeros(imm);
-        // int length = end - start;
-        // if (length > 16) {
-        // return false;
-        // }
-        // // We can shift the necessary part of the immediate (i.e. everything between the first
-        // and
-        // // last set bit) by as much as 16 - length around to arrive at a valid shift amount
-        // int tolerance = 16 - length;
-        // int prevMultiple = NumUtil.roundDown(start, 16);
-        // int nextMultiple = NumUtil.roundUp(start, 16);
-        // return start - prevMultiple <= tolerance || nextMultiple - start <= tolerance;
-        /*
-         * This is a bit optimistic because the constant could also be for an arithmetic instruction
-         * which only supports 12-bits. That case needs to be handled in the backend.
-         */
-        return NumUtil.isInt(Math.abs(imm)) && NumUtil.isUnsignedNbit(16, (int) Math.abs(imm));
+        return isAddSubtractImmediate(imm, true);
     }
 
     /**
@@ -1614,10 +1574,38 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param x general purpose register. May not be null or zero-register.
      * @param y comparison immediate, {@link #isComparisonImmediate(long)} has to be true for it.
      */
-    public void cmp(int size, Register x, int y) {
+    public void compare(int size, Register x, int y) {
         assert size == 32 || size == 64;
         assert isComparisonImmediate(y);
-        subs(size, zr, x, y);
+        /*
+         * AArch64 has two compare instructions supporting an immediate operand: compare (cmp) and
+         * compare negative (cmn), which are aliases for SUBS and ADDS, respectively. In both
+         * instructions, the immediate value must be an unsigned value. Hence, if a negative
+         * immediate is provided, we instead issue a cmn with the immediate negated.
+         */
+        if (y >= 0) {
+            // issue compare (cmp)
+            subs(size, zr, x, y);
+        } else {
+            // issue compare negative (cmn)
+            adds(size, zr, x, -y);
+        }
+    }
+
+    /**
+     * Compares x to (extendType(y) << imm) and sets condition flags.
+     *
+     * This is an alias for {@link #subs(int, Register, Register, Register, ExtendType, int)}.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param x general purpose register. May not be null or zero-register.
+     * @param y general purpose register. May not be null or stackpointer.
+     * @param extendType defines how y is extended to be the same size as x.
+     * @param shiftAmt must be in range 0 to 4.
+     */
+    public void cmp(int size, Register x, Register y, ExtendType extendType, int shiftAmt) {
+        assert size == 32 || size == 64;
+        subs(size, zr, x, y, extendType, shiftAmt);
     }
 
     /**
@@ -1676,7 +1664,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                     mov(temp1, 0x80000000);
                     // Develop 0 (EQ), or 0x80000000 (NE)
                     csel(32, temp1, temp1, zr, ConditionFlag.NE);
-                    cmp(32, temp1, 1);
+                    compare(32, temp1, 1);
                     // 0x80000000 - 1 => VS
                     break;
                 }
@@ -1690,7 +1678,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                     mov(temp1, 0x80000000);
                     // Develop 0 (EQ), or 0x80000000 (NE)
                     csel(32, temp1, temp1, zr, ConditionFlag.NE);
-                    cmp(32, temp1, 1);
+                    compare(32, temp1, 1);
                     // 0x80000000 - 1 => VS
                     break;
                 }

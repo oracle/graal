@@ -114,7 +114,7 @@ public class Linker {
         // Some Truffle configurations allow that the code gets compiled before executing the code.
         // We therefore check the link state again.
         if (entryPointInstance.isNonLinked()) {
-            final WasmContext context = WasmContext.getCurrent();
+            final WasmContext context = WasmContext.get(null);
             Map<String, WasmInstance> instances = context.moduleInstances();
             ArrayList<Throwable> failures = new ArrayList<>();
             runLinkActions(context, instances, failures);
@@ -156,7 +156,7 @@ public class Linker {
     }
 
     private static void assignTypeEquivalenceClasses() {
-        final WasmContext context = WasmContext.getCurrent();
+        final WasmContext context = WasmContext.get(null);
         final Map<String, WasmInstance> instances = context.moduleInstances();
         for (WasmInstance instance : instances.values()) {
             if (instance.isLinkInProgress() && !instance.module().isParsed()) {

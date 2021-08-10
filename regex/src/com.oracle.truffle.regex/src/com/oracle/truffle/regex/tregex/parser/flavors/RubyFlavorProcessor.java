@@ -45,10 +45,12 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -327,6 +329,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * named capture groups so far.
      */
     private Map<String, Integer> namedCaptureGroups;
+    /**
+     * A set of capture groups names which occur repeatedly in the expression. Backreferences to
+     * such capture groups can refer to either of the homonymous capture groups, depending on which
+     * of them matched most recently. Such backreferences are not supported in TRegex.
+     */
+    private Set<String> ambiguousCaptureGroups;
 
     /**
      * The number of capture groups encountered in the input pattern so far, i.e. the (zero-based)
@@ -400,6 +408,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         this.lookbehindDepth = 0;
         this.groupStack = new ArrayDeque<>();
         this.namedCaptureGroups = null;
+        this.ambiguousCaptureGroups = null;
         this.groupIndex = 0;
         this.lastTerm = TermCategory.None;
         this.lastTermOutPosition = -1;
@@ -651,19 +660,22 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         while (!atEnd()) {
             switch (consumeChar()) {
                 case '\\':
-                    while (match("c") || match("C-") || match("M-")) {
-                        // skip control escape sequences, \\cX, \\C-X or \\M-X, which can be nested
-                    }
-                    // skip escaped char; if it includes a group name, skip that too
-                    int c = consumeChar();
-                    switch (c) {
+                    switch (curChar()) {
                         case 'k':
                         case 'g':
                             // skip contents of group name (which might contain syntax chars)
+                            int c = consumeChar();
                             if (match("<")) {
                                 parseGroupReference('>', true, true, c == 'k', true);
                             }
                             break;
+                        default:
+                            while (match("c") || match("C-") || match("M-")) {
+                                // skip control escape sequences, \\cX, \\C-X or \\M-X, which can be
+                                // nested
+                            }
+                            // skip escaped char
+                            advance();
                     }
                     break;
                 case '[':
@@ -680,14 +692,19 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 case '(':
                     if (charClassDepth == 0) {
                         if (match("?")) {
-                            if (match("<") && curChar() != '=' && curChar() != '!') {
+                            if (match("<")) {
+                                if (curChar() == '=' || curChar() == '!') {
+                                    // look-behind
+                                    break;
+                                }
                                 String groupName = parseGroupName('>');
                                 if (namedCaptureGroups == null) {
                                     namedCaptureGroups = new HashMap<>();
+                                    ambiguousCaptureGroups = new HashSet<>();
                                     numberOfCaptureGroups = 0;
                                 }
                                 if (namedCaptureGroups.containsKey(groupName)) {
-                                    bailOut("different capture groups with the same name are not supported");
+                                    ambiguousCaptureGroups.add(groupName);
                                 }
                                 numberOfCaptureGroups++;
                                 namedCaptureGroups.put(groupName, numberOfCaptureGroups);
@@ -708,12 +725,14 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     }
                     break;
                 case '#':
-                    if (globalFlags.isExtended()) {
-                        int endOfLine = inPattern.indexOf('\n', position);
-                        if (endOfLine >= 0) {
-                            position = endOfLine + 1;
-                        } else {
-                            position = inPattern.length();
+                    if (charClassDepth == 0) {
+                        if (globalFlags.isExtended()) {
+                            int endOfLine = inPattern.indexOf('\n', position);
+                            if (endOfLine >= 0) {
+                                position = endOfLine + 1;
+                            } else {
+                                position = inPattern.length();
+                            }
                         }
                     }
                     break;
@@ -1339,6 +1358,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     throw syntaxErrorAt(RbErrorMessages.unknownGroupName(groupName), beginPos);
                 }
             } else {
+                if (ambiguousCaptureGroups.contains(groupName)) {
+                    bailOut("backreferences to multiple homonymous named capture groups are not supported");
+                }
                 groupNumber = namedCaptureGroups.get(groupName);
             }
         }
@@ -1389,7 +1411,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private boolean lineBreak() {
         if (curChar() == 'R') {
             advance();
-            bailOut("line break escape not supported");
+            // When matching \\x0d, we check that it is not followed by \\x0a to emulate the
+            // atomic group in the original Ruby expansion: (?>\x0d\x0a|[\x0a-\x0d\x85\u2028\u2029])
+            if (inSource.getEncoding().isUnicode()) {
+                emitSnippet("(?:\\x0d\\x0a|\\x0d(?!\\x0a)|[\\x0a-\\x0c\\x85\\u2028\\u2029])");
+            } else {
+                emitSnippet("(?:\\x0d\\x0a|\\x0d(?!\\x0a)|[\\x0a-\\x0c])");
+            }
             return true;
         } else {
             return false;

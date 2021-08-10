@@ -63,6 +63,7 @@ import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
@@ -123,6 +124,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public ThreadLocalHandshake getThreadLocalHandshake() {
         return SubstrateThreadLocalHandshake.SINGLETON;
+    }
+
+    @Override
+    protected AbstractFastThreadLocal getFastThreadLocalImpl() {
+        return SubstrateFastThreadLocal.SINGLETON;
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
@@ -412,4 +418,5 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
     }
+
 }

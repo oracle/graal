@@ -41,14 +41,20 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 /**
  * Our implementation assumes that there is a 1:1:1 relationship between callable functions (
@@ -56,6 +62,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
  * {@link LLVMFunctionDescriptor}s.
  */
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = LLVMNativeLibrary.class, useForAOT = true, useForAOTPriority = 1)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @SuppressWarnings("static-method")
 public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject implements Comparable<LLVMFunctionDescriptor> {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
@@ -132,7 +140,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
      * Gets a pointer to this function that can be stored in native memory.
      */
     @ExportMessage
-    LLVMFunctionDescriptor toNative() {
+    public LLVMFunctionDescriptor toNative() {
         if (nativeWrapper == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             nativeWrapper = functionCode.getFunction().createNativeWrapper(this);
@@ -143,6 +151,20 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             }
         }
         return this;
+    }
+
+    @ExportMessage
+    public LLVMNativePointer toNativePointer(@CachedLibrary("this") LLVMNativeLibrary self,
+                    @Cached BranchProfile exceptionProfile) {
+        if (!isPointer()) {
+            toNative();
+        }
+        try {
+            return LLVMNativePointer.create(asPointer());
+        } catch (UnsupportedMessageException e) {
+            exceptionProfile.enter();
+            throw new LLVMPolyglotException(self, "Cannot convert %s to native pointer.", this);
+        }
     }
 
     @ExportMessage
@@ -180,7 +202,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         }
 
         protected static Assumption singleContextAssumption() {
-            return LLVMLanguage.getLanguage().singleContextAssumption;
+            return LLVMLanguage.get(null).singleContextAssumption;
         }
 
     }
@@ -277,6 +299,11 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             return llvmFunction.getSourceLocation().getSourceSection();
         }
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    public static boolean isForeign(@SuppressWarnings("unused") LLVMFunctionDescriptor receiver) {
+        return false;
     }
 
 }

@@ -22,12 +22,10 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.redefinition.plugins.jdkcaches.JDKCacheRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -36,14 +34,14 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Target_java_beans_ThreadGroupContext {
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    abstract static class Init extends Node {
+    abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Class.class) StaticObject context);
 
         @Specialization
         void doCached(
                         @JavaType(Class.class) StaticObject context,
-                        @CachedContext(EspressoLanguage.class) EspressoContext espressoContext,
+                        @Bind("getContext()") EspressoContext espressoContext,
                         @Cached("create(espressoContext.getMeta().java_beans_ThreadGroupContext_init.getCallTargetNoSubstitution())") DirectCallNode original) {
             // for class redefinition we need to collect details about beans
             JDKCacheRedefinitionPlugin plugin = espressoContext.lookup(JDKCacheRedefinitionPlugin.class);

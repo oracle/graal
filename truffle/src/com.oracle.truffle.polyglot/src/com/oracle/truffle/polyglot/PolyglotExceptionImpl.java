@@ -123,6 +123,7 @@ final class PolyglotExceptionImpl {
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
         Error resourceLimitError = getResourceLimitError(engine, exception);
+        String exceptionMessage = null;
         InteropLibrary interop;
         if (allowInterop && (interop = InteropLibrary.getUncached()).isException(exception)) {
             try {
@@ -138,7 +139,9 @@ final class PolyglotExceptionImpl {
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
                 this.incompleteSource = this.syntaxError ? interop.isExceptionIncompleteSource(exception) : false;
                 this.interrupted = (exceptionType == ExceptionType.INTERRUPT) && !this.cancelled;
-
+                if (interop.hasExceptionMessage(exception)) {
+                    exceptionMessage = interop.asString(interop.getExceptionMessage(exception));
+                }
                 if (interop.hasSourceLocation(exception)) {
                     this.sourceLocation = newSourceSection(interop.getSourceLocation(exception));
                 } else {
@@ -204,28 +207,22 @@ final class PolyglotExceptionImpl {
             }
             this.sourceLocation = location != null ? newSourceSection(location) : null;
         }
-        if (isHostException()) {
-            this.message = asHostException().getMessage();
-        } else {
-            if (internal) {
-                this.message = exception.toString();
-            } else {
-                String exceptionMessage = exception.getMessage();
-                if (exceptionMessage != null) {
-                    this.message = exceptionMessage;
-                } else if (resourceLimitError != null) {
-                    String resourceExhaustedMessage = "Resource exhausted";
-                    if (resourceLimitError instanceof StackOverflowError) {
-                        resourceExhaustedMessage += ": Stack overflow";
-                    }
-                    if (resourceLimitError instanceof OutOfMemoryError) {
-                        resourceExhaustedMessage += ": Out of memory";
-                    }
-                    this.message = resourceExhaustedMessage;
-                } else {
-                    this.message = null;
-                }
+        if (exceptionMessage == null) {
+            exceptionMessage = isHostException() ? asHostException().getMessage() : internal ? exception.toString() : exception.getMessage();
+        }
+        if (exceptionMessage != null) {
+            this.message = exceptionMessage;
+        } else if (resourceLimitError != null) {
+            String resourceExhaustedMessage = "Resource exhausted";
+            if (resourceLimitError instanceof StackOverflowError) {
+                resourceExhaustedMessage += ": Stack overflow";
             }
+            if (resourceLimitError instanceof OutOfMemoryError) {
+                resourceExhaustedMessage += ": Out of memory";
+            }
+            this.message = resourceExhaustedMessage;
+        } else {
+            this.message = null;
         }
 
         // late materialization of host frames. only needed if polyglot exceptions cross the

@@ -90,7 +90,7 @@ final class PolyglotLoggers {
     }
 
     static PolyglotContextImpl getCurrentOuterContext() {
-        PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
+        PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
         if (currentContext != null) {
             while (currentContext.parent != null) {
                 currentContext = currentContext.parent;

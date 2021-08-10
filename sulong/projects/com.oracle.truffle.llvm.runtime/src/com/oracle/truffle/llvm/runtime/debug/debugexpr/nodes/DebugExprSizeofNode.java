@@ -43,7 +43,7 @@ public abstract class DebugExprSizeofNode extends LLVMExpressionNode {
     private final long typeSize;
 
     public static DebugExprSizeofNode create(DebugExprType type) throws TypeOverflowException {
-        DataLayout datalayout = LLVMLanguage.getLanguage().getDefaultDataLayout();
+        DataLayout datalayout = LLVMLanguage.get(null).getDefaultDataLayout();
         return DebugExprSizeofNodeGen.create(type.getLLVMRuntimeType().getSize(datalayout));
     }
 

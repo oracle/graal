@@ -8,7 +8,7 @@ permalink: /security-guide/
 # Security Guide
 
 This security guide provides developers and embedders with information on the security model and features of GraalVM for developers and embedders who seek to build a secure application on top of it.
-It assumes that readers are familiar with the [GraalVM architecture](/introduction/).
+It assumes that readers are familiar with the GraalVM architecture.
 This guide does not replace but rather supplements the Java security documentation with aspects unique to GraalVM.
 It also provides security researchers with information on GraalVM's security model.
 
@@ -44,7 +44,7 @@ These launchers behave in the same way and come with the same security guarantee
 
 ## Guest Applications
 
-GraalVM allows a host application written in a JVM-based language to execute guest applications written in a Truffle language via the [Polyglot API](/reference-manual/embedding/embed-languages.md).
+GraalVM allows a host application written in a JVM-based language to execute guest applications written in a Truffle language via the [Polyglot API](../reference-manual/embedding/embed-languages.md).
 When creating a context, the host application can control which resources the guest can access.
 This mechanism is only fully supported for Javascript.
 By default, access to all managed resources is denied and needs to be granted explicitly, following the principle of least privilege.
@@ -72,7 +72,7 @@ Source.newBuilder(…).cached(false).build()
 > Note: Available with GraalVM Enterprise.
 
 GraalVM Enterprise allows restricting certain computational resources used by guest applications, such as CPU time, heap memory or the number of threads that can be concurrently used by a context.
-These [sandboxing options](/reference-manual/embedding/sandbox-options.md) are also available via the Polyglot embedding API.
+These [sandboxing options](../reference-manual/embedding/sandbox-options.md) are also available via the Polyglot embedding API.
 
 ### ScriptEngine Compatibility
 
@@ -107,7 +107,7 @@ This means that any information that is obtained or computed in static initializ
 This can lead to unintentionally including properties of the build environment, such as environment variables in the image heap.
 This can either result in sensitive data ending up in the snapshot or fixing initialization data that is supposed to be obtained at startup, such as random number seeds.
 
-Developers can request static initializers that process sensitive information to be instead executed at [runtime](/reference-manual/native-image/ClassInitialization/) by either specifying the `--initialize-at-run-time` CLI parameter when building a native image, or making use of the `RuntimeClassInitialization` API.
+Developers can request static initializers that process sensitive information to be instead executed at runtime by either specifying the `--initialize-at-run-time` CLI parameter when building a native image, or making use of the `RuntimeClassInitialization` API.
 
 In addition, developers can run the native image builder in a dedicated environment, such as a container, that does not contain any sensitive information in the first place.
 

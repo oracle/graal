@@ -69,7 +69,6 @@ import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -240,8 +239,7 @@ public class InnerAndOuterContextCancellationTest {
 
             @CompilerDirectives.TruffleBoundary
             private void onEnterBoundary() {
-                TruffleLanguage.Env itlEnv = InstrumentationTestLanguage.currentEnv();
-                innerTruffleContext.set(itlEnv.getContext());
+                innerTruffleContext.set(InstrumentContext.get(null).env.getContext());
                 cancelLatch.countDown();
             }
 

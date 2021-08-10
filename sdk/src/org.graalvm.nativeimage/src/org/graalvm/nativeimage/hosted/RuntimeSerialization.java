@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.nativeimage.hosted;
 
-public class GlobalDescriptor extends Dictionary {
-    private final ValueType valueType;
-    private final Boolean mutable;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-    public GlobalDescriptor(String valueType, Boolean mutable) {
-        this.valueType = ValueType.valueOf(valueType);
-        this.mutable = mutable;
-        addMembers(new Object[]{
-                        "value", this.valueType.name(),
-                        "mutable", this.mutable,
-        });
+/**
+ * This class provides methods that can be called before and during analysis, to register classes
+ * for serialization at image runtime.
+ *
+ * @since 21.3
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+public final class RuntimeSerialization {
+
+    /**
+     * Makes the provided classes available for serialization at runtime.
+     *
+     * @since 21.3
+     */
+    public static void register(Class<?>... classes) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).register(classes);
+    }
+
+    /**
+     * Makes the provided class available for serialization at runtime but uses the provided
+     * customTargetConstructorClazz for deserialization.
+     * <p>
+     * In some cases an application might explicitly make calls to
+     * {@code ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall)}
+     * where the passed `constructorToCall` differs from what would automatically be used if regular
+     * deserialization of `cl` would happen. This method exists to also support such usecases.
+     *
+     * @since 21.3
+     */
+    public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(clazz, customTargetConstructorClazz);
+    }
+
+    private RuntimeSerialization() {
     }
 }

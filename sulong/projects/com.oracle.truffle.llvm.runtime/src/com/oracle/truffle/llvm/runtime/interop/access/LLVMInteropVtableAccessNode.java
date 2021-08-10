@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -50,6 +51,7 @@ public abstract class LLVMInteropVtableAccessNode extends LLVMNode {
     }
 
     @Specialization
+    @GenerateAOT.Exclude
     Object doPointer(LLVMPointer vtablePointer, long virtualIndex, Object[] arguments,
                     @Cached LLVMForeignReadNode read,
                     @CachedLibrary(limit = "5") InteropLibrary interop)

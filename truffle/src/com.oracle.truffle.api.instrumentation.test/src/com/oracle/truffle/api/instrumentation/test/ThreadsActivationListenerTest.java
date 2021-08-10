@@ -62,6 +62,8 @@ import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+
 import org.graalvm.polyglot.PolyglotException;
 
 public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
@@ -88,7 +90,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         Object prev = ic0.enter(null);
         // look language handle on the context it is not the same as
         // the creator handle. The creator handle can be closed.
-        ic0 = ProxyLanguage.getCurrentContext().getEnv().getContext();
+        ic0 = LanguageContext.get(null).getEnv().getContext();
         ic0.leave(null, prev);
 
         c0.leave();

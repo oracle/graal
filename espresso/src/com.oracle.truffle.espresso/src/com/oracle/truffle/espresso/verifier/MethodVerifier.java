@@ -248,7 +248,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STAC
 
 import java.util.Arrays;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
@@ -429,7 +428,7 @@ public final class MethodVerifier implements ContextAccess {
         Klass getKlass() {
             // this particular j.l.Object instance does not cache its resolved klass, as most
             // getKlass calls checks beforehand for Type Object.
-            return EspressoLanguage.getCurrentContext().getMeta().java_lang_Object;
+            return EspressoContext.get(null).getMeta().java_lang_Object;
         }
     };
 

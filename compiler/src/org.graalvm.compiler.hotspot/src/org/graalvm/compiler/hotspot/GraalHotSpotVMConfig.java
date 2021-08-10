@@ -394,7 +394,18 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadIsMethodHandleReturnOffset = getFieldOffset("JavaThread::_is_method_handle_return", Integer.class, "int");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
-    public final int jvmciReserved0Offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
+    public final int jvmciReserved0Offset;
+    {
+        int offset;
+        try {
+            offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
+        } catch (jdk.vm.ci.common.JVMCIError t) {
+            // at some point the field was migrated to jlong
+            offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
+        }
+        jvmciReserved0Offset = offset;
+    }
+    public final int jvmciReservedReference0Offset = getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
 
     public final int doingUnsafeAccessOffset = getFieldOffset("JavaThread::_doing_unsafe_access", Integer.class, "bool", Integer.MAX_VALUE, JVMCI || JDK >= 14);
     // @formatter:off

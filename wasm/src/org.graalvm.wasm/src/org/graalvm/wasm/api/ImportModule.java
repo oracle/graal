@@ -44,10 +44,12 @@ import org.graalvm.collections.Pair;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import java.util.HashMap;
@@ -55,9 +57,9 @@ import java.util.Map;
 
 public class ImportModule extends BuiltinModule {
     private final HashMap<String, Pair<WasmFunction, Object>> functions;
-    private final HashMap<String, Memory> memories;
+    private final HashMap<String, WasmMemory> memories;
     private final HashMap<String, WasmTable> tables;
-    private final HashMap<String, Object> globals;
+    private final HashMap<String, WasmGlobal> globals;
 
     public ImportModule() {
         this.functions = new HashMap<>();
@@ -76,19 +78,19 @@ public class ImportModule extends BuiltinModule {
             final SymbolTable.FunctionType type = function.type();
             defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
         }
-        for (Map.Entry<String, Memory> entry : memories.entrySet()) {
+        for (Map.Entry<String, WasmMemory> entry : memories.entrySet()) {
             final String memoryName = entry.getKey();
-            final Memory memory = entry.getValue();
-            defineExternalMemory(instance, memoryName, memory.wasmMemory());
+            final WasmMemory memory = entry.getValue();
+            defineExternalMemory(instance, memoryName, memory);
         }
         for (Map.Entry<String, WasmTable> entry : tables.entrySet()) {
             final String tableName = entry.getKey();
             final WasmTable table = entry.getValue();
             defineExternalTable(instance, tableName, table);
         }
-        for (Map.Entry<String, Object> entry : globals.entrySet()) {
+        for (Map.Entry<String, WasmGlobal> entry : globals.entrySet()) {
             final String globalName = entry.getKey();
-            final Object global = entry.getValue();
+            final WasmGlobal global = entry.getValue();
             defineExternalGlobal(instance, globalName, global);
         }
         return instance;
@@ -98,7 +100,7 @@ public class ImportModule extends BuiltinModule {
         functions.put(name, info);
     }
 
-    public void addMemory(String name, Memory memory) {
+    public void addMemory(String name, WasmMemory memory) {
         memories.put(name, memory);
     }
 
@@ -106,7 +108,7 @@ public class ImportModule extends BuiltinModule {
         tables.put(name, table);
     }
 
-    public void addGlobal(String name, Object global) {
+    public void addGlobal(String name, WasmGlobal global) {
         globals.put(name, global);
     }
 }

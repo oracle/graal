@@ -54,7 +54,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
      * at one point in time (or not an entry point, if invalid). Must never be {@code null}.
      * <p>
      * Does not need to be volatile because it is modified only in safepoint operations. Reads of
-     * this field must be done carefully placed so they cannot float across safepoint checks.
+     * this field must be done carefully so they cannot float across safepoint checks.
      */
     protected SubstrateOptimizedCallTargetInstalledCode installedCode;
 

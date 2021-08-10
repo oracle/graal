@@ -25,25 +25,34 @@
 package org.graalvm.tools.insight.heap.instrument;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.function.Consumer;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.tools.insight.Insight;
 
-@TruffleInstrument.Registration(id = "heap", internal = false, services = Insight.SymbolProvider.class)
+@TruffleInstrument.Registration(id = "heap", internal = false, services = {Insight.SymbolProvider.class, Consumer.class})
 public final class HeapDumpInstrument extends TruffleInstrument {
     @Option(stability = OptionStability.STABLE, name = "dump", help = "Output file to ", category = OptionCategory.EXPERT) //
     static final OptionKey<String> DUMP = new OptionKey<>("");
 
     @Override
     protected void onCreate(Env env) {
+        HeapObject obj;
         if (DUMP.hasBeenSet(env.getOptions())) {
-            env.registerService(new HeapObject(env, DUMP.getValue(env.getOptions())));
+            obj = new HeapObject(env, DUMP.getValue(env.getOptions()));
         } else {
-            env.registerService(new HeapObject(env, null));
+            obj = new HeapObject(env, null);
         }
+        env.registerService(maybeProxy(Insight.SymbolProvider.class, obj));
+        env.registerService(maybeProxy(Consumer.class, obj));
     }
 
     @Override
@@ -51,4 +60,22 @@ public final class HeapDumpInstrument extends TruffleInstrument {
         return new HeapDumpInstrumentOptionDescriptors();
     }
 
+    static <Interface> Interface maybeProxy(Class<Interface> type, Interface delegate) {
+        if (TruffleOptions.AOT) {
+            return delegate;
+        } else {
+            return proxy(type, delegate);
+        }
+    }
+
+    private static <Interface> Interface proxy(Class<Interface> type, Interface delegate) {
+        InvocationHandler handler = (Object proxy, Method method, Object[] args) -> {
+            try {
+                return method.invoke(delegate, args);
+            } catch (InvocationTargetException ex) {
+                throw ex.getCause();
+            }
+        };
+        return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, handler));
+    }
 }

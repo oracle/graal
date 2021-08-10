@@ -56,6 +56,12 @@ public final class LLVMFunction extends LLVMSymbol {
     private final Assumption fixedCodeAssumption = Truffle.getRuntime().createAssumption();
     @CompilationFinal private LLVMFunctionCode fixedCode;
 
+    /**
+     * Used in {@link com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNode} to bind it with
+     * the eagerly initialized fixed signature.
+     */
+    @CompilationFinal private Object nfiSymbol;
+
     public static LLVMFunction create(String name, Function function, FunctionType type, BitcodeID bitcodeID, int symbolIndex, boolean exported, String path, boolean externalWeak) {
         return new LLVMFunction(name, function, type, bitcodeID, symbolIndex, exported, path, externalWeak);
     }
@@ -138,5 +144,23 @@ public final class LLVMFunction extends LLVMSymbol {
             fixedCode = null;
             fixedCodeAssumption.invalidate();
         }
+    }
+
+    @Override
+    public boolean isElemPtrExpression() {
+        return false;
+    }
+
+    @Override
+    public LLVMElemPtrSymbol asElemPtrExpression() {
+        throw new IllegalStateException("Function " + getName() + " is not a getElementPointer symbol.");
+    }
+
+    public void setNFISymbol(Object symbol) {
+        this.nfiSymbol = symbol;
+    }
+
+    public Object getNFISymbol() {
+        return this.nfiSymbol;
     }
 }

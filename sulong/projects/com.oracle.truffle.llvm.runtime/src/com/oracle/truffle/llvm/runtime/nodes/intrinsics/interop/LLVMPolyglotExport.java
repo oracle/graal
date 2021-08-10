@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,19 +30,17 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMPointerDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 
 @NodeChild(value = "name", type = LLVMExpressionNode.class)
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
@@ -52,14 +50,14 @@ public abstract class LLVMPolyglotExport extends LLVMIntrinsic {
     @Child LLVMDataEscapeNode escape = LLVMPointerDataEscapeNodeGen.create();
 
     @Specialization
+    @GenerateAOT.Exclude
     protected Object doExport(Object name, Object value,
-                    @CachedLibrary(limit = "3") InteropLibrary interop,
-                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                    @CachedLibrary(limit = "3") InteropLibrary interop) {
         String symbolName = readString.executeWithTarget(name);
         Object escaped = escape.executeWithTarget(value);
 
         try {
-            interop.writeMember(ctx.getEnv().getPolyglotBindings(), symbolName, escaped);
+            interop.writeMember(getContext().getEnv().getPolyglotBindings(), symbolName, escaped);
         } catch (InteropException ex) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, ex.getMessage());

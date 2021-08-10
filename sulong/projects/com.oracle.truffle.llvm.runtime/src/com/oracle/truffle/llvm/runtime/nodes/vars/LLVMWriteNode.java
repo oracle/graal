@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.vars;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -119,6 +120,7 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
         }
 
         @Specialization(replaces = "writeI64")
+        @GenerateAOT.Exclude
         protected void writePointer(VirtualFrame frame, Object value) {
             if (frame.getFrameDescriptor().getFrameSlotKind(slot) == FrameSlotKind.Long) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

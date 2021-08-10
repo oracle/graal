@@ -111,6 +111,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 public class TruffleSafepointTest {
 
@@ -165,7 +166,7 @@ public class TruffleSafepointTest {
             c.enter();
             try {
                 c.initialize(ProxyLanguage.ID);
-                Env env = ProxyLanguage.getCurrentContext().getEnv();
+                Env env = LanguageContext.get(null).getEnv();
                 try {
                     future = env.submitThreadLocal(null, new ThreadLocalAction(false, false) {
                         @Override
@@ -235,7 +236,7 @@ public class TruffleSafepointTest {
                     c.initialize(ProxyLanguage.ID);
                     c.enter();
                     try {
-                        envAtomicReference.set(ProxyLanguage.getCurrentContext().getEnv());
+                        envAtomicReference.set(LanguageContext.get(null).getEnv());
                     } finally {
                         c.leave();
                     }
@@ -1578,8 +1579,8 @@ public class TruffleSafepointTest {
         try {
             c.enter();
             c.initialize(ProxyLanguage.ID);
-            ProxyLanguage proxyLanguage = ProxyLanguage.getCurrentLanguage();
-            Env env = ProxyLanguage.getCurrentContext().getEnv();
+            ProxyLanguage proxyLanguage = ProxyLanguage.get(null);
+            Env env = LanguageContext.get(null).getEnv();
             TruffleInstrument.Env instrument = c.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class).getEnv();
             c.leave();
             CountDownLatch latch = new CountDownLatch(threads);

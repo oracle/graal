@@ -170,7 +170,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 return;
             }
 
-            final WasmContext wasmContext = WasmContext.getCurrent();
+            final WasmContext wasmContext = WasmContext.get(null);
             final Value mainFunction = findMain(wasmContext);
 
             resetStatus(System.out, phaseIcon, phaseLabel);

@@ -354,17 +354,14 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             } else {
                 constant = javaConstant.asLong();
             }
-            /* Checking sign bit of original value. */
-            boolean isNegative = (constant & (1L << (fromBits - 1))) != 0;
-            long mask = NumUtil.getNbitNumberLong(fromBits);
-            long signExtendedValue;
-            if (isNegative) {
-                /* Making sure all sign bits are set within 64-bit value. */
-                signExtendedValue = constant | ~mask;
-            } else {
-                /* All sign bits are cleared within 64-bit value. */
-                signExtendedValue = constant & mask;
-            }
+            /*
+             * Performing sign extend via a left shift followed by an arithmetic right shift. First,
+             * a left shift of (64 - fromBits) is performed to remove non-meaningful bits, and then
+             * an arithmetic right shift is used to set correctly all sign bits. Note the "toBits"
+             * size is not considered, as the constant is saved as a long value.
+             */
+            int shiftSize = 64 - fromBits;
+            long signExtendedValue = (constant << shiftSize) >> shiftSize;
             return new ConstantValue(resultKind, JavaConstant.forLong(signExtendedValue));
         }
         Variable result = getLIRGen().newVariable(resultKind);
@@ -391,9 +388,10 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     protected void emitBinary(AllocatableValue result, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
-        if (isValidBinaryConstant(op, b)) {
+        AArch64Kind opKind = (AArch64Kind) result.getPlatformKind();
+        if (isValidBinaryConstant(op, opKind, b)) {
             emitBinaryConst(result, op, asAllocatable(a), asJavaConstant(b));
-        } else if (commutative && isValidBinaryConstant(op, a)) {
+        } else if (commutative && isValidBinaryConstant(op, opKind, a)) {
             emitBinaryConst(result, op, asAllocatable(b), asJavaConstant(a));
         } else {
             emitBinaryVar(result, op, asAllocatable(a), asAllocatable(b));
@@ -419,16 +417,16 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         getLIRGen().append(new AArch64ArithmeticOp.BinaryConstOp(op, result, x, b));
     }
 
-    public static boolean isValidBinaryConstant(AArch64ArithmeticOp op, Value val) {
+    private static boolean isValidBinaryConstant(AArch64ArithmeticOp op, AArch64Kind opKind, Value val) {
         if (!isJavaConstant(val)) {
             return false;
         }
         JavaConstant constValue = asJavaConstant(val);
         switch (op.category) {
             case LOGICAL:
-                return isLogicalConstant(constValue);
-            case ARITHMETIC:
-                return isArithmeticConstant(constValue);
+                return isLogicalConstant(opKind, constValue);
+            case ADDSUBTRACT:
+                return isAddSubtractConstant(constValue);
             case SHIFT:
                 return true;
             case NONE:
@@ -438,26 +436,27 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    private static boolean isLogicalConstant(JavaConstant constValue) {
-        switch (constValue.getJavaKind()) {
-            case Int:
-                return AArch64MacroAssembler.isLogicalImmediate(32, constValue.asInt());
-            case Long:
-                return AArch64MacroAssembler.isLogicalImmediate(64, constValue.asLong());
+    private static boolean isLogicalConstant(AArch64Kind kind, JavaConstant constValue) {
+        long value = constValue.asLong();
+        switch (kind) {
+            case DWORD:
+                return AArch64MacroAssembler.isLogicalImmediate(32, value);
+            case QWORD:
+                return AArch64MacroAssembler.isLogicalImmediate(64, value);
             default:
-                return false;
+                throw GraalError.shouldNotReachHere();
         }
     }
 
-    protected static boolean isArithmeticConstant(JavaConstant constValue) {
-        switch (constValue.getJavaKind()) {
+    public static boolean isAddSubtractConstant(JavaConstant constValue) {
+        switch (constValue.getJavaKind().getStackKind()) {
             case Int:
             case Long:
-                return AArch64MacroAssembler.isArithmeticImmediate(constValue.asLong());
+                return AArch64MacroAssembler.isAddSubtractImmediate(constValue.asLong(), true);
             case Object:
                 return constValue.isNull();
             default:
-                return false;
+                throw GraalError.shouldNotReachHere();
         }
     }
 

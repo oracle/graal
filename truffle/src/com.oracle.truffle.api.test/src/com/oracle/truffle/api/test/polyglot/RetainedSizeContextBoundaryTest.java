@@ -283,8 +283,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
 
                         @Override
                         public Object execute(VirtualFrame frame) {
-                            TruffleLanguage.ContextReference<ProxyLanguage.LanguageContext> languageContext = lookupContextReference(ProxyLanguage.class);
-                            Object thisTestClass = languageContext.get().getEnv().lookupHostSymbol(RetainedSizeContextBoundaryTest.class.getName());
+                            Object thisTestClass = LanguageContext.get(this).getEnv().lookupHostSymbol(RetainedSizeContextBoundaryTest.class.getName());
                             try {
                                 return InteropLibrary.getUncached().invokeMember(thisTestClass, "calculateRetainedSize");
                             } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {

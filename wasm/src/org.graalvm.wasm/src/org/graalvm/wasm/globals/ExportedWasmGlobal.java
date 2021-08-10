@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,61 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.api;
+package org.graalvm.wasm.globals;
 
-import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.api.ValueType;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-
-@ExportLibrary(InteropLibrary.class)
-public class ProxyGlobal extends Dictionary {
-    private final Object descriptor;
-    private final ValueType valueType;
-    private final boolean mutable;
+public class ExportedWasmGlobal extends WasmGlobal {
     private final GlobalRegistry globals;
     private final int address;
 
-    public ProxyGlobal(Object descriptor, GlobalRegistry globals, int address) {
-        this.descriptor = descriptor;
+    public ExportedWasmGlobal(ValueType valueType, boolean mutable, GlobalRegistry globals, int address) {
+        super(valueType, mutable);
         this.globals = globals;
         this.address = address;
-        try {
-            this.valueType = ValueType.valueOf((String) InteropLibrary.getUncached().readMember(descriptor, "value"));
-            this.mutable = (boolean) InteropLibrary.getUncached().readMember(descriptor, "mutable");
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid global descriptor: %s", descriptor);
-        }
-        addMembers(new Object[]{
-                        "descriptor", this.descriptor,
-                        "valueOf", new Executable(args -> get()),
-        });
     }
 
-    @SuppressWarnings({"unused", "static-method"})
-    @ExportMessage
     @Override
-    public boolean isMemberReadable(String member) {
-        return member.equals("value") || super.isMemberReadable(member);
-    }
-
-    @SuppressWarnings({"unused"})
-    @ExportMessage
-    @Override
-    public Object readMember(String member) throws UnknownIdentifierException {
-        if (member.equals("value")) {
-            return get();
-        } else {
-            return super.readMember(member);
-        }
-    }
-
-    public Object get() {
-        switch (valueType) {
+    public Object getValue() {
+        switch (getValueType()) {
             case i32:
                 return globals.loadAsInt(address);
             case i64:
@@ -101,16 +66,13 @@ public class ProxyGlobal extends Dictionary {
                 return globals.loadAsFloat(address);
             case f64:
                 return globals.loadAsDouble(address);
-            default:
-                throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Unknown value type: %s", valueType);
         }
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Should not reach here");
     }
 
-    public String valueType() {
-        return valueType.name();
-    }
-
-    public boolean mutable() {
-        return mutable;
+    @Override
+    public void setValue(Object value) {
+        // TODO (GR-32924): Implement setter for imported globals
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Should not reach here");
     }
 }

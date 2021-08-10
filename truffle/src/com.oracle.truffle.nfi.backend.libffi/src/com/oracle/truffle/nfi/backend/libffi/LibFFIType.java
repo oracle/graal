@@ -47,8 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -60,7 +58,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNode.InjectedClosureArgumentNode;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.ObjectClosureArgumentNodeGen;
@@ -68,6 +65,7 @@ import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.StringCl
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.ArrayType.HostObjectHelperNode.WrongTypeException;
 import com.oracle.truffle.nfi.backend.libffi.LibFFITypeFactory.ArrayTypeFactory.CachedHostObjectHelperNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.NativeArgumentBuffer.TypeTag;
+import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 /**
  * Runtime object representing native types. Instances of this class can not be cached in shared AST
@@ -175,7 +173,7 @@ final class LibFFIType {
 
         public abstract ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg);
 
-        public abstract Object deserializeRet(NativeArgumentBuffer buffer, LibFFILanguage language);
+        public abstract Object deserializeRet(Node node, NativeArgumentBuffer buffer);
 
         public CachedTypeInfo overrideClosureRetType() {
             return this;
@@ -265,8 +263,12 @@ final class LibFFIType {
 
         @ExportMessage
         Object deserialize(NativeArgumentBuffer buffer,
-                        @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType,
-                        @CachedLanguage LibFFILanguage language) {
+                        @CachedLibrary("this") NativeArgumentLibrary self,
+                        @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType) {
+            return deserializeImpl(buffer, self, cachedType);
+        }
+
+        private Object deserializeImpl(NativeArgumentBuffer buffer, Node node, NativeSimpleType cachedType) throws AssertionError {
             buffer.align(alignment);
             switch (cachedType) {
                 case VOID:
@@ -291,14 +293,14 @@ final class LibFFIType {
                 case DOUBLE:
                     return buffer.getDouble();
                 case POINTER:
-                    return NativePointer.create(language, buffer.getPointer(size));
+                    return NativePointer.create(LibFFILanguage.get(node), buffer.getPointer(size));
                 case STRING:
                     return new NativeString(buffer.getPointer(size));
                 case NULLABLE:
                 case OBJECT:
                     Object ret = buffer.getObject(size);
                     if (ret == null) {
-                        return NativePointer.create(language, 0);
+                        return NativePointer.create(LibFFILanguage.get(node), 0);
                     } else {
                         return ret;
                     }
@@ -310,8 +312,8 @@ final class LibFFIType {
         }
 
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer, LibFFILanguage language) {
-            return deserialize(buffer, simpleType, language);
+        public Object deserializeRet(Node node, NativeArgumentBuffer buffer) {
+            return deserializeImpl(buffer, node, simpleType);
         }
     }
 
@@ -404,8 +406,8 @@ final class LibFFIType {
         }
 
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer, LibFFILanguage language) {
-            return NativePointer.create(language, 0);
+        public Object deserializeRet(Node node, NativeArgumentBuffer buffer) {
+            return NativePointer.create(LibFFILanguage.get(node), 0);
         }
     }
 
@@ -498,39 +500,37 @@ final class LibFFIType {
 
             abstract void execute(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
 
-            static boolean isHostObject(LibFFIContext ctx, Object value) {
+            final boolean isHostObject(Object value) {
+                LibFFIContext ctx = LibFFIContext.get(this);
                 return ctx.env.isHostObject(value) && ctx.env.asHostObject(value) != null;
             }
 
-            @Specialization(guards = "isHostObject(ctx, value)", rewriteOn = WrongTypeException.class)
-            static void doHostObject(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
+            @Specialization(guards = "isHostObject(value)", rewriteOn = WrongTypeException.class)
+            final void doHostObject(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
                             @Cached(parameters = "type") HostObjectHelperNode helper) throws UnsupportedTypeException, WrongTypeException {
-                Object hostObject = ctx.env.asHostObject(value);
+                Object hostObject = LibFFIContext.get(this).env.asHostObject(value);
                 helper.execute(buffer, hostObject);
             }
 
-            @Specialization(guards = "!isHostObject(ctx, value)", limit = "3")
+            @Specialization(guards = "!isHostObject(value)", limit = "3")
             static void doInteropObject(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                             @CachedLibrary("value") SerializeArgumentLibrary serialize) throws UnsupportedTypeException {
                 serialize.putPointer(value, buffer, type.size);
             }
 
             @Specialization(limit = "3", replaces = {"doHostObject", "doInteropObject"})
-            static void doGeneric(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
-                            @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
+            final void doGeneric(LibFFIType.ArrayType type, NativeArgumentBuffer buffer, Object value,
                             @CachedLibrary("value") SerializeArgumentLibrary serialize,
                             @Cached(parameters = "type") HostObjectHelperNode helper) throws UnsupportedTypeException {
-                if (isHostObject(ctx, value)) {
+                if (isHostObject(value)) {
                     try {
-                        doHostObject(type, buffer, value, ctx, helper);
+                        doHostObject(type, buffer, value, helper);
                         return;
                     } catch (WrongTypeException e) {
                         // fall back to "doInteropObject" case
                     }
                 }
-                doInteropObject(type, buffer, value, ctx, serialize);
+                doInteropObject(type, buffer, value, serialize);
             }
         }
 
@@ -651,10 +651,13 @@ final class LibFFIType {
             }
         }
 
+        @ExportMessage
+        public Object deserialize(NativeArgumentBuffer buffer) {
+            return deserializeRet(null, buffer);
+        }
+
         @Override
-        @ExportMessage(name = "deserialize")
-        public Object deserializeRet(NativeArgumentBuffer buffer,
-                        @CachedLanguage LibFFILanguage language) {
+        public Object deserializeRet(Node node, NativeArgumentBuffer buffer) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
@@ -679,9 +682,12 @@ final class LibFFIType {
         }
 
         @ExportMessage(name = "deserialize")
+        public Object deserialize(NativeArgumentBuffer buffer) {
+            return deserializeRet(null, buffer);
+        }
+
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer,
-                        @CachedLanguage LibFFILanguage language) {
+        public Object deserializeRet(Node node, NativeArgumentBuffer buffer) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("environment pointer can not be used as return type");
         }
