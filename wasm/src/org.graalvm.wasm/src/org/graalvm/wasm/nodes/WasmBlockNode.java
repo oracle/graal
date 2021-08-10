@@ -605,7 +605,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             default: {
-                                throw formatException("Unknown return type: %d", returnType);
+                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown return type: %d", returnType);
                             }
                         }
 
@@ -735,7 +735,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             default: {
-                                throw formatException("Unknown return type: %d", returnType);
+                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown return type: %d", returnType);
                             }
                         }
 
@@ -2926,16 +2926,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     args[i] = popAsDouble(stack, stackPointer);
                     break;
                 default: {
-                    throw formatException("Unknown type: %d", type);
+                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
                 }
             }
         }
         return args;
-    }
-
-    @BytecodeInterpreterSwitchBoundary
-    private WasmException formatException(String formatString, int type) {
-        return WasmException.format(Failure.UNSPECIFIED_TRAP, this, formatString, type);
     }
 
     @ExplodeLoop
