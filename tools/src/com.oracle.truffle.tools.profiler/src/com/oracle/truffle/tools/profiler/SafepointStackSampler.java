@@ -238,7 +238,6 @@ final class SafepointStackSampler {
             visitor.thread = Thread.currentThread();
             assert visitor.nextFrameIndex == 0 : "not cleaned";
             visitor.startTime = System.nanoTime();
-            visitor.targets[visitor.nextFrameIndex] = access.getLocation().getRootNode().getCallTarget();
             Truffle.getRuntime().iterateFrames(visitor);
             stackOverflowed(visitor.overflowed);
             if (cancelled) {
