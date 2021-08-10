@@ -26,19 +26,19 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.configure.SerializationConfigurationParser;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-public class SerializationConfiguration implements ConfigurationBase {
+public class SerializationConfiguration implements ConfigurationBase, RuntimeSerializationSupport {
 
-    private static final String KEY_SEPARATOR = "|";
-
-    private final Set<String> serializations = ConcurrentHashMap.newKeySet();
+    private final Set<SerializationConfigurationType> serializations = ConcurrentHashMap.newKeySet();
 
     public SerializationConfiguration() {
     }
@@ -51,33 +51,19 @@ public class SerializationConfiguration implements ConfigurationBase {
         serializations.removeAll(other.serializations);
     }
 
-    public void add(String serializationTargetClass, String customTargetConstructorClass) {
-        serializations.add(mapNameAndConstructor(serializationTargetClass, customTargetConstructorClass));
-    }
-
     public boolean contains(String serializationTargetClass, String customTargetConstructorClass) {
-        return serializations.contains(mapNameAndConstructor(serializationTargetClass, customTargetConstructorClass));
-    }
-
-    private static String mapNameAndConstructor(String serializationTargetClass, String customTargetConstructorClass) {
-        return serializationTargetClass + (customTargetConstructorClass != null ? KEY_SEPARATOR + customTargetConstructorClass : "");
+        return serializations.contains(createConfigurationType(serializationTargetClass, customTargetConstructorClass));
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('[').indent();
         String prefix = "";
-        for (String entry : serializations) {
-            writer.append(prefix);
-            writer.newline().append('{').newline();
-            String[] serializationKeyValues = SubstrateUtil.split(entry, KEY_SEPARATOR, 2);
-            String className = serializationKeyValues[0];
-            writer.quote(SerializationConfigurationParser.NAME_KEY).append(":").quote(className);
-            if (serializationKeyValues.length > 1) {
-                writer.append(",").newline();
-                writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(":").quote(serializationKeyValues[1]);
-            }
-            writer.newline().append('}');
+        List<SerializationConfigurationType> list = new ArrayList<>(serializations);
+        Collections.sort(list);
+        for (SerializationConfigurationType type : list) {
+            writer.append(prefix).newline();
+            type.printJson(writer);
             prefix = ",";
         }
         writer.unindent().newline();
@@ -85,8 +71,30 @@ public class SerializationConfiguration implements ConfigurationBase {
     }
 
     @Override
+    public void register(Class<?>... classes) {
+        for (Class<?> clazz : classes) {
+            registerWithTargetConstructorClass(clazz, null);
+        }
+    }
+
+    @Override
+    public void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
+        registerWithTargetConstructorClass(clazz.getName(), customTargetConstructorClazz == null ? null : customTargetConstructorClazz.getName());
+    }
+
+    @Override
+    public void registerWithTargetConstructorClass(String className, String customTargetConstructorClassName) {
+        serializations.add(createConfigurationType(className, customTargetConstructorClassName));
+    }
+
+    @Override
     public boolean isEmpty() {
         return serializations.isEmpty();
     }
 
+    private static SerializationConfigurationType createConfigurationType(String className, String customTargetConstructorClassName) {
+        String convertedClassName = SignatureUtil.toInternalClassName(className);
+        String convertedCustomTargetConstructorClassName = customTargetConstructorClassName == null ? null : SignatureUtil.toInternalClassName(customTargetConstructorClassName);
+        return new SerializationConfigurationType(convertedClassName, convertedCustomTargetConstructorClassName);
+    }
 }
