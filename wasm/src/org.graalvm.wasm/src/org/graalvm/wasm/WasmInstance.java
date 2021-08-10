@@ -229,9 +229,12 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         ExportedMembers(WasmInstance instance, SymbolTable symbolTable) {
             this.instance = instance;
             this.symbolTable = symbolTable;
-            this.exportedFunctions = new ArrayList<>(symbolTable.exportedFunctions().values());
+            this.exportedFunctions = new ArrayList<>(symbolTable.exportedFunctions().size());
+            for (WasmFunction function : symbolTable.exportedFunctions().getValues()) {
+                exportedFunctions.add(function);
+            }
             this.exportedGlobals = new IntArrayList();
-            for (int globalIndex : symbolTable.exportedGlobals().values()) {
+            for (int globalIndex : symbolTable.exportedGlobals().getValues()) {
                 this.exportedGlobals.add(globalIndex);
             }
         }

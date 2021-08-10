@@ -40,40 +40,41 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
+import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
-import org.graalvm.wasm.constants.ImportIdentifier;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.globals.DefaultWasmGlobal;
-import org.graalvm.wasm.globals.WasmGlobal;
-import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.constants.ImportIdentifier;
+import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.globals.DefaultWasmGlobal;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.ByteArrayWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Objects;
-
-import static java.lang.Integer.compareUnsigned;
-import static org.graalvm.wasm.WasmMath.minUnsigned;
-import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -261,7 +262,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ModuleImportDescriptor> moduleImports(WasmModule module) {
-        final LinkedHashMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
+        final EconomicMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
         for (ImportDescriptor descriptor : module.importedSymbols()) {
             switch (descriptor.identifier) {
