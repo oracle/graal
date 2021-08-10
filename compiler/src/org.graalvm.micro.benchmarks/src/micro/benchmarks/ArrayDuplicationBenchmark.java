@@ -44,15 +44,22 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
 
     private Object[][] testStringArray;
 
+    private Object[][] testObjectArrayOfStrings;
+
     private Object[] dummy;
 
     @Setup
     public void setup() {
         testObjectArray = new Object[TESTSIZE][];
         testStringArray = new Object[TESTSIZE][];
+        testObjectArrayOfStrings = new Object[TESTSIZE][];
         for (int i = 0; i < TESTSIZE; i++) {
             testObjectArray[i] = new Object[20];
             testStringArray[i] = new String[200];
+            testObjectArrayOfStrings[i] = new Object[20];
+            for (int j = 0; j < testObjectArrayOfStrings[i].length; j++) {
+                testObjectArrayOfStrings[i][j] = String.valueOf(j);
+            }
         }
     }
 
@@ -102,6 +109,16 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
         int j = 0;
         for (int i = 0; i < TESTSIZE; i++) {
             dummy[j++] = arraysCopyOfToString(testStringArray[i]);
+        }
+        return dummy;
+    }
+
+    @Benchmark
+    @OperationsPerInvocation(TESTSIZE)
+    public Object[] arraysCopyOfToStringFromObjectArray() {
+        int j = 0;
+        for (int i = 0; i < TESTSIZE; i++) {
+            dummy[j++] = arraysCopyOfToString(testObjectArrayOfStrings[i]);
         }
         return dummy;
     }
