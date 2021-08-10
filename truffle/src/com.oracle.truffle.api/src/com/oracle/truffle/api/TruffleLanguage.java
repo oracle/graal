@@ -3765,7 +3765,7 @@ public abstract class TruffleLanguage<C> {
      * <pre>
      * public final class MyContext  {
      *
-     *     private static ContextReference&lt;MyContext&gt; REFERENCE =
+     *     private static final ContextReference&lt;MyContext&gt; REFERENCE =
      *                    ContextReference.create(MyLanguage.class);
      *
      *     public static MyContext get(Node node) {
@@ -3778,7 +3778,7 @@ public abstract class TruffleLanguage<C> {
      *
      *    // ...
      *
-     *    private static LanguageReference&lt;MyLanguage&gt; REFERENCE =
+     *    private static final LanguageReference&lt;MyLanguage&gt; REFERENCE =
      *                   LanguageReference.create(MyLanguage.class);
      *
      *    public static MyLanguage get(Node node) {
@@ -3786,14 +3786,12 @@ public abstract class TruffleLanguage<C> {
      *    }
      * }
      *
-     * public final class MyLanguageNode extends RootNode {
+     * public final class MyLanguageNode extends Node {
      *
      *     // ...
-     *
-     *     &#64;Override
      *     public Object execute(VirtualFrame frame) {
      *         MyContext currentContext = getContext();
-     *         MyLanguage currentLanguage = getLanguage;
+     *         MyLanguage currentLanguage = getLanguage();
      *
      *         // use context or language on the fast-path
      *
@@ -3810,11 +3808,11 @@ public abstract class TruffleLanguage<C> {
      *     }
      *
      *     public final MyLanguage getLanguage() {
-     *         return MyLanguage.get(this)
+     *         return MyLanguage.get(this);
      *     }
      *
      *     public final MyContext getContext() {
-     *         return MyContext.get(this)
+     *         return MyContext.get(this);
      *     }
      * }
      * </pre>
