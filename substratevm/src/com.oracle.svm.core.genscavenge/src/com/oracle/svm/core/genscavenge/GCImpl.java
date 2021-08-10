@@ -810,12 +810,12 @@ public final class GCImpl implements GC {
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            blackenDirtyImageHeapChunkRoots(info.getFirstAlignedImageHeapChunk(), info.getFirstUnalignedImageHeapChunk());
+            blackenDirtyImageHeapChunkRoots(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk());
 
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxInfo != null) {
-                    blackenDirtyImageHeapChunkRoots(auxInfo.getFirstAlignedImageHeapChunk(), auxInfo.getFirstUnalignedImageHeapChunk());
+                    blackenDirtyImageHeapChunkRoots(auxInfo.getFirstWritableAlignedChunk(), auxInfo.getFirstWritableUnalignedChunk());
                 }
             }
         } finally {
@@ -824,20 +824,34 @@ public final class GCImpl implements GC {
     }
 
     private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned) {
+        /*
+         * We clean and remark cards of the image heap only during complete collections when we also
+         * collect the old generation and can easily remark references into it. It also only makes a
+         * difference after references to the runtime heap were nulled, which is assumed to be rare.
+         */
+        boolean clean = completeCollection;
+
         AlignedHeader aligned = firstAligned;
         while (aligned.isNonNull()) {
-            RememberedSet.get().walkDirtyObjects(aligned, greyToBlackObjectVisitor);
+            RememberedSet.get().walkDirtyObjects(aligned, greyToBlackObjectVisitor, clean);
             aligned = HeapChunk.getNext(aligned);
         }
 
         UnalignedHeader unaligned = firstUnaligned;
         while (unaligned.isNonNull()) {
-            RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor);
+            RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor, clean);
             unaligned = HeapChunk.getNext(unaligned);
         }
     }
 
     private void blackenImageHeapRoots() {
+        if (HeapImpl.usesImageHeapCardMarking()) {
+            // Avoid scanning the entire image heap even for complete collections: its remembered
+            // set contains references into both the runtime heap's old and young generations.
+            blackenDirtyImageHeapRoots();
+            return;
+        }
+
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
             HeapImpl.getHeapImpl().walkNativeImageHeapRegions(blackenImageHeapRootsVisitor);
@@ -864,7 +878,7 @@ public final class GCImpl implements GC {
              * Promote any referenced young objects.
              */
             Space oldGenToSpace = HeapImpl.getHeapImpl().getOldGeneration().getToSpace();
-            RememberedSet.get().walkDirtyObjects(oldGenToSpace, greyToBlackObjectVisitor);
+            RememberedSet.get().walkDirtyObjects(oldGenToSpace, greyToBlackObjectVisitor, true);
         } finally {
             blackenDirtyCardRootsTimer.close();
         }

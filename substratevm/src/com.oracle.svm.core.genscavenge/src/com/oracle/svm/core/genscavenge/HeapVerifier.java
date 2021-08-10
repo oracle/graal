@@ -77,8 +77,8 @@ public final class HeapVerifier {
     private static boolean verifyChunkedImageHeap() {
         boolean success = true;
         ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-        success &= verifyAlignedChunks(null, info.getFirstAlignedImageHeapChunk());
-        success &= verifyUnalignedChunks(null, info.getFirstUnalignedImageHeapChunk());
+        success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
+        success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk());
         return success;
     }
 
@@ -161,8 +161,8 @@ public final class HeapVerifier {
              * GC itself may result in dirty cards.
              */
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            success &= rememberedSet.verify(info.getFirstAlignedImageHeapChunk());
-            success &= rememberedSet.verify(info.getFirstUnalignedImageHeapChunk());
+            success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
+            success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk());
         }
 
         OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();

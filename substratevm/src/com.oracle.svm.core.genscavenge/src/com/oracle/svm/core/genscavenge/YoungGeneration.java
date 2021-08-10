@@ -244,9 +244,17 @@ public final class YoungGeneration extends Generation {
         return usedObjectBytes;
     }
 
+    @AlwaysInline("GC performance")
     @SuppressWarnings("static-method")
     public boolean contains(Object object) {
-        return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
+        if (!HeapImpl.usesImageHeapCardMarking()) {
+            return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
+        }
+        // Only objects in the young generation have no remembered set
+        UnsignedWord header = ObjectHeaderImpl.readHeaderFromObject(object);
+        boolean young = !ObjectHeaderImpl.hasRememberedSet(header);
+        assert young == HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
+        return young;
     }
 
     @AlwaysInline("GC performance")

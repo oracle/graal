@@ -68,8 +68,8 @@ public final class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstObject;
     @UnknownObjectField(types = Object.class) public Object lastObject;
 
-    @UnknownPrimitiveField public long offsetOfFirstAlignedChunkWithRememberedSet;
-    @UnknownPrimitiveField public long offsetOfFirstUnalignedChunkWithRememberedSet;
+    @UnknownPrimitiveField public long offsetOfFirstWritableAlignedChunk;
+    @UnknownPrimitiveField public long offsetOfFirstWritableUnalignedChunk;
 
     @UnknownPrimitiveField public int dynamicHubCount;
 
@@ -80,10 +80,10 @@ public final class ImageHeapInfo {
     public void initialize(Object firstReadOnlyPrimitiveObject, Object lastReadOnlyPrimitiveObject, Object firstReadOnlyReferenceObject, Object lastReadOnlyReferenceObject,
                     Object firstReadOnlyRelocatableObject, Object lastReadOnlyRelocatableObject, Object firstWritablePrimitiveObject, Object lastWritablePrimitiveObject,
                     Object firstWritableReferenceObject, Object lastWritableReferenceObject, Object firstWritableHugeObject, Object lastWritableHugeObject,
-                    Object firstReadOnlyHugeObject, Object lastReadOnlyHugeObject, long offsetOfFirstAlignedChunkWithRememberedSet, long offsetOfFirstUnalignedChunkWithRememberedSet,
+                    Object firstReadOnlyHugeObject, Object lastReadOnlyHugeObject, long offsetOfFirstWritableAlignedChunk, long offsetOfFirstWritableUnalignedChunk,
                     int dynamicHubCount) {
-        assert offsetOfFirstAlignedChunkWithRememberedSet == NO_CHUNK || offsetOfFirstAlignedChunkWithRememberedSet >= 0;
-        assert offsetOfFirstUnalignedChunkWithRememberedSet == NO_CHUNK || offsetOfFirstUnalignedChunkWithRememberedSet >= 0;
+        assert offsetOfFirstWritableAlignedChunk == NO_CHUNK || offsetOfFirstWritableAlignedChunk >= 0;
+        assert offsetOfFirstWritableUnalignedChunk == NO_CHUNK || offsetOfFirstWritableUnalignedChunk >= 0;
 
         this.firstReadOnlyPrimitiveObject = firstReadOnlyPrimitiveObject;
         this.lastReadOnlyPrimitiveObject = lastReadOnlyPrimitiveObject;
@@ -99,8 +99,8 @@ public final class ImageHeapInfo {
         this.lastWritableHugeObject = lastWritableHugeObject;
         this.firstReadOnlyHugeObject = firstReadOnlyHugeObject;
         this.lastReadOnlyHugeObject = lastReadOnlyHugeObject;
-        this.offsetOfFirstAlignedChunkWithRememberedSet = offsetOfFirstAlignedChunkWithRememberedSet;
-        this.offsetOfFirstUnalignedChunkWithRememberedSet = offsetOfFirstUnalignedChunkWithRememberedSet;
+        this.offsetOfFirstWritableAlignedChunk = offsetOfFirstWritableAlignedChunk;
+        this.offsetOfFirstWritableUnalignedChunk = offsetOfFirstWritableUnalignedChunk;
         this.dynamicHubCount = dynamicHubCount;
 
         // Compute boundaries for checks considering partitions can be empty (first == last == null)
@@ -184,12 +184,12 @@ public final class ImageHeapInfo {
         return result;
     }
 
-    public AlignedHeader getFirstAlignedImageHeapChunk() {
-        return asImageHeapChunk(offsetOfFirstAlignedChunkWithRememberedSet);
+    public AlignedHeader getFirstWritableAlignedChunk() {
+        return asImageHeapChunk(offsetOfFirstWritableAlignedChunk);
     }
 
-    public UnalignedHeader getFirstUnalignedImageHeapChunk() {
-        return asImageHeapChunk(offsetOfFirstUnalignedChunkWithRememberedSet);
+    public UnalignedHeader getFirstWritableUnalignedChunk() {
+        return asImageHeapChunk(offsetOfFirstWritableUnalignedChunk);
     }
 
     @SuppressWarnings("unchecked")
