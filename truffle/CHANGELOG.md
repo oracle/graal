@@ -22,6 +22,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Using a compilation final node passed as parameter, the context and language value can be constant folded if it is known that only one language or context instance can exist.
     * Deprecated all other means of accessing the current context: `TruffleLanguage.getCurrentContext(Class)`, `RootNode.getCurrentContext(Class)`, `ContextReference.get()`, `Node.lookContextReference(Class)` and `@CachedContext`.
     * Deprecated all other means of accessing the current language: `TruffleLanguage.getCurrentLanguage(Class)`,  `LanguageReference.get()`, `Node.lookupLanguageReference(Class)` and `@CachedLanguage`.
+* Added `--engine.TraceDeoptimizeFrame` to trace frame deoptimizations due to `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)`.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
