@@ -232,7 +232,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param source the frame to transfer state from.
      * @param target the frame to transfer state into.
      * @throws IllegalArgumentException if either frame has a different descriptor from the frame
-     *             used to execute this node.
+     *             used to execute {@code osrNode}.
      * @throws IllegalStateException if a slot in the source frame has not been initialized using
      *             {@link com.oracle.truffle.api.frame.FrameDescriptor#setFrameSlotKind}.
      * @since 21.3

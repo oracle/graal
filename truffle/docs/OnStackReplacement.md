@@ -18,11 +18,12 @@ In either case, Truffle uses heuristics to detect when a long-running loop is be
 ## OSR for AST interpreters 
 
 Languages using standard Truffle APIs get OSR for free on Graal.
-The runtime tracks the number of times a `LoopNode` (created using `TruffleRuntime.createLoopNode(RepeatingNode)`) executes.
-Once the loop iterations exceed a threshold, the runtime considers the loop "hot", and it will transparently perform OSR on the loop.
-The OSR execution returns after the loop exits, and execution continues in the interpreter.
+The runtime tracks the number of times a `LoopNode` (created using `TruffleRuntime.createLoopNode(RepeatingNode)`) executes in the interpreter.
+Once the loop iterations exceed a threshold, the runtime considers the loop "hot", and it will transparently compile the loop, poll for completion, and then call the compiled OSR target.
+The OSR target uses the same `Frame` used by the interpreter.
+When the loop exits in the OSR execution, it returns to the interpreted execution, which forwards the result.
 
-See also the `LoopNode` [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/LoopNode.html).
+See the `LoopNode` [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/LoopNode.html) for more details.
 
 ## OSR for bytecode interpreters
 
@@ -59,22 +60,16 @@ class BytecodeDispatchNode extends Node {
 
 Unlike with AST interpreters, loops in a bytecode interpreter are often unstructured (and implicit).
 Though bytecode languages do not have structured loops, backward jumps in the code ("back-edges") tend to be a good proxy for loop iterations.
-Thus, Truffle's bytecode OSR is designed around back-edges and the destination of those edges (which generally correspond to loop headers).
+Thus, Truffle's bytecode OSR is designed around back-edges and the destination of those edges (which often correspond to loop headers).
 
 To make use of Truffle's bytecode OSR, a language's dispatch node should implement the `BytecodeOSRNode` interface.
-This interface requires three method implementations:
+This interface requires (at minimum) three method implementations:
 
-- `executeOSR(osrFrame, parentFrame, target)`: This method dispatches execution to the given `target` (i.e., bytecode index). It also handles any necessary state transfers between the frames before and after OSR (the `BytecodeOSRNode.doOSRFrameTransfer(osrNode, source, target)` helper can be used here).
+- `executeOSR(osrFrame, target)`: This method dispatches execution to the given `target` (i.e., bytecode index) using `osrFrame` as the current state.
 - `getOSRMetadata()` and `setOSRMetadata(osrMetadata)`: These methods proxy accesses to a field declared on the class. The runtime will use these accessors to maintain state related to OSR compilation (e.g., back-edge counts). The field should be annotated `@CompilationFinal`.
-
-Optionally, the node may override `prepareOSR()`, a hook which gets invoked before compilation.
-This method is a good place to perform any necessary initialization.
-For example, if a field can only be initialized in the interpreter, `beforeOSR()` can force the initialization to avoid unnecessary deoptimizations in their OSR code.
 
 In the main dispatch loop, when the language hits a back-edge, it should invoke the provided `BytecodeOSRNode.reportOSRBackEdge(osrNode, parentFrame, target)` method to notify the runtime of the back-edge.
 If the runtime performs OSR compilation starting from the target of this back-edge, it will transparently invoke the compiled code and return the computed result.
-
-Note: Currently, Truffle only supports bytecode OSR when the `Frame` is explicitly marked non-materializable. This can be specified using the `FrameDescriptor(defaultValue, canMaterialize)` constructor.
 
 The example above can be refactored to support OSR as follows:
 
@@ -90,12 +85,7 @@ class BytecodeDispatchNode extends Node implements BytecodeOSRNode {
   }
 
   Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
-    BytecodeOSRNode.doOSRFrameTransfer(this, parentFrame, osrFrame); // transfer state into OSR frame
-    try {
-      return executeFromBCI(osrFrame, target);
-    } finally {
-      BytecodeOSRNode.doOSRFrameTransfer(this, osrFrame, parentFrame); // transfer state back into parent frame (if needed)
-    }
+    return executeFromBCI(osrFrame, target);
   }
 
   Object getOSRMetadata() {
@@ -137,7 +127,18 @@ class BytecodeDispatchNode extends Node implements BytecodeOSRNode {
 A subtle difference with bytecode OSR is that the OSR execution continues past the end of the loop until the end of the call target.
 Thus, execution does not need to continue in the interpreter once execution returns from OSR; the result can simply be forwarded to the caller.
 
-See also the `BytecodeOSRNode` [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BytecodeOSRNode.html).
+The `BytecodeOSRNode` interface also contains a few hook methods whose default implementations can be overridden:
+
+- `copyIntoOSRFrame(osrFrame, parentFrame, target)` and `restoreParentFrame(osrFrame, parentFrame)`: Reusing the interpreted `Frame` inside OSR code is not optimal, because it escapes the OSR call target and prevents scalar replacement (for background on scalar replacement, see [this paper](https://dl.acm.org/doi/10.1145/2581122.2544157)).
+When possible, Truffle will use `copyIntoOSRFrame` to copy the interpreted state (`parentFrame`) into the OSR `Frame` (`osrFrame`), and `restoreParentFrame` to copy state back into the parent `Frame` afterwards.
+By default, `copyIntoOSRFrame` copies every slot of the `parentFrame` into the `osrFrame`, but this can be overridden for finer control (e.g., to only copy over live variables).
+By default, `restoreParentFrame` does nothing, since the interpreted code often doesn't need its `Frame` once OSR returns.
+These methods should be written carefully to support scalar replacement; the `BytecodeOSRNode.doOSRFrameTransfer(osrNode, source, target)` helper method can be used to perform a slot-wise copy.
+- `prepareOSR()`: This hook gets called before compiling an OSR target.
+It can be used to force any initialization to happen before compilation.
+For example, if a field can only be initialized in the interpreter, `prepareOSR()` can ensure it is initialized, so that OSR code does not deoptimize when trying to access it.
+
+See the `BytecodeOSRNode` [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BytecodeOSRNode.html) for more details.
 
 ## Command-line options
 There are two (experimental) options which can be used to configure OSR:
@@ -155,4 +156,9 @@ For example, in the compilation log, a bytecode OSR entry may look something lik
 
 See [Debugging](https://github.com/oracle/graal/blob/master/compiler/docs/Debugging.md) for more details on debugging Graal compilations. 
 
-If encountering issues with bytecode-based OSR, ensure that the metadata field is marked `@CompilationFinal` and the node's `Frame` is explicitly marked non-materializable (OSR may not work properly otherwise).
+Bytecode-based OSR can be tricky to implement. Some debugging tips:
+
+- Ensure that the metadata field is marked `@CompilationFinal`.
+- If a `Frame` with a given `FrameDescriptor` has been materialized before, Truffle will reuse the interpreter `Frame` instead of copying (if copying is used, any existing materialized `Frame` could get out of sync with the OSR `Frame`).
+- It is helpful to trace compilation and deoptimization logs to identify any initialization work which could be done in `prepareOSR()`.
+- Inspecting the compiled OSR targets in IGV can be useful to ensure the copying hooks interact well with partial evaluation.
