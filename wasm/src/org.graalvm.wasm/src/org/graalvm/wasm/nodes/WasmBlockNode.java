@@ -339,8 +339,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        errorBranch();
-        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "This method should never have been called.");
+        throw CompilerDirectives.shouldNotReachHere("This method should never have been called.");
     }
 
     private void errorBranch() {
@@ -354,8 +353,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         try {
             stacklocals = (long[]) frame.getObject(codeEntry.stackLocalsSlot());
         } catch (FrameSlotTypeException e) {
-            errorBranch();
-            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Invalid object type in the stack slot.");
+            throw CompilerDirectives.shouldNotReachHere("Invalid object type in the stack slot.");
         }
         return execute(getContext(), frame, stacklocals);
     }
