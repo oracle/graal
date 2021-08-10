@@ -658,7 +658,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += 1;
 
                         // Validate that the function type matches the expected type.
-                        boolean functionFromCurrentContext = (functionInstanceContext == context);
+                        boolean functionFromCurrentContext = WasmCodeEntry.profileCondition(profileCounters, profileOffset++, functionInstanceContext == context);
                         if (functionFromCurrentContext) {
                             // We can do a quick equivalence-class check.
                             if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
