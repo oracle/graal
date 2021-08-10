@@ -209,7 +209,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
     /**
      * {@link RegexLanguage} is thread-safe - it supports parallel parsing requests as well as
      * parallel access to all {@link AbstractRegexObject}s. Parallel access to
-     * {@link com.oracle.truffle.regex.result.LazyResult}s objects may lead to duplicate execution
+     * {@link com.oracle.truffle.regex.result.RegexResult}s objects may lead to duplicate execution
      * of code, but no wrong results.
      *
      * @param thread the thread that accesses the context for the first time.

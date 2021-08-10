@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
@@ -195,10 +194,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private final byte flags;
     private final short loopTransitionIndex;
     @Child LoopOptimizationNode loopOptimizationNode;
-    @Child Matchers matchers;
+    private final Matchers matchers;
     private final DFASimpleCG simpleCG;
     private final AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher;
-    private final BranchProfile stateReachedProfile = BranchProfile.create();
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
         this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.loopOptimizationNode.nodeSplitCopy(),
@@ -242,10 +240,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     public final Matchers getMatchers() {
         return matchers;
-    }
-
-    public BranchProfile getStateReachedProfile() {
-        return stateReachedProfile;
     }
 
     public boolean isFinalState() {

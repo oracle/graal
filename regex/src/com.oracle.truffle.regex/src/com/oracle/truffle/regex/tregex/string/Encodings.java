@@ -286,7 +286,7 @@ public final class Encodings {
 
             @Override
             public void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer) {
-                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.BYTE_RANGE, Constants.BMP_RANGE_WITHOUT_LATIN1, Constants.ASTRAL_SYMBOLS);
+                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.BYTE_RANGE, Constants.BMP_RANGE_WITHOUT_LATIN1, Constants.ASTRAL_SYMBOLS_AND_LONE_SURROGATES);
             }
 
             @Override
@@ -447,7 +447,8 @@ public final class Encodings {
 
             @Override
             public void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer) {
-                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.ASCII_RANGE, Constants.UTF8_TWO_BYTE_RANGE, Constants.UTF8_THREE_BYTE_RANGE, Constants.ASTRAL_SYMBOLS);
+                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.ASCII_RANGE, Constants.UTF8_TWO_BYTE_RANGE, Constants.UTF8_THREE_BYTE_RANGE,
+                                Constants.ASTRAL_SYMBOLS);
             }
 
             @Override
