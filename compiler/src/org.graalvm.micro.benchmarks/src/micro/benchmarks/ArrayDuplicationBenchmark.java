@@ -46,7 +46,7 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
 
     private Object[][] testObjectArrayOfStrings;
 
-    private Object[] dummy;
+    private Object[] targetArray;
 
     @Setup
     public void setup() {
@@ -65,12 +65,12 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
 
     @Setup(Level.Iteration)
     public void iterationSetup() {
-        dummy = new Object[TESTSIZE * 3];
+        targetArray = new Object[TESTSIZE * 3];
     }
 
     @TearDown(Level.Iteration)
     public void iterationTearDown() {
-        dummy = null;
+        targetArray = null;
     }
 
     @Benchmark
@@ -78,9 +78,9 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
     public Object[] normalArraycopy() {
         int j = 0;
         for (int i = 0; i < TESTSIZE; i++) {
-            dummy[j++] = normalArraycopy(testObjectArray[i]);
+            targetArray[j++] = normalArraycopy(testObjectArray[i]);
         }
-        return dummy;
+        return targetArray;
     }
 
     public Object[] normalArraycopy(Object[] cache) {
@@ -94,9 +94,9 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
     public Object[] arraysCopyOf() {
         int j = 0;
         for (int i = 0; i < TESTSIZE; i++) {
-            dummy[j++] = arraysCopyOf(testObjectArray[i]);
+            targetArray[j++] = arraysCopyOf(testObjectArray[i]);
         }
-        return dummy;
+        return targetArray;
     }
 
     public Object[] arraysCopyOf(Object[] cache) {
@@ -108,9 +108,9 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
     public Object[] arraysCopyOfToString() {
         int j = 0;
         for (int i = 0; i < TESTSIZE; i++) {
-            dummy[j++] = arraysCopyOfToString(testStringArray[i]);
+            targetArray[j++] = arraysCopyOfToString(testStringArray[i]);
         }
-        return dummy;
+        return targetArray;
     }
 
     @Benchmark
@@ -118,9 +118,9 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
     public Object[] arraysCopyOfToStringFromObjectArray() {
         int j = 0;
         for (int i = 0; i < TESTSIZE; i++) {
-            dummy[j++] = arraysCopyOfToString(testObjectArrayOfStrings[i]);
+            targetArray[j++] = arraysCopyOfToString(testObjectArrayOfStrings[i]);
         }
-        return dummy;
+        return targetArray;
     }
 
     public Object[] arraysCopyOfToString(Object[] cache) {
@@ -132,9 +132,9 @@ public class ArrayDuplicationBenchmark extends BenchmarkBase {
     public Object[] cloneObjectArray() {
         int j = 0;
         for (int i = 0; i < TESTSIZE; i++) {
-            dummy[j++] = arraysClone(testObjectArray[i]);
+            targetArray[j++] = arraysClone(testObjectArray[i]);
         }
-        return dummy;
+        return targetArray;
     }
 
     @SuppressWarnings("cast")
