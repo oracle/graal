@@ -1084,6 +1084,30 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // region Lookup
 
+    public enum LookupMode {
+        ALL(true, true),
+        INSTANCE_ONLY(true, false),
+        STATIC_ONLY(false, true);
+
+        private final boolean instances;
+        private final boolean statics;
+
+        LookupMode(boolean instances, boolean statics) {
+            this.instances = instances;
+            this.statics = statics;
+        }
+
+        public boolean ignore(Member<?> m) {
+            if (!statics && m.isStatic()) {
+                return true;
+            }
+            if (!instances && !m.isStatic()) {
+                return true;
+            }
+            return false;
+        }
+    }
+
     public final Field requireDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         Field obj = lookupDeclaredField(fieldName, fieldType);
         if (obj == null) {
@@ -1104,41 +1128,49 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return null;
     }
 
-    public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType, boolean isStatic) {
+    public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
+        return lookupField(fieldName, fieldType, LookupMode.ALL);
+    }
+
+    /*
+     * 5.4.3.2. Field Resolution:
+     * 
+     * When resolving a field reference, field resolution first attempts to look up the referenced
+     * field in C and its superclasses:
+     * 
+     * 1) If C declares a field with the name and descriptor specified by the field reference, field
+     * lookup succeeds. The declared field is the result of the field lookup.
+     * 
+     * 2) Otherwise, field lookup is applied recursively to the direct superinterfaces of the
+     * specified class or interface C.
+     * 
+     * 3) Otherwise, if C has a superclass S, field lookup is applied recursively to S.
+     * 
+     * 4) Otherwise, field lookup fails.
+     * 
+     * 
+     */
+    public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType, LookupMode mode) {
         KLASS_LOOKUP_FIELD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
 
         Field field = lookupDeclaredField(fieldName, fieldType);
-        if (field != null && field.isStatic() == isStatic) {
+        if (field != null && !mode.ignore(field)) {
             return field;
         }
 
-        if (isStatic) {
-            for (ObjectKlass superI : getSuperInterfaces()) {
-                field = superI.lookupField(fieldName, fieldType, isStatic);
-                if (field != null) {
-                    assert field.isStatic();
-                    return field;
-                }
+        for (ObjectKlass superI : getSuperInterfaces()) {
+            field = superI.lookupField(fieldName, fieldType, mode);
+            if (field != null && !mode.ignore(field)) {
+                return field;
             }
         }
 
         if (getSuperKlass() != null) {
-            return getSuperKlass().lookupField(fieldName, fieldType, isStatic);
+            return getSuperKlass().lookupField(fieldName, fieldType, mode);
         }
 
         return null;
-    }
-
-    public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
-        KLASS_LOOKUP_FIELD_COUNT.inc();
-        // TODO(peterssen): Improve lookup performance.
-
-        Field field = lookupDeclaredField(fieldName, fieldType);
-        if (field == null && getSuperKlass() != null) {
-            return getSuperKlass().lookupField(fieldName, fieldType);
-        }
-        return field;
     }
 
     public final Field lookupFieldTable(int slot) {
@@ -1183,11 +1215,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        return lookupDeclaredMethod(methodName, signature, Method.LookupMode.ALL);
+        return lookupDeclaredMethod(methodName, signature, LookupMode.ALL);
     }
 
     @ExplodeLoop
-    public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature, Method.LookupMode lookupMode) {
+    public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
         KLASS_LOOKUP_DECLARED_METHOD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
         for (Method method : getDeclaredMethods()) {
@@ -1239,18 +1271,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Give the accessing klass if there is a chance the method to be resolved is a method handle
      * intrinsics.
      */
-    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, Method.LookupMode lookupMode);
+    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode);
 
     public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        return lookupMethod(methodName, signature, null, Method.LookupMode.ALL);
+        return lookupMethod(methodName, signature, null, LookupMode.ALL);
     }
 
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Method.LookupMode lookupMode) {
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
         return lookupMethod(methodName, signature, null, lookupMode);
     }
 
     public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
-        return lookupMethod(methodName, signature, accessingKlass, Method.LookupMode.ALL);
+        return lookupMethod(methodName, signature, accessingKlass, LookupMode.ALL);
     }
 
     public final Method vtableLookup(int vtableIndex) {
@@ -1265,7 +1297,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return null;
     }
 
-    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature, Method.LookupMode lookupMode) {
+    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
         Method m = lookupPolysignatureDeclaredMethod(methodName, lookupMode);
         if (m != null) {
             return findMethodHandleIntrinsic(m, signature);
@@ -1273,7 +1305,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return null;
     }
 
-    public Method lookupPolysignatureDeclaredMethod(Symbol<Name> methodName, Method.LookupMode lookupMode) {
+    public Method lookupPolysignatureDeclaredMethod(Symbol<Name> methodName, LookupMode lookupMode) {
         for (Method m : getDeclaredMethods()) {
             if (!lookupMode.ignore(m)) {
                 if (m.getName() == methodName && m.isSignaturePolymorphicDeclared()) {
