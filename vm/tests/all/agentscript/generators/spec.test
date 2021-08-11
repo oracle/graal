@@ -1,0 +1,9 @@
+>[0?] ls $JAVA_HOME/lib/installer/trufflejson.jar
+>[0] cp spec.ts ${TMP_DIR}/spec.in
+>[0] cp -r ../../../../../tools/generators/src ${TMP_DIR}
+>[0] cp ../../../../../tools/generators/*.json ${TMP_DIR}
+>[0] cd ${TMP_DIR}
+>[0?] npm install
+>[0?] npm run compile
+>[0] node out/generator.js --source spec.in --target parser
+>[0?] javac -cp $JAVA_HOME/lib/installer/trufflejson.jar -sourcepath parser/ parser/*.java -d out
