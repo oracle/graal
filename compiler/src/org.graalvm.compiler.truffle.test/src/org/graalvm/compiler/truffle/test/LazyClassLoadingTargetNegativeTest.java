@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
@@ -42,8 +43,6 @@ public class LazyClassLoadingTargetNegativeTest {
     @Test
     @SuppressWarnings("unused")
     public void testInit() {
-        // we can no longer test the creation of a context here as a context now always initializes
-        // the runtime
         RootNode root = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -52,6 +51,9 @@ public class LazyClassLoadingTargetNegativeTest {
         };
         Truffle.getRuntime().createAssumption();
         Truffle.getRuntime().createIndirectCallNode();
+        // we can no longer test the creation of a context here as a context now always initializes
+        // the runtime
+        Engine.create().close();
     }
 
 }
