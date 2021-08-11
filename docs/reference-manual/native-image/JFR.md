@@ -93,6 +93,8 @@ Once opened, there is a bunch of options you can check: Monitoring, Threads, Exc
 
 ![](/img/generate-sources-maven.png)
 
+In the follow-up sections learn how to further confgure the recording or enable logging.
+
 ## Configure the Recording
 
 You can pass a comma-separated list of key-value pairs to the `-XX:StartFlightRecording` option to further configure the recording.
