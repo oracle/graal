@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.common.option.LocatableOption;
+import com.oracle.svm.common.option.MultiOptionValue;
 import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.util.VMError;

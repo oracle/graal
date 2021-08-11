@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.option;
 
-import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
+import static com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat.PLUS_MINUS;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.ArrayList;
@@ -59,30 +59,28 @@ public class HostedOptionParser implements HostedOptionProvider {
     }
 
     public static void collectOptions(ServiceLoader<OptionDescriptors> optionDescriptors, EconomicMap<String, OptionDescriptor> allHostedOptions,
-                    EconomicMap<String, OptionDescriptor> allRuntimeOptions) {
-        for (OptionDescriptors optionDescriptor : optionDescriptors) {
-            for (OptionDescriptor descriptor : optionDescriptor) {
-                String name = descriptor.getName();
+                                      EconomicMap<String, OptionDescriptor> allRuntimeOptions) {
+        SubstrateOptionsParser.collectOptions(optionDescriptors, descriptor -> {
+            String name = descriptor.getName();
 
-                if (descriptor.getDeclaringClass().getAnnotation(Platforms.class) != null) {
-                    throw UserError.abort("Options must not be declared in a class that has a @%s annotation: option %s declared in %s",
-                                    Platforms.class.getSimpleName(), name, descriptor.getDeclaringClass().getTypeName());
-                }
+            if (descriptor.getDeclaringClass().getAnnotation(Platforms.class) != null) {
+                throw UserError.abort("Options must not be declared in a class that has a @%s annotation: option %s declared in %s",
+                        Platforms.class.getSimpleName(), name, descriptor.getDeclaringClass().getTypeName());
+            }
 
-                if (!(descriptor.getOptionKey() instanceof RuntimeOptionKey)) {
-                    OptionDescriptor existing = allHostedOptions.put(name, descriptor);
-                    if (existing != null) {
-                        throw shouldNotReachHere("Option name \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + descriptor.getLocation());
-                    }
-                }
-                if (!(descriptor.getOptionKey() instanceof HostedOptionKey)) {
-                    OptionDescriptor existing = allRuntimeOptions.put(name, descriptor);
-                    if (existing != null) {
-                        throw shouldNotReachHere("Option name \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + descriptor.getLocation());
-                    }
+            if (!(descriptor.getOptionKey() instanceof RuntimeOptionKey)) {
+                OptionDescriptor existing = allHostedOptions.put(name, descriptor);
+                if (existing != null) {
+                    throw shouldNotReachHere("Option name \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + descriptor.getLocation());
                 }
             }
-        }
+            if (!(descriptor.getOptionKey() instanceof HostedOptionKey)) {
+                OptionDescriptor existing = allRuntimeOptions.put(name, descriptor);
+                if (existing != null) {
+                    throw shouldNotReachHere("Option name \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + descriptor.getLocation());
+                }
+            }
+        });
     }
 
     public List<String> parse(List<String> args) {
