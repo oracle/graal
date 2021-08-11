@@ -781,7 +781,7 @@ _daCapoIterations = {
     "pmd"         : 30,
     "sunflow"     : 35,
     "tomcat"      : -1,
-    "tradebeans"  : -1, # revert to 30 once GR-33115 is fixed
+    "tradebeans"  : 30,
     "tradesoap"   : 30,
     "xalan"       : 30,
 }
@@ -1135,6 +1135,10 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
         if not java_home_jdk().javaCompliance < '11':
             mx.logv('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
             del result['actors']
+        if java_home_jdk().javaCompliance >= "16":
+            # See GR-29222 for details.
+            mx.logv('Removing scaladacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
+            del result['specs']
         return result
 
     def daCapoSizes(self):
