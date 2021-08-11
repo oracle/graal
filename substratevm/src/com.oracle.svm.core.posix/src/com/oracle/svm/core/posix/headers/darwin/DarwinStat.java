@@ -41,16 +41,16 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 public class DarwinStat {
 
     @CStruct(addStructKeyword = true)
-    public interface stat64 extends PointerBase {
+    public interface stat extends PointerBase {
         @CField
         long st_size();
     }
 
-    @CFunction("fstat64")
-    public static native int fstat64(int fd, stat64 buf);
+    @CFunction("fstat")
+    public static native int fstat(int fd, stat buf);
 
     public static class NoTransitions {
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int fstat64(int fd, stat64 buf);
+        public static native int fstat(int fd, stat buf);
     }
 }
