@@ -373,33 +373,41 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     @SuppressWarnings("deprecation")
     boolean finalizeContext(boolean cancelOperation, boolean notifyInstruments) {
-        if (!finalized) {
-            finalized = true;
-            try {
-                LANGUAGE.finalizeContext(env);
-            } catch (Throwable t) {
-                if (cancelOperation) {
-                    /*
-                     * finalizeContext can run guest code, and so truffle and cancel exceptions are
-                     * expected. However, they must not fail the cancel operation, and so we just
-                     * log them.
-                     */
-                    assert context.state.isClosing();
-                    assert context.state.isInvalidOrClosed();
-                    if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution) {
-                        context.engine.getEngineLogger().log(Level.FINE,
-                                        "Exception was thrown while finalizing a polyglot context that is being cancelled. Such exceptions are expected during cancelling.", t);
+        lazy.operationLock.lock();
+        try {
+            if (!initialized) {
+                return false;
+            }
+            if (!finalized) {
+                finalized = true;
+                try {
+                    LANGUAGE.finalizeContext(env);
+                } catch (Throwable t) {
+                    if (cancelOperation) {
+                        /*
+                         * finalizeContext can run guest code, and so truffle and cancel exceptions
+                         * are expected. However, they must not fail the cancel operation, and so we
+                         * just log them.
+                         */
+                        assert context.state.isClosing();
+                        assert context.state.isInvalidOrClosed();
+                        if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution) {
+                            context.engine.getEngineLogger().log(Level.FINE,
+                                            "Exception was thrown while finalizing a polyglot context that is being cancelled. Such exceptions are expected during cancelling.", t);
+                        } else {
+                            throw t;
+                        }
                     } else {
                         throw t;
                     }
-                } else {
-                    throw t;
                 }
+                if (eventsEnabled && notifyInstruments) {
+                    EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
+                }
+                return true;
             }
-            if (eventsEnabled && notifyInstruments) {
-                EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
-            }
-            return true;
+        } finally {
+            lazy.operationLock.unlock();
         }
         return false;
     }
