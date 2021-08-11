@@ -103,7 +103,7 @@ numberTypes.set('Color', 'double'); //TODO: make configurable
 const ANY = 'any';
 
 parseSource(args.source).then((ast:SourceFile) => {
-    traverse([ast.getChildAt(0)], (node: Node) => {
+    traverse([ast.getChildAt(0)], function searchAst(node: Node) {
         switch(node.kind) {
             case SyntaxKind.TypeAliasDeclaration: {
                 const ta = node as TypeAliasDeclaration;
