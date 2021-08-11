@@ -119,30 +119,19 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
         }
     }
 
-    @Snippet
-    private static void arraycopySnippet(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
-        callArraycopy(ARRAYCOPY, fromArray, fromIndex, toArray, toIndex, length);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callArraycopy(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object fromArray, int fromIndex, Object toArray, int toIndex, int length);
-
-    final class ArraycopyLowering implements NodeLoweringProvider<SubstrateArraycopyNode> {
-        private final SnippetInfo arraycopyInfo = snippet(ArraycopySnippets.class, "arraycopySnippet");
-
+    static final class ArraycopyLowering implements NodeLoweringProvider<SubstrateArraycopyNode> {
         @Override
         public void lower(SubstrateArraycopyNode node, LoweringTool tool) {
-            Arguments args = new Arguments(arraycopyInfo, node.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("fromArray", node.getSource());
-            args.add("fromIndex", node.getSourcePosition());
-            args.add("toArray", node.getDestination());
-            args.add("toIndex", node.getDestinationPosition());
-            args.add("length", node.getLength());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            StructuredGraph graph = node.graph();
+            ForeignCallNode call = graph.add(new ForeignCallNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
+                    node.getDestinationPosition(), node.getLength()));
+            call.setStateAfter(node.stateAfter());
+            call.setBci(node.getBci());
+            graph.replaceFixedWithFixed(node, call);
         }
     }
 
-    final class ArrayCopyWithExceptionLowering implements NodeLoweringProvider<ArrayCopyWithExceptionNode> {
+    static final class ArrayCopyWithExceptionLowering implements NodeLoweringProvider<ArrayCopyWithExceptionNode> {
         @Override
         public void lower(ArrayCopyWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
