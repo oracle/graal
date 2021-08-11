@@ -94,7 +94,7 @@ public class CoreProvidersDelegate implements CoreProviders {
     }
 
     @Override
-    public WordAssertions getWordAssertions() {
-        return providers.getWordAssertions();
+    public WordVerification getWordVerification() {
+        return providers.getWordVerification();
     }
 }

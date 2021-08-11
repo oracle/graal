@@ -25,53 +25,27 @@
 package org.graalvm.compiler.word;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.WordAssertions;
-import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.spi.WordVerification;
 
 import jdk.vm.ci.meta.JavaType;
 
-public final class WordAssertionsImpl implements WordAssertions {
+public final class WordVerificationImpl implements WordVerification {
 
     private final WordTypes wordTypes;
 
-    public WordAssertionsImpl(WordTypes wordTypes) {
+    public WordVerificationImpl(WordTypes wordTypes) {
         this.wordTypes = wordTypes;
     }
 
     @Override
-    public boolean assertIsWord(ValueNode node) {
-        GraalError.guarantee(wordTypes.isWord(node), "Expected a Word but got %s", StampTool.typeOrNull(node));
-        return true;
-    }
-
-    @Override
-    public boolean assertIsWord(JavaType type) {
+    public boolean verifyIsWord(JavaType type) {
         GraalError.guarantee(wordTypes.isWord(type), "Expected a Word but got %s", type);
         return true;
     }
 
     @Override
-    public boolean assertIsWord(Class<?> clazz) {
-        GraalError.guarantee(wordTypes.isWord(clazz), "Expected a Word but got %s", clazz);
-        return true;
-    }
-
-    @Override
-    public boolean assertIsNoWord(ValueNode node) {
-        GraalError.guarantee(!wordTypes.isWord(node), "Unexpected a Word type for node %s", node);
-        return true;
-    }
-
-    @Override
-    public boolean assertIsNoWord(JavaType type) {
+    public boolean verifyIsNoWord(JavaType type) {
         GraalError.guarantee(!wordTypes.isWord(type), "Unexpected a Word type %s", type);
-        return true;
-    }
-
-    @Override
-    public boolean assertIsNoWord(Class<?> clazz) {
-        GraalError.guarantee(!wordTypes.isWord(clazz), "Unexpected a Word type %s", clazz);
         return true;
     }
 

@@ -24,12 +24,10 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import jdk.vm.ci.meta.JavaType;
 
 /**
- * Provides a capability for asserting whether nodes, types or classes are or are not raw words (as
+ * Provides a capability for verify whether nodes, types or classes are or are not raw words (as
  * opposed to Objects).
  * <p>
  * All methods will either return {@code true} in case the assertion holds or throw an exception if
@@ -45,52 +43,22 @@ import jdk.vm.ci.meta.JavaType;
  * instead of doing the wrong thing and maybe or maybe not failing arbitrarily. Thus, we only give
  * access to assertions instead of the full features.
  */
-public interface WordAssertions {
-    /**
-     * Asserts that a given node has a word type.
-     *
-     * @return {@code true}
-     * @throws Error if the assertion doe not hold
-     */
-    boolean assertIsWord(ValueNode node);
+public interface WordVerification {
 
     /**
-     * Asserts that a given type is a word type.
+     * Verifies that a given type is a word type.
      *
      * @return {@code true}
      * @throws Error if the assertion doe not hold
      */
-    boolean assertIsWord(JavaType type);
+    boolean verifyIsWord(JavaType type);
 
     /**
-     * Asserts that a given class is a word class.
+     * Verifies that a given type is not a word type.
      *
      * @return {@code true}
      * @throws Error if the assertion doe not hold
      */
-    boolean assertIsWord(Class<?> clazz);
+    boolean verifyIsNoWord(JavaType type);
 
-    /**
-     * Asserts that a given node has not a word type.
-     *
-     * @return {@code true}
-     * @throws Error if the assertion doe not hold
-     */
-    boolean assertIsNoWord(ValueNode node);
-
-    /**
-     * Asserts that a given type is not a word type.
-     *
-     * @return {@code true}
-     * @throws Error if the assertion doe not hold
-     */
-    boolean assertIsNoWord(JavaType type);
-
-    /**
-     * Asserts that a given class is not a word class.
-     *
-     * @return {@code true}
-     * @throws Error if the assertion doe not hold
-     */
-    boolean assertIsNoWord(Class<?> clazz);
 }

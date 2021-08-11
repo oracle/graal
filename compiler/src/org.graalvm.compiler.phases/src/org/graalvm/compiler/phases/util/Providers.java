@@ -35,7 +35,7 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.word.WordAssertionsImpl;
+import org.graalvm.compiler.word.WordVerificationImpl;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -56,7 +56,7 @@ public class Providers extends CoreProvidersImpl implements CodeGenProviders {
                     ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, PlatformConfigurationProvider platformConfigurationProvider,
                     MetaAccessExtensionProvider metaAccessExtensionProvider, SnippetReflectionProvider snippetReflection, WordTypes wordTypes, LoopsDataProvider loopsDataProvider) {
         super(metaAccess, constantReflection, constantFieldProvider, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider,
-                        new WordAssertionsImpl(wordTypes));
+                        new WordVerificationImpl(wordTypes));
         this.codeCache = codeCache;
         this.snippetReflection = snippetReflection;
         this.wordTypes = wordTypes;
