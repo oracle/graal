@@ -44,20 +44,35 @@ package org.graalvm.wasm.globals;
 import org.graalvm.wasm.api.ValueType;
 
 public class DefaultWasmGlobal extends WasmGlobal {
-    private Object value;
+    private long globalValue;
 
-    public DefaultWasmGlobal(ValueType valueType, boolean mutable, Object value) {
+    public DefaultWasmGlobal(ValueType valueType, boolean mutable, int value) {
         super(valueType, mutable);
-        this.value = value;
+        storeInt(value);
+    }
+
+    public DefaultWasmGlobal(ValueType valueType, boolean mutable, long value) {
+        super(valueType, mutable);
+        storeLong(value);
     }
 
     @Override
-    public Object getValue() {
-        return value;
+    public int loadAsInt() {
+        return (int) globalValue;
     }
 
     @Override
-    public void setValue(Object value) {
-        this.value = value;
+    public long loadAsLong() {
+        return globalValue;
+    }
+
+    @Override
+    public void storeInt(int value) {
+        this.globalValue = value;
+    }
+
+    @Override
+    public void storeLong(long value) {
+        this.globalValue = value;
     }
 }

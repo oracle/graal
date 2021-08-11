@@ -1584,10 +1584,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case ImportIdentifier.GLOBAL: {
                         readValueType();
-                        byte mutability = readMutability();
-                        if (mutability == GlobalModifier.MUTABLE) {
-                            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Cannot reset imports of mutable global variables (not implemented).");
-                        }
+                        readMutability();
                         globalIndex++;
                         break;
                     }
@@ -1626,10 +1623,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.GLOBAL_GET: {
                         int existingIndex = readGlobalIndex();
-                        if (module.symbolTable().globalMutability(existingIndex) == GlobalModifier.MUTABLE) {
-                            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Cannot reset global variables that were initialized " +
-                                            "with a non-constant global variable (not implemented).");
-                        }
                         final int existingAddress = instance.globalAddress(existingIndex);
                         value = globals.loadAsLong(existingAddress);
                         break;

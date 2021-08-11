@@ -56,7 +56,6 @@ import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.api.ByteArrayBuffer;
@@ -244,7 +243,7 @@ public class WasmJsApiSuite {
     private static void checkInstantiateWithImportGlobal(byte[] binaryWithGlobalImport, String globalType, Object globalValue) throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmGlobal global = new DefaultWasmGlobal(ValueType.valueOf(globalType), false, globalValue);
+            final WasmGlobal global = WebAssembly.globalAlloc(ValueType.valueOf(globalType), false, globalValue);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultGlobal", global
@@ -294,7 +293,7 @@ public class WasmJsApiSuite {
             final Instance instance = instantiatedSource.instance();
             try {
                 final WasmGlobal global = (WasmGlobal) instance.exports().readMember("exportedGlobal");
-                Assert.assertEquals("Exported global must be 1096.", 1096, global.getValue());
+                Assert.assertEquals("Exported global must be 1096.", 1096, global.loadAsInt());
                 final Object setGlobal = instance.exports().readMember("setGlobal");
                 final Object getGlobal = instance.exports().readMember("getGlobal");
                 InteropLibrary interop = InteropLibrary.getUncached();
