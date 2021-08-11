@@ -673,14 +673,11 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        # filter out unsupported sizes and disabled benchmarks
-        bench_list = [b for b, it in self.daCapoIterations().items() if self.workloadSize() in self.daCapoSizes().get(b, []) and it != -1]
-
-        if java_home_jdk().javaCompliance >= '9' and "batik" in bench_list \
-                and self.version() in ["9.12-bach", "9.12-MR1-bach"]:
-            # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
-            bench_list.remove("batik")
-        return bench_list
+        missing_sizes = set(self.daCapoIterations().keys()).difference(set(self.daCapoSizes().keys()))
+        if len(missing_sizes) > 0:
+            mx.abort("Missing size definitions for benchmark(s): {}".format(missing_sizes))
+        return [b for b, it in self.daCapoIterations().items()
+                if self.workloadSize() in self.daCapoSizes().get(b, []) and it != -1]
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
@@ -791,18 +788,21 @@ _daCapoIterations = {
 
 
 _daCapoSizes = {
-    "avrora":     ["default", "small", "large"],
-    "batik":      ["default", "small", "large"],
-    "eclipse":    ["default", "small", "large"],
-    "fop":        ["default", "small"],
-    "h2":         ["default", "small", "large", "huge"],
-    "jython":     ["default", "small", "large"],
-    "luindex":    ["default", "small"],
-    "lusearch":   ["default", "small", "large"],
-    "sunflow":    ["default", "small", "large"],
-    "tradebeans": ["default", "small", "large", "huge"],
-    "tradesoap":  ["default", "small", "large", "huge"],
-    "xalan":      ["default", "small", "large"]
+    "avrora":       ["default", "small", "large"],
+    "batik":        ["default", "small", "large"],
+    "eclipse":      ["default", "small", "large"],
+    "fop":          ["default", "small"],
+    "h2":           ["default", "small", "large", "huge"],
+    "jython":       ["default", "small", "large"],
+    "luindex":      ["default", "small"],
+    "lusearch":     ["default", "small", "large"],
+    "lusearch-fix": ["default", "small", "large"],
+    "pmd":          ["default", "small", "large"],
+    "sunflow":      ["default", "small", "large"],
+    "tomcat":       ["default", "small", "large", "huge"],
+    "tradebeans":   ["default", "small", "large", "huge"],
+    "tradesoap":    ["default", "small", "large", "huge"],
+    "xalan":        ["default", "small", "large"]
 }
 
 
@@ -855,6 +855,11 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             del iterations["lusearch-fix"]
             # Stopped working as of 8u92 on the initial release
             del iterations["tomcat"]
+
+        # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
+        if java_home_jdk().javaCompliance >= '9' and "batik" in iterations and self.version() in ["9.12-bach",
+                                                                                                  "9.12-MR1-bach"]:
+            del iterations["batik"]
 
         if self.workloadSize() == "small":
             # Ensure sufficient warmup by doubling the number of default iterations for the small configuration
