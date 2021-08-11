@@ -428,8 +428,7 @@ def native_unittests_task():
 
     additional_build_args = [
         '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
-        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService',
-        '-H:+AllowVMInspection'
+        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
     ]
 
     native_unittest(['--build-args', _native_unittest_features] + additional_build_args)
