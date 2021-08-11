@@ -26,13 +26,9 @@ package com.oracle.svm.core.graal.jdk;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
@@ -40,9 +36,6 @@ import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.LocationIdentity;
 
@@ -68,8 +61,8 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
     protected ArraycopySnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, factories, providers, snippetReflection);
-        lowerings.put(SubstrateArraycopyNode.class, new ArraycopyLowering());
-        lowerings.put(ArrayCopyWithExceptionNode.class, new ArrayCopyWithExceptionLowering());
+        lowerings.put(SubstrateArraycopyNode.class, new SubstrateArraycopyLowering());
+        lowerings.put(SubstrateArraycopyWithExceptionNode.class, new SubstrateArraycopyWithExceptionLowering());
     }
 
     /**
@@ -119,21 +112,21 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
         }
     }
 
-    static final class ArraycopyLowering implements NodeLoweringProvider<SubstrateArraycopyNode> {
+    static final class SubstrateArraycopyLowering implements NodeLoweringProvider<SubstrateArraycopyNode> {
         @Override
         public void lower(SubstrateArraycopyNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
             ForeignCallNode call = graph.add(new ForeignCallNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
-                    node.getDestinationPosition(), node.getLength()));
+                            node.getDestinationPosition(), node.getLength()));
             call.setStateAfter(node.stateAfter());
             call.setBci(node.getBci());
             graph.replaceFixedWithFixed(node, call);
         }
     }
 
-    static final class ArrayCopyWithExceptionLowering implements NodeLoweringProvider<ArrayCopyWithExceptionNode> {
+    static final class SubstrateArraycopyWithExceptionLowering implements NodeLoweringProvider<SubstrateArraycopyWithExceptionNode> {
         @Override
-        public void lower(ArrayCopyWithExceptionNode node, LoweringTool tool) {
+        public void lower(SubstrateArraycopyWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
             ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
                             node.getDestinationPosition(), node.getLength()));

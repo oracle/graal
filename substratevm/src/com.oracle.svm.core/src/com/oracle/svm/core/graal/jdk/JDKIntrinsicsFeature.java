@@ -82,7 +82,7 @@ final class JDKIntrinsicsFeature implements GraalFeature {
                  */
                 ValueNode nonNullSrc = b.nullCheckedValue(src);
                 ValueNode nonNullDst = b.nullCheckedValue(dst);
-                b.add(new ArrayCopyWithExceptionNode(nonNullSrc, srcPos, nonNullDst, dstPos, length, null, b.bci()));
+                b.add(new SubstrateArraycopyWithExceptionNode(nonNullSrc, srcPos, nonNullDst, dstPos, length, null, b.bci()));
                 return true;
             }
         });

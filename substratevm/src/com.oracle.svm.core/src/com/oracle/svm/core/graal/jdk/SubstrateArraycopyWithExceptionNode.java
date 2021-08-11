@@ -47,9 +47,9 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "may be replaced with non-throwing counterpart", size = SIZE_64)
-public class ArrayCopyWithExceptionNode extends WithExceptionNode implements ArrayCopy {
+public class SubstrateArraycopyWithExceptionNode extends WithExceptionNode implements ArrayCopy {
 
-    public static final NodeClass<ArrayCopyWithExceptionNode> TYPE = NodeClass.create(ArrayCopyWithExceptionNode.class);
+    public static final NodeClass<SubstrateArraycopyWithExceptionNode> TYPE = NodeClass.create(SubstrateArraycopyWithExceptionNode.class);
 
     @Input NodeInputList<ValueNode> args;
     @OptionalInput(State) FrameState stateDuring;
@@ -60,7 +60,7 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
 
     protected int bci;
 
-    public ArrayCopyWithExceptionNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind, int bci) {
+    public SubstrateArraycopyWithExceptionNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind, int bci) {
         super(TYPE, StampFactory.forVoid());
         this.bci = bci;
         this.args = new NodeInputList<>(this, new ValueNode[]{src, srcPos, dest, destPos, length});
