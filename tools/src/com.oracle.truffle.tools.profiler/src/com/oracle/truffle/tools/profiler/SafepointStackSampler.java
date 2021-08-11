@@ -37,6 +37,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CallTarget;
@@ -62,7 +63,7 @@ final class SafepointStackSampler {
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
     private final ThreadLocal<SyntheticFrame> syntheticFrameThreadLocal = ThreadLocal.withInitial(() -> null);
     private final long period;
-    private boolean overflowed;
+    private volatile boolean overflowed;
 
     SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter, long period) {
         this.stackLimit = stackLimit;
@@ -78,7 +79,7 @@ final class SafepointStackSampler {
         return visitor;
     }
 
-    List<StackSample> sample(Env env, TruffleContext context, CPUSampler.MutableSamplerData mutableSamplerData) {
+    List<StackSample> sample(Env env, TruffleContext context, CPUSampler.MutableSamplerData mutableSamplerData, boolean useSyntheticFrames) {
         if (context.isActive()) {
             throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
         }
@@ -89,6 +90,8 @@ final class SafepointStackSampler {
         if (action == null) {
             action = new SampleAction();
         }
+        action.useSyntheticFrames = useSyntheticFrames;
+
         long submitTime = System.nanoTime();
         Future<Void> future;
         try {
@@ -100,6 +103,7 @@ final class SafepointStackSampler {
         try {
             future.get(10 * period, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException e) {
+            env.getLogger(getClass()).log(Level.SEVERE, "Sampling failed", e);
             return null;
         } catch (TimeoutException e) {
             future.cancel(false);
@@ -107,13 +111,13 @@ final class SafepointStackSampler {
         }
         // we compute the time to find out how accurate this sample is.
         List<StackSample> perThreadSamples = new ArrayList<>();
-        for (StackVisitor stackVisitor : action.getStacks()) {
+        for (CollectionResult result : action.getStacks()) {
             // time until the safepoint is executed from schedule
-            long bias = stackVisitor.startTime - submitTime;
-            long overhead = stackVisitor.endTime - stackVisitor.startTime;
-            perThreadSamples.add(new StackSample(stackVisitor.thread, stackVisitor.createEntries(sourceSectionFilter),
-                            bias, overhead, stackVisitor.overflowed));
-            stackVisitor.resetAndReturn();
+            StackSample sample = result.createSample(submitTime);
+            if (sample.overflowed) {
+                this.overflowed = true;
+            }
+            perThreadSamples.add(sample);
         }
         action.reset();
         cachedAction.set(action);
@@ -126,19 +130,19 @@ final class SafepointStackSampler {
         return overflowed;
     }
 
-    private void stackOverflowed(boolean visitorOverflowed) {
-        this.overflowed |= visitorOverflowed;
-    }
-
     public void pushSyntheticFrame(LanguageInfo language, String message) {
-        syntheticFrameThreadLocal.set(new SyntheticFrame(syntheticFrameThreadLocal.get(), language, message, fetchStackVisitor()));
+        // For synthetic frames we need iterate and create frames eagerly.
+        long submitTime = System.nanoTime();
+        StackVisitor visitor = fetchStackVisitor();
+        visitor.iterateFrames();
+        StackSample stackSample = visitor.createSample(submitTime);
+        SyntheticFrame frame = new SyntheticFrame(syntheticFrameThreadLocal.get(), stackSample, language, message);
+        syntheticFrameThreadLocal.set(frame);
     }
 
     public void popSyntheticFrame() {
         SyntheticFrame toPop = syntheticFrameThreadLocal.get();
         if (toPop != null) {
-            toPop.visitor.synthetic = null;
-            toPop.visitor.resetAndReturn();
             syntheticFrameThreadLocal.set(toPop.parent);
         }
     }
@@ -160,11 +164,10 @@ final class SafepointStackSampler {
         }
     }
 
-    private class StackVisitor implements FrameInstanceVisitor<FrameInstance> {
+    private class StackVisitor implements FrameInstanceVisitor<FrameInstance>, CollectionResult {
 
         private final CallTarget[] targets;
         private final byte[] states;
-        public SyntheticFrame synthetic;
         private Thread thread;
         private int nextFrameIndex;
         private long startTime;
@@ -196,6 +199,26 @@ final class SafepointStackSampler {
             }
         }
 
+        final void iterateFrames() {
+            assert this.thread == null : "not cleaned";
+            assert this.nextFrameIndex == 0 : "not cleaned";
+
+            this.thread = Thread.currentThread();
+            this.startTime = System.nanoTime();
+            Truffle.getRuntime().iterateFrames(this);
+            this.endTime = System.nanoTime();
+        }
+
+        public StackSample createSample(long submitTime) {
+            long bias = this.startTime - submitTime;
+            long overhead = this.endTime - this.startTime;
+            StackSample sample = new StackSample(this.thread, this.createEntries(sourceSectionFilter),
+                            bias, overhead, this.overflowed);
+            assert sample.thread != null;
+            this.resetAndReturn();
+            return sample;
+        }
+
         public FrameInstance visitFrame(FrameInstance frameInstance) {
             states[nextFrameIndex] = state(frameInstance);
             targets[nextFrameIndex] = frameInstance.getCallTarget();
@@ -209,9 +232,6 @@ final class SafepointStackSampler {
         }
 
         void resetAndReturn() {
-            if (synthetic != null) {
-                return;
-            }
             Arrays.fill(states, 0, nextFrameIndex, (byte) 0);
             Arrays.fill(targets, 0, nextFrameIndex, null);
             nextFrameIndex = 0;
@@ -225,9 +245,6 @@ final class SafepointStackSampler {
         @SuppressWarnings("unused")
         List<StackTraceEntry> createEntries(SourceSectionFilter filter) {
             List<StackTraceEntry> entries = new ArrayList<>(nextFrameIndex);
-            if (synthetic != null) {
-                entries.add(new StackTraceEntry(synthetic.language.getName() + ":" + synthetic.message));
-            }
             for (int i = 0; i < nextFrameIndex; i++) {
                 CallTarget target = targets[i];
                 RootNode root = ((RootCallTarget) target).getRootNode();
@@ -242,8 +259,8 @@ final class SafepointStackSampler {
 
     private class SampleAction extends ThreadLocalAction {
 
-        final ConcurrentHashMap<Thread, StackVisitor> completed = new ConcurrentHashMap<>();
-        private volatile boolean cancelled;
+        final ConcurrentHashMap<Thread, CollectionResult> completed = new ConcurrentHashMap<>();
+        boolean useSyntheticFrames = true;
 
         protected SampleAction() {
             super(false, false);
@@ -251,57 +268,64 @@ final class SafepointStackSampler {
 
         @Override
         protected void perform(Access access) {
-            if (cancelled) {
-                // too late to do anything
-                return;
-            }
-            SyntheticFrame syntheticFrame = syntheticFrameThreadLocal.get();
-            if (syntheticFrame != null) {
-                completed.put(access.getThread(), syntheticFrame.visitor);
-                return;
+            if (useSyntheticFrames) {
+                SyntheticFrame syntheticFrame = syntheticFrameThreadLocal.get();
+                if (syntheticFrame != null) {
+                    assert !completed.contains(access.getThread());
+                    completed.put(access.getThread(), syntheticFrame);
+                    return;
+                }
             }
             StackVisitor visitor = fetchStackVisitor();
-            visitor.thread = Thread.currentThread();
-            assert visitor.nextFrameIndex == 0 : "not cleaned";
-            visitor.startTime = System.nanoTime();
-            Truffle.getRuntime().iterateFrames(visitor);
-            stackOverflowed(visitor.overflowed);
-            if (cancelled) {
-                // did not complete on time
-                visitor.resetAndReturn();
-            } else {
-                completed.put(access.getThread(), visitor);
-            }
-            visitor.endTime = System.nanoTime();
+            visitor.iterateFrames();
+            assert !completed.contains(access.getThread());
+            completed.put(access.getThread(), visitor);
         }
 
-        List<StackVisitor> getStacks() {
-            cancelled = true;
+        List<CollectionResult> getStacks() {
             return new ArrayList<>(completed.values());
         }
 
         void reset() {
-            cancelled = false;
             completed.clear();
         }
     }
 
-    private static class SyntheticFrame {
+    private interface CollectionResult {
+
+        StackSample createSample(long submitTime);
+
+    }
+
+    private static class SyntheticFrame implements CollectionResult {
         final SyntheticFrame parent;
-        final StackVisitor visitor;
+        final StackSample stackSample;
         final LanguageInfo language;
         final String message;
+
+        boolean syntheticFrameCreated;
 
         /**
          * Created on the interpreter thread, keep as fast as possible.
          */
-        SyntheticFrame(SyntheticFrame parent, LanguageInfo language, String message, StackVisitor visitor) {
+        SyntheticFrame(SyntheticFrame parent, StackSample stackSample, LanguageInfo language, String message) {
             this.parent = parent;
+            this.stackSample = stackSample;
             this.language = language;
             this.message = message;
-            this.visitor = visitor;
-            Truffle.getRuntime().iterateFrames(this.visitor);
-            this.visitor.synthetic = this;
         }
+
+        public StackSample createSample(long submitTime) {
+            if (!syntheticFrameCreated) {
+                /*
+                 * The synthetic frame is created lazily to avoid string concatenation on the main
+                 * thread.
+                 */
+                stackSample.stack.add(0, new StackTraceEntry("<<" + language.getId() + ":" + message + ">>"));
+                syntheticFrameCreated = true;
+            }
+            return stackSample;
+        }
+
     }
 }

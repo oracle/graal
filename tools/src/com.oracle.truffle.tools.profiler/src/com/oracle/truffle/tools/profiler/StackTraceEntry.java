@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.profiler;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -51,6 +52,13 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class StackTraceEntry {
 
+    private static final Set<Class<?>> DEFAULT_TAGS;
+    static {
+        Set<Class<?>> tags = new HashSet<>();
+        tags.add(RootTag.class);
+        DEFAULT_TAGS = Collections.unmodifiableSet(tags);
+    }
+
     /*
      * Unknown is used when it is used as part of a payload.
      */
@@ -68,10 +76,10 @@ public final class StackTraceEntry {
     private final byte state;
     private volatile StackTraceElement stackTraceElement;
 
-    public StackTraceEntry(String rootName) {
+    StackTraceEntry(String rootName) {
         this.sourceSection = null;
         this.rootName = rootName;
-        this.tags = Collections.emptySet();
+        this.tags = DEFAULT_TAGS;
         this.instrumentedNode = null;
         this.state = STATE_UNKNOWN;
         this.stackTraceElement = null;
@@ -215,11 +223,7 @@ public final class StackTraceEntry {
             return "<Unknown>";
         }
         Source source = sourceSection.getSource();
-        if (source == null) {
-            // TODO the source == null branch can be removed if the deprecated
-            // SourceSection#createUnavailable has be removed.
-            return "<Unknown>";
-        } else if (source.getPath() == null) {
+        if (source.getPath() == null) {
             return source.getName();
         } else {
             return source.getPath();

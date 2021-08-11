@@ -122,6 +122,7 @@ public final class CPUSampler implements Closeable {
     private long period = 10;
     private long delay = 0;
     private int stackLimit = 10000;
+    private boolean sampleContextInitialization = false;
     private SourceSectionFilter filter = DEFAULT_FILTER;
     private Timer samplerThread;
     private SamplingTimerTask samplerTask;
@@ -140,21 +141,24 @@ public final class CPUSampler implements Closeable {
                 }
             }
 
+            @Override
             public void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
-                safepointStackSampler.pushSyntheticFrame(language, "CreateContext");
+                // no code is allowed to run during context creation
             }
 
             @Override
             public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-                safepointStackSampler.popSyntheticFrame();
+                // no code is allowed to run during context creation
             }
 
+            @Override
             public void onLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
-                safepointStackSampler.popSyntheticFrame();
+                // no code is allowed to run during context creation
             }
 
+            @Override
             public void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
-                safepointStackSampler.pushSyntheticFrame(language, "InitializeContext");
+                safepointStackSampler.pushSyntheticFrame(language, "initializeContext");
             }
 
             @Override
@@ -162,6 +166,7 @@ public final class CPUSampler implements Closeable {
                 safepointStackSampler.popSyntheticFrame();
             }
 
+            @Override
             public void onLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
                 safepointStackSampler.popSyntheticFrame();
             }
@@ -298,6 +303,11 @@ public final class CPUSampler implements Closeable {
     @SuppressWarnings("unused")
     public synchronized void setDelaySamplingUntilNonInternalLangInit(boolean delaySamplingUntilNonInternalLangInit) {
         // Deprecated, a noop.
+    }
+
+    public synchronized void setSampleContextInitialization(boolean enabled) {
+        enterChangeConfig();
+        this.sampleContextInitialization = enabled;
     }
 
     /**
@@ -489,7 +499,7 @@ public final class CPUSampler implements Closeable {
             }
             TruffleContext context = activeContexts.keySet().iterator().next();
             Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context));
+            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
             for (StackSample stackSample : sample) {
                 stacks.put(stackSample.thread, stackSample.stack);
             }
@@ -663,7 +673,7 @@ public final class CPUSampler implements Closeable {
                 if (context.isClosed()) {
                     continue;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context));
+                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
                 synchronized (CPUSampler.this) {
                     if (!collecting) {
                         return;
