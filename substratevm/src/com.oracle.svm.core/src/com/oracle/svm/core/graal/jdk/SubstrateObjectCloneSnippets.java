@@ -171,7 +171,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         ObjectCloneLowering objectCloneLowering = new ObjectCloneLowering();
         lowerings.put(SubstrateObjectCloneNode.class, objectCloneLowering);
         ObjectCloneWithExceptionLowering objectCloneWithExceptionLowering = new ObjectCloneWithExceptionLowering();
-        lowerings.put(ObjectCloneWithExceptionNode.class, objectCloneWithExceptionLowering);
+        lowerings.put(SubstrateObjectCloneWithExceptionNode.class, objectCloneWithExceptionLowering);
     }
 
     final class ObjectCloneLowering implements NodeLoweringProvider<SubstrateObjectCloneNode> {
@@ -190,9 +190,9 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         }
     }
 
-    final class ObjectCloneWithExceptionLowering implements NodeLoweringProvider<ObjectCloneWithExceptionNode> {
+    final class ObjectCloneWithExceptionLowering implements NodeLoweringProvider<SubstrateObjectCloneWithExceptionNode> {
         @Override
-        public void lower(ObjectCloneWithExceptionNode node, LoweringTool tool) {
+        public void lower(SubstrateObjectCloneWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
 
             ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(CLONE, node.getObject()));

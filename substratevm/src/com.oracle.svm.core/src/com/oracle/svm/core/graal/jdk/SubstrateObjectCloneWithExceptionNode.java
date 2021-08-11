@@ -47,9 +47,9 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "may be replaced with non-throwing counterpart", size = SIZE_8)
-public class ObjectCloneWithExceptionNode extends WithExceptionNode implements ObjectClone, SingleMemoryKill, Lowerable {
+public class SubstrateObjectCloneWithExceptionNode extends WithExceptionNode implements ObjectClone, SingleMemoryKill, Lowerable {
 
-    public static final NodeClass<ObjectCloneWithExceptionNode> TYPE = NodeClass.create(ObjectCloneWithExceptionNode.class);
+    public static final NodeClass<SubstrateObjectCloneWithExceptionNode> TYPE = NodeClass.create(SubstrateObjectCloneWithExceptionNode.class);
 
     public final InvokeKind invokeKind;
     public final ResolvedJavaMethod callerMethod;
@@ -61,7 +61,7 @@ public class ObjectCloneWithExceptionNode extends WithExceptionNode implements O
     @OptionalInput(InputType.State) protected FrameState stateBefore;
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    public ObjectCloneWithExceptionNode(MacroParams macroParams) {
+    public SubstrateObjectCloneWithExceptionNode(MacroParams macroParams) {
         super(TYPE, macroParams.returnStamp.getTrustedStamp());
         this.invokeKind = macroParams.invokeKind;
         this.callerMethod = macroParams.callerMethod;
