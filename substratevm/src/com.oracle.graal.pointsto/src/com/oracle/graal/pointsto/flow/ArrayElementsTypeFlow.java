@@ -61,7 +61,7 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
     @Override
     protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
         /*
-         * When an array store is saturated conservativelly assume that the array can contain any
+         * When an array store is saturated conservatively assume that the array can contain any
          * subtype of its declared type.
          */
         getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
@@ -79,7 +79,7 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
              * conversion. At runtime that will throw an ArrayStoreException but during the analysis
              * we can detect such cases and filter out the incompatible types.
              */
-            return TypeState.forIntersection(bb, update, declaredType.getTypeFlow(bb, true).getState());
+            return TypeState.forIntersection(bb, update, declaredType.getAssignableTypes(true));
         }
     }
 

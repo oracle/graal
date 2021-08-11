@@ -51,7 +51,7 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
             return update;
         } else {
             /* Filter the incoming state with the field type. */
-            return TypeState.forIntersection(bb, update, declaredType.getTypeFlow(bb, true).getState());
+            return TypeState.forIntersection(bb, update, declaredType.getAssignableTypes(true));
         }
     }
 

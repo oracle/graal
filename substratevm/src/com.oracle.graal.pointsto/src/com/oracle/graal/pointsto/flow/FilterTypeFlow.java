@@ -91,9 +91,9 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
              * instantiated sub-types).
              */
             if (isAssignable) {
-                result = TypeState.forIntersection(bb, update, declaredType.getTypeFlow(bb, includeNull).getState());
+                result = TypeState.forIntersection(bb, update, declaredType.getAssignableTypes(includeNull));
             } else {
-                result = TypeState.forSubtraction(bb, update, declaredType.getTypeFlow(bb, !includeNull).getState());
+                result = TypeState.forSubtraction(bb, update, declaredType.getAssignableTypes(!includeNull));
             }
         }
         return result;
@@ -111,7 +111,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
              * swap-out will have no effect on those. However, if this flow is already marked as
              * saturated when the use or observer *lands*, even if that happens while/after
              * swapping-out, then the corresponding use or observer will be notified of its input
-             * saturation. Otherwise it may neighter get the saturation signal OR get swapped-out.
+             * saturation. Otherwise it may neither get the saturation signal OR get swapped-out.
              * 
              * The downside in the later case is that the input/observer will lose the more precise
              * type information that swapping-out would have provided and will just use the more

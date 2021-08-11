@@ -66,7 +66,7 @@ public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
      */
     protected TypeState filterObjectState(BigBang bb, TypeState objectState) {
         if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
-            return TypeState.forIntersection(bb, objectState, field.getDeclaringClass().getTypeFlow(bb, true).getState());
+            return TypeState.forIntersection(bb, objectState, field.getDeclaringClass().getAssignableTypes(true));
         }
         return objectState;
     }

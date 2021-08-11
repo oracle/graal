@@ -140,6 +140,10 @@ public abstract class TypeFlow<T> {
         this(source, declaredType, TypeState.forEmpty(), -1, false, null);
     }
 
+    public TypeFlow(T source, AnalysisType declaredType, boolean canBeNull) {
+        this(source, declaredType, canBeNull ? TypeState.forNull() : TypeState.forEmpty(), -1, false, null);
+    }
+
     public TypeFlow(T source, AnalysisType declaredType, TypeState state) {
         this(source, declaredType, state, -1, false, null);
     }
@@ -237,7 +241,7 @@ public abstract class TypeFlow<T> {
     }
 
     public void setState(BigBang bb, TypeState state) {
-        assert !PointstoOptions.ExtendedAsserts.getValue(bb.getOptions()) || this instanceof InstanceOfTypeFlow ||
+        assert !bb.extendedAsserts() || this instanceof InstanceOfTypeFlow ||
                         state.verifyDeclaredType(declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
         this.state = state;
     }
@@ -296,7 +300,7 @@ public abstract class TypeFlow<T> {
 
         PointsToStats.registerTypeFlowSuccessfulUpdate(bb, this, add);
 
-        assert !PointstoOptions.ExtendedAsserts.getValue(bb.getOptions()) || checkTypeState(bb, before, after);
+        assert !bb.extendedAsserts() || checkTypeState(bb, before, after);
 
         if (checkSaturated(bb, after)) {
             onSaturated(bb);
@@ -308,7 +312,11 @@ public abstract class TypeFlow<T> {
     }
 
     private boolean checkTypeState(BigBang bb, TypeState before, TypeState after) {
-        assert PointstoOptions.ExtendedAsserts.getValue(bb.getOptions());
+        assert bb.extendedAsserts();
+
+        if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
+            return true;
+        }
 
         if (this instanceof InstanceOfTypeFlow || this instanceof FilterTypeFlow) {
             /*
@@ -507,7 +515,7 @@ public abstract class TypeFlow<T> {
     /**
      * Filter type states using a flow's declared type. This is used when the type flow constraints
      * are relaxed to make sure that only compatible types are flowing through certain flows, e.g.,
-     * stored to fields or passed to parameters. When the type flow constratints are not relaxed
+     * stored to fields or passed to parameters. When the type flow constraints are not relaxed
      * incompatible types flowing through such flows will result in an analysis error.
      */
     public TypeState declaredTypeFilter(BigBang bb, TypeState newState) {
@@ -523,8 +531,8 @@ public abstract class TypeFlow<T> {
             /* If the declared type is Object type there is no need to filter. */
             return newState;
         }
-        /* By default filter all type flows with the declared type. */
-        return TypeState.forIntersection(bb, newState, declaredType.getTypeFlow(bb, true).getState());
+        /* By default, filter all type flows with the declared type. */
+        return TypeState.forIntersection(bb, newState, declaredType.getAssignableTypes(true));
     }
 
     public void update(BigBang bb) {

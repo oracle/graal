@@ -29,10 +29,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 
-import org.graalvm.compiler.options.OptionValues;
-
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
@@ -58,7 +55,7 @@ public class SingleTypeState extends TypeState {
         this.canBeNull = canBeNull;
         this.merged = false;
         assert objects.length > 0 : "Single type state with no objects.";
-        assert !PointstoOptions.ExtendedAsserts.getValue(bb.getOptions()) || checkObjects(bb.getOptions());
+        assert !bb.extendedAsserts() || checkObjects(bb);
 
         PointsToStats.registerTypeState(bb, this);
     }
@@ -74,8 +71,8 @@ public class SingleTypeState extends TypeState {
         PointsToStats.registerTypeState(bb, this);
     }
 
-    protected boolean checkObjects(OptionValues options) {
-        assert PointstoOptions.ExtendedAsserts.getValue(options);
+    protected boolean checkObjects(BigBang bb) {
+        assert bb.extendedAsserts();
 
         /* Check that the objects array are sorted by type. */
         for (int idx = 0; idx < objects.length - 1; idx++) {

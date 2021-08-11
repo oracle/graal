@@ -30,8 +30,8 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class AllInstantiatedTypeFlow extends TypeFlow<AnalysisType> {
 
-    public AllInstantiatedTypeFlow(AnalysisType declaredType) {
-        super(declaredType, declaredType);
+    public AllInstantiatedTypeFlow(AnalysisType declaredType, boolean canBeNull) {
+        super(declaredType, declaredType, canBeNull);
     }
 
     public AllInstantiatedTypeFlow(AnalysisType declaredType, TypeState state) {

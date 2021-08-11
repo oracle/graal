@@ -114,6 +114,7 @@ public class AnalysisUniverse implements Universe {
     private AnalysisType objectClass;
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
+    private BigBang bigbang;
 
     public JavaKind getWordKind() {
         return wordKind;
@@ -291,6 +292,11 @@ public class AnalysisUniverse implements Universe {
              */
             hostVM.registerType(newValue);
 
+            /* Register the type as assignable with all its super types before it is published. */
+            if (bigbang != null) {
+                newValue.registerAsAssignable(bigbang);
+            }
+
             /*
              * Now that our type is correctly registered in the id-to-type array, make it accessible
              * by other threads.
@@ -361,6 +367,7 @@ public class AnalysisUniverse implements Universe {
              * it during constant folding.
              */
             AnalysisType declaringType = lookup(field.getDeclaringClass());
+            declaringType.registerAsReachable();
             declaringType.ensureInitialized();
         }
 
@@ -694,5 +701,13 @@ public class AnalysisUniverse implements Universe {
 
     public MetaAccessProvider getOriginalMetaAccess() {
         return originalMetaAccess;
+    }
+
+    public void setBigBang(BigBang bigbang) {
+        this.bigbang = bigbang;
+    }
+
+    public BigBang getBigbang() {
+        return bigbang;
     }
 }
