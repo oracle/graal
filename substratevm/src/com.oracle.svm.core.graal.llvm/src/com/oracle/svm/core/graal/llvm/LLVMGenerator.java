@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.isDoubleType;
+import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.isFloatType;
+import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.isIntegerType;
+import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.isVectorType;
 import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.typeOf;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
@@ -1494,6 +1498,28 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         public Value emitXor(Value a, Value b) {
             LLVMValueRef xor = builder.buildXor(getVal(a), getVal(b));
             return new LLVMVariable(xor);
+        }
+
+        @Override
+        public Value emitXorFP(Value a, Value b) {
+            LLVMTypeRef type = getType(a.getValueKind());
+            LIRKind resultKind = a.getValueKind(LIRKind.class);
+
+            if (isVectorType(type) || isIntegerType(type)) {
+                return emitXor(a, b);
+            }
+
+            // LLVM requires XOR operands to be integers or vectors. We need to reinterpret them
+            // as integers and then reinterpret the result again.
+            if (isFloatType(type) || isDoubleType(type)) {
+                LIRKind calculationKind = isFloatType(type) ? lirKindTool.getIntegerKind(32) : lirKindTool.getIntegerKind(64);
+                Value reinterpretedA = emitReinterpret(calculationKind, a);
+                Value reinterpretedB = emitReinterpret(calculationKind, b);
+                Value result = emitXor(reinterpretedA, reinterpretedB);
+                return emitReinterpret(resultKind, result);
+            }
+
+            throw unimplemented("the LLVM backend only supports XOR of integers, vectors and floating point numbers");
         }
 
         @Override
