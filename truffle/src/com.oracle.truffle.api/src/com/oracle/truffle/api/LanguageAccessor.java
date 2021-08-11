@@ -618,6 +618,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public boolean isContinuousTLAction(ThreadLocalAction action) {
+            return action.isContinuous();
+        }
+
+        @Override
         public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
             action.perform(access);
         }

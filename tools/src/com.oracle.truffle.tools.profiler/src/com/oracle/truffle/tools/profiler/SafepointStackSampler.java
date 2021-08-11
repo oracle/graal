@@ -95,7 +95,6 @@ final class SafepointStackSampler {
             // context may be closed while submitting
             return Collections.emptyList();
         }
-
         try {
             future.get(10 * period, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException e) {
