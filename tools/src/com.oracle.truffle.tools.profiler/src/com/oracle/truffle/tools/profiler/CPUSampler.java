@@ -141,39 +141,37 @@ public final class CPUSampler implements Closeable {
             }
 
             public void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push and sample synthetic frame
+                safepointStackSampler.pushSyntheticFrame(language, "CreateContext");
             }
 
             @Override
             public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.popSyntheticFrame();
             }
 
             public void onLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.popSyntheticFrame();
             }
 
             public void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.pushSyntheticFrame(language, "InitializeContext");
             }
 
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.popSyntheticFrame();
             }
 
             public void onLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.popSyntheticFrame();
             }
 
             @Override
             public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
             }
 
             @Override
             public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
             }
 
             @Override

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -59,6 +60,7 @@ final class SafepointStackSampler {
     private final SourceSectionFilter sourceSectionFilter;
     private final ConcurrentLinkedQueue<StackVisitor> stackVisitorCache = new ConcurrentLinkedQueue<>();
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
+    private final ThreadLocal<SyntheticFrame> syntheticFrameThreadLocal = ThreadLocal.withInitial(() -> null);
     private final long period;
     private boolean overflowed;
 
@@ -128,6 +130,19 @@ final class SafepointStackSampler {
         this.overflowed |= visitorOverflowed;
     }
 
+    public void pushSyntheticFrame(LanguageInfo language, String message) {
+        syntheticFrameThreadLocal.set(new SyntheticFrame(syntheticFrameThreadLocal.get(), language, message, fetchStackVisitor()));
+    }
+
+    public void popSyntheticFrame() {
+        SyntheticFrame toPop = syntheticFrameThreadLocal.get();
+        if (toPop != null) {
+            toPop.visitor.synthetic = null;
+            toPop.visitor.resetAndReturn();
+            syntheticFrameThreadLocal.set(toPop.parent);
+        }
+    }
+
     static final class StackSample {
 
         final Thread thread;
@@ -149,6 +164,7 @@ final class SafepointStackSampler {
 
         private final CallTarget[] targets;
         private final byte[] states;
+        public SyntheticFrame synthetic;
         private Thread thread;
         private int nextFrameIndex;
         private long startTime;
@@ -193,6 +209,9 @@ final class SafepointStackSampler {
         }
 
         void resetAndReturn() {
+            if (synthetic != null) {
+                return;
+            }
             Arrays.fill(states, 0, nextFrameIndex, (byte) 0);
             Arrays.fill(targets, 0, nextFrameIndex, null);
             nextFrameIndex = 0;
@@ -206,6 +225,9 @@ final class SafepointStackSampler {
         @SuppressWarnings("unused")
         List<StackTraceEntry> createEntries(SourceSectionFilter filter) {
             List<StackTraceEntry> entries = new ArrayList<>(nextFrameIndex);
+            if (synthetic != null) {
+                entries.add(new StackTraceEntry(synthetic.language.getName() + ":" + synthetic.message));
+            }
             for (int i = 0; i < nextFrameIndex; i++) {
                 CallTarget target = targets[i];
                 RootNode root = ((RootCallTarget) target).getRootNode();
@@ -233,6 +255,11 @@ final class SafepointStackSampler {
                 // too late to do anything
                 return;
             }
+            SyntheticFrame syntheticFrame = syntheticFrameThreadLocal.get();
+            if (syntheticFrame != null) {
+                completed.put(access.getThread(), syntheticFrame.visitor);
+                return;
+            }
             StackVisitor visitor = fetchStackVisitor();
             visitor.thread = Thread.currentThread();
             assert visitor.nextFrameIndex == 0 : "not cleaned";
@@ -256,6 +283,25 @@ final class SafepointStackSampler {
         void reset() {
             cancelled = false;
             completed.clear();
+        }
+    }
+
+    private static class SyntheticFrame {
+        final SyntheticFrame parent;
+        final StackVisitor visitor;
+        final LanguageInfo language;
+        final String message;
+
+        /**
+         * Created on the interpreter thread, keep as fast as possible.
+         */
+        SyntheticFrame(SyntheticFrame parent, LanguageInfo language, String message, StackVisitor visitor) {
+            this.parent = parent;
+            this.language = language;
+            this.message = message;
+            this.visitor = visitor;
+            Truffle.getRuntime().iterateFrames(this.visitor);
+            this.visitor.synthetic = this;
         }
     }
 }
