@@ -40,12 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.constants.GlobalModifier;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -58,6 +52,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import org.graalvm.wasm.collection.IntArrayList;
+import org.graalvm.wasm.constants.GlobalModifier;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents an instantiated WebAssembly module.
@@ -67,7 +66,11 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     public WasmInstance(WasmContext context, WasmModule module) {
-        super(context, module);
+        this(context, module, module.numFunctions());
+    }
+
+    public WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions) {
+        super(context, module, numberOfFunctions);
     }
 
     public String name() {
@@ -94,10 +97,6 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
             return functionInstance(symbolTable().startFunction());
         }
         return null;
-    }
-
-    private WasmFunctionInstance functionInstance(WasmFunction function) {
-        return new WasmFunctionInstance(context(), function, target(function.index()));
     }
 
     private void ensureLinked() {

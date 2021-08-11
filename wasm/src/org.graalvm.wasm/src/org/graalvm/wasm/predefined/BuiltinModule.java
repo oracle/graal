@@ -40,13 +40,15 @@
  */
 package org.graalvm.wasm.predefined;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.ReferenceTypes;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmTable;
@@ -59,10 +61,8 @@ import org.graalvm.wasm.predefined.spectest.SpectestModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.RootNode;
+import java.util.HashMap;
+import java.util.Map;
 
 public abstract class BuiltinModule {
     private static final Map<String, BuiltinModule> predefinedModules = new HashMap<>();
@@ -86,7 +86,13 @@ public abstract class BuiltinModule {
 
     protected abstract WasmInstance createInstance(WasmLanguage language, WasmContext context, String name);
 
-    protected WasmFunction defineFunction(WasmInstance instance, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
+    protected void defineExportedFunction(WasmInstance instance, String name, byte[] paramType, byte[] retTypes, WasmFunctionInstance functionInstance) {
+        final int typeIdx = instance.symbolTable().allocateFunctionType(paramType, retTypes);
+        final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
+        instance.setFunctionInstance(function.index(), functionInstance);
+    }
+
+    protected void defineFunction(WasmInstance instance, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
         // We could check if the same function type had already been allocated,
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
@@ -94,7 +100,6 @@ public abstract class BuiltinModule {
         final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         instance.setTarget(function.index(), callTarget);
-        return function;
     }
 
     protected int defineExternalGlobal(WasmInstance instance, String globalName, WasmGlobal global) {
