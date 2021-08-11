@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
@@ -103,6 +104,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         @CompilationFinal Map<String, LanguageInfo> accessiblePublicLanguages;
         final Object internalFileSystemContext;
         final Object publicFileSystemContext;
+        final ReentrantLock operationLock;
 
         Lazy(PolyglotLanguageInstance languageInstance, PolyglotContextConfig config) {
             /*
@@ -117,6 +119,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             // file systems are patched after preinitialization internally using a delegate field
             this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystem);
             this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.internalFileSystem);
+            this.operationLock = new ReentrantLock();
         }
 
         void computeAccessPermissions(PolyglotContextConfig config) {
@@ -625,49 +628,62 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     boolean ensureInitialized(PolyglotLanguage accessingLanguage) {
         ensureCreated(accessingLanguage);
-        boolean wasInitialized = false;
-        if (!initialized) {
-            synchronized (context) {
-                if (!initialized) {
-                    if (eventsEnabled) {
-                        EngineAccessor.INSTRUMENT.notifyLanguageContextInitialize(context.engine, context.creatorTruffleContext, language.info);
+        if (initialized) {
+            // fast-path exit
+            return false;
+        }
+
+        boolean initialize = false;
+        lazy.operationLock.lock();
+        try {
+            initialize = !initialized;
+            if (initialize) {
+                if (eventsEnabled) {
+                    EngineAccessor.INSTRUMENT.notifyLanguageContextInitialize(context.engine, context.creatorTruffleContext, language.info);
+                }
+
+                initialized = true; // Allow language use during initialization
+                try {
+                    LANGUAGE.initializeThread(env, Thread.currentThread());
+                    LANGUAGE.postInitEnv(env);
+
+                    if (!context.isSingleThreaded()) {
+                        LANGUAGE.initializeMultiThreading(env);
                     }
-
-                    initialized = true; // Allow language use during initialization
+                } catch (Throwable e) {
+                    // language not successfully initialized, reset to avoid inconsistent
+                    // language contexts
+                    initialized = false;
                     try {
-                        LANGUAGE.initializeThread(env, Thread.currentThread());
-                        LANGUAGE.postInitEnv(env);
-
-                        if (!context.isSingleThreaded()) {
-                            LANGUAGE.initializeMultiThreading(env);
-                        }
-
-                        for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                            final Thread thread = threadInfo.getThread();
-                            if (thread == Thread.currentThread()) {
-                                continue;
-                            }
-                            LANGUAGE.initializeThread(env, thread);
-                        }
-
-                        wasInitialized = true;
-                    } catch (Throwable e) {
-                        // language not successfully initialized, reset to avoid inconsistent
-                        // language contexts
-                        initialized = false;
-                        throw e;
-                    } finally {
-                        if (!wasInitialized && eventsEnabled) {
+                        if (eventsEnabled) {
                             EngineAccessor.INSTRUMENT.notifyLanguageContextInitializeFailed(context.engine, context.creatorTruffleContext, language.info);
                         }
+                    } catch (Throwable inner) {
+                        e.addSuppressed(inner);
                     }
+                    throw e;
+                }
+
+                if (eventsEnabled) {
+                    EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.creatorTruffleContext, language.info);
                 }
             }
+        } finally {
+            lazy.operationLock.unlock();
         }
-        if (wasInitialized && eventsEnabled) {
-            EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.creatorTruffleContext, language.info);
+
+        synchronized (context) {
+            for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
+                final Thread thread = threadInfo.getThread();
+                if (thread == Thread.currentThread()) {
+                    continue;
+                }
+                LANGUAGE.initializeThread(env, thread);
+            }
         }
-        return wasInitialized;
+
+        return initialize;
+
     }
 
     void checkAccess(PolyglotLanguage accessingLanguage) {
