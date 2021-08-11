@@ -56,15 +56,15 @@ public interface HostVM {
 
     boolean isRelocatedPointer(Object originalObject);
 
-    void clearInThread();
+    default void clearInThread(){}
 
     void installInThread(Object vmConfig);
 
     Object getConfiguration();
 
-    void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind);
+    default void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind){}
 
-    void registerType(AnalysisType newValue);
+    default void registerType(AnalysisType newValue){}
 
     void initializeType(AnalysisType newValue);
 
@@ -100,11 +100,11 @@ public interface HostVM {
         return null;
     }
 
-    void checkType(ResolvedJavaType type, AnalysisUniverse universe);
+    default void checkType(ResolvedJavaType type, AnalysisUniverse universe){}
 
     void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
 
-    void methodBeforeTypeFlowCreationHook(PointsToAnalysis bb, AnalysisMethod method, StructuredGraph graph);
+    default void methodBeforeTypeFlowCreationHook(PointsToAnalysis bb, AnalysisMethod method, StructuredGraph graph){}
 
     default boolean hasNeverInlineDirective(@SuppressWarnings("unused") ResolvedJavaMethod method) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */
