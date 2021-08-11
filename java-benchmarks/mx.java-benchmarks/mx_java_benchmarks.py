@@ -879,6 +879,12 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
                 re.MULTILINE),
         ]
 
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(DaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        if java_home_jdk().javaCompliance >= '16':
+            vmArgs += ["--add-opens", "java.base/java.lang=ALL-UNNAMED"]
+        return vmArgs
+
 
 class DacapoSmallBenchmarkSuite(DaCapoBenchmarkSuite):
     """The subset of DaCapo benchmarks supporting the 'small' configuration."""
