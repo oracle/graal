@@ -781,7 +781,7 @@ _daCapoIterations = {
     "pmd"         : 30,
     "sunflow"     : 35,
     "tomcat"      : -1,
-    "tradebeans"  : 30,
+    "tradebeans"  : -1, # revert to 30 once GR-33115 is fixed
     "tradesoap"   : 30,
     "xalan"       : 30,
 }
