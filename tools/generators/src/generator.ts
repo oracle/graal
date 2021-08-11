@@ -105,28 +105,35 @@ const ANY = 'any';
 parseSource(args.source).then((ast:SourceFile) => {
     traverse([ast.getChildAt(0)], (node: Node) => {
         switch(node.kind) {
-            case SyntaxKind.TypeAliasDeclaration:
-                const taExported = (node as TypeAliasDeclaration).modifiers && (node as TypeAliasDeclaration).modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
+            case SyntaxKind.TypeAliasDeclaration: {
+                const ta = node as TypeAliasDeclaration;
+                const taExported = ta.modifiers && ta.modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
                 if (taExported) {
-                    typeAliases.set((node as TypeAliasDeclaration).name.getText(), node as TypeAliasDeclaration);
+                    typeAliases.set(ta.name.getText(), ta);
                 }
                 break;
-            case SyntaxKind.ModuleDeclaration:
-                const mdExported = (node as ModuleDeclaration).modifiers && (node as ModuleDeclaration).modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
-                if (mdExported && !modules.has((node as ModuleDeclaration).name.getText())) {
-                    modules.set((node as ModuleDeclaration).name.getText(), <ModuleDeclaration>node);
+            }
+            case SyntaxKind.ModuleDeclaration: {
+                const md = node as ModuleDeclaration;
+                const mdExported = md.modifiers && md.modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
+                if (mdExported && !modules.has(md.name.getText())) {
+                    modules.set(md.name.getText(), md);
                 }
                 break;
-            case SyntaxKind.InterfaceDeclaration:
-                const idExported = (node as InterfaceDeclaration).modifiers && (node as InterfaceDeclaration).modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
+            }
+            case SyntaxKind.InterfaceDeclaration: {
+                const id = node as InterfaceDeclaration;
+                const idExported = id.modifiers && id.modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
                 if (idExported) {
-                    interfaces.set((node as InterfaceDeclaration).name.getText(), <InterfaceDeclaration>node);
+                    interfaces.set(id.name.getText(), id);
                 }
                 break;
+            }
             case SyntaxKind.EnumDeclaration:
-                const edExported = (node as EnumDeclaration).modifiers && (node as EnumDeclaration).modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
+                const ed = node as EnumDeclaration;
+                const edExported = ed.modifiers && ed.modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
                 if (edExported) {
-                    enums.set((node as EnumDeclaration).name.getText(), <EnumDeclaration>node);
+                    enums.set(ed.name.getText(), ed);
                 }
                 break;
         }
