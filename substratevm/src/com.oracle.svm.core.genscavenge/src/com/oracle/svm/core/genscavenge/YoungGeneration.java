@@ -148,6 +148,15 @@ public final class YoungGeneration extends Generation {
         assert survivorsToSpacesAccounting.getChunkBytes().equal(0);
     }
 
+    void emptyFromSpacesIntoToSpaces() {
+        assert getEden().isEmpty() && getEden().getChunkBytes().equal(0) : "Eden must be empty.";
+        assert survivorsToSpacesAccounting.getChunkBytes().equal(0) : "Survivor to-spaces must be empty";
+        for (int i = 0; i < maxSurvivorSpaces; i++) {
+            assert getSurvivorToSpaceAt(i).isEmpty() && getSurvivorToSpaceAt(i).getChunkBytes().equal(0) : "Survivor to-space must be empty.";
+            getSurvivorToSpaceAt(i).absorb(getSurvivorFromSpaceAt(i));
+        }
+    }
+
     boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
         if (getEden().walkHeapChunks(visitor)) {
             for (int i = 0; i < maxSurvivorSpaces; i++) {

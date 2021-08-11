@@ -234,31 +234,30 @@ public final class GCImpl implements GC {
     private boolean doCollectImpl(GCCause cause, boolean forceFullGC) {
         CommittedMemoryProvider.get().beforeGarbageCollection();
 
-        completeCollection = forceFullGC || policy.shouldCollectCompletely(false);
-        boolean outOfMemory = doCollectOnce(cause);
-        if (!completeCollection && (outOfMemory || policy.shouldCollectCompletely(true))) {
-            completeCollection = true;
-            outOfMemory = doCollectOnce(cause);
+        boolean incremental = HeapParameters.Options.CollectYoungGenerationSeparately.getValue() ||
+                        (!forceFullGC && !policy.shouldCollectCompletely(false));
+        boolean outOfMemory = false;
+        if (incremental) {
+            outOfMemory = doCollectOnce(cause, false, false);
+        }
+        if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(true)) {
+            outOfMemory = doCollectOnce(cause, true, incremental);
         }
 
-        CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
+        CommittedMemoryProvider.get().afterGarbageCollection();
         return outOfMemory;
     }
 
-    private boolean doCollectOnce(GCCause cause) {
+    private boolean doCollectOnce(GCCause cause, boolean complete, boolean followsIncremental) {
+        assert !followsIncremental || complete : "An incremental collection cannot be followed by another incremental collection";
+        completeCollection = complete;
+
         accounting.beforeCollection();
         policy.onCollectionBegin(completeCollection);
 
         Timer collectionTimer = timers.collection.open();
         try {
-            if (completeCollection) {
-                if (HeapParameters.Options.CollectYoungGenerationSeparately.getValue()) {
-                    scavenge(true);
-                }
-                scavenge(false);
-            } else {
-                scavenge(true);
-            }
+            scavenge(!complete, followsIncremental);
         } finally {
             collectionTimer.close();
         }
@@ -490,15 +489,15 @@ public final class GCImpl implements GC {
     }
 
     /** Scavenge, either from dirty roots or from all roots, and process discovered references. */
-    private void scavenge(boolean fromDirtyRoots) {
+    private void scavenge(boolean incremental, boolean followingIncremental) {
         GreyToBlackObjRefVisitor.Counters counters = greyToBlackObjRefVisitor.openCounters();
         try {
             Timer rootScanTimer = timers.rootScan.open();
             try {
-                if (fromDirtyRoots) {
+                if (incremental) {
                     cheneyScanFromDirtyRoots();
                 } else {
-                    cheneyScanFromRoots();
+                    cheneyScanFromRoots(followingIncremental);
                 }
             } finally {
                 rootScanTimer.close();
@@ -564,7 +563,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    private void cheneyScanFromRoots() {
+    private void cheneyScanFromRoots(boolean followingIncremental) {
         Timer cheneyScanFromRootsTimer = timers.cheneyScanFromRoots.open();
         try {
             /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
@@ -574,6 +573,22 @@ public final class GCImpl implements GC {
              * Object reference visits.
              */
             prepareForPromotion();
+
+            if (followingIncremental) {
+                /*
+                 * We just finished an incremental collection, so we will not be able to reclaim any
+                 * young objects and do not need to copy them (and do not want to age or tenure them
+                 * in the process). We still need to scan them for roots into the old generation.
+                 *
+                 * There is potential trouble with this: if objects in the young generation are
+                 * reachable only from garbage objects in the old generation, the young objects are
+                 * not reclaimed during this collection. If there is a cycle in which the young
+                 * objects in turn keep the old objects alive, none of the objects can be reclaimed
+                 * until the young objects are eventually tenured, or until a single complete
+                 * collection is done before we would run out of memory.
+                 */
+                HeapImpl.getHeapImpl().getYoungGeneration().emptyFromSpacesIntoToSpaces();
+            }
 
             /*
              * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
