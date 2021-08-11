@@ -23,6 +23,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Deprecated all other means of accessing the current context: `TruffleLanguage.getCurrentContext(Class)`, `RootNode.getCurrentContext(Class)`, `ContextReference.get()`, `Node.lookContextReference(Class)` and `@CachedContext`.
     * Deprecated all other means of accessing the current language: `TruffleLanguage.getCurrentLanguage(Class)`,  `LanguageReference.get()`, `Node.lookupLanguageReference(Class)` and `@CachedLanguage`.
 * Added `--engine.TraceDeoptimizeFrame` to trace frame deoptimizations due to `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)`.
+* Added loop condition profiling to `LoopNode`, so the `RepeatingNode` no longer needs to profile or inject the loop count. Language implementations should remove loop condition profiles from their repeating nodes since they are redundant now.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
