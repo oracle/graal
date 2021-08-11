@@ -162,6 +162,11 @@ public class JfrSymbolRepository implements JfrConstantPool {
     }
 
     private static class JfrSymbolHashtable extends UninterruptibleHashtable<JfrSymbol> {
+        @Platforms(Platform.HOSTED_ONLY.class)
+        JfrSymbolHashtable() {
+            super("jfrSymbolHashtable");
+        }
+
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
         protected JfrSymbol[] createTable(int size) {

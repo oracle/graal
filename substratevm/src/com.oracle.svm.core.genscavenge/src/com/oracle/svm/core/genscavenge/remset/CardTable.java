@@ -172,12 +172,12 @@ final class CardTable {
             if (fromImageHeap || HeapChunk.getSpace(objChunk).isYoungSpace()) {
                 UnsignedWord cardTableIndex = memoryOffsetToIndex(Word.objectToUntrackedPointer(parentObject).subtract(objectsStart));
                 Pointer cardTableAddress = cardTableStart.add(indexToTableOffset(cardTableIndex));
-                Log.log().string("Object ").hex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
+                Log.log().string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
                                 .string(fromImageHeap ? ", which is in the image heap, " : " ")
                                 .string("has an object reference at ")
-                                .hex(reference).string(" that points to ").hex(referencedObject).string(" (").string(obj.getClass().getName()).string("), ")
+                                .zhex(reference).string(" that points to ").zhex(referencedObject).string(" (").string(obj.getClass().getName()).string("), ")
                                 .string("which is in the ").string(fromImageHeap ? "runtime heap" : "young generation").string(". ")
-                                .string("However, the card table at ").hex(cardTableAddress).string(" is clean.").newline();
+                                .string("However, the card table at ").zhex(cardTableAddress).string(" is clean.").newline();
                 return false;
             }
         }

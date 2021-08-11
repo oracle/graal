@@ -26,12 +26,16 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_HEAP_ACCESS;
+import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION;
+import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_IN_PAGE_ERROR;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -42,6 +46,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NotIncludedAutomatically;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.ErrHandlingAPI;
 
@@ -54,6 +59,10 @@ class WindowsSubstrateSegfaultHandlerFeature implements Feature {
 }
 
 class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
+    private static final int EX_READ = 0;
+    private static final int EX_WRITE = 1;
+    private static final int EX_EXECUTE = 8;
+
     @Override
     protected void install() {
         /*
@@ -93,11 +102,44 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
         ErrHandlingAPI.CONTEXT context = exceptionInfo.ContextRecord();
         if (tryEnterIsolate(context)) {
-            dump(context);
+            dump(exceptionInfo, context);
             throw shouldNotReachHere();
         }
         /* Nothing we can do. */
         return ErrHandlingAPI.EXCEPTION_CONTINUE_SEARCH();
+    }
+
+    @Override
+    protected void printSignalInfo(Log log, PointerBase signalInfo) {
+        ErrHandlingAPI.EXCEPTION_POINTERS exceptionInfo = (ErrHandlingAPI.EXCEPTION_POINTERS) signalInfo;
+        ErrHandlingAPI.EXCEPTION_RECORD exceptionRecord = exceptionInfo.ExceptionRecord();
+
+        int exceptionCode = exceptionRecord.ExceptionCode();
+        log.string("siginfo: ExceptionCode: ").signed(exceptionCode);
+
+        int numParameters = exceptionRecord.NumberParameters();
+        if ((exceptionCode == EXCEPTION_ACCESS_VIOLATION() || exceptionCode == EXCEPTION_IN_PAGE_ERROR()) && numParameters >= 2) {
+            CLongPointer exInfo = exceptionRecord.ExceptionInformation();
+            long operation = exInfo.addressOf(0).read();
+            if (operation == EX_READ) {
+                log.string(", reading address");
+            } else if (operation == EX_WRITE) {
+                log.string(", writing address");
+            } else if (operation == EX_EXECUTE) {
+                log.string(", data execution prevention violation at address");
+            } else {
+                log.string(", ExceptionInformation=").zhex(operation);
+            }
+            log.string(" ").zhex(exInfo.addressOf(1).read());
+        } else {
+            if (numParameters > 0) {
+                log.string(", ExceptionInformation=");
+                CLongPointer exInfo = exceptionRecord.ExceptionInformation();
+                for (int i = 0; i < numParameters; i++) {
+                    log.string(" ").zhex(exInfo.addressOf(i).read());
+                }
+            }
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")

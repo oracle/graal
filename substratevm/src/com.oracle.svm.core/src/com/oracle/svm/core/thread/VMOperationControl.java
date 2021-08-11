@@ -46,6 +46,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -192,7 +193,7 @@ public final class VMOperationControl {
         }
     }
 
-    public static void logRecentEvents(Log log) {
+    public static void printCurrentVMOperation(Log log, boolean allowJavaHeapAccess) {
         /*
          * All reads in this method are racy as the currently executed VM operation could finish and
          * a different VM operation could start. So, the read data is not necessarily consistent.
@@ -201,15 +202,19 @@ public final class VMOperationControl {
         VMOperation op = control.inProgress.operation;
         if (op == null) {
             log.string("No VMOperation in progress").newline();
+        } else if (allowJavaHeapAccess) {
+            log.string("VMOperation in progress: ").string(op.getName()).indent(true);
+            log.string("Safepoint: ").bool(op.getCausesSafepoint()).newline();
+            log.string("QueuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
+            log.string("ExecutingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
+            log.redent(false);
         } else {
-            log.string("VMOperation in progress: ").string(op.getName()).newline();
-            log.string("  safepoint: ").bool(op.getCausesSafepoint()).newline();
-            log.string("  queuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
-            log.string("  executingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
+            log.string("VMOperation in progress: ").zhex(Word.objectToUntrackedPointer(op)).newline();
         }
-        log.newline();
+    }
 
-        control.history.print(log);
+    public static void printRecentEvents(Log log, boolean allowJavaHeapAccess) {
+        get().history.print(log, allowJavaHeapAccess);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -440,7 +445,7 @@ public final class VMOperationControl {
             this.nativeSafepointOperations = new NativeVMOperationQueue(prefix + "NativeSafepointOperations");
             this.javaNonSafepointOperations = new JavaVMOperationQueue(prefix + "JavaNonSafepointOperations");
             this.javaSafepointOperations = new JavaVMOperationQueue(prefix + "JavaSafepointOperations");
-            this.mutex = createMutex(needsLocking);
+            this.mutex = createMutex(prefix + "VMOperationControlWorkQueue", needsLocking);
             this.operationQueued = createCondition();
             this.operationFinished = createCondition();
         }
@@ -670,9 +675,9 @@ public final class VMOperationControl {
         }
 
         @Platforms(value = Platform.HOSTED_ONLY.class)
-        private static VMMutex createMutex(boolean needsLocking) {
+        private static VMMutex createMutex(String mutexName, boolean needsLocking) {
             if (needsLocking) {
-                return new VMMutex();
+                return new VMMutex(mutexName);
             }
             return null;
         }
@@ -866,7 +871,8 @@ public final class VMOperationControl {
      */
     private static class VMOpHistory {
         private final RingBuffer<VMOpStatusChange> history;
-        private static final RingBuffer.Consumer<VMOpStatusChange> PRINT_ENTRY = VMOpHistory::printEntry;
+        private static final RingBuffer.Consumer<VMOpStatusChange> PRINT_WITH_JAVA_HEAP_DATA = VMOpHistory::printEntryWithJavaHeapData;
+        private static final RingBuffer.Consumer<VMOpStatusChange> PRINT_WITHOUT_JAVA_HEAP_DATA = VMOpHistory::printEntryWithoutJavaHeapData;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         VMOpHistory() {
@@ -875,6 +881,7 @@ public final class VMOperationControl {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void add(VMOpStatus status, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
+            assert Heap.getHeap().isInImageHeap(status);
             VMOpStatusChange entry = history.next();
             entry.timestamp = System.currentTimeMillis();
             entry.status = status;
@@ -884,15 +891,23 @@ public final class VMOperationControl {
             entry.executingThread = executingThread;
         }
 
-        public void print(Log log) {
+        public void print(Log log, boolean allowJavaHeapAccess) {
             log.string("The ").signed(history.size()).string(" most recent VM operation status changes (oldest first):").indent(true);
-            history.foreach(log, PRINT_ENTRY);
+            history.foreach(log, allowJavaHeapAccess ? PRINT_WITH_JAVA_HEAP_DATA : PRINT_WITHOUT_JAVA_HEAP_DATA);
             log.indent(false);
         }
 
-        private static void printEntry(Object context, VMOpStatusChange entry) {
+        private static void printEntryWithJavaHeapData(Object context, VMOpStatusChange entry) {
+            printEntry(context, entry, true);
+        }
+
+        private static void printEntryWithoutJavaHeapData(Object context, VMOpStatusChange entry) {
+            printEntry(context, entry, false);
+        }
+
+        private static void printEntry(Object context, VMOpStatusChange entry, boolean allowJavaHeapAccess) {
             Log log = (Log) context;
-            entry.print(log);
+            entry.print(log, allowJavaHeapAccess);
         }
     }
 
@@ -919,10 +934,14 @@ public final class VMOperationControl {
         VMOpStatusChange() {
         }
 
-        void print(Log log) {
+        void print(Log log, boolean allowJavaHeapAccess) {
             VMOpStatus localStatus = status;
             if (localStatus != null) {
-                log.unsigned(timestamp).string(" - ").string(localStatus.name()).string(" ").string(operation).string(" (safepoint: ").bool(causesSafepoint).string(", queueingThread: ")
+                log.unsigned(timestamp).string(" - ").string(localStatus.name());
+                if (allowJavaHeapAccess) {
+                    log.string(" ").string(operation);
+                }
+                log.string(" (safepoint: ").bool(causesSafepoint).string(", queueingThread: ")
                                 .zhex(queueingThread.rawValue()).string(", executingThread: ").zhex(executingThread.rawValue()).string(")").newline();
             }
         }

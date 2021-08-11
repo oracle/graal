@@ -101,7 +101,7 @@ final class HeapChunkProvider {
         log().string("[HeapChunkProvider.produceAlignedChunk  chunk size: ").unsigned(chunkSize).newline();
 
         AlignedHeader result = popUnusedAlignedChunk();
-        log().string("  unused chunk: ").hex(result).newline();
+        log().string("  unused chunk: ").zhex(result).newline();
 
         if (result.isNull()) {
             /* Unused list was empty, need to allocate memory. */
@@ -110,7 +110,7 @@ final class HeapChunkProvider {
             if (result.isNull()) {
                 throw ALIGNED_OUT_OF_MEMORY_ERROR;
             }
-            log().string("  new chunk: ").hex(result).newline();
+            log().string("  new chunk: ").zhex(result).newline();
 
             AlignedHeapChunk.initialize(result, chunkSize);
         }
@@ -123,7 +123,7 @@ final class HeapChunkProvider {
 
         HeapPolicy.increaseEdenUsedBytes(chunkSize);
 
-        log().string("  result chunk: ").hex(result).string("  ]").newline();
+        log().string("  result chunk: ").zhex(result).string("  ]").newline();
         return result;
     }
 
@@ -174,13 +174,13 @@ final class HeapChunkProvider {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
         }
-        log().string("  old list top: ").hex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
+        log().string("  old list top: ").zhex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
 
         HeapChunk.setNext(chunk, unusedAlignedChunks.get());
         unusedAlignedChunks.set(chunk);
         bytesInUnusedAlignedChunks.addAndGet(HeapPolicy.getAlignedHeapChunkSize());
 
-        log().string("  new list top: ").hex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
+        log().string("  new list top: ").zhex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
     }
 
     /**
@@ -193,14 +193,14 @@ final class HeapChunkProvider {
      * uninterruptible so it can not be interrupted by a safepoint.
      */
     private AlignedHeader popUnusedAlignedChunk() {
-        log().string("  old list top: ").hex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
+        log().string("  old list top: ").zhex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
 
         AlignedHeader result = popUnusedAlignedChunkUninterruptibly();
         if (result.isNull()) {
             return WordFactory.nullPointer();
         } else {
             bytesInUnusedAlignedChunks.subtractAndGet(HeapPolicy.getAlignedHeapChunkSize());
-            log().string("  new list top: ").hex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
+            log().string("  new list top: ").zhex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
             return result;
         }
     }
@@ -224,7 +224,7 @@ final class HeapChunkProvider {
     /** Acquire an UnalignedHeapChunk from the operating system. */
     UnalignedHeader produceUnalignedChunk(UnsignedWord objectSize) {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);
-        log().string("[HeapChunkProvider.produceUnalignedChunk  objectSize: ").unsigned(objectSize).string("  chunkSize: ").hex(chunkSize).newline();
+        log().string("[HeapChunkProvider.produceUnalignedChunk  objectSize: ").unsigned(objectSize).string("  chunkSize: ").zhex(chunkSize).newline();
 
         noteFirstAllocationTime();
         UnalignedHeader result = (UnalignedHeader) CommittedMemoryProvider.get().allocate(chunkSize, CommittedMemoryProvider.UNALIGNED, false);
@@ -241,7 +241,7 @@ final class HeapChunkProvider {
 
         HeapPolicy.increaseEdenUsedBytes(chunkSize);
 
-        log().string("  returns ").hex(result).string("  ]").newline();
+        log().string("  returns ").zhex(result).string("  ]").newline();
         return result;
     }
 
@@ -256,14 +256,14 @@ final class HeapChunkProvider {
     private static void zap(Header<?> chunk, WordBase value) {
         Pointer start = HeapChunk.getTopPointer(chunk);
         Pointer limit = HeapChunk.getEndPointer(chunk);
-        log().string("  zap chunk: ").hex(chunk).string("  start: ").hex(start).string("  limit: ").hex(limit).string("  value: ").hex(value).newline();
+        log().string("  zap chunk: ").zhex(chunk).string("  start: ").zhex(start).string("  limit: ").zhex(limit).string("  value: ").zhex(value).newline();
         for (Pointer p = start; p.belowThan(limit); p = p.add(FrameAccess.wordSize())) {
             p.writeWord(0, value);
         }
     }
 
     Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Unused:").indent(true);
+        log.string("Unused:").indent(true);
         log.string("aligned: ").signed(bytesInUnusedAlignedChunks.get())
                         .string("/")
                         .signed(bytesInUnusedAlignedChunks.get().unsignedDivide(HeapPolicy.getAlignedHeapChunkSize()));
@@ -271,12 +271,12 @@ final class HeapChunkProvider {
             if (unusedAlignedChunks.get().isNonNull()) {
                 log.newline().string("aligned chunks:").redent(true);
                 for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {
-                    log.newline().hex(aChunk).string(" (").hex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").hex(HeapChunk.getTopPointer(aChunk)).string(")");
+                    log.newline().zhex(aChunk).string(" (").zhex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").zhex(HeapChunk.getTopPointer(aChunk)).string(")");
                 }
                 log.redent(false);
             }
         }
-        log.redent(false).string("]");
+        log.redent(false);
         return log;
     }
 

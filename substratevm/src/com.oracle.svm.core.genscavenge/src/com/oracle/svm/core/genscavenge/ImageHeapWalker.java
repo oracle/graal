@@ -37,7 +37,6 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -132,23 +131,6 @@ public final class ImageHeapWalker {
             }
         } while (current.belowOrEqual(lastPointer));
         return true;
-    }
-
-    static void logPartitionBoundaries(Log log, ImageHeapInfo imageHeapInfo) {
-        log.string("ReadOnly Primitives: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyPrimitiveObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyPrimitiveObject)).newline();
-        log.string("ReadOnly References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject)).newline();
-        log.string("ReadOnly Relocatables: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyRelocatableObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyRelocatableObject)).newline();
-        log.string("Writable Primitives: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritablePrimitiveObject)).newline();
-        log.string("Writable References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject)).newline();
-        log.string("Writable Huge: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableHugeObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritableHugeObject)).newline();
-        log.string("ReadOnly Huge: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyHugeObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyHugeObject));
     }
 }
 

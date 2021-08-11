@@ -62,11 +62,11 @@ final class GreyObjectsWalker {
         space = s;
         AlignedHeapChunk.AlignedHeader aChunk = s.getLastAlignedHeapChunk();
         alignedHeapChunk = aChunk;
-        trace.string("  alignedHeapChunk: ").hex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
+        trace.string("  alignedHeapChunk: ").zhex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
         alignedTop = (aChunk.isNonNull() ? HeapChunk.getTopPointer(aChunk) : WordFactory.nullPointer());
-        trace.string("  alignedTop: ").hex(alignedTop);
+        trace.string("  alignedTop: ").zhex(alignedTop);
         unalignedHeapChunk = s.getLastUnalignedHeapChunk();
-        trace.string("  unalignedChunkPointer: ").hex(unalignedHeapChunk).string("]").newline();
+        trace.string("  unalignedChunkPointer: ").zhex(unalignedHeapChunk).string("]").newline();
     }
 
     /** Compare the snapshot to the current state of the Space to see if there are grey Objects. */
