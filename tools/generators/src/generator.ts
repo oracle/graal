@@ -1720,13 +1720,13 @@ function unionInfoSetter(unionInfo:{typeRef: TypeReferenceNode; enumRef: TypeRef
     }
     if (unionInfo.arrType) {
         text += (hasNull || unionInfo.typeRef ? 'else ' : indent.repeat(baseIndent)) + 'if (' + varName + ' instanceof List) {\n';
-        text += indent.repeat(baseIndent + 1) + 'final JSONArray json = new JSONArray();\n';
+        text += indent.repeat(baseIndent + 1) + 'final JSONArray arr = new JSONArray();\n';
         let elemType: Node = findType(unionInfo.arrType.elementType);
         let elemTypeName: string = getJavaType(elemType);
         text += indent.repeat(baseIndent + 1) + 'for (' + elemTypeName + ' ' + varNameFor(elemTypeName) +  ': (List<' + elemTypeName + '>) ' + varName + ') {\n';
-        text += indent.repeat(baseIndent + 2) + jsonSetter('json', null, varNameFor(elemTypeName), elemType, false) + ';\n';
+        text += indent.repeat(baseIndent + 2) + jsonSetter('arr', null, varNameFor(elemTypeName), elemType, false) + ';\n';
         text += indent.repeat(baseIndent + 1) + '}\n';
-        text += indent.repeat(baseIndent + 1) + jsonSetter(jsonVarName, key, 'json', unionInfo.arrType, false) + ';\n';
+        text += indent.repeat(baseIndent + 1) + jsonSetter(jsonVarName, key, 'arr', unionInfo.arrType, false) + ';\n';
         text += indent.repeat(baseIndent) + '} ';
     }
     if (unionInfo.enumRef) {
