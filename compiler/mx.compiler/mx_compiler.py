@@ -502,6 +502,9 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         'fop':        8,
         'sunflow':    2
     })
+    if isJDK8:
+        mx.warn("Disabling gate for dacapo:tradebeans and dacapo:tradesoap because of assertion error (GR-33115)")
+        dacapo_gate_iterations.update({'tradebeans': -1, 'tradesoap': -1})
     for name, iterations in sorted(dacapo_gate_iterations.items()):
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
