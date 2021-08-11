@@ -39,6 +39,60 @@ For example:
 ./javaapplication -XX:+FlightRecorder -XX:StartFlightRecording="filename=recording.jfr"
 ```
 
+## Run a Demo
+
+Convert this very simple demo application into a native image and see how to use JFR events from it.
+Save the following code to the _Example.java_ file.
+
+```java
+import jdk.jfr.Event;
+import jdk.jfr.Description;
+import jdk.jfr.Label;
+
+public class Example {
+
+  @Label("Hello World")
+  @Description("Helps programmer getting started")
+  static class HelloWorld extends Event {
+      @Label("Message")
+      String message;
+  }
+
+  public static void main(String... args) {
+      HelloWorld event = new HelloWorld();
+      event.message = "hello, world!";
+      event.commit();
+  }
+}
+```
+
+The application consists of a simple class and some JDK library classes.
+It creates an event, labelled with the `@Label` annotation from the `jdk.jfr.*` package.
+If we run that application, it does not print anything, and just runs that event.
+
+1. Compile the Java file:
+  ```shell
+  javac Example.java
+  ```
+
+2. Build the application into a native image with the VM inspection enabled:
+  ```shell
+  native-image -H:+AllowVMInspection Example
+  ```
+  The `-H:+AllowVMInspection` option permits the VM to be inspected during runtime.
+
+3. Run the executable and start recording:
+  ```shell
+  ./example -XX:+FlightRecorder -XX:StartFlightRecording="filename=recording.jfr"
+  ```
+  The `-XX:+FlightRecorder` flag enables the built-in Flight Recorder and starts recording to a specified file. The `recording.jfr` file is a binary.
+
+4. Start VisualVM. Go to **File** > **Add JFR Snapshot**, browse the generated file, _recording.jfr_, and open it.
+
+Once opened, there is a bunch of options you can check: Monitoring, Threads, Exceptions, etc. But you should be mostly interesteed in the events browsing. It will look something like this:
+
+![](/img/generate-sources-maven.png)
+
 ## Configure the Recording
 
 You can pass a comma-separated list of key-value pairs to the `-XX:StartFlightRecording` option to further configure the recording.
