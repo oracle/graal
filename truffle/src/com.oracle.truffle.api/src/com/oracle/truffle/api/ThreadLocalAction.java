@@ -134,7 +134,7 @@ public abstract class ThreadLocalAction {
      * @param hasSideEffects true if the event may have side-effects else false.
      * @param synchronous true if the event should run synchronous else the event will run
      *            asynchronous.
-     * @param continous true if the event should be rescheduled until cancelled, else false.
+     * @param continuous true if the event should be rescheduled until cancelled, else false.
      * @see ThreadLocalAction
      * @since 21.1
      */
