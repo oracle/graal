@@ -238,7 +238,6 @@ public class NativeImage {
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
-    private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageModulePath = new LinkedHashSet<>();
     private final ArrayList<String> customJavaArgs = new ArrayList<>();
     private final ArrayList<String> customImageBuilderArgs = new ArrayList<>();
@@ -564,15 +563,16 @@ public class NativeImage {
 
         @Override
         public List<Path> getImageProvidedClasspath() {
-            return getJars(rootDir.resolve(Paths.get("lib", "svm")));
+            return getImageProvidedJars();
         }
 
         @Override
         public List<Path> getImageProvidedModulePath() {
-            if (USE_NI_JPMS) {
-                return getJars(rootDir.resolve(Paths.get("lib", "svm")));
-            }
-            return Collections.emptyList();
+            return getImageProvidedJars();
+        }
+
+        private List<Path> getImageProvidedJars() {
+            return getJars(rootDir.resolve(Paths.get("lib", "svm")));
         }
 
         @Override
@@ -888,7 +888,6 @@ public class NativeImage {
          */
         addImageBuilderJavaArgs("-Xshare:off");
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
-        config.getImageProvidedClasspath().forEach(this::addImageProvidedClasspath);
 
         if (config.getBuilderInspectServerPath() != null) {
             addPlainImageBuilderArg(oHInspectServerContentPath + config.getBuilderInspectServerPath());
@@ -1218,16 +1217,17 @@ public class NativeImage {
             showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
         }
 
+        LinkedHashSet<Path> finalImageModulePath = new LinkedHashSet<>(imageModulePath);
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
         finalImageClasspath.addAll(imageClasspath);
-        if (!finalImageClasspath.isEmpty()) {
-            finalImageClasspath.addAll(imageProvidedClasspath);
-        }
 
-        LinkedHashSet<Path> finalImageModulePath = new LinkedHashSet<>(imageModulePath);
-        if (!finalImageModulePath.isEmpty()) {
-            finalImageModulePath.addAll(config.getImageProvidedModulePath());
+        List<Path> imageProvidedJars;
+        if (USE_NI_JPMS) {
+            finalImageModulePath.addAll(imageProvidedJars = config.getImageProvidedModulePath());
+        } else {
+            finalImageClasspath.addAll(imageProvidedJars = config.getImageProvidedClasspath());
         }
+        imageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
 
         if (!config.buildFallbackImage() && imageBuilderArgs.contains(oHFallbackThreshold + SubstrateOptions.ForceFallback)) {
             /* Bypass regular build and proceed with fallback image building */
@@ -1405,7 +1405,6 @@ public class NativeImage {
         }
         if (!mp.isEmpty()) {
             List<String> strings = Arrays.asList("--module-path", mp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
-            System.out.println("Using module-path: " + String.join(", ", strings));
             command.addAll(strings);
         }
 
@@ -1547,7 +1546,6 @@ public class NativeImage {
     }
 
     public void addImageBuilderModulePath(Path modulePathEntry) {
-        System.out.println("addImageBuilderModulePath:" + modulePathEntry);
         imageBuilderModulePath.add(canonicalize(modulePathEntry));
     }
 
@@ -1610,20 +1608,6 @@ public class NativeImage {
     }
 
     /**
-     * For adding classpath elements that are only on the classpath in the context of native-image
-     * building. I.e. that are not on the classpath when the application would be run with the java
-     * command. (library-support.jar)
-     */
-    private void addImageProvidedClasspath(Path classpath) {
-        VMError.guarantee(imageClasspath.isEmpty() && customImageClasspath.isEmpty());
-        Path classpathEntry = canonicalize(classpath);
-        if (imageProvidedClasspath.add(classpathEntry)) {
-            processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
-            processClasspathNativeImageMetaInf(classpathEntry);
-        }
-    }
-
-    /**
      * For adding classpath elements that are automatically put on the image-classpath.
      */
     void addImageClasspath(Path classpath) {
@@ -1671,6 +1655,10 @@ public class NativeImage {
             builderModuleNames = modules;
         }
         return builderModuleNames;
+    }
+
+    void addImageModulePath(Path modulePathEntry) {
+        addImageModulePath(modulePathEntry, true);
     }
 
     void addImageModulePath(Path modulePathEntry, boolean strict) {
