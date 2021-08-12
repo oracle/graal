@@ -53,13 +53,13 @@ public class Example {
 
   @Label("Hello World")
   @Description("Helps programmer getting started")
-  static class HelloWorld extends Event {
+  static class HelloWorldEvent extends Event {
       @Label("Message")
       String message;
   }
 
   public static void main(String... args) {
-      HelloWorld event = new HelloWorld();
+      HelloWorldEvent event = new HelloWorldEvent();
       event.message = "hello, world!";
       event.commit();
   }
