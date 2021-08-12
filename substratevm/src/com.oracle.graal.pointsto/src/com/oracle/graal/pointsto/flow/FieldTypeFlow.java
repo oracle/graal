@@ -87,13 +87,13 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     @Override
     protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
         /*
-         * When a field store is saturated conservativelly assume that the field state can contain
+         * When a field store is saturated conservatively assume that the field state can contain
          * any subtype of its declared type.
          */
         getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
     }
 
-    /** The filter flow is used for unsafe writes and initialiazed on demand. */
+    /** The filter flow is used for unsafe writes and initialized on demand. */
     public FieldFilterTypeFlow filterFlow(BigBang bb) {
         assert source.isUnsafeAccessed() : "Filter flow requested for non unsafe accessed field.";
 

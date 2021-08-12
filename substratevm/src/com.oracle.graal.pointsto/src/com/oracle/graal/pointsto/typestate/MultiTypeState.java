@@ -28,10 +28,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 
-import org.graalvm.compiler.options.OptionValues;
-
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -82,7 +79,7 @@ public class MultiTypeState extends TypeState {
         this.merged = false;
         assert typesCount > 1 : "Multi type state with single type.";
         assert objects.length > 1 : "Multi type state with single object.";
-        assert !PointstoOptions.ExtendedAsserts.getValue(bb.getOptions()) || checkObjects(bb.getOptions());
+        assert !bb.extendedAsserts() || checkObjects(bb);
         PointsToStats.registerTypeState(bb, this);
     }
 
@@ -116,8 +113,8 @@ public class MultiTypeState extends TypeState {
         return objectTypeIds;
     }
 
-    private boolean checkObjects(OptionValues options) {
-        assert PointstoOptions.ExtendedAsserts.getValue(options);
+    private boolean checkObjects(BigBang bb) {
+        assert bb.extendedAsserts();
 
         for (int idx = 0; idx < objects.length - 1; idx++) {
             AnalysisObject o0 = objects[idx];
@@ -333,7 +330,7 @@ public class MultiTypeState extends TypeState {
     @Override
     public boolean closeToAllInstantiated(BigBang bb) {
         if (typesCount > 200 && bb != null) {
-            MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypeFlow().getState();
+            MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypes();
             return typesCount * 100L / allInstState.typesCount > 75;
         }
 

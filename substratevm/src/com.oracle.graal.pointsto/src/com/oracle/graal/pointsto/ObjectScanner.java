@@ -246,6 +246,7 @@ public abstract class ObjectScanner {
             return;
         }
         if (!bb.scanningPolicy().scanConstant(bb, value)) {
+            analysisType(bb, valueObj).registerAsInHeap();
             return;
         }
         if (scannedObjects.putAndAcquire(valueObj) == null) {

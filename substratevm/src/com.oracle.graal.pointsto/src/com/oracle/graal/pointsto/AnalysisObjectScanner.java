@@ -61,21 +61,13 @@ public class AnalysisObjectScanner extends ObjectScanner {
         AnalysisType fieldType = bb.getMetaAccess().lookupJavaType(bb.getSnippetReflectionProvider().asObject(Object.class, fieldValue).getClass());
         assert fieldType.isInstantiated() : fieldType;
 
-        /*
-         * *ALL* constants are scanned after each analysis iteration, thus the fieldType will
-         * eventually be added to the AllInstantiatedTypeFlow and the field type flow will
-         * eventually be updated.
-         */
-
-        if (bb.getAllInstantiatedTypeFlow().getState().containsType(fieldType)) {
-            /* Add the constant value object to the field's type flow. */
-            FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
-            AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, fieldValue, fieldType);
-            if (!fieldTypeFlow.getState().containsObject(constantObject)) {
-                /* Add the new constant to the field's flow state. */
-                TypeState constantTypeState = TypeState.forNonNullObject(bb, constantObject);
-                fieldTypeFlow.addState(bb, constantTypeState);
-            }
+        /* Add the constant value object to the field's type flow. */
+        FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
+        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, fieldValue, fieldType);
+        if (!fieldTypeFlow.getState().containsObject(constantObject)) {
+            /* Add the new constant to the field's flow state. */
+            TypeState constantTypeState = TypeState.forNonNullObject(bb, constantObject);
+            fieldTypeFlow.addState(bb, constantTypeState);
         }
     }
 
@@ -107,19 +99,13 @@ public class AnalysisObjectScanner extends ObjectScanner {
 
     @Override
     public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex) {
-        /*
-         * *ALL* constants are scanned after each analysis iteration, thus the elementType will
-         * eventually be added to the AllInstantiatedTypeFlow and the array elements flow will
-         * eventually be updated.
-         */
-        if (bb.getAllInstantiatedTypeFlow().getState().containsType(elementType)) {
-            ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
-            AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, elementConstant, elementType);
-            if (!arrayObjElementsFlow.getState().containsObject(constantObject)) {
-                /* Add the constant element to the constant's array type flow. */
-                TypeState elementTypeState = TypeState.forNonNullObject(bb, constantObject);
-                arrayObjElementsFlow.addState(bb, elementTypeState);
-            }
+        assert elementType.isInstantiated() : elementType;
+        ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
+        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, elementConstant, elementType);
+        if (!arrayObjElementsFlow.getState().containsObject(constantObject)) {
+            /* Add the constant element to the constant's array type flow. */
+            TypeState elementTypeState = TypeState.forNonNullObject(bb, constantObject);
+            arrayObjElementsFlow.addState(bb, elementTypeState);
         }
     }
 

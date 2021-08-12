@@ -108,6 +108,7 @@ public abstract class BigBang {
 
     protected final boolean trackTypeFlowInputs;
     protected final boolean reportAnalysisStatistics;
+    protected final boolean extendedAsserts;
 
     /**
      * Processing queue.
@@ -160,6 +161,7 @@ public abstract class BigBang {
         if (reportAnalysisStatistics) {
             PointsToStats.init(this);
         }
+        extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
 
         unsafeLoads = new ConcurrentHashMap<>();
         unsafeStores = new ConcurrentHashMap<>();
@@ -192,6 +194,10 @@ public abstract class BigBang {
 
     public boolean reportAnalysisStatistics() {
         return reportAnalysisStatistics;
+    }
+
+    public boolean extendedAsserts() {
+        return extendedAsserts;
     }
 
     public OptionValues getOptions() {
@@ -358,6 +364,10 @@ public abstract class BigBang {
         return objectType.getTypeFlow(this, true);
     }
 
+    public TypeState getAllInstantiatedTypes() {
+        return getAllInstantiatedTypeFlow().getState();
+    }
+
     public TypeFlow<?> getAllSynchronizedTypeFlow() {
         return allSynchronizedTypeFlow;
     }
@@ -369,7 +379,7 @@ public abstract class BigBang {
          * monitors.
          */
         if (allSynchronizedTypeFlow.isSaturated()) {
-            return getAllInstantiatedTypeFlow().getState();
+            return getAllInstantiatedTypes();
         }
         return allSynchronizedTypeFlow.getState();
     }
@@ -627,7 +637,6 @@ public abstract class BigBang {
         } else {
             objectScanner.scanBootImageHeapRoots(null, null);
         }
-        AnalysisType.updateAssignableTypes(this);
     }
 
     public HeapScanningPolicy scanningPolicy() {
@@ -821,7 +830,7 @@ public abstract class BigBang {
 
         @Override
         public void print() {
-            System.out.format("%5d %5d %5d  |", numParsedGraphs.get(), getAllInstantiatedTypeFlow().getState().typesCount(), universe.getNextTypeId());
+            System.out.format("%5d %5d %5d  |", numParsedGraphs.get(), getAllInstantiatedTypes().typesCount(), universe.getNextTypeId());
             super.print();
             System.out.println();
         }
