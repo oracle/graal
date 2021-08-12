@@ -271,14 +271,14 @@ final class SafepointStackSampler {
             if (useSyntheticFrames) {
                 SyntheticFrame syntheticFrame = syntheticFrameThreadLocal.get();
                 if (syntheticFrame != null) {
-                    assert !completed.contains(access.getThread());
+                    assert !completed.containsKey(access.getThread());
                     completed.put(access.getThread(), syntheticFrame);
                     return;
                 }
             }
             StackVisitor visitor = fetchStackVisitor();
             visitor.iterateFrames();
-            assert !completed.contains(access.getThread());
+            assert !completed.containsKey(access.getThread());
             completed.put(access.getThread(), visitor);
         }
 
