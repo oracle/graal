@@ -79,7 +79,7 @@ If we run that application, it does not print anything and just runs that event.
   ```shell
   native-image -H:+AllowVMInspection Example
   ```
-  The `-H:+AllowVMInspection` option permits the VM to be inspected during runtime.
+  The `-H:+AllowVMInspection` option enables optional features such as JFR that can be used to inspect the VM.
 
 3. Run the executable and start recording:
   ```shell
@@ -91,7 +91,7 @@ If we run that application, it does not print anything and just runs that event.
 
 Once opened, there is a bunch of options you can check: Monitoring, Threads, Exceptions, etc., but you should be mostly interested in the events browsing. It will look something like this:
 
-![](/img/generate-sources-maven.png)
+![](/img/jfr.png)
 
 In the follow-up sections learn how to further confgure the recording or enable logging.
 
