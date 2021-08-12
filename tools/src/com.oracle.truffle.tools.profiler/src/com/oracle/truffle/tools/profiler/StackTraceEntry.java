@@ -315,4 +315,18 @@ public final class StackTraceEntry {
         return "StackLocation [rootName=" + rootName + ", tags=" + tags + ", sourceSection=" + sourceSection + s + "]";
     }
 
+    int tier() {
+        switch (state) {
+            case STATE_INTERPRETED:
+                return 0;
+            case STATE_FIRST_TIER_COMPILATION_ROOT:
+            case STATE_FIRST_TIER_COMPILED:
+                return 1;
+            case STATE_LAST_TIER_COMPILATION_ROOT:
+            case STATE_LAST_TIER_COMPILED:
+                return 2;
+            default:
+                return -1;
+        }
+    }
 }

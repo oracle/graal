@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.profiler;
 
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,16 +38,17 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
@@ -99,6 +101,8 @@ public final class CPUSampler implements Closeable {
             destinationPayload.selfInterpretedHitCount = sourcePayload.selfInterpretedHitCount;
             destinationPayload.compiledHitCount = sourcePayload.compiledHitCount;
             destinationPayload.interpretedHitCount = sourcePayload.interpretedHitCount;
+            destinationPayload.selfTierCount = Arrays.copyOf(sourcePayload.selfTierCount, sourcePayload.selfTierCount.length);
+            destinationPayload.tierCount = Arrays.copyOf(sourcePayload.tierCount, sourcePayload.tierCount.length);
             for (Long timestamp : sourcePayload.getSelfHitTimes()) {
                 destinationPayload.addSelfHitTime(timestamp);
             }
@@ -601,9 +605,11 @@ public final class CPUSampler implements Closeable {
         final List<Long> selfHitTimes = new ArrayList<>();
         int compiledHitCount;
         int interpretedHitCount;
+        int[] tierCount = new int[3];
 
         int selfCompiledHitCount;
         int selfInterpretedHitCount;
+        int[] selfTierCount = new int[3];
 
         Payload() {
         }
@@ -672,6 +678,20 @@ public final class CPUSampler implements Closeable {
         void addSelfHitTime(Long time) {
             selfHitTimes.add(time);
         }
+
+        /**
+         * TODO
+         */
+        public int[] getTierCount() {
+            return Arrays.copyOf(tierCount, tierCount.length);
+        }
+
+        /**
+         * TODO
+         */
+        public int[] getSelfTierCount() {
+            return Arrays.copyOf(selfTierCount, selfTierCount.length);
+        }
     }
 
     private class SamplingTimerTask extends TimerTask {
@@ -717,25 +737,37 @@ public final class CPUSampler implements Closeable {
                 StackTraceEntry location = sample.stack.get(i);
                 treeNode = addOrUpdateChild(treeNode, location);
                 Payload payload = treeNode.getPayload();
-                boolean isCompiled = location.isCompiled();
-                if (i == 0) {
-                    if (isCompiled) {
-                        payload.selfCompiledHitCount++;
-                    } else {
-                        payload.selfInterpretedHitCount++;
-                    }
-                    if (gatherSelfHitTimes) {
-                        payload.selfHitTimes.add(timestamp);
-                        assert payload.selfHitTimes.size() == payload.getSelfHitCount();
-                    }
-                }
-                if (isCompiled) {
-                    payload.compiledHitCount++;
-                } else {
-                    payload.interpretedHitCount++;
-                }
+                recordCompilationInfo(location, payload, i == 0, timestamp);
             }
             mutableSamplerData.samplesTaken.incrementAndGet();
+        }
+
+        private void recordCompilationInfo(StackTraceEntry location, Payload payload, boolean topOfStack, long timestamp) {
+            boolean isCompiled = location.isCompiled();
+            if (topOfStack) {
+                if (isCompiled) {
+                    payload.selfCompiledHitCount++;
+                } else {
+                    payload.selfInterpretedHitCount++;
+                }
+                if (gatherSelfHitTimes) {
+                    payload.selfHitTimes.add(timestamp);
+                    assert payload.selfHitTimes.size() == payload.getSelfHitCount();
+                }
+                if (payload.selfTierCount.length < location.tier() + 1) {
+                    payload.selfTierCount = Arrays.copyOf(payload.selfTierCount, payload.selfTierCount.length + 1);
+                }
+                payload.selfTierCount[location.tier()]++;
+            }
+            if (isCompiled) {
+                payload.compiledHitCount++;
+            } else {
+                payload.interpretedHitCount++;
+            }
+            if (payload.tierCount.length < location.tier() + 1) {
+                payload.tierCount = Arrays.copyOf(payload.tierCount, payload.tierCount.length + 1);
+            }
+            payload.tierCount[location.tier()]++;
         }
 
         private ProfilerNode<Payload> addOrUpdateChild(ProfilerNode<Payload> treeNode, StackTraceEntry location) {
