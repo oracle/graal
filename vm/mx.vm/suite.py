@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
     "version" : "21.3.0",
-    "mxversion" : "5.305.4",
+    "mxversion" : "5.307.0",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -118,6 +118,32 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
         },
+        "org.graalvm.polybench.micro" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "1.8+",
+            "license" : "GPLv2-CPE",
+            "checkstyle": "org.graalvm.component.installer",
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+        },
+        "nfi-native" : {
+            "subDir" : "benchmarks",
+            "native" : "shared_lib",
+            "deliverable" : "microbench",
+            "buildDependencies" : [
+                "truffle:TRUFFLE_NFI_GRAALVM_SUPPORT",
+            ],
+            "cflags" : [
+                "-I<path:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT>/include",
+            ],
+            "testProject" : True,
+            "defaultBuild": False,
+        },
     },
 
     "libraries" : {
@@ -186,6 +212,23 @@ suite = {
             ],
             "maven" : False,
         },
+        "PMH": {
+            "subDir": "src",
+            "dependencies": [
+                "org.graalvm.polybench.micro",
+            ],
+            "distDependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : False,
+        },
+        "PMH_SUPPORT": {
+            "native": True,
+            "layout": {
+                "native-image.properties": "file:mx.vm/language-pmh.properties",
+            },
+            "maven": False,
+        },
         "POLYBENCH_BENCHMARKS": {
             "native": True,
             "description": "Distribution for polybench benchmarks",
@@ -209,7 +252,13 @@ suite = {
                     # "file:benchmarks/warmup/*.rb",
                     # "file:benchmarks/warmup/*.py",
                     "extracted-dependency:WARMUP_BENCHMARKS/*"
-                ]
+                ],
+                "./nfi/": [
+                    "file:benchmarks/nfi/*.pmh",
+                ],
+                "./nfi-native/": [
+                    "dependency:nfi-native",
+                ],
             },
             "defaultBuild": False,
         },

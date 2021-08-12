@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.polybench;
 
+import org.graalvm.polyglot.Value;
+
 import java.util.Optional;
 
 class PeakTimeMetric implements Metric {
@@ -32,8 +34,37 @@ class PeakTimeMetric implements Metric {
     long totalTime;
     int totalIterations;
 
+    int batchSize;
+    Unit unit;
+
+    private enum Unit {
+        ns(1.0),
+        us(1_000.0),
+        ms(1_000_000.0),
+        s(1_000_000_000.0);
+
+        private final double factor;
+
+        Unit(double factor) {
+            this.factor = factor;
+        }
+    }
+
     PeakTimeMetric() {
         this.totalTime = 0L;
+        this.batchSize = 1;
+        this.unit = Unit.ms;
+    }
+
+    @Override
+    public void parseBenchSpecificOptions(Value runner) {
+        if (runner.hasMember("batchSize")) {
+            batchSize = runner.getMember("batchSize").asInt();
+        }
+        if (runner.hasMember("unit")) {
+            String u = runner.getMember("unit").asString();
+            unit = Unit.valueOf(u);
+        }
     }
 
     @Override
@@ -59,17 +90,17 @@ class PeakTimeMetric implements Metric {
 
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
-        return Optional.of((endTime - startTime) / 1_000_000.0);
+        return Optional.of((endTime - startTime) / (unit.factor * batchSize));
     }
 
     @Override
     public Optional<Double> reportAfterAll() {
-        return Optional.of(1.0 * totalTime / totalIterations / 1_000_000.0);
+        return Optional.of(totalTime / (totalIterations * unit.factor * batchSize));
     }
 
     @Override
     public String unit() {
-        return "ms";
+        return unit.name();
     }
 
     @Override

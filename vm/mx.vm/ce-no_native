@@ -2,4 +2,4 @@ DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-js
 DISABLE_INSTALLABLES=ni,nil
 FORCE_BASH_LAUNCHERS=true
 SKIP_LIBRARIES=true
-EXCLUDE_COMPONENTS=nju,nic,llp,lg,dis,pbm,llmulrl
+EXCLUDE_COMPONENTS=nju,nic,llp,lg,dis,pbm,pmh,llmulrl
