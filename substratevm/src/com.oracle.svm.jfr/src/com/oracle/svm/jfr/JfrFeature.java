@@ -31,10 +31,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.util.VMError;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -105,8 +103,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @AutomaticFeature
 public class JfrFeature implements Feature {
-
-    private final ConcurrentHashMap<Class, Boolean> fieldRegistration = new ConcurrentHashMap<>();
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -181,24 +177,19 @@ public class JfrFeature implements Feature {
         if (eventClass != null && access.isReachable(eventClass)) {
             Set<Class<?>> s = access.reachableSubtypes(eventClass);
             for (Class<?> c : s) {
+                // Use canonical name for package private AbstractJDKEvent
                 if (c.getCanonicalName().equals("jdk.jfr.Event")
                         || c.getCanonicalName().equals("jdk.internal.event.Event")
                         || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent")) {
                     continue;
                 }
-                fieldRegistration.computeIfAbsent(c, this::registerEventHandler);
-
+                try {
+                    Field f = c.getDeclaredField("eventHandler");
+                    RuntimeReflection.register(f);
+                } catch (Exception e) {
+                    throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
+                }
             }
         }
-    }
-
-    private boolean registerEventHandler(Class c) {
-        try {
-            Field f = c.getDeclaredField("eventHandler");
-            RuntimeReflection.register(f);
-        } catch (Exception e) {
-            throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
-        }
-        return Boolean.TRUE;
     }
 }
