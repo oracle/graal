@@ -373,7 +373,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     @SuppressWarnings("deprecation")
     boolean finalizeContext(boolean cancelOperation, boolean notifyInstruments) {
-        lazy.operationLock.lock();
+        ReentrantLock lock = lazy.operationLock;
+        lock.lock();
         try {
             if (!initialized) {
                 return false;
@@ -407,7 +408,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 return true;
             }
         } finally {
-            lazy.operationLock.unlock();
+            lock.unlock();
         }
         return false;
     }
@@ -642,7 +643,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
 
         boolean initialize = false;
-        lazy.operationLock.lock();
+        ReentrantLock lock = lazy.operationLock;
+        lock.lock();
         try {
             initialize = !initialized;
             if (initialize) {
@@ -677,7 +679,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 }
             }
         } finally {
-            lazy.operationLock.unlock();
+            lock.unlock();
         }
 
         synchronized (context) {
