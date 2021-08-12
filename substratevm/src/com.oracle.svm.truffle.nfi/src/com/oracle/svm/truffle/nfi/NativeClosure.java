@@ -58,6 +58,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.truffle.nfi.LibFFI.ClosureData;
 import com.oracle.svm.truffle.nfi.LibFFI.NativeClosureHandle;
+import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_arg;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
@@ -104,6 +105,18 @@ final class NativeClosure {
         ClosureData data = ffi_closure_alloc(SizeOf.unsigned(ClosureData.class), codePtr);
         data.setNativeClosureHandle(handle);
         data.setIsolate(CurrentIsolate.getIsolate());
+
+        int envArgIdx = -1;
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_CachedTypeInfo[] argTypes = signature.signatureInfo.getArgTypes();
+        for (int i = 0; i < argTypes.length; i++) {
+            Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_CachedTypeInfo type = argTypes[i];
+            if (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType_EnvType.class.isInstance(type)) {
+                envArgIdx = i;
+                break;
+            }
+        }
+
+        data.setEnvArgIdx(envArgIdx);
 
         PointerBase code = codePtr.read();
         LibFFI.ffi_prep_closure_loc(data.ffiClosure(), WordFactory.pointer(signature.cif), callback, data, code);
@@ -191,7 +204,15 @@ final class NativeClosure {
     static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = CErrorNumber.getCErrorNumber();
-        CEntryPointActions.enterIsolate(user.isolate());
+
+        if (user.envArgIdx() >= 0) {
+            WordPointer envArgPtr = args.read(user.envArgIdx());
+            NativeTruffleEnv env = envArgPtr.read();
+            CEntryPointActions.enter(env.isolateThread());
+        } else {
+            CEntryPointActions.enterIsolate(user.isolate());
+        }
+
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
@@ -235,7 +256,15 @@ final class NativeClosure {
     static void invokeClosureVoidRet(@SuppressWarnings("unused") ffi_cif cif, @SuppressWarnings("unused") WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = CErrorNumber.getCErrorNumber();
-        CEntryPointActions.enterIsolate(user.isolate());
+
+        if (user.envArgIdx() >= 0) {
+            WordPointer envArgPtr = args.read(user.envArgIdx());
+            NativeTruffleEnv env = envArgPtr.read();
+            CEntryPointActions.enter(env.isolateThread());
+        } else {
+            CEntryPointActions.enterIsolate(user.isolate());
+        }
+
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
@@ -260,7 +289,15 @@ final class NativeClosure {
     static void invokeClosureStringRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = CErrorNumber.getCErrorNumber();
-        CEntryPointActions.enterIsolate(user.isolate());
+
+        if (user.envArgIdx() >= 0) {
+            WordPointer envArgPtr = args.read(user.envArgIdx());
+            NativeTruffleEnv env = envArgPtr.read();
+            CEntryPointActions.enter(env.isolateThread());
+        } else {
+            CEntryPointActions.enterIsolate(user.isolate());
+        }
+
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
@@ -286,7 +323,15 @@ final class NativeClosure {
     static void invokeClosureObjectRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = CErrorNumber.getCErrorNumber();
-        CEntryPointActions.enterIsolate(user.isolate());
+
+        if (user.envArgIdx() >= 0) {
+            WordPointer envArgPtr = args.read(user.envArgIdx());
+            NativeTruffleEnv env = envArgPtr.read();
+            CEntryPointActions.enter(env.isolateThread());
+        } else {
+            CEntryPointActions.enterIsolate(user.isolate());
+        }
+
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
