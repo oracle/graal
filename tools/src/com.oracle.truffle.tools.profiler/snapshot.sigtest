@@ -168,7 +168,6 @@ supr java.lang.Object
 hfds children,parent,payload,sourceLocation
 
 CLSS public final com.oracle.truffle.tools.profiler.StackTraceEntry
-cons public init(java.lang.String)
 meth public boolean equals(java.lang.Object)
 meth public boolean isCompiled()
 meth public boolean isInlined()
