@@ -408,8 +408,13 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
+    @Substitution
+    public static void clearInterruptEvent() {
+        Thread.interrupted(); // Clear host interruption
+    }
+
     @TruffleBoundary
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java13OrEarlier.class)
     public static boolean isInterrupted(@JavaType(Thread.class) StaticObject self, boolean clear) {
         boolean result = checkInterrupt(self);
         if (clear) {
@@ -618,7 +623,7 @@ public final class Target_java_lang_Thread {
             }
         }
         if (wasInterrupted) {
-            interrupt0(meta.getContext().getCurrentThread());
+            meta.getContext().interruptThread(meta.getContext().getCurrentThread());
         }
     }
 }

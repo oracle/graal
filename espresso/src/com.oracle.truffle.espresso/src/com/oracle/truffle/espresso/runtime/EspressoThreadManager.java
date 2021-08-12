@@ -35,16 +35,21 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.VM;
 
 class EspressoThreadManager implements ContextAccess {
+    private static final int DEFAULT_THREAD_ARRAY_SIZE = 8;
 
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoThreadManager.class);
-
     private final EspressoContext context;
+
+    private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Object activeThreadLock = new Object() {
+    };
 
     @Override
     public EspressoContext getContext() {
@@ -54,13 +59,6 @@ class EspressoThreadManager implements ContextAccess {
     EspressoThreadManager(EspressoContext context) {
         this.context = context;
     }
-
-    private static final int DEFAULT_THREAD_ARRAY_SIZE = 8;
-
-    private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-    private final Object activeThreadLock = new Object() {
-    };
 
     /**
      * Contains a mapping from host thread ID to guest thread object. The object at index 0 is an
@@ -410,5 +408,12 @@ class EspressoThreadManager implements ContextAccess {
     // Thread management helpers
     private static int getThreadIndex(int id, Object[] threads) {
         return id - (int) threads[0];
+    }
+
+    public void interruptThread(StaticObject guestThread) {
+        assert guestThread != null && getMeta().java_lang_Thread.isAssignableFrom(guestThread.getKlass());
+        Method interruptMethod = guestThread.getKlass().vtableLookup(getMeta().java_lang_Thread_interrupt.getVTableIndex());
+        assert interruptMethod != null;
+        interruptMethod.invokeDirect(guestThread);
     }
 }

@@ -827,6 +827,10 @@ public final class EspressoContext {
         }
     }
 
+    public void interruptThread(StaticObject guestThread) {
+        threadManager.interruptThread(guestThread);
+    }
+
     public void invalidateNoThreadStop(String message) {
         noThreadDeprecationCalled.invalidate();
         noThreadStop.invalidate(message);

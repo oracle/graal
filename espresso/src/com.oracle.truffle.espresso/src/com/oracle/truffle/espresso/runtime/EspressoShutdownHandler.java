@@ -267,7 +267,7 @@ class EspressoShutdownHandler implements ContextAccess {
                 if (t.isDaemon()) {
                     Target_java_lang_Thread.killThread(guest);
                 }
-                Target_java_lang_Thread.interrupt0(guest);
+                threadManager.interruptThread(guest);
             }
         }
     }
@@ -281,7 +281,7 @@ class EspressoShutdownHandler implements ContextAccess {
             Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
             if (t.isAlive() && t != initiatingThread) {
                 Target_java_lang_Thread.killThread(guest);
-                Target_java_lang_Thread.interrupt0(guest);
+                threadManager.interruptThread(guest);
             }
         }
     }
@@ -301,7 +301,7 @@ class EspressoShutdownHandler implements ContextAccess {
                  * all polyglot threads but should have.
                  */
                 Target_java_lang_Thread.forceKillThread(guest);
-                Target_java_lang_Thread.interrupt0(guest);
+                threadManager.interruptThread(guest);
             }
         }
     }
