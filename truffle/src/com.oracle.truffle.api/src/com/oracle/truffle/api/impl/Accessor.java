@@ -995,14 +995,15 @@ public abstract class Accessor {
         public abstract void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason);
 
         /**
-         * Transfers state from the {@code source} frame into the {@code target} frame. The frames
-         * must have the same layout as the frame passed when executing the {@code osrNode}.
+         * Transfers state from the {@code source} frame into the {@code target} frame. This method
+         * should only be used inside OSR code. The frames must have the same layout as the frame
+         * passed when executing the {@code osrNode}.
          *
          * @param osrNode the node being on-stack replaced.
          * @param source the frame to transfer state from
          * @param target the frame to transfer state into
          */
-        public abstract void doOSRFrameTransfer(BytecodeOSRNode osrNode, Frame source, Frame target);
+        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target);
 
         /**
          * Returns the compiler options specified available from the runtime.

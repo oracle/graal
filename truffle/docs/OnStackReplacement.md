@@ -131,9 +131,8 @@ The `BytecodeOSRNode` interface also contains a few hook methods whose default i
 
 - `copyIntoOSRFrame(osrFrame, parentFrame, target)` and `restoreParentFrame(osrFrame, parentFrame)`: Reusing the interpreted `Frame` inside OSR code is not optimal, because it escapes the OSR call target and prevents scalar replacement (for background on scalar replacement, see [this paper](https://dl.acm.org/doi/10.1145/2581122.2544157)).
 When possible, Truffle will use `copyIntoOSRFrame` to copy the interpreted state (`parentFrame`) into the OSR `Frame` (`osrFrame`), and `restoreParentFrame` to copy state back into the parent `Frame` afterwards.
-By default, `copyIntoOSRFrame` copies every slot of the `parentFrame` into the `osrFrame`, but this can be overridden for finer control (e.g., to only copy over live variables).
-By default, `restoreParentFrame` does nothing, since the interpreted code often doesn't need its `Frame` once OSR returns.
-These methods should be written carefully to support scalar replacement; the `BytecodeOSRNode.doOSRFrameTransfer(osrNode, source, target)` helper method can be used to perform a slot-wise copy.
+By default, both hooks copy each slot between the source and destination frames, but this can be overridden for finer control (e.g., to only copy over live variables).
+These methods should be written carefully to support scalar replacement; the `BytecodeOSRNode.transfer(osrNode, source, target)` helper method can be used to perform a slot-wise copy.
 - `prepareOSR()`: This hook gets called before compiling an OSR target.
 It can be used to force any initialization to happen before compilation.
 For example, if a field can only be initialized in the interpreter, `prepareOSR()` can ensure it is initialized, so that OSR code does not deoptimize when trying to access it.

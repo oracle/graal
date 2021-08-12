@@ -61,10 +61,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * <p>
  * For performance reasons, the parent frame may be copied into a new frame used for OSR. If this
  * happens, {@link BytecodeOSRNode#copyIntoOSRFrame} is used to perform the copy, and
- * {@link BytecodeOSRNode#restoreParentFrame} is used to (optionally) copy the OSR frame contents
- * back into the parent frame after OSR. A node may override these methods; by default,
- * {@link BytecodeOSRNode#copyIntoOSRFrame} performs a slot-wise copy and
- * {@link BytecodeOSRNode#restoreParentFrame} does nothing.
+ * {@link BytecodeOSRNode#restoreParentFrame} is used to copy the OSR frame contents back into the
+ * parent frame after OSR. A node may override these methods; by default, they perform slot-wise
+ * copies.
  *
  * <p>
  * A node may also wish to override {@link BytecodeOSRNode#prepareOSR} to perform initialization.
@@ -152,12 +151,16 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-        doOSRFrameTransfer(this, parentFrame, osrFrame);
+        transferFrame(this, parentFrame, osrFrame);
     }
 
     /**
      * Restores the contents of the {@code osrFrame} back into the {@code parentFrame} after OSR. By
-     * default, does nothing (because the parent frame is usually not needed after OSR).
+     * default, performs a slot-wise copy of the frame.
+     *
+     * Though a bytecode interpreter might not explicitly use {@code parentFrame} after OSR, it is
+     * necessary to restore the state into {@code parentFrame} if it may be accessed through
+     * instrumentation.
      *
      * <p>
      * NOTE: This method is only used if the Truffle runtime decided to copy the frame using
@@ -168,12 +171,12 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     default void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-        // do nothing
+        transferFrame(this, osrFrame, parentFrame);
     }
 
     /**
-     * Optional hook which will be invoked before OSR compilation. This hook can be used to perform
-     * any necessary initialization before compilation happens.
+     * Initialization hook which will be invoked before OSR compilation. This hook can be used to
+     * perform any necessary initialization before compilation happens.
      *
      * <p>
      * For example, consider a field which must be initialized in the interpreter:
@@ -226,7 +229,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * have the same layout as the frame used to execute the {@code osrNode}.
      * <p>
      * This helper can be used when implementing {@link BytecodeOSRNode#copyIntoOSRFrame} and
-     * {@link BytecodeOSRNode#restoreParentFrame(VirtualFrame, VirtualFrame)}.
+     * {@link BytecodeOSRNode#restoreParentFrame}.
      *
      * @param osrNode the node being on-stack replaced.
      * @param source the frame to transfer state from.
@@ -237,7 +240,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      *             {@link com.oracle.truffle.api.frame.FrameDescriptor#setFrameSlotKind}.
      * @since 21.3
      */
-    static void doOSRFrameTransfer(BytecodeOSRNode osrNode, Frame source, Frame target) {
-        NodeAccessor.RUNTIME.doOSRFrameTransfer(osrNode, source, target);
+    static void transferFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
+        NodeAccessor.RUNTIME.transferOSRFrame(osrNode, source, target);
     }
 }

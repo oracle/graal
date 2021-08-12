@@ -314,14 +314,30 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
-     * Test that the frame transfer helper works even if a tag does not match the frame slot kind.
-     *
-     * Updating the tag will trigger deopt, but OSR should retry after it is updated.
+     * Test that the frame transfer helper works even if a tag changes inside the OSR code. When
+     * restoring the frame, we should detect the tag difference and deoptimize.
      */
     @Test
     public void testFrameTransferWithTagUpdate() {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         RootNode rootNode = new Program(new FrameTransferringNodeWithTagUpdate(frameDescriptor), frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        Assert.assertEquals(42, target.call());
+    }
+
+    /*
+     * Test that frame transferring works (without deoptimizing) for a frame with uninitialized
+     * slots. An uninitialized slot's tag may differ from the declared tag (since slots are given a
+     * default value), but the tag speculation should not deoptimize because of this difference.
+     *
+     * (Concretely, this means we should speculate on a Frame's concrete tags instead of its
+     * declared tags)
+     */
+    @Test
+    public void testFrameTransferWithUninitializedSlots() {
+        // use a non-null default value to make sure it gets copied properly.
+        FrameDescriptor frameDescriptor = new FrameDescriptor(new Object());
+        RootNode rootNode = new Program(new FrameTransferringNodeWithUninitializedSlots(frameDescriptor), frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(42, target.call());
     }
@@ -679,6 +695,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+            super.restoreParentFrame(osrFrame, parentFrame);
             frameWasCopied = true;
         }
     }
@@ -871,12 +888,23 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         public Object executeOSR(VirtualFrame osrFrame, int target) {
-            return executeLoop(osrFrame);
+            checkRegularFrame(osrFrame);
+            setOSRFrame(osrFrame);
+            return 42;
+        }
+
+        @Override
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+            BytecodeOSRNode.transferFrame(this, parentFrame, osrFrame);
+            // Copying should not trigger a deopt.
+            Assert.assertTrue(CompilerDirectives.inCompiledCode());
         }
 
         @Override
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-            BytecodeOSRNode.doOSRFrameTransfer(this, osrFrame, parentFrame);
+            BytecodeOSRNode.transferFrame(this, osrFrame, parentFrame);
+            // Copying should not trigger a deopt.
+            Assert.assertTrue(CompilerDirectives.inCompiledCode());
         }
 
         @Override
@@ -889,11 +917,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public Object executeLoop(VirtualFrame frame) {
             // This node only terminates in compiled code.
             while (true) {
-                if (CompilerDirectives.inCompiledCode()) {
-                    checkRegularFrame(frame);
-                    setOSRFrame(frame);
-                    return 42;
-                }
                 Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
                 if (result != null) {
                     checkOSRFrame(frame);
@@ -964,21 +987,86 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
+        public void setOSRFrame(VirtualFrame frame) {
+            super.setOSRFrame(frame);
+            frame.setObject(intSlot, o2);
+        }
+
+        @Override
+        public void checkOSRFrame(VirtualFrame frame) {
+            try {
+                Assert.assertFalse(frame.getBoolean(booleanSlot));
+                Assert.assertEquals(Byte.MAX_VALUE, frame.getByte(byteSlot));
+                checkDoubleExact(Double.MAX_VALUE, frame.getDouble(doubleSlot));
+                checkDoubleExact(Float.MAX_VALUE, frame.getFloat(floatSlot));
+                Assert.assertEquals(o2, frame.getObject(intSlot));
+                Assert.assertEquals(Long.MAX_VALUE, frame.getLong(longSlot));
+                Assert.assertEquals(o2, frame.getObject(objectSlot));
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        @Override
+        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+            BytecodeOSRNode.transferFrame(this, osrFrame, parentFrame);
+            // Since the intSlot tag changed inside the compiled code, the tag speculation should
+            // fail and cause a deopt.
+            Assert.assertFalse(CompilerDirectives.inCompiledCode());
+        }
+    }
+
+    public static class FrameTransferringNodeWithUninitializedSlots extends FrameTransferringNode {
+        final Object defaultValue;
+
+        public FrameTransferringNodeWithUninitializedSlots(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+            defaultValue = frameDescriptor.getDefaultValue();
+        }
+
+        @Override
         public void setRegularFrame(VirtualFrame frame) {
-            super.setRegularFrame(frame);
-            frame.setObject(intSlot, o1);
+            frame.setBoolean(booleanSlot, true);
+            // everything else is uninitialized
         }
 
         @Override
         public void checkRegularFrame(VirtualFrame frame) {
             try {
                 Assert.assertTrue(frame.getBoolean(booleanSlot));
-                Assert.assertEquals(Byte.MIN_VALUE, frame.getByte(byteSlot));
-                checkDoubleExact(Double.MIN_VALUE, frame.getDouble(doubleSlot));
-                checkDoubleExact(Float.MIN_VALUE, frame.getFloat(floatSlot));
-                Assert.assertEquals(o1, frame.getObject(intSlot));
-                Assert.assertEquals(Long.MIN_VALUE, frame.getLong(longSlot));
-                Assert.assertEquals(o1, frame.getObject(objectSlot));
+                // these slots are uninitialized
+                Assert.assertEquals(defaultValue, frame.getObject(byteSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(byteSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(doubleSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(floatSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(intSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(longSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(objectSlot));
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        @Override
+        public void setOSRFrame(VirtualFrame frame) {
+            frame.setBoolean(booleanSlot, false);
+            // everything else is uninitialized
+        }
+
+        @Override
+        public void checkOSRFrame(VirtualFrame frame) {
+            try {
+                Assert.assertFalse(frame.getBoolean(booleanSlot));
+                // these slots are uninitialized
+                Assert.assertEquals(defaultValue, frame.getObject(byteSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(byteSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(doubleSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(floatSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(intSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(longSlot));
+                Assert.assertEquals(defaultValue, frame.getObject(objectSlot));
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
@@ -1001,18 +1089,13 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
             changeFrame(osrFrame.getFrameDescriptor()); // only changes the first time
-            BytecodeOSRNode.doOSRFrameTransfer(this, parentFrame, osrFrame);
+            BytecodeOSRNode.transferFrame(this, parentFrame, osrFrame);
         }
 
         @Override
         public Object executeOSR(VirtualFrame osrFrame, int target) {
             osrCount += 1;
             return executeLoop(osrFrame);
-        }
-
-        @Override
-        public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-            BytecodeOSRNode.doOSRFrameTransfer(this, osrFrame, parentFrame);
         }
 
         @TruffleBoundary

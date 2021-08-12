@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
@@ -83,8 +84,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         if (!(osrNode instanceof Node)) {
             throw new IllegalArgumentException("Bytecode OSR node must be of type Node.");
         }
-
         Node node = (Node) osrNode;
+        TruffleSafepoint.poll(node);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) {
             osrMetadata = node.atomic(() -> { // double checked locking
@@ -122,9 +123,9 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void doOSRFrameTransfer(BytecodeOSRNode osrNode, Frame source, Frame target) {
+    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        osrMetadata.executeTransfer((FrameWithoutBoxing) source, (FrameWithoutBoxing) target);
+        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target);
     }
 
     @Override

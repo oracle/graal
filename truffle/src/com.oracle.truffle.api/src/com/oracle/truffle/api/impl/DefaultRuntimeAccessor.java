@@ -97,7 +97,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void doOSRFrameTransfer(BytecodeOSRNode osrNode, Frame source, Frame target) {
+        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
             throw new UnsupportedOperationException();
         }
 

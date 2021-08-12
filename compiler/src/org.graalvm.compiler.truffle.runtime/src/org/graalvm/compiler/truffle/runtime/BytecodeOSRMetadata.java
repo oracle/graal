@@ -203,7 +203,7 @@ public final class BytecodeOSRMetadata {
      * out of) an OSR frame.
      */
     @ExplodeLoop
-    public void executeTransfer(FrameWithoutBoxing source, FrameWithoutBoxing target) {
+    public void transferFrame(FrameWithoutBoxing source, FrameWithoutBoxing target) {
         // The frames should use the same descriptor.
         if (source.getFrameDescriptor() != frameDescriptor) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -216,7 +216,7 @@ public final class BytecodeOSRMetadata {
         LazyState state = getLazyState();
         CompilerAsserts.partialEvaluationConstant(state);
         // The frame version could have changed; if so, deoptimize and update the slots+tags.
-        if (!Assumption.isValidAssumption(state.frameVersion)) {
+        if (!state.frameVersion.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             updateFrameSlots(source);
         }
@@ -270,17 +270,19 @@ public final class BytecodeOSRMetadata {
         }
     }
 
-    synchronized void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+    void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         LazyState state = lazyState;
         if (state != null) {
-            for (OptimizedCallTarget callTarget : state.compilationMap.values()) {
-                if (callTarget != null) {
-                    if (callTarget.isCompilationFailed()) {
-                        markCompilationFailed();
+            ((Node) osrNode).atomic(() -> {
+                for (OptimizedCallTarget callTarget : state.compilationMap.values()) {
+                    if (callTarget != null) {
+                        if (callTarget.isCompilationFailed()) {
+                            markCompilationFailed();
+                        }
+                        callTarget.nodeReplaced(oldNode, newNode, reason);
                     }
-                    callTarget.nodeReplaced(oldNode, newNode, reason);
                 }
-            }
+            });
         }
     }
 
