@@ -93,7 +93,7 @@ Once opened, there is a bunch of options you can check: Monitoring, Threads, Exc
 
 ![](/img/jfr.png)
 
-In the follow-up sections learn how to further confgure the recording or enable logging.
+In the follow-up sections learn how to further configure the recording or enable logging.
 
 ## Configure the Recording
 
