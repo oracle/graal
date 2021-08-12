@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
@@ -47,6 +46,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
@@ -72,6 +72,30 @@ class CPUSamplerCLI extends ProfilerCLI {
                             } catch (IllegalArgumentException e) {
                                 throw new IllegalArgumentException("Output can be: histogram, calltree or json");
                             }
+                        }
+                    });
+
+    static final OptionType<ShowTiers> SHOW_TIERS_OUTPUT_TYPE = new OptionType<>("ShowTiers",
+                    new Function<String, ShowTiers>() {
+                        @Override
+                        public ShowTiers apply(String s) {
+                            if ("false".equals(s)) {
+                                return new ShowTiers(false, new int[0]);
+                            }
+                            if ("true".equals(s)) {
+                                return new ShowTiers(true, new int[0]);
+                            }
+                            try {
+                                String[] tierStrings = s.split(",");
+                                int[] tiers = new int[tierStrings.length];
+                                for (int i = 0; i < tierStrings.length; i++) {
+                                    tiers[i] = Integer.parseInt(tierStrings[i]);
+                                }
+                                return new ShowTiers(true, tiers);
+                            } catch (NumberFormatException e) {
+                                // Ignored
+                            }
+                            throw new IllegalArgumentException("ShowTiers can be: true, false or a comma separated list of integers");
                         }
                     });
 
@@ -107,6 +131,10 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "Output", help = "Print a 'histogram', 'calltree' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
+    @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
+            "Note: Interpreter is considered Tier 0. (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    static final OptionKey<ShowTiers> ShowTiers = new OptionKey<>(new ShowTiers(false, new int[0]), SHOW_TIERS_OUTPUT_TYPE);
+
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
 
@@ -141,6 +169,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
             Boolean summariseThreads = env.getOptions().get(SUMMARISE_THREADS);
             Integer minSamples = env.getOptions().get(MIN_SAMPLES);
+            ShowTiers showTiers = env.getOptions().get(ShowTiers);
             switch (env.getOptions().get(OUTPUT)) {
                 case HISTOGRAM:
                     printWarnings(sampler, out);
@@ -472,4 +501,15 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
         return length;
     }
+
+    static final class ShowTiers {
+        final boolean showTiers;
+        final int[] tiers;
+
+        ShowTiers(boolean showTiers, int[] tiers) {
+            this.showTiers = showTiers;
+            this.tiers = tiers;
+        }
+    }
+
 }
