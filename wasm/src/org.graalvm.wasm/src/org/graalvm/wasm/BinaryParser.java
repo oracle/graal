@@ -686,6 +686,9 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(module.symbolTable().functionTypeReturnType(expectedFunctionTypeIndex));
                     }
 
+                    // Function from current context profile
+                    state.incrementProfileCount();
+
                     children.add(WasmIndirectCallNode.create());
                     final int tableIndex = read1();
                     assertIntEqual(tableIndex, CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00", Failure.ZERO_FLAG_EXPECTED);

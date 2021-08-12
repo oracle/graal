@@ -40,30 +40,32 @@
  */
 package org.graalvm.wasm.api;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.exception.WasmJsApiException.Kind;
+import org.graalvm.wasm.globals.ExportedWasmGlobal;
+import org.graalvm.wasm.globals.WasmGlobal;
+import org.graalvm.wasm.memory.WasmMemory;
+
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import org.graalvm.collections.Pair;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunction;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.globals.ExportedWasmGlobal;
-import org.graalvm.wasm.globals.WasmGlobal;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.exception.WasmJsApiException.Kind;
-import org.graalvm.wasm.memory.WasmMemory;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class Instance extends Dictionary {
     private final TruffleContext truffleContext;
@@ -106,6 +108,7 @@ public class Instance extends Dictionary {
     }
 
     private HashMap<String, ImportModule> readImportModules() {
+        CompilerAsserts.neverPartOfCompilation();
         final Sequence<ModuleImportDescriptor> imports = WebAssembly.moduleImports(module);
         if (imports.getArraySize() != 0 && importObject == null) {
             throw new WasmJsApiException(Kind.TypeError, "Module requires imports, but import object is undefined.");
@@ -148,14 +151,12 @@ public class Instance extends Dictionary {
                         ensureImportModule(importModules, d.module()).addGlobal(d.name(), (WasmGlobal) member);
                         break;
                     default:
-                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unimplemented case: " + d.kind());
                 }
 
                 i += 1;
             }
         } catch (InvalidArrayIndexException | UnknownIdentifierException | ClassCastException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unexpected state.");
         }
 
@@ -173,6 +174,7 @@ public class Instance extends Dictionary {
     }
 
     private Dictionary initializeExports(WasmContext context) {
+        CompilerAsserts.neverPartOfCompilation();
         Dictionary e = new Dictionary();
         for (String name : instance.module().exportedSymbols()) {
             WasmFunction function = instance.module().exportedFunctions().get(name);
@@ -199,7 +201,6 @@ public class Instance extends Dictionary {
                 final WasmTable table = instance.table();
                 e.addMember(name, table);
             } else {
-                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
         }

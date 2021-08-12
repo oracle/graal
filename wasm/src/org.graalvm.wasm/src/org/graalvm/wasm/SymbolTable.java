@@ -40,9 +40,18 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.Assert.assertTrue;
+import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
+import static org.graalvm.wasm.WasmMath.maxUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -53,18 +62,9 @@ import org.graalvm.wasm.memory.ByteArrayWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static java.lang.Integer.compareUnsigned;
-import static org.graalvm.wasm.Assert.assertTrue;
-import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
-import static org.graalvm.wasm.WasmMath.maxUnsigned;
-import static org.graalvm.wasm.WasmMath.minUnsigned;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * Contains the symbol information of a module.
@@ -126,6 +126,7 @@ public abstract class SymbolTable {
 
         @Override
         public String toString() {
+            CompilerAsserts.neverPartOfCompilation();
             String[] paramNames = new String[paramTypes.length];
             for (int i = 0; i < paramTypes.length; i++) {
                 paramNames[i] = WasmType.toString(paramTypes[i]);
@@ -244,12 +245,12 @@ public abstract class SymbolTable {
     /**
      * Map from exported function names to respective functions.
      */
-    private final LinkedHashMap<String, WasmFunction> exportedFunctions;
+    private final EconomicMap<String, WasmFunction> exportedFunctions;
 
     /**
      * Map from function indices to the exported names of respective functions.
      */
-    private final HashMap<Integer, String> exportedFunctionsByIndex;
+    private final EconomicMap<Integer, String> exportedFunctionsByIndex;
 
     /**
      * Index of the start function if it exists, or -1 otherwise.
@@ -269,12 +270,12 @@ public abstract class SymbolTable {
     /**
      * A mapping between the indices of the imported globals and their import specifiers.
      */
-    @CompilationFinal private final LinkedHashMap<Integer, ImportDescriptor> importedGlobals;
+    @CompilationFinal private final EconomicMap<Integer, ImportDescriptor> importedGlobals;
 
     /**
      * A mapping between the names and the indices of the exported globals.
      */
-    @CompilationFinal private final LinkedHashMap<String, Integer> exportedGlobals;
+    @CompilationFinal private final EconomicMap<String, Integer> exportedGlobals;
 
     /**
      * Number of globals in the module.
@@ -334,12 +335,12 @@ public abstract class SymbolTable {
         this.functions = new WasmFunction[INITIAL_FUNCTION_TYPES_SIZE];
         this.numFunctions = 0;
         this.importedFunctions = new ArrayList<>();
-        this.exportedFunctions = new LinkedHashMap<>();
-        this.exportedFunctionsByIndex = new HashMap<>();
+        this.exportedFunctions = EconomicMap.create();
+        this.exportedFunctionsByIndex = EconomicMap.create();
         this.startFunctionIndex = -1;
         this.globalTypes = new short[INITIAL_GLOBALS_SIZE];
-        this.importedGlobals = new LinkedHashMap<>();
-        this.exportedGlobals = new LinkedHashMap<>();
+        this.importedGlobals = EconomicMap.create();
+        this.exportedGlobals = EconomicMap.create();
         this.numGlobals = 0;
         this.table = null;
         this.importedTableDescriptor = null;
@@ -351,6 +352,7 @@ public abstract class SymbolTable {
     }
 
     private void checkNotParsed() {
+        CompilerAsserts.neverPartOfCompilation();
         // The symbol table must be read-only after the module gets linked.
         if (module().isParsed()) {
             throw CompilerDirectives.shouldNotReachHere("The engine tried to modify the symbol table after parsing.");
@@ -358,8 +360,8 @@ public abstract class SymbolTable {
     }
 
     private void checkUniqueExport(String name) {
+        CompilerAsserts.neverPartOfCompilation();
         if (exportedFunctions.containsKey(name) || exportedGlobals.containsKey(name) || exportedMemoryNames.contains(name) || exportedTableNames.contains(name)) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.DUPLICATE_EXPORT, "All export names must be different, but '" + name + "' is exported twice.");
         }
     }
@@ -417,7 +419,6 @@ public abstract class SymbolTable {
         typeOffsets[typeIdx] = typeDataSize;
 
         if (numReturnTypes != 0 && numReturnTypes != 1) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.INVALID_RESULT_ARITY, "A function can return at most one result.");
         }
 
@@ -460,7 +461,6 @@ public abstract class SymbolTable {
     void setEquivalenceClass(int index, int eqClass) {
         checkNotParsed();
         if (typeEquivalenceClasses[index] != NO_EQUIVALENCE_CLASS) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Type at index " + index + " already has an equivalence class.");
         }
         typeEquivalenceClasses[index] = eqClass;
@@ -504,11 +504,9 @@ public abstract class SymbolTable {
         checkNotParsed();
         WasmFunction start = function(functionIndex);
         if (start.numArguments() != 0) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.START_FUNCTION_ARGUMENTS, "Start function cannot take arguments.");
         }
         if (start.returnTypeLength() != 0) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.START_FUNCTION_RETURN_VALUE, "Start function cannot return a value.");
         }
         this.startFunctionIndex = functionIndex;
@@ -569,10 +567,20 @@ public abstract class SymbolTable {
 
     ByteArrayList functionTypeArgumentTypes(int typeIndex) {
         ByteArrayList types = new ByteArrayList();
-        for (int i = 0; i != functionTypeArgumentCount(typeIndex); ++i) {
+        int argumentTypeCount = functionTypeArgumentCount(typeIndex);
+        for (int i = 0; i != argumentTypeCount; ++i) {
             types.add(functionTypeArgumentTypeAt(typeIndex, i));
         }
         return types;
+    }
+
+    private byte[] functionTypeArgumentTypesAsArray(int typeIndex) {
+        int argumentTypeCount = functionTypeArgumentCount(typeIndex);
+        byte[] argumentTypes = new byte[argumentTypeCount];
+        for (int i = 0; i < argumentTypeCount; ++i) {
+            argumentTypes[i] = functionTypeArgumentTypeAt(typeIndex, i);
+        }
+        return argumentTypes;
     }
 
     int typeCount() {
@@ -580,7 +588,7 @@ public abstract class SymbolTable {
     }
 
     public FunctionType typeAt(int index) {
-        return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
+        return new FunctionType(functionTypeArgumentTypesAsArray(index), functionTypeReturnType(index));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {
@@ -610,7 +618,7 @@ public abstract class SymbolTable {
         module().addLinkAction((context, instance) -> context.linker().resolveFunctionExport(module(), functionIndex, exportName));
     }
 
-    public Map<String, WasmFunction> exportedFunctions() {
+    public EconomicMap<String, WasmFunction> exportedFunctions() {
         return exportedFunctions;
     }
 
@@ -669,7 +677,6 @@ public abstract class SymbolTable {
         } else if (mutability == GlobalModifier.MUTABLE) {
             mutabilityBit = GLOBAL_MUTABLE_BIT;
         } else {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Invalid mutability: " + mutability);
         }
         short globalType = (short) (mutabilityBit | valueType);
@@ -705,14 +712,15 @@ public abstract class SymbolTable {
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalImport(context, instance, descriptor, index, valueType, mutability));
     }
 
-    public LinkedHashMap<Integer, ImportDescriptor> importedGlobals() {
+    public EconomicMap<Integer, ImportDescriptor> importedGlobals() {
         return importedGlobals;
     }
 
-    public LinkedHashMap<ImportDescriptor, Integer> importedGlobalDescriptors() {
-        final LinkedHashMap<ImportDescriptor, Integer> reverseMap = new LinkedHashMap<>();
-        for (Map.Entry<Integer, ImportDescriptor> entry : importedGlobals.entrySet()) {
-            reverseMap.put(entry.getValue(), entry.getKey());
+    public EconomicMap<ImportDescriptor, Integer> importedGlobalDescriptors() {
+        final EconomicMap<ImportDescriptor, Integer> reverseMap = EconomicMap.create();
+        MapCursor<Integer, ImportDescriptor> cursor = importedGlobals.getEntries();
+        while (cursor.advance()) {
+            reverseMap.put(cursor.getValue(), cursor.getKey());
         }
         return reverseMap;
     }
@@ -744,15 +752,16 @@ public abstract class SymbolTable {
         return (byte) (globalTypes[index] & 0xff);
     }
 
-    public Map<String, Integer> exportedGlobals() {
+    public EconomicMap<String, Integer> exportedGlobals() {
         return exportedGlobals;
     }
 
     @SuppressWarnings("unused")
     private String nameOfExportedGlobal(int index) {
-        for (Map.Entry<String, Integer> entry : exportedGlobals.entrySet()) {
-            if (entry.getValue() == index) {
-                return entry.getKey();
+        MapCursor<String, Integer> cursor = exportedGlobals.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getValue() == index) {
+                return cursor.getKey();
             }
         }
         return null;
@@ -898,7 +907,6 @@ public abstract class SymbolTable {
         checkNotParsed();
         exportSymbol(name);
         if (!memoryExists()) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "No memory has been declared or imported, so memory cannot be exported.");
         }
         exportedMemoryNames.add(name);

@@ -40,38 +40,41 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
+import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.ImportIdentifier;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.globals.DefaultWasmGlobal;
-import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmMath;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.constants.ImportIdentifier;
+import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.globals.DefaultWasmGlobal;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.ByteArrayWasmMemory;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Objects;
-
-import static java.lang.Integer.compareUnsigned;
-import static org.graalvm.wasm.WasmMath.minUnsigned;
-import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -231,6 +234,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ModuleExportDescriptor> moduleExports(WasmModule module) {
+        CompilerAsserts.neverPartOfCompilation();
         final ArrayList<ModuleExportDescriptor> list = new ArrayList<>();
         for (final String name : module.exportedSymbols()) {
             final WasmFunction f = module.exportedFunctions().get(name);
@@ -246,7 +250,6 @@ public class WebAssembly extends Dictionary {
                 String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.global.name(), valueType));
             } else {
-                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
         }
@@ -259,7 +262,8 @@ public class WebAssembly extends Dictionary {
     }
 
     public static Sequence<ModuleImportDescriptor> moduleImports(WasmModule module) {
-        final LinkedHashMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
+        CompilerAsserts.neverPartOfCompilation();
+        final EconomicMap<ImportDescriptor, Integer> importedGlobalDescriptors = module.importedGlobalDescriptors();
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
         for (ImportDescriptor descriptor : module.importedSymbols()) {
             switch (descriptor.identifier) {
@@ -271,7 +275,6 @@ public class WebAssembly extends Dictionary {
                     if (Objects.equals(module.importedTable(), descriptor)) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.table.name(), null));
                     } else {
-                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
                     }
                     break;
@@ -279,7 +282,6 @@ public class WebAssembly extends Dictionary {
                     if (Objects.equals(module.importedMemory(), descriptor)) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.memory.name(), null));
                     } else {
-                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Memory import inconsistent.");
                     }
                     break;
@@ -289,7 +291,6 @@ public class WebAssembly extends Dictionary {
                     list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.global.name(), valueType));
                     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
                     throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
             }
         }
@@ -429,6 +430,7 @@ public class WebAssembly extends Dictionary {
     }
 
     public static String functionTypeToString(WasmFunction f) {
+        CompilerAsserts.neverPartOfCompilation();
         StringBuilder typeInfo = new StringBuilder();
 
         typeInfo.append(f.index());
@@ -459,7 +461,11 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.LinkError, "Min memory size exceeds implementation limit");
         }
         final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
-        return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize);
+        if (WasmContext.get(null).environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
+            return new UnsafeWasmMemory(initial, maximum, maxAllowedSize);
+        } else {
+            return new ByteArrayWasmMemory(initial, maximum, maxAllowedSize);
+        }
     }
 
     private static Object memGrow(Object[] args) {

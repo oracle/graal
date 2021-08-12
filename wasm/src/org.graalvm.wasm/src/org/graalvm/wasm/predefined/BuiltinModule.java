@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,19 +47,19 @@ import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.ReferenceTypes;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
-import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
 import org.graalvm.wasm.predefined.spectest.SpectestModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -76,9 +76,9 @@ public abstract class BuiltinModule {
     }
 
     public static WasmInstance createBuiltinInstance(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
+        CompilerAsserts.neverPartOfCompilation();
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown predefined module: " + predefinedModuleName);
         }
         return builtinModule.createInstance(language, context, name);
