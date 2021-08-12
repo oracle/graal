@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,8 +72,10 @@ abstract class LLVMDebugValue {
     }
 
     void checkType(DebugValue value) {
-        final String actualType = getActualType(value);
-        assertEquals("Unexpected type!", expectedType, actualType);
+        if (expectedType != null) {
+            final String actualType = getActualType(value);
+            assertEquals("Unexpected type!", expectedType, actualType);
+        }
     }
 
     void check(DebugValue actualValue) {
@@ -101,6 +103,8 @@ abstract class LLVMDebugValue {
 
         @Override
         void checkValue(DebugValue value) {
+            // Check whether we can actually get the value, but ignore what it is.
+            value.toDisplayString();
         }
     }
 
