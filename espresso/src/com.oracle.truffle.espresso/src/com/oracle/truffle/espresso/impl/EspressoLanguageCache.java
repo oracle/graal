@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -55,8 +56,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class EspressoLanguageCache {
 
     private boolean isParserKlassCacheEnabled = EspressoOptions.UseParserKlassCache.getDefaultValue();
+    private boolean shouldReportParserKlassCacheMisses = EspressoOptions.ReportParserKlassCacheMisses.getDefaultValue();
     private boolean isLinkedKlassCacheEnabled = EspressoOptions.UseLinkedKlassCache.getDefaultValue();
 
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID);
     private final Map<String, ParserKlass> bootParserKlassCache = new ConcurrentHashMap<>();
     private final Map<ParserKlassCacheKey, ParserKlass> appParserKlassCache = new ConcurrentHashMap<>();
     private final Map<LinkedKlassCacheKey, LinkedKlass> linkedKlassCache = new ConcurrentHashMap<>();
@@ -65,10 +68,12 @@ public final class EspressoLanguageCache {
 
     public void updateEnv(final TruffleLanguage.Env env) {
         boolean isParserKlassCacheEnabledNew = env.getOptions().get(EspressoOptions.UseParserKlassCache);
+        boolean shouldReportParserKlassCacheMissesNew = EspressoOptions.ReportParserKlassCacheMisses.getDefaultValue();
         boolean isLinkedKlassCacheEnabledNew = env.getOptions().get(EspressoOptions.UseLinkedKlassCache);
         if (isParserKlassCacheEnabled != isParserKlassCacheEnabledNew || isLinkedKlassCacheEnabled != isLinkedKlassCacheEnabledNew) {
             reset();
             isParserKlassCacheEnabled = isParserKlassCacheEnabledNew;
+            shouldReportParserKlassCacheMisses = shouldReportParserKlassCacheMissesNew;
             isLinkedKlassCacheEnabled = isLinkedKlassCacheEnabledNew;
         }
     }
@@ -82,6 +87,9 @@ public final class EspressoLanguageCache {
                 parserKlass = appParserKlassCache.get(key);
             }
             if (parserKlass == null) {
+                if (shouldReportParserKlassCacheMisses) {
+                    logger.info("ParserKlassCache miss: " + name);
+                }
                 parserKlass = createParserKlass(loader, name, bytes, context, info);
                 if (sealed) {
                     if (key == null) {

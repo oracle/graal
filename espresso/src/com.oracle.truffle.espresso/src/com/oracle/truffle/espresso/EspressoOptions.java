@@ -453,6 +453,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> UseParserKlassCache = new OptionKey<>(true);
 
+    @Option(help = "Reports ParserKlass cache misses. The output can be used for creating a custom ParserKlass cache list.",//
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> ReportParserKlassCacheMisses = new OptionKey<>(false);
+
     @Option(help = "File containing a list of internal class names to load into the ParserKlass cache during context pre-initialization.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Path> ParserKlassCacheList = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
