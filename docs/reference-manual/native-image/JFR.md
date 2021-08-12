@@ -41,7 +41,7 @@ For example:
 
 ## Run a Demo
 
-Convert this very simple demo application into a native image and see how to use JFR events from it.
+Transform this very simple demo application into a native image and see how to use JFR events from it.
 Save the following code to the _Example.java_ file.
 
 ```java
@@ -68,7 +68,7 @@ public class Example {
 
 The application consists of a simple class and some JDK library classes.
 It creates an event, labelled with the `@Label` annotation from the `jdk.jfr.*` package.
-If we run that application, it does not print anything, and just runs that event.
+If we run that application, it does not print anything and just runs that event.
 
 1. Compile the Java file:
   ```shell
@@ -89,7 +89,7 @@ If we run that application, it does not print anything, and just runs that event
 
 4. Start VisualVM. Go to **File** > **Add JFR Snapshot**, browse the generated file, _recording.jfr_, and open it.
 
-Once opened, there is a bunch of options you can check: Monitoring, Threads, Exceptions, etc. But you should be mostly interesteed in the events browsing. It will look something like this:
+Once opened, there is a bunch of options you can check: Monitoring, Threads, Exceptions, etc., but you should be mostly interested in the events browsing. It will look something like this:
 
 ![](/img/generate-sources-maven.png)
 
