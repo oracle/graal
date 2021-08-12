@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -42,9 +41,6 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
@@ -52,7 +48,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
@@ -118,7 +113,6 @@ public class AnalysisUniverse implements Universe {
 
     private AnalysisType objectClass;
     private final JavaKind wordKind;
-    private final Platform platform;
     private AnalysisPolicy analysisPolicy;
 
     public JavaKind getWordKind() {
@@ -126,12 +120,11 @@ public class AnalysisUniverse implements Universe {
     }
 
     @SuppressWarnings("unchecked")
-    public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, Platform platform, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
+    public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
                     SnippetReflectionProvider originalSnippetReflection,
                     SnippetReflectionProvider snippetReflection) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
-        this.platform = platform;
         this.analysisPolicy = analysisPolicy;
         this.substitutions = substitutions;
         this.originalMetaAccess = originalMetaAccess;
@@ -215,7 +208,7 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressFBWarnings(value = {"ES_COMPARING_STRINGS_WITH_EQ"}, justification = "Bug in findbugs")
     private AnalysisType createType(ResolvedJavaType type) {
-        if (!platformSupported(type)) {
+        if (!hostVM.platformSupported(this, type)) {
             throw new UnsupportedFeatureException("type is not available in this platform: " + type.toJavaName(true));
         }
         if (sealed && !type.isArray()) {
@@ -380,7 +373,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     private AnalysisField createField(ResolvedJavaField field) {
-        if (!platformSupported(field)) {
+        if (!hostVM.platformSupported(this, field)) {
             throw new UnsupportedFeatureException("field is not available in this platform: " + field.format("%H.%n"));
         }
         if (sealed) {
@@ -422,7 +415,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     private AnalysisMethod createMethod(ResolvedJavaMethod method) {
-        if (!platformSupported(method)) {
+        if (!hostVM.platformSupported(this, method)) {
             throw new UnsupportedFeatureException("Method " + method.format("%H.%n(%p)" + " is not available in this platform."));
         }
         if (sealed) {
@@ -436,7 +429,7 @@ public class AnalysisUniverse implements Universe {
     public AnalysisMethod[] lookup(JavaMethod[] inputs) {
         List<AnalysisMethod> result = new ArrayList<>(inputs.length);
         for (JavaMethod method : inputs) {
-            if (platformSupported((ResolvedJavaMethod) method)) {
+            if (hostVM.platformSupported(this, (ResolvedJavaMethod) method)) {
                 AnalysisMethod aMethod = lookup(method);
                 if (aMethod != null) {
                     result.add(aMethod);
@@ -699,31 +692,7 @@ public class AnalysisUniverse implements Universe {
         return analysisPolicy;
     }
 
-    public boolean platformSupported(AnnotatedElement element) {
-        if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass(getOriginalSnippetReflection(), (ResolvedJavaType) element).getPackage();
-            if (p != null && !platformSupported(p)) {
-                return false;
-            }
-        }
-
-        Platforms platformsAnnotation = GuardedAnnotationAccess.getAnnotation(element, Platforms.class);
-        if (platform == null || platformsAnnotation == null) {
-            return true;
-        }
-        for (Class<? extends Platform> platformGroup : platformsAnnotation.value()) {
-            if (platformGroup.isInstance(platform)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public MetaAccessProvider getOriginalMetaAccess() {
         return originalMetaAccess;
-    }
-
-    public Platform getPlatform() {
-        return platform;
     }
 }

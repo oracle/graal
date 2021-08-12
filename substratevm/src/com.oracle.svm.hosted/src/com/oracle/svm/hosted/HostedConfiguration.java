@@ -64,6 +64,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.nativeimage.Platform;
 
 public class HostedConfiguration {
 
@@ -129,8 +130,8 @@ public class HostedConfiguration {
     }
 
     public SVMHost createHostVM(OptionValues options, ForkJoinPool buildExecutor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
-        return new SVMHost(options, buildExecutor, classLoader, classInitializationSupport, automaticSubstitutions);
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
+        return new SVMHost(options, buildExecutor, classLoader, classInitializationSupport, automaticSubstitutions, platform);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
