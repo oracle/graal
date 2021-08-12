@@ -27,8 +27,8 @@ package org.graalvm.compiler.nodes.spi;
 import jdk.vm.ci.meta.JavaType;
 
 /**
- * Provides a capability for verify whether nodes, types or classes are or are not raw words (as
- * opposed to Objects).
+ * Provides a capability to verify that {@linkplain JavaType types} represent or do not represent
+ * raw words (as opposed to Objects).
  * <p>
  * All methods will either return {@code true} in case the assertion holds or throw an exception if
  * it does not. Users are not supposed to catch the exception and make decisions based on it. This
@@ -37,11 +37,11 @@ import jdk.vm.ci.meta.JavaType;
  *
  * <h1>Motivation</h1>
  *
- * We do not want to leak {@link org.graalvm.compiler.word.WordTypes} to arbitrary places, because
- * those should be handled at the very beginning of the pipeline (i.e., during graph building). On
- * the other hand, we would like to detect cases where this failed to issue proper error messages
- * instead of doing the wrong thing and maybe or maybe not failing arbitrarily. Thus, we only give
- * access to assertions instead of the full features.
+ * We do not want to leak {@code WordTypes} to arbitrary places, because those should be handled at
+ * the very beginning of the pipeline (i.e., during graph building). On the other hand, we would
+ * like to detect cases where this failed to issue proper error messages instead of doing the wrong
+ * thing and maybe or maybe not failing arbitrarily. Thus, we only give access to assertions instead
+ * of the full features.
  */
 public interface WordVerification {
 
