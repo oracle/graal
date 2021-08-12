@@ -120,7 +120,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             UserError.guarantee(!asList.isEmpty(), "List of classNames for %s is empty", basename);
             for (Object o : asList) {
                 String className = asString(o, "Elements of 'classNames' must of strings.");
-                registry.addClassBasedResourceBundle(className);
+                registry.addClassBasedResourceBundle(basename, className);
             }
         }
         if (locales == null && classNames == null) {

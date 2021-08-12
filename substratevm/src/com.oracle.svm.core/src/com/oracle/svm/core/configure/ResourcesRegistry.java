@@ -65,7 +65,7 @@ public interface ResourcesRegistry {
 
     void addResourceBundles(ConfigurationCondition condition, String name);
 
-    void addClassBasedResourceBundle(String className);
+    void addClassBasedResourceBundle(String basename, String className);
 
     void addResourceBundles(String basename, Collection<Locale> locales);
 }
