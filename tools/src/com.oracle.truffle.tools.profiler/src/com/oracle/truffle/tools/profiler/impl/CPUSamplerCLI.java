@@ -28,8 +28,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +41,6 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.CPUSampler;
@@ -176,10 +173,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                     printSamplingHistogram(out, options, data);
                     break;
                 case CALLTREE:
-                    boolean summariseThreads = options.get(SUMMARISE_THREADS);
-                    int minSamples = options.get(MIN_SAMPLES);
                     printWarnings(sampler, out);
-                    printSamplingCallTree(out, sampler, summariseThreads, minSamples);
                     printSamplingCallTree(out, options, data);
                     break;
                 case JSON:
@@ -285,71 +279,11 @@ class CPUSamplerCLI extends ProfilerCLI {
         return samples;
     }
 
-    @SuppressWarnings("deprecation")
-    private static Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> makeOneEntryMap(CPUSampler sampler) {
-        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> oneElementMap = new HashMap<>(1);
-        oneElementMap.put(new Thread("Summary"), sampler.getRootNodes());
-        return oneElementMap;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static void printSamplingCallTree(PrintStream out, CPUSampler sampler, Boolean summariseThreads, Integer minSamples) {
-        Collection<ProfilerNode<CPUSampler.Payload>> actualRoots = new ArrayList<>();
-        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = summariseThreads ? makeOneEntryMap(sampler) : sampler.getThreadToNodesMap();
-        for (Collection<ProfilerNode<CPUSampler.Payload>> node : threadToNodesMap.values()) {
-            actualRoots.addAll(node);
-        }
-        int maxLength = Math.max(10, computeTitleMaxLength(actualRoots, 0));
-        String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
-        String sep = repeat("-", title.length());
-        out.println(sep);
-        printLegend(out, "CallTree", sampler.getSampleCount(), sampler.getPeriod());
-        out.println(sep);
-        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : threadToNodesMap.entrySet()) {
-            if (!summariseThreads) {
-                out.println(" Thread: " + node.getKey());
-            }
-            out.println(title);
-            out.println(sep);
-            printSamplingCallTreeRec(sampler, maxLength, "", node.getValue(), out, minSamples);
-            out.println(sep);
-        }
-    }
-
-    private static void printSamplingCallTreeRec(CPUSampler sampler, int maxRootLength, String prefix, Collection<ProfilerNode<CPUSampler.Payload>> children, PrintStream out, Integer minSamples) {
-        List<ProfilerNode<CPUSampler.Payload>> sortedChildren = new ArrayList<>(children);
-        Collections.sort(sortedChildren, new Comparator<ProfilerNode<CPUSampler.Payload>>() {
-            @Override
-            public int compare(ProfilerNode<CPUSampler.Payload> o1, ProfilerNode<CPUSampler.Payload> o2) {
-                return Long.compare(o2.getPayload().getHitCount(), o1.getPayload().getHitCount());
-            }
-        });
-
-        for (ProfilerNode<CPUSampler.Payload> treeNode : sortedChildren) {
-            if (treeNode == null) {
-                continue;
-            }
-            boolean printed = printAttributes(out, sampler, prefix, Arrays.asList(treeNode), maxRootLength, true, minSamples);
-            printSamplingCallTreeRec(sampler, maxRootLength, printed ? prefix + " " : prefix, treeNode.getChildren(), out, minSamples);
-
-        }
-    }
-
     private static void printLegend(PrintStream out, String type, long samples, long period) {
         out.println(String.format("Sampling %s. Recorded %s samples with period %dms.", type, samples, period));
         out.println("  Self Time: Time spent on the top of the stack.");
         out.println("  Total Time: Time spent somewhere on the stack.");
         out.println("  Opt %: Percent of time spent in compiled and therefore non-interpreted code.");
-    }
-
-    private static int computeTitleMaxLength(Collection<ProfilerNode<CPUSampler.Payload>> children, int baseLength) {
-        int maxLength = baseLength;
-        for (ProfilerNode<CPUSampler.Payload> treeNode : children) {
-            int rootNameLength = computeRootNameMaxLength(treeNode);
-            maxLength = Math.max(baseLength + rootNameLength, maxLength);
-            maxLength = Math.max(maxLength, computeTitleMaxLength(treeNode.getChildren(), baseLength + 1));
-        }
-        return maxLength;
     }
 
     private static boolean intersectsLines(SourceSection section1, SourceSection section2) {
@@ -361,106 +295,6 @@ class CPUSamplerCLI extends ProfilerCLI {
         int y1 = section2.getStartLine();
         int y2 = section2.getEndLine();
         return x2 >= y1 && y2 >= x1;
-    }
-
-    @SuppressWarnings("deprecation")
-    private static boolean printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength, boolean callTree, Integer minSamples) {
-        long samplePeriod = sampler.getPeriod();
-        long samples = sampler.getSampleCount();
-
-        long selfInterpreted = 0;
-        long selfCompiled = 0;
-        long totalInterpreted = 0;
-        long totalCompiled = 0;
-        for (ProfilerNode<CPUSampler.Payload> tree : nodes) {
-            CPUSampler.Payload payload = tree.getPayload();
-            selfInterpreted += payload.getSelfInterpretedHitCount();
-            selfCompiled += payload.getSelfCompiledHitCount();
-            if (!tree.isRecursive()) {
-                totalInterpreted += payload.getInterpretedHitCount();
-                totalCompiled += payload.getCompiledHitCount();
-            }
-            if (callTree) {
-                assert nodes.size() == 1;
-                SourceSection sourceSection = tree.getSourceSection();
-                String rootName = tree.getRootName();
-                selfCompiled = getSelfHitCountForRecursiveChildren(sourceSection, rootName, selfCompiled, tree.getChildren(), true);
-                selfInterpreted = getSelfHitCountForRecursiveChildren(sourceSection, rootName, selfInterpreted, tree.getChildren(), false);
-            }
-        }
-
-        long totalSamples = totalInterpreted + totalCompiled;
-        if (totalSamples <= minSamples) {
-            // hide methods without any cost
-            return false;
-        }
-        assert totalSamples <= samples;
-        ProfilerNode<CPUSampler.Payload> firstNode = nodes.get(0);
-        SourceSection sourceSection = firstNode.getSourceSection();
-        String rootName = firstNode.getRootName();
-
-        if (!firstNode.getTags().contains(StandardTags.RootTag.class)) {
-            rootName += "~" + formatIndices(sourceSection, needsColumnSpecifier(firstNode));
-        }
-
-        long selfSamples = selfInterpreted + selfCompiled;
-        long selfTime = selfSamples * samplePeriod;
-        double selfCost = selfSamples / (double) samples;
-        double selfCompiledP = 0.0;
-        if (selfSamples > 0) {
-            selfCompiledP = selfCompiled / (double) selfSamples;
-        }
-        String selfTimes = String.format("%10dms %5.1f%% | %5.1f%%", selfTime, selfCost * 100, selfCompiledP * 100);
-
-        long totalTime = totalSamples * samplePeriod;
-        double totalCost = totalSamples / (double) samples;
-        double totalCompiledP = totalCompiled / (double) totalSamples;
-        String totalTimes = String.format("%10dms %5.1f%% | %5.1f%%", totalTime, totalCost * 100, totalCompiledP * 100);
-
-        String location = getShortDescription(sourceSection);
-
-        out.println(String.format(" %-" + Math.max(maxRootLength, 10) + "s | %s || %s | %s ", //
-                        prefix + rootName, totalTimes, selfTimes, location));
-        return true;
-    }
-
-    private static long getSelfHitCountForRecursiveChildren(SourceSection sourceSection, String rootName, long selfCompiled, Collection<ProfilerNode<CPUSampler.Payload>> children, boolean compiled) {
-        long hitCount = 0;
-        for (ProfilerNode<CPUSampler.Payload> child : children) {
-            if (child.getSourceSection().equals(sourceSection) && child.getRootName().equals(rootName)) {
-                if (compiled) {
-                    hitCount += child.getPayload().getSelfCompiledHitCount();
-                } else {
-                    hitCount += child.getPayload().getSelfInterpretedHitCount();
-                }
-                hitCount += getSelfHitCountForRecursiveChildren(sourceSection, rootName, hitCount, child.getChildren(), compiled);
-            }
-        }
-        return selfCompiled + hitCount;
-    }
-
-    private static boolean needsColumnSpecifier(ProfilerNode<CPUSampler.Payload> firstNode) {
-        boolean needsColumnsSpecifier = false;
-        SourceSection sourceSection = firstNode.getSourceSection();
-        for (ProfilerNode<CPUSampler.Payload> node : firstNode.getParent().getChildren()) {
-            if (node.getSourceSection() == sourceSection) {
-                continue;
-            }
-            if (intersectsLines(node.getSourceSection(), sourceSection)) {
-                needsColumnsSpecifier = true;
-                break;
-            }
-        }
-        return needsColumnsSpecifier;
-    }
-
-    private static int computeRootNameMaxLength(ProfilerNode<CPUSampler.Payload> treeNode) {
-        int length = treeNode.getRootName().length();
-        if (!treeNode.getTags().contains(StandardTags.RootTag.class)) {
-            // reserve some space for the line and column info
-            length += formatIndices(treeNode.getSourceSection(), needsColumnSpecifier(treeNode)).length() + 1;
-        }
-        return length;
     }
 
     private static double percent(int samples, int totalSamples) {
@@ -795,7 +629,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         public void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Histogram", samplesTaken, samplePeriod);
+            printLegend(out, "Call Tree", samplesTaken, samplePeriod);
             out.println(sep);
             out.println(title);
             out.println(sep);
@@ -813,12 +647,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
             out.println(entry.format(format, showTiers, samplePeriod, depth));
             List<CallTreeOutputEntry> sortedChildren = new ArrayList<>(entry.children);
-            Collections.sort(sortedChildren, new Comparator<CallTreeOutputEntry>() {
-                @Override
-                public int compare(CallTreeOutputEntry o1, CallTreeOutputEntry o2) {
-                    return Long.compare(o2.totalSamples, o1.totalSamples);
-                }
-            });
+            sortedChildren.sort((o1, o2) -> Long.compare(o2.totalSamples, o1.totalSamples));
             for (CallTreeOutputEntry child : sortedChildren) {
                 recursivePrint(out, child, depth + 1);
             }
@@ -826,14 +655,9 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         private static class CallTreeOutputEntry extends OutputEntry {
             List<CallTreeOutputEntry> children = new ArrayList<>();
-            int depth;
 
             public CallTreeOutputEntry(ProfilerNode<CPUSampler.Payload> node) {
                 super(node);
-            }
-
-            CallTreeOutputEntry(SourceLocation location) {
-                super(location);
             }
 
             public boolean corresponds(ProfilerNode<CPUSampler.Payload> node) {
