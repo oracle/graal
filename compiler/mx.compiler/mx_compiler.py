@@ -362,34 +362,6 @@ def _remove_empty_entries(a):
         return []
     return [x for x in a if x]
 
-def _gate_java_benchmark(args, successRe, cwd=None):
-    """
-    Runs a Java benchmark and aborts if the benchmark process exits with a non-zero
-    exit code or the `successRe` pattern is not in the output of the benchmark process.
-
-    :param list args: the arguments to pass to the VM
-    :param str successRe: a regular expression
-    """
-    out = mx.OutputCapture()
-    try:
-        run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT, cwd=cwd)
-    finally:
-        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\\]hs_err_pid[0-9]+\.log)', out.data)
-        if jvmErrorFile:
-            jvmErrorFile = jvmErrorFile.group()
-            mx.log('Dumping ' + jvmErrorFile)
-            with open(jvmErrorFile) as fp:
-                mx.log(fp.read())
-            os.unlink(jvmErrorFile)
-
-    if not re.search(successRe, out.data, re.MULTILINE):
-        mx.abort('Could not find benchmark success pattern: ' + successRe)
-
-def _gate_mx_benchmark(args):
-    res = mx_benchmark.benchmark(args)
-    if res != 0:
-        mx.abort("Benchmark gate failed with args: {}".format(args))
-
 def _is_batik_supported(jdk):
     """
     Determines if Batik runs on the given jdk. Batik's JPEGRegistryEntry contains a reference
@@ -413,7 +385,7 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
     args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
-    _gate_mx_benchmark(["dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
+    return mx_benchmark.gate_mx_benchmark(["dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
@@ -425,7 +397,7 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
 
     args = ['-n', str(iterations), '--preserve']
-    _gate_mx_benchmark(["scala-dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
+    return mx_benchmark.gate_mx_benchmark(["scala-dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':
@@ -499,10 +471,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
     dacapo_gate_iterations.update({'fop': 8})
-    if isJDK8:
-        mx.warn("Disabling gate for dacapo:tradebeans and dacapo:tradesoap because of assertion error (GR-33115)")
-        dacapo_gate_iterations.update({'tradebeans': -1, 'tradesoap': -1})
+    mx.warn("Disabling gate for dacapo:tradebeans and dacapo:tradesoap because of AssertionError (GR-33115)")
+    dacapo_gate_iterations.update({'tradebeans': -1, 'tradesoap': -1})
     for name, iterations in sorted(dacapo_gate_iterations.items()):
+        if name == "batik" and not _is_batik_supported(jdk):
+            continue
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
                                ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
