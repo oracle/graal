@@ -116,7 +116,7 @@ public abstract class ThreadLocalAction {
     private final boolean recurring;
 
     /**
-     * Creates a new thread local actions.
+     * Creates a new thread local action.
      *
      * @param hasSideEffects true if the event may have side-effects else false.
      * @param synchronous true if the event should run synchronous else the event will run
@@ -129,7 +129,7 @@ public abstract class ThreadLocalAction {
     }
 
     /**
-     * Creates a new thread local actions.
+     * Creates a new thread local action.
      *
      * @param hasSideEffects true if the event may have side-effects else false.
      * @param synchronous true if the event should run synchronous else the event will run
