@@ -88,6 +88,12 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         }
     }
 
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected void onClassBundlePrepared(Class<?> bundleClass) {
+        prepareNonCompliant(bundleClass);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private void storeBundleContentOf(ResourceBundle bundle) {
         GraalError.guarantee(isBundleSupported(bundle), "Unsupported bundle %s of type %s", bundle, bundle.getClass());
