@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -238,16 +237,17 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
     }
 
     @Specialization
-    protected Object doIntrinsic(long size) {
+    protected Object doIntrinsic(long size,
+                    @Cached BranchProfile exception) {
         if (size < 0) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException("Can't truffle_managed_malloc less than zero bytes");
+            exception.enter();
+            throw new LLVMPolyglotException(this, "Can't truffle_managed_malloc less than zero bytes");
         }
 
         long sizeInWords = (size + LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES - 1) / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
         if (sizeInWords > Integer.MAX_VALUE) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException("Can't truffle_managed_malloc for more than 2^31 objects");
+            exception.enter();
+            throw new LLVMPolyglotException(this, "Can't truffle_managed_malloc for more than 2^31 objects");
         }
 
         return LLVMManagedPointer.create(new ManagedMallocObject((int) sizeInWords));

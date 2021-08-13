@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -122,19 +121,20 @@ public final class LLVMPolyglotWrite {
         @GenerateAOT.Exclude
         protected Object doIntrinsic(LLVMManagedPointer target, int id, Object value,
                         @Cached LLVMAsForeignNode asForeign,
-                        @CachedLibrary(limit = "3") InteropLibrary foreignWrite) {
+                        @CachedLibrary(limit = "3") InteropLibrary foreignWrite,
+                        @Cached BranchProfile exception) {
             Object foreign = asForeign.execute(target);
             Object escapedValue = prepareValueForEscape.executeWithTarget(value);
             try {
                 foreignWrite.writeArrayElement(foreign, id, escapedValue);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Cannot write to index %d of polyglot value.", id);
             } catch (InvalidArrayIndexException e) {
-                CompilerDirectives.transferToInterpreter();
+                exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Index %d does not exist.", id);
             } catch (UnsupportedTypeException e) {
-                CompilerDirectives.transferToInterpreter();
+                exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing index %d.", id);
             }
             return null;

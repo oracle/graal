@@ -29,9 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -44,21 +45,23 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
     public abstract static class LLVMMalloc extends LLVMMemoryIntrinsic {
 
         @Specialization
-        protected LLVMNativePointer doVoid(int size) {
+        protected LLVMNativePointer doVoid(int size,
+                        @Cached BranchProfile outOfMemory) {
             try {
                 return getLanguage().getLLVMMemory().allocateMemory(this, size);
             } catch (OutOfMemoryError e) {
-                CompilerDirectives.transferToInterpreter();
+                outOfMemory.enter();
                 return LLVMNativePointer.createNull();
             }
         }
 
         @Specialization
-        protected LLVMNativePointer doVoid(long size) {
+        protected LLVMNativePointer doVoid(long size,
+                        @Cached BranchProfile outOfMemory) {
             try {
                 return getLanguage().getLLVMMemory().allocateMemory(this, size);
             } catch (OutOfMemoryError e) {
-                CompilerDirectives.transferToInterpreter();
+                outOfMemory.enter();
                 return LLVMNativePointer.createNull();
             }
         }
@@ -74,27 +77,29 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMNativePointer doVoid(int n, int size) {
+        protected LLVMNativePointer doVoid(int n, int size,
+                        @Cached BranchProfile outOfMemory) {
             try {
                 long length = Math.multiplyExact(n, size);
                 LLVMNativePointer address = getLanguage().getLLVMMemory().allocateMemory(this, length);
                 memSet.executeWithTarget(address, (byte) 0, length);
                 return address;
             } catch (OutOfMemoryError | ArithmeticException e) {
-                CompilerDirectives.transferToInterpreter();
+                outOfMemory.enter();
                 return LLVMNativePointer.createNull();
             }
         }
 
         @Specialization
-        protected LLVMNativePointer doVoid(long n, long size) {
+        protected LLVMNativePointer doVoid(long n, long size,
+                        @Cached BranchProfile outOfMemory) {
             try {
                 long length = Math.multiplyExact(n, size);
                 LLVMNativePointer address = getLanguage().getLLVMMemory().allocateMemory(this, length);
                 memSet.executeWithTarget(address, (byte) 0, length);
                 return address;
             } catch (OutOfMemoryError | ArithmeticException e) {
-                CompilerDirectives.transferToInterpreter();
+                outOfMemory.enter();
                 return LLVMNativePointer.createNull();
             }
         }
@@ -107,17 +112,19 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         public abstract LLVMNativePointer executeWithTarget(LLVMNativePointer addr, Object size);
 
         @Specialization
-        protected LLVMNativePointer doVoid(LLVMNativePointer addr, int size) {
-            return doVoid(addr, (long) size);
+        protected LLVMNativePointer doVoid(LLVMNativePointer addr, int size,
+                        @Cached BranchProfile outOfMemory) {
+            return doVoid(addr, (long) size, outOfMemory);
         }
 
         @Specialization
         @SuppressWarnings("deprecation")
-        protected LLVMNativePointer doVoid(LLVMNativePointer addr, long size) {
+        protected LLVMNativePointer doVoid(LLVMNativePointer addr, long size,
+                        @Cached BranchProfile outOfMemory) {
             try {
                 return getLanguage().getLLVMMemory().reallocateMemory(this, addr, size);
             } catch (OutOfMemoryError e) {
-                CompilerDirectives.transferToInterpreter();
+                outOfMemory.enter();
                 return LLVMNativePointer.createNull();
             }
         }

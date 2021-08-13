@@ -84,8 +84,9 @@ public abstract class ToI1 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected boolean fromString(String value) {
-        return getSingleStringCharacter(value) != 0;
+    protected boolean fromString(String value,
+                    @Cached BranchProfile exception) {
+        return getSingleStringCharacter(value, exception) != 0;
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isBoolean(foreigns.asForeign(obj))"})
@@ -111,7 +112,7 @@ public abstract class ToI1 extends ForeignToLLVM {
         } else if (value instanceof Character) {
             return (char) value != 0;
         } else if (value instanceof String) {
-            return thiz.getSingleStringCharacter((String) value) != 0;
+            return thiz.getSingleStringCharacter((String) value, BranchProfile.getUncached()) != 0;
         } else {
             try {
                 return InteropLibrary.getFactory().getUncached().asBoolean(value);

@@ -87,8 +87,9 @@ public abstract class ToI64 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected long fromString(String value) {
-        return getSingleStringCharacter(value);
+    protected long fromString(String value,
+                    @Cached BranchProfile exception) {
+        return getSingleStringCharacter(value, exception);
     }
 
     @Specialization
@@ -128,7 +129,7 @@ public abstract class ToI64 extends ForeignToLLVM {
         } else if (value instanceof Character) {
             return (char) value;
         } else if (value instanceof String) {
-            return thiz.getSingleStringCharacter((String) value);
+            return thiz.getSingleStringCharacter((String) value, BranchProfile.getUncached());
         } else {
             try {
                 return InteropLibrary.getFactory().getUncached().asLong(value);

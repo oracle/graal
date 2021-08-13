@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.export;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -72,7 +71,6 @@ public abstract class LLVMForeignGetIndexPointerNode extends LLVMNode {
      */
     @Fallback
     static LLVMPointer doError(LLVMInteropType type, LLVMPointer object, long idx) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 }

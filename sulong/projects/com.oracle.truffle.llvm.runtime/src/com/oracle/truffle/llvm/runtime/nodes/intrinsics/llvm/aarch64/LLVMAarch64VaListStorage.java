@@ -422,7 +422,9 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     static class WritePointer {
 
         @Specialization(guards = "!vaList.isNativized()")
-        static void writeManaged(LLVMAarch64VaListStorage vaList, long offset, @SuppressWarnings("unused") LLVMPointer value) {
+        static void writeManaged(LLVMAarch64VaListStorage vaList, long offset, @SuppressWarnings("unused") LLVMPointer value,
+                        @Cached BranchProfile exception,
+                        @CachedLibrary("vaList") LLVMManagedWriteLibrary self) {
             switch ((int) offset) {
                 case Aarch64BitVarArgs.OVERFLOW_ARG_AREA:
                     /*
@@ -430,8 +432,8 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                      * argument, according to abi
                      */
                     if (!LLVMManagedPointer.isInstance(value) || LLVMManagedPointer.cast(value).getObject() != vaList.overflowArgArea) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new LLVMMemoryException(null, "updates to VA_LIST overflowArea pointer can only shift the current argument");
+                        exception.enter();
+                        throw new LLVMMemoryException(self, "updates to VA_LIST overflowArea pointer can only shift the current argument");
                     }
                     vaList.overflowArgArea.setOffset(LLVMManagedPointer.cast(value).getOffset());
                     break;

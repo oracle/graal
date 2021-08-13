@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -52,11 +53,11 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
     public abstract Object executeWithForeignToLLVMType(Object value, LLVMInteropType.Structured type, ForeignToLLVMType ftlType);
 
-    protected char getSingleStringCharacter(String value) {
+    protected char getSingleStringCharacter(String value, BranchProfile exception) {
         if (value.length() == 1) {
             return value.charAt(0);
         } else {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMPolyglotException(this, "Expected number but got string.");
         }
     }
@@ -254,7 +255,6 @@ public abstract class ForeignToLLVM extends LLVMNode {
             try {
                 return convert(ftlType, value, type);
             } catch (UnsupportedTypeException ex) {
-                CompilerDirectives.transferToInterpreter();
                 throw new LLVMPolyglotException(this, "Unexpected foreign object type.");
             }
         }

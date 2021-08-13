@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -115,7 +116,8 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         protected long doOp(LLVMStack stack, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
                         @Cached("createToNativeWithTarget()") @SuppressWarnings("unused") LLVMToNativeNode toNative,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode fnDispatchNode,
-                        @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
+                        @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode,
+                        @Cached BranchProfile exception) {
             LLVMMemory memory = getLanguage().getLLVMMemory();
             LLVMGlobal vtableGlobal = getContext().findGlobal(vtable);
             assert vtableGlobal != null;
@@ -128,7 +130,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
                 dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stack, mainPointer});
                 return exitCode.longValue();
             } catch (TypeOverflowException e) {
-                CompilerDirectives.transferToInterpreter();
+                exception.enter();
                 throw new LLVMUnsupportedException(this, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
             }
         }

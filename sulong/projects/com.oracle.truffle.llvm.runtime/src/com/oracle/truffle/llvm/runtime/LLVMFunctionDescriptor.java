@@ -121,11 +121,11 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     }
 
     @ExportMessage
-    long asPointer() throws UnsupportedMessageException {
+    long asPointer(@Cached @Exclusive BranchProfile exception) throws UnsupportedMessageException {
         if (isPointer()) {
             return nativePointer;
         }
-        CompilerDirectives.transferToInterpreter();
+        exception.enter();
         throw UnsupportedMessageException.create();
     }
 
@@ -153,12 +153,12 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     public LLVMNativePointer toNativePointer(@CachedLibrary("this") LLVMNativeLibrary self,
-                    @Cached BranchProfile exceptionProfile) {
+                    @Cached @Exclusive BranchProfile exceptionProfile) {
         if (!isPointer()) {
             toNative();
         }
         try {
-            return LLVMNativePointer.create(asPointer());
+            return LLVMNativePointer.create(asPointer(exceptionProfile));
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
             throw new LLVMPolyglotException(self, "Cannot convert %s to native pointer.", this);

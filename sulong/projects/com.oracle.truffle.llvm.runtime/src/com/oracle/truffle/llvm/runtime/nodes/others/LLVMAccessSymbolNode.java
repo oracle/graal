@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -74,10 +75,15 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
         return symbol;
     }
 
-    private LLVMPointer checkNull(LLVMPointer result) {
+    @TruffleBoundary
+    private LLVMLinkerException notFound() {
+        throw new LLVMLinkerException(this, "External %s %s cannot be found.", symbol.getKind(), symbol.getName());
+    }
+
+    private LLVMPointer checkNull(LLVMPointer result, BranchProfile exception) {
         if (result == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+            exception.enter();
+            throw notFound();
         }
         return result;
     }
@@ -89,7 +95,7 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
     @Specialization(assumptions = "singleContextAssumption()")
     @GenerateAOT.Exclude
     public LLVMPointer accessSingleContext(@Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
-        return checkNull(getContext().getSymbol(symbol, exception));
+        return checkNull(getContext().getSymbol(symbol, exception), exception);
     }
 
     @Specialization
@@ -99,6 +105,6 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
         }
-        return checkNull(stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception));
+        return checkNull(stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
     }
 }
