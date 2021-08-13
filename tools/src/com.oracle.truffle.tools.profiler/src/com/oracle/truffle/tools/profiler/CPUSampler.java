@@ -305,6 +305,16 @@ public final class CPUSampler implements Closeable {
         // Deprecated, a noop.
     }
 
+    /**
+     * Enables or disables the sampling of the time spent during context initialization. If
+     * <code>true</code> code executed during context initialization is included in the general
+     * profile instead of grouping it into a single entry by default. If <code>false</code> a single
+     * entry will be created that contains all time spent in initialization. This can be useful to
+     * avoid polluting the general application profile with sampled stack frames that only run
+     * during initialization.
+     *
+     * @since 21.3
+     */
     public synchronized void setSampleContextInitialization(boolean enabled) {
         enterChangeConfig();
         this.sampleContextInitialization = enabled;
