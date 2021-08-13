@@ -235,7 +235,7 @@ final class PolyglotThreadLocalActions {
         return submit(threads, originId, action, config, null);
     }
 
-    Future<Void> submit(Thread[] threads, String originId, ThreadLocalAction action, HandshakeConfig config, ContinuousFuture existingFuture) {
+    Future<Void> submit(Thread[] threads, String originId, ThreadLocalAction action, HandshakeConfig config, RecurringFuture existingFuture) {
         TL_HANDSHAKE.testSupport();
         Objects.requireNonNull(action);
         if (threads != null) {
@@ -257,8 +257,8 @@ final class PolyglotThreadLocalActions {
                 filterThreads = new HashSet<>(Arrays.asList(threads));
             }
 
-            boolean continuous = EngineAccessor.LANGUAGE.isContinuousTLAction(action);
-            assert existingFuture == null || continuous : "continuous invariant";
+            boolean recurring = EngineAccessor.LANGUAGE.isRecurringTLAction(action);
+            assert existingFuture == null || recurring : "recurring invariant";
 
             boolean sync = EngineAccessor.LANGUAGE.isSynchronousTLAction(action);
             boolean sideEffect = EngineAccessor.LANGUAGE.isSideEffectingTLAction(action);
@@ -299,9 +299,9 @@ final class PolyglotThreadLocalActions {
                 threadLabel += "[alive=" + activePolyglotThreads.size() + "]";
                 String sideEffectLabel = sideEffect ? "side-effecting  " : "side-effect-free";
                 String syncLabel = sync ? "synchronous " : "asynchronous";
-                String continuousLabel = continuous ? "continuous" : "one-shot";
+                String recurringLabel = recurring ? "recurring" : "one-shot";
                 handshake.debugId = idCounter++;
-                log("submit", handshake, String.format("%-25s  %s  %s %s", threadLabel, sideEffectLabel, syncLabel, continuousLabel));
+                log("submit", handshake, String.format("%-25s  %s  %s %s", threadLabel, sideEffectLabel, syncLabel, recurringLabel));
             }
             Future<Void> future;
             if (activeThreads.length > 0) {
@@ -311,17 +311,17 @@ final class PolyglotThreadLocalActions {
 
             } else {
                 future = COMPLETED_FUTURE;
-                if (continuous) {
-                    // make sure continuous events are registered
+                if (recurring) {
+                    // make sure recurring events are registered
                     this.activeEvents.put(handshake, null);
                 }
             }
-            if (continuous) {
+            if (recurring) {
                 if (existingFuture != null) {
                     existingFuture.setCurrentFuture(future);
                     future = existingFuture;
                 } else {
-                    future = new ContinuousFuture(future);
+                    future = new RecurringFuture(future);
                 }
             }
             handshake.future = future;
@@ -329,13 +329,13 @@ final class PolyglotThreadLocalActions {
         }
     }
 
-    private static final class ContinuousFuture implements Future<Void> {
+    private static final class RecurringFuture implements Future<Void> {
 
         private volatile Future<Void> firstFuture;
         private volatile Future<Void> currentFuture;
         volatile boolean cancelled;
 
-        ContinuousFuture(Future<Void> f) {
+        RecurringFuture(Future<Void> f) {
             Objects.requireNonNull(f);
             this.firstFuture = f;
             this.currentFuture = f;
@@ -373,7 +373,7 @@ final class PolyglotThreadLocalActions {
         }
 
         void setCurrentFuture(Future<Void> currentFuture) {
-            assert !(currentFuture instanceof ContinuousFuture) : "no recursive continuous futures";
+            assert !(currentFuture instanceof RecurringFuture) : "no recursive recurring futures";
             assert currentFuture != null;
             this.firstFuture = null;
             this.currentFuture = currentFuture;
@@ -429,8 +429,8 @@ final class PolyglotThreadLocalActions {
                 continue;
             }
             Future<?> f = handshake.future;
-            if (f instanceof ContinuousFuture) {
-                f = ((ContinuousFuture) f).getCurrentFuture();
+            if (f instanceof RecurringFuture) {
+                f = ((RecurringFuture) f).getCurrentFuture();
                 assert f != null : "current future must never be null";
             }
             if (active) {
@@ -438,8 +438,8 @@ final class PolyglotThreadLocalActions {
                     log("activate", handshake, "");
                 }
                 if (f == COMPLETED_FUTURE) {
-                    assert handshake.future instanceof ContinuousFuture;
-                    handshake.resubmitContinuous();
+                    assert handshake.future instanceof RecurringFuture;
+                    handshake.resubmitRecurring();
                 } else {
                     if (TL_HANDSHAKE.activateThread(s, f)) {
                         updatedActions.add(handshake.action);
@@ -450,7 +450,7 @@ final class PolyglotThreadLocalActions {
                     log("deactivate", handshake, "");
                 }
                 if (f == COMPLETED_FUTURE) {
-                    assert handshake.future instanceof ContinuousFuture;
+                    assert handshake.future instanceof RecurringFuture;
                     // nothing to do, wait for reactivation
                 } else {
                     if (TL_HANDSHAKE.deactivateThread(s, f)) {
@@ -474,9 +474,9 @@ final class PolyglotThreadLocalActions {
                     log("done", handshake, "");
                 }
             }
-            // important to remove and resubmit continuous events in the same lock
+            // important to remove and resubmit recurring events in the same lock
             // otherwise we might race with entering and leaving the thread.
-            handshake.resubmitContinuous();
+            handshake.resubmitRecurring();
         }
     }
 
@@ -560,9 +560,9 @@ final class PolyglotThreadLocalActions {
             this.filterThreads = filterThreads;
         }
 
-        protected final void resubmitContinuous() {
-            if (future instanceof ContinuousFuture) {
-                ContinuousFuture f = (ContinuousFuture) future;
+        protected final void resubmitRecurring() {
+            if (future instanceof RecurringFuture) {
+                RecurringFuture f = (RecurringFuture) future;
                 if (!f.cancelled) {
                     context.threadLocalActions.submit(filterThreads, originId, action, config, f);
                 }
@@ -681,7 +681,7 @@ final class PolyglotThreadLocalActions {
         private final String threadName;
 
         PolyglotStatisticsAction(Thread thread) {
-            // no side-effects, async, continuous
+            // no side-effects, async, recurring
             super(false, false, true);
             this.threadName = thread.getName();
         }

@@ -618,8 +618,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public boolean isContinuousTLAction(ThreadLocalAction action) {
-            return action.isContinuous();
+        public boolean isRecurringTLAction(ThreadLocalAction action) {
+            return action.isRecurring();
         }
 
         @Override

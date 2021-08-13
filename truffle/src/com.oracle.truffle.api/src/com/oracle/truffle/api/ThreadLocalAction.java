@@ -113,7 +113,7 @@ public abstract class ThreadLocalAction {
 
     private final boolean hasSideEffects;
     private final boolean synchronous;
-    private final boolean continuous;
+    private final boolean recurring;
 
     /**
      * Creates a new thread local actions.
@@ -134,14 +134,14 @@ public abstract class ThreadLocalAction {
      * @param hasSideEffects true if the event may have side-effects else false.
      * @param synchronous true if the event should run synchronous else the event will run
      *            asynchronous.
-     * @param continuous true if the event should be rescheduled until cancelled, else false.
+     * @param recurring true if the event should be rescheduled until cancelled, else false.
      * @see ThreadLocalAction
      * @since 21.1
      */
-    protected ThreadLocalAction(boolean hasSideEffects, boolean synchronous, boolean continuous) {
+    protected ThreadLocalAction(boolean hasSideEffects, boolean synchronous, boolean recurring) {
         this.hasSideEffects = hasSideEffects;
         this.synchronous = synchronous;
-        this.continuous = continuous;
+        this.recurring = recurring;
     }
 
     final boolean isSynchronous() {
@@ -152,8 +152,8 @@ public abstract class ThreadLocalAction {
         return hasSideEffects;
     }
 
-    final boolean isContinuous() {
-        return continuous;
+    final boolean isRecurring() {
+        return recurring;
     }
 
     /**

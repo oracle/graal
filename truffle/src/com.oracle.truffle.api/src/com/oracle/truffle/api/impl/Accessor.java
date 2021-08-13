@@ -765,7 +765,7 @@ public abstract class Accessor {
 
         public abstract boolean isSideEffectingTLAction(ThreadLocalAction action);
 
-        public abstract boolean isContinuousTLAction(ThreadLocalAction action);
+        public abstract boolean isRecurringTLAction(ThreadLocalAction action);
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
 

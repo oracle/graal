@@ -1335,7 +1335,7 @@ public class TruffleSafepointTest {
     }
 
     @Test
-    public void testSubmitContinuousWaitWithCancel() {
+    public void testSubmitRecurringWaitWithCancel() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
@@ -1359,7 +1359,7 @@ public class TruffleSafepointTest {
     }
 
     @Test
-    public void testSubmitContinuousWait() {
+    public void testSubmitRecurringWait() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
@@ -1383,7 +1383,7 @@ public class TruffleSafepointTest {
     }
 
     @Test
-    public void testSubmitContinuousCancel() {
+    public void testSubmitRecurringCancel() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint.poll(node);
@@ -1830,8 +1830,8 @@ public class TruffleSafepointTest {
             this(setup, counter, sideEffect, sync, false);
         }
 
-        ActionCollector(TestSetup setup, AtomicInteger counter, boolean sideEffect, boolean sync, boolean continuous) {
-            super(sideEffect, sync, continuous);
+        ActionCollector(TestSetup setup, AtomicInteger counter, boolean sideEffect, boolean sync, boolean recurring) {
+            super(sideEffect, sync, recurring);
             this.setup = setup;
             this.counter = counter;
         }
