@@ -41,7 +41,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackFromThreadNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -194,7 +193,7 @@ public abstract class LLVMForeignCallNode extends RootNode {
     @Child LLVMDataEscapeNode prepareValueForEscape;
     @Child PackForeignArgumentsNode packArguments;
 
-    protected LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType, Structured returnBaseType, Type escapeType) {
+    protected LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionCode function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType, Structured returnBaseType, Type escapeType) {
         super(language);
         this.returnBaseType = returnBaseType;
         this.getStack = LLVMGetStackFromThreadNode.create();
@@ -230,12 +229,11 @@ public abstract class LLVMForeignCallNode extends RootNode {
 
     protected abstract Object doCall(VirtualFrame frame, LLVMStack stack) throws ArityException, TypeOverflowException;
 
-    static CallTarget getCallTarget(LLVMFunctionDescriptor descriptor) {
-        LLVMFunctionCode functionCode = descriptor.getFunctionCode();
+    static CallTarget getCallTarget(LLVMFunctionCode functionCode) {
         if (functionCode.isLLVMIRFunction()) {
             return functionCode.getLLVMIRFunctionSlowPath();
         } else if (functionCode.isIntrinsicFunctionSlowPath()) {
-            return functionCode.getIntrinsicSlowPath().cachedCallTarget(descriptor.getLLVMFunction().getType());
+            return functionCode.getIntrinsicSlowPath().cachedCallTarget(functionCode.getLLVMFunction().getType());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("native function not supported at this point: " + functionCode.getFunction());
