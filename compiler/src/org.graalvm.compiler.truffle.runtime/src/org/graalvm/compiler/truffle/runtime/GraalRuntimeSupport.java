@@ -26,10 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
-import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -37,12 +33,15 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.ThreadLocalHandshake;
-import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
+import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -81,13 +80,9 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!(osrNode instanceof Node)) {
-            throw new IllegalArgumentException("Bytecode OSR node must be of type Node.");
-        }
-        Node node = (Node) osrNode;
-        TruffleSafepoint.poll(node);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) {
+            Node node = (Node) osrNode;
             osrMetadata = node.atomic(() -> { // double checked locking
                 BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
                 if (metadata == null) {

@@ -221,6 +221,7 @@ public interface BytecodeOSRNode extends NodeInterface {
         if (!CompilerDirectives.inInterpreter()) {
             return null;
         }
+        assert BytecodeOSRValidation.validateNode(osrNode);
         return NodeAccessor.RUNTIME.onOSRBackEdge(osrNode, parentFrame, target);
     }
 
@@ -243,4 +244,25 @@ public interface BytecodeOSRNode extends NodeInterface {
     static void transferFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
         NodeAccessor.RUNTIME.transferOSRFrame(osrNode, source, target);
     }
+
+}
+
+final class BytecodeOSRValidation {
+
+    private BytecodeOSRValidation() {
+        // no instances
+    }
+
+    static boolean validateNode(BytecodeOSRNode node) {
+        if (!(node instanceof Node)) {
+            throw new ClassCastException(String.format("%s must be of type Node.", BytecodeOSRNode.class.getSimpleName()));
+        }
+        Node osrNode = (Node) node;
+        RootNode root = osrNode.getRootNode();
+        if (root == null) {
+            throw new AssertionError(String.format("%s was not adopted but executed.", BytecodeOSRNode.class.getSimpleName()));
+        }
+        return true;
+    }
+
 }
