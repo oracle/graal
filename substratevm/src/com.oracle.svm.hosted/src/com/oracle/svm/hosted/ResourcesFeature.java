@@ -173,8 +173,13 @@ public final class ResourcesFeature implements Feature {
         }
 
         @Override
-        public void addResourceBundles(String basename, Collection<Locale> locales) {
+        public void addResourceBundle(String basename, Collection<Locale> locales) {
             ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales);
+        }
+
+        @Override
+        public void addClassResourceBundle(String basename, String className) {
+            ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className);
         }
     }
 

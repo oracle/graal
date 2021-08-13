@@ -112,7 +112,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
                             .map(ResourceConfigurationParser::parseLocale)
                             .collect(Collectors.toList());
             UserError.guarantee(!asList.isEmpty(), "List of locales for %s is empty", basename);
-            registry.addResourceBundles(basename, asList);
+            registry.addResourceBundle(basename, asList);
         }
         Object classNames = resource.get("classNames");
         if (classNames != null) {
@@ -120,12 +120,12 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             UserError.guarantee(!asList.isEmpty(), "List of classNames for %s is empty", basename);
             for (Object o : asList) {
                 String className = asString(o, "Elements of 'classNames' must of strings.");
-                registry.addClassBasedResourceBundle(basename, className);
+                registry.addClassResourceBundle(basename, className);
             }
         }
         if (locales == null && classNames == null) {
-            // register in every locale
-            registry.addResourceBundles(basename);
+            /*- If nothing more precise is specified, register in every included locale */
+            registry.addResourceBundle(basename);
         }
     }
 

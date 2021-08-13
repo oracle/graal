@@ -77,17 +77,17 @@ public class ResourceConfiguration implements ConfigurationBase {
         }
 
         @Override
-        public void addClassBasedResourceBundle(String basename, String className) {
-            configuration.addClassBasedResourceBundle(basename, className);
+        public void addResourceBundle(String basename, Collection<Locale> locales) {
+            configuration.addBundle(basename, locales);
         }
 
         @Override
-        public void addResourceBundles(String basename, Collection<Locale> locales) {
-            configuration.addBundle(basename, locales);
+        public void addClassResourceBundle(String basename, String className) {
+            configuration.addClassResourceBundle(basename, className);
         }
     }
 
-    private void addClassBasedResourceBundle(String basename, String className) {
+    private void addClassResourceBundle(String basename, String className) {
         getOrCreateBundleConfig(basename).classNames.add(className);
     }
 
