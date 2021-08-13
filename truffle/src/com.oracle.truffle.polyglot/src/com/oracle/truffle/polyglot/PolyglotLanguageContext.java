@@ -106,6 +106,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         final Object publicFileSystemContext;
         final ReentrantLock operationLock;
 
+        private boolean multipleThreadsInitialized;
+
         Lazy(PolyglotLanguageInstance languageInstance, PolyglotContextConfig config) {
             /*
              * Important anything that is initialized here must be properly patched in #patch.
@@ -657,9 +659,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     LANGUAGE.initializeThread(env, Thread.currentThread());
                     LANGUAGE.postInitEnv(env);
 
-                    if (!context.isSingleThreaded()) {
-                        LANGUAGE.initializeMultiThreading(env);
-                    }
                 } catch (Throwable e) {
                     // language not successfully initialized, reset to avoid inconsistent
                     // language contexts
@@ -682,18 +681,32 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             lock.unlock();
         }
 
-        synchronized (context) {
-            for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                final Thread thread = threadInfo.getThread();
-                if (thread == Thread.currentThread()) {
-                    continue;
+        if (initialize) {
+            synchronized (context) {
+                ensureMultiThreadingInitialized();
+                for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
+                    final Thread thread = threadInfo.getThread();
+                    if (thread == Thread.currentThread()) {
+                        continue;
+                    }
+                    LANGUAGE.initializeThread(env, thread);
                 }
-                LANGUAGE.initializeThread(env, thread);
             }
         }
 
         return initialize;
 
+    }
+
+    void ensureMultiThreadingInitialized() {
+        assert Thread.holdsLock(context);
+        Lazy l = this.lazy;
+        assert l != null;
+
+        if (!l.multipleThreadsInitialized && !context.isSingleThreaded()) {
+            LANGUAGE.initializeMultiThreading(env);
+            l.multipleThreadsInitialized = true;
+        }
     }
 
     void checkAccess(PolyglotLanguage accessingLanguage) {

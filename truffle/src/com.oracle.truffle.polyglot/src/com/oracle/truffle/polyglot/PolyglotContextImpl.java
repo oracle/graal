@@ -889,7 +889,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
         for (PolyglotLanguageContext context : contexts) {
             if (context.isInitialized()) {
-                LANGUAGE.initializeMultiThreading(context.env);
+                context.ensureMultiThreadingInitialized();
             }
         }
         singleThreaded = false;
