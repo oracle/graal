@@ -266,7 +266,7 @@ public class LLVMScope implements TruffleObject {
             LLVMSymbol symbol = get(globalName);
             if (symbol != null) {
                 try {
-                    LLVMPointer value = LLVMContext.get(self).getSymbol(symbol);
+                    LLVMPointer value = LLVMContext.get(self).getSymbol(symbol, exception);
                     if (value != null) {
                         return escape.executeWithTarget(value);
                     }

@@ -41,10 +41,12 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -157,12 +159,18 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     @ExportMessage
     public Object getRootInstance(Frame frame,
                     @CachedLibrary("this") NodeLibrary self,
-                    @Cached LLVMPointerDataEscapeNode dataEscapeNode) throws UnsupportedMessageException {
+                    @Cached LLVMPointerDataEscapeNode dataEscapeNode,
+                    @Cached BranchProfile exception) throws UnsupportedMessageException {
         if (hasRootInstance(frame)) {
             LLVMContext ctx = LLVMContext.get(self);
-            LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
-            return dataEscapeNode.executeWithTarget(pointer);
+            try {
+                LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction(), exception);
+                return dataEscapeNode.executeWithTarget(pointer);
+            } catch (LLVMIllegalSymbolIndexException ex) {
+                // fallthrough
+            }
         }
+        exception.enter();
         throw UnsupportedMessageException.create();
     }
 }

@@ -47,6 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCodeFactory.ResolveFunctionNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -92,10 +93,12 @@ public final class LLVMFunctionCode {
     private static final class TagSulongFunctionPointerNode extends RootNode {
 
         private final LLVMFunctionCode functionCode;
+        private final BranchProfile exceptionBranch;
 
         TagSulongFunctionPointerNode(LLVMFunctionCode functionCode) {
             super(LLVMLanguage.get(null));
             this.functionCode = functionCode;
+            this.exceptionBranch = BranchProfile.create();
         }
 
         private static long tagSulongFunctionPointer(int id) {
@@ -104,7 +107,7 @@ public final class LLVMFunctionCode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            int id = functionCode.getLLVMFunction().getSymbolIndex(false);
+            int id = functionCode.getLLVMFunction().getSymbolIndex(exceptionBranch);
             return LLVMNativePointer.create(tagSulongFunctionPointer(id));
         }
     }

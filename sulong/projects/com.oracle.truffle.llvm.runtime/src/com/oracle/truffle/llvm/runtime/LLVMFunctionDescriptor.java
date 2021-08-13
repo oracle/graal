@@ -103,19 +103,17 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
     @Override
     public String toString() {
-        return String.format("function@%d '%s'", llvmFunction.getSymbolIndex(true), llvmFunction.getName());
+        return String.format("function@%d '%s'", llvmFunction.getSymbolIndexIllegalOk(), llvmFunction.getName());
     }
 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
-        int otherIndex = o.llvmFunction.getSymbolIndex(true);
-        BitcodeID otherBitcode = o.llvmFunction.getBitcodeID(true);
-        int otherID = otherBitcode.getId();
-        int index = llvmFunction.getSymbolIndex(true);
-        BitcodeID bitcodeID = llvmFunction.getBitcodeID(true);
-        int id = bitcodeID.getId();
+        int otherIndex = o.llvmFunction.getSymbolIndexIllegalOk();
+        BitcodeID otherBitcodeID = o.llvmFunction.getBitcodeIDIllegalOk();
+        int index = llvmFunction.getSymbolIndexIllegalOk();
+        BitcodeID bitcodeID = llvmFunction.getBitcodeIDIllegalOk();
 
-        if (id == otherID) {
+        if (bitcodeID == otherBitcodeID) {
             return Long.compare(index, otherIndex);
         }
 
@@ -147,7 +145,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             try {
                 nativePointer = InteropLibrary.getFactory().getUncached().asPointer(nativeWrapper);
             } catch (UnsupportedMessageException ex) {
-                nativePointer = tagSulongFunctionPointer(llvmFunction.getSymbolIndex(true));
+                nativePointer = tagSulongFunctionPointer(llvmFunction.getSymbolIndexIllegalOk());
             }
         }
         return this;

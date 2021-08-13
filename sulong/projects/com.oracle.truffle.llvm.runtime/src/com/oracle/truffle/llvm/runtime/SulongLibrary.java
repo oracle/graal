@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -115,10 +116,11 @@ public final class SulongLibrary implements TruffleObject {
      *         the function cannot be found.
      */
     private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
+        CompilerAsserts.neverPartOfCompilation();
         try {
             LLVMFunction function = scope.getFunction(symbolName);
             if (function != null) {
-                Object value = context.getSymbol(function);
+                Object value = context.getSymbolUncached(function);
                 if (value != null) {
                     return (LLVMFunctionDescriptor) LLVMManagedPointer.cast(value).getObject();
                 }
@@ -158,6 +160,7 @@ public final class SulongLibrary implements TruffleObject {
         }
 
         protected static LLVMFunctionDescriptor lookupFunctionDescriptor(SulongLibrary library, String name) {
+            CompilerAsserts.neverPartOfCompilation();
             return library.lookupFunctionDescriptor(name);
         }
     }

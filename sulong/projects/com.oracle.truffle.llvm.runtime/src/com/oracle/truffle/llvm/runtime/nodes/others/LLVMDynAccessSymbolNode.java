@@ -31,8 +31,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -47,8 +49,9 @@ public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
     public abstract LLVMPointer execute(LLVMSymbol symbol);
 
     @Specialization
-    LLVMPointer doAccess(LLVMSymbol symbol) {
-        LLVMPointer value = getContext().getSymbol(symbol);
+    LLVMPointer doAccess(LLVMSymbol symbol,
+                    @Cached BranchProfile exception) {
+        LLVMPointer value = getContext().getSymbol(symbol, exception);
         if (value != null) {
             return value;
         }
