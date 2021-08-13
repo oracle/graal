@@ -73,4 +73,9 @@ public class WasmOptions {
 
     @Option(help = "Use sun.misc.Unsafe-based memory.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL)//
     public static final OptionKey<Boolean> UseUnsafeMemory = new OptionKey<>(false);
+
+    // WASM Context Options
+    public static final String SATURATING_FLOAT_TO_INT_NAME = "saturating-float-to-int";
+    @Option(name = SATURATING_FLOAT_TO_INT_NAME, help = "Use saturating-float-to-int conversion", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> SATURATING_FLOAT_TO_INT = new OptionKey<>(false);
 }
