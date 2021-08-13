@@ -1381,7 +1381,6 @@ public abstract class TruffleInstrument {
          * });
          * </pre>
          * <p>
-         * <p>
          * By default thread-local actions are executed once per configured thread and do not repeat
          * themselves. If a ThreadLocalAction is configured to be
          * {@link ThreadLocalAction#ThreadLocalAction(boolean, boolean, boolean) recurring} then the
@@ -1392,7 +1391,7 @@ public abstract class TruffleInstrument {
          * Canceling a recurring action will result in the current event being canceled and no
          * further events being submitted. Using recurring events should be preferred over
          * submitting the event again for the current thread while performing the thread-local
-         * action as continuous events are also resubmitted in case all threads leave and later
+         * action as recurring events are also resubmitted in case all threads leave and later
          * reenter.
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
