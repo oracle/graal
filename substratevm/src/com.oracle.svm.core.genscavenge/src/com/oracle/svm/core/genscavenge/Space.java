@@ -214,7 +214,7 @@ public final class Space {
             VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
         }
         appendAlignedHeapChunkUninterruptibly(aChunk);
-        accounting.noteAlignedHeapChunk(aChunk);
+        accounting.noteAlignedHeapChunk();
     }
 
     @Uninterruptible(reason = "Must not interact with garbage collections.")
@@ -235,7 +235,7 @@ public final class Space {
     void extractAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
         assert VMOperation.isGCInProgress() : "Should only be called by the collector.";
         extractAlignedHeapChunkUninterruptibly(aChunk);
-        accounting.unnoteAlignedHeapChunk(aChunk);
+        accounting.unnoteAlignedHeapChunk();
     }
 
     @Uninterruptible(reason = "Must not interact with garbage collections.")

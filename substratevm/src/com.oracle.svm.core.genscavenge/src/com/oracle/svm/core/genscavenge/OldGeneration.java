@@ -75,29 +75,25 @@ public final class OldGeneration extends Generation {
     @AlwaysInline("GC performance")
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
-        if (originalSpace.isFromSpace()) {
-            return getToSpace().promoteAlignedObject(original, originalSpace);
-        }
-        return original;
+        assert originalSpace.isFromSpace();
+        return getToSpace().promoteAlignedObject(original, originalSpace);
     }
 
     @AlwaysInline("GC performance")
     @Override
     protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
-        if (originalSpace.isFromSpace()) {
-            getToSpace().promoteUnalignedHeapChunk(originalChunk, originalSpace);
-        }
+        assert originalSpace.isFromSpace();
+        getToSpace().promoteUnalignedHeapChunk(originalChunk, originalSpace);
         return original;
     }
 
     @Override
     protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
-        if (originalSpace.isFromSpace()) {
-            if (isAligned) {
-                getToSpace().promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
-            } else {
-                getToSpace().promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
-            }
+        assert originalSpace.isFromSpace();
+        if (isAligned) {
+            getToSpace().promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+        } else {
+            getToSpace().promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
         }
         return true;
     }

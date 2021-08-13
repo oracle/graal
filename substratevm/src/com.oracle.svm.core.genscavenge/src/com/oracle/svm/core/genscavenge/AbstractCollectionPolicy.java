@@ -87,6 +87,9 @@ public abstract class AbstractCollectionPolicy {
     /** The maximum capacity of the young generation, comprising eden and survivor spaces. */
     public abstract UnsignedWord getMaximumYoungGenerationSize();
 
+    /** The minimum heap size, for inclusion in diagnostic output. */
+    public abstract UnsignedWord getMinimumHeapSize();
+
     /**
      * The total capacity of all survivor-from spaces of all ages, equal to the size of all
      * survivor-to spaces of all ages. In other words, when copying during a collection, up to 2x

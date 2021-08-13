@@ -61,6 +61,7 @@ public final class HeapAccounting {
         return youngUsedBytes.get();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getEdenUsedBytes() {
         assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
         return edenUsedBytes.get();

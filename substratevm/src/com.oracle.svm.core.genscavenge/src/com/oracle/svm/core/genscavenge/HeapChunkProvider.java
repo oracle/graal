@@ -155,10 +155,7 @@ final class HeapChunkProvider {
         freeAlignedChunkList(cur);
 
         if (freeListBytes.aboveThan(reserveBytes)) {
-            /*
-             * Release chunks from the free list to the operating system. This can be necessary
-             * after eden shrinks or if too many chunks were allocated during a collection.
-             */
+            // Release chunks from the free list to the operating system when spaces shrink
             UnsignedWord unusedChunksToFree = freeListBytes.subtract(reserveBytes)
                             .unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
             freeUnusedAlignedChunksAtSafepoint(unusedChunksToFree);

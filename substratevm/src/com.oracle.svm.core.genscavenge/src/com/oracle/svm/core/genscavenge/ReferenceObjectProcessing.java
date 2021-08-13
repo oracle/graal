@@ -222,7 +222,6 @@ final class ReferenceObjectProcessing {
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             Object forwardedObj = ObjectHeaderImpl.getForwardedObject(referentAddr);
             ReferenceInternals.setReferent(dr, forwardedObj);
-            RememberedSet.get().dirtyCardIfNecessary(dr, forwardedObj);
             return true;
         }
         return false;

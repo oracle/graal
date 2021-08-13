@@ -88,8 +88,8 @@ public final class HeapParameters {
         }
     }
 
-    static final long LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE = 0;
-    static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
+    private static final long LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE = 0;
+    private static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static void initialize() {

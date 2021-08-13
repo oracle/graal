@@ -238,7 +238,7 @@ public final class ThreadLocalAllocation {
             }
             /* Small arrays go into the regular aligned chunk. */
 
-            // We might have allocated on this slow path and now have a TLAB with enough space
+            // We might have allocated in the caller and acquired a TLAB with enough space already
             // (but we need to check in an uninterruptible method to be safe)
             Object array = allocateSmallArrayInCurrentTlab(hub, length, size, fillStartOffset);
             if (array == null) { // We need a new chunk.
@@ -301,6 +301,7 @@ public final class ThreadLocalAllocation {
     private static Pointer allocateRawMemoryInTlab(UnsignedWord size, Descriptor tlab) {
         assert size.belowOrEqual(availableTlabMemory(tlab)) : "Not enough TLAB space for allocation";
 
+        // The (uninterruptible) caller has ensured that we have a TLAB.
         Pointer top = KnownIntrinsics.nonNullPointer(tlab.getAllocationTop(TLAB_TOP_IDENTITY));
         tlab.setAllocationTop(top.add(size), TLAB_TOP_IDENTITY);
         return top;

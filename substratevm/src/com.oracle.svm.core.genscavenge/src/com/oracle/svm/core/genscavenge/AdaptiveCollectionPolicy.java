@@ -481,8 +481,8 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
          */
         UnsignedWord survivedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorChunkBytes();
         UnsignedWord survivorOverflowObjectBytes = accounting.getSurvivorOverflowObjectBytes();
-        UnsignedWord promotedObjBytes = accounting.getPromotedObjectBytes(); // includes overflowed
-        updateAverages(survivedChunkBytes, survivorOverflowObjectBytes, promotedObjBytes);
+        UnsignedWord tenuredObjBytes = accounting.getTenuredObjectBytes(); // includes overflowed
+        updateAverages(survivedChunkBytes, survivorOverflowObjectBytes, tenuredObjBytes);
 
         computeSurvivorSpaceSizeAndThreshold(survivorOverflowObjectBytes.aboveThan(0), sizes.maxSurvivorSize());
         computeEdenSpaceSize();
@@ -642,12 +642,18 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return tenuringThreshold;
     }
 
+    @Override
+    public UnsignedWord getMinimumHeapSize() {
+        return sizes.minHeapSize;
+    }
+
     static final class SizeParameters {
         final UnsignedWord maxHeapSize;
         final UnsignedWord maxYoungSize;
         final UnsignedWord initialHeapSize;
         final UnsignedWord initialEdenSize;
         final UnsignedWord initialSurvivorSize;
+        final UnsignedWord minHeapSize;
 
         static SizeParameters compute() {
             UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
@@ -735,15 +741,17 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             }
             UnsignedWord initialEden = minSpaceSize(alignUp(initialYoung.subtract(initialSurvivor.multiply(2))));
 
-            return new SizeParameters(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor);
+            return new SizeParameters(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
         }
 
-        private SizeParameters(UnsignedWord maxHeapSize, UnsignedWord maxYoungSize, UnsignedWord initialHeapSize, UnsignedWord initialEdenSize, UnsignedWord initialSurvivorSize) {
+        private SizeParameters(UnsignedWord maxHeapSize, UnsignedWord maxYoungSize, UnsignedWord initialHeapSize,
+                        UnsignedWord initialEdenSize, UnsignedWord initialSurvivorSize, UnsignedWord minHeapSize) {
             this.maxHeapSize = maxHeapSize;
             this.maxYoungSize = maxYoungSize;
             this.initialHeapSize = initialHeapSize;
             this.initialEdenSize = initialEdenSize;
             this.initialSurvivorSize = initialSurvivorSize;
+            this.minHeapSize = minHeapSize;
 
             assert isAligned(maxHeapSize) && isAligned(maxYoungSize) && isAligned(initialHeapSize) && isAligned(initialEdenSize) && isAligned(initialSurvivorSize);
             assert isAligned(maxSurvivorSize()) && isAligned(initialYoungSize()) && isAligned(initialOldSize()) && isAligned(maxOldSize());
@@ -782,8 +790,8 @@ abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean equal(SizeParameters other) {
-            return maxHeapSize.equal(other.maxHeapSize) && maxYoungSize.equal(other.maxYoungSize) &&
-                            initialHeapSize.equal(other.initialHeapSize) && initialSurvivorSize.equal(other.initialSurvivorSize);
+            return maxHeapSize.equal(other.maxHeapSize) && maxYoungSize.equal(other.maxYoungSize) && initialHeapSize.equal(other.initialHeapSize) &&
+                            initialEdenSize.equal(other.initialEdenSize) && initialSurvivorSize.equal(other.initialSurvivorSize) && minHeapSize.equal(other.minHeapSize);
         }
     }
 }

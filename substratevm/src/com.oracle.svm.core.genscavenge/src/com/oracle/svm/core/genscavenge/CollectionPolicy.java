@@ -172,7 +172,8 @@ public final class CollectionPolicy {
             return youngSize;
         }
 
-        protected final UnsignedWord getMinimumHeapSize() {
+        @Override
+        public final UnsignedWord getMinimumHeapSize() {
             long runtimeValue = SubstrateGCOptions.MinHeapSize.getValue();
             if (runtimeValue != 0L) {
                 /* If `-Xms` has been parsed from the command line, use that value. */
@@ -224,7 +225,6 @@ public final class CollectionPolicy {
 
         @Override
         public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
-            assert !followingIncrementalCollection : "no incremental collections allowed";
             return true;
         }
 
@@ -260,7 +260,7 @@ public final class CollectionPolicy {
 
         @Override
         public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
-            if (followingIncrementalCollection) {
+            if (followingIncrementalCollection && !HeapParameters.Options.CollectYoungGenerationSeparately.getValue()) {
                 return false;
             }
             return estimateUsedHeapAtNextIncrementalCollection().aboveThan(getMaximumHeapSize()) ||

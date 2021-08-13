@@ -242,13 +242,13 @@ public final class YoungGeneration extends Generation {
     @AlwaysInline("GC performance")
     @Override
     protected Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
-        if (!originalSpace.isFromSpace()) {
-            return original;
-        }
-
+        assert originalSpace.isFromSpace();
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert originalSpace.getAge() < maxSurvivorSpaces;
 
+        // The object might fit in an existing chunk in the survivor space. If it doesn't, we get
+        // called back in requestAlignedSurvivorChunk() and decide if another chunk fits in the
+        // survivor space. If it does not, we return null here to tell the caller.
         int age = originalSpace.getNextAgeForPromotion();
         Space toSpace = getSurvivorToSpaceAt(age - 1);
         return toSpace.promoteAlignedObject(original, originalSpace);
@@ -257,10 +257,7 @@ public final class YoungGeneration extends Generation {
     @AlwaysInline("GC performance")
     @Override
     protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
-        if (!originalSpace.isFromSpace()) {
-            return original;
-        }
-
+        assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
         if (!unalignedChunkFitsInSurvivors(originalChunk)) {
             return null;
@@ -274,10 +271,7 @@ public final class YoungGeneration extends Generation {
 
     @Override
     protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
-        if (!originalSpace.isFromSpace()) {
-            return true;
-        }
-
+        assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
         if (!fitsInSurvivors(originalChunk, isAligned)) {
             return false;

@@ -40,7 +40,6 @@ import com.oracle.svm.core.log.Log;
 final class ChunksAccounting {
     private final ChunksAccounting parent;
     private long alignedCount;
-    private UnsignedWord alignedChunkBytes;
     private long unalignedCount;
     private UnsignedWord unalignedChunkBytes;
 
@@ -57,7 +56,6 @@ final class ChunksAccounting {
 
     public void reset() {
         alignedCount = 0L;
-        alignedChunkBytes = WordFactory.zero();
         unalignedCount = 0L;
         unalignedChunkBytes = WordFactory.zero();
     }
@@ -72,7 +70,7 @@ final class ChunksAccounting {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getAlignedChunkBytes() {
-        return alignedChunkBytes;
+        return WordFactory.unsigned(alignedCount).multiply(HeapParameters.getAlignedHeapChunkSize());
     }
 
     public long getUnalignedChunkCount() {
@@ -85,34 +83,23 @@ final class ChunksAccounting {
     }
 
     void report(Log reportLog) {
-        reportLog.string("aligned: ").unsigned(alignedChunkBytes).string("/").unsigned(alignedCount);
+        reportLog.string("aligned: ").unsigned(getAlignedChunkBytes()).string("/").unsigned(alignedCount);
         reportLog.string(" ");
         reportLog.string("unaligned: ").unsigned(unalignedChunkBytes).string("/").unsigned(unalignedCount);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void noteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        noteAligned(AlignedHeapChunk.getCommittedObjectMemory(chunk));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void noteAligned(UnsignedWord size) {
+    void noteAlignedHeapChunk() {
         alignedCount++;
-        alignedChunkBytes = alignedChunkBytes.add(size);
         if (parent != null) {
-            parent.noteAligned(size);
+            parent.noteAlignedHeapChunk();
         }
     }
 
-    void unnoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        unnoteAligned(AlignedHeapChunk.getCommittedObjectMemory(chunk));
-    }
-
-    private void unnoteAligned(UnsignedWord size) {
+    void unnoteAlignedHeapChunk() {
         alignedCount--;
-        alignedChunkBytes = alignedChunkBytes.subtract(size);
         if (parent != null) {
-            parent.unnoteAligned(size);
+            parent.unnoteAlignedHeapChunk();
         }
     }
 
