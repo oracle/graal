@@ -22,12 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.UnknownObjectField;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-@TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //
-final class Target_java_lang_NamedPackage {
-    @Alias Module module;
+public final class BootModuleLayerSupport {
+
+    public static BootModuleLayerSupport instance() {
+        return ImageSingletons.lookup(BootModuleLayerSupport.class);
+    }
+
+    @UnknownObjectField(types = ModuleLayer.class)
+    private ModuleLayer bootLayer;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setBootLayer(ModuleLayer bootLayer) {
+        this.bootLayer = bootLayer;
+    }
+
+    public ModuleLayer getBootLayer() {
+        return bootLayer;
+    }
 }

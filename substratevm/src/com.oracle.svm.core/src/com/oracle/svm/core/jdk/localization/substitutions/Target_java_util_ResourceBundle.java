@@ -29,8 +29,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -80,23 +78,6 @@ final class Target_java_util_ResourceBundle {
     @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, ClassLoader loader, ResourceBundle.Control control) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
-    }
-
-    /*
-     * Currently there is no support for the module system at run time. Module arguments are
-     * therefore ignored.
-     */
-
-    @TargetElement(onlyWith = {JDK11OrLater.class, OptimizedLocaleMode.class})
-    @Substitute
-    private static ResourceBundle getBundle(String baseName, Target_java_lang_Module module) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
-    }
-
-    @TargetElement(onlyWith = {JDK11OrLater.class, OptimizedLocaleMode.class})
-    @Substitute
-    private static ResourceBundle getBundle(String baseName, Locale targetLocale, Target_java_lang_Module module) {
         return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
     }
 }

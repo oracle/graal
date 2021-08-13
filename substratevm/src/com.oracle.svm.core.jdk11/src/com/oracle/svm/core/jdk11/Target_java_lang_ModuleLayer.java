@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
-@TargetClass(className = "java.lang.WeakPairMap", onlyWith = JDK11OrLater.class)
-final class Target_java_lang_WeakPairMap<K1, K2, V> {
+@SuppressWarnings("unused")
+@TargetClass(value = java.lang.ModuleLayer.class, onlyWith = JDK11OrLater.class)
+final class Target_java_lang_ModuleLayer {
+
+    @SuppressWarnings("unused")
+    @Substitute
+    public static ModuleLayer boot() {
+        return BootModuleLayerSupport.instance().getBootLayer();
+    }
 }

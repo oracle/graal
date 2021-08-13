@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
-@TargetClass(className = "java.lang.module.ModuleReference", onlyWith = JDK11OrLater.class)
-@SuppressWarnings("unused")
-public final class Target_java_lang_module_ModuleReference {
-
+@TargetClass(className = "java.lang.WeakPairMap", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_WeakPairMap<K1, K2, V> {
 }

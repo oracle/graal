@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,30 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
-@SuppressWarnings("unused")
-@TargetClass(className = "java.lang.ModuleLayer", onlyWith = JDK11OrLater.class)
-final class Target_java_lang_ModuleLayer {
+import java.net.URL;
 
-    @SuppressWarnings("unused")
+@SuppressWarnings({"unused"})
+@TargetClass(Package.class)
+public final class Target_java_lang_Package {
+
+    @Alias
+    public Target_java_lang_Package(String name,
+                    String spectitle, String specversion, String specvendor,
+                    String impltitle, String implversion, String implvendor,
+                    URL sealbase, ClassLoader loader) {
+    }
+
     @Substitute
-    public static ModuleLayer boot() {
-        return BootModuleLayerSupport.instance().getBootLayer();
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static Package getSystemPackage(String name) {
+        Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                        null, null, null, null, null);
+        return SubstrateUtil.cast(pkg, Package.class);
     }
 }

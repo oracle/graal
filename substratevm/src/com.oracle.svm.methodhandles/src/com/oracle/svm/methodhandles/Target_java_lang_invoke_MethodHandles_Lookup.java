@@ -40,7 +40,6 @@ import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK11_0_10OrEarlier;
 import com.oracle.svm.core.jdk.JDK11_0_11OrLater;
 import com.oracle.svm.core.jdk.JDK15OrLater;
-import com.oracle.svm.core.jdk.Target_java_lang_Module;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandles_Lookup {
@@ -89,7 +88,7 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
         if (this == SubstrateUtil.cast(MethodHandles.publicLookup(), Target_java_lang_invoke_MethodHandles_Lookup.class)) {
             message += ", from public Lookup";
         } else {
-            Target_java_lang_Module m = SubstrateUtil.cast(lookupClass, DynamicHub.class).getModule();
+            Object m = SubstrateUtil.cast(lookupClass, DynamicHub.class).getModule();
             message += ", from " + lookupClass + " (" + m + ")";
             if (prevLookupClass != null) {
                 message += ", previous lookup " +

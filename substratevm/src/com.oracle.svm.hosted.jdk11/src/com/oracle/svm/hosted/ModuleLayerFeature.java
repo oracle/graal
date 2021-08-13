@@ -26,7 +26,7 @@ package com.oracle.svm.hosted;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.BootModuleLayerSupport;
+import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
@@ -114,12 +113,6 @@ public final class ModuleLayerFeature implements Feature {
         access.registerAsInHeap(Configuration.class);
         access.registerAsInHeap(ResolvedModule.class);
         access.registerAsInHeap(ModuleReferenceImpl.class);
-
-        access.registerReachabilityHandler(
-                a -> a.registerAsUnsafeAccessed(ReflectionUtil.lookupField(ClassLoader.class, "classLoaderValueMap")),
-                ReflectionUtil.lookupMethod(ClassLoader.class, "trySetObjectField", String.class, Object.class)
-        );
-        RuntimeReflection.register(ReflectionUtil.lookupField(ClassLoader.class, "classLoaderValueMap"));
     }
 
     @Override
