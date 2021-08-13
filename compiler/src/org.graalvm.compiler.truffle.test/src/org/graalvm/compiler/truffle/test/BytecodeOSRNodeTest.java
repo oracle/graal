@@ -30,7 +30,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -39,7 +38,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -496,6 +494,17 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             frame.setInt(frameSlot, value);
         }
 
+        // Prevent assertion code from being compiled.
+        @TruffleBoundary
+        public void assertEquals(Object expected, Object actual) {
+            Assert.assertEquals(expected, actual);
+        }
+
+        @TruffleBoundary
+        void assertDoubleEquals(double expected, double actual) {
+            Assert.assertEquals(expected, actual, 0);
+        }
+
         abstract Object execute(VirtualFrame frame);
     }
 
@@ -769,7 +778,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                             // The OSR frame will be up to date; the parent frame will not. We
                             // should get the OSR frame here.
                             int indexInFrame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY).getInt(indexSlot);
-                            Assert.assertEquals(index, indexInFrame);
+                            assertEquals(index, indexInFrame);
                             if (CompilerDirectives.inCompiledCode()) {
                                 Assert.assertTrue(frameInstance.isVirtualFrame());
                             }
@@ -930,13 +939,13 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         public void checkRegularFrame(VirtualFrame frame) {
             try {
-                Assert.assertTrue(frame.getBoolean(booleanSlot));
-                Assert.assertEquals(Byte.MIN_VALUE, frame.getByte(byteSlot));
-                checkDoubleExact(Double.MIN_VALUE, frame.getDouble(doubleSlot));
-                checkDoubleExact(Float.MIN_VALUE, frame.getFloat(floatSlot));
-                Assert.assertEquals(Integer.MIN_VALUE, frame.getInt(intSlot));
-                Assert.assertEquals(Long.MIN_VALUE, frame.getLong(longSlot));
-                Assert.assertEquals(o1, frame.getObject(objectSlot));
+                assertEquals(true, frame.getBoolean(booleanSlot));
+                assertEquals(Byte.MIN_VALUE, frame.getByte(byteSlot));
+                assertDoubleEquals(Double.MIN_VALUE, frame.getDouble(doubleSlot));
+                assertDoubleEquals(Float.MIN_VALUE, frame.getFloat(floatSlot));
+                assertEquals(Integer.MIN_VALUE, frame.getInt(intSlot));
+                assertEquals(Long.MIN_VALUE, frame.getLong(longSlot));
+                assertEquals(o1, frame.getObject(objectSlot));
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
@@ -955,22 +964,17 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         public void checkOSRFrame(VirtualFrame frame) {
             try {
-                Assert.assertFalse(frame.getBoolean(booleanSlot));
-                Assert.assertEquals(Byte.MAX_VALUE, frame.getByte(byteSlot));
-                checkDoubleExact(Double.MAX_VALUE, frame.getDouble(doubleSlot));
-                checkDoubleExact(Float.MAX_VALUE, frame.getFloat(floatSlot));
-                Assert.assertEquals(Integer.MAX_VALUE, frame.getInt(intSlot));
-                Assert.assertEquals(Long.MAX_VALUE, frame.getLong(longSlot));
-                Assert.assertEquals(o2, frame.getObject(objectSlot));
+                assertEquals(false, frame.getBoolean(booleanSlot));
+                assertEquals(Byte.MAX_VALUE, frame.getByte(byteSlot));
+                assertDoubleEquals(Double.MAX_VALUE, frame.getDouble(doubleSlot));
+                assertDoubleEquals(Float.MAX_VALUE, frame.getFloat(floatSlot));
+                assertEquals(Integer.MAX_VALUE, frame.getInt(intSlot));
+                assertEquals(Long.MAX_VALUE, frame.getLong(longSlot));
+                assertEquals(o2, frame.getObject(objectSlot));
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
             }
-        }
-
-        @TruffleBoundary
-        void checkDoubleExact(double expected, double actual) {
-            Assert.assertEquals(expected, actual, 0);
         }
     }
 
@@ -988,13 +992,13 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void checkOSRFrame(VirtualFrame frame) {
             try {
-                Assert.assertFalse(frame.getBoolean(booleanSlot));
-                Assert.assertEquals(Byte.MAX_VALUE, frame.getByte(byteSlot));
-                checkDoubleExact(Double.MAX_VALUE, frame.getDouble(doubleSlot));
-                checkDoubleExact(Float.MAX_VALUE, frame.getFloat(floatSlot));
-                Assert.assertEquals(o2, frame.getObject(intSlot));
-                Assert.assertEquals(Long.MAX_VALUE, frame.getLong(longSlot));
-                Assert.assertEquals(o2, frame.getObject(objectSlot));
+                assertEquals(false, frame.getBoolean(booleanSlot));
+                assertEquals(Byte.MAX_VALUE, frame.getByte(byteSlot));
+                assertDoubleEquals(Double.MAX_VALUE, frame.getDouble(doubleSlot));
+                assertDoubleEquals(Float.MAX_VALUE, frame.getFloat(floatSlot));
+                assertEquals(o2, frame.getObject(intSlot));
+                assertEquals(Long.MAX_VALUE, frame.getLong(longSlot));
+                assertEquals(o2, frame.getObject(objectSlot));
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
@@ -1005,8 +1009,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
             // The parent implementation asserts we are in compiled code, so we instead explicitly
             // do the transfer here.
-            BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) getOSRMetadata();
-            osrMetadata.transferFrame((FrameWithoutBoxing) osrFrame, (FrameWithoutBoxing) parentFrame);
+            ((BytecodeOSRMetadata) osrMetadata).transferFrame((FrameWithoutBoxing) osrFrame, (FrameWithoutBoxing) parentFrame);
             // Since the intSlot tag changed inside the compiled code, the tag speculation should
             // fail and cause a deopt.
             Assert.assertFalse(CompilerDirectives.inCompiledCode());
@@ -1030,15 +1033,15 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void checkRegularFrame(VirtualFrame frame) {
             try {
-                Assert.assertTrue(frame.getBoolean(booleanSlot));
+                assertEquals(true, frame.getBoolean(booleanSlot));
                 // these slots are uninitialized
-                Assert.assertEquals(defaultValue, frame.getObject(byteSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(byteSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(doubleSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(floatSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(intSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(longSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(objectSlot));
+                assertEquals(defaultValue, frame.getObject(byteSlot));
+                assertEquals(defaultValue, frame.getObject(byteSlot));
+                assertEquals(defaultValue, frame.getObject(doubleSlot));
+                assertEquals(defaultValue, frame.getObject(floatSlot));
+                assertEquals(defaultValue, frame.getObject(intSlot));
+                assertEquals(defaultValue, frame.getObject(longSlot));
+                assertEquals(defaultValue, frame.getObject(objectSlot));
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
@@ -1054,15 +1057,15 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void checkOSRFrame(VirtualFrame frame) {
             try {
-                Assert.assertFalse(frame.getBoolean(booleanSlot));
+                assertEquals(false, frame.getBoolean(booleanSlot));
                 // these slots are uninitialized
-                Assert.assertEquals(defaultValue, frame.getObject(byteSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(byteSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(doubleSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(floatSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(intSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(longSlot));
-                Assert.assertEquals(defaultValue, frame.getObject(objectSlot));
+                assertEquals(defaultValue, frame.getObject(byteSlot));
+                assertEquals(defaultValue, frame.getObject(byteSlot));
+                assertEquals(defaultValue, frame.getObject(doubleSlot));
+                assertEquals(defaultValue, frame.getObject(floatSlot));
+                assertEquals(defaultValue, frame.getObject(intSlot));
+                assertEquals(defaultValue, frame.getObject(longSlot));
+                assertEquals(defaultValue, frame.getObject(objectSlot));
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
@@ -1128,18 +1131,13 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             }
         }
 
-        @TruffleBoundary
-        public void checkEquals(Object expected, Object actual) {
-            Assert.assertEquals(expected, actual);
-        }
-
         public void setRegularFrame(VirtualFrame frame) {
             frame.setInt(intSlot, Integer.MIN_VALUE);
         }
 
         public void checkRegularFrame(VirtualFrame frame) {
             try {
-                checkEquals(Integer.MIN_VALUE, frame.getInt(intSlot));
+                assertEquals(Integer.MIN_VALUE, frame.getInt(intSlot));
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
@@ -1155,9 +1153,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         public void checkOSRFrame(VirtualFrame frame) {
             try {
-                checkEquals(Integer.MAX_VALUE, frame.getInt(intSlot));
+                assertEquals(Integer.MAX_VALUE, frame.getInt(intSlot));
                 if (longSlot != null) {
-                    checkEquals(Long.MAX_VALUE, frame.getLong(longSlot));
+                    assertEquals(Long.MAX_VALUE, frame.getLong(longSlot));
                 }
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
@@ -1201,6 +1199,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             }
         }
 
+        @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
             Object[] args = frame.getArguments();
