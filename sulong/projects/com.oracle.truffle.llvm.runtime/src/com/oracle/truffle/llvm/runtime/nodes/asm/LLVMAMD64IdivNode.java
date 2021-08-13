@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,28 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteTupelNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LongDivision;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64DivNode.QuotientTooLargeException;
 
 public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
-    public static final String DIV_BY_ZERO = "division by zero";
-    public static final String QUOTIENT_TOO_LARGE = "quotient too large";
 
     @NodeChild(value = "left", type = LLVMExpressionNode.class)
     @NodeChild(value = "right", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64IdivbNode extends LLVMExpressionNode {
         @Specialization
         protected short doOp(short left, byte right) {
-            if (right == 0) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException(DIV_BY_ZERO);
-            }
             byte quotient = (byte) (left / right);
             byte remainder = (byte) (left % right);
             // TODO: error on quotient too large
@@ -70,10 +66,6 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
 
         @Specialization
         protected void doOp(VirtualFrame frame, short high, short left, short right) {
-            if (right == 0) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException(DIV_BY_ZERO);
-            }
             int value = Short.toUnsignedInt(high) << LLVMExpressionNode.I16_SIZE_IN_BITS | Short.toUnsignedInt(left);
             short quotient = (short) (value / right);
             short remainder = (short) (value % right);
@@ -94,10 +86,6 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
 
         @Specialization
         protected void doOp(VirtualFrame frame, int high, int left, int right) {
-            if (right == 0) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException(DIV_BY_ZERO);
-            }
             long value = Integer.toUnsignedLong(high) << LLVMExpressionNode.I32_SIZE_IN_BITS | Integer.toUnsignedLong(left);
             int quotient = (int) (value / right);
             int remainder = (int) (value % right);
@@ -117,15 +105,12 @@ public abstract class LLVMAMD64IdivNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected void doOp(VirtualFrame frame, long high, long left, long right) {
-            if (right == 0) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException(DIV_BY_ZERO);
-            }
+        protected void doOp(VirtualFrame frame, long high, long left, long right,
+                        @Cached BranchProfile exception) {
             LongDivision.Result result = LongDivision.divs128by64(high, left, right);
             if (result.isInvalid()) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException(QUOTIENT_TOO_LARGE);
+                exception.enter();
+                throw new QuotientTooLargeException();
             }
             long quotient = result.quotient;
             long remainder = result.remainder;
