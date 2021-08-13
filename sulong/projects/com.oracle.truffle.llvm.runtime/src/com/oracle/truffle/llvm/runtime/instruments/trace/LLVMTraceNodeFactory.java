@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.instruments.trace;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import java.io.PrintStream;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -54,6 +54,7 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
 
     @Override
     public ExecutionEventNode create(EventContext eventContext) {
+        CompilerAsserts.neverPartOfCompilation();
         if (eventContext.hasTag(StandardTags.RootTag.class)) {
             assert eventContext.getInstrumentedNode() != null;
             final RootNode rootNode = eventContext.getInstrumentedNode().getRootNode();
@@ -65,7 +66,6 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
             return new StatementTrace(traceContext, traceTarget, toTraceLine(eventContext.getInstrumentedSourceSection(), true));
 
         } else {
-            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Unknown node for tracing: " + eventContext.getInstrumentedNode());
         }
     }

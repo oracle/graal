@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -48,7 +47,6 @@ public final class DebugExprException extends RuntimeException {
 
     @TruffleBoundary
     public static DebugExprException typeError(LLVMExpressionNode operation, Object... members) {
-        CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append("unexpected type ");
         if (members != null && members.length > 0 && members[0] != null) {
@@ -70,7 +68,6 @@ public final class DebugExprException extends RuntimeException {
 
     @TruffleBoundary
     public static DebugExprException symbolNotFound(LLVMExpressionNode operation, String name, Object receiver) {
-        CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append(name);
         sb.append(" not found");

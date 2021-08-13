@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -89,6 +89,7 @@ public abstract class LLVMForeignCallNode extends RootNode {
          * @param sourceType The source (e.g. C) level function type.
          */
         public static PackForeignArgumentsNode create(FunctionType bitcodeFunctionType, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
+            CompilerAsserts.neverPartOfCompilation();
             int numberOfBitcodeParams = bitcodeFunctionType.getNumberOfArguments();
             LLVMGetInteropParamNode[] toLLVM = new LLVMGetInteropParamNode[numberOfBitcodeParams];
 
@@ -131,7 +132,6 @@ public abstract class LLVMForeignCallNode extends RootNode {
                         assert targetMemberType == bitcodeParameterType;
 
                         if (Long.compareUnsigned(sourceArgIndex, numberOfBitcodeParams) >= 0) {
-                            CompilerDirectives.transferToInterpreter();
                             throw new ArrayIndexOutOfBoundsException(String.format("Source argument index (%s) is out of bitcode parameters list bounds (which is of length %s)",
                                             Long.toUnsignedString(sourceArgIndex), Integer.toUnsignedString(numberOfBitcodeParams)));
                         }
@@ -230,12 +230,12 @@ public abstract class LLVMForeignCallNode extends RootNode {
     protected abstract Object doCall(VirtualFrame frame, LLVMStack stack) throws ArityException, TypeOverflowException;
 
     static CallTarget getCallTarget(LLVMFunctionCode functionCode) {
+        CompilerAsserts.neverPartOfCompilation();
         if (functionCode.isLLVMIRFunction()) {
             return functionCode.getLLVMIRFunctionSlowPath();
         } else if (functionCode.isIntrinsicFunctionSlowPath()) {
             return functionCode.getIntrinsicSlowPath().cachedCallTarget(functionCode.getLLVMFunction().getType());
         } else {
-            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("native function not supported at this point: " + functionCode.getFunction());
         }
     }
