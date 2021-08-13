@@ -132,11 +132,13 @@ public final class ObjectKlass extends Klass {
     private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
 
     public static final int LOADED = 0;
-    public static final int LINKED = 1;
+    public static final int LINKING = 1;
     public static final int PREPARED = 2;
-    public static final int INITIALIZING = 3;
-    public static final int INITIALIZED = 4;
-    public static final int ERRONEOUS = -1;
+    public static final int LINKED = 3;
+    // Can be erroneous only if initialization triggered !
+    public static final int ERRONEOUS = 4;
+    public static final int INITIALIZING = 5;
+    public static final int INITIALIZED = 6;
 
     private final StaticObject definingClassLoader;
 
@@ -296,30 +298,38 @@ public final class ObjectKlass extends Klass {
         return initState;
     }
 
-    boolean isInitializedImpl() {
-        return initState >= INITIALIZED;
+    private boolean isLinkingOrLinked() {
+        return initState >= LINKING;
     }
 
-    private boolean isInitializingOrInitialized() {
-        return initState >= INITIALIZING;
+    boolean isPrepared() {
+        return initState >= PREPARED;
     }
 
     private boolean isLinked() {
         return initState >= LINKED;
     }
 
-    private boolean isPrepared() {
-        return initState >= PREPARED;
+    private boolean isInitializingOrInitialized() {
+        return initState >= INITIALIZING;
+    }
+
+    boolean isInitializedImpl() {
+        return initState >= INITIALIZED;
     }
 
     private void setErroneousInitialization() {
         initState = ERRONEOUS;
     }
 
+    boolean isErroneous() {
+        return initState == ERRONEOUS;
+    }
+
     private void checkErroneousInitialization() {
-        if (initState == ERRONEOUS) {
+        if (isErroneous()) {
             Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, EspressoError.cat("Erroneous class: ", getName()));
         }
     }
 
@@ -496,23 +506,31 @@ public final class ObjectKlass extends Klass {
     @Override
     public void ensureLinked() {
         if (!isLinked()) {
+            checkErroneousVerification();
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
-                initState = LINKED;
-                if (getSuperKlass() != null) {
-                    getSuperKlass().ensureLinked();
+                if (!isLinkingOrLinked()) {
+                    initState = LINKING;
+                    if (getSuperKlass() != null) {
+                        getSuperKlass().ensureLinked();
+                    }
+                    for (ObjectKlass interf : getSuperInterfaces()) {
+                        interf.ensureLinked();
+                    }
+                    prepare();
+                    verify();
+                    initState = LINKED;
                 }
-                for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.ensureLinked();
-                }
-                prepare();
-                verify();
             }
+            checkErroneousVerification();
         }
     }
 
     void initializeImpl() {
         if (!isInitializedImpl()) { // Skip synchronization and locks if already init.
+            // Allow folding the exception path if erroneous
+            checkErroneousVerification();
+            checkErroneousInitialization();
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ensureLinked();
             actualInit();
@@ -540,8 +558,8 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private EspressoException verificationError = null;
 
+    private static final int FAILED_VERIFICATION = -1;
     private static final int UNVERIFIED = 0;
-
     private static final int VERIFYING = 1;
     private static final int VERIFIED = 2;
 
@@ -553,18 +571,18 @@ public final class ObjectKlass extends Klass {
         return verificationStatus >= VERIFYING;
     }
 
-    private boolean isVerified() {
+    boolean isVerified() {
         return verificationStatus >= VERIFIED;
     }
 
     private void checkErroneousVerification() {
-        if (verificationStatus == ERRONEOUS) {
+        if (verificationStatus == FAILED_VERIFICATION) {
             throw verificationError;
         }
     }
 
     private void setErroneousVerification(EspressoException e) {
-        verificationStatus = ERRONEOUS;
+        verificationStatus = FAILED_VERIFICATION;
         verificationError = e;
     }
 

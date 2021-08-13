@@ -1447,18 +1447,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public int getStatus() {
         if (this instanceof ObjectKlass) {
             ObjectKlass objectKlass = (ObjectKlass) this;
-            int state = objectKlass.getState();
-            switch (state) {
-                case ObjectKlass.LOADED:
-                    return ClassStatusConstants.VERIFIED;
-                case ObjectKlass.LINKED:
-                case ObjectKlass.PREPARED:
-                    return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED;
-                case ObjectKlass.INITIALIZED:
-                    return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED | ClassStatusConstants.INITIALIZED;
-                default:
-                    return ClassStatusConstants.ERROR;
+            int status = 0;
+            if (objectKlass.isErroneous()) {
+                return ClassStatusConstants.ERROR;
             }
+            if (objectKlass.isPrepared()) {
+                status |= ClassStatusConstants.PREPARED;
+            }
+            if (objectKlass.isVerified()) {
+                status |= ClassStatusConstants.VERIFIED;
+            }
+            if (objectKlass.isInitializedImpl()) {
+                status |= ClassStatusConstants.INITIALIZED;
+            }
+            return status;
         } else {
             return ClassStatusConstants.VERIFIED | ClassStatusConstants.PREPARED | ClassStatusConstants.INITIALIZED;
         }
