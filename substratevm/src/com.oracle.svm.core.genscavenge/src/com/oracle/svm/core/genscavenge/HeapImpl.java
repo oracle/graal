@@ -148,7 +148,22 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer objPointer) {
-        return imageHeapInfo.isInImageHeap(objPointer) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(objPointer));
+        return isInPrimaryImageHeap(objPointer) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(objPointer));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInPrimaryImageHeap(Object obj) {
+        // This method is not really uninterruptible (mayBeInlined) but converts arbitrary objects
+        // to pointers. An object that is outside the image heap may be moved by a GC but it will
+        // never be moved into the image heap. So, this is fine.
+        return isInPrimaryImageHeap(Word.objectToUntrackedPointer(obj));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInPrimaryImageHeap(Pointer objPointer) {
+        return imageHeapInfo.isInImageHeap(objPointer);
     }
 
     @Override

@@ -176,6 +176,14 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isInImageHeap(Pointer objectPtr);
 
+    /** Whether the object is in the primary image heap, as opposed to an auxiliary image heap. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract boolean isInPrimaryImageHeap(Object object);
+
+    /** Whether the object is in the primary image heap, as opposed to an auxiliary image heap. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract boolean isInPrimaryImageHeap(Pointer objectPtr);
+
     /**
      * Determines if the heap currently has {@link Reference} objects that are pending to be
      * {@linkplain java.lang.ref.ReferenceQueue enqueued}.
