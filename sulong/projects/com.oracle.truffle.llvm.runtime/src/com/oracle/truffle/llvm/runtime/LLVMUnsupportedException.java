@@ -52,7 +52,11 @@ public final class LLVMUnsupportedException extends LLVMException {
          * Indicates that a value is valid in terms of LLVM language spec, but it is unsupported by
          * this implementation.
          */
-        UNSUPPORTED_VALUE_RANGE("unsupported value range");
+        UNSUPPORTED_VALUE_RANGE("unsupported value range"),
+        /**
+         * Missing LLVM builtin.
+         */
+        MISSING_BUILTIN("missing LLVM builtin");
 
         private final String description;
 
