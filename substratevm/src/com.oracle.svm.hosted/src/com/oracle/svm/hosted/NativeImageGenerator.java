@@ -178,7 +178,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
-import com.oracle.svm.core.graal.jdk.ArraycopySnippets;
+import com.oracle.svm.core.graal.jdk.SubstrateArraycopySnippets;
 import com.oracle.svm.core.graal.lir.VerifyCFunctionReferenceMapsLIRPhase;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -1004,7 +1004,7 @@ public class NativeImageGenerator {
             bigbang.addSystemClass(PointerBase[].class, false, false).registerAsInHeap();
 
             try {
-                bigbang.addRootMethod(ArraycopySnippets.class.getDeclaredMethod("doArraycopy", Object.class, int.class, Object.class, int.class, int.class));
+                bigbang.addRootMethod(SubstrateArraycopySnippets.class.getDeclaredMethod("doArraycopy", Object.class, int.class, Object.class, int.class, int.class));
                 bigbang.addRootMethod(Object.class.getDeclaredMethod("getClass"));
             } catch (NoSuchMethodException ex) {
                 throw VMError.shouldNotReachHere(ex);

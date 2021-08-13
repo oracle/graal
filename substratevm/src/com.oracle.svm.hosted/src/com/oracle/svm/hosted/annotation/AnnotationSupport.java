@@ -66,7 +66,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateAnnotationInvocationHandler;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.jdk.ObjectCloneWithExceptionNode;
+import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.jdk.AnnotationSupportConfig;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
@@ -308,7 +308,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 JavaType returnType = cloneMethod.getSignature().getReturnType(null);
                 StampPair returnStampPair = StampFactory.forDeclaredType(null, returnType, false);
 
-                FixedNode cloned = kit.appendWithUnwind(new ObjectCloneWithExceptionNode(MacroParams.of(InvokeKind.Virtual, method, cloneMethod, bci++, returnStampPair, loadField)));
+                FixedNode cloned = kit.appendWithUnwind(new SubstrateObjectCloneWithExceptionNode(MacroParams.of(InvokeKind.Virtual, method, cloneMethod, bci++, returnStampPair, loadField)));
                 state.push(returnType.getJavaKind(), cloned);
                 ((StateSplit) cloned).setStateAfter(state.create(bci, (StateSplit) cloned));
                 state.pop(returnType.getJavaKind());

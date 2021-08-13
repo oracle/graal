@@ -26,13 +26,9 @@ package com.oracle.svm.core.graal.jdk;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
@@ -40,9 +36,6 @@ import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.LocationIdentity;
 
@@ -57,19 +50,19 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
-public final class ArraycopySnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(ArraycopySnippets.class, "doArraycopy", false, LocationIdentity.any());
+public final class SubstrateArraycopySnippets extends SubstrateTemplates implements Snippets {
+    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(SubstrateArraycopySnippets.class, "doArraycopy", false, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYCOPY};
 
     public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(providers, FOREIGN_CALLS);
     }
 
-    protected ArraycopySnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+    protected SubstrateArraycopySnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, factories, providers, snippetReflection);
-        lowerings.put(SubstrateArraycopyNode.class, new ArraycopyLowering());
-        lowerings.put(ArrayCopyWithExceptionNode.class, new ArrayCopyWithExceptionLowering());
+        lowerings.put(SubstrateArraycopyNode.class, new SubstrateArraycopyLowering());
+        lowerings.put(SubstrateArraycopyWithExceptionNode.class, new SubstrateArraycopyWithExceptionLowering());
     }
 
     /**
@@ -119,32 +112,21 @@ public final class ArraycopySnippets extends SubstrateTemplates implements Snipp
         }
     }
 
-    @Snippet
-    private static void arraycopySnippet(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
-        callArraycopy(ARRAYCOPY, fromArray, fromIndex, toArray, toIndex, length);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callArraycopy(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object fromArray, int fromIndex, Object toArray, int toIndex, int length);
-
-    final class ArraycopyLowering implements NodeLoweringProvider<SubstrateArraycopyNode> {
-        private final SnippetInfo arraycopyInfo = snippet(ArraycopySnippets.class, "arraycopySnippet");
-
+    static final class SubstrateArraycopyLowering implements NodeLoweringProvider<SubstrateArraycopyNode> {
         @Override
         public void lower(SubstrateArraycopyNode node, LoweringTool tool) {
-            Arguments args = new Arguments(arraycopyInfo, node.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("fromArray", node.getSource());
-            args.add("fromIndex", node.getSourcePosition());
-            args.add("toArray", node.getDestination());
-            args.add("toIndex", node.getDestinationPosition());
-            args.add("length", node.getLength());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            StructuredGraph graph = node.graph();
+            ForeignCallNode call = graph.add(new ForeignCallNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
+                            node.getDestinationPosition(), node.getLength()));
+            call.setStateAfter(node.stateAfter());
+            call.setBci(node.getBci());
+            graph.replaceFixedWithFixed(node, call);
         }
     }
 
-    final class ArrayCopyWithExceptionLowering implements NodeLoweringProvider<ArrayCopyWithExceptionNode> {
+    static final class SubstrateArraycopyWithExceptionLowering implements NodeLoweringProvider<SubstrateArraycopyWithExceptionNode> {
         @Override
-        public void lower(ArrayCopyWithExceptionNode node, LoweringTool tool) {
+        public void lower(SubstrateArraycopyWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
             ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
                             node.getDestinationPosition(), node.getLength()));
