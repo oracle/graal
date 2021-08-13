@@ -568,8 +568,8 @@ JNIEXPORT void JNICALL JVM_SetClassSigners(JNIEnv *env, jclass cls, jobjectArray
 }
 
 JNIEXPORT jobject JNICALL JVM_GetProtectionDomain(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetProtectionDomain);
-  return NULL;
+  IMPLEMENTED(JVM_GetProtectionDomain);
+  return (*getEnv())->JVM_GetProtectionDomain(env, cls);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsArrayClass(JNIEnv *env, jclass cls) {

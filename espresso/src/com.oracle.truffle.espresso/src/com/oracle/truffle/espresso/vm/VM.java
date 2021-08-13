@@ -2673,6 +2673,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
+    public @JavaType(ProtectionDomain.class) StaticObject JVM_GetProtectionDomain(@JavaType(Class.class) StaticObject current) {
+        return (StaticObject) getMeta().HIDDEN_PROTECTION_DOMAIN.getHiddenObject(current);
+    }
+
+    @VmImpl(isJni = true)
     public StaticObject JVM_GetAndClearReferencePendingList() {
         return getContext().getAndClearReferencePendingList();
     }
