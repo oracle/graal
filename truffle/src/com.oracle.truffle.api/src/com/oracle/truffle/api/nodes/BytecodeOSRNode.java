@@ -151,7 +151,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-        transferFrame(this, parentFrame, osrFrame);
+        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame);
     }
 
     /**
@@ -171,7 +171,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     default void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-        transferFrame(this, osrFrame, parentFrame);
+        NodeAccessor.RUNTIME.transferOSRFrame(this, osrFrame, parentFrame);
     }
 
     /**
@@ -224,27 +224,6 @@ public interface BytecodeOSRNode extends NodeInterface {
         assert BytecodeOSRValidation.validateNode(osrNode);
         return NodeAccessor.RUNTIME.onOSRBackEdge(osrNode, parentFrame, target);
     }
-
-    /**
-     * Transfers state from the {@code source} frame into the {@code target} frame. The frames must
-     * have the same layout as the frame used to execute the {@code osrNode}.
-     * <p>
-     * This helper can be used when implementing {@link BytecodeOSRNode#copyIntoOSRFrame} and
-     * {@link BytecodeOSRNode#restoreParentFrame}.
-     *
-     * @param osrNode the node being on-stack replaced.
-     * @param source the frame to transfer state from.
-     * @param target the frame to transfer state into.
-     * @throws IllegalArgumentException if either frame has a different descriptor from the frame
-     *             used to execute {@code osrNode}.
-     * @throws IllegalStateException if a slot in the source frame has not been initialized using
-     *             {@link com.oracle.truffle.api.frame.FrameDescriptor#setFrameSlotKind}.
-     * @since 21.3
-     */
-    static void transferFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
-        NodeAccessor.RUNTIME.transferOSRFrame(osrNode, source, target);
-    }
-
 }
 
 final class BytecodeOSRValidation {

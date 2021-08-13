@@ -132,10 +132,17 @@ The `BytecodeOSRNode` interface also contains a few hook methods whose default i
 - `copyIntoOSRFrame(osrFrame, parentFrame, target)` and `restoreParentFrame(osrFrame, parentFrame)`: Reusing the interpreted `Frame` inside OSR code is not optimal, because it escapes the OSR call target and prevents scalar replacement (for background on scalar replacement, see [this paper](https://dl.acm.org/doi/10.1145/2581122.2544157)).
 When possible, Truffle will use `copyIntoOSRFrame` to copy the interpreted state (`parentFrame`) into the OSR `Frame` (`osrFrame`), and `restoreParentFrame` to copy state back into the parent `Frame` afterwards.
 By default, both hooks copy each slot between the source and destination frames, but this can be overridden for finer control (e.g., to only copy over live variables).
-These methods should be written carefully to support scalar replacement; the `BytecodeOSRNode.transfer(osrNode, source, target)` helper method can be used to perform a slot-wise copy.
+If overridden, these methods should be written carefully to support scalar replacement.
 - `prepareOSR()`: This hook gets called before compiling an OSR target.
 It can be used to force any initialization to happen before compilation.
 For example, if a field can only be initialized in the interpreter, `prepareOSR()` can ensure it is initialized, so that OSR code does not deoptimize when trying to access it.
+
+Bytecode-based OSR can be tricky to implement. Some debugging tips:
+
+- Ensure that the metadata field is marked `@CompilationFinal`.
+- If a `Frame` with a given `FrameDescriptor` has been materialized before, Truffle will reuse the interpreter `Frame` instead of copying (if copying is used, any existing materialized `Frame` could get out of sync with the OSR `Frame`).
+- It is helpful to trace compilation and deoptimization logs to identify any initialization work which could be done in `prepareOSR()`.
+- Inspecting the compiled OSR targets in IGV can be useful to ensure the copying hooks interact well with partial evaluation.
 
 See the `BytecodeOSRNode` [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BytecodeOSRNode.html) for more details.
 
@@ -153,11 +160,5 @@ For example, in the compilation log, a bytecode OSR entry may look something lik
 [engine] opt done     BytecodeNode@2d3ca632<OSR@42>                               |AST    2|Tier 1|Time   21(  14+8   )ms|Inlined   0Y   0N|IR   161/  344|CodeSize   1234|Addr 0x7f3851f45c10|Src n/a
 ```
 
-See [Debugging](https://github.com/oracle/graal/blob/master/compiler/docs/Debugging.md) for more details on debugging Graal compilations. 
+See [Debugging](https://github.com/oracle/graal/blob/master/compiler/docs/Debugging.md) for more details on debugging Graal compilations.
 
-Bytecode-based OSR can be tricky to implement. Some debugging tips:
-
-- Ensure that the metadata field is marked `@CompilationFinal`.
-- If a `Frame` with a given `FrameDescriptor` has been materialized before, Truffle will reuse the interpreter `Frame` instead of copying (if copying is used, any existing materialized `Frame` could get out of sync with the OSR `Frame`).
-- It is helpful to trace compilation and deoptimization logs to identify any initialization work which could be done in `prepareOSR()`.
-- Inspecting the compiled OSR targets in IGV can be useful to ensure the copying hooks interact well with partial evaluation.

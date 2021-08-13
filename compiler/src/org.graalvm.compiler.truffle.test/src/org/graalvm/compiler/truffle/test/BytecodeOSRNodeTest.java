@@ -45,6 +45,7 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
+import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
@@ -452,26 +453,22 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class Program extends RootNode {
-        @Child BytecodeOSRNode osrNode;
+        @Child BytecodeOSRTestNode osrNode;
 
-        public Program(BytecodeOSRNode osrNode, FrameDescriptor frameDescriptor) {
+        public Program(BytecodeOSRTestNode osrNode, FrameDescriptor frameDescriptor) {
             super(null, frameDescriptor);
             this.osrNode = osrNode;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return ((ExecutableNode) osrNode).execute(frame);
+            return osrNode.execute(frame);
         }
     }
 
-    abstract static class BytecodeOSRTestNode extends ExecutableNode implements BytecodeOSRNode {
+    abstract static class BytecodeOSRTestNode extends Node implements BytecodeOSRNode {
         public static final int DEFAULT_TARGET = -1;
         @CompilationFinal Object osrMetadata;
-
-        protected BytecodeOSRTestNode(TruffleLanguage<?> language) {
-            super(language);
-        }
 
         @Override
         public Object getOSRMetadata() {
@@ -498,13 +495,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         protected void setInt(Frame frame, FrameSlot frameSlot, int value) {
             frame.setInt(frameSlot, value);
         }
+
+        abstract Object execute(VirtualFrame frame);
     }
 
     public static class InfiniteInterpreterLoop extends BytecodeOSRTestNode {
-        public InfiniteInterpreterLoop() {
-            super(null);
-        }
-
         @Override
         public Object executeOSR(VirtualFrame osrFrame, int target) {
             return execute(osrFrame);
@@ -533,7 +528,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         static final String NORMAL_RESULT = "normal result";
 
         public FixedIterationLoop(FrameDescriptor frameDescriptor) {
-            super(null);
             indexSlot = frameDescriptor.addFrameSlot("i", FrameSlotKind.Int);
             numIterationsSlot = frameDescriptor.addFrameSlot("n", FrameSlotKind.Int);
         }
@@ -874,7 +868,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @CompilationFinal Object o2;
 
         public FrameTransferringNode(FrameDescriptor frameDescriptor) {
-            super(null);
             booleanSlot = frameDescriptor.addFrameSlot("booleanValue", FrameSlotKind.Boolean);
             byteSlot = frameDescriptor.addFrameSlot("byteValue", FrameSlotKind.Byte);
             doubleSlot = frameDescriptor.addFrameSlot("doubleValue", FrameSlotKind.Double);
@@ -895,14 +888,14 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-            BytecodeOSRNode.transferFrame(this, parentFrame, osrFrame);
+            super.copyIntoOSRFrame(osrFrame, parentFrame, target);
             // Copying should not trigger a deopt.
             Assert.assertTrue(CompilerDirectives.inCompiledCode());
         }
 
         @Override
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-            BytecodeOSRNode.transferFrame(this, osrFrame, parentFrame);
+            super.restoreParentFrame(osrFrame, parentFrame);
             // Copying should not trigger a deopt.
             Assert.assertTrue(CompilerDirectives.inCompiledCode());
         }
@@ -1010,7 +1003,10 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-            BytecodeOSRNode.transferFrame(this, osrFrame, parentFrame);
+            // The parent implementation asserts we are in compiled code, so we instead explicitly
+            // do the transfer here.
+            BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) getOSRMetadata();
+            osrMetadata.transferFrame((FrameWithoutBoxing) osrFrame, (FrameWithoutBoxing) parentFrame);
             // Since the intSlot tag changed inside the compiled code, the tag speculation should
             // fail and cause a deopt.
             Assert.assertFalse(CompilerDirectives.inCompiledCode());
@@ -1081,7 +1077,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public int osrCount = 0;
 
         public FrameChangingNode(FrameDescriptor frameDescriptor) {
-            super(null);
             intSlot = frameDescriptor.addFrameSlot("intValue", FrameSlotKind.Int);
             longSlot = null;
         }
@@ -1089,7 +1084,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
             changeFrame(osrFrame.getFrameDescriptor()); // only changes the first time
-            BytecodeOSRNode.transferFrame(this, parentFrame, osrFrame);
+            super.copyIntoOSRFrame(osrFrame, parentFrame, target);
         }
 
         @Override
@@ -1171,12 +1166,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    public static class BytecodeNode extends ExecutableNode implements BytecodeOSRNode {
+    public static class BytecodeNode extends BytecodeOSRTestNode implements BytecodeOSRNode {
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
 
         boolean compiled;
-        @CompilationFinal Object osrMetadata;
 
         public static class Bytecode {
             public static final byte RETURN = 0;
@@ -1187,23 +1181,12 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         public BytecodeNode(int numLocals, FrameDescriptor frameDescriptor, byte[] bytecodes) {
-            super(null);
             this.bytecodes = bytecodes;
             this.regs = new FrameSlot[numLocals];
             for (int i = 0; i < numLocals; i++) {
                 this.regs[i] = frameDescriptor.addFrameSlot("$" + i, FrameSlotKind.Int);
             }
             this.compiled = false;
-        }
-
-        @Override
-        public Object getOSRMetadata() {
-            return osrMetadata;
-        }
-
-        @Override
-        public void setOSRMetadata(Object osrMetadata) {
-            this.osrMetadata = osrMetadata;
         }
 
         protected void setInt(Frame frame, int stackIndex, int value) {
@@ -1218,7 +1201,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             }
         }
 
-        @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
             Object[] args = frame.getArguments();
