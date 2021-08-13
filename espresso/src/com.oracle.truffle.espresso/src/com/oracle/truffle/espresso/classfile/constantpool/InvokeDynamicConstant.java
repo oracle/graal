@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -62,6 +63,34 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
             super(bootstrapMethodAttrIndex, nameAndTypeIndex);
         }
 
+        /**
+         * The call site linking operation must be executed once per {@code invokedynamic}
+         * instruction, rather than once per {@code invokedynamic_constant}.
+         * <p>
+         * Furthermore, a previously failed call site linking from the constant pool must
+         * immediately fail again on subsequent linking operations, independently of the
+         * invokedynamic instruction involved.
+         * <p>
+         * For example:
+         * 
+         * <pre>
+         * method1:
+         *     0: invokedynamic #0 // calls MHN.linkCallSite successfully
+         *     4: invokedynamic #0 // Also calls MHM.linkCallSite, resulting in a *different* CallSite
+         *     
+         * method2:
+         *     0: invokedynamic #1 // Fails during MHN.linkCallSite upcall
+         *     4: invokedynamic #1 // Immediately fails without calling MHN.linkCallSite
+         * </pre>
+         * 
+         * To simulate that, we make the {@code invokedynamic_constant} both a
+         * {@linkplain Resolvable} and {@linkplain Resolvable.ResolvedConstant}. On the first
+         * access, the constant will be put as-is in the resolved constant pool, and on first
+         * failure, will be overwritten by a {@linkplain Fail} constant, that shortcuts the
+         * {@code MHN.linkCallSite} upcall.
+         * 
+         * @see RuntimeConstantPool#linkInvokeDynamic(Klass, int)
+         */
         @Override
         public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
             CompilerAsserts.neverPartOfCompilation();
@@ -201,7 +230,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         }
 
         @Override
-        public Symbol<Symbol.Name> getName(ConstantPool pool) {
+        public Symbol<Name> getName(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
         }
 

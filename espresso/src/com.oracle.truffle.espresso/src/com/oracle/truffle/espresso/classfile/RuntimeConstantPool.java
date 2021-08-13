@@ -154,11 +154,12 @@ public final class RuntimeConstantPool extends ConstantPool {
         try {
             return indy.link(this, accessingKlass, index);
         } catch (InvokeDynamicConstant.CallSiteLinkingFailure failure) {
+            // On failure, shortcut subsequent linking operations.
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 constants[index] = failure.failConstant();
             }
-            throw failure.cause; // Throws
+            throw failure.cause;
         }
     }
 
