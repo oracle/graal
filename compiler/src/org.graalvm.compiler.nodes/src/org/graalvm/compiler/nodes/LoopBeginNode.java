@@ -321,7 +321,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return (forwardEndCount() == 1);
     }
 
-    public AbstractEndNode forwardEnd() {
+    public EndNode forwardEnd() {
         assert forwardEndCount() == 1;
         return forwardEndAt(0);
     }
