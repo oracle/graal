@@ -146,7 +146,7 @@ public class LocalizationSupport {
         }
     }
 
-    public void addClassBasedResourceBundle(String basename, Class<?> bundleClass) {
+    public void addClassBasedResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {
         RuntimeReflection.register(bundleClass);
         RuntimeReflection.registerForReflectiveInstantiation(bundleClass);
     }
