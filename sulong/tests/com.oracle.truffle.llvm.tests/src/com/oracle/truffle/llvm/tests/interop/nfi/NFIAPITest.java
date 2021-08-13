@@ -98,8 +98,7 @@ public class NFIAPITest {
                 Object symbol = lookupSymbol.readMember(library, symbolName);
                 return bind.invokeMember(symbol, "bind", signature);
             } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
@@ -120,8 +119,7 @@ public class NFIAPITest {
             try {
                 return executeTest(frame);
             } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 

@@ -60,8 +60,8 @@ public final class LLVMNativeCallUtils {
         try {
             return nativeCall.execute(function, nativeArgs);
         } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
         }
     }
 
@@ -76,8 +76,8 @@ public final class LLVMNativeCallUtils {
         try {
             return nativeSymbolExecutorNode.execute(function, nativeArgs);
         } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
         }
     }
 

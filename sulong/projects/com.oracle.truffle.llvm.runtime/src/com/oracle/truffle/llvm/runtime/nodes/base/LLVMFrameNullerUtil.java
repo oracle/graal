@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,8 +66,7 @@ public final class LLVMFrameNullerUtil {
         } else if (kind == FrameSlotKind.Double) {
             frame.setDouble(frameSlot, 0d);
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException("unexpected frameslot kind");
+            throw CompilerDirectives.shouldNotReachHere("unexpected frameslot kind");
         }
     }
 }

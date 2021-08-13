@@ -64,8 +64,7 @@ public abstract class LLVMPosixCallNode extends LLVMNode {
         try {
             return function.execute(args);
         } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(e);
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 

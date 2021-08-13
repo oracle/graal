@@ -205,8 +205,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         protected Object doOther(@SuppressWarnings("unused") LLVMManagedPointer pointer, @SuppressWarnings("unused") Object[] arguments) {
             // based on the usage of this node, we can safely assume that the inline cache is always
             // big enough - so we don't have a fallback implementation
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Inline cache was not big enough");
+            throw CompilerDirectives.shouldNotReachHere("Inline cache was not big enough");
         }
 
         @TruffleBoundary

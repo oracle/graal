@@ -70,8 +70,8 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
                 return 0;
             }
             default: {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(String.format("not implemented: arch_prcntl(0x%04x)", code));
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw CompilerDirectives.shouldNotReachHere(String.format("not implemented: arch_prcntl(0x%04x)", code));
             }
         }
     }

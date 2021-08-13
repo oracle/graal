@@ -129,8 +129,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             try {
                 this.signatureSource = getNativeCtxExt().getNativeSignatureSourceSkipStackArg(type);
             } catch (UnsupportedNativeTypeException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(ex);
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
         return signatureSource;

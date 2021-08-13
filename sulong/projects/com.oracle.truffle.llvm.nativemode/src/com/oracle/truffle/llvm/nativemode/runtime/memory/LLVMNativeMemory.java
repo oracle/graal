@@ -216,8 +216,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
     @Override
     public LLVMIVarBit getIVarBit(Node location, LLVMNativePointer addr, int bitWidth) {
         if (bitWidth % Byte.SIZE != 0) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError();
+            throw CompilerDirectives.shouldNotReachHere();
         }
         int bytes = bitWidth / Byte.SIZE;
         byte[] loadedBytes = new byte[bytes];

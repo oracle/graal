@@ -50,8 +50,7 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
         /* DUMMY */;
         @Override
         public int value() {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException();
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -66,26 +65,22 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
 
     @Override
     protected LLVMSyscallOperationNode createSyscallNode(UnknownSyscalls syscall) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not reach.");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not reach.");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     public Type getVAListType() {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not reach.");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
     public VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not reach.");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
 }

@@ -96,8 +96,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                 case 64:
                     return ForeignToLLVMType.I64;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalStateException("There is no integer type with " + bitWidth + " bits defined");
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw CompilerDirectives.shouldNotReachHere("There is no integer type with " + bitWidth + " bits defined");
             }
         }
 
@@ -156,8 +156,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                 case DOUBLE:
                     return 0d;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalStateException("Unexpected value: " + type);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw CompilerDirectives.shouldNotReachHere("unexpected type " + type);
             }
         }
     }
@@ -240,14 +240,12 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
         @Override
         public Object executeWithTarget(Object value) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Use convert method.");
+            throw CompilerDirectives.shouldNotReachHere("Use convert method.");
         }
 
         @Override
         public Object executeWithType(Object value, LLVMInteropType.Structured type) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Use convert method.");
+            throw CompilerDirectives.shouldNotReachHere("Use convert method.");
         }
 
         @Override
