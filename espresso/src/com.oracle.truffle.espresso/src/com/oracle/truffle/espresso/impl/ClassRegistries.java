@@ -232,6 +232,13 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
+    public void cacheKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader) {
+        assert classLoader != null;
+        ClassRegistry registry = getClassRegistry(classLoader);
+        registry.cacheKlass(type, bytes);
+    }
+
+    @TruffleBoundary
     public ObjectKlass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader) {
         return defineKlass(type, bytes, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }

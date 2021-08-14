@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,7 +57,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -80,8 +78,7 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
+import com.oracle.truffle.espresso.impl.EspressoKlassCache;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -128,7 +125,7 @@ public final class EspressoContext {
     private String[] mainArguments;
     private String[] vmArguments;
     private long startupClockNanos;
-    private EspressoLanguageCache languageCache;
+    private EspressoKlassCache languageCache;
 
     // region Debug
     @CompilationFinal private TimerCollection timers;
@@ -379,7 +376,7 @@ public final class EspressoContext {
         return language;
     }
 
-    public EspressoLanguageCache getCache() {
+    public EspressoKlassCache getCache() {
         if (languageCache == null) {
             languageCache = getJavaVersion().java8OrEarlier() ? language.getV8Cache() : language.getV11Cache();
         }
@@ -460,13 +457,14 @@ public final class EspressoContext {
         return vmProperties;
     }
 
-    public void initializeContext(boolean isPreinitialization) {
+    public void initializeContext() {
         EspressoError.guarantee(getEnv().isNativeAccessAllowed(),
                         "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
-
         startupClockNanos = System.nanoTime();
+
+        // Setup finalization support in the host VM.
         FinalizationSupport.ensureInitialized();
 
         // Boot classpath needs to be preserved after pre-initialization in order to compare it with the runtime environment
@@ -474,7 +472,7 @@ public final class EspressoContext {
         this.bootClasspath = null;
 
         spawnVM();
-        if (isPreinitialization) {
+        if (getEnv().isPreInitialization()) {
             populateParserKlassCache();
             prepareForSerialization();
         } else {
@@ -521,23 +519,44 @@ public final class EspressoContext {
         ParserKlassCacheListSupport parserKlassCacheSupport = new ParserKlassCacheListSupport(getTypes());
         StaticObject bootClassloader = registries.getBootClassRegistry().getClassLoader();
         for (Symbol<Type> type : parserKlassCacheSupport.getDefaultTypeList(getJavaVersion())) {
-            addEntryToParserKlassCache(type, true, bootClassloader);
+            addEntryToKlassCache(type, true, bootClassloader);
+        }
+
+        StaticObject systemClassLoader = null;
+        Path classListPath = getEnv().getOptions().get(EspressoOptions.BootKlassCacheList);
+        if (!classListPath.toString().isEmpty()) {
+            getCache().logCacheStatus();
+            getLogger().log(Level.FINE, "Populating boot parser cache with user-specified classes from: " + classListPath);
+
+            systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
+                addEntryToKlassCache(type, false, systemClassLoader);
+            }
         }
 
         getCache().seal();
 
-        Path classListPath = getEnv().getOptions().get(EspressoOptions.ParserKlassCacheList);
-        StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
-        for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
-            addEntryToParserKlassCache(type, false, systemClassLoader);
+        classListPath = getEnv().getOptions().get(EspressoOptions.AppKlassCacheList);
+        if (!classListPath.toString().isEmpty()) {
+            getCache().logCacheStatus();
+            getLogger().log(Level.FINE, "Populating application parser cache with user-specified classes from: " + classListPath);
+
+            if (systemClassLoader == null) {
+                systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            }
+
+            for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
+                addEntryToKlassCache(type, false, systemClassLoader);
+            }
         }
 
         initDoneTimeNanos = System.nanoTime();
         long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
         getLogger().log(Level.FINE, "Populated parser cache in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+        getCache().logCacheStatus();
     }
 
-    private void addEntryToParserKlassCache(Symbol<Type> type, boolean isBoot, StaticObject loader) {
+    private void addEntryToKlassCache(Symbol<Type> type, boolean isBoot, StaticObject loader) {
         Classpath cp;
         if (isBoot) {
             cp = getBootClasspath();
@@ -549,8 +568,7 @@ public final class EspressoContext {
 
         ClasspathFile cpFile = cp.readClassFile(type);
         if (cpFile != null) {
-            ClassRegistry.ClassDefinitionInfo info = ClassRegistry.ClassDefinitionInfo.EMPTY;
-            getCache().getOrCreateParserKlass(loader, type.toString(), cpFile.contents, this, info);
+            getRegistries().cacheKlass(type, cpFile.contents, loader);
         } else {
             getLogger().log(Level.WARNING, "User-specified parse list processor failed to read class: {0}", type.toString());
         }
@@ -559,7 +577,6 @@ public final class EspressoContext {
     private void prepareForSerialization() {
         getLogger().log(Level.FINE, "Preparing context for serialization");
 
-        getCache().seal();
         try {
             this.referenceDrainer.joinReferenceDrain();
         } catch (InterruptedException e) {
@@ -572,25 +589,33 @@ public final class EspressoContext {
         this.vm.dispose();
         this.nativeAccess = null;
         this.jniEnv = null;
+        this.interpreterToVM = null;
+        this.vmProperties = null;
         this.jimageLibrary = null;
         this.vm = null;
 
         this.threadManager = null;
-        this.referenceDrainer = null;
-        this.outOfMemory = null;
-        this.stackOverflow = null;
         this.shutdownManager = null;
+        this.referenceDrainer = null;
+        this.stackOverflow = null;
+        this.outOfMemory = null;
         this.meta = null;
 
+        this.timers = null;
+        this.allocationReporter = null;
         this.registries = null;
         this.strings = null;
         this.substitutions = null;
+        this.jdwpContext = null;
+        this.eventListener = null;
         this.methodHandleIntrinsics = null;
         this.topBindings = null;
+        this.hostSignalHandlers.clear();
         this.agents = null;
 
         this.modulesInitialized = false;
         this.metaInitialized = false;
+
 
         // FIXME (ivan-ristovic) Make sure GC collects WeakRefs
         for (int i = 0; i < 15; i++) {
@@ -603,7 +628,7 @@ public final class EspressoContext {
         }
 
         // FIXME (ivan-ristovic) Ensure that Truffle WeakReferences are cleared
-        
+
         getLogger().log(Level.FINE, "Finished post-initialization cleanup");
     }
 

@@ -111,7 +111,7 @@ public final class JniEnv extends NativeEnv {
 
     private final JNIHandles handles;
 
-    private final @Pointer TruffleObject jniEnvPtr;
+    private @Pointer TruffleObject jniEnvPtr;
 
     // Native library nespresso.dll (Windows) or libnespresso.so (Unixes) at runtime.
     private final TruffleObject nespressoLibrary;
@@ -375,7 +375,6 @@ public final class JniEnv extends NativeEnv {
 
     public void dispose() {
         assert jniEnvPtr != null : "JNIEnv already disposed";
-        super.dispose();
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             this.jniEnvPtr = null;
@@ -393,6 +392,7 @@ public final class JniEnv extends NativeEnv {
             this.popObject = null;
             this.getSizeMax = null;
             threadLocalPendingException.dispose();
+            this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }

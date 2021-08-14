@@ -134,6 +134,4 @@ public final class ParserKlass {
     public int getThisKlassIndex() {
         return thisKlassIndex;
     }
-
-
 }

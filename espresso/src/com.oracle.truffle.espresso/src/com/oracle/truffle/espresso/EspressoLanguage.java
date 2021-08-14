@@ -50,7 +50,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
-import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
+import com.oracle.truffle.espresso.impl.EspressoKlassCache;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
@@ -91,8 +91,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Signatures signatures;
 
     // Multiple caches are necessary depending of the Java version (8 or 11)
-    private final EspressoLanguageCache cache8;
-    private final EspressoLanguageCache cache11;
+    private final EspressoKlassCache cache8;
+    private final EspressoKlassCache cache11;
 
     private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array");
     // This field should be static final, but until we move the static object model we cannot have a
@@ -124,8 +124,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         this.types = new Types(symbols);
         this.signatures = new Signatures(symbols, types);
 
-        this.cache8 = new EspressoLanguageCache();
-        this.cache11 = new EspressoLanguageCache();
+        this.cache8 = new EspressoKlassCache();
+        this.cache11 = new EspressoKlassCache();
     }
 
     @Override
@@ -139,8 +139,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
-        cache8.updateEnv(env);
-        cache11.updateEnv(env);
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
@@ -149,12 +147,15 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        boolean isPreinitialization = context.getEnv().isPreInitialization();
-        context.initializeContext(isPreinitialization);
+        context.initializeContext();
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
+        if (!context.isInitialized()) {
+            return;
+        }
+
         long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
         if (seconds > 10) {
@@ -190,12 +191,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.setEnv(newEnv);
         context.setMainArguments(newEnv.getApplicationArguments());
         if (!context.isInitialized()) {
-            context.initializeContext(false);
+            context.initializeContext();
         }
         return true;
     }
 
     private boolean optionsAllowPreInitializedContext(EspressoContext context, TruffleLanguage.Env newEnv) {
+        if (newEnv.getOptions().get(EspressoOptions.DropPreInitializedContext)) {
+            return false;
+        }
+
         final EspressoProperties.Builder builder = EspressoProperties.newPlatformBuilder();
         builder.javaHome(Engine.findHome());
 
@@ -206,15 +211,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
 
         // TODO (ivan-ristovic) Boot classpath equivallence check
-        // Check if boot classpath is the same
-//        Classpath oldBootClassPath = context.getBootClasspath();
-//        Classpath newBootClassPath = new Classpath(newProperties.bootClasspath()
+        // Check if boot classpath is equivalent
+//        com.oracle.truffle.espresso.runtime.Classpath oldBootClassPath = context.getBootClasspath();
+//        com.oracle.truffle.espresso.runtime.Classpath newBootClassPath = new com.oracle.truffle.espresso.runtime.Classpath(newProperties.bootClasspath()
 //                .stream()
-//                .map(Path::toString)
-//                .collect(Collectors.joining(File.pathSeparator))
+//                .map(java.nio.file.Path::toString)
+//                .collect(java.util.stream.Collectors.joining(java.io.File.pathSeparator))
 //        );
 //        return oldBootClassPath.toString().equals(newBootClassPath.toString());
-
         return true;
     }
 
@@ -253,11 +257,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return signatures;
     }
 
-    public EspressoLanguageCache getV8Cache() {
+    public EspressoKlassCache getV8Cache() {
         return cache8;
     }
 
-    public EspressoLanguageCache getV11Cache() {
+    public EspressoKlassCache getV11Cache() {
         return cache11;
     }
 

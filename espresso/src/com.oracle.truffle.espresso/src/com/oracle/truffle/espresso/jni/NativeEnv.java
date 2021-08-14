@@ -137,13 +137,6 @@ public abstract class NativeEnv implements ContextAccess {
         return res;
     }
 
-    public void dispose() {
-        this.nativeClosures.clear();
-        if (methods != null) {
-            this.methods.clear();
-        }
-    }
-
     private Map<String, CallableFromNative.Factory> buildMethodsMap() {
         Map<String, CallableFromNative.Factory> map = new HashMap<>();
         for (CallableFromNative.Factory method : getCollector()) {
@@ -195,7 +188,13 @@ public abstract class NativeEnv implements ContextAccess {
                 }
             }
         });
-        return getNativeAccess().createNativeClosure(callback, lookupCallbackSignature());
+
+        try {
+            TruffleObject closure = getNativeAccess().createNativeClosure(callback, NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
+            return RawPointer.create(getUncached().asPointer(closure));
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
     }
 
     private CallableFromNative.Factory lookupFactory(String methodName) {

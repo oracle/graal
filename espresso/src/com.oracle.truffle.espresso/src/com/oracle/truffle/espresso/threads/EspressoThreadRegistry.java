@@ -343,7 +343,11 @@ public final class EspressoThreadRegistry implements ContextAccess {
                 try {
                     Target_java_lang_Thread.terminate(t, getMeta());
                 } catch (Exception e) {
-                    logger.warning("EspressoThreadManager failed to stop a running thread");
+                    logger.warning(() -> {
+                        String guestName = Target_java_lang_Thread.getThreadName(getMeta(), t);
+                        long guestId = Target_java_lang_Thread.getThreadId(getMeta(), t);
+                        return String.format("Failed to stop thread: [GUEST:%s, %d]", guestName, guestId);
+                    });
                 }
             });
         }

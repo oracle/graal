@@ -157,7 +157,6 @@ public final class Classpath {
         }
 
         public void close() {
-
         }
 
     }
