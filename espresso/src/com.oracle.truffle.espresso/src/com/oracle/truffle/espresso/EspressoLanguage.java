@@ -184,6 +184,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected boolean patchContext(EspressoContext context, TruffleLanguage.Env newEnv) {
         if (!optionsAllowPreInitializedContext(context, newEnv)) {
+            context.getCache().reset();
             return false;
         }
         context.setEnv(newEnv);

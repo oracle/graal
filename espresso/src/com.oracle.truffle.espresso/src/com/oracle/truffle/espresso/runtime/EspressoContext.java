@@ -511,24 +511,25 @@ public final class EspressoContext {
         return nativeAccess;
     }
 
-    @SuppressWarnings("try")
     private void populateParserKlassCache() {
+        if (!getEnv().getOptions().get(EspressoOptions.UseParserKlassCache)) {
+            return;
+        }
+
         long initStartTimeNanos = System.nanoTime();
 
-        try (DebugCloseable parserKlassCacheInit = KNOWN_CLASS_INIT.scope(timers)) {
-            if (getEnv().getOptions().get(EspressoOptions.UseParserKlassCache)) {
-                ParserKlassCacheListSupport parserKlassCacheSupport = new ParserKlassCacheListSupport(getTypes());
-                StaticObject bootClassloader = registries.getBootClassRegistry().getClassLoader();
-                for (Symbol<Type> type : parserKlassCacheSupport.getDefaultTypeList(getJavaVersion())) {
-                    addEntryToParserKlassCache(type, true, bootClassloader);
-                }
-                getCache().seal();
-                Path classListPath = getEnv().getOptions().get(EspressoOptions.ParserKlassCacheList);
-                StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
-                for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
-                    addEntryToParserKlassCache(type, false, systemClassLoader);
-                }
-            }
+        ParserKlassCacheListSupport parserKlassCacheSupport = new ParserKlassCacheListSupport(getTypes());
+        StaticObject bootClassloader = registries.getBootClassRegistry().getClassLoader();
+        for (Symbol<Type> type : parserKlassCacheSupport.getDefaultTypeList(getJavaVersion())) {
+            addEntryToParserKlassCache(type, true, bootClassloader);
+        }
+
+        getCache().seal();
+
+        Path classListPath = getEnv().getOptions().get(EspressoOptions.ParserKlassCacheList);
+        StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+        for (Symbol<Type> type : parserKlassCacheSupport.getUserSpecifiedTypeList(classListPath)) {
+            addEntryToParserKlassCache(type, false, systemClassLoader);
         }
 
         initDoneTimeNanos = System.nanoTime();
@@ -602,7 +603,7 @@ public final class EspressoContext {
         }
 
         // FIXME (ivan-ristovic) Ensure that Truffle WeakReferences are cleared
-
+        
         getLogger().log(Level.FINE, "Finished post-initialization cleanup");
     }
 
