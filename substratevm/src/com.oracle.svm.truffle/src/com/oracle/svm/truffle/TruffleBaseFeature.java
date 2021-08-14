@@ -222,8 +222,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
     @Override
     public void cleanup() {
-        // clean the cached call target nodes to prevent them from keeping application
-        // classes alive
+        /*
+         * Clean the cached call target nodes to prevent them from keeping application
+         * classes alive
+         */
         TruffleRuntime runtime = Truffle.getRuntime();
         if (!(runtime instanceof DefaultTruffleRuntime) && !(runtime instanceof SubstrateTruffleRuntime)) {
             throw VMError.shouldNotReachHere("Only SubstrateTruffleRuntime and DefaultTruffleRuntime supported");
@@ -515,16 +517,16 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
         static void duringAnalysis(DuringAnalysisAccess access) {
             boolean requiresIteration = false;
-            // We need to register as unsafe-accessed the primitive, object, and shape
-            // fields of
-            // generated storage classes. However, these classes do not share a common super
-            // type, and their fields are not annotated. Plus, the invocation plugin does
-            // not
-            // intercept calls to `StaticShape.Builder.build()` that happen during the
-            // analysis,
-            // for example because of context pre-initialization. Therefore, we inspect the
-            // generator cache in ArrayBasedShapeGenerator, which contains references to all
-            // generated storage classes.
+            /*
+             * We need to register as unsafe-accessed the primitive, object, and shape
+             * fields of generated storage classes. However, these classes do not share
+             * a common super type, and their fields are not annotated. Plus, the
+             * invocation plugin does not intercept calls to `StaticShape.Builder.build()`
+             * that happen during the analysis, for example because of context
+             * pre-initialization. Therefore, we inspect the generator cache in
+             * ArrayBasedShapeGenerator, which contains references to all generated
+             * storage classes.
+             */
             ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
             for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
                 Object shapeGenerator = entry.getValue();
@@ -635,8 +637,10 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
         private static final int svmArrayBaseOffset;
         private static final int svmArrayIndexScale;
 
-        // We have to use reflection to access private members instead of aliasing them
-        // in the substitution class since substitutions are present only in runtime
+        /*
+         * We have to use reflection to access private members instead of aliasing them
+         * in the substitution class since substitutions are present only at runtime
+         */
         private static final Method staticPropertyKindGetInternalKind;
         private static final byte objectStaticPropertyKindByte;
 
@@ -666,9 +670,11 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
             try {
                 byte internalKindByte = (byte) staticPropertyKindGetInternalKind.invoke(receiverStaticProperty);
 
-                // Re-computation is performed only if the kind is Object:
-                // First, reverse the offset computation to find the index, and then
-                // redo the offset computation with the SVM base offset and scale
+                /*
+                 * Re-computation is performed only if the kind is Object:
+                 * First, reverse the offset computation to find the index, and then
+                 * redo the offset computation with the SVM base offset and scale
+                 */
                 if (internalKindByte == objectStaticPropertyKindByte) {
                     int index = (offset - Unsafe.ARRAY_OBJECT_BASE_OFFSET) / Unsafe.ARRAY_OBJECT_INDEX_SCALE;
                     return svmArrayBaseOffset + svmArrayIndexScale * index;
@@ -735,22 +741,53 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
 
 // Checkstyle: stop
 
-// If allowProcess() is disabled at build time, then we ensure that
-// ProcessBuilder is not reachable.
-// The main purpose of this is to test that ProcessBuilder is not part of the
-// image when building
-// language images with allowProcess() disabled, which we interpret as "forbid
-// shelling out to
-// external processes" (GR-14041).
+@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
+
+    /**
+     * Truffle code can run during image generation, i.e., one or many contexts can be used during
+     * image generation. Truffle optimizes the case where only one context is ever created, and also
+     * stores additional information regarding which thread or threads used the context. We need to
+     * start with a completely fresh specialization state. To simplify that, all static state that
+     * stores context information is abstracted in the SingleContextState class, and it is enough to
+     * recompute a single static field to a new SingleContextState instance.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", isFinal = true) //
+    static Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState singleContextState;
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextThreadLocal", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_PolyglotContextThreadLocal {
+
+    /**
+     * Don't store any threads in the image.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Thread activeSingleThread;
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
+}
+
+/*
+ * If allowProcess() is disabled at build time, then we ensure that
+ * ProcessBuilder is not reachable.
+ * The main purpose of this is to test that ProcessBuilder is not part of the
+ * image when building language images with allowProcess() disabled, which
+ * we interpret as "forbid shelling out to external processes" (GR-14041).
+ */
 @Delete
 @TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleBaseFeature.IsEnabled.class,
                 TruffleBaseFeature.IsCreateProcessDisabled.class})
 final class Target_java_lang_ProcessBuilder {
 }
 
-// If allowProcess() is disabled at build time, then we ensure
-// ObjdumpDisassemblerProvider does not
-// try to invoke the nonexistent ProcessBuilder.
+/*
+ * If allowProcess() is disabled at build time, then we ensure
+ * ObjdumpDisassemblerProvider does not
+ * try to invoke the nonexistent ProcessBuilder.
+ */
 @TargetClass(className = "org.graalvm.compiler.code.ObjdumpDisassemblerProvider", onlyWith = {
                 TruffleBaseFeature.IsEnabled.class, TruffleBaseFeature.IsCreateProcessDisabled.class})
 final class Target_org_graalvm_compiler_code_ObjdumpDisassemblerProvider {

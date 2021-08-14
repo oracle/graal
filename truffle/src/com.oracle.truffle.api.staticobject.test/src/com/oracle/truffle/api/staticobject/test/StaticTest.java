@@ -53,22 +53,32 @@ import org.junit.Test;
  * built time for context pre-initialization.
  */
 public class StaticTest {
-    private static final StaticProperty property;
+    private static final StaticProperty property1;
+    private static final StaticProperty property2;
     private static final Object staticObject;
+    private static final Object testValue1 = "object1";
+    private static final Object testValue2 = "object2";
 
     static {
         TestEnvironment environment = new TestEnvironment(new TestConfiguration(true, false));
         StaticShape.Builder builder = StaticShape.newBuilder(environment.testLanguage);
-        property = new DefaultStaticProperty("property");
-        builder.property(property, int.class, false);
+        property1 = new DefaultStaticProperty("property1");
+        property2 = new DefaultStaticProperty("property2");
+        builder.property(property1, Object.class, false);
+        builder.property(property2, Object.class, false);
         staticObject = builder.build().getFactory().create();
-        property.setInt(staticObject, 42);
+        property1.setObject(staticObject, testValue1);
+        property2.setObject(staticObject, testValue2);
     }
 
     @Test
     public void staticallyDeclaredStaticObject() {
-        Assert.assertEquals(42, property.getInt(staticObject));
-        property.setInt(staticObject, 24);
-        Assert.assertEquals(24, property.getInt(staticObject));
+        Assert.assertEquals(testValue1, property1.getObject(staticObject));
+        Assert.assertEquals(testValue2, property2.getObject(staticObject));
+        Object newTestValue = "object3";
+        property1.setObject(staticObject, newTestValue);
+        Assert.assertEquals(newTestValue, property1.getObject(staticObject));
+        property2.setObject(staticObject, newTestValue);
+        Assert.assertEquals(newTestValue, property2.getObject(staticObject));
     }
 }
