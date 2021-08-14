@@ -54,7 +54,17 @@ class MachORelocationElement extends MachOObjectFile.LinkEditElement {
         if (!p.getRelocatedSection().equals(q.getRelocatedSection())) {
             return p.getRelocatedSection().hashCode() - q.getRelocatedSection().hashCode();
         }
-        return Math.toIntExact(p.getOffset() - q.getOffset());
+        if (p.getOffset() != q.getOffset()) {
+            return Math.toIntExact(p.getOffset() - q.getOffset());
+        }
+
+        if (Objects.equals(p.getAddend(), q.getAddend())) {
+            return 0;
+        } else if (p.getAddend() == null) {
+            return 1;
+        } else {
+            return -1;
+        }
     }
 
     private Map<RelocationInfo, RelocationInfo> infos = new TreeMap<>(MachORelocationElement::compareSectionThenOffset);
@@ -169,6 +179,40 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
     private final MachOSection targetSection;
     private final byte log2length;
 
+    public Long getAddend() {
+        return addend;
+    }
+
+    private final Long addend;
+
+    public static RelocationInfo newAddend(MachORelocationElement containingElement, MachOSection relocatedSection, int offset, int requestedLength, long addend) {
+        return new RelocationInfo(containingElement, relocatedSection, offset, requestedLength, addend);
+    }
+
+    private RelocationInfo(MachORelocationElement containingElement, MachOSection relocatedSection, int offset, int requestedLength, long addend) {
+        this.containingElement = containingElement;
+        this.relocatedSection = relocatedSection;
+        this.sectionOffset = offset; // gets turned into a vaddr on write-out
+        /*
+         * NOTE: the Mach-O spec claims that r_length == 3 means a 4-byte length and not an 8-byte
+         * length. But it doesn't say how to encode an 8-bytes-long relocation site. And the
+         * following link seems to suggest that in the case of x86-64, r_length==3 does encode the
+         * 8-byte case.
+         * http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/EXTERNAL_HEADERS/mach
+         * -o/x86_64/reloc.h
+         *
+         * Experimenting....
+         */
+        if (requestedLength != 8 && requestedLength != 4 && requestedLength != 2 && requestedLength != 1) {
+            throw new IllegalArgumentException("Mach-O cannot represent relocation lengths other than {1,2,4,8} bytes");
+        }
+        this.log2length = (byte) ((requestedLength == 8) ? 3 : (requestedLength == 4) ? 2 : (requestedLength == 2) ? 1 : 0);
+        this.kind = RelocationKind.UNKNOWN;
+        this.targetSection = null;
+        this.sym = null;
+        this.addend = addend;
+    }
+
     /**
      * Construct a relocation record.
      *
@@ -205,6 +249,7 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         // if the symbol is defined in the same file, i.e. locally, we have a target section
         assert !asLocalReloc || this.sym.isDefined();
         this.targetSection = asLocalReloc ? (MachOSection) this.sym.getDefinedSection() : null;
+        this.addend = null;
     }
 
     public static int getEncodedSize() {
@@ -216,8 +261,13 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         // "extern" means symbolNum is a symbol not a section number
         int symbolNum;
         if (isExtern()) {
-            // we're non-local, so use a symbol
-            symbolNum = relocatedSection.getOwner().getSymbolTable().indexOf(sym);
+            if (addend == null) {
+                // we're non-local, so use a symbol
+                symbolNum = relocatedSection.getOwner().getSymbolTable().indexOf(sym);
+            } else {
+                // Use addend as symbolnum
+                symbolNum = Math.toIntExact(addend);
+            }
         } else {
             // we're local, so use the section
             symbolNum = relocatedSection.getOwner().getSections().indexOf(sym.getDefinedSection());
@@ -312,6 +362,9 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
                         throw new IllegalArgumentException("unknown relocation kind: " + kind);
                 }
             case ARM64:
+                if (addend != null) {
+                    return ARM64Reloc.ADDEND.getValue();
+                }
                 switch (kind) {
                     case DIRECT_1:
                     case DIRECT_2:
@@ -344,7 +397,8 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
             RelocationInfo other = (RelocationInfo) obj;
             return sectionOffset == other.sectionOffset && log2length == other.log2length && Objects.equals(containingElement, other.containingElement) &&
                             Objects.equals(getRelocatedSection(), other.getRelocatedSection()) && kind == other.kind &&
-                            Objects.equals(sym, other.sym) && Objects.equals(targetSection, other.targetSection);
+                            Objects.equals(sym, other.sym) && Objects.equals(targetSection, other.targetSection) &&
+                            Objects.equals(addend, other.addend);
         }
         return false;
     }

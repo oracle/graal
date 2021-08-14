@@ -344,6 +344,12 @@ public abstract class ObjectFile {
                 case DIRECT_4:
                 case PC_RELATIVE_4:
                 case SECREL_4:
+                case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
+                case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
                     return 4;
                 case DIRECT_8:
                 case PC_RELATIVE_8:

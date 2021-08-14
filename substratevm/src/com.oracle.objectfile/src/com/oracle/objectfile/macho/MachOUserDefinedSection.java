@@ -43,6 +43,7 @@ import com.oracle.objectfile.macho.MachOObjectFile.MachOSection;
 import com.oracle.objectfile.macho.MachOObjectFile.SectionFlag;
 import com.oracle.objectfile.macho.MachOObjectFile.SectionType;
 import com.oracle.objectfile.macho.MachOObjectFile.Segment64Command;
+import org.graalvm.compiler.debug.GraalError;
 
 /**
  * @see com.oracle.objectfile.elf.ELFUserDefinedSection
@@ -164,42 +165,67 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
         AssemblyBuffer sbb = new AssemblyBuffer(bb);
         sbb.setByteOrder(getOwner().getByteOrder());
         sbb.pushSeek(offset);
-        /*
-         * NOTE: Mach-O does not support explicit addends, and inline addends are applied even
-         * during dynamic linking. So if the caller supplies an explicit addend, we turn it into an
-         * implicit one by updating our content.
-         */
+
         int length = ObjectFile.RelocationKind.getRelocationSize(k);
-        long currentInlineAddendValue = sbb.readTruncatedLong(length);
-        long desiredInlineAddendValue;
-        if (explicitAddend != null) {
+
+        if (getOwner().cpuType == MachOCpuType.X86_64) {
             /*
-             * This assertion is conservatively disallowing double-addend (could
-             * "add currentValue to explicitAddend"), because that seems more likely to be a bug
-             * than a feature.
+             * NOTE: X86_64 Mach-O does not support explicit addends, and inline addends are applied even
+             * during dynamic linking. So if the caller supplies an explicit addend, we turn it into an
+             * implicit one by updating our content.
              */
-            assert currentInlineAddendValue == 0;
-            desiredInlineAddendValue = explicitAddend;
+            long currentInlineAddendValue = sbb.readTruncatedLong(length);
+            long desiredInlineAddendValue;
+            if (explicitAddend != null) {
+                /*
+                 * This assertion is conservatively disallowing double-addend (could
+                 * "add currentValue to explicitAddend"), because that seems more likely to be a bug
+                 * than a feature.
+                 */
+                assert currentInlineAddendValue == 0;
+                desiredInlineAddendValue = explicitAddend;
+            } else {
+                desiredInlineAddendValue = currentInlineAddendValue;
+            }
+
+            /*
+             * One more complication: for PC-relative relocation, at least on x86-64, Mach-O linkers
+             * (both AOT ld and dyld) adjust the calculation to compensate for the fact that it's the
+             * *next* instruction that the PC-relative reference gets resolved against. Note that ELF
+             * doesn't do this compensation. Our interface duplicates the ELF behaviour, so we have to
+             * act against this Mach-O-specific fixup here, by *adding* a little to the addend. The
+             * amount we add is always the length in bytes of the relocation site (since on x86-64 the
+             * reference is always the last field in a PC-relative instruction).
+             */
+            if (RelocationKind.isPCRelative(k)) {
+                desiredInlineAddendValue += length;
+            }
+
+            // Write the inline addend back to the buffer.
+            sbb.seek(offset);
+            sbb.writeTruncatedLong(desiredInlineAddendValue, length);
         } else {
-            desiredInlineAddendValue = currentInlineAddendValue;
+            switch (k) {
+                case DIRECT_4:
+                case DIRECT_8:
+                    sbb.writeTruncatedLong(explicitAddend, length);
+                    break;
+                case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
+                case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
+                    if (explicitAddend != 0) {
+                        // Create ARM64_RELOC_ADDEND
+                        RelocationInfo addend = RelocationInfo.newAddend(el, this, offset, length, explicitAddend);
+                        el.add(addend);
+                    }
+                    break;
+                default:
+                    GraalError.shouldNotReachHere();
+            }
         }
-
-        /*
-         * One more complication: for PC-relative relocation, at least on x86-64, Mach-O linkers
-         * (both AOT ld and dyld) adjust the calculation to compensate for the fact that it's the
-         * *next* instruction that the PC-relative reference gets resolved against. Note that ELF
-         * doesn't do this compensation. Our interface duplicates the ELF behaviour, so we have to
-         * act against this Mach-O-specific fixup here, by *adding* a little to the addend. The
-         * amount we add is always the length in bytes of the relocation site (since on x86-64 the
-         * reference is always the last field in a PC-relative instruction).
-         */
-        if (RelocationKind.isPCRelative(k)) {
-            desiredInlineAddendValue += length;
-        }
-
-        // Write the inline addend back to the buffer.
-        sbb.seek(offset);
-        sbb.writeTruncatedLong(desiredInlineAddendValue, length);
 
         // set section flag to note that we have relocations
         assert symbolName != null;
