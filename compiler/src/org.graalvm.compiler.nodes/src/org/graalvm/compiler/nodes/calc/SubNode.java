@@ -115,6 +115,40 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                     return y.getY();
                 }
             }
+            if (forX instanceof MulNode && forY instanceof MulNode) {
+                MulNode in1 = (MulNode) forX;
+                MulNode in2 = (MulNode) forY;
+
+                ValueNode subIn1 = null;
+                ValueNode subIn2 = null;
+                ValueNode mulIn = null;
+                if (in1.getX() == in2.getX()) {
+                    // Convert "a*b+a*c into a*(b+c)
+                    subIn1 = in1.getY();
+                    subIn2 = in2.getY();
+                    mulIn = in1.getX();
+                } else if (in1.getY() == in2.getX()) {
+                    // Convert a*b+b*c into b*(a+c)
+                    subIn1 = in1.getX();
+                    subIn2 = in2.getY();
+                    mulIn = in1.getY();
+                } else if (in1.getY() == in2.getY()) {
+                    // Convert a*c+b*c into (a+b)*c
+                    subIn1 = in1.getX();
+                    subIn2 = in2.getX();
+                    mulIn = in1.getY();
+                } else if (in1.getX() == in2.getY()) {
+                    // Convert a*b+c*a into a*(b+c)
+                    subIn1 = in1.getY();
+                    subIn2 = in2.getX();
+                    mulIn = in1.getX();
+                }
+
+                if (mulIn != null) {
+                    ValueNode sub = SubNode.create(subIn1, subIn2, view);
+                    return MulNode.create(mulIn, sub, view);
+                }
+            }
         }
         if (forY.isConstant()) {
             Constant c = forY.asConstant();

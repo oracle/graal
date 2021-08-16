@@ -94,6 +94,40 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
                     return sub.getX();
                 }
             }
+            if (forX instanceof MulNode && forY instanceof MulNode) {
+                MulNode in1 = (MulNode) forX;
+                MulNode in2 = (MulNode) forY;
+
+                ValueNode addIn1 = null;
+                ValueNode addIn2 = null;
+                ValueNode mulIn = null;
+                if (in1.getX() == in2.getX()) {
+                    // Convert "a*b+a*c into a*(b+c)
+                    addIn1 = in1.getY();
+                    addIn2 = in2.getY();
+                    mulIn = in1.getX();
+                } else if (in1.getY() == in2.getX()) {
+                    // Convert a*b+b*c into b*(a+c)
+                    addIn1 = in1.getX();
+                    addIn2 = in2.getY();
+                    mulIn = in1.getY();
+                } else if (in1.getY() == in2.getY()) {
+                    // Convert a*c+b*c into (a+b)*c
+                    addIn1 = in1.getX();
+                    addIn2 = in2.getX();
+                    mulIn = in1.getY();
+                } else if (in1.getX() == in2.getY()) {
+                    // Convert a*b+c*a into a*(b+c)
+                    addIn1 = in1.getY();
+                    addIn2 = in2.getX();
+                    mulIn = in1.getX();
+                }
+
+                if (mulIn != null) {
+                    ValueNode add = AddNode.create(addIn1, addIn2, view);
+                    return MulNode.create(mulIn, add, view);
+                }
+            }
         }
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
