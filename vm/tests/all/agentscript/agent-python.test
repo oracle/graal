@@ -9,8 +9,12 @@ Ahoj
 Python: Insight version 1.1 is launching
 Python: Hooks are ready!
 Python: observed loading of agent-fib.js
-minusOne 4
-minusOne 3
-minusOne 2
-minusOne 2
+minusOne class-based filter 4
+minusOne class-based filter 3
+minusOne class-based filter 2
+minusTwo dict-based filter 2
+minusTwo dict-based filter 3
+minusTwo dict-based filter 4
+minusOne class-based filter 2
+minusTwo dict-based filter 2
 Three is the result 3
