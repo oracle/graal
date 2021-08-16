@@ -51,8 +51,8 @@ import com.oracle.svm.core.thread.VMThreads;
  * thread-safe, so no locking is necessary when calling them.
  *
  * Memory for aligned chunks is not immediately released to the OS. Chunks with a total of up to
- * {@link AbstractCollectionPolicy#getMaximumFreeReservedSize()} bytes are saved in an unused chunk
- * list. Memory for unaligned chunks is released immediately.
+ * {@link CollectionPolicy#getMaximumFreeReservedSize()} bytes are saved in an unused chunk list.
+ * Memory for unaligned chunks is released immediately.
  */
 final class HeapChunkProvider {
     /**

@@ -47,7 +47,7 @@ import com.oracle.svm.core.util.VMError;
  * {@code PSAdaptiveSizePolicy} and its base class {@code AdaptiveSizePolicy}. Method and variable
  * names have been kept mostly the same for comparability.
  */
-abstract class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
+final class AdaptiveCollectionPolicy implements CollectionPolicy {
 
     /*
      * Constants that can be made options if desirable. These are -XX options in HotSpot, refer to

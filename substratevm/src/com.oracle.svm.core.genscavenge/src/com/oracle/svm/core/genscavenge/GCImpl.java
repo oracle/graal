@@ -64,7 +64,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
-import com.oracle.svm.core.genscavenge.CollectionPolicy.NeverCollect;
+import com.oracle.svm.core.genscavenge.BasicCollectionPolicies.NeverCollect;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -110,7 +110,7 @@ public final class GCImpl implements GC {
     private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
     private final ChunkReleaser chunkReleaser = new ChunkReleaser();
 
-    private final AbstractCollectionPolicy policy;
+    private final CollectionPolicy policy;
     private boolean completeCollection = false;
     private UnsignedWord sizeBefore = WordFactory.zero();
     private boolean collectionInProgress = false;
@@ -1107,7 +1107,7 @@ public final class GCImpl implements GC {
     }
 
     @Fold
-    public static AbstractCollectionPolicy getPolicy() {
+    public static CollectionPolicy getPolicy() {
         return GCImpl.getGCImpl().policy;
     }
 
