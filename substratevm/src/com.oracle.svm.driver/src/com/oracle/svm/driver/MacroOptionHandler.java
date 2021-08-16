@@ -25,10 +25,8 @@
 package com.oracle.svm.driver;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
-import java.util.List;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.util.ClasspathUtils;
@@ -86,29 +84,10 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             enabledOption.forEachPropertyValue(config, "ImageBuilderBootClasspath8", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
         }
 
-        if (!enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
-            Path builderJarsDirectory = imageJarsDirectory.resolve("builder");
-            if (Files.isDirectory(builderJarsDirectory)) {
-                List<Path> extraBuilderJars = NativeImage.getJars(builderJarsDirectory);
-                if (NativeImage.USE_NI_JPMS) {
-                    extraBuilderJars.forEach(nativeImage::addImageBuilderModulePath);
-                } else {
-                    extraBuilderJars.forEach(nativeImage::addImageBuilderClasspath);
-                }
-            }
-        }
+        enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        enabledOption.forEachPropertyValue(config, "ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
 
-        boolean explicitImageClasspath = enabledOption.forEachPropertyValue(
-                        config, "ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
-        boolean explicitImageModulePath = enabledOption.forEachPropertyValue(
-                        config, "ImageModulePath", entry -> nativeImage.addImageModulePath(ClasspathUtils.stringToClasspath(entry), true), PATH_SEPARATOR_REGEX);
-        if (!explicitImageClasspath && !explicitImageModulePath) {
-            if (NativeImage.USE_NI_JPMS) {
-                NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageModulePath);
-            } else {
-                NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
-            }
-        }
+        enabledOption.forEachPropertyValue(config, "ImageModulePath", entry -> nativeImage.addImageModulePath(ClasspathUtils.stringToClasspath(entry), true), PATH_SEPARATOR_REGEX);
 
         String imageName = enabledOption.getProperty(config, "ImageName");
         if (imageName != null) {
