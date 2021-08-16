@@ -143,7 +143,7 @@ public final class LLVMNativePointerSupport extends LLVMNode {
         }
 
         @Specialization(guards = "natives.accepts(receiver.getObject())")
-        boolean doManagedPointer(LLVMManagedPointer receiver, @CachedLibrary(limit = "1") LLVMNativeLibrary natives) {
+        boolean doManagedPointer(LLVMManagedPointer receiver, @CachedLibrary(limit = "8") LLVMNativeLibrary natives) {
             return natives.isPointer(receiver.getObject());
         }
 
