@@ -324,13 +324,13 @@ public class JNIAccessFeature implements Feature {
         }
         // Same as BigBang.addSystemField() and BigBang.addSystemStaticField():
         // create type flows for any subtype of the field's declared type
-        BigBang bigBang = access.getBigBang();
-        TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(bigBang, true);
+        BigBang bb = access.getBigBang();
+        TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(bb, true);
         if (field.isStatic()) {
-            declaredTypeFlow.addUse(bigBang, field.getStaticFieldFlow());
+            declaredTypeFlow.addUse(bb, field.getStaticFieldFlow());
         } else {
-            FieldTypeFlow instanceFieldFlow = field.getDeclaringClass().getContextInsensitiveAnalysisObject().getInstanceFieldFlow(bigBang, field, writable);
-            declaredTypeFlow.addUse(bigBang, instanceFieldFlow);
+            FieldTypeFlow instanceFieldFlow = field.getDeclaringClass().getContextInsensitiveAnalysisObject().getInstanceFieldFlow(bb, field, writable);
+            declaredTypeFlow.addUse(bb, instanceFieldFlow);
         }
     }
 

@@ -36,8 +36,8 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class AnalysisObjectScanner extends ObjectScanner {
 
-    public AnalysisObjectScanner(BigBang bigbang, CompletionExecutor executor, ReusableSet scannedObjects) {
-        super(bigbang, executor, scannedObjects);
+    public AnalysisObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects) {
+        super(bb, executor, scannedObjects);
     }
 
     @Override

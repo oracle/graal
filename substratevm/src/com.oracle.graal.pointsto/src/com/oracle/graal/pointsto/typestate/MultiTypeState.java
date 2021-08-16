@@ -35,7 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
 public class MultiTypeState extends TypeState {
 
-    protected final BigBang bigbang;
+    protected final BigBang bb;
     /** The objects of this type state. */
     protected final AnalysisObject[] objects;
     /** See {@link #getObjectTypeIds()}. */
@@ -56,7 +56,7 @@ public class MultiTypeState extends TypeState {
     /** Creates a new type state using the provided types bit set and objects. */
     MultiTypeState(BigBang bb, boolean canBeNull, int properties, BitSet typesBitSet, AnalysisObject... objects) {
         super(properties);
-        this.bigbang = bb;
+        this.bb = bb;
         this.objects = objects;
         /*
          * Trim the typesBitSet to size eagerly. The typesBitSet is effectively immutable, i.e., no
@@ -86,7 +86,7 @@ public class MultiTypeState extends TypeState {
     /** Create a type state with the same content and a reversed canBeNull value. */
     private MultiTypeState(BigBang bb, boolean canBeNull, MultiTypeState other) {
         super(other.properties);
-        this.bigbang = bb;
+        this.bb = bb;
         this.objects = other.objects;
         this.typesBitSet = other.typesBitSet;
         this.typesCount = other.typesCount;
@@ -189,7 +189,7 @@ public class MultiTypeState extends TypeState {
 
             @Override
             public AnalysisType next() {
-                AnalysisType next = bigbang.getUniverse().getType(currentTypeId);
+                AnalysisType next = bb.getUniverse().getType(currentTypeId);
                 currentTypeId = typesBitSet.nextSetBit(currentTypeId + 1);
                 return next;
             }
