@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -40,7 +39,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -169,28 +167,14 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     public void copyFrom(Object source, @SuppressWarnings("unused") long length,
                     @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
                     @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary,
-                    @Cached BranchProfile invalidLengthProfile,
-                    @Cached BranchProfile invalidFrameProfile) {
+                    @Cached BranchProfile invalidLengthProfile) {
         if (length != Aarch64BitVarArgs.SIZE_OF_VALIST) {
             invalidLengthProfile.enter();
             CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException("Invalid length " + length + ". Expected length " + Aarch64BitVarArgs.SIZE_OF_VALIST);
         }
 
-        Frame frame;
-        try {
-            frame = Truffle.getRuntime().getCurrentFrame().getFrame(FrameInstance.FrameAccess.READ_WRITE);
-        } catch (NullPointerException e) {
-            /*
-             * In getCurrentFrame()/getCallerFrame() there is an inherit danger in the sense that
-             * this API does not guarantee that the returned frame instance is valid when you later
-             * try to materialize it (here a READ_WRITE access is requested).
-             */
-            invalidFrameProfile.enter();
-            frame = Truffle.getRuntime().getCurrentFrame().getFrame(FrameInstance.FrameAccess.MATERIALIZE);
-        }
-
-        vaListLibrary.copy(wrapperFactory.execute(source), this, frame);
+        vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source), this);
     }
 
     // TODO: move it to the super class
