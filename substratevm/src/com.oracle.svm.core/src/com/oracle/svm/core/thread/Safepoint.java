@@ -371,7 +371,7 @@ public final class Safepoint {
         return safepointRequested.getLocationIdentity();
     }
 
-    public static long getThreadLocalSafepointRequestedOffset() {
+    public static int getThreadLocalSafepointRequestedOffset() {
         return VMThreadLocalInfos.getOffset(safepointRequested);
     }
 

@@ -369,7 +369,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         if (condition instanceof SafepointCheckNode) {
             LLVMValueRef threadData = gen.getSpecialRegister(SpecialRegister.ThreadPointer);
             threadData = builder.buildIntToPtr(threadData, builder.rawPointerType());
-            LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())));
+            LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Safepoint.getThreadLocalSafepointRequestedOffset()));
             LLVMValueRef safepointCount = builder.buildLoad(safepointCounterAddr, builder.intType());
             if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
                 safepointCount = builder.buildSub(safepointCount, builder.constantInt(1));

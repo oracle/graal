@@ -53,7 +53,7 @@ public class AMD64SafepointCheckOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         assert SubstrateOptions.MultiThreaded.getValue();
-        int safepointRequestedOffset = Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset());
+        int safepointRequestedOffset = Safepoint.getThreadLocalSafepointRequestedOffset();
         AMD64Address safepointRequested = new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), safepointRequestedOffset);
         if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
             masm.subl(safepointRequested, 1);
