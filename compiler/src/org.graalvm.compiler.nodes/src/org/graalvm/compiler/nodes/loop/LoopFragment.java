@@ -94,6 +94,7 @@ public abstract class LoopFragment {
 
     public void disconnect() {
         // TODO (gd) possibly abstract
+        GraalError.unimplemented();
     }
 
     public boolean contains(Node n) {
