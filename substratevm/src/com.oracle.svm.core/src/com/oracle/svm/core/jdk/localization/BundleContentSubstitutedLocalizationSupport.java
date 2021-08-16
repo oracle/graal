@@ -122,12 +122,12 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isBundleSupported(ResourceBundle bundle) {
+    private static boolean isBundleSupported(ResourceBundle bundle) {
         return isBundleSupported(bundle.getClass());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private boolean isBundleSupported(Class<?> bundleClass) {
+    private static boolean isBundleSupported(Class<?> bundleClass) {
         return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass) || ParallelListResourceBundle.class.isAssignableFrom(bundleClass);
     }
 
