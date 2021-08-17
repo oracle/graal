@@ -34,9 +34,9 @@ public final class QuickenedGetFieldNode extends QuickNode {
 
     @Child AbstractGetFieldNode getFieldNode;
 
-    public QuickenedGetFieldNode(int top, int callerBCI, int statementIndex, Field.FieldVersion field) {
+    public QuickenedGetFieldNode(int top, int callerBCI, int statementIndex, Field field) {
         super(top, callerBCI);
-        assert !field.getField().isStatic();
+        assert !field.isStatic();
         this.getFieldNode = AbstractGetFieldNode.create(field);
         this.statementIndex = statementIndex;
     }

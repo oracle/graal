@@ -45,26 +45,26 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class AbstractGetFieldNode extends Node {
-    final Field.FieldVersion fieldVersion;
+    final Field field;
     final String fieldName;
     final int slotCount;
     static final int CACHED_LIBRARY_LIMIT = 3;
 
-    AbstractGetFieldNode(Field.FieldVersion fieldVersion) {
-        this.fieldVersion = fieldVersion;
+    AbstractGetFieldNode(Field field) {
+        this.field = field;
         this.fieldName = getField().getNameAsString();
         this.slotCount = getField().getKind().getSlotCount();
     }
 
     Field getField() {
-        return fieldVersion.getField();
+        return field;
     }
 
     public abstract int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex);
 
-    public static AbstractGetFieldNode create(Field.FieldVersion f) {
+    public static AbstractGetFieldNode create(Field f) {
         // @formatter:off
-        switch (f.getField().getKind()) {
+        switch (f.getKind()) {
             case Boolean: return BooleanGetFieldNodeGen.create(f);
             case Byte:    return ByteGetFieldNodeGen.create(f);
             case Short:   return ShortGetFieldNodeGen.create(f);
@@ -96,9 +96,9 @@ public abstract class AbstractGetFieldNode extends Node {
 }
 
 abstract class IntGetFieldNode extends AbstractGetFieldNode {
-    IntGetFieldNode(Field.FieldVersion f) {
+    IntGetFieldNode(Field f) {
         super(f);
-        assert f.getField().getKind() == JavaKind.Int;
+        assert f.getKind() == JavaKind.Int;
     }
 
     @Override
@@ -150,9 +150,9 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
-    BooleanGetFieldNode(Field.FieldVersion f) {
+    BooleanGetFieldNode(Field f) {
         super(f);
-        assert f.getField().getKind() == JavaKind.Boolean;
+        assert f.getKind() == JavaKind.Boolean;
     }
 
     @Override
@@ -204,9 +204,9 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class CharGetFieldNode extends AbstractGetFieldNode {
-    CharGetFieldNode(Field.FieldVersion f) {
+    CharGetFieldNode(Field f) {
         super(f);
-        assert f.getField().getKind() == JavaKind.Char;
+        assert f.getKind() == JavaKind.Char;
     }
 
     @Override
@@ -264,9 +264,9 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class ShortGetFieldNode extends AbstractGetFieldNode {
-    ShortGetFieldNode(Field.FieldVersion f) {
+    ShortGetFieldNode(Field f) {
         super(f);
-        assert f.getField().getKind() == JavaKind.Short;
+        assert f.getKind() == JavaKind.Short;
     }
 
     @Override
@@ -318,9 +318,9 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class ByteGetFieldNode extends AbstractGetFieldNode {
-    ByteGetFieldNode(Field.FieldVersion f) {
+    ByteGetFieldNode(Field f) {
         super(f);
-        assert f.getField().getKind() == JavaKind.Byte;
+        assert f.getKind() == JavaKind.Byte;
     }
 
     @Override
@@ -372,9 +372,9 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class LongGetFieldNode extends AbstractGetFieldNode {
-    LongGetFieldNode(Field.FieldVersion f) {
+    LongGetFieldNode(Field f) {
         super(f);
-        assert f.getField().getKind() == JavaKind.Long;
+        assert f.getKind() == JavaKind.Long;
     }
 
     @Override
@@ -426,9 +426,9 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class FloatGetFieldNode extends AbstractGetFieldNode {
-    FloatGetFieldNode(Field.FieldVersion f) {
+    FloatGetFieldNode(Field f) {
         super(f);
-        assert f.getField().getKind() == JavaKind.Float;
+        assert f.getKind() == JavaKind.Float;
     }
 
     @Override
@@ -480,9 +480,9 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
-    DoubleGetFieldNode(Field.FieldVersion f) {
+    DoubleGetFieldNode(Field f) {
         super(f);
-        assert f.getField().getKind() == JavaKind.Double;
+        assert f.getKind() == JavaKind.Double;
     }
 
     @Override
@@ -536,10 +536,10 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
 abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     final Klass typeKlass;
 
-    ObjectGetFieldNode(Field.FieldVersion f) {
+    ObjectGetFieldNode(Field f) {
         super(f);
         this.typeKlass = f.resolveTypeKlass();
-        assert f.getField().getKind() == JavaKind.Object;
+        assert f.getKind() == JavaKind.Object;
     }
 
     @Override
@@ -555,7 +555,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
 
     @Specialization(guards = "receiver.isEspressoObject()")
     StaticObject doEspresso(StaticObject receiver) {
-        return fieldVersion.getObject(receiver);
+        return field.getObject(receiver);
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "CACHED_LIBRARY_LIMIT")

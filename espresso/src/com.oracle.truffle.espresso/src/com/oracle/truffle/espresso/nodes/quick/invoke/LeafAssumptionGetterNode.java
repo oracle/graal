@@ -42,8 +42,8 @@ public final class LeafAssumptionGetterNode extends InlinedGetterNode {
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         BytecodeNode root = getBytecodeNode();
         if (inlinedMethod.leafAssumption()) {
-            StaticObject receiver = fieldVersion.getField().isStatic()
-                            ? fieldVersion.getField().getDeclaringKlass().tryInitializeAndGetStatics()
+            StaticObject receiver = field.isStatic()
+                            ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                             : nullCheck(BytecodeNode.popObject(refs, top - 1));
             int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
             return (resultAt - top) + getFieldNode.getField(frame, primitives, refs, root, receiver, resultAt, statementIndex);

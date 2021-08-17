@@ -364,13 +364,6 @@ public final class ClassRedefinition {
                     oldFieldsIt.remove();
                     newFieldsIt.remove();
                     break;
-                } else if (oldField.getName() == newField.getName() && oldField.getType() == newField.getType()) {
-                    // OK, compatible field change that doesn't change the layout,
-                    // but it does change in a way that require all callers to re-resolve
-                    collectedChanges.addCompatibleFieldChange(oldField, newField);
-                    oldFieldsIt.remove();
-                    newFieldsIt.remove();
-                    break;
                 }
             }
         }

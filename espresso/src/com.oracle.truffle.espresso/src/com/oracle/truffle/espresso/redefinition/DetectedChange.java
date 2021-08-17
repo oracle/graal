@@ -40,19 +40,10 @@ public final class DetectedChange {
     private final List<ParserField> addedStaticFields = new ArrayList<>();
     private final List<ParserField> addedInstanceFields = new ArrayList<>();
     private final List<Field> removedFields = new ArrayList<>();
-    private final Map<Field, ParserField> compatibleFieldChanges = new HashMap<>();
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
     private final Set<Method> removedMethods = new HashSet<>();
     private boolean classInitializerChanged;
-
-    public void addCompatibleFieldChange(Field oldField, ParserField newField) {
-        compatibleFieldChanges.put(oldField, newField);
-    }
-
-    public Map<Field, ParserField> getCompatibleFieldChanges() {
-        return Collections.unmodifiableMap(compatibleFieldChanges);
-    }
 
     public void addNewField(ParserField parserField) {
         if (parserField.isStatic()) {

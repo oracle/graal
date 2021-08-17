@@ -1438,17 +1438,17 @@ public final class ObjectKlass extends Klass {
         @CompilationFinal(dimensions = 1) //
         private final Field[] fieldTable;
 
-        // points to the first element in the FieldTable that refers to a field declared in this class,
-        // or is equal to fieldTable.length if this class does not declare fields
+        // points to the first element in the FieldTable that refers to a field declared in this
+        // class, or is equal to fieldTable.length if this class does not declare fields
         private final int localFieldTableIndex;
 
         // static fields declared in this class (no hidden fields)
         @CompilationFinal(dimensions = 1) //
         private final Field[] staticFieldTable;
 
-        KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods,Method[] mirandaMethods,
-                     Method[] vtable, Method[][] itable, ObjectKlass[] iKlassTable,
-                     Field[] fieldTable, Field[] staticFieldTable, int localFieldTableIndex) {
+        KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods, Method[] mirandaMethods,
+                        Method[] vtable, Method[][] itable, ObjectKlass[] iKlassTable,
+                        Field[] fieldTable, Field[] staticFieldTable, int localFieldTableIndex) {
             this.assumption = Truffle.getRuntime().createAssumption();
             this.pool = pool;
             this.linkedKlass = linkedKlass;
