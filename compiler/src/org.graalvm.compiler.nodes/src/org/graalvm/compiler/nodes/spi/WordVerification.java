@@ -37,11 +37,10 @@ import jdk.vm.ci.meta.JavaType;
  *
  * <h1>Motivation</h1>
  *
- * We do not want to leak {@code WordTypes} to arbitrary places, because those should be handled at
- * the very beginning of the pipeline (i.e., during graph building). On the other hand, we would
- * like to detect cases where this failed to issue proper error messages instead of doing the wrong
- * thing and maybe or maybe not failing arbitrarily. Thus, we only give access to assertions instead
- * of the full features.
+ * This interface exists to avoid exposing {@code WordTypes} in {@link CoreProviders}. Word values
+ * must be transformed to other types at the very beginning of the pipeline (i.e., during graph
+ * building). {@link WordVerification} is used to detect when this invariant is violated and to
+ * issue proper error messages.
  */
 public interface WordVerification {
 
@@ -49,7 +48,7 @@ public interface WordVerification {
      * Verifies that a given type is a word type.
      *
      * @return {@code true}
-     * @throws Error if the assertion doe not hold
+     * @throws Error if the assertion does not hold
      */
     boolean verifyIsWord(JavaType type);
 
@@ -57,7 +56,7 @@ public interface WordVerification {
      * Verifies that a given type is not a word type.
      *
      * @return {@code true}
-     * @throws Error if the assertion doe not hold
+     * @throws Error if the assertion does not hold
      */
     boolean verifyIsNoWord(JavaType type);
 
