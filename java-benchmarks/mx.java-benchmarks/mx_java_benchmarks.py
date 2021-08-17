@@ -1292,6 +1292,15 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             # Skips initial check benchmark which tests for javac.jar on classpath.
             runArgs += ["-pja", "-Dspecjvm.run.initial.check=false"]
         return runArgs
+    
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(SpecJvm2008BenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        if java_home_jdk().javaCompliance >= '16' and \
+                ("xml.transform" in self.benchmarkList(bmSuiteArgs) or
+                 "startup.xml.transform" in self.benchmarkList(bmSuiteArgs)):
+            vmArgs += ["--add-exports=java.xml/com.sun.org.apache.xerces.internal.parsers=ALL-UNNAMED",
+                       "--add-exports=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED"]
+        return vmArgs
 
     def benchmarkList(self, bmSuiteArgs):
         if java_home_jdk().javaCompliance >= '9':
