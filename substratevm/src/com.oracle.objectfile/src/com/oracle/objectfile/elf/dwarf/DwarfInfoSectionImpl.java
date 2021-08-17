@@ -931,17 +931,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert classEntry.localFilesIdx(classEntry.getFileEntry()) == 1;
 
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-            Range range = primaryEntry.getPrimary();
-            if (range.isDeoptTarget() != deoptTargets) {
+            Range primary = primaryEntry.getPrimary();
+            if (primary.isDeoptTarget() != deoptTargets) {
                 continue;
             }
-            pos = writeMethodLocation(context, classEntry, range, buffer, pos);
-            if (primaryEntry.getPrimary().withInlinedChildren()) {
-                /*
-                 * the method has inlined ranges so write concrete inlined method entries
-                 */
-                pos = generateConcreteInlinedMethods(context, classEntry, primaryEntry, buffer, pos);
-            }
+            pos = writeMethodLocation(context, classEntry, primaryEntry, buffer, pos);
         }
         return pos;
     }
@@ -1253,6 +1247,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert !classPrimaryEntries.isEmpty();
         String fileName = classEntry.getFileName();
         int lineIndex = getLineIndex(classEntry);
+        int lo = findLo(classPrimaryEntries, true);
+        int hi = findHi(classPrimaryEntries, true, true);
+        // we must have at least one compiled deopt method
+        assert hi > 0 : hi;
         int abbrevCode = (fileName.length() > 0 ? DwarfDebugInfo.DW_ABBREV_CODE_class_unit1 : DwarfDebugInfo.DW_ABBREV_CODE_class_unit2);
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -1263,8 +1261,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String compilationDirectory = classEntry.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeAttrStrp(compilationDirectory, buffer, pos);
-        int lo = findLo(classPrimaryEntries, true);
-        int hi = findHi(classPrimaryEntries, true, true);
         log(context, "  [0x%08x]     lo_pc  0x%08x", pos, lo);
         pos = writeAttrAddress(lo, buffer, pos);
         log(context, "  [0x%08x]     hi_pc  0x%08x", pos, hi);
@@ -1281,27 +1277,34 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeMethodLocation(DebugContext context, ClassEntry classEntry, Range range, byte[] buffer, int p) {
+    private int writeMethodLocation(DebugContext context, ClassEntry classEntry, PrimaryEntry primaryEntry, byte[] buffer, int p) {
         int pos = p;
+        Range primary = primaryEntry.getPrimary();
         log(context, "  [0x%08x] method location", pos);
-        int abbrevCode;
-        abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_location;
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_location;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
-        pos = writeAttrAddress(range.getLo(), buffer, pos);
-        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
-        pos = writeAttrAddress(range.getHi(), buffer, pos);
+        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, primary.getLo());
+        pos = writeAttrAddress(primary.getLo(), buffer, pos);
+        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, primary.getHi());
+        pos = writeAttrAddress(primary.getHi(), buffer, pos);
         /*
          * Should pass true only if method is non-private.
          */
         log(context, "  [0x%08x]     external  true", pos);
         pos = writeFlag(DwarfDebugInfo.DW_FLAG_true, buffer, pos);
-        String methodKey = range.getSymbolName();
+        String methodKey = primary.getSymbolName();
         int methodSpecOffset = getMethodDeclarationIndex(classEntry, methodKey);
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
         pos = writeAttrRefAddr(methodSpecOffset, buffer, pos);
-        pos = writeMethodParameterDeclarations(context, classEntry, range.getMethodEntry(), false, buffer, pos);
+        pos = writeMethodParameterDeclarations(context, classEntry, primary.getMethodEntry(), false, buffer, pos);
+        if (primary.withInlinedChildren()) {
+            /*
+             * the method has inlined ranges so write concrete inlined method entries as its
+             * children
+             */
+            pos = generateConcreteInlinedMethods(context, classEntry, primaryEntry, buffer, pos);
+        }
         /*
          * Write a terminating null attribute.
          */
