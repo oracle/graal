@@ -49,7 +49,7 @@ public class ProfilerCLITest {
     public static final int EXEC_COUNT = 10;
     public static final String NAME_REGEX = " [a-z]* +";
     public static final String SEPARATOR_REGEX = "\\|";
-    public static final String TIME_REGEX = " *[0-9]*ms ";
+    public static final String TIME_REGEX = " *[0-9]*ms +[0-9]*\\.[0-9]\\% ";
     public static final String PERCENT_REGEX = " *[0-9]*\\.[0-9]\\% ";
     public static final String LOCATION_REGEX = " test.*";
     public static final String SELF_TIME = "  Self Time: Time spent on the top of the stack.";
@@ -80,7 +80,7 @@ public class ProfilerCLITest {
         // Thread[main,5,main]
         Assert.assertTrue(output[5].contains("Thread"));
         // Name       |      Total Time    ||       Self Time    || Location
-        Assert.assertTrue(output[6].contains("Name       |      Total Time    ||       Self Time    || Location"));
+        Assert.assertEquals(" Name       |             Total Time    ||              Self Time    || Location             ", output[6]);
         // -------------------------------------------------------------------------------
         // foo        |             1900ms ||             1900ms || test~1:16-29
         String lineRegex = NAME_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + LOCATION_REGEX;
@@ -119,7 +119,7 @@ public class ProfilerCLITest {
         //Thread[main,5,main]
         Assert.assertTrue(output[8].contains("Thread"));
         // Name       |      Total Time    |   T0   |   T1   |   T2   ||       Self Time    |   T0   |   T1   |   T2   || Location
-        Assert.assertEquals(" Name       |      Total Time    |   T0   |   T1   |   T2   ||       Self Time    |   T0   |   T1   |   T2   || Location             ", output[9]);
+        Assert.assertEquals(" Name       |             Total Time    |   T0   |   T1   |   T2   ||              Self Time    |   T0   |   T1   |   T2   || Location             ", output[9]);
         //-------------------------------------------------------------------------------------------------------------------------------------
         // foo        |             2060ms | 100.0% |   0.0% |   0.0% ||             2060ms | 100.0% |   0.0% |   0.0% || test~1:16-29
         String lineRegex = NAME_REGEX + SEPARATOR_REGEX +
@@ -161,7 +161,7 @@ public class ProfilerCLITest {
         //Thread[main,5,main]
         Assert.assertTrue(output[7].contains("Thread"));
         // Name       |      Total Time    |   T2   |   T0   ||       Self Time    |   T2   |   T0   || Location
-        Assert.assertEquals(" Name       |      Total Time    |   T2   |   T0   ||       Self Time    |   T2   |   T0   || Location             ", output[8]);
+        Assert.assertEquals(" Name       |             Total Time    |   T2   |   T0   ||              Self Time    |   T2   |   T0   || Location             ", output[8]);
         //-------------------------------------------------------------------------------------------------------------------------------------
         // foo        |             2060ms | 100.0% |   0.0% ||             2060ms | 100.0% |   0.0% || test~1:16-29
         String lineRegex = NAME_REGEX + SEPARATOR_REGEX +
@@ -257,7 +257,7 @@ public class ProfilerCLITest {
         //Thread[Summary,5,main]
         Assert.assertTrue(output[5].contains("Thread"));
         // Name       |      Total Time    ||       Self Time    || Location
-        Assert.assertTrue(output[6].contains("Name       |      Total Time    ||       Self Time    || Location"));
+        Assert.assertEquals(" Name       |             Total Time    ||              Self Time    || Location             ", output[6]);
         //-------------------------------------------------------------------------------
         // foo        |             1080ms ||             1080ms || test~1:16-29
         String lineRegex = NAME_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + LOCATION_REGEX;

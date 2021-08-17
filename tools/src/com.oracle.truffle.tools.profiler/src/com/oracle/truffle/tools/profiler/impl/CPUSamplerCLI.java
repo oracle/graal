@@ -290,7 +290,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
-    private static double percent(int samples, int totalSamples) {
+    private static double percent(long samples, long totalSamples) {
         if (totalSamples == 0) {
             return 0.0;
         }
@@ -298,11 +298,11 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static String[] makeTitleAndFormat(int nameLength, CPUSamplerCLI.ShowTiers showTiers, int maxTier) {
-        StringBuilder titleBuilder = new StringBuilder(String.format(" %-" + nameLength + "s |      Total Time    ", "Name"));
-        StringBuilder formatBuilder = new StringBuilder(" %-" + nameLength + "s |       %10dms ");
+        StringBuilder titleBuilder = new StringBuilder(String.format(" %-" + nameLength + "s |             Total Time    ", "Name"));
+        StringBuilder formatBuilder = new StringBuilder(" %-" + nameLength + "s |       %10dms %5.1f%% ");
         maybeAddTiers(titleBuilder, formatBuilder, showTiers, maxTier);
-        titleBuilder.append("||       Self Time    ");
-        formatBuilder.append("||       %10dms ");
+        titleBuilder.append("||              Self Time    ");
+        formatBuilder.append("||       %10dms %5.1f%% ");
         maybeAddTiers(titleBuilder, formatBuilder, showTiers, maxTier);
         titleBuilder.append("|| Location             ");
         formatBuilder.append("|| %s");
@@ -350,7 +350,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final long samplePeriod;
         private final long samplesTaken;
         private int maxTier = 0;
-        private int maxNameLenght = 10;
+        private int maxNameLength = 10;
         private String title;
         private String format;
 
@@ -368,7 +368,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             for (Map.Entry<Thread, SourceLocationPayloads> threadEntry : perThreadSourceLocationPayloads.entrySet()) {
                 histogram.put(threadEntry.getKey(), histogramEntries(threadEntry));
             }
-            String[] titleAndFormat = makeTitleAndFormat(maxNameLenght, showTiers, maxTier);
+            String[] titleAndFormat = makeTitleAndFormat(maxNameLength, showTiers, maxTier);
             this.title = titleAndFormat[0];
             this.format = titleAndFormat[1];
         }
@@ -384,7 +384,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         private OutputEntry histogramEntry(Map.Entry<SourceLocation, List<CPUSampler.Payload>> sourceLocationEntry) {
             OutputEntry outputEntry = new OutputEntry(sourceLocationEntry.getKey());
-            maxNameLenght = Math.max(maxNameLenght, sourceLocationEntry.getKey().getRootName().length());
+            maxNameLength = Math.max(maxNameLength, sourceLocationEntry.getKey().getRootName().length());
             for (CPUSampler.Payload payload : sourceLocationEntry.getValue()) {
                 int[] selfTierCount = payload.getSelfTierCount();
                 for (int i = 0; i < selfTierCount.length; i++) {
@@ -458,7 +458,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                     if (minSamples > 0 && entry.totalSelfSamples < minSamples) {
                         continue;
                     }
-                    out.println(entry.format(format, showTiers, SamplingHistogram.this.samplePeriod, 0));
+                    out.println(entry.format(format, showTiers, SamplingHistogram.this.samplePeriod, 0, samplesTaken));
                 }
                 out.println(sep);
             }
@@ -493,12 +493,14 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.tierToSelfSamples = payload.getSelfTierCount();
         }
 
-        String format(String format, CPUSamplerCLI.ShowTiers showTiers, long samplePeriod, int indent) {
+        String format(String format, CPUSamplerCLI.ShowTiers showTiers, long samplePeriod, int indent, long globalTotalSamples) {
             List<Object> args = new ArrayList<>();
             args.add(repeat(" ", indent) + location.getRootName());
             args.add(totalSamples * samplePeriod);
+            args.add(percent(totalSamples, globalTotalSamples));
             maybeAddTiers(args, tierToSamples, totalSamples, showTiers);
             args.add(totalSelfSamples * samplePeriod);
+            args.add(percent(totalSelfSamples, globalTotalSamples));
             maybeAddTiers(args, tierToSelfSamples, totalSelfSamples, showTiers);
             args.add(getShortDescription(location.getSourceSection()));
             return String.format(format, args.toArray());
@@ -635,7 +637,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             if (minSamples > 0 && entry.totalSelfSamples < minSamples) {
                 return;
             }
-            out.println(entry.format(format, showTiers, samplePeriod, depth));
+            out.println(entry.format(format, showTiers, samplePeriod, depth, samplesTaken));
             List<CallTreeOutputEntry> sortedChildren = new ArrayList<>(entry.children);
             sortedChildren.sort((o1, o2) -> Long.compare(o2.totalSamples, o1.totalSamples));
             for (CallTreeOutputEntry child : sortedChildren) {
