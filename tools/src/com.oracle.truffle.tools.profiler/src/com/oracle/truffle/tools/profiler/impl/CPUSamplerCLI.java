@@ -42,7 +42,6 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
@@ -355,7 +354,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private String title;
         private String format;
 
-        public SamplingHistogram(CPUSamplerData data, OptionValues options) {
+        SamplingHistogram(CPUSamplerData data, OptionValues options) {
             this.summariseThreads = options.get(SUMMARISE_THREADS);
             this.minSamples = options.get(MIN_SAMPLES);
             this.showTiers = options.get(ShowTiers);
@@ -446,7 +445,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
-        public void print(PrintStream out) {
+        void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
             printLegend(out, "Histogram", samplesTaken, samplePeriod, showTiers, maxTier);
@@ -485,7 +484,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.location = location;
         }
 
-        public OutputEntry(ProfilerNode<CPUSampler.Payload> node) {
+        OutputEntry(ProfilerNode<CPUSampler.Payload> node) {
             location = new SourceLocation(node.getSourceSection(), node.getRootName());
             CPUSampler.Payload payload = node.getPayload();
             this.totalSamples = payload.getHitCount();
@@ -494,7 +493,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.tierToSelfSamples = payload.getSelfTierCount();
         }
 
-        public String format(String format, CPUSamplerCLI.ShowTiers showTiers, long samplePeriod, int indent) {
+        String format(String format, CPUSamplerCLI.ShowTiers showTiers, long samplePeriod, int indent) {
             List<Object> args = new ArrayList<>();
             args.add(repeat(" ", indent) + location.getRootName());
             args.add(totalSamples * samplePeriod);
@@ -524,7 +523,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         static final long serialVersionUID = -1;
 
-        public NonExistentTierSelected(String s) {
+        NonExistentTierSelected(String s) {
             super(s);
         }
     }
@@ -541,7 +540,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private int maxNameLength = 10;
         private int maxTier;
 
-        public SamplingCallTree(CPUSamplerData data, OptionValues options) {
+        SamplingCallTree(CPUSamplerData data, OptionValues options) {
             this.summariseThreads = options.get(SUMMARISE_THREADS);
             this.minSamples = options.get(MIN_SAMPLES);
             this.showTiers = options.get(ShowTiers);
@@ -617,7 +616,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             return entry;
         }
 
-        public void print(PrintStream out) {
+        void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
             printLegend(out, "Call Tree", samplesTaken, samplePeriod, showTiers, maxTier);
@@ -647,15 +646,15 @@ class CPUSamplerCLI extends ProfilerCLI {
         private static class CallTreeOutputEntry extends OutputEntry {
             List<CallTreeOutputEntry> children = new ArrayList<>();
 
-            public CallTreeOutputEntry(ProfilerNode<CPUSampler.Payload> node) {
+            CallTreeOutputEntry(ProfilerNode<CPUSampler.Payload> node) {
                 super(node);
             }
 
-            public boolean corresponds(ProfilerNode<CPUSampler.Payload> node) {
+            boolean corresponds(ProfilerNode<CPUSampler.Payload> node) {
                 return location.getSourceSection().equals(node.getSourceSection()) && location.getRootName().equals(node.getRootName());
             }
 
-            public void merge(CPUSampler.Payload payload) {
+            void merge(CPUSampler.Payload payload) {
                 this.totalSamples += payload.getHitCount();
                 this.totalSelfSamples += payload.getSelfHitCount();
                 int[] payloadTierCount = payload.getTierCount();

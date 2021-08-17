@@ -679,14 +679,14 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * TODO
+         * TODO Write the docs.
          */
         public int[] getTierCount() {
             return Arrays.copyOf(tierCount, tierCount.length);
         }
 
         /**
-         * TODO
+         * TODO Write the docs.
          */
         public int[] getSelfTierCount() {
             return Arrays.copyOf(selfTierCount, selfTierCount.length);
