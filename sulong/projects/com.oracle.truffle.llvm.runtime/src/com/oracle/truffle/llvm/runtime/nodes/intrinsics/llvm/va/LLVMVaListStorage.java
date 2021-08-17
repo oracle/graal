@@ -33,11 +33,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -49,6 +51,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -95,7 +99,7 @@ public class LLVMVaListStorage implements TruffleObject {
     public enum VarArgArea {
         GP_AREA,
         FP_AREA,
-        OVERFLOW_AREA;
+        OVERFLOW_AREA
     }
 
     public static VarArgArea getVarArgArea(Object arg) {
@@ -268,7 +272,16 @@ public class LLVMVaListStorage implements TruffleObject {
     protected Object[] realArguments;
     protected int numberOfExplicitArguments;
 
-    protected LLVMPointer nativized;
+    protected final LLVMPointer vaListStackPtr;
+    protected boolean nativized;
+
+    protected LLVMVaListStorage(LLVMPointer vaListStackPtr) {
+        this.vaListStackPtr = vaListStackPtr;
+    }
+
+    public boolean isNativized() {
+        return nativized;
+    }
 
     // InteropLibrary implementation
 
@@ -395,13 +408,13 @@ public class LLVMVaListStorage implements TruffleObject {
 
     @ExportMessage
     public boolean isPointer() {
-        return nativized != null && LLVMNativePointer.isInstance(nativized);
+        return isNativized() && LLVMNativePointer.isInstance(vaListStackPtr);
     }
 
     @ExportMessage
     public long asPointer() throws UnsupportedMessageException {
         if (isPointer()) {
-            return LLVMNativePointer.cast(nativized).asNative();
+            return LLVMNativePointer.cast(vaListStackPtr).asNative();
         }
         throw UnsupportedMessageException.create();
     }
@@ -434,22 +447,37 @@ public class LLVMVaListStorage implements TruffleObject {
 
     }
 
-    @GenerateUncached
-    public abstract static class StackAllocationNode extends LLVMNode {
+    public static final class StackAllocationNode extends LLVMNode implements GenerateAOT.Provider {
 
-        public abstract LLVMPointer executeWithTarget(long size);
+        private static final StackAllocationNode UNCACHED = new StackAllocationNode();
 
-        @Specialization
-        LLVMPointer allocate(long size,
-                        @Cached(value = "createVarargsAreaStackAllocationNode()", allowUncached = true) VarargsAreaStackAllocationNode allocNode) {
-            // N.B. Using FrameAccess.READ_WRITE may lead to throwing NPE, nevertheless using the
-            // safe
-            // FrameAccess.READ_ONLY is not sufficient as some nodes below need to write to the
-            // frame.
-            // Therefore toNative is put behind the Truffle boundary and FrameAccess.MATERIALIZE is
-            // used as a workaround.
-            VirtualFrame frame = (VirtualFrame) Truffle.getRuntime().getCurrentFrame().getFrame(FrameAccess.MATERIALIZE);
-            return allocNode.executeWithTarget(frame, size);
+        @Child VarargsAreaStackAllocationNode allocNode;
+
+        private StackAllocationNode() {
+        }
+
+        public static StackAllocationNode create() {
+            return new StackAllocationNode();
+        }
+
+        public static StackAllocationNode getUncached() {
+            return UNCACHED;
+        }
+
+        @Override
+        public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+            allocNode = createVarargsAreaStackAllocationNode();
+            insert((Node) allocNode);
+        }
+
+        public LLVMPointer executeWithTarget(long size, Frame frame) {
+            if (allocNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                allocNode = createVarargsAreaStackAllocationNode();
+                insert((Node) allocNode);
+            }
+            assert frame instanceof VirtualFrame;
+            return allocNode.executeWithTarget((VirtualFrame) frame, size);
         }
 
         @SuppressWarnings("static-method")
@@ -458,7 +486,6 @@ public class LLVMVaListStorage implements TruffleObject {
             LLVMLanguage lang = LLVMLanguage.get(null);
             return lang.getActiveConfiguration().createNodeFactory(lang, dataLayout).createVarargsAreaStackAllocation();
         }
-
     }
 
     /**
