@@ -347,7 +347,16 @@ public final class Field extends Member<Type> implements FieldRef {
 
     private StaticObject getObject(StaticObject obj, boolean forceVolatile) {
         assert !isHidden() : this + " is hidden, use getHiddenObject";
-        return (StaticObject) getObjectHelper(obj, forceVolatile);
+        if (isAddedField) {
+            Object value = getAddedFieldValue(obj);
+            if (value == null) {
+                return StaticObject.NULL;
+            } else {
+                return (StaticObject) value;
+            }
+        } else {
+            return (StaticObject) getObjectHelper(obj, forceVolatile);
+        }
     }
 
     public void setObject(StaticObject obj, Object value) {
@@ -356,7 +365,11 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public void setObject(StaticObject obj, Object value, boolean forceVolatile) {
         assert !isHidden() : this + " is hidden, use setHiddenObject";
-        setObjectHelper(obj, value, forceVolatile);
+        if (isAddedField) {
+            setAddedFieldValue(obj, value);
+        } else {
+            setObjectHelper(obj, value, forceVolatile);
+        }
     }
 
     public StaticObject getAndSetObject(StaticObject obj, StaticObject value) {
@@ -826,12 +839,12 @@ public final class Field extends Member<Type> implements FieldRef {
             extensionFieldObject = getDeclaringKlass().getStaticExtensionFieldObject();
         } else {
             Field extensionField = holder.getMeta().HIDDEN_OBJECT_EXTENSION_FIELD;
-            StaticObject object = extensionField.getObject(instance);
+            Object object = extensionField.getHiddenObject(instance);
             if (object == null) {
                 // create new instance Extension field object
                 synchronized (instance) {
                     extensionFieldObject = new ExtensionFieldObject();
-                    extensionField.setObject(instance, extensionFieldObject);
+                    extensionField.setHiddenObject(instance, extensionFieldObject);
                 }
             } else {
                 extensionFieldObject = (ExtensionFieldObject) object;
@@ -846,12 +859,12 @@ public final class Field extends Member<Type> implements FieldRef {
             extensionFieldObject = getDeclaringKlass().getStaticExtensionFieldObject();
         } else {
             Field extensionField = holder.getMeta().HIDDEN_OBJECT_EXTENSION_FIELD;
-            StaticObject object = extensionField.getObject(instance);
+            Object object = extensionField.getHiddenObject(instance);
             if (object == null) {
                 // create new instance Extension field object
                 synchronized (instance) {
                     extensionFieldObject = new ExtensionFieldObject();
-                    extensionField.setObject(instance, extensionFieldObject);
+                    extensionField.setHiddenObject(instance, extensionFieldObject);
                 }
             } else {
                 extensionFieldObject = (ExtensionFieldObject) object;

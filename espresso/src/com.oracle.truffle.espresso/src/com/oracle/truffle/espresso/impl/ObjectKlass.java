@@ -527,7 +527,7 @@ public final class ObjectKlass extends Klass {
                 if (!f.isHidden() && !f.isRemoved()) {
                     fields.add(f);
                 } else if (f.isExtensionField()) {
-                    StaticObject object = f.getObject(getStatics());
+                    Object object = f.getHiddenObject(getStatics());
                     if (object != StaticObject.NULL) {
                         ExtensionFieldObject extensionFieldObject = (ExtensionFieldObject) object;
                         for (Field field : extensionFieldObject.getDeclaredAddedFields()) {
@@ -1193,15 +1193,15 @@ public final class ObjectKlass extends Klass {
 
         if (!packet.detectedChange.getAddedStaticFields().isEmpty() || !packet.detectedChange.getAddedInstanceFields().isEmpty()) {
             Field extensionField = staticFieldTable[staticFieldTable.length - 1];
-            StaticObject staticObject = extensionField.getObject(getStatics());
+            Object object = extensionField.getHiddenObject(getStatics());
             ExtensionFieldObject extensionFieldObject;
-            if (staticObject == StaticObject.NULL) {
+            if (object == StaticObject.NULL) {
                 // make sure the extension field is initialized
                 extensionFieldObject = new ExtensionFieldObject(this, packet.detectedChange.getAddedStaticFields(), pool);
-                extensionField.setObject(getStatics(), extensionFieldObject);
+                extensionField.setHiddenObject(getStatics(), extensionFieldObject);
             } else {
                 // add new fields to the extension object
-                extensionFieldObject = (ExtensionFieldObject) staticObject;
+                extensionFieldObject = (ExtensionFieldObject) object;
                 extensionFieldObject.addNewFields(this, packet.detectedChange.getAddedStaticFields(), pool);
             }
             extensionFieldObject.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool);
@@ -1420,7 +1420,7 @@ public final class ObjectKlass extends Klass {
     public ExtensionFieldObject getStaticExtensionFieldObject() {
         Field[] staticFieldTable = getStaticFieldTable();
         Field extensionField = getStaticFieldTable()[staticFieldTable.length - 1];
-        return (ExtensionFieldObject) extensionField.getObject(getStatics());
+        return (ExtensionFieldObject) extensionField.getHiddenObject(getStatics());
     }
 
     public final class KlassVersion {

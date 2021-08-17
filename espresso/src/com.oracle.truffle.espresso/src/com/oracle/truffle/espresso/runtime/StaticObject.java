@@ -101,7 +101,11 @@ public class StaticObject implements TruffleObject, Cloneable {
         for (Field f : thisKlass.getStaticFieldTable()) {
             assert f.isStatic();
             if (f.getKind() == JavaKind.Object) {
-                f.setObject(this, StaticObject.NULL);
+                if (f.isHidden()) { // extension field
+                    f.setHiddenObject(this, StaticObject.NULL);
+                } else {
+                    f.setObject(this, StaticObject.NULL);
+                }
             }
         }
     }
