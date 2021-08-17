@@ -45,9 +45,9 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public class ProfilerCLITest {
 
-    public static final String SAMPLING_HISTOGRAM = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms.";
-    public static final int EXEC_COUUNT = 10;
-    public static final String NAME_REGEX = " [a-z]+ +";
+    public static final String SAMPLING_HISTOGRAM_REGEX = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms.";
+    public static final int EXEC_COUNT = 10;
+    public static final String NAME_REGEX = " [a-z]* +";
     public static final String SEPARATOR_REGEX = "\\|";
     public static final String TIME_REGEX = " *[0-9]*ms ";
     public static final String PERCENT_REGEX = " *[0-9]*\\.[0-9]\\% ";
@@ -71,7 +71,7 @@ public class ProfilerCLITest {
         // OUTPUT IS:
         // -------------------------------------------------------------------------------
         // Sampling Histogram. Recorded 202 samples with period 10ms.
-        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM));
+        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM_REGEX));
         // Self Time: Time spent on the top of the stack.
         Assert.assertEquals(SELF_TIME, output[2]);
         // Total Time: Time spent somewhere on the stack.
@@ -104,7 +104,7 @@ public class ProfilerCLITest {
         // OUTPUT IS:
         //-------------------------------------------------------------------------------------------------------------------------------------
         //Sampling Histogram. Recorded 207 samples with period 10ms.
-        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM));
+        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM_REGEX));
         //  Self Time: Time spent on the top of the stack.
         Assert.assertEquals(SELF_TIME, output[2]);
         //  Total Time: Time spent somewhere on the stack.
@@ -148,7 +148,7 @@ public class ProfilerCLITest {
         // OUTPUT IS:
         //-------------------------------------------------------------------------------------------------------------------------------------
         //Sampling Histogram. Recorded 207 samples with period 10ms.
-        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM));
+        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM_REGEX));
         //  Self Time: Time spent on the top of the stack.
         Assert.assertEquals(SELF_TIME, output[2]);
         //  Total Time: Time spent somewhere on the stack.
@@ -180,6 +180,47 @@ public class ProfilerCLITest {
         // @formatter:on
     }
 
+    private String[] runSamplerMultithreaded(Map<String, String> options) {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context context = Context.newBuilder().in(System.in).out(out).err(err).options(options).build()) {
+            context.eval(makeSource("ROOT(" +
+                            "DEFINE(foo,ROOT(SLEEP(1)))," +
+                            "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
+                            "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," +
+                            ")"));
+            Runnable evalSource1 = new Runnable() {
+                @Override
+                public void run() {
+                    context.eval(makeSource("ROOT(" +
+                                    "CALL(baz)" +
+                                    ")"));
+                }
+            };
+            Runnable evalSource2 = new Runnable() {
+                @Override
+                public void run() {
+                    context.eval(makeSource("ROOT(" +
+                                    "CALL(bar)" +
+                                    ")"));
+                }
+            };
+            Thread[] threads = new Thread[EXEC_COUNT];
+            for (int i = 0; i < EXEC_COUNT; i++) {
+                threads[i] = new Thread(i % 2 == 0 ? evalSource1 : evalSource2, Integer.toString(i));
+                threads[i].start();
+            }
+            for (int i = 0; i < EXEC_COUNT; i++) {
+                try {
+                    threads[i].join();
+                } catch (InterruptedException e) {
+                    Assert.fail("Thread should not be interrupted.");
+                }
+            }
+        }
+        return out.toString().split(System.lineSeparator());
+    }
+
     private String[] runSampler(Map<String, String> options) {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -190,12 +231,98 @@ public class ProfilerCLITest {
                             "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," +
                             "CALL(baz),CALL(bar)" +
                             ")");
-            for (int i = 0; i < EXEC_COUUNT; i++) {
+            for (int i = 0; i < EXEC_COUNT; i++) {
                 context.eval(source);
             }
         }
-        String output = out.toString();
-        return output.split(System.lineSeparator());
+        return out.toString().split(System.lineSeparator());
+    }
+
+    @Test
+    public void testDefaultHistogramMultiThreadedSummary() {
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        options.put("cpusampler.SummariseThreads", "true");
+        String[] output = runSamplerMultithreaded(options);
+        // @formatter:off
+        // OUTPUT IS:
+        //-------------------------------------------------------------------------------
+        //Sampling Histogram. Recorded 108 samples with period 10ms.
+        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM_REGEX));
+        //  Self Time: Time spent on the top of the stack.
+        Assert.assertEquals(SELF_TIME, output[2]);
+        //  Total Time: Time spent somewhere on the stack.
+        Assert.assertEquals(TOTAL_TIME, output[3]);
+        //-------------------------------------------------------------------------------
+        //Thread[Summary,5,main]
+        Assert.assertTrue(output[5].contains("Thread"));
+        // Name       |      Total Time    ||       Self Time    || Location
+        Assert.assertTrue(output[6].contains("Name       |      Total Time    ||       Self Time    || Location"));
+        //-------------------------------------------------------------------------------
+        // foo        |             1080ms ||             1080ms || test~1:16-29
+        String lineRegex = NAME_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + LOCATION_REGEX;
+        Assert.assertTrue(output[8].matches(lineRegex));
+        // baz        |              980ms ||                0ms || test~1:98-139
+        Assert.assertTrue(output[9].matches(lineRegex));
+        //            |              100ms ||                0ms || test~1:0-14
+        Assert.assertTrue(output[10].matches(lineRegex));
+        // bar        |             1080ms ||                0ms || test~1:43-84
+        Assert.assertTrue(output[11].matches(lineRegex));
+        //-------------------------------------------------------------------------------
+        // @formatter:on
+    }
+
+    @Test
+    public void testDefaultHistogramMultiThreadedNoSummary() {
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        String[] output = runSamplerMultithreaded(options);
+        // @formatter:off
+        // OUTPUT IS:
+        //-------------------------------------------------------------------------------
+        //Sampling Histogram. Recorded 82 samples with period 10ms.
+        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM_REGEX));
+        //  Self Time: Time spent on the top of the stack.
+        Assert.assertEquals(SELF_TIME, output[2]);
+        //  Total Time: Time spent somewhere on the stack.
+        Assert.assertEquals(TOTAL_TIME, output[3]);
+        //-------------------------------------------------------------------------------
+        //Thread[8,5,]
+        // Name       |      Total Time    ||       Self Time    || Location
+        //-------------------------------------------------------------------------------
+        // foo        |              140ms ||              140ms || test~1:16-29
+        // baz        |              140ms ||                0ms || test~1:98-139
+        //            |              140ms ||                0ms || test~1:0-14
+        // bar        |              140ms ||                0ms || test~1:43-84
+        //-------------------------------------------------------------------------------
+        //Thread[2,5,]
+        // Name       |      Total Time    ||       Self Time    || Location
+        //-------------------------------------------------------------------------------
+        // foo        |              150ms ||              150ms || test~1:16-29
+        // baz        |              150ms ||                0ms || test~1:98-139
+        //            |              150ms ||                0ms || test~1:0-14
+        // bar        |              150ms ||                0ms || test~1:43-84
+        // ...
+        int threadCount = 0;
+        int headerCount = 0;
+        int entryCount = 0;
+        for (int i = 4; i < output.length; i++) {
+            if (output[i].contains("Thread")) {
+                threadCount++;
+            }
+            if (output[i].contains("Name")) {
+                headerCount++;
+            }
+            if (output[i].matches(NAME_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + LOCATION_REGEX)) {
+                entryCount++;
+            }
+        }
+        // Sometimes the main thread is caught while declaring functions
+        Assert.assertTrue(threadCount >= EXEC_COUNT);
+        Assert.assertTrue(headerCount >= EXEC_COUNT);
+        // 5 threads with 3 entries, 5 with 4.
+        Assert.assertTrue(5 * 3 + 5 * 4 >=  entryCount);
+        // @formatter:on
     }
 
     @Test
