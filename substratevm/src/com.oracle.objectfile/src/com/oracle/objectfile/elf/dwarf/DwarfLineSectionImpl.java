@@ -37,6 +37,7 @@ import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import org.graalvm.compiler.debug.DebugContext;
 
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -454,17 +455,20 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * end_sequence when we finish all the subranges in the method.
              */
             long line = primaryRange.getLine();
-            if (line < 0 && primaryEntry.getSubranges().size() > 0) {
-                final Range subRange = primaryEntry.getSubranges().get(0);
-                line = subRange.getLine();
-                /*
-                 * If line gets successfully retrieved from subrange get file index from there since
-                 * the line might be from a different file for inlined methods
-                 */
-                if (line > 0) {
-                    FileEntry subFileEntry = subRange.getFileEntry();
-                    if (subFileEntry != null) {
-                        fileIdx = classEntry.localFilesIdx(subFileEntry);
+            if (line < 0) {
+                Iterator<Range> iterator = primaryEntry.leafRangeIterator();
+                if (iterator.hasNext()) {
+                    final Range subRange = iterator.next();
+                    line = subRange.getLine();
+                    /*
+                     * If line gets successfully retrieved from subrange get file index from there
+                     * since the line might be from a different file for inlined methods
+                     */
+                    if (line > 0) {
+                        FileEntry subFileEntry = subRange.getFileEntry();
+                        if (subFileEntry != null) {
+                            fileIdx = classEntry.localFilesIdx(subFileEntry);
+                        }
                     }
                 }
             }
@@ -526,11 +530,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             /*
              * Now write a row for each subrange lo and hi.
              */
-            for (Range subrange : primaryEntry.getSubranges()) {
-                if (subrange.withChildren()) {
-                    /* skip caller subranges */
-                    continue;
-                }
+            Iterator<Range> iterator = primaryEntry.leafRangeIterator();
+            while (iterator.hasNext()) {
+                Range subrange = iterator.next();
                 assert subrange.getLo() >= primaryRange.getLo();
                 assert subrange.getHi() <= primaryRange.getHi();
                 FileEntry subFileEntry = subrange.getFileEntry();

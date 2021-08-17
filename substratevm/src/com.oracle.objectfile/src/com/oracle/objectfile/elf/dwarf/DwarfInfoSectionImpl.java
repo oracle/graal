@@ -27,6 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import java.lang.reflect.Modifier;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -958,30 +959,45 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int generateConcreteInlinedMethods(DebugContext context, ClassEntry classEntry,
                     PrimaryEntry primaryEntry, byte[] buffer, int p) {
         Range primary = primaryEntry.getPrimary();
-        assert primary.withInlinedChildren();
+        if (primary.isLeaf()) {
+            return p;
+        }
         int pos = p;
         log(context, "  [0x%08x] concrete entries [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodName());
-        int depth = 0;
-        for (Range subrange : primaryEntry.getSubranges()) {
+        int depth = 1;
+        Iterator<Range> iterator = primaryEntry.topDownRangeIterator();
+        while (iterator.hasNext()) {
+            Range subrange = iterator.next();
+            /*
+             * Top level subranges don't need concrete methods. They just provide a file and line
+             * for their callee.
+             */
             if (!subrange.isInlined()) {
+                // only happens if the subrange is for the top-level compiled method
+                assert subrange.getCaller() == primaryEntry.getPrimary();
+                assert subrange.getDepth() == 0;
                 continue;
+            }
+            // if we just stepped out of a child range write nulls for each step up
+            while (depth > subrange.getDepth()) {
+                pos = writeAttrNull(buffer, pos);
+                depth--;
             }
             MethodEntry method = subrange.getMethodEntry();
             ClassEntry methodClassEntry = method.ownerType();
             String methodKey = method.getSymbolName();
-            int previousPos = pos;
             /* the abstract index was written in the method's class entry */
             int specificationIndex = getAbstractInlineMethodIndex(methodClassEntry, methodKey);
             pos = writeInlineSubroutine(context, classEntry, subrange, specificationIndex, depth, buffer, pos);
-            if (!subrange.withChildren()) {
-                while (depth > 0) {
-                    pos = writeAttrNull(buffer, pos);
-                    depth--;
-                }
-            } else if (previousPos != pos) {
-                // increment depth while write the children
+            if (!subrange.isLeaf()) {
+                // increment depth before writing the children
                 depth++;
             }
+        }
+        // if we just stepped out of a child range write nulls for each step up
+        while (depth > 1) {
+            pos = writeAttrNull(buffer, pos);
+            depth--;
         }
         return pos;
     }
@@ -1298,7 +1314,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
         pos = writeAttrRefAddr(methodSpecOffset, buffer, pos);
         pos = writeMethodParameterDeclarations(context, classEntry, primary.getMethodEntry(), false, buffer, pos);
-        if (primary.withInlinedChildren()) {
+        if (!primary.isLeaf()) {
             /*
              * the method has inlined ranges so write concrete inlined method entries as its
              * children
@@ -1345,7 +1361,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert callLine >= -1 : callLine;
         if (callLine == -1) {
             log(context, "  Unable to retrieve call line for inlined method %s", range.getFullMethodName());
-            return p;
+            /* continue with line 0 as we must insert a tree node */
+            callLine = 0;
         }
         Integer fileIndex;
         if (callerSubrange == range) {
@@ -1357,10 +1374,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             assert fileIndex != null;
         }
         final int code;
-        if (range.withChildren()) {
-            code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine_with_children;
-        } else {
+        if (range.isLeaf()) {
             code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine;
+        } else {
+            code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine_with_children;
         }
         log(context, "  [0x%08x] <%d> Abbrev Number  %d", pos, depth + 1, code);
         pos = writeAbbrevCode(code, buffer, pos);

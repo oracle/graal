@@ -26,6 +26,8 @@
 
 package com.oracle.objectfile.debugentry;
 
+import org.graalvm.compiler.debug.DebugContext;
+
 /**
  * Details of a specific address range in a compiled method either a primary range identifying a
  * whole method or a sub-range identifying a sequence of instructions that belong to an inlined
@@ -34,32 +36,50 @@ package com.oracle.objectfile.debugentry;
 
 public class Range {
     private static final String CLASS_DELIMITER = ".";
-    private final Range caller;
+    private Range caller;
     private final MethodEntry methodEntry;
     private final String fullMethodName;
     private final String fullMethodNameWithParams;
     private final int lo;
-    private final int hi;
+    private int hi;
     private final int line;
     private final boolean isInlined;
-    private final boolean withChildren;
-    private boolean withInlinedChildren;
+    private final int depth;
     /*
      * This is null for a primary range.
      */
     private final Range primary;
 
     /*
+     * Support for tree of nested inline callee ranges
+     */
+
+    /**
+     * The first callee whose range is wholly contained in this range.
+     */
+    private Range firstCallee;
+
+    /**
+     * The last callee whose range is wholly contained in this range.
+     */
+    private Range lastCallee;
+
+    /**
+     * A link to chain callees of a given parent.
+     */
+    private Range nextCallee;
+
+    /*
      * Create a primary range.
      */
     public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line) {
-        this(stringTable, methodEntry, lo, hi, line, null, false, false, null);
+        this(stringTable, methodEntry, lo, hi, line, null, false, null);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isInline, boolean withChildren, Range caller) {
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isInline, Range caller) {
         assert methodEntry != null;
         if (methodEntry.fileEntry != null) {
             stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
@@ -73,9 +93,32 @@ public class Range {
         this.line = line;
         this.isInlined = isInline;
         this.primary = primary;
-        this.withChildren = withChildren;
-        this.withInlinedChildren = false;
+        this.firstCallee = null;
+        this.lastCallee = null;
+        this.nextCallee = null;
         this.caller = caller;
+        if (caller != null) {
+            caller.addCallee(this);
+        }
+        if (this.isPrimary()) {
+            this.depth = -1;
+        } else {
+            this.depth = caller.depth + 1;
+        }
+    }
+
+    private void addCallee(Range callee) {
+        assert this.lo <= callee.lo;
+        assert this.hi >= callee.hi;
+        assert callee.caller == this;
+        assert callee.nextCallee == null;
+        if (this.firstCallee == null) {
+            assert this.lastCallee == null;
+            this.firstCallee = this.lastCallee = callee;
+        } else {
+            this.lastCallee.nextCallee = callee;
+            this.lastCallee = callee;
+        }
     }
 
     public boolean contains(Range other) {
@@ -182,19 +225,100 @@ public class Range {
         return isInlined;
     }
 
-    public boolean withChildren() {
-        return withChildren;
-    }
-
-    public boolean withInlinedChildren() {
-        return withInlinedChildren;
-    }
-
-    public boolean setWithInlinedChildren(boolean withInlinedChildren) {
-        return this.withInlinedChildren = withInlinedChildren;
-    }
-
     public Range getCaller() {
         return caller;
+    }
+
+    public Range getFirstCallee() {
+        return firstCallee;
+    }
+
+    public Range getNextCallee() {
+        return nextCallee;
+    }
+
+    public Range getLastCallee() {
+        return lastCallee;
+    }
+
+    public boolean isLeaf() {
+        return firstCallee == null;
+    }
+
+    public int getDepth() {
+        return depth;
+    }
+
+    public void mergeSubranges(DebugContext debugContext) {
+        Range next = getFirstCallee();
+        if (next == null) {
+            return;
+        }
+        debugContext.log(DebugContext.INFO_LEVEL, "Merge subranges [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
+        /* merge siblings together if possible, reparenting children to the merged node */
+        while (next != null) {
+            next = next.maybeMergeSibling(debugContext);
+        }
+        /* now recurse down to merge children of whatever nodes remain */
+        next = getFirstCallee();
+        /* now this level is merged recursively merge children of each child node. */
+        while (next != null) {
+            next.mergeSubranges(debugContext);
+            next = next.getNextCallee();
+        }
+    }
+
+    /**
+     * Removes and merges the next sibling returning the current node or it skips past the current
+     * node as is and returns the next sibling or null if no sibling exists.
+     */
+    private Range maybeMergeSibling(DebugContext debugContext) {
+        Range sibling = getNextCallee();
+        debugContext.log(DebugContext.INFO_LEVEL, "Merge subrange (maybe) [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
+        if (sibling == null) {
+            /* all child nodes at this level have been merged */
+            return null;
+        }
+        if (hi < sibling.lo) {
+            /* cannot merge non-contiguous ranges, move on. */
+            return sibling;
+        }
+        if (getMethodEntry() != sibling.getMethodEntry()) {
+            /* cannot merge distinct callers, move on. */
+            return sibling;
+        }
+        if (getLine() != sibling.getLine()) {
+            /* cannot merge callers with different line numbers, move on. */
+            return sibling;
+        }
+        /* splice out the sibling from the chain and update this one to include it. */
+        unlink(debugContext, sibling);
+        /* relocate the siblings children to this node. */
+        reparentChildren(debugContext, sibling);
+        /* return the merged node so we can maybe merge it again. */
+        return this;
+    }
+
+    private void unlink(DebugContext debugContext, Range sibling) {
+        assert hi == sibling.lo : String.format("gap in range [0x%x,0x%x] %s [0x%x,0x%x] %s",
+                        lo, hi, getFullMethodNameWithParams(), sibling.getLo(), sibling.getHi(), sibling.getFullMethodNameWithParams());
+        assert this.isInlined == sibling.isInlined : String.format("change in inlined [0x%x,0x%x] %s %s [0x%x,0x%x] %s %s",
+                        lo, hi, getFullMethodNameWithParams(), Boolean.valueOf(this.isInlined), sibling.lo, sibling.hi, sibling.getFullMethodNameWithParams(), Boolean.valueOf(sibling.isInlined));
+        debugContext.log(DebugContext.INFO_LEVEL, "Combining [0x%x, 0x%x] %s into [0x%x, 0x%x] %s", sibling.lo, sibling.hi, sibling.getFullMethodName(), lo, hi, getFullMethodNameWithParams());
+        this.hi = sibling.hi;
+        this.nextCallee = sibling.nextCallee;
+    }
+
+    private void reparentChildren(DebugContext debugContext, Range sibling) {
+        Range siblingNext = sibling.getFirstCallee();
+        while (siblingNext != null) {
+            debugContext.log(DebugContext.INFO_LEVEL, "Reparenting [0x%x, 0x%x] %s to [0x%x, 0x%x] %s", siblingNext.lo, siblingNext.hi, siblingNext.getFullMethodName(), lo, hi,
+                            getFullMethodNameWithParams());
+            siblingNext.caller = this;
+            Range newSiblingNext = siblingNext.nextCallee;
+            siblingNext.nextCallee = null;
+            addCallee(siblingNext);
+            siblingNext = newSiblingNext;
+        }
     }
 }
