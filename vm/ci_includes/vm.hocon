@@ -12,11 +12,11 @@ vm_java_11: ${labsjdk-ce-11} {
     BASE_JDK_SHORT_VERSION: "11"
   }
 }
-vm_java_16: ${labsjdk-ce-16} {
+vm_java_17: ${labsjdk-ce-17} {
   environment: {
-    BASE_JDK_NAME: ${jdks.labsjdk-ce-16.name}
-    BASE_JDK_VERSION: ${jdks.labsjdk-ce-16.version}
-    BASE_JDK_SHORT_VERSION: "16"
+    BASE_JDK_NAME: ${jdks.labsjdk-ce-17.name}
+    BASE_JDK_VERSION: ${jdks.labsjdk-ce-17.version}
+    BASE_JDK_SHORT_VERSION: "17"
   }
 }
 vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
@@ -25,9 +25,9 @@ svm_suite: /substratevm
 vm_extra_suites: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm,/espresso"
 vm_extra_suites_aarch64: "/graal-nodejs,truffleruby,/wasm,/espresso"
 vm_extra_suites_windows: "/graal-nodejs,/wasm,/espresso"
-vm_extra_suites_java16: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm"
-vm_extra_suites_aarch64_java16: "/graal-nodejs,truffleruby,/wasm"
-vm_extra_suites_windows_java16: "/graal-nodejs,/wasm"
+vm_extra_suites_java17: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm"
+vm_extra_suites_aarch64_java17: "/graal-nodejs,truffleruby,/wasm"
+vm_extra_suites_windows_java17: "/graal-nodejs,/wasm"
 custom_vm_linux: {}
 custom_vm_darwin: {}
 vm_profiles: []

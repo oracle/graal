@@ -74,7 +74,7 @@
   # jdk_version is an hidden field that can be used to generate job names
   local jdk8 =           { jdk_version:: 8},
   local jdk11 =          { jdk_version:: 11},
-  local jdk16 =          { jdk_version:: 16},
+  local jdk17 =          { jdk_version:: 17},
 
   oraclejdk8::           jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8,      EXTRA_JAVA_HOMES : { pathlist :[ jdks["labsjdk-ee-11"] ]} }},
   oraclejdk8Only::       jdk8 + { downloads+: { JAVA_HOME : jdks.oraclejdk8 }},
@@ -84,17 +84,17 @@
   openjdk8::             jdk8 + { downloads+: { JAVA_HOME : jdks.openjdk8 }},
 
   oraclejdk11::          jdk11 + { downloads+: { JAVA_HOME : jdks.oraclejdk11 }},
-  oraclejdk16::          jdk16 + { downloads+: { JAVA_HOME : jdks.oraclejdk16 }},
+  oraclejdk17::          jdk17 + { downloads+: { JAVA_HOME : jdks.oraclejdk17 }},
   openjdk11::            jdk11 + { downloads+: { JAVA_HOME : jdks.openjdk11 }},
 
   "labsjdk-ce-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-11"] }},
   "labsjdk-ee-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-11"] }},
   labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
-  "labsjdk-ce-16"::      jdk16 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-16"] }},
-  "labsjdk-ee-16"::      jdk16 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-16"] }},
-  labsjdk16::            self["labsjdk-" + repo_config.graalvm_edition + "-16"],
-  "labsjdk-ce-16Debug":: jdk16 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-16Debug"] }},
-  "labsjdk-ee-16Debug":: jdk16 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-16Debug"] }},
+  "labsjdk-ce-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17"] }},
+  "labsjdk-ee-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17"] }},
+  labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
+  "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
+  "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
 
 
   // Hardware definitions
