@@ -47,10 +47,18 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * FIXME: document me!
+ * Implements {@link System#arraycopy} via a {@link ForeignCallNode call} to a
+ * {@linkplain ArrayCopyLookup#GENERIC_ARRAYCOPY generic stub}.
  *
- * @see ArrayCopyCallNode
- * @see CheckcastArrayCopyCallNode
+ * Instead of throwing an {@link ArrayStoreException}, the stub is expected to return the number of
+ * copied elements xor'd with {@code -1}. Users of this node are responsible for converting that
+ * into the expected exception. A return value of {@code 0} indicates that the operation was
+ * successful.
+ *
+ * @see CheckcastArrayCopyCallNode A {@link System#arraycopy} stub call node that performs a fast
+ *      check cast.
+ * @see ArrayCopyCallNode A {@link System#arraycopy} stub call node that calls specialized stubs
+ *      based element type and memory properties.
  */
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill {
