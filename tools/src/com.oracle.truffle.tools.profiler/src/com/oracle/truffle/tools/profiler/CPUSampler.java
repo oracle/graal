@@ -679,14 +679,20 @@ public final class CPUSampler implements Closeable {
         }
 
         /**
-         * TODO Write the docs.
+         * @return an array where the index represents the compilation tier and the value at given
+         *         index represents how many times the element was found bellow the top of the stack
+         *         compiled by the indexed compiler tier. Note, tier 0 represents the interpreter.
+         * @since 21.3.0
          */
         public int[] getTierCount() {
             return Arrays.copyOf(tierCount, tierCount.length);
         }
 
         /**
-         * TODO Write the docs.
+         * @return an array where the index represents the compilation tier and the value at given
+         *         index represents how many times the element was found at the top of the stack
+         *         compiled by the indexed compiler tier. Note, tier 0 represents the interpreter.
+         * @since 21.3.0
          */
         public int[] getSelfTierCount() {
             return Arrays.copyOf(selfTierCount, selfTierCount.length);
