@@ -360,7 +360,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeCUHeader(buffer, pos);
         assert pos == lengthPos + DW_DIE_HEADER_SIZE;
         /* Non-primary classes have no compiled methods so they also have no line section entry. */
-        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_unit2;
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_unit3;
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
@@ -372,17 +372,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String compilationDirectory = classEntry.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeAttrStrp(compilationDirectory, buffer, pos);
-        /* Writing of lo and hi should really be optional. */
-        int lo = 0;
-        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, lo);
-        pos = writeAttrAddress(lo, buffer, pos);
-        int hi = 0;
-        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, hi);
-        pos = writeAttrAddress(hi, buffer, pos);
-        /*
-         * Note, there is no need to write a stmt_list (line section idx) for this class unit as the
-         * class has no code.
-         */
 
         /* Now write the child DIEs starting with the layout and pointer type. */
 
@@ -430,7 +419,15 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         int lineIndex = getLineIndex(classEntry);
         String fileName = classEntry.getFileName();
-        /* Primary classes only have a line section entry if they have an associated file. */
+        /*
+         * Primary classes only have a line section entry if they have method and an associated
+         * file.
+         */
+        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+        int lo = findLo(classPrimaryEntries, false);
+        int hi = findHi(classPrimaryEntries, classEntry.includesDeoptTarget(), false);
+        // we must have at least one compiled method
+        assert hi > 0;
         int abbrevCode = (fileName.length() > 0 ? DwarfDebugInfo.DW_ABBREV_CODE_class_unit1 : DwarfDebugInfo.DW_ABBREV_CODE_class_unit2);
         setCUIndex(classEntry, pos);
         int lengthPos = pos;
@@ -448,15 +445,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String compilationDirectory = classEntry.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeAttrStrp(compilationDirectory, buffer, pos);
-        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
         /*
          * Specify hi and lo for the compile unit which means we also need to ensure methods within
          * it are listed in ascending address order.
          */
-        int lo = findLo(classPrimaryEntries, false);
         log(context, "  [0x%08x]     lo_pc  0x%08x", pos, lo);
         pos = writeAttrAddress(lo, buffer, pos);
-        int hi = findHi(classPrimaryEntries, classEntry.includesDeoptTarget(), false);
         log(context, "  [0x%08x]     hi_pc  0x%08x", pos, hi);
         pos = writeAttrAddress(hi, buffer, pos);
         /* Only write stmt_list if the entry actually has line number info. */
@@ -1318,7 +1312,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         String methodKey = method.getSymbolName();
         log(context, "  [0x%08x] abstract inline method %s", pos, method.getSymbolName());
-        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_location_inline;
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_abstract_inline_method;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     inline  0x%x", pos, DwarfDebugInfo.DW_INL_inlined);
