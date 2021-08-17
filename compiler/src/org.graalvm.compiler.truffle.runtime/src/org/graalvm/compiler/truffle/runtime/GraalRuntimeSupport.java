@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
+import com.oracle.truffle.api.TruffleSafepoint;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -80,6 +81,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
         CompilerAsserts.neverPartOfCompilation();
+        TruffleSafepoint.poll((Node) osrNode);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) {
             Node node = (Node) osrNode;
