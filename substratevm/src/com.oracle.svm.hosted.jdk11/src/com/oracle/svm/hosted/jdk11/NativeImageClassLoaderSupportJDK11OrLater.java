@@ -135,14 +135,20 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
          * well. Thus, we have to explicitly allow org.graalvm.nativeimage.librarysupport to read
          * ALL-UNNAMED so that junit from classpath is accessible to it.
          */
-        try {
-            Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
-            ModuleSupport.openModuleByClass(Module.class, NativeImageClassLoaderSupportJDK11OrLater.class);
-            implAddReadsAllUnnamed.setAccessible(true);
-            Module moduleLibrarySupport = findModule("org.graalvm.nativeimage.librarysupport").orElseThrow();
-            implAddReadsAllUnnamed.invoke(moduleLibrarySupport);
-        } catch (ReflectiveOperationException | NoSuchElementException e) {
-            VMError.shouldNotReachHere("Could not adjust org.graalvm.nativeimage.librarysupport to read all unnamed modules", e);
+        Optional<Module> librarySupportModule = findModule("org.graalvm.nativeimage.librarysupport");
+        if (!librarySupportModule.isEmpty()) {
+            try {
+                Module moduleLibrarySupport = librarySupportModule.get();
+                Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
+                ModuleSupport.openModuleByClass(Module.class, NativeImageClassLoaderSupportJDK11OrLater.class);
+                implAddReadsAllUnnamed.setAccessible(true);
+                implAddReadsAllUnnamed.invoke(moduleLibrarySupport);
+            } catch (ReflectiveOperationException | NoSuchElementException e) {
+                VMError.shouldNotReachHere("Could not adjust org.graalvm.nativeimage.librarysupport to read all unnamed modules", e);
+            }
+        } else {
+            VMError.guarantee(!org.graalvm.compiler.options.ModuleSupport.USE_NI_JPMS,
+                            "Image-builder on module-path requires module org.graalvm.nativeimage.librarysupport");
         }
     }
 
