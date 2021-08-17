@@ -995,10 +995,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private static boolean filterLineInfoSourceMapping(SourceMapping sourceMapping) {
-        if (!SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue()) {
-            return true;
+        NodeSourcePosition sourcePosition = sourceMapping.getSourcePosition();
+        /* Don't report line info for zero length ranges. */
+        if (sourceMapping.getStartOffset() == sourceMapping.getEndOffset()) {
+            return false;
         }
-        return sourceMapping.getSourcePosition().getCaller() == null;
+        /* Don't report inline line info unless the user has configured it. */
+        if (SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue() && sourcePosition.getCaller() != null) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -1023,13 +1029,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         NativeImageDebugLineInfo(NodeSourcePosition position, int lo, int hi) {
-            int posbci = position.getBCI();
-            this.bci = (posbci >= 0 ? posbci : 0);
+            this.bci = position.getBCI();
             this.method = position.getMethod();
             this.lo = lo;
             this.hi = hi;
             this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
-            final NodeSourcePosition callerPosition = position.getCaller();
+            NodeSourcePosition callerPosition = position.getCaller();
+            /* Skip substitutions with bytecode index -1 */
+            while (callerPosition != null && callerPosition.isSubstitution() && callerPosition.getBCI() == -1) {
+                callerPosition = callerPosition.getCaller();
+            }
             if (callerPosition != null) {
                 callersLineInfo = new NativeImageDebugLineInfo(this, callerPosition);
             } else {
@@ -1138,7 +1147,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int line() {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
-            if (lineNumberTable != null) {
+            if (lineNumberTable != null && bci >= 0) {
                 return lineNumberTable.getLineNumber(bci);
             }
             return -1;
