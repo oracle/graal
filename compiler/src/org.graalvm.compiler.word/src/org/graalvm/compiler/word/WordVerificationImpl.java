@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.spi;
+package org.graalvm.compiler.word;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.spi.WordVerification;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.JavaType;
 
-public interface CoreProviders {
+public final class WordVerificationImpl implements WordVerification {
 
-    MetaAccessProvider getMetaAccess();
+    private final WordTypes wordTypes;
 
-    ConstantReflectionProvider getConstantReflection();
+    public WordVerificationImpl(WordTypes wordTypes) {
+        this.wordTypes = wordTypes;
+    }
 
-    ConstantFieldProvider getConstantFieldProvider();
+    @Override
+    public boolean guaranteeWord(JavaType type) {
+        GraalError.guarantee(wordTypes.isWord(type), "Expected a Word but got %s", type);
+        return true;
+    }
 
-    LoweringProvider getLowerer();
-
-    Replacements getReplacements();
-
-    StampProvider getStampProvider();
-
-    ForeignCallsProvider getForeignCalls();
-
-    PlatformConfigurationProvider getPlatformConfigurationProvider();
-
-    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
-
-    LoopsDataProvider getLoopsDataProvider();
-
-    WordVerification getWordVerification();
+    @Override
+    public boolean guaranteeNotWord(JavaType type) {
+        GraalError.guarantee(!wordTypes.isWord(type), "Unexpected a Word type %s", type);
+        return true;
+    }
 
 }
