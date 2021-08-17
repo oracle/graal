@@ -261,17 +261,18 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         // "extern" means symbolNum is a symbol not a section number
         int symbolNum;
         if (isExtern()) {
+            assert addend == null;
+            // we're non-local, so use a symbol
+            symbolNum = relocatedSection.getOwner().getSymbolTable().indexOf(sym);
+        } else {
             if (addend == null) {
-                // we're non-local, so use a symbol
-                symbolNum = relocatedSection.getOwner().getSymbolTable().indexOf(sym);
+                // we're local, so use the section
+                symbolNum = relocatedSection.getOwner().getSections().indexOf(sym.getDefinedSection());
+                assert sym.getDefinedOffset() == 0 : "Relocation for non-external symbol with section base offset != 0 not supported";
             } else {
                 // Use addend as symbolnum
                 symbolNum = Math.toIntExact(addend);
             }
-        } else {
-            // we're local, so use the section
-            symbolNum = relocatedSection.getOwner().getSections().indexOf(sym.getDefinedSection());
-            assert sym.getDefinedOffset() == 0 : "Relocation for non-external symbol with section base offset != 0 not supported";
         }
         if (log2length < 0 || log2length >= 4) {
             throw new IllegalArgumentException("length must be in {1,2,4,8} bytes, so log2length must be in [0,3]");
@@ -327,7 +328,7 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
 
     private boolean isExtern() {
         // we record localness by grabbing the target section (see constructor)
-        return targetSection == null;
+        return targetSection == null && addend == null;
     }
 
     private boolean isPCRelative() {
