@@ -814,6 +814,55 @@ public class WasmJsApiSuite {
         });
     }
 
+    @Test
+    public void testInitialMemorySizeOutOfBounds() throws IOException {
+        runTest(context -> {
+            try {
+                WebAssembly.memAlloc(32768, 32770);
+                Assert.fail("Should have failed - initial memory size exceeds implementation limit");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Link error expected", WasmJsApiException.Kind.LinkError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testMinMemorySizeExceedsMaxSize() throws IOException {
+        runTest(context -> {
+            try {
+                WebAssembly.memAlloc(2, 1);
+                Assert.fail("Should have failed - min memory size bigger than max size");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Link error expected", WasmJsApiException.Kind.LinkError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testInitialTableSizeOutOfBounds() throws IOException {
+        runTest(context -> {
+            try {
+                // Negative numbers represent unsigned values
+                WebAssembly.tableAlloc(-10, -8);
+                Assert.fail("Should have failed - initial table size exceeds implementation limit");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Link error expected", WasmJsApiException.Kind.LinkError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testMinTableSizeExceedsMaxSize() throws IOException {
+        runTest(context -> {
+            try {
+                WebAssembly.tableAlloc(2, 1);
+                Assert.fail("Should have failed - min table size bigger than max size");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Link error expected", WasmJsApiException.Kind.LinkError, e.kind());
+            }
+        });
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder("wasm");
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
