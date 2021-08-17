@@ -28,7 +28,7 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -43,25 +43,20 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
     final String symbolName;
     private String signature;
 
-    public MethodEntry(FileEntry fileEntry, String symbolName, String methodName, ClassEntry ownerType,
-                    TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers,
-                    boolean isDeoptTarget, boolean fromRange, boolean fromInlineRange) {
-        super(fileEntry, methodName, ownerType, valueType, modifiers);
+    public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
+                    FileEntry fileEntry, String methodName, ClassEntry ownerType,
+                    TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames) {
+        super(fileEntry, methodName, ownerType, valueType, debugMethodInfo.modifiers());
         assert ((paramTypes == null && paramNames == null) ||
                         (paramTypes != null && paramNames != null && paramTypes.length == paramNames.length));
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
-        this.symbolName = symbolName;
+        this.symbolName = debugMethodInfo.symbolNameForMethod();
         this.flags = 0;
-        if (isDeoptTarget) {
+        if (debugMethodInfo.isDeoptTarget()) {
             setIsDeopt();
         }
-        if (fromRange) {
-            setIsInRange();
-        }
-        if (fromInlineRange) {
-            setIsInlined();
-        }
+        updateRangeInfo(debugInfoBase, debugMethodInfo);
     }
 
     public String methodName() {
@@ -132,22 +127,22 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
      * to the original source file, thus it will be wrong for substituted methods. As a result when
      * setting a MethodEntry as isInRange we also make sure that its fileEntry reflects the file
      * info associated with the corresponding Range.
-     *
+     * 
      * @param debugInfoBase
-     * @param debugRangeInfo
+     * @param debugMethodInfo
      */
-    public void updateRangeInfo(DebugInfoBase debugInfoBase, DebugRangeInfo debugRangeInfo) {
-        if (debugRangeInfo instanceof DebugLineInfo) {
-            DebugLineInfo lineInfo = (DebugLineInfo) debugRangeInfo;
+    public void updateRangeInfo(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo) {
+        if (debugMethodInfo instanceof DebugLineInfo) {
+            DebugLineInfo lineInfo = (DebugLineInfo) debugMethodInfo;
             if (lineInfo.getCaller() != null) {
                 /* this is a real inlined method not just a top level primary range */
                 setIsInlined();
             }
-        } else if (debugRangeInfo instanceof DebugCodeInfo) {
+        } else if (debugMethodInfo instanceof DebugCodeInfo) {
             /* this method has been seen in a primary range */
             if (isInRange()) {
                 /* it has already been seen -- just check for consistency */
-                assert fileEntry == debugInfoBase.ensureFileEntry(debugRangeInfo);
+                assert fileEntry == debugInfoBase.ensureFileEntry(debugMethodInfo);
             } else {
                 /*
                  * If the MethodEntry was added by traversing the DeclaredMethods of a Class its
@@ -157,7 +152,7 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
                  * corresponding Range.
                  */
                 setIsInRange();
-                fileEntry = debugInfoBase.ensureFileEntry(debugRangeInfo);
+                fileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
             }
         }
     }

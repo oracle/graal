@@ -38,8 +38,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
@@ -276,14 +274,6 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        boolean fromRange = debugMethodInfo instanceof DebugCodeInfo;
-        boolean fromInlineRange = false;
-        if (debugMethodInfo instanceof DebugLineInfo) {
-            DebugLineInfo lineInfo = (DebugLineInfo) debugMethodInfo;
-            if (lineInfo.getCaller() != null) {
-                fromInlineRange = true;
-            }
-        }
         String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
         String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
         int modifiers = debugMethodInfo.modifiers();
@@ -307,8 +297,8 @@ public class ClassEntry extends StructureTypeEntry {
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
-        return new MethodEntry(methodFileEntry, debugMethodInfo.symbolNameForMethod(), methodName, this, resultType,
-                        paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget(), fromRange, fromInlineRange);
+        return new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName, this, resultType,
+                        paramTypeArray, paramNameArray);
     }
 
     @Override
