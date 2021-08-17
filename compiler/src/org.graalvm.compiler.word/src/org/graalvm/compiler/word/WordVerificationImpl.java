@@ -38,13 +38,13 @@ public final class WordVerificationImpl implements WordVerification {
     }
 
     @Override
-    public boolean verifyIsWord(JavaType type) {
+    public boolean guaranteeWord(JavaType type) {
         GraalError.guarantee(wordTypes.isWord(type), "Expected a Word but got %s", type);
         return true;
     }
 
     @Override
-    public boolean verifyIsNoWord(JavaType type) {
+    public boolean guaranteeNotWord(JavaType type) {
         GraalError.guarantee(!wordTypes.isWord(type), "Unexpected a Word type %s", type);
         return true;
     }

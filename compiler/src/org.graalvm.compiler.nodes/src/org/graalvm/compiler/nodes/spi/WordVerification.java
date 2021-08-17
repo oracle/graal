@@ -50,7 +50,7 @@ public interface WordVerification {
      * @return {@code true}
      * @throws Error if the assertion does not hold
      */
-    boolean verifyIsWord(JavaType type);
+    boolean guaranteeWord(JavaType type);
 
     /**
      * Verifies that a given type is not a word type.
@@ -58,6 +58,6 @@ public interface WordVerification {
      * @return {@code true}
      * @throws Error if the assertion does not hold
      */
-    boolean verifyIsNoWord(JavaType type);
+    boolean guaranteeNotWord(JavaType type);
 
 }
