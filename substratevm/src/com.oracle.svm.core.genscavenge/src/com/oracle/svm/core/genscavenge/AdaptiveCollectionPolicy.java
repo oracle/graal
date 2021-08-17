@@ -58,7 +58,6 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
      */
     static final int INITIAL_SURVIVOR_RATIO = 8;
     static final int ADAPTIVE_SIZE_POLICY_READY_THRESHOLD = 5;
-    static final int YOUNG_GENERATION_SIZE_INCREMENT = 20;
     static final int ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR = 4;
     static final int ADAPTIVE_SIZE_POLICY_WEIGHT = 10;
     static final int ADAPTIVE_TIME_WEIGHT = 25;
@@ -70,17 +69,28 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     static final int SURVIVOR_PADDING = 3;
     static final int INITIAL_TENURING_THRESHOLD = 7;
     static final int PROMOTED_PADDING = 3;
-    static final int YOUNG_GENERATION_SIZE_SUPPLEMENT = 80;
     static final int TENURED_GENERATION_SIZE_SUPPLEMENT_DECAY = 2;
     static final int YOUNG_GENERATION_SIZE_SUPPLEMENT_DECAY = 8;
-    static final int TENURED_GENERATION_SIZE_SUPPLEMENT = 80;
-    static final int TENURED_GENERATION_SIZE_INCREMENT = 20;
     static final int MIN_SURVIVOR_RATIO = 3;
     /**
      * Ratio of mutator wall-clock time to GC wall-clock time. HotSpot's default is 99, i.e.
      * spending 1% of time in GC. We set it to 19, i.e. 5%, to prefer a small footprint.
      */
     static final int GC_TIME_RATIO = 19;
+    /**
+     * Maximum size increment step percentages. We reduce them from HotSpot's default of 20 to avoid
+     * growing the heap too eagerly, and to enable {@linkplain #ADAPTIVE_SIZE_USE_COST_ESTIMATORS
+     * cost estimators} to resize the heap in smaller steps which might yield improved throughput
+     * when larger steps do not.
+     */
+    static final int YOUNG_GENERATION_SIZE_INCREMENT = 10;
+    static final int TENURED_GENERATION_SIZE_INCREMENT = 10;
+    /*
+     * Supplements to accelerate the expansion of the heap at startup. We do not use them in favor
+     * of a small footprint.
+     */
+    static final int YOUNG_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
+    static final int TENURED_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
 
     /* Constants derived from other constants. */
     static final double THROUGHPUT_GOAL = 1.0 - 1.0 / (1.0 + GC_TIME_RATIO);
