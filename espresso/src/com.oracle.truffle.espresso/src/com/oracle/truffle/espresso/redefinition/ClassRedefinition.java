@@ -250,7 +250,6 @@ public final class ClassRedefinition {
         List<ParserMethod> newSpecialMethods = new ArrayList<>(1);
 
         boolean constantPoolChanged = false;
-        // check constant pool changes. If changed, we have to redefine all methods in the class
         if (!Arrays.equals(oldParserKlass.getConstantPool().getRawBytes(), newParserKlass.getConstantPool().getRawBytes())) {
             constantPoolChanged = true;
         }
@@ -439,7 +438,16 @@ public final class ClassRedefinition {
             bci = nextBCI;
             int opcode = oldCode.currentBC(bci);
             nextBCI = oldCode.nextBCI(bci);
-            if (opcode == Bytecodes.LDC || opcode == Bytecodes.LDC2_W || opcode == Bytecodes.LDC_W || opcode == Bytecodes.NEW || opcode == Bytecodes.INVOKEDYNAMIC || Bytecodes.isInvoke(opcode)) {
+            if (opcode == Bytecodes.LDC ||
+                            opcode == Bytecodes.LDC2_W ||
+                            opcode == Bytecodes.LDC_W ||
+                            opcode == Bytecodes.NEW ||
+                            opcode == Bytecodes.INVOKEDYNAMIC ||
+                            opcode == Bytecodes.GETFIELD ||
+                            opcode == Bytecodes.GETSTATIC ||
+                            opcode == Bytecodes.PUTFIELD ||
+                            opcode == Bytecodes.PUTSTATIC ||
+                            Bytecodes.isInvoke(opcode)) {
                 int oldCPI = oldCode.readCPI(bci);
                 PoolConstant oldConstant = oldPool.at(oldCPI);
                 int newCPI = newCode.readCPI(bci);

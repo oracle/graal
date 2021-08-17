@@ -115,6 +115,8 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal volatile KlassVersion klassVersion;
 
+    @CompilationFinal private Assumption noAddedFields = Truffle.getRuntime().createAssumption();
+
     // used for class redefintion when refreshing vtables etc.
     private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
 
@@ -504,17 +506,47 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Field[] getDeclaredFields() {
-        // Speculate that there are no hidden fields
         KlassVersion currentKlass = getKlassVersion();
-        Field[] declaredFields = Arrays.copyOf(currentKlass.staticFieldTable, currentKlass.staticFieldTable.length + currentKlass.fieldTable.length - currentKlass.localFieldTableIndex);
-        int insertionIndex = currentKlass.staticFieldTable.length;
-        for (int i = currentKlass.localFieldTableIndex; i < currentKlass.fieldTable.length; i++) {
-            Field f = currentKlass.fieldTable[i];
-            if (!f.isHidden()) {
-                declaredFields[insertionIndex++] = f;
+        if (noAddedFields.isValid()) {
+            // Speculate that there are no hidden fields except the extension field
+            // we always filter the extension fields, so subtract 1 from the new length
+            Field[] declaredFields = Arrays.copyOf(currentKlass.staticFieldTable, currentKlass.staticFieldTable.length + currentKlass.fieldTable.length - currentKlass.localFieldTableIndex - 1);
+            int insertionIndex = currentKlass.staticFieldTable.length - 1;
+            for (int i = currentKlass.localFieldTableIndex; i < currentKlass.fieldTable.length; i++) {
+                Field f = currentKlass.fieldTable[i];
+                if (!f.isHidden() && !f.isRemoved()) {
+                    declaredFields[insertionIndex++] = f;
+                }
             }
+            return insertionIndex == declaredFields.length ? declaredFields : Arrays.copyOf(declaredFields, insertionIndex);
+        } else {
+            ArrayList<Field> fields = new ArrayList<>();
+
+            // static fields
+            for (Field f : getStaticFieldTable()) {
+                if (!f.isHidden() && !f.isRemoved()) {
+                    fields.add(f);
+                } else if (f.isExtensionField()) {
+                    StaticObject object = f.getObject(getStatics());
+                    if (object != StaticObject.NULL) {
+                        ExtensionFieldObject extensionFieldObject = (ExtensionFieldObject) object;
+                        for (Field field : extensionFieldObject.getDeclaredAddedFields()) {
+                            if (!field.isRemoved()) {
+                                fields.add(field);
+                            }
+                        }
+                    }
+                }
+            }
+            // instance fields
+            for (int i = currentKlass.localFieldTableIndex; i < currentKlass.fieldTable.length; i++) {
+                Field f = currentKlass.fieldTable[i];
+                if (!f.isHidden() && !f.isRemoved()) {
+                    fields.add(f);
+                }
+            }
+            return fields.toArray(new Field[fields.size()]);
         }
-        return insertionIndex == declaredFields.length ? declaredFields : Arrays.copyOf(declaredFields, insertionIndex);
     }
 
     public EnclosingMethodAttribute getEnclosingMethod() {
@@ -1159,7 +1191,26 @@ public final class ObjectKlass extends Klass {
         Field[] staticFieldTable = oldVersion.staticFieldTable;
         int localFieldTableIndex = oldVersion.localFieldTableIndex;
 
-        // TODO - handle field changes
+        if (!packet.detectedChange.getAddedStaticFields().isEmpty() || !packet.detectedChange.getAddedInstanceFields().isEmpty()) {
+            Field extensionField = staticFieldTable[staticFieldTable.length - 1];
+            StaticObject staticObject = extensionField.getObject(getStatics());
+            ExtensionFieldObject extensionFieldObject;
+            if (staticObject == StaticObject.NULL) {
+                // make sure the extension field is initialized
+                extensionFieldObject = new ExtensionFieldObject(this, packet.detectedChange.getAddedStaticFields(), pool);
+                extensionField.setObject(getStatics(), extensionFieldObject);
+            } else {
+                // add new fields to the extension object
+                extensionFieldObject = (ExtensionFieldObject) staticObject;
+                extensionFieldObject.addNewFields(this, packet.detectedChange.getAddedStaticFields(), pool);
+            }
+            extensionFieldObject.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool);
+            noAddedFields.invalidate();
+        }
+
+        for (Field removedField : packet.detectedChange.getRemovedFields()) {
+            removedField.removeByRedefintion();
+        }
 
         // methods
         Method[][] itable = oldVersion.itable;
@@ -1281,9 +1332,28 @@ public final class ObjectKlass extends Klass {
     public void onSuperKlassUpdate() {
         KlassVersion oldVersion = klassVersion;
 
-        Field[] fieldTable = oldVersion.fieldTable;
-        Field[] staticFieldTable = oldVersion.staticFieldTable;
-        int localFieldTableIndex = oldVersion.localFieldTableIndex;
+        // fields
+        ObjectKlass superKlass = oldVersion.getKlass().getSuperKlass();
+        LinkedKlass linkedKlass = oldVersion.linkedKlass;
+
+        Field[] skFieldTable = superKlass != null ? superKlass.getFieldTable() : new Field[0];
+        LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
+        LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
+
+        Field[] fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
+        Field[] staticFieldTable = new Field[lkStaticFields.length];
+
+        assert fieldTable.length == linkedKlass.getFieldTableLength();
+        System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
+        int localFieldTableIndex = skFieldTable.length;
+        for (int i = 0; i < lkInstanceFields.length; i++) {
+            Field instanceField = new Field(this, lkInstanceFields[i], oldVersion.pool);
+            fieldTable[localFieldTableIndex + i] = instanceField;
+        }
+        for (int i = 0; i < lkStaticFields.length; i++) {
+            Field staticField = new Field(this, lkStaticFields[i], oldVersion.pool);
+            staticFieldTable[i] = staticField;
+        }
 
         Method[][] itable = oldVersion.itable;
         Method[] vtable;
@@ -1345,6 +1415,12 @@ public final class ObjectKlass extends Klass {
         for (Method declaredMethod : getDeclaredMethods()) {
             declaredMethod.removedByRedefinition();
         }
+    }
+
+    public ExtensionFieldObject getStaticExtensionFieldObject() {
+        Field[] staticFieldTable = getStaticFieldTable();
+        Field extensionField = getStaticFieldTable()[staticFieldTable.length - 1];
+        return (ExtensionFieldObject) extensionField.getObject(getStatics());
     }
 
     public final class KlassVersion {

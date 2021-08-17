@@ -37,7 +37,8 @@ import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 
 public final class DetectedChange {
-    private final List<ParserField> addedFields = new ArrayList<>();
+    private final List<ParserField> addedStaticFields = new ArrayList<>();
+    private final List<ParserField> addedInstanceFields = new ArrayList<>();
     private final List<Field> removedFields = new ArrayList<>();
     private final Map<Field, ParserField> compatibleFieldChanges = new HashMap<>();
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
@@ -54,15 +55,25 @@ public final class DetectedChange {
     }
 
     public void addNewField(ParserField parserField) {
-        addedFields.add(parserField);
+        if (parserField.isStatic()) {
+            addedStaticFields.add(parserField);
+        } else {
+            addedInstanceFields.add(parserField);
+        }
     }
 
     public void addNewFields(ArrayList<ParserField> newFields) {
-        addedFields.addAll(newFields);
+        for (ParserField newField : newFields) {
+            addNewField(newField);
+        }
     }
 
-    public List<ParserField> getAddedFields() {
-        return Collections.unmodifiableList(addedFields);
+    public List<ParserField> getAddedStaticFields() {
+        return Collections.unmodifiableList(addedStaticFields);
+    }
+
+    public List<ParserField> getAddedInstanceFields() {
+        return Collections.unmodifiableList(addedInstanceFields);
     }
 
     public void addRemovedFields(ArrayList<Field> removed) {

@@ -80,6 +80,7 @@ public final class Meta implements ContextAccess {
 
         // Core types.
         java_lang_Object = knownKlass(Type.java_lang_Object);
+        HIDDEN_OBJECT_EXTENSION_FIELD = java_lang_Object.requireHiddenField(Name.extensionFieldName);
         java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
@@ -878,6 +879,7 @@ public final class Meta implements ContextAccess {
     // Checkstyle: stop field name check
 
     public final ObjectKlass java_lang_Object;
+    public final Field HIDDEN_OBJECT_EXTENSION_FIELD;
     public final ArrayKlass java_lang_Object_array;
 
     public final ObjectKlass java_lang_String;

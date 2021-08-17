@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -234,7 +234,7 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): From Hostpot: 4496456 We need to filter out
         // java.lang.Throwable.backtrace.
 
-        ArrayList<Field> collectedMethods = new ArrayList<>();
+        ArrayList<Field> collectedFields = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
         /*
          * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
@@ -244,10 +244,10 @@ public final class Target_java_lang_Class {
         klass.verify();
         for (Field f : klass.getDeclaredFields()) {
             if (!publicOnly || f.isPublic()) {
-                collectedMethods.add(f);
+                collectedFields.add(f);
             }
         }
-        final Field[] fields = collectedMethods.toArray(Field.EMPTY_ARRAY);
+        final Field[] fields = collectedFields.toArray(Field.EMPTY_ARRAY);
 
         EspressoContext context = meta.getContext();
 

@@ -2110,7 +2110,11 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private Field.FieldVersion resolveField(int opcode, char cpi) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
-        return getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
+        Field.FieldVersion fieldVersion = getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
+        if (fieldVersion.getField().isRemoved()) {
+            fieldVersion = getConstantPool().resolvedFieldAtNoCache(getMethod().getDeclaringKlass(), cpi);
+        }
+        return fieldVersion;
     }
 
     // endregion Class/Method/Field resolution
