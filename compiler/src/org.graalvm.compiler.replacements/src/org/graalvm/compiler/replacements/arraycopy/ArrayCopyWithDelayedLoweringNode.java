@@ -35,6 +35,9 @@ import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * FIXME: document me!
+ */
 @NodeInfo(allowedUsageTypes = InputType.Memory)
 public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode {
 

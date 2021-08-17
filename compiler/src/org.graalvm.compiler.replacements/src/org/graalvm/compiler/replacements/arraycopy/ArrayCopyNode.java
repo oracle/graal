@@ -34,6 +34,9 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * FIXME: document me!
+ */
 @NodeInfo
 public final class ArrayCopyNode extends BasicArrayCopyNode implements Lowerable {
 

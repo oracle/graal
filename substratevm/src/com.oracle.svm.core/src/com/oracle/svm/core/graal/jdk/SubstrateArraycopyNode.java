@@ -32,6 +32,9 @@ import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * FIXME: document me!
+ */
 @NodeInfo
 public final class SubstrateArraycopyNode extends BasicArrayCopyNode {
     public static final NodeClass<SubstrateArraycopyNode> TYPE = NodeClass.create(SubstrateArraycopyNode.class);

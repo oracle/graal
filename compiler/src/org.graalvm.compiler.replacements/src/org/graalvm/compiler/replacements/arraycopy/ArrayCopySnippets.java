@@ -90,16 +90,31 @@ public abstract class ArrayCopySnippets implements Snippets {
     /** Marker value for the {@link InjectedParameter} injected parameter. */
     static final MetaAccessProvider INJECTED_META_ACCESS = null;
 
+    /**
+     * FIXME: document me!
+     */
     public abstract boolean hubsEqual(Object nonNullSrc, Object nonNullDest);
 
+    /**
+     * FIXME: document me!
+     */
     public abstract boolean layoutHelpersEqual(Object nonNullSrc, Object nonNullDest);
 
+    /**
+     * FIXME: document me!
+     */
     protected abstract int heapWordSize();
 
+    /**
+     * FIXME: document me!
+     */
     protected boolean useOriginalArraycopy() {
         return true;
     }
 
+    /**
+     * FIXME: document me!
+     */
     @SuppressWarnings("unused")
     @Snippet
     public void arraycopyExactSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
@@ -117,6 +132,9 @@ public abstract class ArrayCopySnippets implements Snippets {
         ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, workSnippet, elementKind);
     }
 
+    /**
+     * FIXME: document me!
+     */
     @SuppressWarnings("unused")
     @Snippet
     public void arraycopyExactStubCallSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
@@ -134,6 +152,9 @@ public abstract class ArrayCopySnippets implements Snippets {
         ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, locationIdentity, heapWordSize());
     }
 
+    /**
+     * FIXME: document me!
+     */
     @Snippet
     public void arraycopyCheckcastSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck, @ConstantParameter Counters counters,
                     @ConstantParameter SnippetInfo workSnippet, @ConstantParameter JavaKind elementKind) {
@@ -146,6 +167,9 @@ public abstract class ArrayCopySnippets implements Snippets {
         ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, workSnippet, elementKind);
     }
 
+    /**
+     * FIXME: document me!
+     */
     @Snippet
     public void arraycopyGenericSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck, @ConstantParameter Counters counters,
                     @ConstantParameter SnippetInfo workSnippet, @ConstantParameter JavaKind elementKind) {
@@ -158,6 +182,9 @@ public abstract class ArrayCopySnippets implements Snippets {
         ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, workSnippet, elementKind);
     }
 
+    /**
+     * FIXME: document me!
+     */
     @Snippet
     public static void arraycopyNativeSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Counters counters) {
         // all checks are done in the native method, so no need to emit additional checks here
@@ -168,6 +195,9 @@ public abstract class ArrayCopySnippets implements Snippets {
         System.arraycopy(src, srcPos, dest, destPos, length);
     }
 
+    /**
+     * FIXME: document me!
+     */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void exactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity arrayLocation,
@@ -178,6 +208,9 @@ public abstract class ArrayCopySnippets implements Snippets {
     protected abstract void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
                     MetaAccessProvider metaAccess);
 
+    /**
+     * FIXME: document me!
+     */
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void checkcastArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation,
@@ -185,8 +218,14 @@ public abstract class ArrayCopySnippets implements Snippets {
         doCheckcastArraycopyWithSlowPathWork(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
     }
 
+    /**
+     * FIXME: document me!
+     */
     protected abstract void doCheckcastArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
 
+    /**
+     * FIXME: document me!
+     */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void genericArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,

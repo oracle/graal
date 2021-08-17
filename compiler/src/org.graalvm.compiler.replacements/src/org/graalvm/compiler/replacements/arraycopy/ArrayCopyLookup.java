@@ -33,10 +33,23 @@ import jdk.vm.ci.meta.JavaKind;
 
 public interface ArrayCopyLookup {
 
+    /**
+     * FIXME: document me!
+     */
     ForeignCallSignature UNSAFE_ARRAYCOPY = new ForeignCallSignature("unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
+
+    /**
+     * FIXME: document me!
+     */
     ForeignCallSignature GENERIC_ARRAYCOPY = new ForeignCallSignature("generic_arraycopy", int.class, Word.class, int.class, Word.class, int.class, int.class);
 
+    /**
+     * FIXME: document me!
+     */
     ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit);
 
+    /**
+     * FIXME: document me!
+     */
     ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation);
 }
