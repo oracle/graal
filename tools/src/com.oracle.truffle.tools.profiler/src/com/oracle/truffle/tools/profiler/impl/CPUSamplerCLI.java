@@ -185,7 +185,6 @@ class CPUSamplerCLI extends ProfilerCLI {
     private static void printSamplingCallTree(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
         try {
             for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
-                printContext(out, entry.getKey());
                 new SamplingCallTree(entry.getValue(), options).print(out);
             }
         } catch (NonExistentTierSelected e) {
@@ -196,16 +195,11 @@ class CPUSamplerCLI extends ProfilerCLI {
     private static void printSamplingHistogram(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
         try {
             for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
-                printContext(out, entry.getKey());
                 new SamplingHistogram(entry.getValue(), options).print(out);
             }
         } catch (NonExistentTierSelected e) {
             out.println(e.getMessage());
         }
-    }
-
-    private static void printContext(PrintStream out, TruffleContext context) {
-        out.println(context);
     }
 
     private static void printWarnings(CPUSampler sampler, PrintStream out) {
@@ -279,22 +273,22 @@ class CPUSamplerCLI extends ProfilerCLI {
         return samples;
     }
 
-    private static void printLegend(PrintStream out, String type, long samples, long period) {
-        out.println(String.format("Sampling %s. Recorded %s samples with period %dms.", type, samples, period));
+    private static void printLegend(PrintStream out, String type, long samples, long period, CPUSamplerCLI.ShowTiers showTiers, int maxTier) {
+        out.printf("Sampling %s. Recorded %s samples with period %dms.%n", type, samples, period);
         out.println("  Self Time: Time spent on the top of the stack.");
         out.println("  Total Time: Time spent somewhere on the stack.");
-        out.println("  Opt %: Percent of time spent in compiled and therefore non-interpreted code.");
-    }
+        if (showTiers.show) {
+            if (showTiers.tiers.length == 0) {
+                for (int i = 0; i <= maxTier; i++) {
+                    out.println("  T" + i + ": Percent of time spent in " + (i == 0 ? "interpreter." : "code compiled by tier " + i + " compiler."));
+                }
+            } else {
+                for (int tier : showTiers.tiers) {
+                    out.println("  T" + tier + ": Percent of time spent in " + (tier == 0 ? "interpreter." : "code compiled by tier " + tier + " compiler."));
+                }
+            }
 
-    private static boolean intersectsLines(SourceSection section1, SourceSection section2) {
-        if (section1 == null || section2 == null) {
-            return false;
         }
-        int x1 = section1.getStartLine();
-        int x2 = section1.getEndLine();
-        int y1 = section2.getStartLine();
-        int y2 = section2.getEndLine();
-        return x2 >= y1 && y2 >= x1;
     }
 
     private static double percent(int samples, int totalSamples) {
@@ -455,7 +449,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         public void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Histogram", samplesTaken, samplePeriod);
+            printLegend(out, "Histogram", samplesTaken, samplePeriod, showTiers, maxTier);
             out.println(sep);
             for (Map.Entry<Thread, List<OutputEntry>> threadListEntry : histogram.entrySet()) {
                 out.println(threadListEntry.getKey());
@@ -511,7 +505,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             return String.format(format, args.toArray());
         }
 
-        private void maybeAddTiers(List<Object> args, int[] samples, int total, CPUSamplerCLI.ShowTiers showTiers) {
+        private static void maybeAddTiers(List<Object> args, int[] samples, int total, CPUSamplerCLI.ShowTiers showTiers) {
             if (showTiers.show) {
                 if (showTiers.tiers.length == 0) {
                     for (int i = 0; i < samples.length; i++) {
@@ -536,7 +530,6 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static class SamplingCallTree {
-        private final Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData;
         private final boolean summariseThreads;
         private final int minSamples;
         private final ShowTiers showTiers;
@@ -544,7 +537,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final long samplesTaken;
         private final String title;
         private final String format;
-        private final Map<Thread, Collection<CallTreeOutputEntry>> entries;
+        private final Map<Thread, Collection<CallTreeOutputEntry>> entries = new HashMap<>();
         private int maxNameLength = 10;
         private int maxTier;
 
@@ -554,16 +547,16 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.showTiers = options.get(ShowTiers);
             this.samplePeriod = options.get(SAMPLE_PERIOD);
             this.samplesTaken = data.getSamples();
-            this.threadData = data.getThreadData();
-            entries = makeEntries(threadData);
-            calculateMaxValues();
+            Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData = data.getThreadData();
+            makeEntries(threadData);
+            calculateMaxValues(threadData);
             String[] titleAndFormat = makeTitleAndFormat(maxNameLength, showTiers, maxTier);
             this.title = titleAndFormat[0];
             this.format = titleAndFormat[1];
 
         }
 
-        private void calculateMaxValues() {
+        private void calculateMaxValues(Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData) {
             for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadData.entrySet()) {
                 for (ProfilerNode<CPUSampler.Payload> node : entry.getValue()) {
                     calculateMaxValuesRec(node, 0);
@@ -580,8 +573,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
-        private Map<Thread, Collection<CallTreeOutputEntry>> makeEntries(Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData) {
-            Map<Thread, Collection<CallTreeOutputEntry>> entries = new HashMap<>();
+        private void makeEntries(Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData) {
             if (summariseThreads) {
                 List<CallTreeOutputEntry> callTreeEntries = new ArrayList<>();
                 for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadData.entrySet()) {
@@ -599,7 +591,6 @@ class CPUSamplerCLI extends ProfilerCLI {
                     entries.put(entry.getKey(), callTreeEntries);
                 }
             }
-            return entries;
         }
 
         private void mergeEntry(List<CallTreeOutputEntry> callTreeEntries, ProfilerNode<CPUSampler.Payload> node, int depth) {
@@ -629,7 +620,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         public void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Call Tree", samplesTaken, samplePeriod);
+            printLegend(out, "Call Tree", samplesTaken, samplePeriod, showTiers, maxTier);
             out.println(sep);
             out.println(title);
             out.println(sep);

@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.profiler.test;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -44,8 +45,157 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public class ProfilerCLITest {
 
+    public static final String SAMPLING_HISTOGRAM = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms.";
+    public static final int EXEC_COUUNT = 10;
+    public static final String NAME_REGEX = " [a-z]+ +";
+    public static final String SEPARATOR_REGEX = "\\|";
+    public static final String TIME_REGEX = " *[0-9]*ms ";
+    public static final String PERCENT_REGEX = " *[0-9]*\\.[0-9]\\% ";
+    public static final String LOCATION_REGEX = " test.*";
+    public static final String SELF_TIME = "  Self Time: Time spent on the top of the stack.";
+    public static final String TOTAL_TIME = "  Total Time: Time spent somewhere on the stack.";
+    public static final String INTERPRETER = "  T0: Percent of time spent in interpreter.";
+    public static final String T1 = "  T1: Percent of time spent in code compiled by tier 1 compiler.";
+    public static final String T2 = "  T2: Percent of time spent in code compiled by tier 2 compiler.";
+
     protected Source makeSource(String s) {
         return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").buildLiteral();
+    }
+
+    @Test
+    public void testDefaultSampleHistogram() {
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        String[] output = runSampler(options);
+        // @formatter:off
+        // OUTPUT IS:
+        // -------------------------------------------------------------------------------
+        // Sampling Histogram. Recorded 202 samples with period 10ms.
+        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM));
+        // Self Time: Time spent on the top of the stack.
+        Assert.assertEquals(SELF_TIME, output[2]);
+        // Total Time: Time spent somewhere on the stack.
+        Assert.assertEquals(TOTAL_TIME, output[3]);
+        // -------------------------------------------------------------------------------
+        // Thread[main,5,main]
+        Assert.assertTrue(output[5].contains("Thread"));
+        // Name       |      Total Time    ||       Self Time    || Location
+        Assert.assertTrue(output[6].contains("Name       |      Total Time    ||       Self Time    || Location"));
+        // -------------------------------------------------------------------------------
+        // foo        |             1900ms ||             1900ms || test~1:16-29
+        String lineRegex = NAME_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + LOCATION_REGEX;
+        Assert.assertTrue(output[8].matches(lineRegex));
+        // baz        |             1710ms ||                0ms || test~1:98-139
+        Assert.assertTrue(output[9].matches(lineRegex));
+        // bar        |             1900ms ||                0ms || test~1:43-84
+        Assert.assertTrue(output[10].matches(lineRegex));
+        //            |             1900ms ||                0ms || test~1:0-161
+        // -------------------------------------------------------------------------------
+        // @formatter:on
+    }
+
+    @Test
+    public void testShowTiersTrueHistogram() {
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        options.put("cpusampler.ShowTiers", "true");
+        String[] output = runSampler(options);
+        // @formatter:off
+        // OUTPUT IS:
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        //Sampling Histogram. Recorded 207 samples with period 10ms.
+        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM));
+        //  Self Time: Time spent on the top of the stack.
+        Assert.assertEquals(SELF_TIME, output[2]);
+        //  Total Time: Time spent somewhere on the stack.
+        Assert.assertEquals(TOTAL_TIME, output[3]);
+        //  T0: Percent of time spent in interpreter.
+        Assert.assertEquals(INTERPRETER, output[4]);
+        //  T1: Percent of time spent in code compiled by tier 1 compiler.
+        Assert.assertEquals(T1, output[5]);
+        //  T2: Percent of time spent in code compiled by tier 2 compiler.
+        Assert.assertEquals(T2, output[6]);
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        //Thread[main,5,main]
+        Assert.assertTrue(output[8].contains("Thread"));
+        // Name       |      Total Time    |   T0   |   T1   |   T2   ||       Self Time    |   T0   |   T1   |   T2   || Location
+        Assert.assertEquals(" Name       |      Total Time    |   T0   |   T1   |   T2   ||       Self Time    |   T0   |   T1   |   T2   || Location             ", output[9]);
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        // foo        |             2060ms | 100.0% |   0.0% |   0.0% ||             2060ms | 100.0% |   0.0% |   0.0% || test~1:16-29
+        String lineRegex = NAME_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                LOCATION_REGEX;
+        Assert.assertTrue(output[11].matches(lineRegex));
+        // bar        |             2070ms | 100.0% |   0.0% |   0.0% ||               10ms | 100.0% |   0.0% |   0.0% || test~1:43-84
+        Assert.assertTrue(output[12].matches(lineRegex));
+        // baz        |             1850ms | 100.0% |   0.0% |   0.0% ||                0ms |   0.0% |   0.0% |   0.0% || test~1:98-139
+        Assert.assertTrue(output[13].matches(lineRegex));
+        //            |             2070ms | 100.0% |   0.0% |   0.0% ||                0ms |   0.0% |   0.0% |   0.0% || test~1:0-161
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        // @formatter:on
+    }
+
+    @Test
+    public void testShowTiers20Histogram() {
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        options.put("cpusampler.ShowTiers", "2,0");
+        String[] output = runSampler(options);
+        // @formatter:off
+        // OUTPUT IS:
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        //Sampling Histogram. Recorded 207 samples with period 10ms.
+        Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM));
+        //  Self Time: Time spent on the top of the stack.
+        Assert.assertEquals(SELF_TIME, output[2]);
+        //  Total Time: Time spent somewhere on the stack.
+        Assert.assertEquals(TOTAL_TIME, output[3]);
+        //  T2: Percent of time spent in code compiled by tier 2 compiler.
+        Assert.assertEquals(T2, output[4]);
+        //  T0: Percent of time spent in interpreter.
+        Assert.assertEquals(INTERPRETER, output[5]);
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        //Thread[main,5,main]
+        Assert.assertTrue(output[7].contains("Thread"));
+        // Name       |      Total Time    |   T2   |   T0   ||       Self Time    |   T2   |   T0   || Location
+        Assert.assertEquals(" Name       |      Total Time    |   T2   |   T0   ||       Self Time    |   T2   |   T0   || Location             ", output[8]);
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        // foo        |             2060ms | 100.0% |   0.0% ||             2060ms | 100.0% |   0.0% || test~1:16-29
+        String lineRegex = NAME_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                LOCATION_REGEX;
+        Assert.assertTrue(output[10].matches(lineRegex));
+        // bar        |             2070ms | 100.0% |   0.0% ||               10ms | 100.0% |   0.0% || test~1:43-84
+        Assert.assertTrue(output[11].matches(lineRegex));
+        // baz        |             1850ms | 100.0% |   0.0% ||                0ms |   0.0% |   0.0% || test~1:98-139
+        Assert.assertTrue(output[12].matches(lineRegex));
+        //            |             2070ms | 100.0% |   0.0% ||                0ms |   0.0% |   0.0% || test~1:0-161
+        //-------------------------------------------------------------------------------------------------------------------------------------
+        // @formatter:on
+    }
+
+    private String[] runSampler(Map<String, String> options) {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context context = Context.newBuilder().in(System.in).out(out).err(err).options(options).build()) {
+            Source source = makeSource("ROOT(" +
+                            "DEFINE(foo,ROOT(SLEEP(1)))," +
+                            "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
+                            "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," +
+                            "CALL(baz),CALL(bar)" +
+                            ")");
+            for (int i = 0; i < EXEC_COUUNT; i++) {
+                context.eval(source);
+            }
+        }
+        String output = out.toString();
+        return output.split(System.lineSeparator());
     }
 
     @Test
