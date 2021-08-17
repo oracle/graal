@@ -749,7 +749,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     public Object toGuestValue(Object receiver) {
-        return context.toGuestValue(receiver);
+        return context.toGuestValue(receiver, false);
     }
 
     static final class ToHostValueNode {

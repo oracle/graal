@@ -54,14 +54,13 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -264,23 +263,7 @@ final class HostContext {
 
     Object toGuestValue(Object hostValue) {
         Object result = language.access.toGuestValue(internalContext, hostValue);
-        if (result != null) {
-            return result;
-        } else if (isGuestPrimitive(hostValue)) {
-            return hostValue;
-        } else if (hostValue instanceof Proxy) {
-            return HostProxy.toProxyGuestObject(this, (Proxy) hostValue);
-        } else if (hostValue instanceof TruffleObject) {
-            return hostValue;
-        } else if (hostValue instanceof Class) {
-            return HostObject.forClass((Class<?>) hostValue, this);
-        } else if (hostValue == null) {
-            return HostObject.NULL;
-        } else if (hostValue.getClass().isArray()) {
-            return HostObject.forObject(hostValue, this);
-        } else {
-            return HostInteropReflect.asTruffleViaReflection(hostValue, this);
-        }
+        return language.service.toGuestValue(this, result, false);
     }
 
     static boolean isGuestPrimitive(Object receiver) {

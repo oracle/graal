@@ -75,38 +75,46 @@ abstract class HostMethodDesc {
 
     abstract static class SingleMethod extends HostMethodDesc {
 
+        static final int[] EMTPY_SCOPED_PARAMETERS = new int[0];
+        static final int NO_SCOPE = -1;
+
         private final boolean varArgs;
         @CompilationFinal(dimensions = 1) private final Class<?>[] parameterTypes;
         @CompilationFinal(dimensions = 1) private final Type[] genericParameterTypes;
-        @CompilationFinal(dimensions = 1) private final int[] scopedParameters;
-        @CompilationFinal private final int scopedParameterCount;
-        private static final Class<?>[] unscopedTypes = {Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class, String.class};
+        @CompilationFinal(dimensions = 1) private final int[] scopedStaticParameters;
+        private final int scopedStaticParameterCount;
+        private static final Class<?>[] UNSCOPED_TYPES = {Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class, String.class};
 
         protected SingleMethod(Executable executable, boolean parametersScoped) {
             this.varArgs = executable.isVarArgs();
             this.parameterTypes = executable.getParameterTypes();
             this.genericParameterTypes = executable.getGenericParameterTypes();
             int[] scopedParams = null;
-            int cnt = 0;
+            int count = 0;
             if (parametersScoped) {
                 scopedParams = new int[parameterTypes.length];
                 for (int i = 0; i < parameterTypes.length; i++) {
                     if (isScoped(parameterTypes[i])) {
-                        scopedParams[i] = cnt++;
+                        scopedParams[i] = count++;
                     } else {
-                        scopedParams[i] = ScopedGuestObject.NO_SCOPE;
+                        scopedParams[i] = NO_SCOPE;
                     }
                 }
             }
-            this.scopedParameters = scopedParams;
-            this.scopedParameterCount = cnt;
+            this.scopedStaticParameterCount = count;
+            if (count > 0) {
+                assert scopedParams != null;
+                this.scopedStaticParameters = scopedParams;
+            } else {
+                this.scopedStaticParameters = EMTPY_SCOPED_PARAMETERS;
+            }
         }
 
         private static boolean isScoped(Class<?> c) {
             if (c.isPrimitive()) {
                 return false;
             }
-            for (Class<?> unscopedType : unscopedTypes) {
+            for (Class<?> unscopedType : UNSCOPED_TYPES) {
                 if (c.isAssignableFrom(unscopedType)) {
                     return false;
                 }
@@ -135,15 +143,15 @@ abstract class HostMethodDesc {
         }
 
         public final boolean hasScopedParameters() {
-            return scopedParameterCount > 0;
+            return scopedStaticParameterCount > 0;
         }
 
         public final int[] getScopedParameters() {
-            return this.scopedParameters;
+            return this.scopedStaticParameters;
         }
 
         public final int getScopedParameterCount() {
-            return this.scopedParameterCount;
+            return scopedStaticParameterCount;
         }
 
         @Override

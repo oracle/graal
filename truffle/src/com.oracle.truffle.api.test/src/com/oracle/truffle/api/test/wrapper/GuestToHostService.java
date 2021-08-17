@@ -64,7 +64,7 @@ public class GuestToHostService extends AbstractHostService {
     }
 
     @Override
-    public Object toGuestValue(Object context, Object hostValue) {
+    public Object toGuestValue(Object context, Object hostValue, boolean asValue) {
 
         return hostValue;
     }
@@ -178,16 +178,6 @@ public class GuestToHostService extends AbstractHostService {
 
     @Override
     public void pin(Object receiver) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void release(Object receiver) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Object unpackIfScoped(Object receiver) {
         throw new UnsupportedOperationException();
     }
 

@@ -1495,7 +1495,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             } else {
                 targetLanguageContext = languageContext;
             }
-            return targetLanguageContext.asValue(toGuestValue(hostValue));
+            return targetLanguageContext.asValue(toGuestValue(hostValue, true));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e, true);
         } finally {
@@ -1503,21 +1503,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    Object toGuestValue(Object hostValue) {
-        if (hostValue instanceof Value) {
-            Value receiverValue = (Value) hostValue;
-            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) getAPIAccess().getContext(receiverValue);
-            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
-            Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
-            if (valueContext != this) {
-                valueReceiver = this.migrateValue(valueReceiver, valueContext);
-            }
-            return engine.host.unpackIfScoped(valueReceiver);
-        } else if (PolyglotWrapper.isInstance(hostValue)) {
-            return migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
-        } else {
-            return engine.host.toGuestValue(getHostContextImpl(), hostValue);
-        }
+    Object toGuestValue(Object hostValue, boolean asValue) {
+        Object value = PolyglotHostAccess.toGuestValue(this, hostValue);
+        return engine.host.toGuestValue(getHostContextImpl(), value, asValue);
     }
 
     boolean waitForThreads(long startMillis, long timeoutMillis) {

@@ -155,9 +155,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  * invocations of value operations throwing an exception.
  *
  * If an embedder wishes to extend the scope of the value beyond the callback's return, the value
- * can be {@linkplain Value#pin() pinned}, such that it is not released automatically. The embedder
- * then needs to {@linkplain Value#release() release} the value explicitly when it is no longer
- * needed.
+ * can be {@linkplain Value#pin() pinned}, such that it is not released automatically.
  *
  * @see Context
  * @see Engine
@@ -2058,29 +2056,19 @@ public final class Value extends AbstractValue {
     }
 
     /**
-     * Pins a scoped value such that it is not released automatically. Pinning is an idempotent
-     * operation, i.e. pinning an already pinned value just results in a pinned value again.
+     * Pins a scoped value such that it can be used beyond the scope of a scoped host method call.
+     * Pinning is an idempotent operation, i.e. pinning an already pinned value just results in a
+     * pinned value again.
      *
-     * Trying to pin a value that is not scoped will raise an exception. Trying to pin a scoped
-     * value that has already been released will raise an exception.
+     * Trying to pin a value that is not scoped will not cause an effect. Trying to pin a scoped
+     * value that has already been released will raise a {@link IllegalStateException}.
      *
+     * @throws IllegalStateException if the method scope of the value was finished
+     * @see HostAccess.SCOPED
      * @since 21.3
      */
     public void pin() {
-        dispatch.pin(receiver);
-    }
-
-    /**
-     * Manually releases the value, making it unavailable. All future operations on the value will
-     * immediately throw an exception. Releasing is not an idempotent operation, invoking release on
-     * an already released value will raise an exception.
-     *
-     * Trying to release a value that is not scoped will raise an exception.
-     *
-     * @since 21.3
-     */
-    public void release() {
-        dispatch.release(receiver);
+        dispatch.pin(this.context, receiver);
     }
 }
 

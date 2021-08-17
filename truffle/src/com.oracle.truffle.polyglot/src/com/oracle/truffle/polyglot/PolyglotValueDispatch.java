@@ -1181,13 +1181,16 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @Override
-    public void pin(Object receiver) {
-        engine.host.pin(receiver);
-    }
-
-    @Override
-    public void release(Object receiver) {
-        engine.host.release(receiver);
+    public void pin(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            engine.host.pin(receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
     }
 
     @TruffleBoundary

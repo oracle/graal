@@ -675,7 +675,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void addToHostClassPath(Object context, Object truffleFile);
 
-        public abstract Object toGuestValue(Object context, Object hostValue);
+        public abstract Object toGuestValue(Object context, Object hostValue, boolean asValue);
 
         public abstract Object asHostDynamicClass(Object context, Class<?> value);
 
@@ -720,10 +720,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
         public abstract void pin(Object receiver);
-
-        public abstract void release(Object receiver);
-
-        public abstract Object unpackIfScoped(Object receiver);
 
     }
 
@@ -997,9 +993,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value getHashValuesIterator(Object context, Object receiver);
 
-        public abstract void release(Object receiver);
-
-        public abstract void pin(Object receiver);
+        public abstract void pin(Object languageContext, Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

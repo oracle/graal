@@ -58,6 +58,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /*
@@ -160,6 +161,12 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
                 return service.findDynamicClass(HostContext.get(this), sourceString);
             }
         });
+    }
+
+    static final LanguageReference<HostLanguage> REFERENCE = LanguageReference.create(HostLanguage.class);
+
+    static HostLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     @Override

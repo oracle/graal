@@ -40,579 +40,260 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyObject;
+import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.tck.tests.ValueAssert;
 
 public class ValueScopingTest {
-    @Test
-    public void testScoping() {
-        AssociativeArray languageBindings = new AssociativeArray("proxy language bindings");
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected Object getScope(LanguageContext context) {
-                return languageBindings;
-            }
-        });
 
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).build();
-        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
-            context.initialize(ProxyLanguage.ID);
+    public static class StoreAndPinTest {
+        private Value value;
+        private Map<String, Object> map;
 
-            Value binding = context.getBindings(ProxyLanguage.ID);
-
-            // let the guest call TestObject.storeGuestObjectReference
-            // since it is not annotated with @HostAccess.Escape, the callback parameters will only
-            // be valid during the callback
-            TestObject to = new TestObject();
-            binding.executeVoid("invokeCallback", to, "store");
-
-            // access the guest object reference - this should fail, as it was passed as a parameter
-            // to the callback and destroyed after
-            try {
-                to.accessGuestObject();
-                fail("accessing the reference should fail");
-            } catch (Exception ex) {
-                String msg = ex.getMessage();
-                assertTrue("wrong exception " + msg, msg.contains("This scoped object has already been released."));
-            }
-
-            // let the guest call TestObject.storeGuestObjectReferenceEscape
-            // since it is annotated with @HostAccess.Escape, the callback parameters will stay
-            // valid until after the callback
-            binding.executeVoid("invokeCallback", to, "storeScopeDisabled");
-
-            // access the guest object reference - this should succeed as the parameters to the
-            // callback were allowed to escape
-            try {
-                to.accessGuestObject();
-            } catch (Exception ex) {
-                fail("accessing the reference should succeed " + ex.getMessage());
-            }
-        }
-    }
-
-    @Test
-    public void testPinning() {
-        AssociativeArray languageBindings = new AssociativeArray("proxy language bindings");
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected Object getScope(LanguageContext context) {
-                return languageBindings;
-            }
-        });
-
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).build();
-        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
-            context.initialize(ProxyLanguage.ID);
-
-            Value binding = context.getBindings(ProxyLanguage.ID);
-
-            TestObject to = new TestObject();
-            binding.executeVoid("invokeCallback", to, "storeAndPin");
-
-            try {
-                to.accessGuestObject();
-            } catch (Exception ex) {
-                fail("accessing the reference should succeed " + ex.getMessage());
-            }
-
-            to.releaseGuestObject();
-
-            try {
-                to.accessGuestObject();
-                fail("accessing the reference should fail");
-            } catch (Exception ex) {
-                String msg = ex.getMessage();
-                assertTrue("wrong exception " + msg, msg.contains("This scoped object has already been released."));
-            }
-        }
-    }
-
-    @Test
-    public void testFailureAfterRelease() {
-        AssociativeArray languageBindings = new AssociativeArray("proxy language bindings");
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected Object getScope(LanguageContext context) {
-                return languageBindings;
-            }
-        });
-
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).build();
-        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
-            context.initialize(ProxyLanguage.ID);
-
-            Value binding = context.getBindings(ProxyLanguage.ID);
-
-            TestObject to = new TestObject();
-            binding.executeVoid("invokeCallback", to, "storeAndPin");
-
-            to.releaseGuestObject();
-
-            try {
-                to.releaseGuestObject();
-                fail("releasing the object twice should fail");
-            } catch (Exception ex) {
-                String msg = ex.getMessage();
-                assertTrue("wrong exception " + msg, msg.contains("Scoped objects can only be released once"));
-            }
-
-            try {
-                to.pinGuestObject();
-                fail("pinning the released object should fail");
-            } catch (Exception ex) {
-                String msg = ex.getMessage();
-                assertTrue("wrong exception " + msg, msg.contains("Released objects cannot be pinned"));
-            }
-        }
-    }
-
-    @Test
-    public void testPolyglotMapGuestObjectPinning() {
-        AssociativeArray languageBindings = new AssociativeArray("proxy language bindings");
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected Object getScope(LanguageContext context) {
-                return languageBindings;
-            }
-        });
-
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).build();
-        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
-            context.initialize(ProxyLanguage.ID);
-
-            Value binding = context.getBindings(ProxyLanguage.ID);
-
-            TestObject to = new TestObject();
-            binding.executeVoid("invokeCallback", to, "storeAndPinPolyglotMap");
-
-            try {
-                to.accessPolyglotMap();
-            } catch (Exception ex) {
-                fail("accessing the reference should succeed " + ex.getMessage());
-            }
-
-            to.releaseGuestObject();
-
-            try {
-                String r = to.accessPolyglotMap().toString();
-                fail("accessing the reference should fail " + r);
-            } catch (Exception ex) {
-                String msg = ex.getMessage();
-                assertTrue("wrong exception " + msg, msg.contains("This scoped object has already been released."));
-            }
-        }
-    }
-
-    @Test
-    public void testNestedScoping() {
-        AssociativeArray languageBindings = new AssociativeArray("proxy language bindings");
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected Object getScope(LanguageContext context) {
-                return languageBindings;
-            }
-        });
-
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).build();
-        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
-            context.initialize(ProxyLanguage.ID);
-
-            Value binding = context.getBindings(ProxyLanguage.ID);
-
-            TestObject to = new TestObject();
-            binding.executeVoid("invokeCallback", to, "storePolyglotMapElement");
-
-            try {
-                to.accessGuestObject();
-                fail("accessing the reference should fail");
-            } catch (Exception ex) {
-                String msg = ex.getMessage();
-                assertTrue("wrong exception " + msg, msg.contains("This scoped object has already been released."));
-            }
-        }
-    }
-
-    @Test
-    public void testGrowScope() {
-        AssociativeArray languageBindings = new AssociativeArray("proxy language bindings");
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected Object getScope(LanguageContext context) {
-                return languageBindings;
-            }
-        });
-
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).build();
-        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
-            context.initialize(ProxyLanguage.ID);
-
-            Value binding = context.getBindings(ProxyLanguage.ID);
-
-            TestObject to = new TestObject();
-            try {
-                binding.executeVoid("invokeCallback", to, "accessAllMembers");
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                fail(ex.getMessage());
-            }
-        }
-    }
-
-    @Test
-    public void testMultiThread() {
-        AssociativeArray languageBindings = new AssociativeArray("proxy language bindings");
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected Object getScope(LanguageContext context) {
-                return languageBindings;
-            }
-
-            @Override
-            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-                return true;
-            }
-        });
-
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).build();
-        Context context = Context.newBuilder().allowHostAccess(accessPolicy).build();
-        context.initialize(ProxyLanguage.ID);
-
-        Value binding = context.getBindings(ProxyLanguage.ID);
-
-        TestObject to = new TestObject();
-        binding.executeVoid("invokeCallback", to, "accessMultiThreaded");
-
-        to.getTrigger().countDown();
-    }
-
-    public static class TestObject {
-        private Value guestObject;
-        private Map<String, Object> guestMap;
-        private final CountDownLatch trigger;
-
-        TestObject() {
-            this.trigger = new CountDownLatch(1);
-        }
-
-        CountDownLatch getTrigger() {
-            return trigger;
+        StoreAndPinTest() {
         }
 
         @HostAccess.Export
-        public void store(Value v) {
-            guestObject = v;
-            ValueAssert.assertValue(guestObject);
+        public void storeValueAndPin(Value v) {
+            value = v;
+            v.pin();
+        }
+
+        @HostAccess.Export
+        public void storeValue(Value v) {
+            value = v;
+        }
+
+        @HostAccess.Export
+        public void storeMapAndPin(Map<String, Object> v) {
+            Value asValue = Value.asValue(v);
+            this.value = asValue;
+            this.map = v;
+            this.value.pin();
+        }
+
+        @HostAccess.Export
+        public void storeMap(Map<String, Object> v) {
+            this.map = v;
         }
 
         @HostAccess.Export
         @HostAccess.DisableMethodScoping
-        public void storeScopeDisabled(Value v) {
-            guestObject = v;
-            ValueAssert.assertValue(guestObject);
+        public void storeDisabled(Value v) {
+            value = v;
+            ValueAssert.assertValue(v);
         }
 
         @HostAccess.Export
-        public void storeAndPin(Value v) {
-            guestObject = v;
-            ValueAssert.assertValue(guestObject);
-            guestObject.pin();
+        public void storeMapElement(Map<String, Object> m) {
+            this.value = Value.asValue(m.get("array"));
+            ValueAssert.assertValue(this.value);
         }
 
-        void releaseGuestObject() {
-            if (guestObject != null) {
-                guestObject.release();
+        @HostAccess.Export
+        public void storeValueElement(Value m) {
+            this.value = m.getMember("array");
+            ValueAssert.assertValue(this.value);
+        }
+
+        @HostAccess.Export
+        public void storeInGuest(Value m) {
+            Value guestObject = Context.getCurrent().asValue(new GuestObject());
+            this.value = guestObject.execute(m);
+            ValueAssert.assertValue(this.value);
+        }
+
+    }
+
+    static final Consumer<IllegalStateException> SCOPE_RELEASED = (e) -> {
+        if (!e.getMessage().startsWith("This scoped object has already been released.")) {
+            e.printStackTrace();
+        }
+        assertTrue(e.getMessage(), e.getMessage().startsWith("This scoped object has already been released."));
+    };
+
+    @Test
+    public void testStoreAndPin() {
+        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).allowPublicAccess(true).build();
+        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
+            StoreAndPinTest o = new StoreAndPinTest();
+            Map<String, Object> map = new HashMap<>();
+            map.put("cafe", "42");
+            map.put("array", ProxyArray.fromArray());
+            ProxyObject proxy = ProxyObject.fromMap(map);
+            Value test = context.asValue(o);
+
+            // no-op
+            test.pin();
+
+            // value accessed out of scope
+            test.invokeMember("storeValue", proxy);
+            assertFails(() -> o.value.isString(), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> o.value.asString(), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> o.value.pin(), IllegalStateException.class, SCOPE_RELEASED);
+
+            test.invokeMember("storeMap", proxy);
+            assertFails(() -> o.map.get(""), IllegalStateException.class, SCOPE_RELEASED);
+
+            // recursive references
+            assertFails(() -> test.invokeMember("storeValue", o.map), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> test.invokeMember("storeValue", o.value), IllegalStateException.class, SCOPE_RELEASED);
+
+            test.invokeMember("storeValueAndPin", proxy);
+            // TODO support this test
+            // assertTrue(o.value.isProxyObject());
+            ValueAssert.assertValue(o.value);
+
+            test.invokeMember("storeMapAndPin", proxy);
+            // maps can be pinned too
+            assertEquals("42", o.map.get("cafe"));
+            ValueAssert.assertValue(o.value);
+
+            // if scoping is disabled
+            test.invokeMember("storeDisabled", proxy);
+            // can pin afterwards
+            o.value.pin();
+            // and access anything
+            ValueAssert.assertValue(o.value);
+
+            // if values are accessed the scope should propagate
+            test.invokeMember("storeValueElement", proxy);
+            assertFails(() -> o.value.hasArrayElements(), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> o.value.pin(), IllegalStateException.class, SCOPE_RELEASED);
+
+            // if polyglot wrappers are accessed the scope should propagate
+            test.invokeMember("storeMapElement", proxy);
+            assertFails(() -> o.value.hasArrayElements(), IllegalStateException.class, SCOPE_RELEASED);
+            assertFails(() -> o.value.pin(), IllegalStateException.class, SCOPE_RELEASED);
+
+            // if a value is stored in guest we remove the scope
+            test.invokeMember("storeInGuest", proxy);
+            ValueAssert.assertValue(o.value);
+            // does nto fail
+            o.value.pin();
+
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static class GuestObject implements TruffleObject {
+
+        @ExportMessage
+        final Object execute(Object[] args, @CachedLibrary(limit = "3") InteropLibrary lib) {
+            for (Object arg : args) {
+                // make sure we can use it
+                lib.isExecutable(arg);
+                lib.hasArrayElements(arg);
+                lib.hasMembers(arg);
             }
-            if (guestMap != null) {
-                Value.asValue(guestMap).release();
-            }
+            return args[0];
         }
 
-        void pinGuestObject() {
-            guestObject.pin();
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
         }
 
-        @HostAccess.Export
-        public void storeAndPinPolyglotMap(Map<String, Object> map) {
-            this.guestMap = map;
-            Value.asValue(guestMap).pin();
-        }
+    }
 
-        @HostAccess.Export
-        public void storePolyglotMapElement(Map<String, Object> map) {
-            this.guestObject = Value.asValue(map.get("cafe"));
-        }
+    public static class TestMultiThread {
+        final ExecutorService executorService = Executors.newFixedThreadPool(32);
+        final List<Future<?>> futures = new ArrayList<>();
+        final AtomicInteger fails = new AtomicInteger();
+        final AtomicInteger successes = new AtomicInteger();
 
         @HostAccess.Export
-        public void accessAllMembers(Value v) {
-            Value elem = v.getMember("grow");
-            for (String key : elem.getMemberKeys()) {
-                ValueAssert.assertValue(elem.getMember(key));
-            }
-        }
-
-        @HostAccess.Export
-        public void accessMultiThreaded(Value v) throws InterruptedException {
-            CountDownLatch callbackReturnSignal = new CountDownLatch(1);
-            Thread accessor = new Thread() {
-                @Override
-                public void run() {
-                    Value elem = v.getMember("cafe");
-                    callbackReturnSignal.countDown();
+        public void storeMultiThreaded(Value v, int threads) {
+            for (int i = 0; i < threads; i++) {
+                futures.add(executorService.submit(() -> {
+                    boolean pinned = false;
                     try {
-                        trigger.await();
-                        ValueAssert.assertValue(elem);
-                        fail("accessing the references should not succeed as the callback function executing on the main thread already returned");
-                    } catch (Exception ex) {
-                        String msg = ex.getMessage();
-                        assertTrue("wrong exception " + msg, msg.contains("This scoped object has already been released."));
+                        v.pin();
+                        pinned = true;
+                        successes.incrementAndGet();
+                        // this may succeed
+                    } catch (IllegalStateException e) {
+                        // or fail if the scope happened to be closed before
+                        SCOPE_RELEASED.accept(e);
+                        fails.incrementAndGet();
                     }
-                }
-            };
-            accessor.start();
-            callbackReturnSignal.await();
-        }
-
-        public Object accessPolyglotMap() {
-            return guestMap.get("foobar");
-        }
-
-        public void accessGuestObject() {
-            ValueAssert.assertValue(guestObject);
-        }
-    }
-}
-
-@ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
-class GuestObject implements TruffleObject {
-
-    @ExportMessage
-    boolean hasMembers() {
-        return true;
-    }
-
-    @ExportMessage
-    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
-        return true;
-    }
-
-    @ExportMessage
-    Object readMember(String member) {
-        if (member.contentEquals("cafe")) {
-            return new AssociativeArray(member);
-        }
-        if (member.contentEquals("grow")) {
-            AssociativeArray a = new AssociativeArray(member);
-            for (int i = 0; i < 50; i++) {
-                String key = String.valueOf(i);
-                a.put(key, new GuestEcho(key + "_elem"));
-            }
-            return a;
-        }
-        return new GuestEcho(member);
-    }
-
-    @ExportMessage
-    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
-}
-
-@ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
-class GuestEcho implements TruffleObject {
-
-    final String value;
-
-    GuestEcho(String echo) {
-        value = echo;
-    }
-
-    @ExportMessage
-    boolean isString() {
-        return true;
-    }
-
-    @ExportMessage
-    String asString() {
-        return value;
-    }
-}
-
-@ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
-class AssociativeArray implements TruffleObject {
-
-    private Map<String, Object> map;
-    private String displayString;
-
-    AssociativeArray(String displayString) {
-        map = new HashMap<>();
-        this.displayString = displayString;
-    }
-
-    @ExportMessage
-    boolean hasMembers() {
-        return true;
-    }
-
-    @ExportMessage
-    Object readMember(String member) {
-        return get(member);
-    }
-
-    @TruffleBoundary
-    Object get(String member) {
-        return map.get(member);
-    }
-
-    @ExportMessage
-    void writeMember(String member, Object value) {
-        put(member, value);
-    }
-
-    @TruffleBoundary
-    void put(String key, Object value) {
-        map.put(key, value);
-    }
-
-    @ExportMessage
-    boolean isMemberRemovable(String member) {
-        return contains(member);
-    }
-
-    @ExportMessage
-    void removeMember(String member) {
-        remove(member);
-    }
-
-    @TruffleBoundary
-    void remove(String key) {
-        map.remove(key);
-    }
-
-    @ExportMessage
-    boolean isScope() {
-        return true;
-    }
-
-    @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return members();
-    }
-
-    @TruffleBoundary
-    Object members() {
-        return new Array(map.keySet().toArray());
-    }
-
-    @ExportMessage
-    boolean isMemberReadable(String member) {
-        return contains(member);
-    }
-
-    @TruffleBoundary
-    boolean contains(String key) {
-        return map.containsKey(key);
-    }
-
-    @ExportMessage
-    boolean isMemberModifiable(String member) {
-        return contains(member);
-    }
-
-    @ExportMessage
-    boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
-        return !contains(member);
-    }
-
-    @ExportMessage
-    boolean hasLanguage() {
-        return true;
-    }
-
-    @ExportMessage
-    public Class<? extends TruffleLanguage<?>> getLanguage() {
-        return ProxyLanguage.class;
-    }
-
-    @ExportMessage
-    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return displayString;
-    }
-
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        if (arguments.length > 0 && arguments[0] instanceof String) {
-            String cmd = (String) arguments[0];
-            if (cmd.startsWith("invokeCallback")) {
-                String method = InteropLibrary.getFactory().getUncached().asString(arguments[2]);
-                try {
-                    Object invokable = InteropLibrary.getFactory().getUncached().readMember(arguments[1], method);
-                    GuestObject go = new GuestObject();
-                    return InteropLibrary.getFactory().getUncached().execute(invokable, go);
-                } catch (UnknownIdentifierException e) {
-                }
+                    if (pinned) {
+                        // must succeed
+                        assertEquals("42", v.getMember("cafe").asString());
+                    } else {
+                        try {
+                            v.getMember("cafe");
+                            Assert.fail("pin was not successful getMember should not work");
+                        } catch (IllegalStateException e) {
+                            // or fail if the scope happened to be closed before
+                            SCOPE_RELEASED.accept(e);
+                        }
+                    }
+                }));
             }
         }
-        throw UnsupportedMessageException.create();
-    }
-}
 
-@ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
-class Array implements TruffleObject {
-
-    private final Object[] array;
-
-    Array(Object[] array) {
-        this.array = array;
     }
 
-    @ExportMessage
-    boolean hasArrayElements() {
-        return true;
+    @Test
+    public void testMultiThreading() throws InterruptedException, ExecutionException {
+        TestMultiThread o = new TestMultiThread();
+        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).allowPublicAccess(true).build();
+        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
+            Map<String, Object> map = new ConcurrentHashMap<>();
+            map.put("cafe", "42");
+            ProxyObject proxy = ProxyObject.fromMap(map);
+            Value test = context.asValue(o);
+
+            // repeat a few times to cause races
+            for (int i = 0; i < 100; i++) {
+                int[] testValues = new int[]{1, 4, 8, 16, 32, 64, 128, 256};
+                for (int threads : testValues) {
+                    o.futures.clear();
+                    o.fails.set(0);
+                    o.successes.set(0);
+                    test.invokeMember("storeMultiThreaded", proxy, threads);
+                    assertEquals(threads, o.futures.size());
+                    for (Future<?> f : o.futures) {
+                        f.get();
+                    }
+
+                    assertEquals(threads, o.fails.get() + o.successes.get());
+
+                }
+            }
+            o.executorService.shutdownNow();
+            o.executorService.awaitTermination(10, TimeUnit.SECONDS);
+        }
     }
 
-    @ExportMessage
-    Object readArrayElement(long index) {
-        return array[(int) index];
-    }
-
-    @ExportMessage
-    long getArraySize() {
-        return array.length;
-    }
-
-    @ExportMessage
-    boolean isArrayElementReadable(long index) {
-        return index < array.length;
-    }
 }

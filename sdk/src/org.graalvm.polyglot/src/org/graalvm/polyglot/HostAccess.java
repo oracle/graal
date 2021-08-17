@@ -1085,8 +1085,10 @@ public final class HostAccess {
 
         /**
          * Sets the default scoping of callback function parameters. Parameters escape from the
-         * scope of a function, if a reference to them is kept after the function returns.
+         * scope of a function, if a reference to them is kept after the function returns. To use a
+         * value beyond the method scope {@link Value#pin()} may be used.
          *
+         * @see Value#pin()
          * @since 21.3
          */
         public Builder methodScoping(boolean scopingDefault) {

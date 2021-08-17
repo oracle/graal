@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
+import com.oracle.truffle.host.HostMethodScope.ScopedObject;
 import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 
 public class HostLanguageService extends AbstractHostService {
@@ -124,30 +125,29 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public Object toGuestValue(Object hostContext, Object hostValue) {
+    public Object toGuestValue(Object hostContext, Object hostValue, boolean asValue) {
         HostContext context = (HostContext) hostContext;
         assert validHostValue(hostValue, context) : "polyglot unboxing should be a no-op at this point.";
-
         if (HostContext.isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
             return HostProxy.toProxyGuestObject(context, (Proxy) hostValue);
+        } else if (!asValue && hostValue instanceof ScopedObject) {
+            return ((ScopedObject) hostValue).unwrapForGuest();
         } else if (hostValue instanceof TruffleObject) {
             return hostValue;
         } else if (hostValue instanceof Class) {
             return HostObject.forClass((Class<?>) hostValue, context);
         } else if (hostValue == null) {
             return HostObject.NULL;
-        } else if (hostValue.getClass().isArray()) {
-            return HostObject.forObject(hostValue, context);
         } else {
-            return HostInteropReflect.asTruffleViaReflection(hostValue, context);
+            return HostObject.forObject(hostValue, context);
         }
     }
 
     private boolean validHostValue(Object hostValue, HostContext context) {
         Object unboxed = language.access.toGuestValue(context.internalContext, hostValue);
-        return unboxed == null || unboxed == hostValue;
+        return unboxed == hostValue;
     }
 
     @Override
@@ -282,22 +282,7 @@ public class HostLanguageService extends AbstractHostService {
 
     @Override
     public void pin(Object receiver) {
-        if (receiver instanceof ScopedGuestObject) {
-            ScopedGuestObject sgo = (ScopedGuestObject) receiver;
-            sgo.pin();
-        } else {
-            throw ScopedGuestObject.createNoScopeException();
-        }
-    }
-
-    @Override
-    public void release(Object receiver) {
-        if (receiver instanceof ScopedGuestObject) {
-            ScopedGuestObject sgo = (ScopedGuestObject) receiver;
-            sgo.release();
-        } else {
-            throw ScopedGuestObject.createNoScopeException();
-        }
+        HostMethodScope.pin(receiver);
     }
 
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
@@ -335,14 +320,6 @@ public class HostLanguageService extends AbstractHostService {
             default:
                 return false;
         }
-    }
-
-    @Override
-    public Object unpackIfScoped(Object receiver) {
-        if (receiver instanceof ScopedGuestObject) {
-            return ((ScopedGuestObject) receiver).delegate;
-        }
-        return receiver;
     }
 
 }
