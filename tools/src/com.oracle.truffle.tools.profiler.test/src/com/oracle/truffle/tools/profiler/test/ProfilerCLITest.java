@@ -305,7 +305,6 @@ public class ProfilerCLITest {
         // ...
         int threadCount = 0;
         int headerCount = 0;
-        int entryCount = 0;
         for (int i = 4; i < output.length; i++) {
             if (output[i].contains("Thread")) {
                 threadCount++;
@@ -313,15 +312,10 @@ public class ProfilerCLITest {
             if (output[i].contains("Name")) {
                 headerCount++;
             }
-            if (output[i].matches(NAME_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + LOCATION_REGEX)) {
-                entryCount++;
-            }
         }
         // Sometimes the main thread is caught while declaring functions
         Assert.assertTrue(threadCount >= EXEC_COUNT);
         Assert.assertTrue(headerCount >= EXEC_COUNT);
-        // 5 threads with 3 entries, 5 with 4.
-        Assert.assertTrue(5 * 3 + 5 * 4 >=  entryCount);
         // @formatter:on
     }
 
@@ -352,12 +346,13 @@ public class ProfilerCLITest {
             gatherSelfHitTimes = sampler.isGatherSelfHitTimes();
             context.close();
         }
-        JSONObject output = new JSONObject(out.toString());
+        JSONArray contexts = (JSONArray) new JSONObject(out.toString()).get("contexts");
+        JSONObject firstContext = (JSONObject) contexts.get(0);
 
-        Assert.assertEquals("Period wrong in json", period, Long.valueOf((Integer) output.get("period")).longValue());
-        Assert.assertEquals("Sample count not correct in json", sampleCount, Long.valueOf((Integer) output.get("sample_count")).longValue());
-        Assert.assertEquals("Gather self times not correct in json", gatherSelfHitTimes, output.get("gathered_hit_times"));
-        JSONArray profile = (JSONArray) output.get("profile");
+        Assert.assertEquals("Period wrong in json", period, Long.valueOf((Integer) firstContext.get("period")).longValue());
+        Assert.assertEquals("Sample count not correct in json", sampleCount, Long.valueOf((Integer) firstContext.get("sample_count")).longValue());
+        Assert.assertEquals("Gather self times not correct in json", gatherSelfHitTimes, firstContext.get("gathered_hit_times"));
+        JSONArray profile = (JSONArray) firstContext.get("profile");
 
         // We are single threaded in this test
         JSONObject perThreadProfile = (JSONObject) profile.get(0);

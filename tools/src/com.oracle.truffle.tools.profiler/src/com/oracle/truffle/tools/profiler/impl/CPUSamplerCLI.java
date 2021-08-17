@@ -176,7 +176,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                     printSamplingCallTree(out, options, data);
                     break;
                 case JSON:
-                    printSamplingJson(out, sampler);
+                    printSamplingJson(out, options, data);
             }
         }
     }
@@ -232,24 +232,33 @@ class CPUSamplerCLI extends ProfilerCLI {
         out.println("-------------------------------------------------------------------------------- ");
     }
 
-    @SuppressWarnings("deprecation")
-    private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
+    private static void printSamplingJson(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
+        boolean gatheredHitTimes = options.get(GATHER_HIT_TIMES);
         JSONObject output = new JSONObject();
         output.put("tool", CPUSamplerInstrument.ID);
         output.put("version", CPUSamplerInstrument.VERSION);
-        output.put("sample_count", sampler.getSampleCount());
-        output.put("period", sampler.getPeriod());
-        output.put("gathered_hit_times", sampler.isGatherSelfHitTimes());
+        JSONArray contexts = new JSONArray();
+        for (CPUSamplerData samplerData : data.values()) {
+            contexts.put(perContextData(samplerData, gatheredHitTimes));
+        }
+        output.put("contexts", contexts);
+        out.println(output);
+    }
+
+    private static JSONObject perContextData(CPUSamplerData samplerData, boolean gatheredHitTimes) {
+        JSONObject output = new JSONObject();
+        output.put("sample_count", samplerData.getSamples());
+        output.put("period", samplerData.getSampleInterval());
+        output.put("gathered_hit_times", gatheredHitTimes);
         JSONArray profile = new JSONArray();
-        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
-        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadToNodesMap.entrySet()) {
+        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : samplerData.getThreadData().entrySet()) {
             JSONObject perThreadProfile = new JSONObject();
             perThreadProfile.put("thread", entry.getKey().toString());
             perThreadProfile.put("samples", getSamplesRec(entry.getValue()));
             profile.put(perThreadProfile);
         }
         output.put("profile", profile);
-        out.println(output);
+        return output;
     }
 
     private static JSONArray getSamplesRec(Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
@@ -266,6 +275,8 @@ class CPUSamplerCLI extends ProfilerCLI {
             sample.put("self_interpreted_hit_count", payload.getSelfInterpretedHitCount());
             sample.put("self_compiled_hit_count", payload.getSelfCompiledHitCount());
             sample.put("self_hit_times", payload.getSelfHitTimes());
+            sample.put("self_tier_count", payload.getSelfTierCount());
+            sample.put("tier_count", payload.getTierCount());
             sample.put("children", getSamplesRec(node.getChildren()));
             samples.put(sample);
         }
@@ -351,8 +362,8 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final long samplesTaken;
         private int maxTier = 0;
         private int maxNameLength = 10;
-        private String title;
-        private String format;
+        private final String title;
+        private final String format;
 
         SamplingHistogram(CPUSamplerData data, OptionValues options) {
             this.summariseThreads = options.get(SUMMARISE_THREADS);
