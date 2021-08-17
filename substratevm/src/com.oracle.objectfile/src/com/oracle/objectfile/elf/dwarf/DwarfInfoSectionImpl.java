@@ -1335,6 +1335,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeInlineSubroutine(DebugContext context, ClassEntry classEntry, Range range, int subprogramOffset, int depth, byte[] buffer, int p) {
         assert range.isInlined();
         int pos = p;
+        log(context, "  [0x%08x] concrete inline subroutine [0x%x, 0x%x] %s", pos, range.getLo(), range.getHi(), range.getSymbolName());
         final Range callerSubrange = range.getCaller();
         assert callerSubrange != null;
         int callLine = callerSubrange.getLine();
@@ -1358,17 +1359,17 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         } else {
             code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine;
         }
-        verboseLog(context, "  [0x%08x] <%d> Abbrev Number  %d", pos, depth + 2, code);
+        log(context, "  [0x%08x] <%d> Abbrev Number  %d", pos, depth + 1, code);
         pos = writeAbbrevCode(code, buffer, pos);
-        verboseLog(context, "  [0x%08x]     abstract_origin  0x%X", pos, subprogramOffset);
+        log(context, "  [0x%08x]     abstract_origin  0x%x", pos, subprogramOffset);
         pos = writeAttrRef4(subprogramOffset, buffer, pos);
-        verboseLog(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
+        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
         pos = writeAttrAddress(range.getLo(), buffer, pos);
-        verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
+        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
         pos = writeAttrAddress(range.getHi(), buffer, pos);
-        verboseLog(context, "  [0x%08x]     call_file  %d", pos, fileIndex);
+        log(context, "  [0x%08x]     call_file  %d", pos, fileIndex);
         pos = writeAttrData4(fileIndex, buffer, pos);
-        verboseLog(context, "  [0x%08x]     call_line  %d", pos, callLine);
+        log(context, "  [0x%08x]     call_line  %d", pos, callLine);
         pos = writeAttrData4(callLine, buffer, pos);
         return pos;
     }
@@ -1414,12 +1415,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             }
         }
         /* We should never get here. */
-        assert false;
+        assert false : "should not reach";
         return 0;
     }
 
     private static int findHi(List<PrimaryEntry> classPrimaryEntries, boolean includesDeoptTarget, boolean isDeoptTargetCU) {
         if (isDeoptTargetCU || !includesDeoptTarget) {
+            assert classPrimaryEntries.size() > 0 : "expected to find primary methods";
             /* Either way the last entry is the one we want. */
             return classPrimaryEntries.get(classPrimaryEntries.size() - 1).getPrimary().getHi();
         } else {
@@ -1435,7 +1437,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             }
         }
         /* We should never get here. */
-        assert false;
+        assert false : "should not reach";
         return 0;
     }
 
