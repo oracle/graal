@@ -241,7 +241,7 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         this.containingElement = containingElement;
         this.relocatedSection = relocatedSection;
         this.sectionOffset = offset; // gets turned into a vaddr on write-out
-        this.log2length = encodeRequestedLength(requestedLength);;
+        this.log2length = encodeRequestedLength(requestedLength);
         this.kind = kind;
         SymbolTable symtab = relocatedSection.getOwner().getSymbolTable();
         // FIXME: also allow section numbers here, for non-extern symbols
