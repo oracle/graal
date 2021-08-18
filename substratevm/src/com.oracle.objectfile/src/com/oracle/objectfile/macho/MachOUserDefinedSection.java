@@ -170,9 +170,9 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
 
         if (getOwner().cpuType == MachOCpuType.X86_64) {
             /*
-             * NOTE: X86_64 Mach-O does not support explicit addends, and inline addends are applied even
-             * during dynamic linking. So if the caller supplies an explicit addend, we turn it into an
-             * implicit one by updating our content.
+             * NOTE: X86_64 Mach-O does not support explicit addends, and inline addends are applied
+             * even during dynamic linking. So if the caller supplies an explicit addend, we turn it
+             * into an implicit one by updating our content.
              */
             long currentInlineAddendValue = sbb.readTruncatedLong(length);
             long desiredInlineAddendValue;
@@ -190,12 +190,12 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
 
             /*
              * One more complication: for PC-relative relocation, at least on x86-64, Mach-O linkers
-             * (both AOT ld and dyld) adjust the calculation to compensate for the fact that it's the
-             * *next* instruction that the PC-relative reference gets resolved against. Note that ELF
-             * doesn't do this compensation. Our interface duplicates the ELF behaviour, so we have to
-             * act against this Mach-O-specific fixup here, by *adding* a little to the addend. The
-             * amount we add is always the length in bytes of the relocation site (since on x86-64 the
-             * reference is always the last field in a PC-relative instruction).
+             * (both AOT ld and dyld) adjust the calculation to compensate for the fact that it's
+             * the *next* instruction that the PC-relative reference gets resolved against. Note
+             * that ELF doesn't do this compensation. Our interface duplicates the ELF behaviour, so
+             * we have to act against this Mach-O-specific fixup here, by *adding* a little to the
+             * addend. The amount we add is always the length in bytes of the relocation site (since
+             * on x86-64 the reference is always the last field in a PC-relative instruction).
              */
             if (RelocationKind.isPCRelative(k)) {
                 desiredInlineAddendValue += length;
@@ -218,11 +218,13 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
                 case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
                     if (explicitAddend != 0) {
                         /*
-                         * These relocations should use an explicit addend reloc record instead of an embedded addend,
-                         * according to the Mach-O ld code at
-                         * https://opensource.apple.com/source/ld64/ld64-274.2/src/ld/parsers/macho_relocatable_file.cpp.auto.html
+                         * These relocations should use an explicit addend reloc record instead of
+                         * an embedded addend, according to the Mach-O ld code at
+                         * https://opensource.apple.com/source/ld64/ld64-274.2/src/ld/parsers/
+                         * macho_relocatable_file.cpp.auto.html
                          *
-                         * > xxxx instruction at xxxx has embedded addend. ARM64_RELOC_ADDEND should be used instead
+                         * > xxxx instruction at xxxx has embedded addend. ARM64_RELOC_ADDEND should
+                         * be used instead
                          */
                         RelocationInfo addend = RelocationInfo.newAddend(el, this, offset, length, explicitAddend);
                         el.add(addend);

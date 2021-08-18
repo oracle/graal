@@ -191,6 +191,7 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
     public static RelocationInfo newAddend(MachORelocationElement containingElement, MachOSection relocatedSection, int offset, int requestedLength, long addend) {
         return new RelocationInfo(containingElement, relocatedSection, offset, requestedLength, addend);
     }
+
     private static byte encodeRequestedLength(int requestedLength) {
         /*
          * NOTE: the Mach-O spec claims that r_length == 3 means a 4-byte length and not an 8-byte
