@@ -27,6 +27,7 @@ package com.oracle.svm.jfr;
 import java.util.List;
 
 import com.oracle.svm.core.jdk.JDK15OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -52,9 +53,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @Alias static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    @TargetElement(onlyWith = JDK15OrEarlier.class)
-    private volatile boolean recording;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
 
@@ -89,9 +87,8 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#isRecording}. */
     @Substitute
-    @TargetElement(onlyWith = JDK15OrEarlier.class)
-    public void isRecording() {
-        SubstrateJVM.get().unsafeIsRecording();
+    public boolean isRecording() {
+        return SubstrateJVM.get().unsafeIsRecording();
     }
 
     /** See {@link JVM#getAllEventClasses}. */
