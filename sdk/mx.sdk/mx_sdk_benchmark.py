@@ -664,7 +664,22 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
     def testPeakPerformance(self, warmup):
         jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
         jmeterPath = os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
-        jmeterCmd = [mx.get_jdk().java, "-jar", jmeterPath, "-n", "-t", self.workloadConfigurationPath(), "-j", "/dev/stdout"] # pylint: disable=line-too-long
+        extraVMArgs = []
+        if mx.get_jdk().javaCompliance >= '9':
+            extraVMArgs += ["--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+                            "--add-opens=java.desktop/sun.swing=ALL-UNNAMED",
+                            "--add-opens=java.desktop/javax.swing.text.html=ALL-UNNAMED",
+                            "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
+                            "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                            "--add-opens=java.desktop/sun.awt.X11=ALL-UNNAMED",
+                            "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                            "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+                            "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+                            "--add-opens=java.base/java.util=ALL-UNNAMED",
+                            "--add-opens=java.base/java.text=ALL-UNNAMED"]
+        jmeterCmd = [mx.get_jdk().java] + extraVMArgs + ["-jar", jmeterPath,
+                                                         "-t", self.workloadConfigurationPath(),
+                                                         "-n", "-j", "/dev/stdout"]
         mx.log("Running JMeter: {0}".format(jmeterCmd))
         output = mx.TeeOutputCapture(mx.OutputCapture())
         mx.run(jmeterCmd, out=output, err=output)
