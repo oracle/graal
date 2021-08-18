@@ -333,9 +333,6 @@ public class MultiTypeState extends TypeState {
 
     @Override
     public boolean closeToAllInstantiated(BigBang bb) {
-        if (!(bb instanceof PointsToAnalysis)) {
-            return false;
-        }
         PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
         if (typesCount > 200) {
             MultiTypeState allInstState = (MultiTypeState) pointsToAnalysis.getAllInstantiatedTypes();
