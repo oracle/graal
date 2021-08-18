@@ -79,7 +79,7 @@ public class MultiTypeState extends TypeState {
         this.merged = false;
         assert typesCount > 1 : "Multi type state with single type.";
         assert objects.length > 1 : "Multi type state with single object.";
-        assert !bb.extendedAsserts() || checkObjects(bb);
+        assert !bb.extendedAsserts() || checkObjects();
         PointsToStats.registerTypeState(bb, this);
     }
 
@@ -113,7 +113,7 @@ public class MultiTypeState extends TypeState {
         return objectTypeIds;
     }
 
-    private boolean checkObjects(BigBang unused) {
+    private boolean checkObjects() {
         assert bb.extendedAsserts();
 
         for (int idx = 0; idx < objects.length - 1; idx++) {
@@ -328,7 +328,7 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public boolean closeToAllInstantiated(BigBang bb) {
+    public boolean closeToAllInstantiated(BigBang unused) {
         if (typesCount > 200 && bb != null) {
             MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypes();
             return typesCount * 100L / allInstState.typesCount > 75;

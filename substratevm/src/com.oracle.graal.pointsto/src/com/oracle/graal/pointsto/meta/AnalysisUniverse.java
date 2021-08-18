@@ -162,7 +162,7 @@ public class AnalysisUniverse implements Universe {
     public void setAnalysisDataValid(BigBang bb, boolean dataIsValid) {
         if (dataIsValid) {
             buildSubTypes();
-            collectMethodImplementations(bb);
+            collectMethodImplementations();
         }
         analysisDataValid = dataIsValid;
     }
@@ -603,7 +603,7 @@ public class AnalysisUniverse implements Universe {
         }
     }
 
-    private void collectMethodImplementations(BigBang unused) {
+    private void collectMethodImplementations() {
         for (AnalysisMethod method : methods.values()) {
 
             Set<AnalysisMethod> implementations = getMethodImplementations(bb, method);
