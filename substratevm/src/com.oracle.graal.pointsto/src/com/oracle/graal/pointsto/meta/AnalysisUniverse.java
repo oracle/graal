@@ -159,7 +159,7 @@ public class AnalysisUniverse implements Universe {
         return sealed;
     }
 
-    public void setAnalysisDataValid(BigBang bb, boolean dataIsValid) {
+    public void setAnalysisDataValid(boolean dataIsValid) {
         if (dataIsValid) {
             buildSubTypes();
             collectMethodImplementations();
