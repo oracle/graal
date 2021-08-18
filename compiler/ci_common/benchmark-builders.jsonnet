@@ -87,8 +87,8 @@
     c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.scala_dacapo,
     c.weekly     + hw.x52 + jdk17 + cc.libgraal + bench.scala_dacapo_timing,
     c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.scala_dacapo_timing,
-    c.post_merge + hw.x52 + jdk17 + cc.libgraal + bench.renaissance,
-    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.renaissance,
+    #c.post_merge + hw.x52 + jdk17 + cc.libgraal + bench.renaissance,
+    #c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.renaissance,
     c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.specjvm2008,
     c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.specjvm2008,
     c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.specjbb2005,
@@ -97,12 +97,10 @@
     c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.specjbb2015,
     c.weekly     + hw.x52 + jdk17 + cc.libgraal + bench.specjbb2015_full_machine,
     c.on_demand  + hw.x52 + jdk17 + cc.jargraal + bench.specjbb2015_full_machine,
-    c.weekly     + hw.x52 + jdk17 + cc.libgraal + bench.renaissance_0_10,
-    c.on_demand  + hw.x52 + jdk17 + cc.jargraal + bench.renaissance_0_10,
     c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.awfy,
     c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.awfy,
-    c.post_merge + hw.x52 + jdk17 + cc.libgraal + bench.renaissance_legacy,
-    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.renaissance_legacy,
+    #c.post_merge + hw.x52 + jdk17 + cc.libgraal + bench.renaissance_legacy,
+    #c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.renaissance_legacy,
     c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.micros_graal_whitebox,
     c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.micros_graal_whitebox,
     c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.micros_graal_dist,
@@ -121,6 +119,7 @@
     ]
   for jdk in amd64_jdks
   for suite in bench.groups.profiled_suites
+  if suite.is_jdk_supported(jdk.jdk_version)
   ]),
 
   // Microservices
@@ -141,6 +140,7 @@
     ])
   for jdk in amd64_jdks
   for suite in bench.groups.weekly_forks_suites
+  if suite.is_jdk_supported(jdk.jdk_version)
   ]),
 
   local aarch64_builds = std.flattenArrays([
@@ -150,6 +150,7 @@
     ]
   for jdk in aarch64_jdks
   for suite in bench.groups.main_suites
+  if suite.is_jdk_supported(jdk.jdk_version)
   ]),
 
   local all_builds = main_builds + weekly_forks_builds + profiling_builds + microservice_builds + aarch64_builds,

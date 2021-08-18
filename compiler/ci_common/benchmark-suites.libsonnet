@@ -30,7 +30,9 @@
     ],
     timelimit: "30:00",
     forks_batches:: null, // disables it for now (GR-30956)
-    forks_timelimit:: "3:00:00"
+    forks_timelimit:: "3:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   dacapo: cc.compiler_benchmark + c.heap.default + {
@@ -40,7 +42,9 @@
     ],
     timelimit: "45:00",
     forks_batches:: 1,
-    forks_timelimit:: "02:45:00"
+    forks_timelimit:: "02:45:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   dacapo_timing: cc.compiler_benchmark + c.heap.default + {
@@ -48,7 +52,9 @@
     run+: [
       self.benchmark_cmd + ["dacapo-timing:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "45:00"
+    timelimit: "45:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   scala_dacapo: cc.compiler_benchmark + c.heap.default + {
@@ -58,7 +64,9 @@
     ],
     timelimit: "45:00",
     forks_batches:: 1,
-    forks_timelimit:: "03:30:00"
+    forks_timelimit:: "03:30:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   scala_dacapo_timing: cc.compiler_benchmark + c.heap.default + {
@@ -66,7 +74,9 @@
     run+: [
       self.benchmark_cmd + ["scala-dacapo-timing:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "45:00"
+    timelimit: "45:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   renaissance: cc.compiler_benchmark + c.heap.default + {
@@ -82,14 +92,18 @@
     ],
     timelimit: "3:00:00",
     forks_batches:: 4,
-    forks_timelimit:: "06:30:00"
+    forks_timelimit:: "06:30:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: 11
   },
 
   renaissance_0_10: self.renaissance + {
     suite:: "renaissance-0-10",
     environment+: {
       "RENAISSANCE_VERSION": "0.10.0"
-    }
+    },
+    min_jdk_version:: 8,
+    max_jdk_version:: 11
   },
 
   renaissance_legacy: cc.compiler_benchmark + c.heap.default + {
@@ -105,7 +119,9 @@
     ],
     timelimit: "2:45:00",
     forks_batches:: 4,
-    forks_timelimit:: "06:30:00"
+    forks_timelimit:: "06:30:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: 11
   },
 
   specjbb2005: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
@@ -118,7 +134,9 @@
     ],
     timelimit: "4:00:00",
     forks_batches:: 1,
-    forks_timelimit:: "20:00:00"
+    forks_timelimit:: "20:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
@@ -131,7 +149,9 @@
     ],
     timelimit: "3:00:00",
     forks_batches:: 1,
-    forks_timelimit:: "20:00:00"
+    forks_timelimit:: "20:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   specjbb2015_full_machine: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
@@ -142,7 +162,9 @@
     run+: [
       self.plain_benchmark_cmd + ["specjbb2015", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00"
+    timelimit: "3:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   specjvm2008: cc.compiler_benchmark + c.heap.large + {
@@ -158,7 +180,9 @@
     ],
     timelimit: "3:00:00",
     forks_batches:: 5,
-    forks_timelimit:: "06:00:00"
+    forks_timelimit:: "06:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   // Microservice benchmarks
@@ -224,7 +248,9 @@
       self.benchmark_cmd + ["spring-helloworld-wrk:helloworld"]          + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms8m",    "-Xmx64m",   "-XX:ActiveProcessorCount=1", "-XX:MaxDirectMemorySize=256m"],
       bench_upload
     ],
-    timelimit: "7:00:00"
+    timelimit: "7:00:00",
+    min_jdk_version:: 11, # GR-32793: disabled JDK8
+    max_jdk_version:: null
   },
 
   // JMH microbenchmarks
@@ -233,7 +259,9 @@
     run+: [
       self.benchmark_cmd + ["jmh-whitebox:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00"
+    timelimit: "3:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   micros_graal_dist: cc.compiler_benchmark + c.heap.default + {
@@ -241,7 +269,9 @@
     run+: [
       self.benchmark_cmd + ["jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00"
+    timelimit: "3:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   micros_misc_graal_dist: cc.compiler_benchmark + c.heap.default + {
@@ -249,7 +279,9 @@
     run+: [
       self.benchmark_cmd + ["jmh-dist:GRAAL_BENCH_MISC", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00"
+    timelimit: "3:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   micros_shootout_graal_dist: cc.compiler_benchmark + c.heap.default {
@@ -257,6 +289,8 @@
     run+: [
       self.benchmark_cmd + ["jmh-dist:GRAAL_BENCH_SHOOTOUT", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00"
+    timelimit: "3:00:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   }
 }

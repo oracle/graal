@@ -16,6 +16,7 @@
     c.weekly + hw.x52 + jdk + cc.c2 + suite
   for jdk in amd64_jdks
   for suite in bench.groups.all_suites
+  if suite.is_jdk_supported(jdk.jdk_version)
   ],
 
 
@@ -25,12 +26,14 @@
     ]
   for jdk in amd64_jdks
   for suite in bench.groups.profiled_suites
+  if suite.is_jdk_supported(jdk.jdk_version)
   ]),
 
   local weekly_forks_builds = std.flattenArrays([
     cc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.c2 + suite)
   for jdk in amd64_jdks
   for suite in bench.groups.weekly_forks_suites
+  if suite.is_jdk_supported(jdk.jdk_version)
   ]),
 
   local aarch64_builds = std.flattenArrays([
@@ -39,6 +42,7 @@
     ]
   for jdk in aarch64_jdks
   for suite in bench.groups.main_suites
+  if suite.is_jdk_supported(jdk.jdk_version)
   ]),
 
   local all_builds = hotspot_main_builds + hotspot_profiling_builds + weekly_forks_builds + aarch64_builds,
