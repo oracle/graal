@@ -470,6 +470,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
             return fmt.toString();
         }
+
+        @Override
+        public FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode returnValue) {
+            throw new InternalError();
+        }
+
+        @Override
+        public boolean canMergeIntrinsicReturns() {
+            return false;
+        }
     }
 
     protected IntrinsicContext getIntrinsic() {

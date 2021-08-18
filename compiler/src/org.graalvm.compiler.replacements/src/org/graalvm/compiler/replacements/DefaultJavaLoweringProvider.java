@@ -54,12 +54,14 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -298,10 +300,36 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 identityHashCodeSnippets.lower((IdentityHashCodeNode) n, tool);
             } else if (n instanceof ObjectIsArrayNode || n instanceof ClassIsArrayNode) {
                 isArraySnippets.lower((LogicNode) n, tool);
+            } else if (n instanceof ComputeObjectAddressNode) {
+                StructuredGraph graph = (StructuredGraph) n.graph();
+                if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
+                    lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
+                }
             } else {
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
             }
         }
+    }
+
+    private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
+        /*
+         * Lower the node into a ComputeObjectAddress node and an Add but ensure that it's below any
+         * potential safepoints and above it's uses.
+         */
+        for (Node use : n.usages().snapshot()) {
+            if (use instanceof FixedNode) {
+                FixedNode fixed = (FixedNode) use;
+                StructuredGraph graph = n.graph();
+                GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));
+                graph.addBeforeFixed(fixed, address);
+                AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
+                use.replaceFirstInput(n, add);
+            } else {
+                throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode " + n);
+            }
+        }
+        GraphUtil.unlinkFixedNode(n);
+        n.safeDelete();
     }
 
     private void lowerSecondHalf(UnpackEndianHalfNode n) {
@@ -533,6 +561,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed);
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
                 condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
+            }
+            if (condition != null && condition.isTautology()) {
+                // Skip unnecessary guards
+                condition = null;
             }
         }
         BarrierType barrierType = barrierSet.arrayStoreBarrierType(storageKind);
