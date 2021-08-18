@@ -7,10 +7,10 @@
 
   local jdk8  = c.oraclejdk8,
   local jdk11 = c.labsjdk11,
-  local jdk16 = c.labsjdk16,
+  local jdk17 = c.labsjdk17,
 
-  local amd64_jdks = [jdk8, jdk11, jdk16],
-  local aarch64_jdks = [jdk11, jdk16],
+  local amd64_jdks = [jdk8, jdk11, jdk17],
+  local aarch64_jdks = [jdk11, jdk17],
 
   local hotspot_main_builds = [
     c.weekly + hw.x52 + jdk + cc.c2 + suite

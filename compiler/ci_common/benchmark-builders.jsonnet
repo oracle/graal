@@ -7,10 +7,10 @@
 
   local jdk8  = c.oraclejdk8,
   local jdk11 = c.labsjdk11,
-  local jdk16 = c.labsjdk16,
+  local jdk17 = c.labsjdk17,
 
-  local amd64_jdks = [jdk8, jdk11, jdk16],
-  local aarch64_jdks = [jdk11, jdk16],
+  local amd64_jdks = [jdk8, jdk11, jdk17],
+  local aarch64_jdks = [jdk11, jdk17],
 
   local main_builds = [
     c.daily      + hw.x52 + jdk8  + cc.libgraal + bench.dacapo,
@@ -79,38 +79,38 @@
     c.daily      + hw.x52 + jdk11 + cc.libgraal + bench.micros_shootout_graal_dist,
     c.weekly     + hw.x52 + jdk11 + cc.jargraal + bench.micros_shootout_graal_dist,
 
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.dacapo,
-    c.daily      + hw.x52 + jdk16 + cc.jargraal + bench.dacapo,
-    c.weekly     + hw.x52 + jdk16 + cc.libgraal + bench.dacapo_timing,
-    c.weekly     + hw.x52 + jdk16 + cc.jargraal + bench.dacapo_timing,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.scala_dacapo,
-    c.daily      + hw.x52 + jdk16 + cc.jargraal + bench.scala_dacapo,
-    c.weekly     + hw.x52 + jdk16 + cc.libgraal + bench.scala_dacapo_timing,
-    c.weekly     + hw.x52 + jdk16 + cc.jargraal + bench.scala_dacapo_timing,
-    c.post_merge + hw.x52 + jdk16 + cc.libgraal + bench.renaissance,
-    c.daily      + hw.x52 + jdk16 + cc.jargraal + bench.renaissance,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.specjvm2008,
-    c.daily      + hw.x52 + jdk16 + cc.jargraal + bench.specjvm2008,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.specjbb2005,
-    c.daily      + hw.x52 + jdk16 + cc.jargraal + bench.specjbb2005,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.specjbb2015,
-    c.weekly     + hw.x52 + jdk16 + cc.jargraal + bench.specjbb2015,
-    c.weekly     + hw.x52 + jdk16 + cc.libgraal + bench.specjbb2015_full_machine,
-    c.on_demand  + hw.x52 + jdk16 + cc.jargraal + bench.specjbb2015_full_machine,
-    c.weekly     + hw.x52 + jdk16 + cc.libgraal + bench.renaissance_0_10,
-    c.on_demand  + hw.x52 + jdk16 + cc.jargraal + bench.renaissance_0_10,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.awfy,
-    c.daily      + hw.x52 + jdk16 + cc.jargraal + bench.awfy,
-    c.post_merge + hw.x52 + jdk16 + cc.libgraal + bench.renaissance_legacy,
-    c.daily      + hw.x52 + jdk16 + cc.jargraal + bench.renaissance_legacy,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.micros_graal_whitebox,
-    c.weekly     + hw.x52 + jdk16 + cc.jargraal + bench.micros_graal_whitebox,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.micros_graal_dist,
-    c.weekly     + hw.x52 + jdk16 + cc.jargraal + bench.micros_graal_dist,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.micros_misc_graal_dist,
-    c.weekly     + hw.x52 + jdk16 + cc.jargraal + bench.micros_misc_graal_dist,
-    c.daily      + hw.x52 + jdk16 + cc.libgraal + bench.micros_shootout_graal_dist,
-    c.weekly     + hw.x52 + jdk16 + cc.jargraal + bench.micros_shootout_graal_dist
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.dacapo,
+    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.dacapo,
+    c.weekly     + hw.x52 + jdk17 + cc.libgraal + bench.dacapo_timing,
+    c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.dacapo_timing,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.scala_dacapo,
+    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.scala_dacapo,
+    c.weekly     + hw.x52 + jdk17 + cc.libgraal + bench.scala_dacapo_timing,
+    c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.scala_dacapo_timing,
+    c.post_merge + hw.x52 + jdk17 + cc.libgraal + bench.renaissance,
+    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.renaissance,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.specjvm2008,
+    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.specjvm2008,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.specjbb2005,
+    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.specjbb2005,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.specjbb2015,
+    c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.specjbb2015,
+    c.weekly     + hw.x52 + jdk17 + cc.libgraal + bench.specjbb2015_full_machine,
+    c.on_demand  + hw.x52 + jdk17 + cc.jargraal + bench.specjbb2015_full_machine,
+    c.weekly     + hw.x52 + jdk17 + cc.libgraal + bench.renaissance_0_10,
+    c.on_demand  + hw.x52 + jdk17 + cc.jargraal + bench.renaissance_0_10,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.awfy,
+    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.awfy,
+    c.post_merge + hw.x52 + jdk17 + cc.libgraal + bench.renaissance_legacy,
+    c.daily      + hw.x52 + jdk17 + cc.jargraal + bench.renaissance_legacy,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.micros_graal_whitebox,
+    c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.micros_graal_whitebox,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.micros_graal_dist,
+    c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.micros_graal_dist,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.micros_misc_graal_dist,
+    c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.micros_misc_graal_dist,
+    c.daily      + hw.x52 + jdk17 + cc.libgraal + bench.micros_shootout_graal_dist,
+    c.weekly     + hw.x52 + jdk17 + cc.jargraal + bench.micros_shootout_graal_dist
   ],
 
   // JFR and async-profiler jobs
@@ -129,7 +129,7 @@
     c.daily + hw.x52 + jdk + cc.libgraal + suite,
     c.daily + hw.x52 + jdk + cc.jargraal + suite
     ]
-  for jdk in [jdk11, jdk16] # GR-32793: disabled JDK8
+  for jdk in [jdk11, jdk17] # GR-32793: disabled JDK8
   for suite in bench.groups.microservice_suites
   ]),
 
