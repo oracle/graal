@@ -46,6 +46,15 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Substrate specific intrinisfication for {@link System#arraycopy} with an exception edge.
+ *
+ * Lowering is implemented in the platform/VM specific
+ * {@link org.graalvm.compiler.nodes.spi.LoweringProvider LoweringProvider}. Most of them eventually
+ * go through {@link SubstrateArraycopySnippets}.
+ *
+ * @see SubstrateArraycopyNode Variant without exception edge.
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "may be replaced with non-throwing counterpart", size = SIZE_64)
 public class SubstrateArraycopyWithExceptionNode extends WithExceptionNode implements ArrayCopy {
 
