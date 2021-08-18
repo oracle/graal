@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.espresso.hotswap;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -102,9 +102,13 @@ final class ServiceWatcher {
 
         if ("file".equals(url.getProtocol())) {
             // parent directory to register watch on
-            File file = new File(url.getFile()).getParentFile();
-            serviceWatcherThread.addWatch(new File(url.getFile()).getName(), Paths.get(file.toURI()), () -> callback.fire());
-            return true;
+            try {
+                Path path = Paths.get(url.toURI());
+                serviceWatcherThread.addWatch(path.getFileName().toString(), path.getParent(), () -> callback.fire());
+                return true;
+            } catch (URISyntaxException e) {
+                return false;
+            }
         }
         return false;
     }
@@ -139,11 +143,14 @@ final class ServiceWatcher {
         while (urls.hasMoreElements()) {
             URL url = urls.nextElement();
             if ("file".equals(url.getProtocol())) {
-                // parent directory to register watch on
-                File file = new File(url.getFile()).getParentFile();
-                // listen for changes to the service registration file
-                initialURLs.add(url);
-                serviceWatcherThread.addWatch(service.getName(), Paths.get(file.toURI()), () -> onServiceChange(callback, serviceLoader, fullName));
+                try {
+                    Path path = Paths.get(url.toURI());
+                    // listen for changes to the service registration file
+                    initialURLs.add(url);
+                    serviceWatcherThread.addWatch(service.getName(), path.getParent(), () -> onServiceChange(callback, serviceLoader, fullName));
+                } catch (URISyntaxException e) {
+                    throw new IOException(e);
+                }
             }
         }
 
@@ -157,12 +164,11 @@ final class ServiceWatcher {
                 // Checkstyle: resume warning message from guest code
                 t.printStackTrace();
             }
-            // parent directory to register watch on
-            File file = new File(url.getFile()).getParentFile();
-            // listen for changes to the service registration file
             try {
-                serviceWatcherThread.addWatch(service.getName(), Paths.get(file.toURI()), () -> onServiceChange(callback, serviceLoader, fullName));
-            } catch (IOException e) {
+                Path path = Paths.get(url.toURI());
+                // listen for changes to the service registration file
+                serviceWatcherThread.addWatch(service.getName(), path.getParent(), () -> onServiceChange(callback, serviceLoader, fullName));
+            } catch (Exception e) {
                 // perhaps fallback to reloading and fetching from service loader at intervals?
             }
             return null;
@@ -222,8 +228,8 @@ final class ServiceWatcher {
 
         private final WatchService watchService;
         private final Map<ResourceInfo, ServiceWatcher.State> watchActions = Collections.synchronizedMap(new HashMap<>());
-        private final Map<ResourceInfo, List<ResourceInfo>> deletedFolderMap = new HashMap<>();
-        private final Map<ResourceInfo, List<ResourceInfo>> createdFolderMap = new HashMap<>();
+        private final Map<ResourceInfo, List<ResourceInfo>> deletedFolderMap = Collections.synchronizedMap(new HashMap<>());
+        private final Map<ResourceInfo, List<ResourceInfo>> createdFolderMap = Collections.synchronizedMap(new HashMap<>());
 
         private WatcherThread() throws IOException {
             super("hotswap-watcher-1");
@@ -326,15 +332,15 @@ final class ServiceWatcher {
                                     Path path = info.watchPath;
                                     boolean folderExist = false;
                                     while (!folderExist && path != null) {
-                                        File file = path.toFile();
                                         // keep track of file tree
-                                        ResourceInfo newInfo = new ResourceInfo(path.getParent(), path.toFile().getName(), info, info.leaf);
+
+                                        ResourceInfo newInfo = new ResourceInfo(path.getParent(), path.getFileName().toString(), info, info.leaf);
                                         try {
                                             path.register(watchService, WATCH_KINDS);
                                             path.getParent().register(watchService, WATCH_KINDS);
                                             addCreatedFolder(info);
                                             addDeletedFolder(newInfo);
-                                            if (file.exists() && file.canRead()) {
+                                            if (Files.exists(path) && Files.isReadable(path)) {
                                                 // watch in place
                                                 folderExist = true;
                                             }
