@@ -240,14 +240,14 @@ final class ServiceWatcher {
         public void addWatch(String resourceName, Path dir, Runnable callback) throws IOException {
             // register watch on parent folder
             ResourceInfo resourceInfo = new ResourceInfo(dir, resourceName);
-            dir.register(watchService, WATCH_KINDS);
             watchActions.put(resourceInfo, new ServiceWatcher.State(calculateChecksum(dir, resourceName), callback));
+            dir.register(watchService, WATCH_KINDS);
 
             // also register an ENTRY_DELETE listener on the parents parent folder to manage
             // recreation on folders correctly
-            dir.getParent().register(watchService, WATCH_KINDS);
             ResourceInfo parentInfo = new ResourceInfo(dir.getParent(), dir.getFileName().toString(), resourceInfo, resourceInfo);
             addDeletedFolder(parentInfo);
+            dir.getParent().register(watchService, WATCH_KINDS);
         }
 
         private void addDeletedFolder(ResourceInfo info) {
@@ -336,10 +336,10 @@ final class ServiceWatcher {
 
                                         ResourceInfo newInfo = new ResourceInfo(path.getParent(), path.getFileName().toString(), info, info.leaf);
                                         try {
-                                            path.register(watchService, WATCH_KINDS);
-                                            path.getParent().register(watchService, WATCH_KINDS);
                                             addCreatedFolder(info);
                                             addDeletedFolder(newInfo);
+                                            path.register(watchService, WATCH_KINDS);
+                                            path.getParent().register(watchService, WATCH_KINDS);
                                             if (Files.exists(path) && Files.isReadable(path)) {
                                                 // watch in place
                                                 folderExist = true;
@@ -372,13 +372,13 @@ final class ServiceWatcher {
                                     ResourceInfo current = info;
                                     while (current.child != null) {
                                         try {
-                                            current.child.watchPath.register(watchService, WATCH_KINDS);
                                             if (current.child.child != null) {
                                                 addCreatedFolder(current.child);
                                             }
+                                            current.child.watchPath.register(watchService, WATCH_KINDS);
                                             // watch for folder deletion
-                                            current.watchPath.register(watchService, WATCH_KINDS);
                                             addDeletedFolder(current);
+                                            current.watchPath.register(watchService, WATCH_KINDS);
                                             // we could miss creation events inside the
                                             // folder, so kick off a directory scan
                                             scanDir(current.child);
