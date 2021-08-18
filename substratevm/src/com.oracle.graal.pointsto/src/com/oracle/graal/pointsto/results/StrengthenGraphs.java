@@ -401,7 +401,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
          */
         private void devirtualizeInvoke(AnalysisMethod singleCallee, Invoke invoke) {
             if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(graph.getOptions())) {
-                ImageBuildStatistics.counters().incDevirtualizedInvokeCounter();
+                ImageBuildStatistics.singleton().incDevirtualizedInvokeCounter();
             }
 
             Stamp anchoredReceiverStamp = StampFactory.object(TypeReference.createWithoutAssumptions(singleCallee.getDeclaringClass()));

@@ -120,7 +120,7 @@ public class DevirtualizeCallsPhase extends Phase {
 
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(graph.getOptions())) {
             /* Detect devirtualization of the invoke. */
-            ImageBuildStatistics.counters().incDevirtualizedInvokeCounter();
+            ImageBuildStatistics.singleton().incDevirtualizedInvokeCounter();
         }
 
         /*

@@ -28,19 +28,33 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
+
 public class ImageBuildStatistics {
 
     public static class Options {
         @Option(help = "Collect information during image build about devirtualized invokes and bytecode exceptions.")//
-        public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<>(false);
+        public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<Boolean>(false) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                if (newValue) {
+                    TrackNodeSourcePosition.update(values, true);
+                }
+            }
+        };
+
         @Option(help = "File for printing image build statistics")//
         public static final OptionKey<String> ImageBuildStatisticsFile = new OptionKey<>(null);
     }
@@ -51,14 +65,14 @@ public class ImageBuildStatistics {
         AFTER_HIGH_TIER
     }
 
-    final TreeMap<String, AtomicLong> counters;
+    final ConcurrentHashMap<String, CounterValue> counters;
 
     public void incDevirtualizedInvokeCounter() {
-        counters.get(devirtualizedInvokes()).incrementAndGet();
+        counters.get(devirtualizedInvokes()).incCounter();
     }
 
-    public void incByteCodeException(BytecodeExceptionNode.BytecodeExceptionKind kind, CheckCountLocation location) {
-        counters.get(getName(kind.name(), location)).incrementAndGet();
+    public void incByteCodeException(BytecodeExceptionNode.BytecodeExceptionKind kind, CheckCountLocation location, NodeSourcePosition nodeSourcePosition) {
+        counters.get(getName(kind.name(), location)).incCounter(nodeSourcePosition);
     }
 
     public Consumer<PrintWriter> getReporter() {
@@ -74,18 +88,82 @@ public class ImageBuildStatistics {
         return "total_devirtualized_invokes";
     }
 
-    public static ImageBuildStatistics counters() {
+    public static ImageBuildStatistics singleton() {
         return ImageSingletons.lookup(ImageBuildStatistics.class);
     }
 
     public ImageBuildStatistics() {
-        counters = new TreeMap<>();
-        counters.put(devirtualizedInvokes(), new AtomicLong());
+        counters = new ConcurrentHashMap<>();
+        counters.put(devirtualizedInvokes(), new CounterValue());
         for (BytecodeExceptionNode.BytecodeExceptionKind kind : BytecodeExceptionNode.BytecodeExceptionKind.values()) {
             for (CheckCountLocation location : CheckCountLocation.values()) {
-                counters.put(getName(kind.name(), location), new AtomicLong());
+                counters.put(getName(kind.name(), location), new CounterValue());
             }
         }
+    }
+
+    public static final class CounterValue {
+        public CounterValue() {
+            /*
+             * Count and store original node source positions and what was made from inlining and
+             * duplication separately.
+             */
+            originalCounter = new AtomicLong();
+            duplicationCounter = new AtomicLong();
+            inlineCounter = new AtomicLong();
+            original = new ConcurrentLinkedQueue<>();
+            duplication = new ConcurrentLinkedQueue<>();
+            inline = new ConcurrentLinkedQueue<>();
+        }
+
+        private void incCounter() {
+            originalCounter.incrementAndGet();
+        }
+
+        private void incCounter(NodeSourcePosition nodeSourcePosition) {
+            if (original.contains(nodeSourcePosition)) {
+                /*
+                 * We have already seen this exception at the given source location, duplication
+                 * occurred.
+                 */
+                duplicationCounter.incrementAndGet();
+                duplication.add(nodeSourcePosition);
+            } else {
+                if (nodeSourcePosition.depth() == 1) {
+                    /*
+                     * Node source position with depth = 1 => we found new exception and no inlining
+                     * occurred yet.
+                     */
+                    originalCounter.incrementAndGet();
+                    original.add(nodeSourcePosition);
+                } else {
+                    /*
+                     * Node source position with depth > 1 => this is from inlining, maybe new one
+                     * or duplication occurred after something inlined.
+                     */
+                    if (inline.contains(nodeSourcePosition)) {
+                        /* Duplication of something made from inlining. */
+                        duplicationCounter.incrementAndGet();
+                        duplication.add(nodeSourcePosition);
+                    } else {
+                        /* Inlining occurred. */
+                        inlineCounter.incrementAndGet();
+                        inline.add(nodeSourcePosition);
+                    }
+                }
+            }
+        }
+
+        public AtomicLong getOriginalCounter() {
+            return originalCounter;
+        }
+
+        private final AtomicLong originalCounter;
+        private final AtomicLong duplicationCounter;
+        private final AtomicLong inlineCounter;
+        private final ConcurrentLinkedQueue<NodeSourcePosition> original;
+        private final ConcurrentLinkedQueue<NodeSourcePosition> duplication;
+        private final ConcurrentLinkedQueue<NodeSourcePosition> inline;
     }
 
     class ImageBuildCountersReport {
@@ -93,10 +171,15 @@ public class ImageBuildStatistics {
          * Print statistics collected during image build as JSON formatted String.
          */
         void print(PrintWriter out) {
+            TreeMap<String, CounterValue> sortedCounters = new TreeMap<>(counters);
             StringBuilder json = new StringBuilder();
             json.append("{").append(System.lineSeparator());
-            for (Map.Entry<String, AtomicLong> entry : counters.entrySet()) {
-                json.append(INDENT + "\"").append(entry.getKey()).append("\":").append(entry.getValue().get()).append(",").append(System.lineSeparator());
+            for (Map.Entry<String, CounterValue> entry : sortedCounters.entrySet()) {
+                /*
+                 * Finally, we are interested in the original node source positions that left at
+                 * different locations.
+                 */
+                json.append(INDENT + "\"").append(entry.getKey()).append("\":").append(entry.getValue().getOriginalCounter()).append(",").append(System.lineSeparator());
             }
             json.append("}").append(System.lineSeparator());
             out.print(fixLast(json));

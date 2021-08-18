@@ -46,6 +46,7 @@ import org.graalvm.compiler.phases.Phase;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
+import com.oracle.svm.util.ImageBuildStatistics;
 
 /**
  * The {@link ExceptionUnwind exception handling mechanism} of Substrate VM is capable of jumping
@@ -140,6 +141,14 @@ public class RemoveUnwindPhase extends Phase {
 
         ThrowBytecodeExceptionNode throwNode = graph.add(new ThrowBytecodeExceptionNode(bytecodeExceptionNode.getExceptionKind(), bytecodeExceptionNode.getArguments()));
         throwNode.setStateBefore(bytecodeExceptionNode.createStateDuring());
+
+        if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(graph.getOptions())) {
+            /*
+             * BytecodeExceptionNode instance is converted to ThrowBytecodeExceptionNode instance,
+             * so we copy its node source position to not lose information.
+             */
+            throwNode.setNodeSourcePosition(bytecodeExceptionNode.getNodeSourcePosition());
+        }
 
         FixedWithNextNode predecessor = (FixedWithNextNode) bytecodeExceptionNode.predecessor();
         GraphUtil.killCFG(bytecodeExceptionNode);

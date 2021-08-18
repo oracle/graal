@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.phases;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.phases.Phase;
@@ -32,7 +33,7 @@ import org.graalvm.compiler.phases.Phase;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.util.ImageBuildStatistics.CheckCountLocation;
 
-import static com.oracle.svm.util.ImageBuildStatistics.counters;
+import static com.oracle.svm.util.ImageBuildStatistics.singleton;
 
 public class ImageBuildStatisticsCounterPhase extends Phase {
 
@@ -49,7 +50,12 @@ public class ImageBuildStatisticsCounterPhase extends Phase {
                 assert node.isAlive() : "ImageBuildStatisticsCounterPhase must be run after proper canonicalization to get the right numbers. Found not alive node: " + node;
                 BytecodeExceptionNode.BytecodeExceptionKind bytecodeExceptionKind = node instanceof BytecodeExceptionNode ? ((BytecodeExceptionNode) node).getExceptionKind()
                                 : ((ThrowBytecodeExceptionNode) node).getExceptionKind();
-                counters().incByteCodeException(bytecodeExceptionKind, location);
+                NodeSourcePosition nodeSourcePosition = node.getNodeSourcePosition();
+                if (nodeSourcePosition == null) {
+                    node.setNodeSourcePosition(NodeSourcePosition.placeholder(graph.method()));
+                    nodeSourcePosition = node.getNodeSourcePosition();
+                }
+                singleton().incByteCodeException(bytecodeExceptionKind, location, nodeSourcePosition);
             }
         }
     }
