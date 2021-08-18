@@ -246,6 +246,11 @@ class SubstrateJVM {
         // and that no further JFR events will be triggered.
     }
 
+    /** See {@link JVM#isRecording}. This is not thread safe */
+    public boolean unsafeIsRecording() {
+        return recording;
+    }
+
     /** See {@link JVM#getClassId}. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getClassId(Class<?> clazz) {

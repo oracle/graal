@@ -26,6 +26,7 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
+import com.oracle.svm.core.jdk.JDK15OrEarlier;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -52,6 +53,7 @@ public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: resume
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @TargetElement(onlyWith = JDK15OrEarlier.class)
     private volatile boolean recording;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
@@ -85,6 +87,13 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().endRecording();
     }
 
+    /** See {@link JVM#isRecording}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrEarlier.class)
+    public void isRecording() {
+        SubstrateJVM.get().unsafeIsRecording();
+    }
+
     /** See {@link JVM#getAllEventClasses}. */
     @Substitute
     public List<Class<? extends Event>> getAllEventClasses() {
@@ -100,13 +109,14 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getClassId}. Intrinsified on HotSpot. */
     @Substitute
     public static long getClassId(Class<?> clazz) {
-        return getClassIdNonIntrinsic(clazz);
+        return SubstrateJVM.get().getClassId(clazz);
     }
 
     /** See {@link JVM#getClassIdNonIntrinsic}. */
     @Substitute
+    @TargetElement(onlyWith = JDK15OrEarlier.class)
     public static long getClassIdNonIntrinsic(Class<?> clazz) {
-        return SubstrateJVM.get().getClassId(clazz);
+        return getClassId(clazz);
     }
 
     /** See {@link JVM#getPid}. */
