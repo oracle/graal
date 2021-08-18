@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,7 +71,7 @@ public interface UnmodifiableEconomicMap<K, V> {
     }
 
     /**
-     * Returns {@code true} if this map contains a mapping for {@code key}. Returns always
+     * Returns {@code true} if this map contains a mapping for {@code key}. Always returns
      * {@code false} if the {@code key} is {@code null}.
      *
      * @since 19.0
