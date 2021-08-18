@@ -74,6 +74,9 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Snippets for lowering {@link System#arraycopy}.
+ */
 public abstract class ArrayCopySnippets implements Snippets {
 
     private enum ArrayCopyTypeCheck {
@@ -91,29 +94,37 @@ public abstract class ArrayCopySnippets implements Snippets {
     static final MetaAccessProvider INJECTED_META_ACCESS = null;
 
     /**
-     * FIXME: document me!
+     * Checks whether the hubs for the given objects are equal. The objects must be non-null.
      */
     public abstract boolean hubsEqual(Object nonNullSrc, Object nonNullDest);
 
     /**
-     * FIXME: document me!
+     * Checks whether the layout helpers for the given objects are equal. The objects must be
+     * non-null.
      */
     public abstract boolean layoutHelpersEqual(Object nonNullSrc, Object nonNullDest);
 
-    /**
-     * FIXME: document me!
-     */
     protected abstract int heapWordSize();
 
     /**
-     * FIXME: document me!
+     * Returns {@code true} if the original {@link System#arraycopy} method can be called to
+     * implement exceptional or fallback paths.
      */
     protected boolean useOriginalArraycopy() {
         return true;
     }
 
     /**
-     * FIXME: document me!
+     * Snippet that performs an {@linkplain ArrayCopy#isExact() exact} array copy. Used when the
+     * array copy might be {@linkplain Templates#lower(ArrayCopyNode, boolean, LoweringTool)
+     * expanded}.
+     *
+     * @param workSnippet is always {@link #exactArraycopyWithSlowPathWork} which calls
+     *            {@link #doExactArraycopyWithSlowPathWork}
+     *
+     * @see Templates#lower(ArrayCopyNode, boolean, LoweringTool)
+     * @see #exactArraycopyWithSlowPathWork
+     * @see #doExactArraycopyWithSlowPathWork
      */
     @SuppressWarnings("unused")
     @Snippet
@@ -133,7 +144,13 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * FIXME: document me!
+     * Snippet that performs a stub call for an {@linkplain ArrayCopy#isExact() exact} array copy.
+     *
+     * @param workSnippet is always {@link #exactArraycopyWithSlowPathWork} which calls
+     *            {@link #doExactArraycopyWithSlowPathWork}
+     *
+     * @see #exactArraycopyWithSlowPathWork
+     * @see #doExactArraycopyWithSlowPathWork
      */
     @SuppressWarnings("unused")
     @Snippet
@@ -153,7 +170,12 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * FIXME: document me!
+     * Performs an array copy with a type check for every store. At least one of the involved
+     * objects is known to be an object array. Lowering is delayed using an
+     * {@link ArrayCopyWithDelayedLoweringNode}.
+     *
+     * @param workSnippet is always {@link #checkcastArraycopyWithSlowPathWork} which calls
+     *            {@link #doCheckcastArraycopyWithSlowPathWork}
      */
     @Snippet
     public void arraycopyCheckcastSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck, @ConstantParameter Counters counters,
@@ -168,7 +190,10 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * FIXME: document me!
+     * Performs an array copy using a generic stub. Used when we do not know anything about the
+     * object types. Lowering is delayed using an {@link ArrayCopyWithDelayedLoweringNode}.
+     *
+     * @param workSnippet is always {@link #genericArraycopyWithSlowPathWork}
      */
     @Snippet
     public void arraycopyGenericSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck, @ConstantParameter Counters counters,
@@ -183,7 +208,8 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * FIXME: document me!
+     * Performs an array copy using the original {@link System#arraycopy} call. Currently, this is
+     * only used in cases where we already know that the operation will fail.
      */
     @Snippet
     public static void arraycopyNativeSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Counters counters) {
@@ -196,7 +222,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * FIXME: document me!
+     * @see #doExactArraycopyWithSlowPathWork
      */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
@@ -205,11 +231,15 @@ public abstract class ArrayCopySnippets implements Snippets {
         doExactArraycopyWithSlowPathWork(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters, INJECTED_META_ACCESS);
     }
 
+    /**
+     * Inlines a loop that performs an {@linkplain ArrayCopy#isExact() exact} element-by-element
+     * array copy. The explict loop allows subsequent phases to optimize the code.
+     */
     protected abstract void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
                     MetaAccessProvider metaAccess);
 
     /**
-     * FIXME: document me!
+     * @see #doCheckcastArraycopyWithSlowPathWork
      */
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void checkcastArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
@@ -219,12 +249,17 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * FIXME: document me!
+     * Performs an array copy via {@link CheckcastArrayCopyCallNode}.
+     *
+     * @see CheckcastArrayCopyCallNode
      */
     protected abstract void doCheckcastArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
 
     /**
-     * FIXME: document me!
+     * Performs an array copy via {@link GenericArrayCopyCallNode}.
+     *
+     * @see GenericArrayCopyCallNode
+     * @see #arraycopyGenericSnippet
      */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
@@ -395,6 +430,12 @@ public abstract class ArrayCopySnippets implements Snippets {
             lower(arraycopy, false, tool);
         }
 
+        /**
+         * Lowers an {@link ArrayCopyNode}.
+         *
+         * @param mayExpandThisArraycopy {@code true} if the array copy might be expanded to a copy
+         *            loop.
+         */
         public void lower(ArrayCopyNode arraycopy, boolean mayExpandThisArraycopy, LoweringTool tool) {
             JavaKind elementKind = ArrayCopy.selectComponentKind(arraycopy);
             SnippetInfo snippetInfo;
