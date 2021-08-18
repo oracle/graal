@@ -178,21 +178,20 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
     private final Symbol sym;
     private final MachOSection targetSection;
     private final byte log2length;
+    private final Long addend; // `null` for kinds other than ADDEND
 
-    public Long getAddend() {
-        return addend;
-    }
-
-    private final Long addend;
-
+    /**
+     * Construct a relocation record for ARM64_RELOC_ADDEND.
+     *
+     * @param containingElement the containing relocation element
+     * @param relocatedSection the section being relocated
+     * @param offset the offset, within the relocated section, of the relocation site
+     * @param addend the addend to be encoded
+     */
     public static RelocationInfo newAddend(MachORelocationElement containingElement, MachOSection relocatedSection, int offset, int requestedLength, long addend) {
         return new RelocationInfo(containingElement, relocatedSection, offset, requestedLength, addend);
     }
-
-    private RelocationInfo(MachORelocationElement containingElement, MachOSection relocatedSection, int offset, int requestedLength, long addend) {
-        this.containingElement = containingElement;
-        this.relocatedSection = relocatedSection;
-        this.sectionOffset = offset; // gets turned into a vaddr on write-out
+    private static byte encodeRequestedLength(int requestedLength) {
         /*
          * NOTE: the Mach-O spec claims that r_length == 3 means a 4-byte length and not an 8-byte
          * length. But it doesn't say how to encode an 8-bytes-long relocation site. And the
@@ -206,8 +205,23 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         if (requestedLength != 8 && requestedLength != 4 && requestedLength != 2 && requestedLength != 1) {
             throw new IllegalArgumentException("Mach-O cannot represent relocation lengths other than {1,2,4,8} bytes");
         }
-        this.log2length = (byte) ((requestedLength == 8) ? 3 : (requestedLength == 4) ? 2 : (requestedLength == 2) ? 1 : 0);
-        this.kind = RelocationKind.UNKNOWN;
+        return (byte) ((requestedLength == 8) ? 3 : (requestedLength == 4) ? 2 : (requestedLength == 2) ? 1 : 0);
+    }
+
+    /**
+     * Construct a relocation record for ARM64_RELOC_ADDEND.
+     *
+     * @param containingElement the containing relocation element
+     * @param relocatedSection the section being relocated
+     * @param offset the offset, within the relocated section, of the relocation site
+     * @param addend the addend to be encoded
+     */
+    private RelocationInfo(MachORelocationElement containingElement, MachOSection relocatedSection, int offset, int requestedLength, long addend) {
+        this.containingElement = containingElement;
+        this.relocatedSection = relocatedSection;
+        this.sectionOffset = offset; // gets turned into a vaddr on write-out
+        this.log2length = encodeRequestedLength(requestedLength);
+        this.kind = RelocationKind.UNKNOWN; // Placeholder
         this.targetSection = null;
         this.sym = null;
         this.addend = addend;
@@ -227,20 +241,7 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         this.containingElement = containingElement;
         this.relocatedSection = relocatedSection;
         this.sectionOffset = offset; // gets turned into a vaddr on write-out
-        /*
-         * NOTE: the Mach-O spec claims that r_length == 3 means a 4-byte length and not an 8-byte
-         * length. But it doesn't say how to encode an 8-bytes-long relocation site. And the
-         * following link seems to suggest that in the case of x86-64, r_length==3 does encode the
-         * 8-byte case.
-         * http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/EXTERNAL_HEADERS/mach
-         * -o/x86_64/reloc.h
-         *
-         * Experimenting....
-         */
-        if (requestedLength != 8 && requestedLength != 4 && requestedLength != 2 && requestedLength != 1) {
-            throw new IllegalArgumentException("Mach-O cannot represent relocation lengths other than {1,2,4,8} bytes");
-        }
-        this.log2length = (byte) ((requestedLength == 8) ? 3 : (requestedLength == 4) ? 2 : (requestedLength == 2) ? 1 : 0);
+        this.log2length = encodeRequestedLength(requestedLength);;
         this.kind = kind;
         SymbolTable symtab = relocatedSection.getOwner().getSymbolTable();
         // FIXME: also allow section numbers here, for non-extern symbols
@@ -324,6 +325,10 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
 
     public MachOSection getRelocatedSection() {
         return relocatedSection;
+    }
+
+    public Long getAddend() {
+        return addend;
     }
 
     private boolean isExtern() {
