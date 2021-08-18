@@ -113,7 +113,7 @@ public class MultiTypeState extends TypeState {
         return objectTypeIds;
     }
 
-    private boolean checkObjects(BigBang bb) {
+    private boolean checkObjects(BigBang unused) {
         assert bb.extendedAsserts();
 
         for (int idx = 0; idx < objects.length - 1; idx++) {
@@ -202,7 +202,7 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public TypeState exactTypeState(BigBang bb, AnalysisType exactType) {
+    public TypeState exactTypeState(BigBang unused, AnalysisType exactType) {
         if (containsType(exactType)) {
             AnalysisObject[] resultObjects = objectsArray(exactType);
             return new SingleTypeState(bb, canBeNull, bb.analysisPolicy().makePoperties(bb, resultObjects), resultObjects);
@@ -212,7 +212,7 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public TypeState forCanBeNull(BigBang bb, boolean resultCanBeNull) {
+    public TypeState forCanBeNull(BigBang unused, boolean resultCanBeNull) {
         if (resultCanBeNull == this.canBeNull()) {
             return this;
         } else {
@@ -316,7 +316,7 @@ public class MultiTypeState extends TypeState {
 
     /** Note that the objects of this type state have been merged. */
     @Override
-    public void noteMerge(BigBang bb) {
+    public void noteMerge(BigBang unused) {
         assert bb.analysisPolicy().isMergingEnabled();
 
         if (!merged) {

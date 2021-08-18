@@ -603,7 +603,7 @@ public class AnalysisUniverse implements Universe {
         }
     }
 
-    private void collectMethodImplementations(BigBang bb) {
+    private void collectMethodImplementations(BigBang unused) {
         for (AnalysisMethod method : methods.values()) {
 
             Set<AnalysisMethod> implementations = getMethodImplementations(bb, method);
