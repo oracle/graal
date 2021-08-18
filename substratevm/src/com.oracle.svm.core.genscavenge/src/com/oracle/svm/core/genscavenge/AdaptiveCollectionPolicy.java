@@ -91,6 +91,16 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
      */
     static final int YOUNG_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
     static final int TENURED_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
+    /**
+     * Use linear square fitting to estimate if increasing sizes will improve throughput. This is
+     * intended to limit memory usage when throughput cannot be improved further, for example when
+     * the application is heavily multi-threaded and our single-threaded collector cannot reach the
+     * throughput goal.
+     *
+     * HotSpot option: AdaptiveSizeThroughPutPolicy={0,1} with default 0, equivalent to false here.
+     */
+    static final boolean ADAPTIVE_SIZE_USE_COST_ESTIMATORS = false;
+    static final int ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS = 20;
 
     /* Constants derived from other constants. */
     static final double THROUGHPUT_GOAL = 1.0 - 1.0 / (1.0 + GC_TIME_RATIO);
@@ -108,6 +118,7 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     private final AdaptiveWeightedAverage avgMinorGcCost = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
     private final AdaptivePaddedAverage avgSurvived = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, SURVIVOR_PADDING);
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
+    private final LinearLeastSquareFit minorCollectionEstimator = new LinearLeastSquareFit(ADAPTIVE_SIZE_POLICY_WEIGHT);
     private long minorCount;
     private long latestMinorMutatorIntervalSeconds;
     private boolean youngGenPolicyIsReady;
@@ -115,17 +126,20 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     private int tenuringThreshold;
     private UnsignedWord survivorSize;
     private UnsignedWord edenSize;
+    private long youngGenChangeForMinorThroughput;
 
     private final Timer majorTimer = new Timer("major/between major");
     private final AdaptiveWeightedAverage avgMajorGcCost = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
     private final AdaptiveWeightedAverage avgMajorIntervalSeconds = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
     private final AdaptiveWeightedAverage avgOldLive = new AdaptiveWeightedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT);
+    private final LinearLeastSquareFit majorCollectionEstimator = new LinearLeastSquareFit(ADAPTIVE_SIZE_POLICY_WEIGHT);
     private long majorCount;
     private UnsignedWord oldGenSizeIncrementSupplement = WordFactory.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
     private long latestMajorMutatorIntervalSeconds;
     private UnsignedWord promoSize;
     private UnsignedWord oldSize;
     private boolean oldSizeExceededInPreviousCollection;
+    private long oldGenChangeForMajorThroughput;
 
     private volatile SizeParameters sizes;
     private final ReentrantLock sizesUpdateLock = new ReentrantLock();
@@ -423,8 +437,16 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
         } else {
             assert false : "should not reach here";
         }
-        UnsignedWord desiredEdenSize = curEden.add(scaledEdenHeapDelta);
-        return desiredEdenSize.aboveThan(curEden) ? desiredEdenSize : curEden;
+        boolean increment = true;
+        if (ADAPTIVE_SIZE_USE_COST_ESTIMATORS && youngGenChangeForMinorThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS) {
+            increment = minorCollectionEstimator.incrementWillDecrease();
+        }
+        UnsignedWord desiredEdenSize = curEden;
+        if (increment) {
+            desiredEdenSize = UnsignedUtils.max(desiredEdenSize.add(scaledEdenHeapDelta), curEden);
+            youngGenChangeForMinorThroughput++;
+        }
+        return desiredEdenSize;
     }
 
     private UnsignedWord edenIncrementWithSupplementAlignedUp(UnsignedWord curEden) {
@@ -463,11 +485,13 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
         timer.close();
 
         if (completeCollection) {
-            updateCollectionEndAverages(avgMajorGcCost, avgMajorIntervalSeconds, cause, latestMajorMutatorIntervalSeconds, timer.getMeasuredNanos());
+            updateCollectionEndAverages(avgMajorGcCost, majorCollectionEstimator, avgMajorIntervalSeconds,
+                            cause, latestMajorMutatorIntervalSeconds, timer.getMeasuredNanos(), promoSize);
             majorCount++;
 
         } else {
-            updateCollectionEndAverages(avgMinorGcCost, null, cause, latestMinorMutatorIntervalSeconds, timer.getMeasuredNanos());
+            updateCollectionEndAverages(avgMinorGcCost, minorCollectionEstimator, null,
+                            cause, latestMinorMutatorIntervalSeconds, timer.getMeasuredNanos(), edenSize);
             minorCount++;
 
             if (minorCount >= ADAPTIVE_SIZE_POLICY_READY_THRESHOLD) {
@@ -573,8 +597,16 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
         } else {
             assert false : "should not reach here";
         }
-        UnsignedWord desiredPromoSize = curPromo.add(scaledPromoHeapDelta);
-        return desiredPromoSize.aboveThan(curPromo) ? desiredPromoSize : curPromo;
+        boolean increment = true;
+        if (ADAPTIVE_SIZE_USE_COST_ESTIMATORS && oldGenChangeForMajorThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS) {
+            increment = majorCollectionEstimator.incrementWillDecrease();
+        }
+        UnsignedWord desiredPromoSize = curPromo;
+        if (increment) {
+            oldGenChangeForMajorThroughput++;
+            desiredPromoSize = UnsignedUtils.max(desiredPromoSize.add(scaledPromoHeapDelta), curPromo);
+        }
+        return desiredPromoSize;
     }
 
     private UnsignedWord promoIncrementWithSupplementAlignedUp(UnsignedWord curPromo) {
@@ -597,17 +629,21 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
         }
     }
 
-    private static void updateCollectionEndAverages(AdaptiveWeightedAverage cost, AdaptiveWeightedAverage intervalSeconds, GCCause cause, long mutatorNanos, long pauseNanos) {
+    private static void updateCollectionEndAverages(AdaptiveWeightedAverage costAverage, LinearLeastSquareFit costEstimator,
+                    AdaptiveWeightedAverage intervalSeconds, GCCause cause, long mutatorNanos, long pauseNanos, UnsignedWord sizeBytes) {
         if (cause == GenScavengeGCCause.OnAllocation || USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC) {
+            double cost = 0;
             double mutatorInSeconds = TimeUtils.nanosToSecondsDouble(mutatorNanos);
             double pauseInSeconds = TimeUtils.nanosToSecondsDouble(pauseNanos);
             if (mutatorInSeconds > 0 && pauseInSeconds > 0) {
                 double intervalInSeconds = mutatorInSeconds + pauseInSeconds;
-                cost.sample((float) (pauseInSeconds / intervalInSeconds));
+                cost = pauseInSeconds / intervalInSeconds;
+                costAverage.sample((float) cost);
                 if (intervalSeconds != null) {
                     intervalSeconds.sample((float) intervalInSeconds);
                 }
             }
+            costEstimator.sample(UnsignedUtils.toDouble(sizeBytes), cost);
         }
     }
 
