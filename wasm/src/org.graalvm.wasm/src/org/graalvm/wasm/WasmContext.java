@@ -163,9 +163,9 @@ public final class WasmContext {
         return readModule(freshModuleName(), data, moduleLimits);
     }
 
-    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
+    public static WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
         final WasmModule module = new WasmModule(moduleName, data, moduleLimits);
-        final BinaryParser reader = new BinaryParser(language, module);
+        final BinaryParser reader = new BinaryParser(module);
         reader.readModule();
         return module;
     }
@@ -174,9 +174,8 @@ public final class WasmContext {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
-        final WasmInstance instance = new WasmInstance(this, module);
-        final BinaryParser reader = new BinaryParser(language, module);
-        reader.readInstance(this, instance);
+        final WasmInstantiator translator = new WasmInstantiator(language);
+        final WasmInstance instance = translator.createInstance(this, module);
         this.register(instance);
         return instance;
     }
@@ -185,7 +184,7 @@ public final class WasmContext {
         // Note: this is not a complete and correct instantiation as defined in
         // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
         // For testing only.
-        final BinaryParser reader = new BinaryParser(language, instance.module());
+        final BinaryParser reader = new BinaryParser(instance.module());
         reader.resetGlobalState(this, instance);
         if (reinitMemory) {
             reader.resetMemoryState(this, instance);
