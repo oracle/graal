@@ -98,11 +98,13 @@ public abstract class LoopTransformations {
             frequencyBefore = loop.localLoopFrequency();
             countedExit = loop.counted().getCountedExit();
         }
-        loop.inside().duplicate().insertBefore(loop);
+        LoopFragmentInside inside = loop.inside().duplicate();
+        inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
         if (countedExit != null) {
             adaptCountedLoopExitProbability(countedExit, frequencyBefore - 1D);
         }
+        return inside;
     }
 
     @SuppressWarnings("try")
