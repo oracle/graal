@@ -821,7 +821,7 @@ public class WasmJsApiSuite {
                 WebAssembly.memAlloc(32768, 32770);
                 Assert.fail("Should have failed - initial memory size exceeds implementation limit");
             } catch (WasmJsApiException e) {
-                Assert.assertEquals("Link error expected", WasmJsApiException.Kind.LinkError, e.kind());
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
             }
         });
     }
@@ -833,7 +833,20 @@ public class WasmJsApiSuite {
                 WebAssembly.memAlloc(2, 1);
                 Assert.fail("Should have failed - min memory size bigger than max size");
             } catch (WasmJsApiException e) {
-                Assert.assertEquals("Link error expected", WasmJsApiException.Kind.LinkError, e.kind());
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryGrowLimit() throws IOException {
+        runTest(context -> {
+            try {
+                WasmMemory memory = WebAssembly.memAlloc(1, 1);
+                WebAssembly.memGrow(memory, 1);
+                Assert.fail("Should have failed - try to grow memory beyond max size");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
             }
         });
     }
@@ -846,7 +859,7 @@ public class WasmJsApiSuite {
                 WebAssembly.tableAlloc(-10, -8);
                 Assert.fail("Should have failed - initial table size exceeds implementation limit");
             } catch (WasmJsApiException e) {
-                Assert.assertEquals("Link error expected", WasmJsApiException.Kind.LinkError, e.kind());
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
             }
         });
     }
@@ -858,7 +871,20 @@ public class WasmJsApiSuite {
                 WebAssembly.tableAlloc(2, 1);
                 Assert.fail("Should have failed - min table size bigger than max size");
             } catch (WasmJsApiException e) {
-                Assert.assertEquals("Link error expected", WasmJsApiException.Kind.LinkError, e.kind());
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableGrowLimit() throws IOException {
+        runTest(context -> {
+            try {
+                WasmTable table = WebAssembly.tableAlloc(1, 1);
+                WebAssembly.tableGrow(table, 1);
+                Assert.fail("Should have failed - try to grow table beyond max size");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
             }
         });
     }
