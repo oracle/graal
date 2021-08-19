@@ -606,7 +606,11 @@ class CPUSamplerCLI extends ProfilerCLI {
             maxTier = Math.max(maxTier, node.getPayload().getNumberOfTiers() - 1);
             CallTreeOutputEntry entry = new CallTreeOutputEntry(node);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
-                entry.children.add(makeEntry(child, depth + 1));
+                if (child.isRecursive()) {
+                    entry.merge(child.getPayload());
+                } else {
+                    entry.children.add(makeEntry(child, depth + 1));
+                }
             }
             return entry;
         }
