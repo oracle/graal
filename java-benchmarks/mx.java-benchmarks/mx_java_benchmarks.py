@@ -1283,7 +1283,14 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
-        return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks
+
+        # The startup benchmarks are executed by spawning a new JVM. However, this new VM doesn't
+        # inherit the flags passed to the main process.
+        # According to the SpecJVM jar help message, one must use the '--jvmArgs' option to specify
+        # options to pass to the startup benchmarks. It has no effect on the non startup benchmarks.
+        startupJVMArgs = ["--jvmArgs", " ".join(vmArgs)] if "startup" in ' '.join(benchmarks) else []
+
+        return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks + startupJVMArgs
 
     def runArgs(self, bmSuiteArgs):
         runArgs = super(SpecJvm2008BenchmarkSuite, self).runArgs(bmSuiteArgs)
