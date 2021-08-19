@@ -467,6 +467,7 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_TOTAL_COUNT:
                 return getContext().getCreatedThreadCount();
         }
+        getLogger().warning(() -> "Unknown long attribute: " + att);
         return -1L;
     }
 
@@ -510,6 +511,7 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_ALLOCATED_MEMORY:
                 return JMM_THREAD_ALLOCATED_MEMORY_state;
         }
+        getLogger().warning(() -> "Unknown bool attribute: " + att);
         return false;
     }
 
@@ -527,6 +529,7 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_ALLOCATED_MEMORY:
                 return JMM_THREAD_ALLOCATED_MEMORY_state = flag;
         }
+        getLogger().warning(() -> "Unknown bool attribute: " + att);
         return false;
     }
 
