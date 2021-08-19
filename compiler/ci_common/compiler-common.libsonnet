@@ -46,8 +46,9 @@
   },
 
   compiler_benchmark:: self.compiler_bench_base + self.compiler_benchmarks_notifications + {
+    _bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: ["bench-uploader.py", filename],
     teardown+: [
-      ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
+      self._bench_upload()
     ]
   },
 

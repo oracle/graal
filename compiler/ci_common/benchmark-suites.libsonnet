@@ -8,13 +8,13 @@
   groups:: {
     open_suites:: std.set([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance], keyF=uniq_key),
     spec_suites:: std.set([$.specjvm2008, $.specjbb2005, $.specjbb2015], keyF=uniq_key),
-    legacy_suites:: std.set([$.renaissance_legacy], keyF=uniq_key),
+    legacy_and_secondary_suites:: std.set([$.renaissance_legacy, $.dacapo_size_variants, $.scala_dacapo_size_variants], keyF=uniq_key),
     jmh_micros_suites:: std.set([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist], keyF=uniq_key),
     graal_internals_suites:: std.set([$.micros_graal_whitebox], keyF=uniq_key),
     special_suites:: std.set([$.renaissance_0_10, $.specjbb2015_full_machine], keyF=uniq_key),
     microservice_suites:: std.set([$.microservice_benchmarks], keyF=uniq_key),
 
-    main_suites:: std.set(self.open_suites + self.spec_suites + self.legacy_suites, keyF=uniq_key),
+    main_suites:: std.set(self.open_suites + self.spec_suites + self.legacy_and_secondary_suites, keyF=uniq_key),
     all_suites:: std.set(self.main_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites, keyF=uniq_key),
 
     weekly_forks_suites:: self.main_suites,
@@ -47,6 +47,23 @@
     max_jdk_version:: null
   },
 
+  dacapo_size_variants: cc.compiler_benchmark + c.heap.default + {
+    suite:: "dacapo-size-variants",
+    run+: [
+      self.benchmark_cmd + ["dacapo-small:*", "--"] + self.extra_vm_args,
+      self._bench_upload(),
+      self.benchmark_cmd + ["dacapo-large:*", "--"] + self.extra_vm_args,
+      self._bench_upload(),
+      self.benchmark_cmd + ["dacapo-huge:*", "--"] + self.extra_vm_args,
+      self._bench_upload()
+    ],
+    timelimit: "01:30:00",
+    forks_batches:: null, # weekly forks disabled
+    forks_timelimit:: null,
+    min_jdk_version:: 8,
+    max_jdk_version:: null
+  },
+
   dacapo_timing: cc.compiler_benchmark + c.heap.default + {
     suite:: "dacapo-timing",
     run+: [
@@ -65,6 +82,25 @@
     timelimit: "45:00",
     forks_batches:: 1,
     forks_timelimit:: "03:30:00",
+    min_jdk_version:: 8,
+    max_jdk_version:: null
+  },
+
+  scala_dacapo_size_variants: cc.compiler_benchmark + c.heap.default + {
+    suite:: "scala-dacapo-size-variants",
+    run+: [
+      self.benchmark_cmd + ["scala-dacapo-small:*", "--"] + self.extra_vm_args,
+      self._bench_upload(),
+      self.benchmark_cmd + ["scala-dacapo-large:*", "--"] + self.extra_vm_args,
+      self._bench_upload(),
+      self.benchmark_cmd + ["scala-dacapo-huge:*", "--"] + self.extra_vm_args,
+      self._bench_upload(),
+      self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args,
+      self._bench_upload()
+    ],
+    timelimit: "01:30:00",
+    forks_batches:: null, # weekly forks disabled
+    forks_timelimit:: null,
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
