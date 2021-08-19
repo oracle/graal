@@ -180,7 +180,8 @@ public class JfrFeature implements Feature {
                 // Use canonical name for package private AbstractJDKEvent
                 if (c.getCanonicalName().equals("jdk.jfr.Event")
                         || c.getCanonicalName().equals("jdk.internal.event.Event")
-                        || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent")) {
+                        || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent")
+                        || c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent")) {
                     continue;
                 }
                 try {
