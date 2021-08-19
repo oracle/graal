@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -36,7 +35,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 public class SubstrateExitHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (SubstrateOptions.InstallExitHandlers.getValue() && ImageInfo.isExecutable()) {
+        if (SubstrateOptions.InstallExitHandlers.getValue()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateExitHandlerStartupHook());
         }
     }

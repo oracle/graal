@@ -59,6 +59,7 @@ import sys
 
 import mx
 import mx_gate
+import mx_native
 import mx_subst
 import mx_sdk
 import mx_sdk_vm
@@ -721,6 +722,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     # add `LibraryConfig.destination` and the generated header files to the layout
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
                     _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
+                if (not stage1 or _skip_libraries(_library_config)) and isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
+                    # add native launchers for language libraries
+                    for _executable in _library_config.launchers:
+                        _add(layout, join(_component_base, _executable), 'dependency:{}'.format(NativeLibraryLauncherProject.library_launcher_project_name(_library_config)), _component)
+                        _add_link(_jdk_jre_bin, _component_base + _executable)
                 _add_native_image_macro(_library_config, _component)
 
             graalvm_dists.update(_component.polyglot_lib_jar_dependencies)
@@ -1280,8 +1286,14 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             else:
                 raise mx.abort("Unsupported image config type: " + str(type(image_config)))
 
-            if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
+            if isinstance(image_config, (mx_sdk.LanguageLauncherConfig, mx_sdk.LanguageLibraryConfig)):
                 build_args += ['--language:' + image_config.language, '--tool:all']
+
+            if isinstance(image_config, mx_sdk.LanguageLibraryConfig):
+                build_args += [
+                    '-Dorg.graalvm.launcher.class=' + image_config.main_class,
+                    '-H:+EnableSignalAPI',
+                ]
 
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
@@ -1292,13 +1304,12 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home),
                 ]
 
-            if isinstance(image_config, mx_sdk.LauncherConfig):
+            if isinstance(image_config, (mx_sdk.LauncherConfig, mx_sdk.LanguageLibraryConfig)):
                 if image_config.is_sdk_launcher:
                     launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
-                    build_args += [
-                        '-H:-ParseRuntimeOptions',
-                        '-Dorg.graalvm.launcher.classpath=' + os.pathsep.join(launcher_classpath),
-                    ]
+                    build_args += ['-Dorg.graalvm.launcher.classpath=' + os.pathsep.join(launcher_classpath)]
+                    if isinstance(image_config, mx_sdk.LauncherConfig):
+                        build_args += ['-H:-ParseRuntimeOptions']
 
                 build_args += [
                     '--install-exit-handlers',
@@ -2559,6 +2570,65 @@ def _get_native_image_configs(component, config_type):
 def _libpolyglot_macro_dist_name(component):
     return component.short_name + "_libpolyglot_macro"
 
+class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
+    def __init__(self, component, language_library_config):
+        _dir = join(_suite.dir, "src", "org.graalvm.launcher.native")
+        self.language_library_config = language_library_config
+        self.component = component
+        self.jvm_launcher = _skip_libraries(self.language_library_config) or not _get_svm_support().is_supported()
+        _dependencies = [] if self.jvm_launcher else [GraalVmNativeImage.project_name(self.language_library_config)]
+        super(NativeLibraryLauncherProject, self).__init__(_suite, NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config), 'src', [], _dependencies, None, _dir, 'executable', deliverable=self.language_library_config.language, use_jdk_headers=True)
+
+    @staticmethod
+    def library_launcher_project_name(language_library_config):
+        return "org.graalvm.launcher.native." + language_library_config.language
+
+    @property
+    def cflags(self):
+        _dist = get_final_graalvm_distribution()
+        _exe_path = _dist.find_single_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config))
+        _dynamic_cflags = [
+            '-DCP_SEP=' + os.pathsep,
+            '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
+        ]
+        if self.jvm_launcher:
+            _graalvm_home = _get_graalvm_archive_path("")
+            _cp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
+            _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
+            # path from langauge launcher to jars
+            _cp = [relpath(x, start=dirname(_exe_path)) for x in _cp]
+            if mx.is_windows():
+                _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'bin', 'server', 'jvm.dll')
+                _libjvm_path = relpath(_libjvm_path, start=dirname(_exe_path)).replace('\\', '\\\\')
+                _cp = [x.replace('\\', '\\\\') for x in _cp]
+            else:
+                if _src_jdk_version < 9 and mx.is_linux():
+                    _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', mx.get_arch(), 'server', mx.add_lib_suffix("libjvm"))
+                else:
+                    _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
+                _libjvm_path = relpath(_libjvm_path, start=dirname(_exe_path))
+            _dynamic_cflags += [
+                '-DJVM',
+                '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
+                '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
+                '-DLIBLANG_RELPATH=' + _libjvm_path,
+            ]
+        else:
+            _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
+            # path from language launcher to library
+            _liblang_relpath = relpath(_lib_path, start=dirname(_exe_path))
+            _dynamic_cflags += [
+                '-DLIBLANG_RELPATH=' + (_liblang_relpath.replace('\\', '\\\\') if mx.is_windows() else _liblang_relpath)
+            ]
+        return super(NativeLibraryLauncherProject, self).cflags + _dynamic_cflags
+
+    @property
+    def ldlibs(self):
+        _dynamic_ldlibs = []
+        if not mx.is_windows():
+            _dynamic_ldlibs += ['-ldl']
+        return super(NativeLibraryLauncherProject, self).ldlibs + _dynamic_ldlibs
+
 def has_vm_suite():
     global _vm_suite
     if _vm_suite == 'uninitialized':
@@ -2605,12 +2675,15 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     needs_stage1 = True
                 if with_svm:
                     register_project(GraalVmNativeProperties(component, launcher_config))
-            if with_svm:
-                for library_config in _get_library_configs(component):
+            for library_config in _get_library_configs(component):
+                if with_svm:
                     register_project(GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config))
                     assert with_svm
                     register_project(GraalVmNativeProperties(component, library_config))
                     needs_stage1 = True  # library configs need a stage1 even when they are skipped
+                if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
+                    launcher_project = NativeLibraryLauncherProject(component, library_config)
+                    register_project(launcher_project)
         if component.installable and not _disable_installable(component):
             installables.setdefault(component.installable_id, []).append(component)
         if libpolyglot_component is not None and GraalVmLibPolyglotNativeProperties.needs_lib_polyglot_native_properties(component):
