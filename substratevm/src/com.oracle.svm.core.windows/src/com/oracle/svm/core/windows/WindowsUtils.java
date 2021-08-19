@@ -186,6 +186,9 @@ public class WindowsUtils {
         return (long) ((current / freq) * NANOSECS_PER_SEC);
     }
 
+    /** Sentinel value denoting the uninitialized kernel handle. */
+    public static final PointerBase UNINITIALIZED_HANDLE = WordFactory.pointer(1);
+
     @CPointerTo(nameOfCType = "void*")
     interface CFunctionPointerPointer<T extends CFunctionPointer> extends PointerBase {
         T read();

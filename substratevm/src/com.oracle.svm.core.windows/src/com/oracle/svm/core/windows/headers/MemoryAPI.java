@@ -36,6 +36,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+
 // Checkstyle: stop
 
 /**
@@ -65,6 +68,11 @@ public class MemoryAPI {
 
     @CConstant
     public static native int PAGE_WRITECOPY();
+
+    /** Creates or opens a named or unnamed file mapping object for a specified file. */
+    @CFunction(transition = NO_TRANSITION)
+    public static native HANDLE CreateFileMappingW(HANDLE hFile, PointerBase lpFileMappingAttributes, int flProtect,
+                    int dwMaximumSizeHigh, int dwMaximumSizeLow, WCharPointer lpName);
 
     /** Unmaps a mapped view of a file from the calling process's address space. */
     @CFunction(transition = NO_TRANSITION)

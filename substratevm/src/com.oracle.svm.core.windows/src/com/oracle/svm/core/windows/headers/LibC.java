@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.windows.headers;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -35,14 +33,17 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
  * Basic functions from the standard Visual Studio C Run-Time library
  */
 @CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
 public class LibC {
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native <T extends PointerBase> T memcpy(T dest, PointerBase src, UnsignedWord n);
+
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native <T extends PointerBase> T malloc(UnsignedWord size);
 

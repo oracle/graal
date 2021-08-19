@@ -49,6 +49,9 @@ public class WinBase {
     public interface HANDLE extends PointerBase {
     }
 
+    @CConstant
+    public static native HANDLE INVALID_HANDLE_VALUE();
+
     @CPointerTo(nameOfCType = "HANDLE")
     public interface LPHANDLE extends PointerBase {
         HANDLE read();
