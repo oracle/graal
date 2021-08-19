@@ -130,7 +130,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
                     "Note: Interpreter is considered Tier 0. (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    static final OptionKey<int[]> ShowTiers = new OptionKey<>(null, SHOW_TIERS_OUTPUT_TYPE);
+    static final OptionKey<int[]> ShowTiers = new OptionKey<>(new int[0], SHOW_TIERS_OUTPUT_TYPE);
 
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
