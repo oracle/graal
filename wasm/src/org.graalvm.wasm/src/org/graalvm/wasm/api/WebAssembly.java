@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
@@ -712,8 +711,7 @@ public class WebAssembly extends Dictionary {
         Integer globalIndex = instance.module().exportedGlobals().get(name);
 
         if (function != null) {
-            final CallTarget target = instance.target(function.index());
-            return new WasmFunctionInstance(instance.context(), function, target);
+            return instance.functionInstance(function);
         } else if (globalIndex != null) {
             final int index = globalIndex;
             final int address = instance.globalAddress(index);

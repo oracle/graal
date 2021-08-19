@@ -373,6 +373,195 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testExportSameFunctionWithDifferentNames() throws IOException, InterruptedException {
+        final byte[] sameFunctionWithDifferentNames = compileWat("sameFunctionWithDifferentNames", "(module (func $f (result i32) i32.const 1) (export \"f1\" (func $f)) (export \"f2\" (func $f)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, sameFunctionWithDifferentNames, null);
+            final Object f1 = WebAssembly.instanceExport(instance, "f1");
+            final Object f2 = WebAssembly.instanceExport(instance, "f2");
+            Assert.assertTrue("Returned function instances must be reference equal", f1 == f2);
+        });
+    }
+
+    @Test
+    public void testExportSameFunctionInAndOutsideTable() throws IOException, InterruptedException {
+        final byte[] sameFunctionInExportAndTable = compileWat("sameFunctionInExportAndTable",
+                        "(module (func $f (result i32) i32.const 1) (table 1 funcref) (elem (i32.const 0) $f) (export \"f\" (func $f)) (export \"t\" (table 0)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, sameFunctionInExportAndTable, null);
+            final Object f = WebAssembly.instanceExport(instance, "f");
+            final WasmTable t = (WasmTable) WebAssembly.instanceExport(instance, "t");
+            final Object fInTable = WebAssembly.tableRead(t, 0);
+            Assert.assertTrue("Returned function instances must be reference equal", f == fInTable);
+        });
+    }
+
+    @Test
+    public void testExportSameFunctionAtDifferentTableIndices() throws IOException, InterruptedException {
+        final byte[] sameFunctionInExportAndTable = compileWat("sameFunctionInExportAndTable",
+                        "(module (func $f (result i32) i32.const 1) (table 2 funcref) (elem (i32.const 0) $f) (elem (i32.const 1) $f) (export \"t\" (table 0)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, sameFunctionInExportAndTable, null);
+            final WasmTable t = (WasmTable) WebAssembly.instanceExport(instance, "t");
+            final Object f1 = WebAssembly.tableRead(t, 0);
+            final Object f2 = WebAssembly.tableRead(t, 1);
+            Assert.assertTrue("Returned function instances must be reference equal", f1 == f2);
+        });
+    }
+
+    @Test
+    public void testExportSameFunctionInDifferentModules() throws IOException, InterruptedException {
+        final byte[] m1 = compileWat("export", "(module (func $f (result i32) i32.const 42) (export \"f\" (func $f)))");
+        final byte[] m2 = compileWat("import", "(module (import \"m\" \"f\" (func $f (result i32))) (export \"f\" (func $f)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, null);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
+                final Dictionary d = new Dictionary();
+                d.addMember("m", Dictionary.create(new Object[]{
+                                "f", m1Function
+                }));
+                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final Object m2Function = WebAssembly.instanceExport(m2Instance, "f");
+                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                final Object m1Value = lib.execute(m1Function);
+                final Object m2Value = lib.execute(m2Function);
+                Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportImportedFunctionInDifferentModules() throws IOException, InterruptedException {
+        final byte[] m1 = compileWat("export", "(module (import \"a\" \"f\" (func $f (result i32))) (export \"f\" (func $f)))");
+        final byte[] m2 = compileWat("import", "(module (import \"b\" \"f\" (func $f (result i32))) (export \"f\" (func $f)))");
+        runTest(context -> {
+            final Dictionary importObject = new Dictionary();
+            importObject.addMember("a", Dictionary.create(new Object[]{
+                            "f", new Executable(args -> 2)
+            }));
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, importObject);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
+                final Dictionary d = new Dictionary();
+                d.addMember("b", Dictionary.create(new Object[]{
+                                "f", m1Function
+                }));
+                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final Object m2Function = WebAssembly.instanceExport(m2Instance, "f");
+                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                final Object m1Value = lib.execute(m1Function);
+                final Object m2Value = lib.execute(m2Function);
+                Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportSameFunctionInDifferentModuleTables() throws IOException, InterruptedException {
+        final byte[] m1 = compileWat("export", "(module (func $f (result i32) i32.const 42) (table 1 funcref) (elem (i32.const 0) $f) (export \"t\" (table 0)))");
+        final byte[] m2 = compileWat("import", "(module (import \"m\" \"t\" (table $t 1 funcref)) (export \"t\" (table $t)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, null);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object m1Table = WebAssembly.instanceExport(m1Instance, "t");
+                final Object m1Function = WebAssembly.tableRead((WasmTable) m1Table, 0);
+                final Dictionary d = new Dictionary();
+                d.addMember("m", Dictionary.create(new Object[]{
+                                "t", m1Table
+                }));
+                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
+                final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
+                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                final Object m1Value = lib.execute(m1Function);
+                final Object m2Value = lib.execute(m2Function);
+                Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportSameFunctionInDifferentModuleTable() throws IOException, InterruptedException {
+        final byte[] m1 = compileWat("export", "(module (func $f (result i32) i32.const 42) (export \"f\" (func $f)))");
+        final byte[] m2 = compileWat("import", "(module (import \"m\" \"f\" (func $f (result i32))) (table 1 funcref) (elem (i32.const 0) $f) (export \"t\" (table 0)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, null);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
+                final Dictionary d = new Dictionary();
+                d.addMember("m", Dictionary.create(new Object[]{
+                                "f", m1Function
+                }));
+                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
+                final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
+                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                final Object m1Value = lib.execute(m1Function);
+                final Object m2Value = lib.execute(m2Function);
+                Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportImportedFunctionInDifferentModuleTable() throws IOException, InterruptedException {
+        final byte[] m1 = compileWat("export", "(module (import \"a\" \"f\" (func $f (result i32))) (table $f 1 funcref) (elem (i32.const 0) $f) (export \"t\" (table 0)) (export \"f\" (func $f)))");
+        final byte[] m2 = compileWat("import", "(module (import \"b\" \"t\" (table $t 1 funcref)) (export \"t\" (table 0)))");
+        runTest(context -> {
+            final Dictionary importObject = new Dictionary();
+            importObject.addMember("a", Dictionary.create(new Object[]{
+                            "f", new Executable(args -> 2)
+            }));
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, importObject);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
+                final Object m1Table = WebAssembly.instanceExport(m1Instance, "t");
+                final Object m1TableFunction = WebAssembly.tableRead((WasmTable) m1Table, 0);
+                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m1TableFunction);
+                Object m1Value = lib.execute(m1Function);
+                final Object m1TableValue = lib.execute(m1TableFunction);
+                Assert.assertEquals("Return value of functions is equal", m1Value, m1TableValue);
+                final Dictionary d = new Dictionary();
+                d.addMember("b", Dictionary.create(new Object[]{
+                                "f", m1Function,
+                                "t", m1Table
+                }));
+                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
+                final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
+                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                m1Value = lib.execute(m1Function);
+                final Object m2Value = lib.execute(m2Function);
+                Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
     public void testImportOrder() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);

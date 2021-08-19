@@ -281,10 +281,12 @@ public class Linker {
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
             final CallTarget target = importedInstance.target(importedFunction.index());
+            final WasmFunctionInstance functionInstance = importedInstance.functionInstance(importedFunction.index());
             if (!function.type().equals(importedFunction.type())) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
             }
             instance.setTarget(function.index(), target);
+            instance.setFunctionInstance(function.index(), functionInstance);
         };
         final Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
         resolutionDag.resolveLater(new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()), dependencies, resolveAction);
@@ -463,8 +465,7 @@ public class Linker {
         for (int index = 0; index != functionsIndices.length; ++index) {
             final int functionIndex = functionsIndices[index];
             final WasmFunction function = instance.module().function(functionIndex);
-            final CallTarget target = instance.target(function.index());
-            table.initialize(baseAddress + index, new WasmFunctionInstance(context, function, target));
+            table.initialize(baseAddress + index, instance.functionInstance(function));
         }
     }
 

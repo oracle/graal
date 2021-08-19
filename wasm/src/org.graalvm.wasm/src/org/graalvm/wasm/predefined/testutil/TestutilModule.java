@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,8 @@ import java.nio.file.Paths;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 public class TestutilModule extends BuiltinModule {
+    private static final int NUMBER_OF_FUNCTIONS = 2;
+
     public static class Options {
         static final String KEEP_TEMP_FILES = System.getProperty("wasmtest.keepTempFiles", "false");
     }
@@ -82,7 +84,7 @@ public class TestutilModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final Path temporaryDirectory = createTemporaryDirectory();
-        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null));
+        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null), NUMBER_OF_FUNCTIONS);
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
