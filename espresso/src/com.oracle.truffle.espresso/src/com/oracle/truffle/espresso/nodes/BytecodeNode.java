@@ -716,6 +716,40 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     @Override
+    @ExplodeLoop
+    public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
+        int maxStackSize = getMethod().getMaxStackSize();
+        CompilerAsserts.partialEvaluationConstant(maxStackSize);
+        int slotCount = getMethod().getMaxLocals() + maxStackSize;
+        CompilerAsserts.partialEvaluationConstant(slotCount);
+        try {
+            long[] parentPrimitives = (long[]) parentFrame.getObject(primitivesSlot);
+            Object[] parentRefs = (Object[]) parentFrame.getObject(refsSlot);
+            assert parentPrimitives.length == slotCount && parentRefs.length == slotCount;
+
+            long[] osrPrimitives = (long[]) osrFrame.getObject(primitivesSlot);
+            Object[] osrRefs = (Object[]) osrFrame.getObject(refsSlot);
+            assert osrPrimitives.length == slotCount && osrRefs.length == slotCount;
+
+            for (int i = 0; i < slotCount; i++) {
+                if (i < maxStackSize) {
+                    // On return from OSR, the entire stack is empty.
+                    EspressoFrame.clear(parentPrimitives, parentRefs, i);
+                } else {
+                    // Copy locals back into the parent frame.
+                    parentPrimitives[i] = osrPrimitives[i];
+                    parentRefs[i] = osrRefs[i];
+                }
+                EspressoFrame.clear(osrPrimitives, osrRefs, i);
+            }
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        setBCI(parentFrame, getBci(osrFrame));
+    }
+
+    @Override
     Object executeBody(VirtualFrame frame) {
         return executeBodyFromBCI(frame, 0);
     }
