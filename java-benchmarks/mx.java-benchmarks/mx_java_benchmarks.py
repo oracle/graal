@@ -1363,11 +1363,14 @@ mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 _SpecJbb_specific_vmArgs = [
     "-XX:+UseNUMA",
     "-XX:+AlwaysPreTouch",
-    "-XX:+UseLargePagesInMetaspace",
     "-XX:-UseAdaptiveSizePolicy",
     "-XX:-UseAdaptiveNUMAChunkSizing",
     "-XX:+PrintGCDetails"
 ]
+
+if java_home_jdk().javaCompliance < '16':
+    # JDK-8243161: Deprecated in JDK15 and marked obsolete in JDK16
+    _SpecJbb_specific_vmArgs.append("-XX:+UseLargePagesInMetaspace")
 
 if mx.is_linux():
     _SpecJbb_specific_vmArgs.append("-XX:+UseTransparentHugePages")
