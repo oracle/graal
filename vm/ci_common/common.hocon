@@ -112,10 +112,11 @@ fastr: {
 
 fastr_linux: ${fastr} {
   packages: {
-    readline: "==6.3"
-    pcre: "==8.43"
-    zlib: ">=1.2.11"
-    curl: ">=7.50.1"
+    readline: "==6.3",
+    pcre: "==8.43",
+    zlib: ">=1.2.11",
+    curl: ">=7.50.1",
+    gnur: "==4.0.3-gcc4.8.5-pcre8.42"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
@@ -131,7 +132,8 @@ fastr_linux: ${fastr} {
 
 fastr_darwin: ${fastr} {
   packages: {
-    "pcre": "==8.43"
+    "pcre": "==8.43",
+    "gnur": "==4.0.3-gcc10.2-pcre8.42"
   }
   environment:  {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
