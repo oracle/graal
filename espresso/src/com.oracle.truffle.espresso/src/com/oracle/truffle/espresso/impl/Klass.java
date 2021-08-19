@@ -1097,11 +1097,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             this.statics = statics;
         }
 
-        public boolean ignore(Member<?> m) {
-            if (!statics && m.isStatic()) {
+        public boolean include(Member<?> m) {
+            if (m == null) {
+                return false;
+            }
+            if (statics && m.isStatic()) {
                 return true;
             }
-            if (!instances && !m.isStatic()) {
+            if (instances && !m.isStatic()) {
                 return true;
             }
             return false;
@@ -1155,13 +1158,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         // TODO(peterssen): Improve lookup performance.
 
         Field field = lookupDeclaredField(fieldName, fieldType);
-        if (field != null && !mode.ignore(field)) {
+        if (mode.include(field)) {
             return field;
         }
 
         for (ObjectKlass superI : getSuperInterfaces()) {
             field = superI.lookupField(fieldName, fieldType, mode);
-            if (field != null && !mode.ignore(field)) {
+            if (mode.include(field)) {
                 return field;
             }
         }
@@ -1223,7 +1226,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         KLASS_LOOKUP_DECLARED_METHOD_COUNT.inc();
         // TODO(peterssen): Improve lookup performance.
         for (Method method : getDeclaredMethods()) {
-            if (!lookupMode.ignore(method)) {
+            if (lookupMode.include(method)) {
                 if (methodName.equals(method.getName()) && signature.equals(method.getRawSignature())) {
                     return method;
                 }
@@ -1307,7 +1310,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     public Method lookupPolysignatureDeclaredMethod(Symbol<Name> methodName, LookupMode lookupMode) {
         for (Method m : getDeclaredMethods()) {
-            if (!lookupMode.ignore(m)) {
+            if (lookupMode.include(m)) {
                 if (m.getName() == methodName && m.isSignaturePolymorphicDeclared()) {
                     return m;
                 }
