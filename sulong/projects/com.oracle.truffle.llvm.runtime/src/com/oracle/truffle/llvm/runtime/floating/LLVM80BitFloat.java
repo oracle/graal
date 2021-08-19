@@ -611,8 +611,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
                 LLVM80BitFloat z = memory.get80BitFloat(this, ptrZ);
                 return z;
             } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             } finally {
                 memory.free(this, mem);
             }

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -56,7 +55,8 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
                     @Cached LLVMReadStringNode readString,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached("createToLLVM()") ForeignToLLVM toLLVM,
-                    @Cached BranchProfile notFound) {
+                    @Cached BranchProfile notFound,
+                    @Cached BranchProfile exception) {
         String symbolName = readString.executeWithTarget(name);
 
         try {
@@ -66,7 +66,7 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
             notFound.enter();
             return LLVMNativePointer.createNull();
         } catch (UnsupportedMessageException ex) {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMPolyglotException(this, ex.getMessage());
         }
     }

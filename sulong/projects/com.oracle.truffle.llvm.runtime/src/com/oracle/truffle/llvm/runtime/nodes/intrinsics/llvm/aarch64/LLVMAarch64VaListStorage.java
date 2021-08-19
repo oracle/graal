@@ -170,8 +170,8 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                     @Cached BranchProfile invalidLengthProfile) {
         if (length != Aarch64BitVarArgs.SIZE_OF_VALIST) {
             invalidLengthProfile.enter();
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException("Invalid length " + length + ". Expected length " + Aarch64BitVarArgs.SIZE_OF_VALIST);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere("Invalid length " + length + ". Expected length " + Aarch64BitVarArgs.SIZE_OF_VALIST);
         }
 
         vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source), this);
@@ -296,15 +296,13 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @SuppressWarnings("static-method")
     @ExportMessage
     byte readI8(@SuppressWarnings("unused") long offset) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not get here");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
     short readI16(@SuppressWarnings("unused") long offset) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not get here");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @ExportMessage
@@ -318,8 +316,8 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                 case Aarch64BitVarArgs.FP_OFFSET:
                     return vaList.fpOffset;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException("Invalid offset " + offset);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw CompilerDirectives.shouldNotReachHere("Invalid offset " + offset);
             }
         }
 
@@ -344,8 +342,8 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                 case Aarch64BitVarArgs.FP_SAVE_AREA:
                     return vaList.fpSaveAreaPtr;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException("Invalid offset " + offset);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw CompilerDirectives.shouldNotReachHere("Invalid offset " + offset);
             }
         }
 
@@ -364,8 +362,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             case Aarch64BitVarArgs.OVERFLOW_ARG_AREA:
                 return overflowArgArea.getCurrentArgPtr();
             default:
-                CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException("Should not get here");
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -374,15 +371,13 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @ExportMessage
     @SuppressWarnings("static-method")
     void writeI8(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") byte value) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not get here");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
     void writeI16(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") short value) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not get here");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @ExportMessage
@@ -398,8 +393,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                     vaList.fpOffset = value;
                     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException("Should not get here");
+                    throw CompilerDirectives.shouldNotReachHere();
             }
         }
 
@@ -414,15 +408,16 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @ExportMessage
     @SuppressWarnings("static-method")
     void writeGenericI64(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") Object value) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not get here");
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @ExportMessage
     static class WritePointer {
 
         @Specialization(guards = "!vaList.isNativized()")
-        static void writeManaged(LLVMAarch64VaListStorage vaList, long offset, @SuppressWarnings("unused") LLVMPointer value) {
+        static void writeManaged(LLVMAarch64VaListStorage vaList, long offset, @SuppressWarnings("unused") LLVMPointer value,
+                        @Cached BranchProfile exception,
+                        @CachedLibrary("vaList") LLVMManagedWriteLibrary self) {
             switch ((int) offset) {
                 case Aarch64BitVarArgs.OVERFLOW_ARG_AREA:
                     /*
@@ -430,14 +425,13 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                      * argument, according to abi
                      */
                     if (!LLVMManagedPointer.isInstance(value) || LLVMManagedPointer.cast(value).getObject() != vaList.overflowArgArea) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new LLVMMemoryException(null, "updates to VA_LIST overflowArea pointer can only shift the current argument");
+                        exception.enter();
+                        throw new LLVMMemoryException(self, "updates to VA_LIST overflowArea pointer can only shift the current argument");
                     }
                     vaList.overflowArgArea.setOffset(LLVMManagedPointer.cast(value).getOffset());
                     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new UnsupportedOperationException("Should not get here");
+                    throw CompilerDirectives.shouldNotReachHere();
             }
         }
 
@@ -559,8 +553,8 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                     overflowArea += obj.getSize();
                     overflowArgs[oi++] = arg;
                 } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError(arg);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
                 }
             }
 
@@ -1056,8 +1050,8 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
                     LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) arg;
                     overflowArea += obj.getSize();
                 } else {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError(arg);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
                 }
             }
 
@@ -1123,8 +1117,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         @SuppressWarnings("static-method")
         @ExportMessage
         public Object shift(@SuppressWarnings("unused") Type type, @SuppressWarnings("unused") Frame frame) {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException("TODO");
+            throw CompilerDirectives.shouldNotReachHere("TODO");
         }
     }
 

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -189,7 +188,6 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
 
         @Fallback
         long fallback(@SuppressWarnings("unused") Object value, ForeignToLLVMType writeType) {
-            CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, "Unexpected access type %s", writeType);
         }
 

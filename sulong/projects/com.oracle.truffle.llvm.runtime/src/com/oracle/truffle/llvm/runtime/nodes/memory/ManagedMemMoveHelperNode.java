@@ -171,7 +171,6 @@ abstract class ManagedMemMoveHelperNode extends LLVMNode {
          */
         @Fallback
         int doError(ManagedMemMoveHelperNode helper, long length) {
-            CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, "Memmove length is not divisible by managed array element size.");
         }
     }

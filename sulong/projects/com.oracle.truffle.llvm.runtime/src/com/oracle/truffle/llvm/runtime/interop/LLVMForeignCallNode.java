@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -41,7 +41,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackFromThreadNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -90,6 +89,7 @@ public abstract class LLVMForeignCallNode extends RootNode {
          * @param sourceType The source (e.g. C) level function type.
          */
         public static PackForeignArgumentsNode create(FunctionType bitcodeFunctionType, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
+            CompilerAsserts.neverPartOfCompilation();
             int numberOfBitcodeParams = bitcodeFunctionType.getNumberOfArguments();
             LLVMGetInteropParamNode[] toLLVM = new LLVMGetInteropParamNode[numberOfBitcodeParams];
 
@@ -132,7 +132,6 @@ public abstract class LLVMForeignCallNode extends RootNode {
                         assert targetMemberType == bitcodeParameterType;
 
                         if (Long.compareUnsigned(sourceArgIndex, numberOfBitcodeParams) >= 0) {
-                            CompilerDirectives.transferToInterpreter();
                             throw new ArrayIndexOutOfBoundsException(String.format("Source argument index (%s) is out of bitcode parameters list bounds (which is of length %s)",
                                             Long.toUnsignedString(sourceArgIndex), Integer.toUnsignedString(numberOfBitcodeParams)));
                         }
@@ -194,7 +193,7 @@ public abstract class LLVMForeignCallNode extends RootNode {
     @Child LLVMDataEscapeNode prepareValueForEscape;
     @Child PackForeignArgumentsNode packArguments;
 
-    protected LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType, Structured returnBaseType, Type escapeType) {
+    protected LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionCode function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType, Structured returnBaseType, Type escapeType) {
         super(language);
         this.returnBaseType = returnBaseType;
         this.getStack = LLVMGetStackFromThreadNode.create();
@@ -230,14 +229,13 @@ public abstract class LLVMForeignCallNode extends RootNode {
 
     protected abstract Object doCall(VirtualFrame frame, LLVMStack stack) throws ArityException, TypeOverflowException;
 
-    static CallTarget getCallTarget(LLVMFunctionDescriptor descriptor) {
-        LLVMFunctionCode functionCode = descriptor.getFunctionCode();
+    static CallTarget getCallTarget(LLVMFunctionCode functionCode) {
+        CompilerAsserts.neverPartOfCompilation();
         if (functionCode.isLLVMIRFunction()) {
             return functionCode.getLLVMIRFunctionSlowPath();
         } else if (functionCode.isIntrinsicFunctionSlowPath()) {
-            return functionCode.getIntrinsicSlowPath().cachedCallTarget(descriptor.getLLVMFunction().getType());
+            return functionCode.getIntrinsicSlowPath().cachedCallTarget(functionCode.getLLVMFunction().getType());
         } else {
-            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("native function not supported at this point: " + functionCode.getFunction());
         }
     }

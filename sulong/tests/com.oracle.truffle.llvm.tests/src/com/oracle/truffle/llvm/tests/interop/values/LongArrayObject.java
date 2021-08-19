@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests.interop.values;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = false)
@@ -94,14 +95,15 @@ public final class LongArrayObject implements TruffleObject {
 
     @ExportMessage(limit = "3")
     void writeArrayElement(long idx, Object value,
-                    @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException, InvalidArrayIndexException {
+                    @CachedLibrary("value") InteropLibrary interop,
+                    @Cached BranchProfile exception) throws UnsupportedTypeException, InvalidArrayIndexException {
         if (!hasArrayElement(idx)) {
             throw InvalidArrayIndexException.create(idx);
         }
         try {
             array[(int) idx] = interop.asLong(value);
         } catch (UnsupportedMessageException ex) {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw UnsupportedTypeException.create(new Object[]{value});
         }
     }

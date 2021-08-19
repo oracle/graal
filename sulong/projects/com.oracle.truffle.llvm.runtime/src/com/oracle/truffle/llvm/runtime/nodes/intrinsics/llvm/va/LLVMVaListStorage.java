@@ -126,8 +126,8 @@ public class LLVMVaListStorage implements TruffleObject {
         } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
             return VarArgArea.FP_AREA;
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(arg);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
         }
     }
 
@@ -236,8 +236,8 @@ public class LLVMVaListStorage implements TruffleObject {
             }
             return floatVec.getLength() * Float.BYTES;
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(object);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere(String.valueOf(object));
         }
     }
 
@@ -258,8 +258,8 @@ public class LLVMVaListStorage implements TruffleObject {
         } else if (arg instanceof Double) {
             value = Double.doubleToRawLongBits((double) arg);
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(arg);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
         }
         storeNode.executeWithTarget(ptr, offset, value);
         return stackStep;
@@ -603,8 +603,8 @@ public class LLVMVaListStorage implements TruffleObject {
             } else if (arg instanceof LLVM80BitFloat) {
                 return F80_ARG_TYPE;
             } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(arg);
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw CompilerDirectives.shouldNotReachHere(String.valueOf(arg));
             }
         }
     }
@@ -1057,8 +1057,7 @@ public class LLVMVaListStorage implements TruffleObject {
             try {
                 return offsetLoad.executeWithTarget(LLVMNativePointer.cast(x.getAddr()), offset);
             } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new UnsupportedOperationException("Should not get here");
+                throw CompilerDirectives.shouldNotReachHere();
             }
         }
 

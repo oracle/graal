@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -96,7 +95,6 @@ public final class LLVMPThreadThreadIntrinsics {
                 try {
                     thread.join();
                 } catch (InterruptedException e) {
-                    CompilerDirectives.transferToInterpreter();
                     throw new LLVMThreadException(this, "Failed to join thread", e);
                 }
             }

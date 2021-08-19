@@ -86,8 +86,9 @@ public abstract class ToI8 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected byte fromString(String value) {
-        return (byte) getSingleStringCharacter(value);
+    protected byte fromString(String value,
+                    @Cached BranchProfile exception) {
+        return (byte) getSingleStringCharacter(value, exception);
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
@@ -113,7 +114,7 @@ public abstract class ToI8 extends ForeignToLLVM {
         } else if (value instanceof Character) {
             return (byte) (char) value;
         } else if (value instanceof String) {
-            return (byte) thiz.getSingleStringCharacter((String) value);
+            return (byte) thiz.getSingleStringCharacter((String) value, BranchProfile.getUncached());
         } else {
             try {
                 return InteropLibrary.getFactory().getUncached().asByte(value);

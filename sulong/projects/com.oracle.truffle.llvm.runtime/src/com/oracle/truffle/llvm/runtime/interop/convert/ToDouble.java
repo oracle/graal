@@ -86,8 +86,9 @@ public abstract class ToDouble extends ForeignToLLVM {
     }
 
     @Specialization
-    protected double fromString(String value) {
-        return getSingleStringCharacter(value);
+    protected double fromString(String value,
+                    @Cached BranchProfile exception) {
+        return getSingleStringCharacter(value, exception);
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
@@ -113,7 +114,7 @@ public abstract class ToDouble extends ForeignToLLVM {
         } else if (value instanceof Character) {
             return (char) value;
         } else if (value instanceof String) {
-            return thiz.getSingleStringCharacter((String) value);
+            return thiz.getSingleStringCharacter((String) value, BranchProfile.getUncached());
         } else {
             try {
                 return InteropLibrary.getFactory().getUncached().asDouble(value);

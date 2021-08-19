@@ -31,9 +31,11 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -67,19 +69,19 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    LLVMInteropType doGlobal(LLVMPointer pointer) {
+    LLVMInteropType doGlobal(LLVMPointer pointer,
+                    @Cached BranchProfile wrongType) {
         LLVMInteropType type = getType(pointer);
         if (type instanceof LLVMInteropType.Array) {
             return ((LLVMInteropType.Array) type).elementType;
         }
 
-        CompilerDirectives.transferToInterpreter();
+        wrongType.enter();
         return fallback(pointer);
     }
 
     @Fallback
     LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid) {
-        CompilerDirectives.transferToInterpreter();
         throw new LLVMPolyglotException(this, "Couldn't find runtime type information. Make sure the LLVM bitcode is compiled with debug information (-g).");
     }
 }
