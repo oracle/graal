@@ -278,19 +278,15 @@ final class UnsafeSupport {
         }
 
         private static char swap(char c) {
-            return (char) ((c << 8) | (c >>> 8));
+            return Character.reverseBytes(c);
         }
 
         private static int swap(int i) {
-            char lo = (char) (i & 0xFFFF);
-            char hi = (char) ((i >>> 16) & 0xFFFF);
-            return swap(lo) << 16 | swap(hi);
+            return Integer.reverseBytes(i);
         }
 
         private static long swap(long l) {
-            int lo = (int) (l & 0xFFFFFFFFL);
-            int hi = (int) ((l >>> 32) & 0xFFFFFFFFL);
-            return ((long) swap(lo)) << 32 | (swap(hi));
+            return Long.reverseBytes(l);
         }
 
         static void do2(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
