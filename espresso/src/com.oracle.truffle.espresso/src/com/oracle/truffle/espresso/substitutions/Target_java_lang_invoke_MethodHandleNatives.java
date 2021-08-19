@@ -52,7 +52,6 @@ import java.util.List;
 
 import org.graalvm.collections.Pair;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -432,7 +431,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @Cached BranchProfile isInvokeVirtualOrSpecialProfile,
                         @Cached BranchProfile isHandleMethodProfile) {
             Meta meta = context.getMeta();
-            // TODO(Garcia) Perhaps perform access checks ?
             if (meta.HIDDEN_VMTARGET.getHiddenObject(memberName) != null) {
                 return memberName; // Already planted
             }
@@ -556,10 +554,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                             cat(expected, " method lookup resulted in ", actual, " resolution for method ", resolutionKlass.getName(), "#", name, ":", sig));
         }
         if (accessCheck) {
-            boundary(() -> MemberRefConstant.doAccessCheck(callerKlass, target.getDeclaringKlass(), target, meta));
+            MemberRefConstant.doAccessCheck(callerKlass, target.getDeclaringKlass(), target, meta);
         }
         if (constraintsChecks) {
-            boundary(() -> target.checkLoadingConstraints(callerKlass.getDefiningClassLoader(), resolutionKlass.getDefiningClassLoader()));
+            target.checkLoadingConstraints(callerKlass.getDefiningClassLoader(), resolutionKlass.getDefiningClassLoader());
         }
         plantResolvedMethod(memberName, target, refKind, meta);
     }
@@ -582,7 +580,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, cat("Failed lookup for field ", resolutionKlass.getName(), "#", name, ":", type));
         }
         if (constraintsCheck) {
-            boundary(() -> field.checkLoadingConstraints(callerKlass.getDefiningClassLoader(), resolutionKlass.getDefiningClassLoader()));
+            field.checkLoadingConstraints(callerKlass.getDefiningClassLoader(), resolutionKlass.getDefiningClassLoader());
         }
         plantResolvedField(memberName, field, refKind, meta);
     }
@@ -710,11 +708,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @SuppressWarnings("unused")
     public static void clearCallSiteContext(@JavaType(internalName = "Ljava/lang/invoke/MethodHandleNatives$CallSiteContext;") StaticObject context) {
         /* nop */
-    }
-
-    @TruffleBoundary
-    private static void boundary(Runnable run) {
-        run.run();
     }
 
 }

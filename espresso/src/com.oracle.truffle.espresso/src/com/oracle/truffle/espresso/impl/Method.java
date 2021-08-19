@@ -915,6 +915,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return localSource;
     }
 
+    @TruffleBoundary
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         for (Symbol<Type> type : getParsedSignature()) {
             getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
