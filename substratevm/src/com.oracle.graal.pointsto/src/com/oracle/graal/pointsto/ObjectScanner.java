@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,8 +61,8 @@ public abstract class ObjectScanner {
     private final CompletionExecutor executor;
     private final Deque<WorklistEntry> worklist;
 
-    public ObjectScanner(BigBang bigbang, CompletionExecutor executor, ReusableSet scannedObjects) {
-        this.bb = bigbang;
+    public ObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects) {
+        this.bb = bb;
         if (executor != null) {
             this.executor = executor;
             this.worklist = null;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,31 +41,31 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class StatisticsPrinter {
 
-    public static void print(BigBang bigbang, String reportsPath, String reportName) {
-        StatisticsPrinter printer = new StatisticsPrinter(bigbang);
+    public static void print(BigBang bb, String reportsPath, String reportName) {
+        StatisticsPrinter printer = new StatisticsPrinter(bb);
         Consumer<PrintWriter> consumer = printer::printStats;
         String description = "analysis results stats";
-        if (AnalysisReportsOptions.AnalysisStatisticsFile.hasBeenSet(bigbang.getOptions())) {
-            final File file = new File(AnalysisReportsOptions.AnalysisStatisticsFile.getValue(bigbang.getOptions())).getAbsoluteFile();
+        if (AnalysisReportsOptions.AnalysisStatisticsFile.hasBeenSet(bb.getOptions())) {
+            final File file = new File(AnalysisReportsOptions.AnalysisStatisticsFile.getValue(bb.getOptions())).getAbsoluteFile();
             ReportUtils.report(description, file.toPath(), consumer);
         } else {
             ReportUtils.report(description, reportsPath, "analysis_stats_" + reportName, "json", consumer);
         }
     }
 
-    private final BigBang bigbang;
+    private final BigBang bb;
 
-    public StatisticsPrinter(BigBang bigbang) {
-        this.bigbang = bigbang;
+    public StatisticsPrinter(BigBang bb) {
+        this.bb = bb;
     }
 
     /** Print analysis statistics as JSON formatted String. */
     private void printStats(PrintWriter out) {
 
-        int[] reachableTypes = getNumReachableTypes(bigbang);
-        int[] reachableMethods = getNumReachableMethods(bigbang);
-        int[] reachableFields = getNumReachableFields(bigbang);
-        long[] typeChecksStats = getTypeCheckStats(bigbang);
+        int[] reachableTypes = getNumReachableTypes(bb);
+        int[] reachableMethods = getNumReachableMethods(bb);
+        int[] reachableFields = getNumReachableFields(bb);
+        long[] typeChecksStats = getTypeCheckStats(bb);
 
         beginObject(out);
 
@@ -80,12 +80,12 @@ public final class StatisticsPrinter {
         print(out, "app_type_checks", typeChecksStats[2]);
         print(out, "app_removable_type_checks", typeChecksStats[3]);
 
-        print(out, "typeflow_time_ms", bigbang.typeFlowTimer.getTotalTime());
-        print(out, "objects_time_ms", bigbang.checkObjectsTimer.getTotalTime());
-        print(out, "features_time_ms", bigbang.processFeaturesTimer.getTotalTime());
-        print(out, "total_analysis_time_ms", bigbang.analysisTimer.getTotalTime());
+        print(out, "typeflow_time_ms", bb.typeFlowTimer.getTotalTime());
+        print(out, "objects_time_ms", bb.checkObjectsTimer.getTotalTime());
+        print(out, "features_time_ms", bb.processFeaturesTimer.getTotalTime());
+        print(out, "total_analysis_time_ms", bb.analysisTimer.getTotalTime());
 
-        printLast(out, "total_memory_bytes", bigbang.analysisTimer.getTotalMemory());
+        printLast(out, "total_memory_bytes", bb.analysisTimer.getTotalMemory());
 
         endObject(out);
     }

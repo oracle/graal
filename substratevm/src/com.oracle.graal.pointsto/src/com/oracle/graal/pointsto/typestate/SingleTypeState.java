@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 
 public class SingleTypeState extends TypeState {
 
-    protected final BigBang bigbang;
     /** The objects of this type state. */
     protected final AnalysisObject[] objects;
     /** Can this type state represent the null value? */
@@ -50,7 +49,6 @@ public class SingleTypeState extends TypeState {
     /** Creates a new type state from incoming objects. */
     public SingleTypeState(BigBang bb, boolean canBeNull, int properties, AnalysisObject... objects) {
         super(properties);
-        this.bigbang = bb;
         this.objects = objects;
         this.canBeNull = canBeNull;
         this.merged = false;
@@ -63,7 +61,6 @@ public class SingleTypeState extends TypeState {
     /** Create a type state with the same content and a reversed canBeNull value. */
     protected SingleTypeState(BigBang bb, boolean canBeNull, SingleTypeState other) {
         super(other.properties);
-        this.bigbang = bb;
         this.objects = other.objects;
         this.canBeNull = canBeNull;
         this.merged = other.merged;

@@ -114,7 +114,7 @@ public class AnalysisUniverse implements Universe {
     private AnalysisType objectClass;
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
-    private BigBang bigbang;
+    private BigBang bb;
 
     public JavaKind getWordKind() {
         return wordKind;
@@ -159,10 +159,10 @@ public class AnalysisUniverse implements Universe {
         return sealed;
     }
 
-    public void setAnalysisDataValid(BigBang bb, boolean dataIsValid) {
+    public void setAnalysisDataValid(boolean dataIsValid) {
         if (dataIsValid) {
             buildSubTypes();
-            collectMethodImplementations(bb);
+            collectMethodImplementations();
         }
         analysisDataValid = dataIsValid;
     }
@@ -293,8 +293,8 @@ public class AnalysisUniverse implements Universe {
             hostVM.registerType(newValue);
 
             /* Register the type as assignable with all its super types before it is published. */
-            if (bigbang != null) {
-                newValue.registerAsAssignable(bigbang);
+            if (bb != null) {
+                newValue.registerAsAssignable(bb);
             }
 
             /*
@@ -603,7 +603,7 @@ public class AnalysisUniverse implements Universe {
         }
     }
 
-    private void collectMethodImplementations(BigBang bb) {
+    private void collectMethodImplementations() {
         for (AnalysisMethod method : methods.values()) {
 
             Set<AnalysisMethod> implementations = getMethodImplementations(bb, method);
@@ -703,11 +703,11 @@ public class AnalysisUniverse implements Universe {
         return originalMetaAccess;
     }
 
-    public void setBigBang(BigBang bigbang) {
-        this.bigbang = bigbang;
+    public void setBigBang(BigBang bb) {
+        this.bb = bb;
     }
 
     public BigBang getBigbang() {
-        return bigbang;
+        return bb;
     }
 }

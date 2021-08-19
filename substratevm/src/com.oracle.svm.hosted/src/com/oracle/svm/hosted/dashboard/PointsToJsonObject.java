@@ -488,9 +488,9 @@ class PointsToJsonObject extends JsonObject {
             return;
         }
         FeatureImpl.OnAnalysisExitAccessImpl config = (FeatureImpl.OnAnalysisExitAccessImpl) access;
-        BigBang bigbang = config.getBigBang();
-        serializeMethods(bigbang);
-        connectFlowsToEnclosingMethods(bigbang);
+        BigBang bb = config.getBigBang();
+        serializeMethods(bb);
+        connectFlowsToEnclosingMethods(bb);
         matchInputsAndUses();
         built = true;
     }

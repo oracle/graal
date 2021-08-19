@@ -35,7 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
 public class MultiTypeState extends TypeState {
 
-    protected final BigBang bigbang;
+    protected final BigBang bb;
     /** The objects of this type state. */
     protected final AnalysisObject[] objects;
     /** See {@link #getObjectTypeIds()}. */
@@ -56,7 +56,7 @@ public class MultiTypeState extends TypeState {
     /** Creates a new type state using the provided types bit set and objects. */
     MultiTypeState(BigBang bb, boolean canBeNull, int properties, BitSet typesBitSet, AnalysisObject... objects) {
         super(properties);
-        this.bigbang = bb;
+        this.bb = bb;
         this.objects = objects;
         /*
          * Trim the typesBitSet to size eagerly. The typesBitSet is effectively immutable, i.e., no
@@ -79,14 +79,14 @@ public class MultiTypeState extends TypeState {
         this.merged = false;
         assert typesCount > 1 : "Multi type state with single type.";
         assert objects.length > 1 : "Multi type state with single object.";
-        assert !bb.extendedAsserts() || checkObjects(bb);
+        assert !bb.extendedAsserts() || checkObjects();
         PointsToStats.registerTypeState(bb, this);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
     private MultiTypeState(BigBang bb, boolean canBeNull, MultiTypeState other) {
         super(other.properties);
-        this.bigbang = bb;
+        this.bb = bb;
         this.objects = other.objects;
         this.typesBitSet = other.typesBitSet;
         this.typesCount = other.typesCount;
@@ -113,7 +113,7 @@ public class MultiTypeState extends TypeState {
         return objectTypeIds;
     }
 
-    private boolean checkObjects(BigBang bb) {
+    private boolean checkObjects() {
         assert bb.extendedAsserts();
 
         for (int idx = 0; idx < objects.length - 1; idx++) {
@@ -189,7 +189,7 @@ public class MultiTypeState extends TypeState {
 
             @Override
             public AnalysisType next() {
-                AnalysisType next = bigbang.getUniverse().getType(currentTypeId);
+                AnalysisType next = bb.getUniverse().getType(currentTypeId);
                 currentTypeId = typesBitSet.nextSetBit(currentTypeId + 1);
                 return next;
             }
@@ -202,7 +202,7 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public TypeState exactTypeState(BigBang bb, AnalysisType exactType) {
+    public TypeState exactTypeState(BigBang unused, AnalysisType exactType) {
         if (containsType(exactType)) {
             AnalysisObject[] resultObjects = objectsArray(exactType);
             return new SingleTypeState(bb, canBeNull, bb.analysisPolicy().makePoperties(bb, resultObjects), resultObjects);
@@ -212,7 +212,7 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public TypeState forCanBeNull(BigBang bb, boolean resultCanBeNull) {
+    public TypeState forCanBeNull(BigBang unused, boolean resultCanBeNull) {
         if (resultCanBeNull == this.canBeNull()) {
             return this;
         } else {
@@ -316,7 +316,7 @@ public class MultiTypeState extends TypeState {
 
     /** Note that the objects of this type state have been merged. */
     @Override
-    public void noteMerge(BigBang bb) {
+    public void noteMerge(BigBang unused) {
         assert bb.analysisPolicy().isMergingEnabled();
 
         if (!merged) {
@@ -328,7 +328,7 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public boolean closeToAllInstantiated(BigBang bb) {
+    public boolean closeToAllInstantiated(BigBang unused) {
         if (typesCount > 200 && bb != null) {
             MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypes();
             return typesCount * 100L / allInstState.typesCount > 75;
