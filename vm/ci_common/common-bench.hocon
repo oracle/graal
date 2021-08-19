@@ -43,6 +43,7 @@ vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_ja
     ${vm_bench_polybench_linux_interpreter.bench_cmd} ["--polybench-vm-config=native-interpreter"]
     ${vm_bench_common.upload}
   ]
+  timelimit: "2:30:00"
 }
 
 vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_11} {

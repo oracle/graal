@@ -351,34 +351,25 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     private Workload lookup(Context context, String languageId, Value evalSource, String memberName) {
         Value result;
-        if (evalSource.hasMember(memberName)) {
-            // first try the memberName directly
-            result = evalSource.getMember(memberName);
-        } else {
-            // language-specific lookup
-            switch (languageId) {
-                case "llvm":
-                    if (evalSource.canExecute()) {
-                        result = evalSource;
-                    } else {
-                        // In LLVM, !evalsource.canExecute() means it's a shared library.
-                        // Benchmarks must be executables.
-                        throw abort("No main function found: " + evalSource);
-                    }
-                    break;
-                case "wasm":
-                    // Special case for WASM: Lookup main module and get 'memberName' from there.
-                    result = context.getBindings(languageId).getMember("main").getMember(memberName);
-                    break;
-                case "java":
-                    // Espresso doesn't provide methods as executable values.
-                    // It can only invoke methods from the declaring class or receiver.
-                    return Workload.createInvoke(evalSource, "main", ProxyArray.fromArray());
-                default:
+        // language-specific lookup
+        switch (languageId) {
+            case "wasm":
+                // Special case for WASM: Lookup main module and get 'memberName' from there.
+                result = context.getBindings(languageId).getMember("main").getMember(memberName);
+                break;
+            case "java":
+                // Espresso doesn't provide methods as executable values.
+                // It can only invoke methods from the declaring class or receiver.
+                return Workload.createInvoke(evalSource, "main", ProxyArray.fromArray());
+            default:
+                // first try the memberName directly
+                if (evalSource.hasMember(memberName)) {
+                    result = evalSource.getMember(memberName);
+                } else {
                     // Fallback for other languages: Look for 'memberName' in global scope.
                     result = context.getBindings(languageId).getMember(memberName);
-                    break;
-            }
+                }
+                break;
         }
         if (result == null) {
             throw abort("Cannot find target '" + memberName + "'. Please check that the specified program is a benchmark.");
