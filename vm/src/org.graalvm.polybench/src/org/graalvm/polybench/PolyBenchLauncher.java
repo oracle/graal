@@ -24,8 +24,17 @@
  */
 package org.graalvm.polybench;
 
+import org.graalvm.launcher.AbstractLanguageLauncher;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -34,23 +43,25 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.logging.Handler;
-
-import org.graalvm.launcher.AbstractLanguageLauncher;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
 
 public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     static class ArgumentConsumer {
         private final String prefix;
         private final BiConsumer<String, Config> action;
+        private final Consumer<Config> flagAction;
 
         ArgumentConsumer(String prefix, BiConsumer<String, Config> action) {
             this.prefix = prefix;
             this.action = action;
+            this.flagAction = null;
+        }
+
+        ArgumentConsumer(String prefix, Consumer<Config> flagAction) {
+            this.prefix = prefix;
+            this.action = null;
+            this.flagAction = flagAction;
         }
 
         boolean consume(String argument, Iterator<String> args, Config options) {
@@ -65,6 +76,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             } else {
                 if (!argument.equals(prefix)) {
                     return false;
+                }
+                if (flagAction != null) {
+                    flagAction.accept(options);
+                    return true;
                 }
                 try {
                     value = args.next();
@@ -124,6 +139,12 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             this.consumers.add(new ArgumentConsumer("-i", (value, config) -> {
                 config.iterations = Integer.parseInt(value);
             }));
+            this.consumers.add(new ArgumentConsumer("--use-debug-cache", (config) -> {
+                config.useDebugCache = true;
+            }));
+            this.consumers.add(new ArgumentConsumer("--multi-context-runs", (value, config) -> {
+                config.runCount = Integer.parseInt(value);
+            }));
         }
 
         Config parse(List<String> arguments) {
@@ -160,6 +181,43 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         } catch (IllegalArgumentException e) {
             throw abort(e.getMessage());
         }
+
+        if (this.config.runCount > 1) {
+            List<String> engineArgs = new ArrayList<>();
+            List<List<String>> perIterationArgs = new ArrayList<>();
+            perIterationArgs.add(new ArrayList<>()); // iteration 0 args
+            perIterationArgs.add(new ArrayList<>()); // iteration 1 args
+
+            Iterator<String> iterator = this.config.unrecognizedArguments.iterator();
+            while (iterator.hasNext()) {
+                String option = iterator.next();
+
+                if (option.contains("=")) {
+                    String[] nameValue = option.split("=", 2);
+                    if (nameValue[0].endsWith(".0")) {
+                        iterator.remove();
+                        perIterationArgs.get(0).add(nameValue[0].substring(0, nameValue[0].length() - 2) + "=" + nameValue[1]);
+                    } else if (nameValue[0].endsWith(".1")) {
+                        iterator.remove();
+                        perIterationArgs.get(1).add(nameValue[0].substring(0, nameValue[0].length() - 2) + "=" + nameValue[1]);
+                    }
+                }
+
+                // The engine options must be separated and used later when building a context
+                if (option.startsWith("--engine.")) {
+                    iterator.remove();
+                    engineArgs.add(option);
+                } else if ("--experimental-options".equals(option)) {
+                    engineArgs.add(option);
+                    perIterationArgs.get(0).add(option);
+                    perIterationArgs.get(1).add(option);
+                }
+            }
+
+            parseUnrecognizedOptions(getLanguageId(config.path), config.multiContextEngineOptions, engineArgs);
+            parseUnrecognizedOptions(getLanguageId(config.path), config.perIterationContextOptions.get(0), perIterationArgs.get(0));
+            parseUnrecognizedOptions(getLanguageId(config.path), config.perIterationContextOptions.get(1), perIterationArgs.get(1));
+        }
         return this.config.unrecognizedArguments;
     }
 
@@ -178,11 +236,52 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     @Override
     protected void launch(Context.Builder contextBuilder) {
         contextBuilder.allowAllAccess(true);
-        runHarness(contextBuilder);
+
+        contextBuilder.options(config.multiContextEngineOptions);
+        if (!config.useDebugCache && config.runCount > 1) {
+            contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(config.multiContextEngineOptions).build());
+        }
+
+        if (config.runCount == 0) {
+            // Create the context and close it right afterwards to trigger the compilation of AOT
+            // roots
+            try (Context context = contextBuilder.build()) {
+                context.eval(Source.newBuilder(getLanguageId(config.path), Paths.get(config.path).toFile()).build());
+                return;
+            } catch (IOException e) {
+                throw abort(String.format("Error loading file '%s' (%s)", config.path, e.getMessage()));
+            }
+        }
+
+        for (int i = 0; i < config.runCount; i++) {
+            if (!config.useDebugCache) {
+                runHarness(contextBuilder);
+            } else {
+                if (i == 0) {
+                    contextBuilder.option("engine.DebugCachePreinitializeContext", "false").//
+                            option("engine.DebugCacheCompile", "aot").//
+                            option("engine.DebugCacheStore", "true").//
+                            option("engine.MultiTier", "false").//
+                            option("engine.CompileAOTOnCreate", "false");
+                    contextBuilder.options(config.perIterationContextOptions.get(0));
+                    try (Context context = contextBuilder.build()) {
+                        context.eval(Source.newBuilder(getLanguageId(config.path), Paths.get(config.path).toFile()).build());
+                    } catch (IOException e) {
+                        throw abort(String.format("Error loading file '%s' (%s)", config.path, e.getMessage()));
+                    }
+                } else {
+                    contextBuilder.option("engine.DebugCacheStore", "false").//
+                            option("engine.DebugCacheLoad", "true");
+                    contextBuilder.options(config.perIterationContextOptions.get(1));
+                    runHarness(contextBuilder);
+                }
+            }
+        }
     }
 
     @Override
     protected String getLanguageId() {
+        // TODO: this should reflect the language of the input file
         return "js";
     }
 
@@ -198,12 +297,29 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         System.out.println("Run a benchmark in an arbitrary language on the PolyBench harness.");
     }
 
-    private static String getExtension(String path) {
+    static String getExtension(String path) {
         int lastDot = path.lastIndexOf('.');
         if (lastDot < 0) {
             return null;
         }
         return path.substring(lastDot + 1);
+    }
+
+    String getLanguageId(String path) {
+        final File file = new File(path);
+        if ("jar".equals(getExtension(path))) {
+            return "java";
+        } else {
+            try {
+                String language = Source.findLanguage(file);
+                if (language == null) {
+                    throw abort("Could not determine the language for file " + file);
+                }
+                return language;
+            } catch (IOException e) {
+                throw abort("Error while examining source file '" + file + "': " + e.getMessage());
+            }
+        }
     }
 
     private EvalResult evalSource(Context context, String path) {
@@ -224,10 +340,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             Source source;
             String language;
             try {
-                language = Source.findLanguage(file);
-                if (language == null) {
-                    throw abort("Could not determine the language for file " + file);
-                }
+                language = getLanguageId(path);
                 source = Source.newBuilder(language, file).build();
             } catch (IOException e) {
                 throw abort("Error while examining source file '" + file + "': " + e.getMessage());

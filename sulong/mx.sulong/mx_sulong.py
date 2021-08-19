@@ -314,7 +314,10 @@ if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
 
 
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
+# Legacy bm suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(False))
+# Polybench bm suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(True))
 
 
 _toolchains = {}

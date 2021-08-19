@@ -24,9 +24,12 @@
  */
 package org.graalvm.polybench;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.graalvm.polyglot.Value;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 class Config {
     String path;
@@ -35,6 +38,10 @@ class Config {
     int iterations;
     Mode mode;
     Metric metric;
+    int runCount = 1;
+    boolean useDebugCache;
+    final Map<String, String> multiContextEngineOptions = new HashMap<>();
+    final List<Map<String, String>> perIterationContextOptions = new ArrayList<>();
     List<String> unrecognizedArguments = new ArrayList<>();
 
     private static final int DEFAULT = -1;
@@ -49,19 +56,23 @@ class Config {
         this.iterations = DEFAULT;
         this.mode = Mode.standard;
         this.metric = new PeakTimeMetric();
+        this.perIterationContextOptions.add(new HashMap<>()); // iteration 0 options
+        this.perIterationContextOptions.add(new HashMap<>()); // iteration >0 options
     }
 
     public void parseBenchSpecificDefaults(Value benchmark) {
         if (warmupIterations == DEFAULT) {
             if (benchmark.hasMember("warmupIterations")) {
-                warmupIterations = benchmark.getMember("warmupIterations").asInt();
+            	Value warmupIterationsMember = benchmark.getMember("warmupIterations");
+                warmupIterations = warmupIterationsMember.canExecute() ? warmupIterationsMember.execute().asInt() : warmupIterationsMember.asInt();
             } else {
                 warmupIterations = DEFAULT_WARMUP;
             }
         }
         if (iterations == DEFAULT) {
             if (benchmark.hasMember("iterations")) {
-                iterations = benchmark.getMember("iterations").asInt();
+            	Value iterationsMember = benchmark.getMember("iterations");
+                iterations = iterationsMember.canExecute() ? iterationsMember.execute().asInt() : iterationsMember.asInt();
             } else {
                 iterations = DEFAULT_ITERATIONS;
             }

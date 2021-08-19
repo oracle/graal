@@ -119,7 +119,7 @@ public class LLVMMultiContextLauncher extends LLVMLauncher {
                     if (i == 0) {
                         contextBuilder.option("engine.DebugCachePreinitializeContext", "false").option("engine.DebugCacheCompile", "aot").//
                                         option("engine.DebugTraceCache", "true").//
-                                        option("engine.DebugCacheLoad", "true").//
+                                        option("engine.DebugCacheLoad", "false").//
                                         option("engine.DebugCacheStore", "true").//
                                         option("engine.MultiTier", "false").//
                                         option("llvm.AOTCacheStore", "true").//

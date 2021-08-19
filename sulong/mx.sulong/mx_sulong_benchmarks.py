@@ -65,9 +65,10 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
 
 
 class SulongBenchmarkSuite(VmBenchmarkSuite):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, use_polybench, *args, **kwargs):
         super(SulongBenchmarkSuite, self).__init__(*args, **kwargs)
         self.bench_to_exec = {}
+        self.use_polybench = use_polybench
 
     def group(self):
         return 'Graal'
@@ -76,7 +77,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         return 'sulong'
 
     def name(self):
-        return 'csuite'
+        return 'csuite-polybench' if self.use_polybench else 'csuite'
 
     def run(self, benchnames, bmSuiteArgs):
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
@@ -101,7 +102,11 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 # prepare_env adds CC, CXX, CFLAGS, etc... and we copy the environment to avoid modifying the default one.
                 env = vm.prepare_env(env)
 
-                out = os.path.join(bench_out_dir, vm.out_file())
+                outName = vm.out_file()
+                if self.use_polybench:
+                    env['POLYBENCH'] = 'y'
+                    outName += '.so'
+                out = os.path.join(bench_out_dir, outName)
                 cmdline = ['make', '-f', '../Makefile', out]
                 if mx._opts.verbose:
                     # The Makefiles should have logic to disable the @ sign
@@ -142,6 +147,12 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         return []
 
     def rules(self, out, benchmarks, bmSuiteArgs):
+        if self.use_polybench:
+            return self.polybenchRules(out, benchmarks, bmSuiteArgs)
+        else:
+            return self.legacyRules(out, benchmarks, bmSuiteArgs)
+        
+    def legacyRules(self, out, benchmarks, bmSuiteArgs):
         return [
             SulongBenchmarkRule(
 		r'^run (?P<run>[\d]+) first [\d]+ warmup iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
@@ -211,6 +222,47 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
             }),
         ]
 
+    def polybenchRules(self, output, benchmarks, bmSuiteArgs):
+        metric_name = self._get_metric_name(bmSuiteArgs)
+        return [
+            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after warmup: (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": ("<name>", str),
+                "metric.better": "lower",
+                "metric.name": "warmup",
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": 0,
+            }),
+            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": ("<name>", str),
+                "metric.better": "lower",
+                "metric.name": metric_name,
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": 0,
+            })
+
+        ]
+
+    def _get_metric_name(self, bmSuiteArgs):
+        metric = None
+        for arg in bmSuiteArgs:
+            if arg.startswith("--metric="):
+                metric = arg[len("--metric="):]
+                break
+        if metric == "compilation-time":
+            return "compile-time"
+        elif metric == "partial-evaluation-time":
+            return "pe-time"
+        elif metric == "one-shot":
+            return "one-shot"
+        else:
+            return "time"
+
     def workingDirectory(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) != 1:
             mx.abort(
@@ -225,14 +277,15 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         try:
-            runArgs += ['--time', str(int(time.clock_gettime(time.CLOCK_REALTIME) * 1000000))]
+            if not self.use_polybench:
+                runArgs += ['--time', str(int(time.clock_gettime(time.CLOCK_REALTIME) * 1000000))]
         except:
             # We can end up here in case the python version we're running on doesn't have clock_gettime or CLOCK_REALTIME.
             pass
         return vmArgs + [self.bench_to_exec[benchmarks[0]]] + runArgs
 
     def get_vm_registry(self):
-        return native_vm_registry
+        return native_polybench_vm_registry if self.use_polybench else native_vm_registry
 
 
 class CExecutionEnvironmentMixin(object):
@@ -447,6 +500,80 @@ class SulongMultiContextVm(SulongVm):
     def launcherName(self):
         return "llimul"
 
+class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
+    def config_name(self):
+        return "default"
+
+    def toolchain_name(self):
+        return "native"
+
+    def name(self):
+        return "polybench"
+
+    def launcherClass(self):
+        return "org.graalvm.polybench.PolyBenchLauncher"
+
+    def launcherName(self):
+        return "polybench"
+
+    def run(self, cwd, args):
+        bench_file = args[-1:]
+        bench_args = args[:-1]
+        launcher_args = ['--path'] + bench_file + bench_args
+        if hasattr(self.host_vm(), 'run_launcher'):
+            result = self.host_vm().run_launcher(self.launcherName(), launcher_args, cwd)
+        else:
+            def _filter_properties(args):
+                props = []
+                remaining_args = []
+                vm_prefix = "--vm.D"
+                for arg in args:
+                    if arg.startswith(vm_prefix):
+                        props.append('-D' + arg[len(vm_prefix):])
+                    else:
+                        remaining_args.append(arg)
+                return props, remaining_args
+
+            props, launcher_args = _filter_properties(launcher_args)
+            sulongCmdLine = self.launcher_vm_args() + \
+                            props + \
+                            ['-XX:-UseJVMCIClassLoader', self.launcherClass(), '--path']  + bench_file + bench_args
+            result = self.host_vm().run(cwd, sulongCmdLine)
+
+        ret_code, out, vm_dims = result
+        return ret_code, add_run_numbers(out), vm_dims
+
+    def prepare_env(self, env):
+        # if hasattr(self.host_vm(), 'run_launcher'):
+        #     import mx_sdk_vm_impl
+        #     env['CC'] = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'jre', 'languages', 'llvm', self.toolchain_name(), 'bin', 'graalvm-{}-clang'.format(self.toolchain_name()))
+        # else:
+        # we always use the bootstrap toolchain since the toolchain is not installed by default in a graalvm
+        # change this if we can properly install components into a graalvm deployment
+        env['CC'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CC>'.format(self.toolchain_name()))
+        env['CXX'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CXX>'.format(self.toolchain_name()))
+        return env
+
+    def out_file(self):
+        return 'bench'
+
+    def opt_phases(self):
+        return []
+
+    def launcher_vm_args(self):
+        return mx_sulong.getClasspathOptions(['POLYBENCH'])
+
+    def launcher_args(self, args):
+        launcher_args = [
+            '--experimental-options',
+            '--engine.CompilationFailureAction=ExitVM',
+            '--engine.TreatPerformanceWarningsAsErrors=call,instanceof,store',
+        ]
+        return launcher_args + args
+
+    def hosting_registry(self):
+        return java_vm_registry
+
 _suite = mx.suite("sulong")
 
 native_vm_registry = VmRegistry("Native", known_host_registries=[java_vm_registry])
@@ -460,3 +587,6 @@ native_vm_registry.add_vm(GccVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(ClangVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(SulongVm(), _suite, 10)
 native_vm_registry.add_vm(SulongMultiContextVm(), _suite, 10)
+
+native_polybench_vm_registry = VmRegistry("NativePolybench", known_host_registries=[java_vm_registry])
+native_polybench_vm_registry.add_vm(PolybenchVm(), _suite, 10)
