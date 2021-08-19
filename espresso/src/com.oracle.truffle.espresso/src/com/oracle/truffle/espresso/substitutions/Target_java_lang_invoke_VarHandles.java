@@ -50,6 +50,7 @@ public final class Target_java_lang_invoke_VarHandles {
                         @JavaType(Class.class) StaticObject fieldType,
                         @SuppressWarnings("unused") @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset.getCallTargetNoSubstitution())") DirectCallNode original) {
+            // getStaticFieldFromBaseAndOffset expects the static base to be the j.l.Class
             return (StaticObject) original.call(base.getKlass().mirror(), offset, fieldType);
         }
     }
