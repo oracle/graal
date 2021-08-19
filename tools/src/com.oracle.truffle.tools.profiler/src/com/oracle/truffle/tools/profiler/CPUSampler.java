@@ -792,19 +792,19 @@ public final class CPUSampler implements Closeable {
 
         private void recordCompilationInfo(StackTraceEntry location, Payload payload, boolean topOfStack, long timestamp) {
             if (topOfStack) {
-                if (payload.selfTierCount.length < location.tier() + 1) {
+                if (payload.selfTierCount.length < location.getTier() + 1) {
                     payload.selfTierCount = Arrays.copyOf(payload.selfTierCount, payload.selfTierCount.length + 1);
                 }
-                payload.selfTierCount[location.tier()]++;
+                payload.selfTierCount[location.getTier()]++;
                 if (gatherSelfHitTimes) {
                     payload.selfHitTimes.add(timestamp);
                     assert payload.selfHitTimes.size() == payload.getSelfHitCount();
                 }
             }
-            if (payload.tierCount.length < location.tier() + 1) {
+            if (payload.tierCount.length < location.getTier() + 1) {
                 payload.tierCount = Arrays.copyOf(payload.tierCount, payload.tierCount.length + 1);
             }
-            payload.tierCount[location.tier()]++;
+            payload.tierCount[location.getTier()]++;
         }
 
         private ProfilerNode<Payload> addOrUpdateChild(ProfilerNode<Payload> treeNode, StackTraceEntry location) {
