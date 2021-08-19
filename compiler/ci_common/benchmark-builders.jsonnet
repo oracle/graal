@@ -140,8 +140,9 @@
     c.daily + hw.x52 + jdk + cc.libgraal + suite,
     c.daily + hw.x52 + jdk + cc.jargraal + suite
     ]
-  for jdk in [jdk11, jdk17] # GR-32793: disabled JDK8
+  for jdk in amd64_jdks
   for suite in bench.groups.microservice_suites
+  if suite.is_jdk_supported(jdk.jdk_version)
   ]),
 
   // intensive weekly benchmarking

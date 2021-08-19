@@ -1360,20 +1360,23 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 
 
-_SpecJbb_specific_vmArgs = [
-    "-XX:+UseNUMA",
-    "-XX:+AlwaysPreTouch",
-    "-XX:-UseAdaptiveSizePolicy",
-    "-XX:-UseAdaptiveNUMAChunkSizing",
-    "-XX:+PrintGCDetails"
-]
+def _get_specjbb_vmArgs(java_compliance):
+    args = [
+        "-XX:+UseNUMA",
+        "-XX:+AlwaysPreTouch",
+        "-XX:-UseAdaptiveSizePolicy",
+        "-XX:-UseAdaptiveNUMAChunkSizing",
+        "-XX:+PrintGCDetails"
+    ]
 
-if java_home_jdk().javaCompliance < '16':
-    # JDK-8243161: Deprecated in JDK15 and marked obsolete in JDK16
-    _SpecJbb_specific_vmArgs.append("-XX:+UseLargePagesInMetaspace")
+    if java_compliance < '16':
+        # JDK-8243161: Deprecated in JDK15 and marked obsolete in JDK16
+        args.append("-XX:+UseLargePagesInMetaspace")
 
-if mx.is_linux():
-    _SpecJbb_specific_vmArgs.append("-XX:+UseTransparentHugePages")
+    if mx.is_linux():
+        args.append("-XX:+UseTransparentHugePages")
+
+    return args
 
 
 class HeapSettingsMixin(object):
@@ -1425,7 +1428,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2005BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2005 = mx.get_env("SPECJBB2005")
@@ -1566,7 +1569,7 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2013BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2013 = mx.get_env("SPECJBB2013")
@@ -1676,7 +1679,7 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2015BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2015 = mx.get_env("SPECJBB2015")
