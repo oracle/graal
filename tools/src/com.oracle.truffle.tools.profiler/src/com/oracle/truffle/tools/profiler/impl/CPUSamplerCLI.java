@@ -182,22 +182,14 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static void printSamplingCallTree(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
-        try {
-            for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
-                new SamplingCallTree(entry.getValue(), options).print(out);
-            }
-        } catch (NonExistentTierSelected e) {
-            out.println(e.getMessage());
+        for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
+            new SamplingCallTree(entry.getValue(), options).print(out);
         }
     }
 
     private static void printSamplingHistogram(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
-        try {
-            for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
-                new SamplingHistogram(entry.getValue(), options).print(out);
-            }
-        } catch (NonExistentTierSelected e) {
-            out.println(e.getMessage());
+        for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
+            new SamplingHistogram(entry.getValue(), options).print(out);
         }
     }
 
@@ -269,14 +261,18 @@ class CPUSamplerCLI extends ProfilerCLI {
             sample.put("source_section", sourceSectionToJSON(node.getSourceSection()));
             CPUSampler.Payload payload = node.getPayload();
             sample.put("hit_count", payload.getHitCount());
-            sample.put("interpreted_hit_count", payload.getInterpretedHitCount());
-            sample.put("compiled_hit_count", payload.getCompiledHitCount());
             sample.put("self_hit_count", payload.getSelfHitCount());
-            sample.put("self_interpreted_hit_count", payload.getSelfInterpretedHitCount());
-            sample.put("self_compiled_hit_count", payload.getSelfCompiledHitCount());
             sample.put("self_hit_times", payload.getSelfHitTimes());
-            sample.put("self_tier_count", payload.getSelfTierCount());
-            sample.put("tier_count", payload.getTierCount());
+            int[] selfTierCount = new int[payload.getNumberOfTiers()];
+            for (int i = 0; i < selfTierCount.length; i++) {
+                selfTierCount[i] = payload.getTierSelfCount(i);
+            }
+            sample.put("self_tier_count", selfTierCount);
+            int[] tierCount = new int[payload.getNumberOfTiers()];
+            for (int i = 0; i < tierCount.length; i++) {
+                tierCount[i] = payload.getTierSelfCount(i);
+            }
+            sample.put("tier_count", tierCount);
             sample.put("children", getSamplesRec(node.getChildren()));
             samples.put(sample);
         }
@@ -309,8 +305,8 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static String[] makeTitleAndFormat(int nameLength, CPUSamplerCLI.ShowTiers showTiers, int maxTier) {
-        StringBuilder titleBuilder = new StringBuilder(String.format(" %-" + nameLength + "s |             Total Time    ", "Name"));
-        StringBuilder formatBuilder = new StringBuilder(" %-" + nameLength + "s |       %10dms %5.1f%% ");
+        StringBuilder titleBuilder = new StringBuilder(String.format(" %-" + nameLength + "s ||             Total Time    ", "Name"));
+        StringBuilder formatBuilder = new StringBuilder(" %-" + nameLength + "s ||       %10dms %5.1f%% ");
         maybeAddTiers(titleBuilder, formatBuilder, showTiers, maxTier);
         titleBuilder.append("||              Self Time    ");
         formatBuilder.append("||       %10dms %5.1f%% ");
@@ -333,9 +329,6 @@ class CPUSamplerCLI extends ProfilerCLI {
             } else {
                 for (int i = 0; i < showTiers.tiers.length; i++) {
                     int selectedTier = showTiers.tiers[i];
-                    if (selectedTier > maxTier) {
-                        throw new NonExistentTierSelected("ShowTier: Selected tier " + selectedTier + " does not exist.");
-                    }
                     titleBuilder.append("|   T").append(selectedTier).append("   ");
                     formatBuilder.append("| %5.1f%% ");
                 }
@@ -397,9 +390,8 @@ class CPUSamplerCLI extends ProfilerCLI {
             OutputEntry outputEntry = new OutputEntry(sourceLocationEntry.getKey());
             maxNameLength = Math.max(maxNameLength, sourceLocationEntry.getKey().getRootName().length());
             for (CPUSampler.Payload payload : sourceLocationEntry.getValue()) {
-                int[] selfTierCount = payload.getSelfTierCount();
-                for (int i = 0; i < selfTierCount.length; i++) {
-                    int selfHitCountsValue = selfTierCount[i];
+                for (int i = 0; i < payload.getNumberOfTiers(); i++) {
+                    int selfHitCountsValue = payload.getTierSelfCount(i);
                     outputEntry.totalSelfSamples += selfHitCountsValue;
                     if (outputEntry.tierToSelfSamples.length < i + 1) {
                         outputEntry.tierToSelfSamples = Arrays.copyOf(outputEntry.tierToSelfSamples, outputEntry.tierToSelfSamples.length + 1);
@@ -409,9 +401,8 @@ class CPUSamplerCLI extends ProfilerCLI {
                 }
             }
             for (CPUSampler.Payload payload : sourceLocationEntry.getValue()) {
-                int[] tierCount = payload.getTierCount();
-                for (int i = 0; i < tierCount.length; i++) {
-                    int hitCountsValue = tierCount[i];
+                for (int i = 0; i < payload.getNumberOfTiers(); i++) {
+                    int hitCountsValue = payload.getTierTotalCount(i);
                     outputEntry.totalSamples += hitCountsValue;
                     if (outputEntry.tierToSamples.length < i + 1) {
                         outputEntry.tierToSamples = Arrays.copyOf(outputEntry.tierToSamples, outputEntry.tierToSamples.length + 1);
@@ -486,8 +477,8 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     private static class OutputEntry {
         final SourceLocation location;
-        int[] tierToSamples = new int[3];
-        int[] tierToSelfSamples = new int[3];
+        int[] tierToSamples = new int[0];
+        int[] tierToSelfSamples = new int[0];
         int totalSelfSamples = 0;
         int totalSamples = 0;
 
@@ -500,8 +491,14 @@ class CPUSamplerCLI extends ProfilerCLI {
             CPUSampler.Payload payload = node.getPayload();
             this.totalSamples = payload.getHitCount();
             this.totalSelfSamples = payload.getSelfHitCount();
-            this.tierToSamples = payload.getTierCount();
-            this.tierToSelfSamples = payload.getSelfTierCount();
+            this.tierToSamples = new int[payload.getNumberOfTiers()];
+            for (int i = 0; i < tierToSamples.length; i++) {
+                tierToSamples[i] = payload.getTierTotalCount(i);
+            }
+            this.tierToSelfSamples = new int[payload.getNumberOfTiers()];
+            for (int i = 0; i < tierToSamples.length; i++) {
+                tierToSelfSamples[i] = payload.getTierSelfCount(i);
+            }
         }
 
         String format(String format, CPUSamplerCLI.ShowTiers showTiers, long samplePeriod, int indent, long globalTotalSamples) {
@@ -525,19 +522,14 @@ class CPUSamplerCLI extends ProfilerCLI {
                     }
                 } else {
                     for (int i = 0; i < showTiers.tiers.length; i++) {
-                        args.add(percent(samples[showTiers.tiers[i]], total));
+                        if (showTiers.tiers[i] < samples.length) {
+                            args.add(percent(samples[showTiers.tiers[i]], total));
+                        } else {
+                            args.add(0.0);
+                        }
                     }
                 }
             }
-        }
-    }
-
-    private static class NonExistentTierSelected extends RuntimeException {
-
-        static final long serialVersionUID = -1;
-
-        NonExistentTierSelected(String s) {
-            super(s);
         }
     }
 
@@ -578,8 +570,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         private void calculateMaxValuesRec(ProfilerNode<CPUSampler.Payload> node, int depth) {
             maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
-            maxTier = Math.max(maxTier, node.getPayload().getSelfTierCount().length - 1);
-            maxTier = Math.max(maxTier, node.getPayload().getTierCount().length - 1);
+            maxTier = Math.max(maxTier, node.getPayload().getNumberOfTiers() - 1);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
                 calculateMaxValuesRec(child, depth + 1);
             }
@@ -620,8 +611,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         private CallTreeOutputEntry makeEntry(ProfilerNode<CPUSampler.Payload> node, int depth) {
             maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
-            maxTier = Math.max(maxTier, node.getPayload().getSelfTierCount().length - 1);
-            maxTier = Math.max(maxTier, node.getPayload().getTierCount().length - 1);
+            maxTier = Math.max(maxTier, node.getPayload().getNumberOfTiers() - 1);
             CallTreeOutputEntry entry = new CallTreeOutputEntry(node);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
                 entry.children.add(makeEntry(child, depth + 1));
@@ -670,13 +660,17 @@ class CPUSamplerCLI extends ProfilerCLI {
             void merge(CPUSampler.Payload payload) {
                 this.totalSamples += payload.getHitCount();
                 this.totalSelfSamples += payload.getSelfHitCount();
-                int[] payloadTierCount = payload.getTierCount();
-                for (int i = 0; i < tierToSamples.length; i++) {
-                    tierToSamples[i] += payloadTierCount[i];
+                if (payload.getNumberOfTiers() > tierToSamples.length) {
+                    tierToSamples = Arrays.copyOf(tierToSamples, payload.getNumberOfTiers());
                 }
-                int[] payloadSelfTierCount = payload.getSelfTierCount();
-                for (int i = 0; i < tierToSamples.length; i++) {
-                    tierToSelfSamples[i] += payloadSelfTierCount[i];
+                for (int i = 0; i < payload.getNumberOfTiers(); i++) {
+                    tierToSamples[i] += payload.getTierTotalCount(i);
+                }
+                if (payload.getNumberOfTiers() > tierToSelfSamples.length) {
+                    tierToSelfSamples = Arrays.copyOf(tierToSelfSamples, payload.getNumberOfTiers());
+                }
+                for (int i = 0; i < payload.getNumberOfTiers(); i++) {
+                    tierToSamples[i] += payload.getTierTotalCount(i);
                 }
             }
         }

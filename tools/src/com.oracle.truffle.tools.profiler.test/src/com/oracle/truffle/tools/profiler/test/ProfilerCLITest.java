@@ -80,10 +80,16 @@ public class ProfilerCLITest {
         // Thread[main,5,main]
         Assert.assertTrue(output[5].contains("Thread"));
         // Name       |      Total Time    ||       Self Time    || Location
-        Assert.assertEquals(" Name       |             Total Time    ||              Self Time    || Location             ", output[6]);
+        Assert.assertEquals(" Name       ||             Total Time    ||              Self Time    || Location             ", output[6]);
         // -------------------------------------------------------------------------------
         // foo        |             1900ms ||             1900ms || test~1:16-29
-        String lineRegex = NAME_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + LOCATION_REGEX;
+        String lineRegex = NAME_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                LOCATION_REGEX;
         Assert.assertTrue(output[8].matches(lineRegex));
         // baz        |             1710ms ||                0ms || test~1:98-139
         Assert.assertTrue(output[9].matches(lineRegex));
@@ -111,29 +117,26 @@ public class ProfilerCLITest {
         Assert.assertEquals(TOTAL_TIME, output[3]);
         //  T0: Percent of time spent in interpreter.
         Assert.assertEquals(INTERPRETER, output[4]);
-        //  T1: Percent of time spent in code compiled by tier 1 compiler.
-        Assert.assertEquals(T1, output[5]);
-        //  T2: Percent of time spent in code compiled by tier 2 compiler.
-        Assert.assertEquals(T2, output[6]);
         //-------------------------------------------------------------------------------------------------------------------------------------
         //Thread[main,5,main]
-        Assert.assertTrue(output[8].contains("Thread"));
-        // Name       |      Total Time    |   T0   |   T1   |   T2   ||       Self Time    |   T0   |   T1   |   T2   || Location
-        Assert.assertEquals(" Name       |             Total Time    |   T0   |   T1   |   T2   ||              Self Time    |   T0   |   T1   |   T2   || Location             ", output[9]);
+        Assert.assertTrue(output[6].contains("Thread"));
+        // Name       |      Total Time    |   T0   ||       Self Time    |   T0   || Location
+        Assert.assertEquals(" Name       ||             Total Time    |   T0   ||              Self Time    |   T0   || Location             ", output[7]);
         //-------------------------------------------------------------------------------------------------------------------------------------
-        // foo        |             2060ms | 100.0% |   0.0% |   0.0% ||             2060ms | 100.0% |   0.0% |   0.0% || test~1:16-29
-        String lineRegex = NAME_REGEX + SEPARATOR_REGEX +
-                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+        // foo        |             2060ms | 100.0% ||             2060ms | 100.0% || test~1:16-29
+        String lineRegex = NAME_REGEX +
                 SEPARATOR_REGEX + SEPARATOR_REGEX +
-                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
                 SEPARATOR_REGEX + SEPARATOR_REGEX +
                 LOCATION_REGEX;
+        Assert.assertTrue(output[9].matches(lineRegex));
+        // bar        |             2070ms | 100.0% ||               10ms | 100.0% || test~1:43-84
+        Assert.assertTrue(output[10].matches(lineRegex));
+        // baz        |             1850ms | 100.0% ||                0ms |   0.0% || test~1:98-139
         Assert.assertTrue(output[11].matches(lineRegex));
-        // bar        |             2070ms | 100.0% |   0.0% |   0.0% ||               10ms | 100.0% |   0.0% |   0.0% || test~1:43-84
-        Assert.assertTrue(output[12].matches(lineRegex));
-        // baz        |             1850ms | 100.0% |   0.0% |   0.0% ||                0ms |   0.0% |   0.0% |   0.0% || test~1:98-139
-        Assert.assertTrue(output[13].matches(lineRegex));
-        //            |             2070ms | 100.0% |   0.0% |   0.0% ||                0ms |   0.0% |   0.0% |   0.0% || test~1:0-161
+        //            |             2070ms | 100.0% ||                0ms |   0.0% || test~1:0-161
         //-------------------------------------------------------------------------------------------------------------------------------------
         // @formatter:on
     }
@@ -153,18 +156,17 @@ public class ProfilerCLITest {
         Assert.assertEquals(SELF_TIME, output[2]);
         //  Total Time: Time spent somewhere on the stack.
         Assert.assertEquals(TOTAL_TIME, output[3]);
-        //  T2: Percent of time spent in code compiled by tier 2 compiler.
-        Assert.assertEquals(T2, output[4]);
         //  T0: Percent of time spent in interpreter.
         Assert.assertEquals(INTERPRETER, output[5]);
         //-------------------------------------------------------------------------------------------------------------------------------------
         //Thread[main,5,main]
         Assert.assertTrue(output[7].contains("Thread"));
         // Name       |      Total Time    |   T2   |   T0   ||       Self Time    |   T2   |   T0   || Location
-        Assert.assertEquals(" Name       |             Total Time    |   T2   |   T0   ||              Self Time    |   T2   |   T0   || Location             ", output[8]);
+        Assert.assertEquals(" Name       ||             Total Time    |   T2   |   T0   ||              Self Time    |   T2   |   T0   || Location             ", output[8]);
         //-------------------------------------------------------------------------------------------------------------------------------------
         // foo        |             2060ms | 100.0% |   0.0% ||             2060ms | 100.0% |   0.0% || test~1:16-29
-        String lineRegex = NAME_REGEX + SEPARATOR_REGEX +
+        String lineRegex = NAME_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
                 TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
                 SEPARATOR_REGEX + SEPARATOR_REGEX +
                 TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
@@ -257,10 +259,16 @@ public class ProfilerCLITest {
         //Thread[Summary,5,main]
         Assert.assertTrue(output[5].contains("Thread"));
         // Name       |      Total Time    ||       Self Time    || Location
-        Assert.assertEquals(" Name       |             Total Time    ||              Self Time    || Location             ", output[6]);
+        Assert.assertEquals(" Name       ||             Total Time    ||              Self Time    || Location             ", output[6]);
         //-------------------------------------------------------------------------------
         // foo        |             1080ms ||             1080ms || test~1:16-29
-        String lineRegex = NAME_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + TIME_REGEX + SEPARATOR_REGEX + SEPARATOR_REGEX + LOCATION_REGEX;
+        String lineRegex = NAME_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                LOCATION_REGEX;
         Assert.assertTrue(output[8].matches(lineRegex));
         // baz        |              980ms ||                0ms || test~1:98-139
         Assert.assertTrue(output[9].matches(lineRegex));
@@ -367,21 +375,12 @@ public class ProfilerCLITest {
             ProfilerNode<CPUSampler.Payload> correspondingNode = findCorrespondingNode(sample, nodes);
             if (correspondingNode != null) {
                 CPUSampler.Payload payload = correspondingNode.getPayload();
-                final int selfCompiledHitCount = payload.getSelfCompiledHitCount();
-                Assert.assertEquals("Wrong payload", selfCompiledHitCount, sample.get("self_compiled_hit_count"));
-                final int selfInterpretedHitCount = payload.getSelfInterpretedHitCount();
-                Assert.assertEquals("Wrong payload", selfInterpretedHitCount, sample.get("self_interpreted_hit_count"));
                 final List<Long> selfHitTimes = payload.getSelfHitTimes();
                 final JSONArray selfHitTimesJson = (JSONArray) sample.get("self_hit_times");
                 Assert.assertEquals("Wrong payload", selfHitTimes.size(), selfHitTimesJson.length());
                 for (int j = 0; j < selfHitTimes.size(); j++) {
                     Assert.assertEquals("Wrong payload", selfHitTimes.get(j).longValue(), selfHitTimesJson.getLong(j));
                 }
-                final int compiledHitCount = payload.getCompiledHitCount();
-                Assert.assertEquals("Wrong payload", compiledHitCount, sample.get("compiled_hit_count"));
-                final int interpretedHitCount = payload.getInterpretedHitCount();
-                Assert.assertEquals("Wrong payload", interpretedHitCount, sample.get("interpreted_hit_count"));
-
                 deepCompare((JSONArray) sample.get("children"), correspondingNode.getChildren());
             } else {
                 Assert.fail("No corresponding node for one in JSON.");
