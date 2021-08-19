@@ -203,7 +203,7 @@
     max_jdk_version:: null
   },
 
-  specjvm2008: cc.compiler_benchmark + c.heap.large + {
+  specjvm2008: cc.compiler_benchmark + c.heap.default + {
     suite:: "specjvm2008",
     downloads+: {
       "SPECJVM2008": { name: "specjvm2008", version: "1.01" }
