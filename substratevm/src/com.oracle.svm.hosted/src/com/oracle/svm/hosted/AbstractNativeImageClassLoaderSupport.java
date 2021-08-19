@@ -88,7 +88,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
     }
 
     List<Path> classpath() {
-        return Stream.concat(buildcp.stream(), imagecp.stream()).collect(Collectors.toList());
+        return Stream.concat(imagecp.stream(), buildcp.stream()).collect(Collectors.toList());
     }
 
     List<Path> applicationClassPath() {

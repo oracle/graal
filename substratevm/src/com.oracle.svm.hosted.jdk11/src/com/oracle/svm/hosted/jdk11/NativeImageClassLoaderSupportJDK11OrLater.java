@@ -154,7 +154,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
 
     @Override
     protected List<Path> modulepath() {
-        return Stream.concat(buildmp.stream(), imagemp.stream()).collect(Collectors.toList());
+        return Stream.concat(imagemp.stream(), buildmp.stream()).collect(Collectors.toList());
     }
 
     @Override
