@@ -72,15 +72,15 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    static final OptionType<ShowTiers> SHOW_TIERS_OUTPUT_TYPE = new OptionType<>("ShowTiers",
-                    new Function<String, ShowTiers>() {
+    static final OptionType<int[]> SHOW_TIERS_OUTPUT_TYPE = new OptionType<>("ShowTiers",
+                    new Function<String, int[]>() {
                         @Override
-                        public ShowTiers apply(String s) {
+                        public int[] apply(String s) {
                             if ("false".equals(s)) {
-                                return new ShowTiers(false, new int[0]);
+                                return new int[0];
                             }
                             if ("true".equals(s)) {
-                                return new ShowTiers(true, new int[0]);
+                                return null;
                             }
                             try {
                                 String[] tierStrings = s.split(",");
@@ -88,7 +88,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                                 for (int i = 0; i < tierStrings.length; i++) {
                                     tiers[i] = Integer.parseInt(tierStrings[i]);
                                 }
-                                return new ShowTiers(true, tiers);
+                                return tiers;
                             } catch (NumberFormatException e) {
                                 // Ignored
                             }
@@ -130,7 +130,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
                     "Note: Interpreter is considered Tier 0. (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    static final OptionKey<ShowTiers> ShowTiers = new OptionKey<>(new ShowTiers(false, new int[0]), SHOW_TIERS_OUTPUT_TYPE);
+    static final OptionKey<int[]> ShowTiers = new OptionKey<>(null, SHOW_TIERS_OUTPUT_TYPE);
 
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
@@ -279,21 +279,21 @@ class CPUSamplerCLI extends ProfilerCLI {
         return samples;
     }
 
-    private static void printLegend(PrintStream out, String type, long samples, long period, CPUSamplerCLI.ShowTiers showTiers, int maxTier) {
+    private static void printLegend(PrintStream out, String type, long samples, long period, int[] showTiers, int maxTier) {
         out.printf("Sampling %s. Recorded %s samples with period %dms.%n", type, samples, period);
         out.println("  Self Time: Time spent on the top of the stack.");
         out.println("  Total Time: Time spent somewhere on the stack.");
-        if (showTiers.show) {
-            if (showTiers.tiers.length == 0) {
-                for (int i = 0; i <= maxTier; i++) {
-                    out.println("  T" + i + ": Percent of time spent in " + (i == 0 ? "interpreter." : "code compiled by tier " + i + " compiler."));
-                }
-            } else {
-                for (int tier : showTiers.tiers) {
-                    out.println("  T" + tier + ": Percent of time spent in " + (tier == 0 ? "interpreter." : "code compiled by tier " + tier + " compiler."));
-                }
+        if (showTiers == null) {
+            for (int i = 0; i <= maxTier; i++) {
+                out.println("  T" + i + ": Percent of time spent in " + (i == 0 ? "interpreter." : "code compiled by tier " + i + " compiler."));
             }
-
+            return;
+        }
+        if (showTiers.length == 0) {
+            return;
+        }
+        for (int tier : showTiers) {
+            out.println("  T" + tier + ": Percent of time spent in " + (tier == 0 ? "interpreter." : "code compiled by tier " + tier + " compiler."));
         }
     }
 
@@ -304,7 +304,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         return ((double) samples * 100) / totalSamples;
     }
 
-    private static String[] makeTitleAndFormat(int nameLength, CPUSamplerCLI.ShowTiers showTiers, int maxTier) {
+    private static String[] makeTitleAndFormat(int nameLength, int[] showTiers, int maxTier) {
         StringBuilder titleBuilder = new StringBuilder(String.format(" %-" + nameLength + "s ||             Total Time    ", "Name"));
         StringBuilder formatBuilder = new StringBuilder(" %-" + nameLength + "s ||       %10dms %5.1f%% ");
         maybeAddTiers(titleBuilder, formatBuilder, showTiers, maxTier);
@@ -319,30 +319,21 @@ class CPUSamplerCLI extends ProfilerCLI {
         return strings;
     }
 
-    private static void maybeAddTiers(StringBuilder titleBuilder, StringBuilder formatBuilder, CPUSamplerCLI.ShowTiers showTiers, int maxTier) {
-        if (showTiers.show) {
-            if (showTiers.tiers.length == 0) {
-                for (int i = 0; i < maxTier + 1; i++) {
-                    titleBuilder.append("|   T").append(i).append("   ");
-                    formatBuilder.append("| %5.1f%% ");
-                }
-            } else {
-                for (int i = 0; i < showTiers.tiers.length; i++) {
-                    int selectedTier = showTiers.tiers[i];
-                    titleBuilder.append("|   T").append(selectedTier).append("   ");
-                    formatBuilder.append("| %5.1f%% ");
-                }
+    private static void maybeAddTiers(StringBuilder titleBuilder, StringBuilder formatBuilder, int[] showTiers, int maxTier) {
+        if (showTiers == null) {
+            for (int i = 0; i < maxTier + 1; i++) {
+                titleBuilder.append("|   T").append(i).append("   ");
+                formatBuilder.append("| %5.1f%% ");
             }
+            return;
         }
-    }
-
-    static final class ShowTiers {
-        final boolean show;
-        final int[] tiers;
-
-        ShowTiers(boolean showTiers, int[] tiers) {
-            this.show = showTiers;
-            this.tiers = tiers;
+        if (showTiers.length == 0) {
+            return;
+        }
+        for (int i = 0; i < showTiers.length; i++) {
+            int selectedTier = showTiers[i];
+            titleBuilder.append("|   T").append(selectedTier).append("   ");
+            formatBuilder.append("| %5.1f%% ");
         }
     }
 
@@ -350,7 +341,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final Map<Thread, List<OutputEntry>> histogram = new HashMap<>();
         private final boolean summariseThreads;
         private final int minSamples;
-        private final ShowTiers showTiers;
+        private final int[] showTiers;
         private final long samplePeriod;
         private final long samplesTaken;
         private int maxTier = 0;
@@ -501,7 +492,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
-        String format(String format, CPUSamplerCLI.ShowTiers showTiers, long samplePeriod, int indent, long globalTotalSamples) {
+        String format(String format, int[] showTiers, long samplePeriod, int indent, long globalTotalSamples) {
             List<Object> args = new ArrayList<>();
             args.add(repeat(" ", indent) + location.getRootName());
             args.add(totalSamples * samplePeriod);
@@ -514,20 +505,21 @@ class CPUSamplerCLI extends ProfilerCLI {
             return String.format(format, args.toArray());
         }
 
-        private static void maybeAddTiers(List<Object> args, int[] samples, int total, CPUSamplerCLI.ShowTiers showTiers) {
-            if (showTiers.show) {
-                if (showTiers.tiers.length == 0) {
-                    for (int i = 0; i < samples.length; i++) {
-                        args.add(percent(samples[i], total));
-                    }
+        private static void maybeAddTiers(List<Object> args, int[] samples, int total, int[] showTiers) {
+            if (showTiers == null) {
+                for (int i = 0; i < samples.length; i++) {
+                    args.add(percent(samples[i], total));
+                }
+                return;
+            }
+            if (showTiers.length == 0) {
+                return;
+            }
+            for (int i = 0; i < showTiers.length; i++) {
+                if (showTiers[i] < samples.length) {
+                    args.add(percent(samples[showTiers[i]], total));
                 } else {
-                    for (int i = 0; i < showTiers.tiers.length; i++) {
-                        if (showTiers.tiers[i] < samples.length) {
-                            args.add(percent(samples[showTiers.tiers[i]], total));
-                        } else {
-                            args.add(0.0);
-                        }
-                    }
+                    args.add(0.0);
                 }
             }
         }
@@ -536,7 +528,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     private static class SamplingCallTree {
         private final boolean summariseThreads;
         private final int minSamples;
-        private final ShowTiers showTiers;
+        private final int[] showTiers;
         private final long samplePeriod;
         private final long samplesTaken;
         private final String title;
