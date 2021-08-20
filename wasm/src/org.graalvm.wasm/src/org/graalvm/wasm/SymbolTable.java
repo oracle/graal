@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import static java.lang.Integer.compareUnsigned;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.WasmMath.maxUnsigned;
@@ -796,9 +795,8 @@ public abstract class SymbolTable {
         validateSingleTable();
         table = new TableInfo(declaredMinSize, declaredMaxSize);
         module().addLinkAction((context, instance) -> {
-            final int initialSize = declaredMinSize;
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().tableInstanceSizeLimit());
-            assert compareUnsigned(initialSize, maxAllowedSize) <= 0; // Tested when reading limits
+            module().limits().checkTableInstanceSize(declaredMinSize);
             final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize);
             final int index = context.tables().register(wasmTable);
             instance.setTable(context.tables().table(index));
@@ -860,9 +858,8 @@ public abstract class SymbolTable {
         validateSingleMemory();
         memory = new MemoryInfo(declaredMinSize, declaredMaxSize);
         module().addLinkAction((context, instance) -> {
-            final int initialSize = declaredMinSize;
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit());
-            assert compareUnsigned(initialSize, maxAllowedSize) <= 0; // Tested when reading limits
+            module().limits().checkMemoryInstanceSize(declaredMinSize);
             final WasmMemory wasmMemory;
             if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
                 wasmMemory = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
