@@ -26,6 +26,12 @@ You probably want to use a sampling delay with `--cpusampler.Delay=MILLISECONDS`
 
 See `language-launcher --help:tools` for more `--cpusampler` options.
 
+### Getting compilation data from the CPU Sampler
+
+Since versions 21.3.0 the CPU sampler CLI output was simplified to not include information about time spent in compiled code. This was, at least in part, motivated by the introduction of multi-tier compilation where "compiled code" was not descriptive enough.
+Using the `--cpusampler.ShowTiers` option allows users to control whether they wish to see compilation data at all, as well as to specify exactly which compilation tiers should be considered in the report.
+For example, adding `--cpusampler.ShowTiers=true` will show all the compilation tiers encountered during execution, while `--cpusampler.ShowTiers=0,2` will only show interpreted time and time spent in tier two compiled code.
+
 ## Creating a Flame Graph from CPU Sampler
 
 The histogram output from CPUSampler can be quite large, making it difficult to analyze.
@@ -36,13 +42,10 @@ Its structure makes it considerably simpler to see where the application time is
 Creating the flame graph is a multi-stage process. First, we need to profile the application with the JSON formatter:
 
 ```shell
-language-launcher --cpusampler --cpusampler.SampleInternal --cpusampler.Mode=roots --cpusampler.Output=json -e 'p :hello' > simple-app.json
+language-launcher --cpusampler --cpusampler.SampleInternal --cpusampler.Output=json -e 'p :hello' > simple-app.json
 ```
 
 Use the `--cpusampler.SampleInternal=true` option if you want to profile internal sources, such as standard library functions.
-
-Using the `--cpusampler.Mode=roots` option will sample each function, including inlined functions, which is more intuitive when looking at a flame graph and can often give a better idea of what is contributing to the overall method execution time. However, `--cpusampler.Mode=roots` adds extra overhead, so you might want to try without too.
-The default is to not include inlined functions in order to minimize overhead.
 
 The JSON formatter encodes call graph information that isn't available in the histogram format.
 To make a flame graph out of this output, however, we need to transform it into a format that folds the call stack samples into single lines.
