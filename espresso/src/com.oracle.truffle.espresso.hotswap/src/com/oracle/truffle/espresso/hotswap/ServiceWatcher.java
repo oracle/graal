@@ -254,10 +254,7 @@ final class ServiceWatcher {
                 set = new HashSet<>();
                 deletedFolderMap.put(path, set);
             }
-            // check if resource with same leaf is already registered
-            if (leaf != null && !set.contains(leaf)) {
-                set.add(leaf);
-            }
+            set.add(leaf);
         }
 
         private void addCreatedFolder(Path path, Path leaf) {
@@ -266,10 +263,7 @@ final class ServiceWatcher {
                 set = new HashSet<>();
                 createdFolderMap.put(path, set);
             }
-            // check if resource with same leaf is already registered
-            if (leaf != null && !set.contains(leaf)) {
-                set.add(leaf);
-            }
+            set.add(leaf);
         }
 
         @Override
