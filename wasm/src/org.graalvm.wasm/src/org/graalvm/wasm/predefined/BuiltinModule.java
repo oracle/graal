@@ -90,6 +90,7 @@ public abstract class BuiltinModule {
         final int typeIdx = instance.symbolTable().allocateFunctionType(paramType, retTypes);
         final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
         instance.setFunctionInstance(function.index(), functionInstance);
+        instance.setTarget(function.index(), functionInstance.target());
     }
 
     protected void defineFunction(WasmInstance instance, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
