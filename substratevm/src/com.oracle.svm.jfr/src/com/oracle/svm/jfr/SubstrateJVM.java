@@ -43,8 +43,11 @@ import com.oracle.svm.jfr.logging.JfrLogging;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.EventWriter;
+import jdk.jfr.internal.handlers.EventHandler;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
+
+import java.lang.reflect.Field;
 
 /**
  * Manager class that handles most JFR Java API, see {@link Target_jdk_jfr_internal_JVM}.
@@ -138,6 +141,27 @@ class SubstrateJVM {
     @Fold
     public static JfrLogging getJfrLogging() {
         return get().jfrLogging;
+    }
+
+    public static boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
+        try {
+            Field f = eventClass.getDeclaredField("eventHandler");
+            f.setAccessible(true);
+            f.set(null, handler);
+            return true;
+        } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
+            throw new InternalError("Could not access event handler");
+        }
+    }
+
+    public static Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
+        try {
+            Field f = eventClass.getDeclaredField("eventHandler");
+            f.setAccessible(true);
+            return f.get(null);
+        } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
+            throw new InternalError("Could not access event handler");
+        }
     }
 
     public static boolean isInitialized() {
@@ -385,6 +409,16 @@ class SubstrateJVM {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             return chunkWriter.shouldRotateDisk();
+        } finally {
+            chunkWriter.unlock();
+        }
+    }
+
+    /** See {@link JVM#getChunkStartNanos}. */
+    public long getChunkStartNanos() {
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            return chunkWriter.getChunkStartNanos();
         } finally {
             chunkWriter.unlock();
         }

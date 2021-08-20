@@ -404,4 +404,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             JfrTraceIdEpoch.getInstance().changeEpoch();
         }
     }
+
+    public long getChunkStartNanos() {
+        return chunkStartNanos;
+    }
 }

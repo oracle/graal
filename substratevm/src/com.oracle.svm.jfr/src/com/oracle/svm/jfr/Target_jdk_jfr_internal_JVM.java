@@ -38,10 +38,12 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK14OrEarlier;
 import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;
+import jdk.jfr.internal.handlers.EventHandler;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
 
@@ -276,6 +278,27 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     public double getTimeConversionFactor() {
         return 1;
+    }
+
+    /** See {@link JVM#getChunkStartNanos}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public long getChunkStartNanos() {
+        return SubstrateJVM.get().getChunkStartNanos();
+    }
+
+    /** See {@link JVM#setHandler}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
+        return SubstrateJVM.setHandler(eventClass, handler);
+    }
+
+    /** See {@link JVM#getHandler}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
+        return SubstrateJVM.getHandler(eventClass);
     }
 
     /** See {@link JVM#getTypeId}. */
