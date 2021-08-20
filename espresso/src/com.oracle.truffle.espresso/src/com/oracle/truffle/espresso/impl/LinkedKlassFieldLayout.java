@@ -27,10 +27,11 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
@@ -48,11 +49,11 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(EspressoContext context, ParserKlass parserKlass, LinkedKlass superKlass) {
-        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(context.getLanguage());
-        StaticShape.Builder staticBuilder = StaticShape.newBuilder(context.getLanguage());
+    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass) {
+        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(language);
+        StaticShape.Builder staticBuilder = StaticShape.newBuilder(language);
 
-        FieldCounter fieldCounter = new FieldCounter(parserKlass, context);
+        FieldCounter fieldCounter = new FieldCounter(parserKlass, version);
         int nextInstanceFieldIndex = 0;
         int nextStaticFieldIndex = 0;
         int nextInstanceFieldSlot = superKlass == null ? 0 : superKlass.getFieldTableLength();
@@ -74,7 +75,7 @@ final class LinkedKlassFieldLayout {
             }
         }
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
-            if (hiddenField.versionRange.contains(context.getJavaVersion())) {
+            if (hiddenField.versionRange.contains(version)) {
                 ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenField.name, hiddenField.type, null);
                 LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, idMode);
                 instanceBuilder.property(field, hiddenParserField.getPropertyType(), storeAsFinal(parserKlass, hiddenParserField));
@@ -141,7 +142,7 @@ final class LinkedKlassFieldLayout {
         final int instanceFields;
         final int staticFields;
 
-        FieldCounter(ParserKlass parserKlass, EspressoContext context) {
+        FieldCounter(ParserKlass parserKlass, JavaVersion version) {
             int iFields = 0;
             int sFields = 0;
             for (ParserField f : parserKlass.getFields()) {
@@ -152,7 +153,7 @@ final class LinkedKlassFieldLayout {
                 }
             }
             // All hidden fields are of Object kind
-            hiddenFieldNames = HiddenField.getHiddenFields(parserKlass.getType(), context);
+            hiddenFieldNames = HiddenField.getHiddenFields(parserKlass.getType(), version);
             instanceFields = iFields + hiddenFieldNames.length;
             staticFields = sFields;
         }
@@ -174,20 +175,20 @@ final class LinkedKlassFieldLayout {
             this.versionRange = versionRange;
         }
 
-        private boolean appliesTo(EspressoContext context) {
-            return versionRange.contains(context.getJavaVersion());
+        private boolean appliesTo(JavaVersion version) {
+            return versionRange.contains(version);
         }
 
         static final HiddenField[] EMPTY = new HiddenField[0];
 
-        static HiddenField[] getHiddenFields(Symbol<Type> holder, EspressoContext context) {
-            return applyFilter(getHiddenFieldsFull(holder), context);
+        static HiddenField[] getHiddenFields(Symbol<Type> holder, JavaVersion version) {
+            return applyFilter(getHiddenFieldsFull(holder), version);
         }
 
-        private static HiddenField[] applyFilter(HiddenField[] hiddenFields, EspressoContext context) {
+        private static HiddenField[] applyFilter(HiddenField[] hiddenFields, JavaVersion version) {
             int filtered = 0;
             for (HiddenField f : hiddenFields) {
-                if (!f.appliesTo(context)) {
+                if (!f.appliesTo(version)) {
                     filtered++;
                 }
             }
@@ -198,7 +199,7 @@ final class LinkedKlassFieldLayout {
             int pos = 0;
             for (int i = 0; i < hiddenFields.length; i++) {
                 HiddenField f = hiddenFields[i];
-                if (f.appliesTo(context)) {
+                if (f.appliesTo(version)) {
                     result[pos++] = f;
                 }
             }

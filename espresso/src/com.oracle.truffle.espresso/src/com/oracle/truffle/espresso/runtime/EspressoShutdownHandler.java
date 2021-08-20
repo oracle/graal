@@ -258,7 +258,7 @@ class EspressoShutdownHandler implements ContextAccess {
 
     /**
      * Triggers soft interruption of active threads. This sends an interrupt signal to all leftover
-     * threads, gving them a chance to gracefully exit.
+     * threads, giving them a chance to gracefully exit.
      */
     private void teardownPhase1(Thread initiatingThread) {
         for (StaticObject guest : threadManager.activeThreads()) {
