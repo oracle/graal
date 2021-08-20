@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
-import com.oracle.truffle.api.TruffleSafepoint;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -34,8 +33,8 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
@@ -79,7 +78,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
+    public boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode) {
         CompilerAsserts.neverPartOfCompilation();
         TruffleSafepoint.poll((Node) osrNode);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
@@ -89,9 +88,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
                 if (metadata == null) {
                     OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-                    FrameDescriptor frameDescriptor = parentFrame.getFrameDescriptor();
                     if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
-                        metadata = new BytecodeOSRMetadata(osrNode, frameDescriptor, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                        metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
                     } else {
                         metadata = BytecodeOSRMetadata.DISABLED;
                     }
@@ -105,10 +103,17 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         // metadata can be set to DISABLED during initialization (above) or dynamically after
         // failed compilation.
         if (osrMetadata == BytecodeOSRMetadata.DISABLED) {
-            return null;
+            return false;
         } else {
-            return osrMetadata.onOSRBackEdge(parentFrame, target);
+            return osrMetadata.incrementAndPoll();
         }
+    }
+
+    @Override
+    public Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, VirtualFrame parentFrame) {
+        CompilerAsserts.neverPartOfCompilation();
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        return osrMetadata.tryOSR(target, interpreterState, parentFrame);
     }
 
     @Override

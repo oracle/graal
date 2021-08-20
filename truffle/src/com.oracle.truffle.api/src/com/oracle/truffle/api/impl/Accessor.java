@@ -977,11 +977,11 @@ public abstract class Accessor {
          * on-stack replacement (OSR) for a {@link BytecodeOSRNode}.
          *
          * @param osrNode the node which can be on-stack replaced
-         * @param parentFrame the frame to be passed for OSR
-         * @param target the target location of the jump (e.g., bytecode index)
          * @return result if OSR was performed, or {@code null}.
          */
-        public abstract Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target);
+        public abstract boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode);
+
+        public abstract Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, VirtualFrame parentFrame);
 
         /**
          * Reports that a child node of an {@link BytecodeOSRNode} was replaced. Allows the runtime

@@ -87,7 +87,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * Typically, a bytecode node's {@link ExecutableNode#execute(VirtualFrame)
      * execute(VirtualFrame)} method already contains a dispatch loop. This loop can be extracted
      * into a separate method which can also be used by
-     * {@link BytecodeOSRNode#executeOSR(VirtualFrame, int)}. For example:
+     * {@link BytecodeOSRNode#executeOSR(VirtualFrame, int, Object)}. For example:
      *
      * <pre>
      * Object execute(VirtualFrame frame) {
@@ -108,10 +108,11 @@ public interface BytecodeOSRNode extends NodeInterface {
      *
      * @param osrFrame the frame to use for OSR.
      * @param target the target location to execute from (e.g., bytecode index).
+     * @param interpreterState
      * @return the result of execution.
      * @since 21.3
      */
-    Object executeOSR(VirtualFrame osrFrame, int target);
+    Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState);
 
     /**
      * Gets the OSR metadata for this instance.
@@ -197,8 +198,9 @@ public interface BytecodeOSRNode extends NodeInterface {
      * prevent this.
      *
      * @since 21.3
+     * @param target the target location OSR will execute from (e.g., bytecode index)
      */
-    default void prepareOSR() {
+    default void prepareOSR(int target) {
         // do nothing
     }
 
@@ -212,17 +214,21 @@ public interface BytecodeOSRNode extends NodeInterface {
      * {@code target}.
      *
      * @param osrNode the node for which to report a back-edge.
-     * @param parentFrame frame at the current point of execution.
-     * @param target target location of the jump (e.g., bytecode index).
      * @return the result if OSR was performed, or {@code null} otherwise.
      * @since 21.3
      */
-    static Object reportOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
+    static boolean pollOSRBackEdge(BytecodeOSRNode osrNode) {
         if (!CompilerDirectives.inInterpreter()) {
-            return null;
+            return false;
         }
         assert BytecodeOSRValidation.validateNode(osrNode);
-        return NodeAccessor.RUNTIME.onOSRBackEdge(osrNode, parentFrame, target);
+        return NodeAccessor.RUNTIME.pollBytecodeOSRBackEdge(osrNode);
+
+    }
+
+    static Object tryOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, VirtualFrame parentFrame) {
+        assert CompilerDirectives.inInterpreter();
+        return NodeAccessor.RUNTIME.tryBytecodeOSR(osrNode, target, interpreterState, parentFrame);
     }
 }
 

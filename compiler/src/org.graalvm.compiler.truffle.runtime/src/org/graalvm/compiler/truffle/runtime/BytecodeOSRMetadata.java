@@ -54,18 +54,18 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class BytecodeOSRMetadata {
     // Marker object to indicate that OSR is disabled.
-    public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, null, Integer.MAX_VALUE);
+    public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, Integer.MAX_VALUE);
     // Must be a power of 2 (polling uses bit masks). OSRCompilationThreshold is a multiple of this
     // interval.
     public static final int OSR_POLL_INTERVAL = 1024;
 
     private final BytecodeOSRNode osrNode;
-    private final FrameDescriptor frameDescriptor;
 
     // Lazily initialized state. Most nodes with back-edges will not trigger compilation, so we
     // defer initialization of some fields until they're actually used.
     static final class LazyState {
         private final Map<Integer, OptimizedCallTarget> compilationMap;
+        @CompilationFinal private FrameDescriptor frameDescriptor;
         @CompilationFinal private Assumption frameVersion;
         @CompilationFinal(dimensions = 1) private FrameSlot[] frameSlots;
         @CompilationFinal(dimensions = 1) private byte[] frameTags;
@@ -74,6 +74,7 @@ public final class BytecodeOSRMetadata {
             this.compilationMap = compilationMap;
             // We set these fields in updateFrameSlots using a concrete frame just before
             // compilation, when the frame is (hopefully) stable.
+            this.frameDescriptor = null;
             this.frameVersion = null;
             this.frameSlots = null;
             this.frameTags = null;
@@ -106,6 +107,8 @@ public final class BytecodeOSRMetadata {
         LazyState state = getLazyState();
         ((Node) osrNode).atomic(() -> {
             if (!Assumption.isValidAssumption(state.frameVersion)) {
+                FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
+                state.frameDescriptor = frameDescriptor;
                 // If we get the frame slots before the assumption, the slots may be updated in
                 // between, and we might obtain the new (valid) assumption, despite our slots
                 // actually being stale. Get the assumption first to avoid this race.
@@ -124,25 +127,22 @@ public final class BytecodeOSRMetadata {
     private final int osrThreshold;
     private int backEdgeCount;
 
-    BytecodeOSRMetadata(BytecodeOSRNode osrNode, FrameDescriptor frameDescriptor, int osrThreshold) {
+    BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold) {
         this.osrNode = osrNode;
-        this.frameDescriptor = frameDescriptor;
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
     }
 
-    Object onOSRBackEdge(VirtualFrame parentFrame, int target) {
-        if (!incrementAndPoll()) {
-            return null;
-        }
-
+    Object tryOSR(int target, Object interpreterState, VirtualFrame parentFrame) {
         LazyState state = getLazyState();
+        assert state.frameDescriptor == null || state.frameDescriptor == parentFrame.getFrameDescriptor();
         OptimizedCallTarget osrTarget = state.compilationMap.get(target);
         if (osrTarget == null) {
             osrTarget = ((Node) osrNode).atomic(() -> {
                 OptimizedCallTarget lockedTarget = state.compilationMap.get(target);
                 if (lockedTarget == null) {
-                    lockedTarget = createOSRTarget(target, (FrameWithoutBoxing) parentFrame);
+                    lockedTarget = createOSRTarget(target, interpreterState, parentFrame.getFrameDescriptor());
+                    requestOSRCompilation(target, lockedTarget, (FrameWithoutBoxing) parentFrame);
                     state.compilationMap.put(target, lockedTarget);
                 }
                 return lockedTarget;
@@ -155,13 +155,15 @@ public final class BytecodeOSRMetadata {
         }
         // Case 2: code is compiled and valid
         if (osrTarget.isValid()) {
+            // Note: We pass the parent frame as a parameter, so the original arguments are not
+            // preserved. In the interface, we call the OSR frame arguments undefined.
             return osrTarget.callOSR(parentFrame);
         }
         // Case 3: code is invalid; either give up or reschedule compilation
         if (osrTarget.isCompilationFailed()) {
             markCompilationFailed();
         } else {
-            requestOSRCompilation(osrTarget, (FrameWithoutBoxing) parentFrame);
+            requestOSRCompilation(target, osrTarget, (FrameWithoutBoxing) parentFrame);
         }
         return null;
     }
@@ -172,7 +174,7 @@ public final class BytecodeOSRMetadata {
      * When the OSR threshold is reached, this method will return true after every OSR_POLL_INTERVAL
      * back-edges. This method is thread-safe, but could under-count.
      */
-    private boolean incrementAndPoll() {
+    public boolean incrementAndPoll() {
         int newBackEdgeCount = ++backEdgeCount; // Omit overflow check; OSR should trigger long
                                                 // before overflow happens
         return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
@@ -182,15 +184,15 @@ public final class BytecodeOSRMetadata {
      * Creates an OSR call target at the given dispatch target and requests compilation. The node's
      * AST lock should be held when this is invoked.
      */
-    private OptimizedCallTarget createOSRTarget(int target, FrameWithoutBoxing frame) {
+    private OptimizedCallTarget createOSRTarget(int target, Object interpreterState, FrameDescriptor frameDescriptor) {
         TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
-        OptimizedCallTarget osrTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
-        requestOSRCompilation(osrTarget, frame); // queue it up for compilation
-        return osrTarget;
+        return GraalTruffleRuntime.getRuntime().createOSRCallTarget(
+                        new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState));
+
     }
 
-    private void requestOSRCompilation(OptimizedCallTarget osrTarget, FrameWithoutBoxing frame) {
-        osrNode.prepareOSR();
+    private void requestOSRCompilation(int target, OptimizedCallTarget osrTarget, FrameWithoutBoxing frame) {
+        osrNode.prepareOSR(target);
         updateFrameSlots(frame);
         osrTarget.compile(true);
         if (osrTarget.isCompilationFailed()) {
@@ -204,17 +206,17 @@ public final class BytecodeOSRMetadata {
      */
     @ExplodeLoop
     public void transferFrame(FrameWithoutBoxing source, FrameWithoutBoxing target) {
+        LazyState state = getLazyState();
+        CompilerAsserts.partialEvaluationConstant(state);
         // The frames should use the same descriptor.
-        if (source.getFrameDescriptor() != frameDescriptor) {
+        if (source.getFrameDescriptor() != state.frameDescriptor) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Source frame descriptor is different from the descriptor used for compilation.");
-        } else if (target.getFrameDescriptor() != frameDescriptor) {
+        } else if (target.getFrameDescriptor() != state.frameDescriptor) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Target frame descriptor is different from the descriptor used for compilation.");
         }
 
-        LazyState state = getLazyState();
-        CompilerAsserts.partialEvaluationConstant(state);
         // The frame version could have changed; if so, deoptimize and update the slots+tags.
         if (!state.frameVersion.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
