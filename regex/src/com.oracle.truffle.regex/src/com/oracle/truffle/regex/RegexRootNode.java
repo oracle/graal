@@ -50,7 +50,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class RegexRootNode extends RootNode {
 
-    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
+    public static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
 
     @Child private RegexBodyNode body;
 

@@ -38,52 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.result;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-@ExportLibrary(InteropLibrary.class)
-public final class SingleResult extends RegexResult {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.RegexBodyNode;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
+import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
-    private final int start;
-    private final int end;
+public class TRegexTraceFinderRootNode extends RegexBodyNode {
 
-    public SingleResult(int start, int end) {
-        this.start = start;
-        this.end = end;
-    }
+    @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
+    @Child private TRegexExecutorEntryNode entryNode;
 
-    public int getStart() {
-        return start;
-    }
-
-    public int getEnd() {
-        return end;
+    public TRegexTraceFinderRootNode(RegexLanguage language, RegexSource source, PreCalculatedResultFactory[] preCalculatedResults, TRegexExecutorEntryNode entryNode) {
+        super(language, source);
+        this.preCalculatedResults = preCalculatedResults;
+        this.entryNode = insert(entryNode);
     }
 
     @Override
-    public int getStart(int groupNumber) {
-        return groupNumber == 0 ? start : -1;
+    public final Object execute(VirtualFrame frame) {
+        final Object[] args = frame.getArguments();
+        assert args.length == 1;
+        final RegexResult receiver = (RegexResult) args[0];
+        final int traceFinderResult = (int) entryNode.execute(receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getEnd());
+        final int[] result = preCalculatedResults[traceFinderResult].createArrayFromEnd(receiver.getEnd());
+        receiver.setIndices(result);
+        return result[0];
     }
 
     @Override
-    public int getEnd(int groupNumber) {
-        return groupNumber == 0 ? end : -1;
-    }
-
-    @TruffleBoundary
-    @Override
-    public String toString() {
-        return "[" + start + ", " + end + "]";
-    }
-
-    @TruffleBoundary
-    @ExportMessage
-    @Override
-    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "TRegexResult" + toString();
+    public String getEngineLabel() {
+        return "DFA traceFinder";
     }
 }

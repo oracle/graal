@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.BitSets;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Matcher that matches multiple characters with a common high byte using a bit set.<br>
@@ -52,7 +52,7 @@ import com.oracle.truffle.regex.util.BitSets;
  * are matched by this high byte and a bit set that matches {@code 0x10}, {@code 0x20} and
  * {@code 0x30}.
  */
-public abstract class BitSetMatcher extends InvertibleCharMatcher {
+public final class BitSetMatcher extends InvertibleCharMatcher {
 
     private final int highByte;
     @CompilationFinal(dimensions = 1) private final long[] bitSet;
@@ -76,14 +76,14 @@ public abstract class BitSetMatcher extends InvertibleCharMatcher {
         if (highByte == 0) {
             return NullHighByteBitSetMatcher.create(invert, bitSet);
         }
-        return BitSetMatcherNodeGen.create(invert, highByte, bitSet);
+        return new BitSetMatcher(invert, highByte, bitSet);
     }
 
     public long[] getBitSet() {
         return bitSet;
     }
 
-    @Specialization
+    @Override
     public boolean match(int c) {
         return result(highByte(c) == highByte && BitSets.get(bitSet, lowByte(c)));
     }
@@ -95,7 +95,7 @@ public abstract class BitSetMatcher extends InvertibleCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return modifiersToString() + "{hi " + DebugUtil.charToString(highByte) + " lo " + BitSets.toString(bitSet) + "}";
     }
