@@ -68,6 +68,12 @@ public class PrimaryEntry {
         return classEntry;
     }
 
+    /**
+     * Returns an iterator that traverses all the callees of the primary range associated with this
+     * entry. The iterator performs a depth-first pre-order traversal of the call tree.
+     *
+     * @return the iterator
+     */
     public Iterator<Range> topDownRangeIterator() {
         return new Iterator<Range>() {
             final ArrayDeque<Range> workStack = new ArrayDeque<>();
@@ -87,7 +93,7 @@ public class PrimaryEntry {
             }
 
             private void forward() {
-                Range sibling = current.getNextCallee();
+                Range sibling = current.getSiblingCallee();
                 assert sibling == null || (current.getHi() <= sibling.getLo()) : current.getHi() + " > " + sibling.getLo();
                 if (!current.isLeaf()) {
                     /* save next sibling while we process the children */
@@ -108,6 +114,13 @@ public class PrimaryEntry {
         };
     }
 
+    /**
+     * Returns an iterator that traverses the callees of the primary range associated with this
+     * entry and returns only the leafs. The iterator performs a depth-first pre-order traversal of
+     * the call tree returning only ranges with no callees.
+     *
+     * @return the iterator
+     */
     public Iterator<Range> leafRangeIterator() {
         final Iterator<Range> iter = topDownRangeIterator();
         return new Iterator<Range>() {

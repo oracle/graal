@@ -31,9 +31,8 @@ import org.graalvm.compiler.debug.DebugContext;
 /**
  * Details of a specific address range in a compiled method either a primary range identifying a
  * whole method or a sub-range identifying a sequence of instructions that belong to an inlined
- * method.
+ * method. Each sub-range is linked with its caller and its callees, forming a call tree.
  */
-
 public class Range {
     private static final String CLASS_DELIMITER = ".";
     private Range caller;
@@ -45,8 +44,9 @@ public class Range {
     private final int line;
     private final boolean isInlined;
     private final int depth;
-    /*
-     * This is null for a primary range.
+    /**
+     * This is null for a primary range. For sub ranges it holds the root of the call tree they
+     * belong to.
      */
     private final Range primary;
 
@@ -55,19 +55,19 @@ public class Range {
      */
 
     /**
-     * The first callee whose range is wholly contained in this range.
+     * The first direct callee whose range is wholly contained in this range.
      */
     private Range firstCallee;
 
     /**
-     * The last callee whose range is wholly contained in this range.
+     * The last direct callee whose range is wholly contained in this range.
      */
     private Range lastCallee;
 
     /**
-     * A link to chain callees of a given parent.
+     * A link to a sibling callee, i.e., a range sharing the same caller with this range.
      */
-    private Range nextCallee;
+    private Range siblingCallee;
 
     /*
      * Create a primary range.
@@ -95,7 +95,7 @@ public class Range {
         this.primary = primary;
         this.firstCallee = null;
         this.lastCallee = null;
-        this.nextCallee = null;
+        this.siblingCallee = null;
         this.caller = caller;
         if (caller != null) {
             caller.addCallee(this);
@@ -111,12 +111,12 @@ public class Range {
         assert this.lo <= callee.lo;
         assert this.hi >= callee.hi;
         assert callee.caller == this;
-        assert callee.nextCallee == null;
+        assert callee.siblingCallee == null;
         if (this.firstCallee == null) {
             assert this.lastCallee == null;
             this.firstCallee = this.lastCallee = callee;
         } else {
-            this.lastCallee.nextCallee = callee;
+            this.lastCallee.siblingCallee = callee;
             this.lastCallee = callee;
         }
     }
@@ -233,8 +233,8 @@ public class Range {
         return firstCallee;
     }
 
-    public Range getNextCallee() {
-        return nextCallee;
+    public Range getSiblingCallee() {
+        return siblingCallee;
     }
 
     public Range getLastCallee() {
@@ -249,6 +249,21 @@ public class Range {
         return depth;
     }
 
+    /**
+     * Minimizes the nodes in the tree that track the inline call hierarchy and associated code
+     * ranges. The initial range tree models the call hierarchy as presented in the original debug
+     * line info. It consists of a root node each of whose children is a sequence of linear call
+     * chains, either a single leaf node for some given file and line or a series of inline calls to
+     * such a leaf node. In this initial tree all node ranges in a given chain have the same lo and
+     * hi address and chains are properly ordered by range The merge algorithm works across siblings
+     * at successive depths starting at depth 1. Once all possible nodes at a given depth have been
+     * merged their children can then be merged. A successor node may only be merged into its
+     * predecessor if the nodes have contiguous ranges and idenitfy the same method, line and file.
+     * The range and children of the merged node are, respectively, the union of the input ranges
+     * and children. This preserves the invariant that child ranges lie within their parent range.
+     *
+     * @param debugContext
+     */
     public void mergeSubranges(DebugContext debugContext) {
         Range next = getFirstCallee();
         if (next == null) {
@@ -264,7 +279,7 @@ public class Range {
         /* now this level is merged recursively merge children of each child node. */
         while (next != null) {
             next.mergeSubranges(debugContext);
-            next = next.getNextCallee();
+            next = next.getSiblingCallee();
         }
     }
 
@@ -273,7 +288,7 @@ public class Range {
      * node as is and returns the next sibling or null if no sibling exists.
      */
     private Range maybeMergeSibling(DebugContext debugContext) {
-        Range sibling = getNextCallee();
+        Range sibling = getSiblingCallee();
         debugContext.log(DebugContext.INFO_LEVEL, "Merge subrange (maybe) [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
         if (sibling == null) {
             /* all child nodes at this level have been merged */
@@ -306,7 +321,7 @@ public class Range {
                         lo, hi, getFullMethodNameWithParams(), Boolean.valueOf(this.isInlined), sibling.lo, sibling.hi, sibling.getFullMethodNameWithParams(), Boolean.valueOf(sibling.isInlined));
         debugContext.log(DebugContext.INFO_LEVEL, "Combining [0x%x, 0x%x] %s into [0x%x, 0x%x] %s", sibling.lo, sibling.hi, sibling.getFullMethodName(), lo, hi, getFullMethodNameWithParams());
         this.hi = sibling.hi;
-        this.nextCallee = sibling.nextCallee;
+        this.siblingCallee = sibling.siblingCallee;
     }
 
     private void reparentChildren(DebugContext debugContext, Range sibling) {
@@ -315,8 +330,8 @@ public class Range {
             debugContext.log(DebugContext.INFO_LEVEL, "Reparenting [0x%x, 0x%x] %s to [0x%x, 0x%x] %s", siblingNext.lo, siblingNext.hi, siblingNext.getFullMethodName(), lo, hi,
                             getFullMethodNameWithParams());
             siblingNext.caller = this;
-            Range newSiblingNext = siblingNext.nextCallee;
-            siblingNext.nextCallee = null;
+            Range newSiblingNext = siblingNext.siblingCallee;
+            siblingNext.siblingCallee = null;
             addCallee(siblingNext);
             siblingNext = newSiblingNext;
         }

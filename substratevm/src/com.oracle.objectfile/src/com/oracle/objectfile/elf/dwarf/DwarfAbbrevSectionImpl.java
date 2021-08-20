@@ -858,9 +858,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         int pos = p;
         /* class compile unit with compiled methods and line info */
         pos = writeClassUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_unit1, buffer, pos);
-        /* class compile unit with line info but without line info */
+        /* class compile unit with compiled methods but without line info */
         pos = writeClassUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_unit2, buffer, pos);
-        /* class compile unit without line info and without line info */
+        /* class compile unit without compiled methods and without line info */
         pos = writeClassUnitAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_class_unit3, buffer, pos);
         return pos;
     }
