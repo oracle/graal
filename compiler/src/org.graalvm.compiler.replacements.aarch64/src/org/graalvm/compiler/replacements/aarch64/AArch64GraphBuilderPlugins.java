@@ -298,35 +298,31 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerStringLatin1Plugins(InvocationPlugins plugins, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC >= 9) {
-            Registration r = new Registration(plugins, "java.lang.StringLatin1", replacements);
-            r.setAllowOverwrite(true);
-            r.register2("compareTo", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte));
-            r.register2("compareToUTF16", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char));
-            r.registerMethodSubstitution(StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, byte[].class, int.class, int.class);
-            r.registerMethodSubstitution(StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, int.class);
-        }
+        Registration r = new Registration(plugins, "java.lang.StringLatin1", replacements);
+        r.setAllowOverwrite(true);
+        r.register2("compareTo", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte));
+        r.register2("compareToUTF16", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char));
+        r.registerMethodSubstitution(StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, byte[].class, int.class, int.class);
+        r.registerMethodSubstitution(StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, int.class);
     }
 
     private static void registerStringUTF16Plugins(InvocationPlugins plugins, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC >= 9) {
-            Registration r = new Registration(plugins, "java.lang.StringUTF16", replacements);
-            r.setAllowOverwrite(true);
-            r.register2("compareTo", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char));
-            r.register2("compareToLatin1", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true));
-            r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class);
-            r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfCharUnsafe", byte[].class, int.class, int.class, int.class);
-            Registration r2 = new Registration(plugins, StringUTF16Substitutions.class, replacements);
-            r2.register2("getChar", byte[].class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
-                    b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
-                                    new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
-                                    NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, false));
-                    return true;
-                }
-            });
-        }
+        Registration r = new Registration(plugins, "java.lang.StringUTF16", replacements);
+        r.setAllowOverwrite(true);
+        r.register2("compareTo", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char));
+        r.register2("compareToLatin1", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true));
+        r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class);
+        r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfCharUnsafe", byte[].class, int.class, int.class, int.class);
+        Registration r2 = new Registration(plugins, StringUTF16Substitutions.class, replacements);
+        r2.register2("getChar", byte[].class, int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
+                                new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, false));
+                return true;
+            }
+        });
     }
 
 }

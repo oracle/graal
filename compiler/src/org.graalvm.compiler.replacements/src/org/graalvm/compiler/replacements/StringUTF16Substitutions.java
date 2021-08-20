@@ -80,11 +80,10 @@ public class StringUTF16Substitutions {
     @MethodSubstitution
     public static int indexOfUnsafe(byte[] source, int sourceCount, byte[] target, int targetCount, int fromIndex) {
         ReplacementsUtil.dynamicAssert(fromIndex >= 0, "StringUTF16.indexOfUnsafe invalid args: fromIndex negative");
-        ReplacementsUtil.dynamicAssert(fromIndex < sourceCount, "StringUTF16.indexOfUnsafe invalid args: fromIndex >= length(target)");
         ReplacementsUtil.dynamicAssert(targetCount > 0, "StringUTF16.indexOfUnsafe invalid args: targetCount <= 0");
         ReplacementsUtil.dynamicAssert(targetCount <= length(target), "StringUTF16.indexOfUnsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfUnsafe invalid args: sourceCount < targetCount");
-        if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {
+        if (targetCount == 1) {
             return ArrayIndexOf.indexOf1CharCompact(source, sourceCount, fromIndex, getChar(target, 0));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);

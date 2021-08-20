@@ -80,10 +80,9 @@ public class StringLatin1Substitutions {
     @MethodSubstitution
     public static int indexOf(byte[] source, int sourceCount, byte[] target, int targetCount, int fromIndex) {
         ReplacementsUtil.dynamicAssert(fromIndex >= 0, "StringLatin1.indexOf invalid args: fromIndex negative");
-        ReplacementsUtil.dynamicAssert(fromIndex < sourceCount, "StringLatin1.indexOf invalid args: fromIndex >= length(target)");
         ReplacementsUtil.dynamicAssert(targetCount > 0, "StringLatin1.indexOf invalid args: targetCount <= 0");
-        ReplacementsUtil.dynamicAssert(targetCount <= target.length, "StringLatin1.indexOf invalid args: targetCount > target.length");
         if (injectBranchProbability(UNLIKELY_PROBABILITY, sourceCount - fromIndex < targetCount)) {
+            // too few characters to be searched to possibly match target
             return -1;
         }
         if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {

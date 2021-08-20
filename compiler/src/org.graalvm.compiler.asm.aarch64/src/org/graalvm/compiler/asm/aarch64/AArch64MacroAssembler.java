@@ -1292,7 +1292,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void lsl(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
-        if (clampedShift != 0) {
+        if (clampedShift != 0 || !dst.equals(src)) {
             int remainingBits = size - clampedShift;
             super.ubfm(size, dst, src, remainingBits, remainingBits - 1);
         }
@@ -1308,7 +1308,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void lsr(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
-        if (clampedShift != 0) {
+        if (clampedShift != 0 || !dst.equals(src)) {
             super.ubfm(size, dst, src, clampedShift, size - 1);
         }
     }
@@ -1323,7 +1323,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void asr(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
-        if (clampedShift != 0) {
+        if (clampedShift != 0 || !dst.equals(src)) {
             super.sbfm(size, dst, src, clampedShift, size - 1);
         }
     }
