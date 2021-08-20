@@ -24,24 +24,8 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "com.oracle.truffle.nfi.NFISymbol", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_NFISymbol {
-
-    @Substitute
-    static Object createBound(String backend, Object nativeSymbol, Target_com_oracle_truffle_nfi_NFISignature signature) {
-        if (nativeSymbol instanceof ErrnoMirror) {
-            return nativeSymbol;
-        } else {
-            return new Target_com_oracle_truffle_nfi_NFISymbol(backend, nativeSymbol, signature);
-        }
-    }
-
-    @Alias
-    @SuppressWarnings("unused")
-    Target_com_oracle_truffle_nfi_NFISymbol(String backend, Object nativeSymbol, Target_com_oracle_truffle_nfi_NFISignature signature) {
-    }
+@TargetClass(className = "com.oracle.truffle.nfi.NFISignature", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_NFISignature {
 }
