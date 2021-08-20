@@ -491,9 +491,8 @@ class PointsToJsonObject extends JsonObject {
         FeatureImpl.OnAnalysisExitAccessImpl config = (FeatureImpl.OnAnalysisExitAccessImpl) access;
         BigBang bb = config.getBigBang();
         VMError.guarantee(bb instanceof PointsToAnalysis, "Printing points-to statistics only make sense when point-to analysis is on.");
-        PointsToAnalysis bigbang = (PointsToAnalysis) bb;
-        serializeMethods(bigbang);
-        connectFlowsToEnclosingMethods(bigbang);
+        serializeMethods(bb);
+        connectFlowsToEnclosingMethods(bb);
         matchInputsAndUses();
         built = true;
     }

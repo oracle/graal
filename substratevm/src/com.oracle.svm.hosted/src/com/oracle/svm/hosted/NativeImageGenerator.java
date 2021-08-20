@@ -59,6 +59,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import org.graalvm.collections.EconomicSet;
@@ -135,7 +136,6 @@ import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -228,7 +228,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.annotation.AnnotationSupport;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
@@ -1443,9 +1442,9 @@ public class NativeImageGenerator {
             NativeImagePointsToAnalysis bigbang = (NativeImagePointsToAnalysis) this.bb;
             /*
              * Check that the type states for method parameters and fields are compatible with the
-             * declared type. This is required for interface types because interfaces are not trusted
-             * according to the Java language specification, but we trust all interface types (see
-             * HostedType.isTrustedInterfaceType)
+             * declared type. This is required for interface types because interfaces are not
+             * trusted according to the Java language specification, but we trust all interface
+             * types (see HostedType.isTrustedInterfaceType)
              *
              * TODO Enable checks for non-interface types too.
              */
@@ -1460,8 +1459,8 @@ public class NativeImageGenerator {
                             if (!parameterState.isEmpty()) {
                                 String methodKey = method.format("%H.%n(%p)");
                                 bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
-                                        "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
-                                                " with state " + declaredTypeState + " which is incompatible with types in parameter state: " + parameterState);
+                                                "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
+                                                                " with state " + declaredTypeState + " which is incompatible with types in parameter state: " + parameterState);
                             }
                         }
                     }
@@ -1476,7 +1475,7 @@ public class NativeImageGenerator {
                         if (!state.isEmpty()) {
                             String fieldKey = field.format("%H.%n");
                             bigbang.getUnsupportedFeatures().addMessage(fieldKey, null,
-                                    "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) + " which is incompatible with types in state: " + state);
+                                            "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) + " which is incompatible with types in state: " + state);
                         }
                     }
                 }

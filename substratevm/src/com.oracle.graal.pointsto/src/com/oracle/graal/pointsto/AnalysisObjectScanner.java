@@ -64,11 +64,11 @@ public class AnalysisObjectScanner extends ObjectScanner {
 
         /* Add the constant value object to the field's type flow. */
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
-        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, fieldValue, fieldType);
+        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(analysis, fieldValue, fieldType);
         if (!fieldTypeFlow.getState().containsObject(constantObject)) {
             /* Add the new constant to the field's flow state. */
-            TypeState constantTypeState = TypeState.forNonNullObject(bb, constantObject);
-            fieldTypeFlow.addState(bb, constantTypeState);
+            TypeState constantTypeState = TypeState.forNonNullObject(analysis, constantObject);
+            fieldTypeFlow.addState(analysis, constantTypeState);
         }
     }
 
@@ -103,11 +103,12 @@ public class AnalysisObjectScanner extends ObjectScanner {
     public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex) {
         assert elementType.isInstantiated() : elementType;
         ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
-        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, elementConstant, elementType);
+        PointsToAnalysis analysis = getAnalysis();
+        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(analysis, elementConstant, elementType);
         if (!arrayObjElementsFlow.getState().containsObject(constantObject)) {
             /* Add the constant element to the constant's array type flow. */
-            TypeState elementTypeState = TypeState.forNonNullObject(bb, constantObject);
-            arrayObjElementsFlow.addState(bb, elementTypeState);
+            TypeState elementTypeState = TypeState.forNonNullObject(analysis, constantObject);
+            arrayObjElementsFlow.addState(analysis, elementTypeState);
         }
     }
 

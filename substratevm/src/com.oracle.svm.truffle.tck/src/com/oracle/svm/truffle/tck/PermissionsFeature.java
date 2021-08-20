@@ -591,7 +591,7 @@ public class PermissionsFeature implements Feature {
         private final ResolvedJavaMethod threadCurrentThread;
 
         SafeInterruptRecognizer(BigBang bb) {
-            this.hostVM = ((SVMHost) bb.getHostVM());
+            this.hostVM = (SVMHost) bb.getHostVM();
 
             Set<AnalysisMethod> methods = findMethods(bb, Thread.class, (m) -> m.getName().equals("interrupt"));
             if (methods.size() != 1) {
@@ -637,7 +637,7 @@ public class PermissionsFeature implements Feature {
         private final Set<AnalysisMethod> dopriviledged;
 
         SafePrivilegedRecognizer(BigBang bb) {
-            this.hostVM = ((SVMHost) bb.getHostVM());
+            this.hostVM = (SVMHost) bb.getHostVM();
             this.dopriviledged = findMethods(bb, java.security.AccessController.class, (m) -> m.getName().equals("doPrivileged") || m.getName().equals("doPrivilegedWithCombiner"));
         }
 

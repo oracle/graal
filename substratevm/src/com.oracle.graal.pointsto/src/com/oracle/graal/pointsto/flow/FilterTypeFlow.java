@@ -111,7 +111,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    protected void notifyUseOfSaturation(BigBang bb, TypeFlow<?> use) {
+    protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
         if (isAssignable) {
             swapAtUse(bb, declaredType.getTypeFlow(bb, includeNull), use);
         } else {
@@ -120,7 +120,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    protected void notifyObserverOfSaturation(BigBang bb, TypeFlow<?> observer) {
+    protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
         if (isAssignable) {
             swapAtObserver(bb, declaredType.getTypeFlow(bb, includeNull), observer);
         } else {

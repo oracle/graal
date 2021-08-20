@@ -342,7 +342,7 @@ public abstract class TypeState {
         return new SingleTypeState(bb, canBeNull, bb.analysisPolicy().makeProperties(bb, object), object);
     }
 
-    public static TypeState forExactTypes(BigBang bb, BitSet exactTypes, boolean canBeNull) {
+    public static TypeState forExactTypes(PointsToAnalysis bb, BitSet exactTypes, boolean canBeNull) {
         int numTypes = exactTypes.cardinality();
         if (numTypes == 0) {
             return forEmpty().forCanBeNull(bb, canBeNull);

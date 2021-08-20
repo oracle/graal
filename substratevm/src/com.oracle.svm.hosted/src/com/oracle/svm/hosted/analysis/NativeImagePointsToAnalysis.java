@@ -416,7 +416,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     private boolean isTypeAllowed(Type t) {
         if (t instanceof Class) {
             Optional<? extends ResolvedJavaType> resolved = metaAccess.optionalLookupJavaType((Class<?>) t);
-            return resolved.isPresent() && universe.platformSupported(resolved.get());
+            return resolved.isPresent() && hostVM.platformSupported(universe, resolved.get());
         }
         return true;
     }

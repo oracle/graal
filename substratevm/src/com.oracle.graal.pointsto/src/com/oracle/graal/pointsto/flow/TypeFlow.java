@@ -239,7 +239,7 @@ public abstract class TypeFlow<T> {
     public boolean isCloseToAllInstantiated(PointsToAnalysis bb) {
         return this.getState().closeToAllInstantiated(bb);
     }
-    
+
     public void setState(PointsToAnalysis bb, TypeState state) {
         assert !bb.extendedAsserts() || this instanceof InstanceOfTypeFlow ||
                         state.verifyDeclaredType(declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
@@ -386,7 +386,7 @@ public abstract class TypeFlow<T> {
     protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
         use.onInputSaturated(bb, this);
     }
-    
+
     protected boolean doAddUse(PointsToAnalysis bb, TypeFlow<?> use, boolean registerInput) {
         if (use.isSaturated()) {
             /* The use is already saturated so it will not be linked. */

@@ -415,7 +415,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
         universe.hostVM.checkForbidden(this, usageKind);
 
-        BigBang bb = universe.getBigbang();
+        PointsToAnalysis bb = ((PointsToAnalysis) universe.getBigbang());
         TypeState typeState = TypeState.forExactType(bb, this, true);
         TypeState typeStateNonNull = TypeState.forExactType(bb, this, false);
 
@@ -432,7 +432,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      * through type flows.
      */
     public void registerAsAssignable(BigBang bb) {
-        TypeState typeState = TypeState.forType(bb, this, true);
+        TypeState typeState = TypeState.forType(((PointsToAnalysis) bb), this, true);
         /*
          * Register the assignable type with its super types. Skip this type, it can lead to a
          * deadlock when this is called when the type is created.
@@ -469,17 +469,17 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     /**
      * Iterates all super types for this type, where a super type is defined as any type that is
      * assignable from this type, feeding each of them to the consumer.
-     *
+     * 
      * For a class B extends A, the array type A[] is not a superclass of the array type B[]. So
      * there is no strict need to make A[] reachable when B[] is reachable. But it turns out that
      * this is puzzling for users, and there are frameworks that instantiate such arrays
      * programmatically using Array.newInstance(). To reduce the amount of manual configuration that
      * is necessary, we mark all array types of the elemental supertypes and superinterfaces also as
      * reachable.
-     *
+     * 
      * Moreover, even if B extends A doesn't imply that B[] extends A[] it does imply that
      * A[].isAssignableFrom(B[]).
-     *
+     * 
      * NOTE: This method doesn't guarantee that a super type will only be processed once. For
      * example when java.lang.Class is processed its interface java.lang.reflect.AnnotatedElement is
      * reachable directly, but also through java.lang.GenericDeclaration, so it will be processed
@@ -513,8 +513,8 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     private synchronized void addAssignableType(BigBang bb, TypeState typeState) {
-        assignableTypesState = TypeState.forUnion(bb, assignableTypesState, typeState);
-        assignableTypesNonNullState = assignableTypesState.forNonNull(bb);
+        assignableTypesState = TypeState.forUnion(((PointsToAnalysis) bb), assignableTypesState, typeState);
+        assignableTypesNonNullState = assignableTypesState.forNonNull(((PointsToAnalysis) bb));
     }
 
     public void ensureInitialized() {
