@@ -58,9 +58,74 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
     CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex);
 
-    final class Indexes extends BootstrapMethodConstant.Indexes implements InvokeDynamicConstant, Resolvable.ResolvedConstant, Resolvable {
+    final class Indexes extends BootstrapMethodConstant.Indexes implements InvokeDynamicConstant, Resolvable {
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
             super(bootstrapMethodAttrIndex, nameAndTypeIndex);
+        }
+
+        @Override
+        public void dump(ByteBuffer buf) {
+            buf.putChar(bootstrapMethodAttrIndex);
+            buf.putChar(nameAndTypeIndex);
+        }
+
+        @Override
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+            CompilerAsserts.neverPartOfCompilation();
+            // Resolve global parts
+            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
+            BootstrapMethodsAttribute.Entry bsEntry = bms.at(getBootstrapMethodAttrIndex());
+
+            Meta meta = accessingKlass.getMeta();
+
+            try {
+                StaticObject bootstrapmethodMethodHandle = bsEntry.getMethodHandle(accessingKlass, pool);
+                StaticObject[] args = bsEntry.getStaticArguments(accessingKlass, pool);
+
+                StaticObject name = meta.toGuestString(getName(pool));
+                Symbol<Signature> invokeSignature = getSignature(pool);
+                Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
+                StaticObject methodType = MethodTypeConstant.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
+                return new Resolved(bootstrapmethodMethodHandle, args, name, parsedInvokeSignature, methodType);
+            } catch (EspressoException e) {
+                return new Fail(e);
+            }
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
+        }
+
+        @Override
+        public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
+            throw EspressoError.shouldNotReachHere("Not resolved yet");
+        }
+    }
+
+    final class Resolved implements InvokeDynamicConstant, Resolvable.ResolvedConstant {
+        private final StaticObject bootstrapmethodMethodHandle;
+        private final StaticObject[] args;
+        private final StaticObject name;
+        private final Symbol<Type>[] parsedInvokeSignature;
+        private final StaticObject methodType;
+
+        public Resolved(StaticObject bootstrapmethodMethodHandle, StaticObject[] args, StaticObject name, Symbol<Type>[] parsedInvokeSignature, StaticObject methodType) {
+            this.bootstrapmethodMethodHandle = bootstrapmethodMethodHandle;
+            this.args = args;
+            this.name = name;
+            this.parsedInvokeSignature = parsedInvokeSignature;
+            this.methodType = methodType;
+        }
+
+        @Override
+        public Object value() {
+            throw EspressoError.shouldNotReachHere("Use indy.link() rather than Resolved.value()");
+        }
+
+        @Override
+        public boolean isResolved() {
+            return true;
         }
 
         /**
@@ -83,36 +148,14 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
          *     4: invokedynamic #1 // Immediately fails without calling MHN.linkCallSite
          * </pre>
          * 
-         * To simulate that, we make the {@code invokedynamic_constant} both a
-         * {@linkplain Resolvable} and {@linkplain Resolvable.ResolvedConstant}. On the first
-         * access, the constant will be put as-is in the resolved constant pool, and on first
-         * failure, will be overwritten by a {@linkplain Fail} constant, that shortcuts the
-         * {@code MHN.linkCallSite} upcall.
-         * 
          * @see RuntimeConstantPool#linkInvokeDynamic(Klass, int)
          */
         @Override
         public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
+            // Per-callsite linking
             CompilerAsserts.neverPartOfCompilation();
             Meta meta = accessingKlass.getMeta();
-
-            // Indy constant resolving.
-            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
-
-            assert (bms != null);
-            // TODO(garcia) cache bootstrap method resolution
-            // Bootstrap method resolution
             try {
-                BootstrapMethodsAttribute.Entry bsEntry = bms.at(getBootstrapMethodAttrIndex());
-
-                StaticObject bootstrapmethodMethodHandle = bsEntry.getMethodHandle(accessingKlass, pool);
-                StaticObject[] args = bsEntry.getStaticArguments(accessingKlass, pool);
-
-                // Preparing Bootstrap call.
-                StaticObject name = meta.toGuestString(getName(pool));
-                Symbol<Signature> invokeSignature = getSignature(pool);
-                Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
-                StaticObject methodType = MethodTypeConstant.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
                 StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
                 StaticObject memberName;
                 if (meta.getJavaVersion().varHandlesEnabled()) {
@@ -122,7 +165,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                                     thisIndex,
                                     bootstrapmethodMethodHandle,
                                     name, methodType,
-                                    StaticObject.createArray(meta.java_lang_Object_array, args),
+                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone()),
                                     appendix);
                 } else {
                     memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
@@ -130,7 +173,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                                     accessingKlass.mirror(),
                                     bootstrapmethodMethodHandle,
                                     name, methodType,
-                                    StaticObject.createArray(meta.java_lang_Object_array, args),
+                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone()),
                                     appendix);
                 }
                 StaticObject unboxedAppendix = appendix.get(0);
@@ -142,24 +185,18 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         }
 
         @Override
-        public void dump(ByteBuffer buf) {
-            buf.putChar(bootstrapMethodAttrIndex);
-            buf.putChar(nameAndTypeIndex);
+        public int getBootstrapMethodAttrIndex() {
+            throw EspressoError.shouldNotReachHere("String already resolved");
         }
 
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-            return this;
+        public Symbol<Name> getName(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("String already resolved");
         }
 
         @Override
-        public Object value() {
-            throw EspressoError.shouldNotReachHere("Use indy.link() rather than Resolved.value()");
-        }
-
-        @Override
-        public String toString(ConstantPool pool) {
-            return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
+        public Symbol<Signature> getSignature(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("String already resolved");
         }
     }
 
