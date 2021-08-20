@@ -31,9 +31,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.Truffle;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
@@ -64,6 +66,7 @@ public class ProfilerCLITest {
 
     @Test
     public void testDefaultSampleHistogram() {
+        Assume.assumeTrue(checkRuntime());
         HashMap<String, String> options = new HashMap<>();
         options.put("cpusampler", "true");
         String[] output = runSampler(options);
@@ -102,6 +105,7 @@ public class ProfilerCLITest {
 
     @Test
     public void testShowTiersTrueHistogram() {
+        Assume.assumeTrue(checkRuntime());
         HashMap<String, String> options = new HashMap<>();
         options.put("cpusampler", "true");
         options.put("cpusampler.ShowTiers", "true");
@@ -143,42 +147,44 @@ public class ProfilerCLITest {
 
     @Test
     public void testShowTiers20Histogram() {
+        Assume.assumeTrue(checkRuntime());
         HashMap<String, String> options = new HashMap<>();
         options.put("cpusampler", "true");
         options.put("cpusampler.ShowTiers", "2,0");
         String[] output = runSampler(options);
         // @formatter:off
         // OUTPUT IS:
-        //-------------------------------------------------------------------------------------------------------------------------------------
-        //Sampling Histogram. Recorded 207 samples with period 10ms.
+        //----------------------------------------------------------------------------------------------------------------
+        //Sampling Histogram. Recorded 199 samples with period 10ms.
         Assert.assertTrue(output[1].matches(SAMPLING_HISTOGRAM_REGEX));
         //  Self Time: Time spent on the top of the stack.
         Assert.assertEquals(SELF_TIME, output[2]);
         //  Total Time: Time spent somewhere on the stack.
         Assert.assertEquals(TOTAL_TIME, output[3]);
+        //  T2: No samples of tier 2 found during execution. It is excluded from the report.
         //  T0: Percent of time spent in interpreter.
         Assert.assertEquals(INTERPRETER, output[5]);
-        //-------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------------------------------------------------
         //Thread[main,5,main]
         Assert.assertTrue(output[7].contains("Thread"));
-        // Name       |      Total Time    |   T2   |   T0   ||       Self Time    |   T2   |   T0   || Location
-        Assert.assertEquals(" Name       ||             Total Time    |   T2   |   T0   ||              Self Time    |   T2   |   T0   || Location             ", output[8]);
-        //-------------------------------------------------------------------------------------------------------------------------------------
-        // foo        |             2060ms | 100.0% |   0.0% ||             2060ms | 100.0% |   0.0% || test~1:16-29
+        // Name       ||             Total Time    |   T0   ||              Self Time    |   T0   || Location
+        Assert.assertEquals(" Name       ||             Total Time    |   T0   ||              Self Time    |   T0   || Location             ", output[8]);
+        //----------------------------------------------------------------------------------------------------------------
+        // foo        ||             1990ms 100.0% | 100.0% ||             1990ms 100.0% | 100.0% || test~1:16-29
         String lineRegex = NAME_REGEX +
                 SEPARATOR_REGEX + SEPARATOR_REGEX +
-                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
                 SEPARATOR_REGEX + SEPARATOR_REGEX +
-                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
                 SEPARATOR_REGEX + SEPARATOR_REGEX +
                 LOCATION_REGEX;
         Assert.assertTrue(output[10].matches(lineRegex));
-        // bar        |             2070ms | 100.0% |   0.0% ||               10ms | 100.0% |   0.0% || test~1:43-84
+        // baz        ||             1790ms  89.9% | 100.0% ||                0ms   0.0% |   0.0% || test~1:98-139
         Assert.assertTrue(output[11].matches(lineRegex));
-        // baz        |             1850ms | 100.0% |   0.0% ||                0ms |   0.0% |   0.0% || test~1:98-139
+        // bar        ||             1990ms 100.0% | 100.0% ||                0ms   0.0% |   0.0% || test~1:43-84
         Assert.assertTrue(output[12].matches(lineRegex));
-        //            |             2070ms | 100.0% |   0.0% ||                0ms |   0.0% |   0.0% || test~1:0-161
-        //-------------------------------------------------------------------------------------------------------------------------------------
+        //            ||             1990ms 100.0% | 100.0% ||                0ms   0.0% |   0.0% || test~1:0-161
+        //----------------------------------------------------------------------------------------------------------------
         // @formatter:on
     }
 
@@ -223,6 +229,10 @@ public class ProfilerCLITest {
         return out.toString().split(System.lineSeparator());
     }
 
+    private static boolean checkRuntime() {
+        return Truffle.getRuntime().getClass().toString().contains("DefaultTruffleRuntime");
+    }
+
     private String[] runSampler(Map<String, String> options) {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -242,6 +252,7 @@ public class ProfilerCLITest {
 
     @Test
     public void testDefaultHistogramMultiThreadedSummary() {
+        Assume.assumeTrue(checkRuntime());
         HashMap<String, String> options = new HashMap<>();
         options.put("cpusampler", "true");
         options.put("cpusampler.SummariseThreads", "true");
@@ -282,6 +293,7 @@ public class ProfilerCLITest {
 
     @Test
     public void testDefaultHistogramMultiThreadedNoSummary() {
+        Assume.assumeTrue(checkRuntime());
         HashMap<String, String> options = new HashMap<>();
         options.put("cpusampler", "true");
         String[] output = runSamplerMultithreaded(options);

@@ -29,8 +29,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
@@ -77,10 +79,10 @@ class CPUSamplerCLI extends ProfilerCLI {
                         @Override
                         public int[] apply(String s) {
                             if ("false".equals(s)) {
-                                return new int[0];
+                                return null;
                             }
                             if ("true".equals(s)) {
-                                return null;
+                                return new int[0];
                             }
                             try {
                                 String[] tierStrings = s.split(",");
@@ -130,7 +132,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
                     "Note: Interpreter is considered Tier 0. (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    static final OptionKey<int[]> ShowTiers = new OptionKey<>(new int[0], SHOW_TIERS_OUTPUT_TYPE);
+    static final OptionKey<int[]> ShowTiers = new OptionKey<>(null, SHOW_TIERS_OUTPUT_TYPE);
 
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
@@ -279,21 +281,25 @@ class CPUSamplerCLI extends ProfilerCLI {
         return samples;
     }
 
-    private static void printLegend(PrintStream out, String type, long samples, long period, int[] showTiers, int maxTier) {
+    private static void printLegend(PrintStream out, String type, long samples, long period, int[] showTiers, Integer[] tiers) {
         out.printf("Sampling %s. Recorded %s samples with period %dms.%n", type, samples, period);
         out.println("  Self Time: Time spent on the top of the stack.");
         out.println("  Total Time: Time spent somewhere on the stack.");
         if (showTiers == null) {
-            for (int i = 0; i <= maxTier; i++) {
+            return;
+        }
+        if (showTiers.length == 0) {
+            for (int i : tiers) {
                 out.println("  T" + i + ": Percent of time spent in " + (i == 0 ? "interpreter." : "code compiled by tier " + i + " compiler."));
             }
             return;
         }
-        if (showTiers.length == 0) {
-            return;
-        }
         for (int tier : showTiers) {
-            out.println("  T" + tier + ": Percent of time spent in " + (tier == 0 ? "interpreter." : "code compiled by tier " + tier + " compiler."));
+            if (contains(tiers, tier)) {
+                out.println("  T" + tier + ": Percent of time spent in " + (tier == 0 ? "interpreter." : "code compiled by tier " + tier + " compiler."));
+            } else {
+                out.println("  T" + tier + ": No samples of tier " + tier + " found during execution. It is excluded from the report.");
+            }
         }
     }
 
@@ -304,13 +310,13 @@ class CPUSamplerCLI extends ProfilerCLI {
         return ((double) samples * 100) / totalSamples;
     }
 
-    private static String[] makeTitleAndFormat(int nameLength, int[] showTiers, int maxTier) {
+    private static String[] makeTitleAndFormat(int nameLength, int[] showTiers, Integer[] tiers) {
         StringBuilder titleBuilder = new StringBuilder(String.format(" %-" + nameLength + "s ||             Total Time    ", "Name"));
         StringBuilder formatBuilder = new StringBuilder(" %-" + nameLength + "s ||       %10dms %5.1f%% ");
-        maybeAddTiers(titleBuilder, formatBuilder, showTiers, maxTier);
+        maybeAddTiers(titleBuilder, formatBuilder, showTiers, tiers);
         titleBuilder.append("||              Self Time    ");
         formatBuilder.append("||       %10dms %5.1f%% ");
-        maybeAddTiers(titleBuilder, formatBuilder, showTiers, maxTier);
+        maybeAddTiers(titleBuilder, formatBuilder, showTiers, tiers);
         titleBuilder.append("|| Location             ");
         formatBuilder.append("|| %s");
         String[] strings = new String[2];
@@ -319,22 +325,39 @@ class CPUSamplerCLI extends ProfilerCLI {
         return strings;
     }
 
-    private static void maybeAddTiers(StringBuilder titleBuilder, StringBuilder formatBuilder, int[] showTiers, int maxTier) {
+    private static void maybeAddTiers(StringBuilder titleBuilder, StringBuilder formatBuilder, int[] showTiers, Integer[] tiers) {
         if (showTiers == null) {
-            for (int i = 0; i < maxTier + 1; i++) {
+            return;
+        }
+        if (showTiers.length == 0) {
+            for (Integer i : tiers) {
                 titleBuilder.append("|   T").append(i).append("   ");
                 formatBuilder.append("| %5.1f%% ");
             }
             return;
         }
-        if (showTiers.length == 0) {
-            return;
-        }
         for (int i = 0; i < showTiers.length; i++) {
             int selectedTier = showTiers[i];
-            titleBuilder.append("|   T").append(selectedTier).append("   ");
-            formatBuilder.append("| %5.1f%% ");
+            if (contains(tiers, selectedTier)) {
+                titleBuilder.append("|   T").append(selectedTier).append("   ");
+                formatBuilder.append("| %5.1f%% ");
+            }
         }
+    }
+
+    private static boolean contains(Integer[] tiers, int selectedTier) {
+        for (Integer tier : tiers) {
+            if (tier == selectedTier) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Integer[] sortedArray(Set<Integer> tiers) {
+        Integer[] sorted = tiers.toArray(new Integer[0]);
+        Arrays.sort(sorted);
+        return sorted;
     }
 
     private static final class SamplingHistogram {
@@ -344,7 +367,8 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final int[] showTiers;
         private final long samplePeriod;
         private final long samplesTaken;
-        private int maxTier = 0;
+        private Set<Integer> tiers = new HashSet<>();
+        private Integer[] sortedTiers;
         private int maxNameLength = 10;
         private final String title;
         private final String format;
@@ -363,7 +387,8 @@ class CPUSamplerCLI extends ProfilerCLI {
             for (Map.Entry<Thread, SourceLocationPayloads> threadEntry : perThreadSourceLocationPayloads.entrySet()) {
                 histogram.put(threadEntry.getKey(), histogramEntries(threadEntry));
             }
-            String[] titleAndFormat = makeTitleAndFormat(maxNameLength, showTiers, maxTier);
+            sortedTiers = sortedArray(tiers);
+            String[] titleAndFormat = makeTitleAndFormat(maxNameLength, showTiers, sortedTiers);
             this.title = titleAndFormat[0];
             this.format = titleAndFormat[1];
         }
@@ -388,7 +413,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                         outputEntry.tierToSelfSamples = Arrays.copyOf(outputEntry.tierToSelfSamples, outputEntry.tierToSelfSamples.length + 1);
                     }
                     outputEntry.tierToSelfSamples[i] += selfHitCountsValue;
-                    maxTier = Math.max(maxTier, i);
+                    tiers.add(i);
                 }
             }
             for (CPUSampler.Payload payload : sourceLocationEntry.getValue()) {
@@ -399,7 +424,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                         outputEntry.tierToSamples = Arrays.copyOf(outputEntry.tierToSamples, outputEntry.tierToSamples.length + 1);
                     }
                     outputEntry.tierToSamples[i] += hitCountsValue;
-                    maxTier = Math.max(maxTier, i);
+                    tiers.add(i);
                 }
             }
             return outputEntry;
@@ -441,7 +466,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Histogram", samplesTaken, samplePeriod, showTiers, maxTier);
+            printLegend(out, "Histogram", samplesTaken, samplePeriod, showTiers, sortedTiers);
             out.println(sep);
             for (Map.Entry<Thread, List<OutputEntry>> threadListEntry : histogram.entrySet()) {
                 out.println(threadListEntry.getKey());
@@ -451,7 +476,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                     if (minSamples > 0 && entry.totalSelfSamples < minSamples) {
                         continue;
                     }
-                    out.println(entry.format(format, showTiers, SamplingHistogram.this.samplePeriod, 0, samplesTaken));
+                    out.println(entry.format(format, showTiers, SamplingHistogram.this.samplePeriod, 0, samplesTaken, sortedTiers));
                 }
                 out.println(sep);
             }
@@ -492,34 +517,40 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
-        String format(String format, int[] showTiers, long samplePeriod, int indent, long globalTotalSamples) {
+        String format(String format, int[] showTiers, long samplePeriod, int indent, long globalTotalSamples, Integer[] tiers) {
             List<Object> args = new ArrayList<>();
             args.add(repeat(" ", indent) + location.getRootName());
             args.add(totalSamples * samplePeriod);
             args.add(percent(totalSamples, globalTotalSamples));
-            maybeAddTiers(args, tierToSamples, totalSamples, showTiers);
+            maybeAddTiers(args, tierToSamples, totalSamples, showTiers, tiers);
             args.add(totalSelfSamples * samplePeriod);
             args.add(percent(totalSelfSamples, globalTotalSamples));
-            maybeAddTiers(args, tierToSelfSamples, totalSelfSamples, showTiers);
+            maybeAddTiers(args, tierToSelfSamples, totalSelfSamples, showTiers, tiers);
             args.add(getShortDescription(location.getSourceSection()));
             return String.format(format, args.toArray());
         }
 
-        private static void maybeAddTiers(List<Object> args, int[] samples, int total, int[] showTiers) {
+        private static void maybeAddTiers(List<Object> args, int[] samples, int total, int[] showTiers, Integer[] tiers) {
             if (showTiers == null) {
-                for (int i = 0; i < samples.length; i++) {
-                    args.add(percent(samples[i], total));
-                }
                 return;
             }
             if (showTiers.length == 0) {
+                for (int i : tiers) {
+                    if (i < samples.length) {
+                        args.add(percent(samples[i], total));
+                    } else {
+                        args.add(0.0);
+                    }
+                }
                 return;
             }
-            for (int i = 0; i < showTiers.length; i++) {
-                if (showTiers[i] < samples.length) {
-                    args.add(percent(samples[showTiers[i]], total));
-                } else {
-                    args.add(0.0);
+            for (int showTier : showTiers) {
+                if (contains(tiers, showTier)) {
+                    if (showTier < samples.length) {
+                        args.add(percent(samples[showTier], total));
+                    } else {
+                        args.add(0.0);
+                    }
                 }
             }
         }
@@ -535,7 +566,8 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final String format;
         private final Map<Thread, Collection<CallTreeOutputEntry>> entries = new HashMap<>();
         private int maxNameLength = 10;
-        private int maxTier;
+        private final Set<Integer> tiers = new HashSet<>();
+        private final Integer[] sortedTiers;
 
         SamplingCallTree(CPUSamplerData data, OptionValues options) {
             this.summariseThreads = options.get(SUMMARISE_THREADS);
@@ -546,7 +578,8 @@ class CPUSamplerCLI extends ProfilerCLI {
             Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData = data.getThreadData();
             makeEntries(threadData);
             calculateMaxValues(threadData);
-            String[] titleAndFormat = makeTitleAndFormat(maxNameLength, showTiers, maxTier);
+            sortedTiers = sortedArray(tiers);
+            String[] titleAndFormat = makeTitleAndFormat(maxNameLength, showTiers, sortedTiers);
             this.title = titleAndFormat[0];
             this.format = titleAndFormat[1];
 
@@ -562,7 +595,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         private void calculateMaxValuesRec(ProfilerNode<CPUSampler.Payload> node, int depth) {
             maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
-            maxTier = Math.max(maxTier, node.getPayload().getNumberOfTiers() - 1);
+            tiers.add(node.getPayload().getNumberOfTiers() - 1);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
                 calculateMaxValuesRec(child, depth + 1);
             }
@@ -603,7 +636,7 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         private CallTreeOutputEntry makeEntry(ProfilerNode<CPUSampler.Payload> node, int depth) {
             maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
-            maxTier = Math.max(maxTier, node.getPayload().getNumberOfTiers() - 1);
+            tiers.add(node.getPayload().getNumberOfTiers() - 1);
             CallTreeOutputEntry entry = new CallTreeOutputEntry(node);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
                 if (child.isRecursive()) {
@@ -618,7 +651,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Call Tree", samplesTaken, samplePeriod, showTiers, maxTier);
+            printLegend(out, "Call Tree", samplesTaken, samplePeriod, showTiers, sortedTiers);
             out.println(sep);
             out.println(title);
             out.println(sep);
@@ -634,7 +667,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             if (minSamples > 0 && entry.totalSelfSamples < minSamples) {
                 return;
             }
-            out.println(entry.format(format, showTiers, samplePeriod, depth, samplesTaken));
+            out.println(entry.format(format, showTiers, samplePeriod, depth, samplesTaken, sortedTiers));
             List<CallTreeOutputEntry> sortedChildren = new ArrayList<>(entry.children);
             sortedChildren.sort((o1, o2) -> Long.compare(o2.totalSamples, o1.totalSamples));
             for (CallTreeOutputEntry child : sortedChildren) {
