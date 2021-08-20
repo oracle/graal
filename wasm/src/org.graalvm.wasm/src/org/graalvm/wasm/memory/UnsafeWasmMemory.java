@@ -69,7 +69,6 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
      * @see #declaredMaxSize()
      */
     private final int declaredMaxSize;
-    private final Unsafe unsafe;
     private long startAddress;
     private int size;
 
@@ -85,20 +84,14 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
      */
     private final int maxAllowedSize;
 
+    private static final Unsafe unsafe;
+
     private UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
-
-        try {
-            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            unsafe = (Unsafe) f.get(null);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
@@ -119,8 +112,9 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     }
 
     public void validateAddress(Node node, int address, int offset) {
-        if (address < 0 || address + offset > this.byteSize()) {
-            CompilerDirectives.transferToInterpreter();
+        assert offset >= 1;
+        if (address < 0 || address > this.byteSize() - offset) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw trapOutOfBounds(node, address, offset);
         }
     }
@@ -365,6 +359,16 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     public void close() {
         if (!freed()) {
             free();
+        }
+    }
+
+    static {
+        try {
+            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            unsafe = (Unsafe) f.get(null);
+        } catch (Exception e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 }

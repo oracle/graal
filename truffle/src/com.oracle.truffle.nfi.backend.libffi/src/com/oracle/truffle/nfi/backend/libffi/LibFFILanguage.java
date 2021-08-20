@@ -48,6 +48,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
@@ -62,12 +63,8 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
 
     private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("libffi backend single context");
 
-    static LibFFILanguage getCurrentLanguage() {
-        return getCurrentLanguage(LibFFILanguage.class);
-    }
-
     static Assumption getSingleContextAssumption() {
-        return getCurrentLanguage().singleContextAssumption;
+        return get(null).singleContextAssumption;
     }
 
     @Override
@@ -150,6 +147,12 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
     }
 
     protected static LibFFIContext getCurrentContext() {
-        return getCurrentContext(LibFFILanguage.class);
+        return LibFFIContext.get(null);
+    }
+
+    private static final LanguageReference<LibFFILanguage> REFERENCE = LanguageReference.create(LibFFILanguage.class);
+
+    public static LibFFILanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 }

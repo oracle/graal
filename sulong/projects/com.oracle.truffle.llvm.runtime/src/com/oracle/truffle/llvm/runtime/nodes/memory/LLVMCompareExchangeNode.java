@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,9 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI16;
@@ -94,9 +92,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public abstract Object executeWithTarget(VirtualFrame frame, Object address, Object cmpValue, Object newValue);
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, byte comparisonValue, byte newValue,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, byte comparisonValue, byte newValue) {
+            LLVMMemory memory = getLanguage().getLLVMMemory();
             CMPXCHGI8 compareAndSwapI8 = memory.compareAndSwapI8(this, address, comparisonValue, newValue);
             LLVMNativePointer allocation = allocateResult(frame);
             memory.putI8(this, allocation, compareAndSwapI8.getValue());
@@ -105,9 +102,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, short comparisonValue, short newValue,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, short comparisonValue, short newValue) {
+            LLVMMemory memory = getLanguage().getLLVMMemory();
             CMPXCHGI16 compareAndSwapI16 = memory.compareAndSwapI16(this, address, comparisonValue, newValue);
             LLVMNativePointer allocation = allocateResult(frame);
             memory.putI16(this, allocation, compareAndSwapI16.getValue());
@@ -116,9 +112,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, int comparisonValue, int newValue,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, int comparisonValue, int newValue) {
+            LLVMMemory memory = getLanguage().getLLVMMemory();
             CMPXCHGI32 compareAndSwapI32 = memory.compareAndSwapI32(this, address, comparisonValue, newValue);
             LLVMNativePointer allocation = allocateResult(frame);
             memory.putI32(this, allocation, compareAndSwapI32.getValue());
@@ -127,9 +122,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, long comparisonValue, long newValue,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, long comparisonValue, long newValue) {
+            LLVMMemory memory = getLanguage().getLLVMMemory();
             CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(this, address, comparisonValue, newValue);
             LLVMNativePointer allocation = allocateResult(frame);
             memory.putI64(this, allocation, compareAndSwapI64.getValue());
@@ -138,17 +132,15 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, LLVMNativePointer comparisonValue, LLVMNativePointer newValue,
-                        @CachedLanguage LLVMLanguage language) {
-            return doOp(frame, address, comparisonValue.asNative(), newValue.asNative(), language);
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, LLVMNativePointer comparisonValue, LLVMNativePointer newValue) {
+            return doOp(frame, address, comparisonValue.asNative(), newValue.asNative());
         }
 
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, byte comparisonValue, byte newValue,
                         @Cached LLVMI8LoadNode read,
-                        @Cached LLVMI8StoreNode write,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
+                        @Cached LLVMI8StoreNode write) {
+            LLVMMemory memory = getLanguage().getLLVMMemory();
             synchronized (address.getObject()) {
                 LLVMNativePointer allocation = allocateResult(frame);
                 byte currentValue = read.executeWithTarget(address);
@@ -165,9 +157,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, short comparisonValue, short newValue,
                         @Cached LLVMI16LoadNode read,
-                        @Cached LLVMI16StoreNode write,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
+                        @Cached LLVMI16StoreNode write) {
+            LLVMMemory memory = getLanguage().getLLVMMemory();
             synchronized (address.getObject()) {
                 LLVMNativePointer allocation = allocateResult(frame);
                 short currentValue = read.executeWithTarget(address);
@@ -184,9 +175,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, int comparisonValue, int newValue,
                         @Cached LLVMI32LoadNode read,
-                        @Cached LLVMI32StoreNode write,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
+                        @Cached LLVMI32StoreNode write) {
+            LLVMMemory memory = getLanguage().getLLVMMemory();
             synchronized (address.getObject()) {
                 LLVMNativePointer allocation = allocateResult(frame);
                 int currentValue = read.executeWithTarget(address);
@@ -203,9 +193,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, long comparisonValue, long newValue,
                         @Cached LLVMI64LoadNode read,
-                        @Cached LLVMI64StoreNode write,
-                        @CachedLanguage LLVMLanguage language) {
-            LLVMMemory memory = language.getLLVMMemory();
+                        @Cached LLVMI64StoreNode write) {
+            LLVMMemory memory = getLanguage().getLLVMMemory();
             synchronized (address.getObject()) {
                 LLVMNativePointer allocation = allocateResult(frame);
                 long currentValue = (long) read.executeWithTargetGeneric(address);
@@ -222,9 +211,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, LLVMNativePointer comparisonValue, LLVMNativePointer newValue,
                         @Cached LLVMI64LoadNode read,
-                        @Cached LLVMI64StoreNode write,
-                        @CachedLanguage LLVMLanguage language) {
-            return doOp(frame, address, comparisonValue.asNative(), newValue.asNative(), read, write, language);
+                        @Cached LLVMI64StoreNode write) {
+            return doOp(frame, address, comparisonValue.asNative(), newValue.asNative(), read, write);
         }
 
         private LLVMNativePointer allocateResult(VirtualFrame frame) {

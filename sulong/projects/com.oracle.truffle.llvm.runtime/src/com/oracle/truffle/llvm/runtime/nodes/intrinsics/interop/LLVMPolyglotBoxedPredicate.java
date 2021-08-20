@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
@@ -51,28 +50,31 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
     }
 
     final Predicate predicate;
+    @Child InteropLibrary stringInterop = InteropLibrary.getFactory().create("");
 
     protected LLVMPolyglotBoxedPredicate(Predicate predicate) {
         this.predicate = predicate;
     }
 
-    @Specialization
-    boolean matchManaged(LLVMManagedPointer object,
-                    @Cached("createOptional()") LLVMAsForeignNode asForeign,
-                    @Cached ConditionProfile isForeign,
-                    @CachedLibrary(limit = "3") InteropLibrary interop) {
-        Object foreign = asForeign.execute(object);
-        if (isForeign.profile(foreign != null)) {
-            return predicate.match(interop, foreign);
-        } else {
-            return false;
-        }
+    @Specialization(guards = "!foreigns.isForeign(pointer)")
+    boolean matchNonForeignManaged(@SuppressWarnings("unused") LLVMManagedPointer pointer,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+        return false;
     }
 
-    @Specialization(limit = "1")
-    boolean matchString(String str,
-                    @CachedLibrary("str") InteropLibrary interop) {
-        return predicate.match(interop, str);
+    @Specialization(guards = "foreigns.isForeign(pointer)")
+    @GenerateAOT.Exclude
+    boolean matchForeignManaged(LLVMManagedPointer pointer,
+                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                    @CachedLibrary(limit = "3") InteropLibrary interop) {
+        Object foreign = foreigns.asForeign(pointer.getObject());
+        assert foreign != null;
+        return predicate.match(interop, foreign);
+    }
+
+    @Specialization
+    boolean matchString(String str) {
+        return predicate.match(stringInterop, str);
     }
 
     @Fallback

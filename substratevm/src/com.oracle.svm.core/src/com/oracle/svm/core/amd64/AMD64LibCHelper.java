@@ -112,6 +112,10 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
+        boolean fTSCINVBIT();
+
+        @AllowNarrowingCast
+        @CField
         boolean fAVX();
 
         @AllowNarrowingCast
@@ -181,6 +185,50 @@ public class AMD64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fFMA();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fVZEROUPPER();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512VPOPCNTDQ();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512VPCLMULQDQ();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512VAES();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512VNNI();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fFLUSH();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fFLUSHOPT();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fCLWB();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512VBMI2();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512VBMI();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fHV();
     }
 
 }

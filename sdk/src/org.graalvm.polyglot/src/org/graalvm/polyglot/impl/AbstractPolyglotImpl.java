@@ -452,7 +452,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value parse(Object receiver, String language, Object sourceImpl);
 
-        public abstract void close(Object receiver, boolean interuptExecution);
+        public abstract void close(Object receiver, boolean cancelIfExecuting);
 
         public abstract boolean interrupt(Object receiver, Duration timeout);
 

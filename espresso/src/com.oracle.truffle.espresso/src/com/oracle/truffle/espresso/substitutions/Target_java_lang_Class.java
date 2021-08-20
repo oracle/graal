@@ -32,10 +32,8 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
@@ -72,13 +70,13 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(methodName = "getPrimitiveClass")
-    abstract static class GetPrimitiveClass extends Node {
+    abstract static class GetPrimitiveClass extends SubstitutionNode {
         abstract @JavaType(Class.class) StaticObject execute(@JavaType(String.class) StaticObject name);
 
         @Specialization
         @JavaType(Class.class)
         StaticObject withContext(@JavaType(String.class) StaticObject name,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @Bind("getContext()") EspressoContext context) {
             Meta meta = context.getMeta();
             String hostName = meta.toHostString(name);
             switch (hostName) {

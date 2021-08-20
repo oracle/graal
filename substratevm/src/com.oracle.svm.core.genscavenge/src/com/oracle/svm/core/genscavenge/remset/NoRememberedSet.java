@@ -132,17 +132,17 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
-    public void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor) {
+    public void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         throw VMError.shouldNotReachHere();
     }
 
     @Override
-    public void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor) {
+    public void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         throw VMError.shouldNotReachHere();
     }
 
     @Override
-    public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor) {
+    public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean) {
         throw VMError.shouldNotReachHere();
     }
 

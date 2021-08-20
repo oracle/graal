@@ -248,7 +248,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
             /*
              * The receiver object flow of the invoke operation is saturated; it will stop sending
-             * notificatons. Swap the invoke flow with the unique, context-insensitive invoke flow
+             * notifications. Swap the invoke flow with the unique, context-insensitive invoke flow
              * corresponding to the target method, which is already registered as an observer for
              * the type flow of the receiver type and therefore saturated. This is a conservative
              * approximation and this invoke will reach all possible callees.

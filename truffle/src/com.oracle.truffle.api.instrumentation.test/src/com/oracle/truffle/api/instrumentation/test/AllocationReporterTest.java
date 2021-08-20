@@ -584,7 +584,7 @@ public class AllocationReporterTest {
         context.eval(source);
         context.enter();
         try {
-            AllocationReporter reporter = AllocationReporterLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
+            AllocationReporter reporter = AllocationReporterLanguage.getContext().getEnv().lookup(AllocationReporter.class);
             AtomicInteger listenerCalls = new AtomicInteger(0);
             AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
             assertEquals(0, listenerCalls.get());
@@ -741,7 +741,7 @@ public class AllocationReporterTest {
             }
 
             AllocNode toNode() {
-                AllocationReporter reporter = getCurrentContext().getEnv().lookup(AllocationReporter.class);
+                AllocationReporter reporter = getContext().getEnv().lookup(AllocationReporter.class);
                 if (children == null) {
                     return new AllocNode(oldValue, newValue, reporter);
                 } else {
@@ -871,8 +871,15 @@ public class AllocationReporterTest {
 
         }
 
-        public static LanguageContext getCurrentContext() {
-            return getCurrentContext(AllocationReporterLanguage.class);
+        private static final LanguageReference<AllocationReporterLanguage> REFERENCE = LanguageReference.create(AllocationReporterLanguage.class);
+        private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(AllocationReporterLanguage.class);
+
+        public static ProxyLanguage get(Node node) {
+            return REFERENCE.get(node);
+        }
+
+        public static LanguageContext getContext() {
+            return CONTEXT_REF.get(null);
         }
     }
 

@@ -29,15 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -47,7 +44,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.IDGenerater;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
@@ -56,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNodeGen;
@@ -68,22 +63,6 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
-
-    @CompilationFinal private ContextReference<LLVMContext> contextRef;
-
-    @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
-
-    protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
-        if (languageRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            languageRef = lookupLanguageReference(LLVMLanguage.class);
-        }
-        // checking the bit is cheaper than getting the assumption in interpreted mode
-        if (CompilerDirectives.inCompiledCode() && languageRef.get().getNoDerefHandleAssumption().isValid()) {
-            return false;
-        }
-        return LLVMHandleMemoryBase.isDerefHandleMemory(addr.asNative());
-    }
 
     protected abstract static class DecoratedRoot extends RootNode {
 
@@ -125,7 +104,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
 
         protected ForeignDecoratedRoot(TruffleLanguage<?> language, FunctionType type, Object func, LLVMFunctionDescriptor wrapper) {
             super(language);
-            this.funcCallNode = LLVMDispatchNodeGen.create(type);
+            this.funcCallNode = LLVMDispatchNodeGen.create(type, wrapper.getLLVMFunction());
             this.func = func;
             this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getFunctionCode().getLLVMIRFunctionSlowPath());
             this.wrapperCallNode.cloneCallTarget();
@@ -164,6 +143,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     }
 
     @Specialization(guards = {"isAutoDerefHandle(func)", "isFunctionDescriptor(wrapper.getObject())"})
+    @GenerateAOT.Exclude
     protected Object decorateDerefHandle(LLVMNativePointer func, LLVMManagedPointer wrapper,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached ConditionProfile isFunctionDescriptorProfile,
@@ -202,7 +182,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         assert function != null && wrapperFunction != null;
         FunctionType type = wrapperFunction.getLLVMFunction().getType();
         FunctionType newFunctionType = FunctionType.copy(type);
-        NativeDecoratedRoot decoratedRoot = new NativeDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), function, wrapperFunction);
+        NativeDecoratedRoot decoratedRoot = new NativeDecoratedRoot(getLanguage(), function, wrapperFunction);
         return registerRoot(function.getLLVMFunction().getStringPath(), newFunctionType, decoratedRoot);
     }
 
@@ -210,7 +190,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     private Object decorateForeign(Object function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType newFunctionType = new FunctionType(wrapperFunction.getLLVMFunction().getType().getReturnType(), 0, true);
-        DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), newFunctionType, function, wrapperFunction);
+        DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(getLanguage(), newFunctionType, function, wrapperFunction);
         return registerRoot(wrapperFunction.getLLVMFunction().getStringPath(), newFunctionType, decoratedRoot);
     }
 
@@ -219,14 +199,6 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         LLVMFunction functionDetail = LLVMFunction.create("<wrapper>", function, newFunctionType, IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX, false, path, false);
         LLVMFunctionDescriptor wrappedFunction = new LLVMFunctionDescriptor(functionDetail, new LLVMFunctionCode(functionDetail));
         return LLVMManagedPointer.create(wrappedFunction);
-    }
-
-    private LLVMContext getContext() {
-        if (contextRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            contextRef = lookupContextReference(LLVMLanguage.class);
-        }
-        return contextRef.get();
     }
 
 }

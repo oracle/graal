@@ -35,8 +35,14 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
 class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public UnsignedWord lookupStackBase() {
+        Pthread.pthread_t self = Pthread.pthread_self();
+        return DarwinPthread.pthread_get_stackaddr_np(self);
+    }
 
-    @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackEnd() {
         Pthread.pthread_t self = Pthread.pthread_self();

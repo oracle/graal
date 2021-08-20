@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.nodes.interop;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -40,7 +39,7 @@ public final class ExitCodeNode extends RootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         assert frame.getArguments().length == 0;
-        EspressoContext context = EspressoLanguage.getCurrentContext();
+        EspressoContext context = EspressoContext.get(this);
         if (!context.isClosing()) {
             return StaticObject.NULL;
         }

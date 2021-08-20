@@ -38,7 +38,7 @@ import org.junit.After;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.tools.chromeinspector.InspectorDebugger;
 
 public class SLInspectDebugTest {
@@ -1199,7 +1199,7 @@ public class SLInspectDebugTest {
         Context context = Context.newBuilder().allowIO(true).build();
         context.initialize("sl");
         context.enter();
-        TruffleFile truffleFile = SLLanguage.getCurrentContext().getEnv().getPublicTruffleFile(file.toPath().toString());
+        TruffleFile truffleFile = SLContext.get(null).getEnv().getPublicTruffleFile(file.toPath().toString());
         com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", truffleFile).build();
 
         tester = InspectorTester.start(false);

@@ -227,7 +227,7 @@ public abstract class AbstractPolyglotTest {
             callable.call();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
             }
             return;
         }
@@ -239,7 +239,7 @@ public abstract class AbstractPolyglotTest {
             run.run();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
             }
             verifier.accept(exceptionType.cast(t));
             return;

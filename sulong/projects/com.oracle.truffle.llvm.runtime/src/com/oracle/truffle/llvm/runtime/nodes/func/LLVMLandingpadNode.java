@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,8 +40,6 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -91,8 +89,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                 return landingPadValue;
             }
         } catch (FrameSlotTypeException | UnexpectedResultException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 
@@ -137,8 +134,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
         public LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(context));
+                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(getContext()));
             }
             return canCatch;
         }
@@ -175,8 +171,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
         LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(context));
+                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(getContext()));
             }
             return canCatch;
         }
@@ -212,8 +207,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                 }
                 return false;
             } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }

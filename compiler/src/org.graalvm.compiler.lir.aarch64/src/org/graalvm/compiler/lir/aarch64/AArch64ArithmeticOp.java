@@ -27,7 +27,7 @@ package org.graalvm.compiler.lir.aarch64;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.ARITHMETIC;
+import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.ADDSUBTRACT;
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.LOGICAL;
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.NONE;
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.SHIFT;
@@ -50,10 +50,10 @@ public enum AArch64ArithmeticOp {
     // TODO At least add and sub *can* be used with SP, so this should be supported
     NEG,
     NOT,
-    ADD(ARITHMETIC),
-    ADDS(ARITHMETIC),
-    SUB(ARITHMETIC),
-    SUBS(ARITHMETIC),
+    ADD(ADDSUBTRACT),
+    ADDS(ADDSUBTRACT),
+    SUB(ADDSUBTRACT),
+    SUBS(ADDSUBTRACT),
     MUL,
     MULVS,
     MNEG,
@@ -105,7 +105,7 @@ public enum AArch64ArithmeticOp {
     public enum ARMv8ConstantCategory {
         NONE,
         LOGICAL,
-        ARITHMETIC,
+        ADDSUBTRACT,
         SHIFT
     }
 
@@ -149,7 +149,7 @@ public enum AArch64ArithmeticOp {
                     masm.not(size, dst, src);
                     break;
                 case ABS:
-                    masm.cmp(size, src, 0);
+                    masm.compare(size, src, 0);
                     masm.csneg(size, dst, src, src, ConditionFlag.GE);
                     break;
                 case FABS:
@@ -202,21 +202,21 @@ public enum AArch64ArithmeticOp {
                 case ADD:
                     // Don't use asInt() here, since we can't use asInt on a long variable, even
                     // if the constant easily fits as an int.
-                    assert AArch64MacroAssembler.isArithmeticImmediate(b.asLong());
+                    assert AArch64MacroAssembler.isAddSubtractImmediate(b.asLong(), true);
                     masm.add(size, dst, src, (int) b.asLong());
                     break;
                 case SUB:
                     // Don't use asInt() here, since we can't use asInt on a long variable, even
                     // if the constant easily fits as an int.
-                    assert AArch64MacroAssembler.isArithmeticImmediate(b.asLong());
+                    assert AArch64MacroAssembler.isAddSubtractImmediate(b.asLong(), true);
                     masm.sub(size, dst, src, (int) b.asLong());
                     break;
                 case ADDS:
-                    assert AArch64MacroAssembler.isArithmeticImmediate(b.asLong());
+                    assert AArch64MacroAssembler.isAddSubtractImmediate(b.asLong(), true);
                     masm.adds(size, dst, src, (int) b.asLong());
                     break;
                 case SUBS:
-                    assert AArch64MacroAssembler.isArithmeticImmediate(b.asLong());
+                    assert AArch64MacroAssembler.isAddSubtractImmediate(b.asLong(), true);
                     masm.subs(size, dst, src, (int) b.asLong());
                     break;
                 case AND:

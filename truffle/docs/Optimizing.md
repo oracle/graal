@@ -461,6 +461,13 @@ To make the best use of the former options, limit what is compiled to the method
 
 Sometimes compiled code deoptimizes (goes from Truffle compiled code back to the interpreter) unexpectedly.
 These are some ways to investigate why the code is deoptimized.
+It is very important for performance to avoid repeated deoptimizations.
+
+The `--engine.TraceCompilation` option shows deoptimizations with an `[engine] opt deopt` prefix, which is useful to evaluate if many deoptimizations happen.
+However, it shows no other details.
+
+Materializing a frame with `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)` from the stack causes deoptimizations (but no invalidation).
+These deoptimizations can be traced with `--engine.TraceDeoptimizeFrame`.
 
 When using native images, you need to build the native image with `-H:+IncludeNodeSourcePositions` to enable stack traces for deoptimizations.
 These are disabled by default to save on image size.

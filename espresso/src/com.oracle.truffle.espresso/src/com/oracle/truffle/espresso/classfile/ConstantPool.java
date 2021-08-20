@@ -177,19 +177,19 @@ public abstract class ConstantPool {
 
     static @JavaType(VerifyError.class) EspressoException verifyError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
     }
 
     public static @JavaType(ClassFormatError.class) EspressoException classFormatError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
     }
 
     static @JavaType(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
     }
 

@@ -63,6 +63,8 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
@@ -232,7 +234,9 @@ public class HotSpotGraphBuilderPlugins {
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
                 registerReferencePlugins(invocationPlugins, replacements);
+                registerTrufflePlugins(invocationPlugins, wordTypes, config);
             }
+
         });
         if (!IS_IN_NATIVE_IMAGE) {
             // In libgraal all NodeIntrinsics been converted into special nodes so the plugins
@@ -251,6 +255,36 @@ public class HotSpotGraphBuilderPlugins {
             });
         }
         return plugins;
+    }
+
+    private static void registerTrufflePlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config) {
+        if (config.jvmciReservedReference0Offset == -1) {
+            // cannot install intrinsics without
+            return;
+        }
+
+        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+        tl.register1("get", InvocationPlugin.Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
+                GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
+                b.addPush(JavaKind.Object, new HotSpotLoadReservedReferenceNode(b.getMetaAccess(), wordTypes, jvmciReservedReference0Offset));
+                return true;
+            }
+
+        });
+        tl.register2("set", InvocationPlugin.Receiver.class, Object[].class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode value) {
+                int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
+                GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
+                b.add(new HotSpotStoreReservedReferenceNode(wordTypes, value, jvmciReservedReference0Offset));
+                return true;
+            }
+        });
+
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, GraalHotSpotVMConfig config, Replacements replacements) {

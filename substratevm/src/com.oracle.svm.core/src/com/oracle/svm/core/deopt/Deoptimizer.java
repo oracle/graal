@@ -406,7 +406,6 @@ public final class Deoptimizer {
             }
         } else {
             if (installedCode == null) {
-                CodeInfoTable.getRuntimeCodeCache().logTable();
                 throw VMError.shouldNotReachHere(
                                 "Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sourceSp.rawValue()) + ", returnAddress = " + Long.toHexString(returnAddress.rawValue()));
             }
@@ -735,7 +734,7 @@ public final class Deoptimizer {
     private static void logDeoptSourceFrameOperation(Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult frameInfo) {
         StringBuilderLog log = new StringBuilderLog();
         PointerBase deoptimizedFrameAddress = deoptimizedFrame.getPin().addressOfObject();
-        log.string("deoptSourceFrameOperation: DeoptimizedFrame at ").hex(deoptimizedFrameAddress).string(": ");
+        log.string("deoptSourceFrameOperation: DeoptimizedFrame at ").zhex(deoptimizedFrameAddress).string(": ");
         printDeoptimizedFrame(log, sp, deoptimizedFrame, frameInfo, true);
         recentDeoptimizationEvents.append(log.getResult().toCharArray());
     }
@@ -752,9 +751,9 @@ public final class Deoptimizer {
     };
 
     public static void logRecentDeoptimizationEvents(Log log) {
-        log.string("== [Recent Deoptimizer Events: ").newline();
+        log.string("Recent deoptimization events:").indent(true);
         recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
-        log.string("]").newline();
+        log.indent(false);
     }
 
     /**
@@ -1066,7 +1065,7 @@ public final class Deoptimizer {
         if (installedCode != null) {
             log.string("    name: ").string(installedCode.getName()).newline();
         }
-        log.string("    sp: ").hex(sp).string("  ip: ").hex(deoptimizedFrame.getSourcePC()).newline();
+        log.string("    sp: ").zhex(sp).string("  ip: ").zhex(deoptimizedFrame.getSourcePC()).newline();
 
         if (sourceFrameInfo != null) {
             log.string("    stack trace where execution continues:").newline();
@@ -1085,11 +1084,11 @@ public final class Deoptimizer {
                         log.string(deoptMethod.format("%H.%n(%p)"));
                     }
                 } else {
-                    log.string("method at ").hex(sourceFrame.getDeoptMethodAddress());
+                    log.string("method at ").zhex(sourceFrame.getDeoptMethodAddress());
                 }
                 log.string(" bci ");
                 FrameInfoDecoder.logReadableBci(log, sourceFrame.getEncodedBci());
-                log.string("  return address ").hex(targetFrame.returnAddress.returnAddress).newline();
+                log.string("  return address ").zhex(targetFrame.returnAddress.returnAddress).newline();
 
                 if (printOnlyTopFrames || Options.TraceDeoptimizationDetails.getValue()) {
                     printVirtualFrame(log, targetFrame);
@@ -1118,8 +1117,8 @@ public final class Deoptimizer {
         log.string("            bci: ");
         FrameInfoDecoder.logReadableBci(log, frameInfo.getEncodedBci());
         log.string("  deoptMethodOffset: ").signed(frameInfo.getDeoptMethodOffset());
-        log.string("  deoptMethod: ").hex(frameInfo.getDeoptMethodAddress());
-        log.string("  return address: ").hex(virtualFrame.returnAddress.returnAddress).string("  offset: ").signed(virtualFrame.returnAddress.offset);
+        log.string("  deoptMethod: ").zhex(frameInfo.getDeoptMethodAddress());
+        log.string("  return address: ").zhex(virtualFrame.returnAddress.returnAddress).string("  offset: ").signed(virtualFrame.returnAddress.offset);
 
         for (int i = 0; i < frameInfo.getValueInfos().length; i++) {
             JavaConstant con = virtualFrame.getConstant(i);

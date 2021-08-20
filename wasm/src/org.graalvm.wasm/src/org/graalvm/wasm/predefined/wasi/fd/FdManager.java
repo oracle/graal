@@ -51,7 +51,7 @@ import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 
@@ -60,6 +60,7 @@ public final class FdManager implements Closeable {
     private final Map<Integer, Fd> handles;
 
     public FdManager(TruffleLanguage.Env env) {
+        CompilerAsserts.neverPartOfCompilation();
         handles = new HashMap<>();
 
         put(0, new InputStreamFd(env.in()));
@@ -75,7 +76,6 @@ public final class FdManager implements Closeable {
         for (final String dir : preopenedDirs.split(",")) {
             final String[] parts = dir.split("::", 2);
             if (parts.length > 2) {
-                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.INVALID_WASI_DIRECTORIES_MAPPING,
                                 String.format("Wasi directory map '%s' is not valid. Syntax: --WasiMapDirs <virtual_path>::<host_path>, or --WasiMapDirs <host_path>", dir));
             }
@@ -88,7 +88,6 @@ public final class FdManager implements Closeable {
                 // Currently, we follow symbolic links.
                 hostDir = env.getPublicTruffleFile(hostDirPath).getCanonicalFile();
             } catch (IOException | SecurityException e) {
-                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.INVALID_WASI_DIRECTORIES_MAPPING);
             }
 

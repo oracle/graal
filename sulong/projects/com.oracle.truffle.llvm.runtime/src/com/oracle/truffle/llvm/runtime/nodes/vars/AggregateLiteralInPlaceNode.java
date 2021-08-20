@@ -33,13 +33,12 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
@@ -79,18 +78,19 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
 
     @Specialization
     protected void initialize(VirtualFrame frame,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMI8OffsetStoreNode storeI8,
-                    @Cached LLVMI64OffsetStoreNode storeI64) {
-        writePrimitives(context, storeI8, storeI64);
-        writeObjects(frame, context);
+                    @Cached LLVMI64OffsetStoreNode storeI64,
+                    @Cached BranchProfile exception) {
+        LLVMContext context = getContext();
+        writePrimitives(context, storeI8, storeI64, exception);
+        writeObjects(frame, context, exception);
     }
 
-    private void writePrimitives(LLVMContext context, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64) {
+    private void writePrimitives(LLVMContext context, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64, BranchProfile exception) {
         int offset = 0;
         int nextStore = 0;
         for (int i = 0; i < descriptors.length; i++) {
-            LLVMPointer address = context.getSymbol(descriptors[i]);
+            LLVMPointer address = context.getSymbol(descriptors[i], exception);
             int bufferOffset = bufferOffsets[i];
             int bufferEnd = i == descriptors.length - 1 ? data.length : bufferOffsets[i + 1];
             while (offset < bufferEnd) {
@@ -104,11 +104,11 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     }
 
     @ExplodeLoop
-    private void writeObjects(VirtualFrame frame, LLVMContext context) {
+    private void writeObjects(VirtualFrame frame, LLVMContext context, BranchProfile exception) {
         int offset = 0;
         int nextStore = 0;
         for (int i = 0; i < descriptors.length; i++) {
-            LLVMPointer address = context.getSymbol(descriptors[i]);
+            LLVMPointer address = context.getSymbol(descriptors[i], exception);
             int bufferOffset = bufferOffsets[i];
             int bufferEnd = i == descriptors.length - 1 ? data.length : bufferOffsets[i + 1];
             while (offset < bufferEnd) {

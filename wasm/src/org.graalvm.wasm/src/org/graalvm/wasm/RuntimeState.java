@@ -51,7 +51,6 @@ import org.graalvm.wasm.memory.WasmMemory;
 @SuppressWarnings("static-method")
 public class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
-    private static final int INITIAL_TARGETS_SIZE = 32;
 
     private final WasmContext context;
     private final WasmModule module;
@@ -59,7 +58,8 @@ public class RuntimeState {
     /**
      * An array of call targets that correspond to the WebAssembly functions of the current module.
      */
-    @CompilationFinal(dimensions = 1) private CallTarget[] targets;
+    private final CallTarget[] targets;
+    private final WasmFunctionInstance[] functionInstances;
 
     /**
      * This array is monotonically populated from the left. An index i denotes the i-th global in
@@ -98,19 +98,12 @@ public class RuntimeState {
         }
     }
 
-    private void ensureTargetsCapacity(int index) {
-        while (index >= targets.length) {
-            final CallTarget[] nTargets = new CallTarget[targets.length * 2];
-            System.arraycopy(targets, 0, nTargets, 0, targets.length);
-            targets = nTargets;
-        }
-    }
-
-    public RuntimeState(WasmContext context, WasmModule module) {
+    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions) {
         this.context = context;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
-        this.targets = new CallTarget[INITIAL_TARGETS_SIZE];
+        this.targets = new CallTarget[numberOfFunctions];
+        this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
     }
 
@@ -183,7 +176,6 @@ public class RuntimeState {
     }
 
     public void setTarget(int index, CallTarget target) {
-        ensureTargetsCapacity(index);
         targets[index] = target;
     }
 
@@ -215,5 +207,23 @@ public class RuntimeState {
     public void setMemory(WasmMemory memory) {
         checkNotLinked();
         this.memory = memory;
+    }
+
+    public WasmFunctionInstance functionInstance(WasmFunction function) {
+        int functionIndex = function.index();
+        WasmFunctionInstance functionInstance = functionInstances[functionIndex];
+        if (functionInstance == null) {
+            functionInstance = new WasmFunctionInstance(context(), function, target(functionIndex));
+            functionInstances[functionIndex] = functionInstance;
+        }
+        return functionInstance;
+    }
+
+    public WasmFunctionInstance functionInstance(int index) {
+        return functionInstances[index];
+    }
+
+    public void setFunctionInstance(int index, WasmFunctionInstance functionInstance) {
+        functionInstances[index] = functionInstance;
     }
 }

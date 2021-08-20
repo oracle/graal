@@ -131,7 +131,7 @@ public final class ThreadLocalAllocation {
     }
 
     @Uninterruptible(reason = "Accesses TLAB", callerMustBe = true)
-    private static Descriptor getTlab(IsolateThread vmThread) {
+    public static Descriptor getTlab(IsolateThread vmThread) {
         return regularTLAB.getAddress(vmThread);
     }
 

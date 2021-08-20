@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -52,14 +51,14 @@ public abstract class LLVMSyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
 
     protected LLVMSyscallOperationNode createNode(long syscallNum) {
-        return LLVMLanguage.getLanguage().getCapability(PlatformCapability.class).createSyscallNode(syscallNum);
+        return LLVMLanguage.get(null).getCapability(PlatformCapability.class).createSyscallNode(syscallNum);
     }
 
     @Specialization(guards = "syscallNum == cachedSyscallNum", limit = "NUM_SYSCALLS", rewriteOn = UnexpectedResultException.class)
     protected long cachedSyscall(@SuppressWarnings("unused") long syscallNum, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6,
                     @Cached("syscallNum") @SuppressWarnings("unused") long cachedSyscallNum,
-                    @Cached("createNode(syscallNum)") LLVMSyscallOperationNode node,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) throws UnexpectedResultException {
+                    @Cached("createNode(syscallNum)") LLVMSyscallOperationNode node) throws UnexpectedResultException {
+        LLVMContext context = getContext();
         if (context.syscallTraceStream() != null) {
             trace(context, "[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), arg1, arg2, arg3, arg4, arg5, arg6);
         }
@@ -82,8 +81,8 @@ public abstract class LLVMSyscallNode extends LLVMExpressionNode {
     @Specialization(guards = "syscallNum == cachedSyscallNum", limit = "NUM_SYSCALLS", replaces = "cachedSyscall")
     protected Object cachedSyscallGeneric(@SuppressWarnings("unused") long syscallNum, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6,
                     @Cached("syscallNum") @SuppressWarnings("unused") long cachedSyscallNum,
-                    @Cached("createNode(syscallNum)") LLVMSyscallOperationNode node,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                    @Cached("createNode(syscallNum)") LLVMSyscallOperationNode node) {
+        LLVMContext context = getContext();
         if (context.syscallTraceStream() != null) {
             trace(context, "[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), arg1, arg2, arg3, arg4, arg5, arg6);
         }

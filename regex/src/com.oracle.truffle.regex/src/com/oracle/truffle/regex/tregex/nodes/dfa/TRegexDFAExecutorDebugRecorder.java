@@ -45,7 +45,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -197,7 +197,7 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
     @TruffleBoundary
     public void finishRecording() {
-        TruffleFile file = RegexLanguage.getCurrentContext().getEnv().getPublicTruffleFile(
+        TruffleFile file = RegexContext.get(null).getEnv().getPublicTruffleFile(
                         "tregex_" + dfa.getDebugDumpName() + "_" + dfa.getNfa().getAst().getSource().toFileName() + "_recording" + recordings.size() + ".json");
         Json.obj(Json.prop("dfa", dfa), Json.prop("recording", curRecording())).dump(file);
     }

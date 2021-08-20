@@ -344,20 +344,23 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print information for splitting decisions.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
 
-    @Option(help = "Print stack trace on assumption invalidation", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraceAssumptions = new OptionKey<>(false);
-
-    @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
-
     @Option(help = "Print Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompilationStatistics = new OptionKey<>(false);
 
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompilationStatisticDetails = new OptionKey<>(false);
 
+    @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
+
     @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
+
+    @Option(help = "Print stack trace on assumption invalidation", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceAssumptions = new OptionKey<>(false);
+
+    @Option(help = "Print stack trace when deoptimizing a frame from the stack with FrameInstance#getFrame(READ_WRITE|MATERIALIZE).", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceDeoptimizeFrame = new OptionKey<>(false);
 
     private static final String EXPANSION_VALUES = "Accepted values are:%n" +
                     "    true - Collect data for the default tier 'truffleTier'.%n" +

@@ -63,8 +63,7 @@ import com.oracle.truffle.api.source.Source;
  * A {@link TruffleContext context} consists of a {@link TruffleLanguage#createContext(Env) language
  * context} instance for each {@link Env#getInternalLanguages() installed language}. The current
  * language context is {@link TruffleLanguage#createContext(Env) created} eagerly and can be
- * accessed using a {@link ContextReference context reference} or statically with
- * {@link TruffleLanguage#getCurrentContext(Class)} after the context was
+ * accessed using a {@link ContextReference context reference} after the context was
  * {@link TruffleContext#enter(Node) entered}.
  * <p>
  * The configuration for each language context is inherited from its parent/creator context. In
@@ -642,8 +641,11 @@ class TruffleContextSnippets {
             innerContext.close();
         }
     }
+    private static ContextReference<MyContext> REFERENCE
+                 = ContextReference.create(MyLanguage.class);
+
     private static MyContext getContext() {
-        return TruffleLanguage.getCurrentContext(MyLanguage.class);
+        return REFERENCE.get(null);
     }
     // END: TruffleContextSnippets#executeInContext
     // @formatter:on

@@ -1,5 +1,5 @@
 DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-js
 DISABLE_INSTALLABLES=llp
-EXCLUDE_COMPONENTS=pbm,llmulrl
+EXCLUDE_COMPONENTS=pbm,pmh,llmulrl
 FORCE_BASH_LAUNCHERS=polyglot
 SKIP_LIBRARIES=polyglot

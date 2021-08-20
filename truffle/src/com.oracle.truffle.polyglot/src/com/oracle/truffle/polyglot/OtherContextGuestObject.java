@@ -132,7 +132,7 @@ final class OtherContextGuestObject implements TruffleObject {
                     BranchProfile seenOther,
                     BranchProfile seenError) throws Exception {
         if (message.getLibraryClass() == InteropLibrary.class) {
-            PolyglotContextImpl prev;
+            Object[] prev;
             try {
                 prev = engine.enter(delegateContext);
             } catch (Throwable e) {

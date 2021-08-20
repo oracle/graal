@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
@@ -48,6 +49,10 @@ public abstract class EspressoInstrumentableNode extends Node implements BciProv
     public abstract Object execute(VirtualFrame frame);
 
     public abstract Method getMethod();
+
+    public final EspressoContext getContext() {
+        return EspressoContext.get(this);
+    }
 
     public final boolean isInstrumentable() {
         return true;

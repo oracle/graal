@@ -129,8 +129,9 @@ final class LibFFIClosure implements TruffleObject {
 
         abstract ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature);
 
-        static MonomorphicClosureInfo create(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object executable) {
+        static MonomorphicClosureInfo create(CachedSignatureInfo signatureInfo, Object executable) {
             CompilerAsserts.neverPartOfCompilation();
+            LibFFILanguage lang = LibFFILanguage.get(null);
             CachedTypeInfo retType = signatureInfo.getRetType();
             if (retType instanceof LibFFIType.ObjectType) {
                 // special handling simple object return values
@@ -160,8 +161,9 @@ final class LibFFIClosure implements TruffleObject {
 
         abstract ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver);
 
-        static PolymorphicClosureInfo create(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo create(CachedSignatureInfo signatureInfo) {
             CompilerAsserts.neverPartOfCompilation();
+            LibFFILanguage lang = LibFFILanguage.get(null);
             CachedTypeInfo retType = signatureInfo.getRetType();
             if (retType instanceof LibFFIType.ObjectType) {
                 // special handling simple object return values

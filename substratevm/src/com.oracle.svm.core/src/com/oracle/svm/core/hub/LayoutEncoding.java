@@ -203,6 +203,7 @@ public class LayoutEncoding {
         return getArrayElementOffset(encoding, length).add(alignmentMask).and(~alignmentMask);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {

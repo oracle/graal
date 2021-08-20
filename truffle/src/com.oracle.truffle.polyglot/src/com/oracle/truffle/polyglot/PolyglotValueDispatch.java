@@ -1199,7 +1199,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     private static Value asValue(PolyglotLanguageContext context, Object value) {
         if (context == null) {
-            return PolyglotImpl.getInstance().asValue(PolyglotContextImpl.currentNotEntered(), value);
+            return PolyglotImpl.getInstance().asValue(PolyglotFastThreadLocals.getContext(null), value);
         } else {
             return context.asValue(value);
         }

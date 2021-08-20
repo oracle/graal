@@ -40,29 +40,26 @@
  */
 package org.graalvm.wasm.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     protected final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
-    @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Child private WasmNode body;
 
     public WasmRootNode(TruffleLanguage<?> language, WasmInstance instance, WasmCodeEntry codeEntry) {
@@ -72,12 +69,8 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         this.body = null;
     }
 
-    protected ContextReference<WasmContext> contextReference() {
-        if (rawContextReference == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            rawContextReference = lookupContextReference(WasmLanguage.class);
-        }
-        return rawContextReference;
+    protected final WasmContext getContext() {
+        return WasmContext.get(this);
     }
 
     public void setBody(WasmNode body) {
@@ -98,7 +91,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     @Override
     public final Object execute(VirtualFrame frame) {
-        final WasmContext context = contextReference().get();
+        final WasmContext context = getContext();
         tryInitialize(context);
         return executeWithContext(frame, context);
     }
@@ -129,11 +122,13 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         try {
             body.execute(context, frame, stacklocals);
         } catch (StackOverflowError e) {
-            CompilerDirectives.transferToInterpreter();
+            errorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
 
-        switch (body.returnTypeId()) {
+        final byte returnTypeId = body.returnTypeId();
+        CompilerAsserts.partialEvaluationConstant(returnTypeId);
+        switch (returnTypeId) {
             case 0x00:
             case WasmType.VOID_TYPE: {
                 return WasmVoidResult.getInstance();
@@ -157,9 +152,12 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
                 return Double.longBitsToDouble(returnValue);
             }
             default:
-                CompilerDirectives.transferToInterpreter();
-                throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", body.returnTypeId());
+                throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", returnTypeId);
         }
+    }
+
+    protected final void errorBranch() {
+        codeEntry().errorBranch();
     }
 
     @ExplodeLoop

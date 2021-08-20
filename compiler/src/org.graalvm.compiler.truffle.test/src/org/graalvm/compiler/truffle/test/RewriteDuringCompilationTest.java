@@ -41,6 +41,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -189,12 +191,18 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
 
     @Test
     public void testRootCompilation() throws IOException, InterruptedException, ExecutionException {
+        // no need to test this in compile immediately mode.
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+
         DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
         testCompilation(detectInvalidCodeNode, null, detectInvalidCodeNode, 1000, 20);
     }
 
     @Test
     public void testLoopCompilation() throws IOException, InterruptedException, ExecutionException {
+        // no need to test this in compile immediately mode.
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+
         DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
         WhileLoopNode testedCode = new WhileLoopNode(10000000, detectInvalidCodeNode);
         testCompilation(testedCode, testedCode.loop, detectInvalidCodeNode, 1000, 40);

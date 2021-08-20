@@ -177,6 +177,17 @@ public final class SulongEngineOption {
     @Option(name = VERIFY_BITCODE_NAME, category = OptionCategory.EXPERT,
             help = "Sanity check whether loaded bitcode files are compiled correctly.")
     public static final OptionKey<Boolean> VERIFY_BITCODE = new OptionKey<>(true);
+
+
+    @Option(name = "llvm.AOTCacheStore",
+            category = OptionCategory.EXPERT,
+            help = "Perform AOT-specific initialization before storing auxiliary engine cache.")
+    public static final OptionKey<Boolean> AOTCacheStore = new OptionKey<>(false);
+
+    @Option(name = "llvm.AOTCacheLoad",
+            category = OptionCategory.EXPERT,
+            help = "Perform AOT-specific initialization after loading auxiliary engine cache.")
+    public static final OptionKey<Boolean> AOTCacheLoad = new OptionKey<>(false);
     // @formatter:on
 
     public static List<OptionDescriptor> describeOptions() {

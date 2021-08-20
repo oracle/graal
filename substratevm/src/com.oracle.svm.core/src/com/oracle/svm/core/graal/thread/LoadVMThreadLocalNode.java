@@ -51,12 +51,14 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThread
     protected final VMThreadLocalInfo threadLocalInfo;
     protected final BarrierType barrierType;
     @Input protected ValueNode holder;
+    private final boolean floatReads;
 
-    public LoadVMThreadLocalNode(MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, BarrierType barrierType) {
+    public LoadVMThreadLocalNode(MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, BarrierType barrierType, boolean floatReads) {
         super(TYPE, threadLocalInfo.isObject ? StampFactory.object(TypeReference.createTrustedWithoutAssumptions(metaAccess.lookupJavaType(threadLocalInfo.valueClass)))
                         : StampFactory.forKind(threadLocalInfo.storageKind));
         this.threadLocalInfo = threadLocalInfo;
         this.barrierType = barrierType;
+        this.floatReads = floatReads;
         this.holder = holder;
     }
 
@@ -67,6 +69,15 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements VMThread
         ConstantNode offset = ConstantNode.forLong(threadLocalInfo.offset, holder.graph());
         AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
         JavaReadNode read = graph().add(new JavaReadNode(stamp, threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true));
+
+        if (floatReads) {
+            /*
+             * Setting a guarding node allows a JavaReadNode to float when lowered. Otherwise they
+             * will be conservatively be forced at a fixed location.
+             */
+            read.setGuard(read.graph().start());
+        }
+
         graph().replaceFixedWithFixed(this, read);
         tool.getLowerer().lower(read, tool);
     }

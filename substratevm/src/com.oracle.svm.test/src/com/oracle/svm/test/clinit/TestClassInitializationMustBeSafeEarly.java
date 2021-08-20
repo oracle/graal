@@ -404,6 +404,47 @@ class ForNameMustBeDelayed {
     int field;
 }
 
+class DevirtualizedCallMustBeDelayed {
+    static {
+        System.out.println("Delaying " + DevirtualizedCallMustBeDelayed.class);
+    }
+
+    static final Object value = 42;
+}
+
+class DevirtualizedCallSuperMustBeSafeEarly {
+    Object foo() {
+        return -1;
+    }
+}
+
+class DevirtualizedCallSubMustBeSafeEarly extends DevirtualizedCallSuperMustBeSafeEarly {
+    @Override
+    Object foo() {
+        return DevirtualizedCallMustBeDelayed.value;
+    }
+}
+
+class DevirtualizedCallUsageMustBeDelayed {
+    static final Object value = computeValue();
+
+    private static Object computeValue() {
+        DevirtualizedCallSuperMustBeSafeEarly provider = createProvider();
+
+        /*
+         * The static analysis can prove that DevirtualizedCallSubMustBeDelayed.foo is the only
+         * callee and de-virtualize this call. So the original target method of the call site and
+         * the actually invoked method are different - and the analysis that automatically
+         * initializes classes must properly pick up this dependency.
+         */
+        return provider.foo();
+    }
+
+    private static DevirtualizedCallSuperMustBeSafeEarly createProvider() {
+        return new DevirtualizedCallSubMustBeSafeEarly();
+    }
+}
+
 class TestClassInitializationMustBeSafeEarlyFeature implements Feature {
 
     static final Class<?>[] checkedClasses = new Class<?>[]{
@@ -435,7 +476,8 @@ class TestClassInitializationMustBeSafeEarlyFeature implements Feature {
                     NativeMethodMustBeDelayed.class,
                     ReferencesOtherPureClassMustBeSafeEarly.class, HelperClassMustBeSafeEarly.class,
                     CycleMustBeSafeLate.class, HelperClassMustBeSafeLate.class,
-                    ReflectionMustBeSafeEarly.class, ForNameMustBeSafeEarly.class, ForNameMustBeDelayed.class
+                    ReflectionMustBeSafeEarly.class, ForNameMustBeSafeEarly.class, ForNameMustBeDelayed.class,
+                    DevirtualizedCallMustBeDelayed.class, DevirtualizedCallSuperMustBeSafeEarly.class, DevirtualizedCallSubMustBeSafeEarly.class, DevirtualizedCallUsageMustBeDelayed.class
     };
 
     private static void checkClasses(boolean checkSafeEarly, boolean checkSafeLate) {
@@ -611,6 +653,8 @@ public class TestClassInitializationMustBeSafeEarly {
         assertSame(ForNameMustBeDelayed.class, ReflectionMustBeSafeEarly.c2);
         assertSame("foo", ReflectionMustBeSafeEarly.m1.getName());
         assertSame("field", ReflectionMustBeSafeEarly.f2.getName());
+
+        System.out.println(DevirtualizedCallUsageMustBeDelayed.value);
     }
 
     private static void assertSame(Object expected, Object actual) {

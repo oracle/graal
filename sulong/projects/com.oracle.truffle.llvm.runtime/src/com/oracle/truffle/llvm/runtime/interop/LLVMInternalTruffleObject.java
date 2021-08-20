@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,19 +36,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
 /**
  * Base class to mark {@link TruffleObject} implementors that are not considered foreign.
  */
 @ExportLibrary(InteropLibrary.class)
-@ExportLibrary(LLVMAsForeignLibrary.class)
 public abstract class LLVMInternalTruffleObject implements TruffleObject {
-
-    @ExportMessage
-    public static boolean isForeign(@SuppressWarnings("unused") LLVMInternalTruffleObject receiver) {
-        return false;
-    }
 
     @ExportMessage
     @SuppressWarnings("static-method")

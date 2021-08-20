@@ -105,10 +105,10 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
         return (kind == JavaKind.Float && Float.isNaN(constant.asFloat())) || (kind == JavaKind.Double && Double.isNaN(constant.asDouble()));
     }
 
-    private static boolean arrayEquals(ConstantReflectionProvider constantReflection, JavaConstant a, JavaConstant b, int len) {
+    protected static boolean arrayEquals(ConstantReflectionProvider constantReflection, JavaConstant a, int startIndexA, JavaConstant b, int startIndexB, int len) {
         for (int i = 0; i < len; i++) {
-            JavaConstant aElem = constantReflection.readArrayElement(a, i);
-            JavaConstant bElem = constantReflection.readArrayElement(b, i);
+            JavaConstant aElem = constantReflection.readArrayElement(a, startIndexA + i);
+            JavaConstant bElem = constantReflection.readArrayElement(b, startIndexB + i);
             if (!constantReflection.constantEquals(aElem, bElem) && !(isNaNFloat(aElem) && isNaNFloat(bElem))) {
                 return false;
             }
@@ -134,7 +134,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
                 Integer c1Length = constantReflection.readArrayLength(c1.asJavaConstant());
                 Integer c2Length = constantReflection.readArrayLength(c2.asJavaConstant());
                 if (c1Length != null && c2Length != null && c1Length.equals(c2Length)) {
-                    boolean ret = arrayEquals(constantReflection, c1.asJavaConstant(), c2.asJavaConstant(), length.asJavaConstant().asInt());
+                    boolean ret = arrayEquals(constantReflection, c1.asJavaConstant(), 0, c2.asJavaConstant(), 0, length.asJavaConstant().asInt());
                     return ConstantNode.forBoolean(ret);
                 }
             }

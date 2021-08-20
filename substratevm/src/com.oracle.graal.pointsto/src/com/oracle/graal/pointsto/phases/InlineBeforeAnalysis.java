@@ -78,7 +78,7 @@ public class InlineBeforeAnalysis {
 
     public static class Options {
         @Option(help = "Experimental: Inline methods before static analysis")//
-        public static final OptionKey<Boolean> InlineBeforeAnalysis = new OptionKey<>(false);
+        public static final OptionKey<Boolean> InlineBeforeAnalysis = new OptionKey<>(true);
     }
 
     @SuppressWarnings("try")
@@ -128,9 +128,26 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             super(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
 
             if (caller == null) {
+                /*
+                 * The root method that we are decoding, i.e., inlining into. No policy, because the
+                 * whole method must of course be decoded.
+                 */
+                policyScope = null;
+            } else if (caller.caller == null) {
+                /*
+                 * The first level of method inlining, i.e., the top scope from the inlining policy
+                 * point of view.
+                 */
                 policyScope = policy.createTopScope();
+                if (graph.getDebug().isLogEnabled()) {
+                    graph.getDebug().logv(repeat("  ", inliningDepth) + "createTopScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
+                }
             } else {
+                /* Nested inlining. */
                 policyScope = policy.openCalleeScope((cast(caller)).policyScope);
+                if (graph.getDebug().isLogEnabled()) {
+                    graph.getDebug().logv(repeat("  ", inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
+                }
             }
         }
     }
@@ -146,6 +163,10 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true);
         this.bb = bb;
         this.policy = policy;
+
+        if (graph.getDebug().isLogEnabled()) {
+            graph.getDebug().logv("InlineBeforeAnalysis: decoding " + graph.method().format("%H.%n(%p)"));
+        }
     }
 
     @Override
@@ -192,8 +213,16 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
 
     private void maybeAbortInlining(MethodScope ms, Node node) {
         InlineBeforeAnalysisMethodScope methodScope = cast(ms);
-        if (!methodScope.inliningAborted && methodScope.isInlinedMethod() && !policy.processNode(methodScope.policyScope, node)) {
-            methodScope.inliningAborted = true;
+        if (!methodScope.inliningAborted && methodScope.isInlinedMethod()) {
+            if (graph.getDebug().isLogEnabled()) {
+                graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "  node " + node + ": " + methodScope.policyScope);
+            }
+            if (!policy.processNode(methodScope.policyScope, node)) {
+                if (graph.getDebug().isLogEnabled()) {
+                    graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "    abort!");
+                }
+                methodScope.inliningAborted = true;
+            }
         }
     }
 
@@ -221,8 +250,12 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         InvokeData invokeData = inlineScope.invokeData;
 
         if (inlineScope.inliningAborted) {
-            policy.abortCalleeScope(callerScope.policyScope, inlineScope.policyScope);
-
+            if (graph.getDebug().isLogEnabled()) {
+                graph.getDebug().logv(repeat("  ", callerScope.inliningDepth) + "  aborted " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
+            }
+            if (callerScope.policyScope != null) {
+                policy.abortCalleeScope(callerScope.policyScope, inlineScope.policyScope);
+            }
             killControlFlowNodes(inlineScope, invokeData.invokePredecessor.next());
             assert invokeData.invokePredecessor.next() == null : "Successor must have been a fixed node created in the aborted scope, which is deleted now";
             invokeData.invokePredecessor.setNext(invokeData.invoke.asNode());
@@ -239,10 +272,24 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             return;
         }
 
-        policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
+        if (graph.getDebug().isLogEnabled()) {
+            graph.getDebug().logv(repeat("  ", callerScope.inliningDepth) + "  committed " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
+        }
+        if (callerScope.policyScope != null) {
+            policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
+        }
         ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined();
 
         super.finishInlining(inlineScope);
+    }
+
+    /* String.repeat is only available in JDK 11 and later, so need to do our own. */
+    private static String repeat(String s, int count) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            result.append(s);
+        }
+        return result.toString();
     }
 
     /**

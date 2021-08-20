@@ -48,6 +48,20 @@ public class InitialReceiverTypeFlow extends InitialParamTypeFlow {
         return newState.forNonNull(bb);
     }
 
+    /**
+     * The state of the formal receiver type flow cannot be updated directly, thus
+     * {@link FormalReceiverTypeFlow#addReceiverState(BigBang, TypeState)} needs to be used. See
+     * {@link FormalReceiverTypeFlow#addState(BigBang, TypeState)} for a complete explanation.
+     */
+    @Override
+    public boolean addUse(BigBang bb, TypeFlow<?> use) {
+        boolean useAdded = super.addUse(bb, use);
+        if (useAdded) {
+            ((FormalReceiverTypeFlow) use).addReceiverState(bb, getState());
+        }
+        return useAdded;
+    }
+
     @Override
     public void update(BigBang bb) {
         TypeState curState = getState();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,8 @@
  */
 package com.oracle.truffle.llvm.nativemode.runtime;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -40,7 +39,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nativemode.runtime.NFIContextExtension.WellKnownFunction;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension.WellKnownNativeFunctionNode;
@@ -52,27 +50,27 @@ abstract class WellKnownNFIFunctionNode extends WellKnownNativeFunctionNode {
 
     WellKnownNFIFunctionNode(WellKnownFunction function) {
         this.function = function;
-        this.ctxExtKey = LLVMLanguage.getLanguage().lookupContextExtension(NativeContextExtension.class);
+        this.ctxExtKey = LLVMLanguage.get(null).lookupContextExtension(NativeContextExtension.class);
     }
 
-    Object getFunction(ContextReference<LLVMContext> ctx) {
-        NFIContextExtension ctxExt = (NFIContextExtension) ctxExtKey.get(ctx.get());
+    Object getFunction() {
+        NFIContextExtension ctxExt = (NFIContextExtension) ctxExtKey.get(getContext());
         return ctxExt.getCachedWellKnownFunction(function);
     }
 
     @Specialization(assumptions = "singleContextAssumption()")
+    @GenerateAOT.Exclude
     Object doCached(Object[] args,
-                    @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctx,
-                    @Cached("getFunction(ctx)") Object cachedFunction,
+                    @Cached("getFunction()") Object cachedFunction,
                     @CachedLibrary("cachedFunction") InteropLibrary interop) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
         return interop.execute(cachedFunction, args);
     }
 
     @Specialization(replaces = "doCached")
+    @GenerateAOT.Exclude
     Object doGeneric(Object[] args,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctx,
                     @CachedLibrary(limit = "3") InteropLibrary interop) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
-        Object fn = getFunction(ctx);
+        Object fn = getFunction();
         return interop.execute(fn, args);
     }
 }

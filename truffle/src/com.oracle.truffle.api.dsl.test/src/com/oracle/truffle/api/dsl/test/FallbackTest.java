@@ -55,8 +55,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Introspectable;
@@ -697,7 +695,7 @@ public class FallbackTest extends AbstractPolyglotTest {
 
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "deprecation"})
     public abstract static class FallbackWithCachedNode extends Node {
 
         public abstract String execute(Object left);
@@ -711,8 +709,8 @@ public class FallbackTest extends AbstractPolyglotTest {
         protected String f0(Object arg0,
                         @Cached CachedNode node,
                         @CachedLibrary(limit = "3") InteropLibrary lib,
-                        @CachedLanguage ProxyLanguage lang,
-                        @CachedContext(ProxyLanguage.class) ProxyLanguage.LanguageContext context,
+                        @com.oracle.truffle.api.dsl.CachedLanguage ProxyLanguage lang,
+                        @com.oracle.truffle.api.dsl.CachedContext(ProxyLanguage.class) ProxyLanguage.LanguageContext context,
                         @Bind("context.getEnv()") Env bind) {
             lib.fitsInLong(arg0);
             if (lang == null) {
@@ -729,7 +727,7 @@ public class FallbackTest extends AbstractPolyglotTest {
 
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "deprecation"})
     public abstract static class FallbackWithCaches extends Node {
 
         public abstract String execute(Object left);
@@ -743,8 +741,8 @@ public class FallbackTest extends AbstractPolyglotTest {
         protected String f0(Object arg0,
                         @Cached CachedNode node,
                         @CachedLibrary(limit = "3") InteropLibrary lib,
-                        @CachedLanguage TestLanguage lang,
-                        @CachedContext(TestLanguage.class) Env context,
+                        @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang,
+                        @com.oracle.truffle.api.dsl.CachedContext(TestLanguage.class) Env context,
                         @Bind("context") Env env) {
             lib.fitsInLong(arg0);
             return node.execute(arg0);

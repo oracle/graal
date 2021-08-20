@@ -32,7 +32,7 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.truffle.TruffleFeature;
+import com.oracle.svm.truffle.TruffleBaseFeature;
 
 /**
  * Support for the default (trufflenfi/native) backend of the Truffle NFI on SVM. This is re-using
@@ -53,7 +53,7 @@ public final class TruffleNFIFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(TruffleFeature.class);
+        return Arrays.asList(TruffleBaseFeature.class);
     }
 
     @Override

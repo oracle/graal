@@ -686,6 +686,9 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(module.symbolTable().functionTypeReturnType(expectedFunctionTypeIndex));
                     }
 
+                    // Function from current context profile
+                    state.incrementProfileCount();
+
                     children.add(WasmIndirectCallNode.create());
                     final int tableIndex = read1();
                     assertIntEqual(tableIndex, CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00", Failure.ZERO_FLAG_EXPECTED);
@@ -1584,10 +1587,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case ImportIdentifier.GLOBAL: {
                         readValueType();
-                        byte mutability = readMutability();
-                        if (mutability == GlobalModifier.MUTABLE) {
-                            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Cannot reset imports of mutable global variables (not implemented).");
-                        }
+                        readMutability();
                         globalIndex++;
                         break;
                     }
@@ -1626,10 +1626,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.GLOBAL_GET: {
                         int existingIndex = readGlobalIndex();
-                        if (module.symbolTable().globalMutability(existingIndex) == GlobalModifier.MUTABLE) {
-                            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Cannot reset global variables that were initialized " +
-                                            "with a non-constant global variable (not implemented).");
-                        }
                         final int existingAddress = instance.globalAddress(existingIndex);
                         value = globals.loadAsLong(existingAddress);
                         break;

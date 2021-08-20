@@ -59,6 +59,7 @@ import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -402,8 +403,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return object;
     }
 
-    public static SLContext getCurrentContext() {
-        return getCurrentContext(SLLanguage.class);
+    private static final LanguageReference<SLLanguage> REFERENCE = LanguageReference.create(SLLanguage.class);
+
+    public static SLLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     private static final List<NodeFactory<? extends SLBuiltinNode>> EXTERNAL_BUILTINS = Collections.synchronizedList(new ArrayList<>());

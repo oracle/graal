@@ -95,8 +95,6 @@ public @interface TruffleFromLibGraal {
         GetOffsetStart(int.class, Object.class),
         GetPosition(Object.class, Object.class, long.class),
         GetSuppliedString(String.class, Supplier.class),
-        GetThreadLocalPendingHandshakeOffset(int.class, Object.class),
-        GetTruffleCallBoundaryMethods(long[].class, Object.class),
         GetURI(String.class, Object.class),
         IsBytecodeInterpreterSwitch(boolean.class, Object.class, long.class),
         IsBytecodeInterpreterSwitchBoundary(boolean.class, Object.class, long.class),

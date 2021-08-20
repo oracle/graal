@@ -24,9 +24,13 @@
  */
 package org.graalvm.compiler.asm.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import org.graalvm.compiler.asm.AbstractAddress;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
 
@@ -103,6 +107,19 @@ public final class AArch64Address extends AbstractAddress {
          * << log2(byte_memory_transfer_size)
          */
         IMMEDIATE_PAIR_PRE_INDEXED,
+        /**
+         * address = base. base is updated to base + offset.
+         */
+        REGISTER_STRUCTURE_POST_INDEXED,
+        /**
+         * address = base. base is updated to base + constant.
+         *
+         * Constant value is determined by the specific instruction and the number of registers
+         * used. See
+         * {@link #determineStructureImmediateValue(ASIMDInstruction, ASIMDSize, ElementSize)} for
+         * more details.
+         */
+        IMMEDIATE_STRUCTURE_POST_INDEXED,
     }
 
     private final int bitMemoryTransferSize;
@@ -298,6 +315,61 @@ public final class AArch64Address extends AbstractAddress {
         return new AArch64Address(bitMemoryTransferSize, zr, zr, 0, false, null, AddressingMode.PC_LITERAL);
     }
 
+    /**
+     * AArch64Address specifying a structure memory access of the form "[Xn|SP]".
+     */
+    public static AArch64Address createStructureNoOffsetAddress(Register base) {
+        return new AArch64Address(ANY_SIZE, base, zr, 0, false, null, AddressingMode.BASE_REGISTER_ONLY);
+    }
+
+    /**
+     * AArch64Address specifying a structure memory access of the form "[Xn|SP], Xm", where Xm is a
+     * post-indexed value to add and cannot be either SP or ZR.
+     */
+    public static AArch64Address createStructureRegisterPostIndexAddress(Register base, Register offset) {
+        return new AArch64Address(ANY_SIZE, base, offset, 0, false, null, AddressingMode.REGISTER_STRUCTURE_POST_INDEXED);
+    }
+
+    /**
+     * For structure memory accesses the size of the immediate value is dictated by its
+     * {instruction, size, eSize} parameters.
+     */
+    static int determineStructureImmediateValue(ASIMDInstruction instruction, ASIMDSize size, ElementSize eSize) {
+        int regByteSize = size.bytes();
+        int eByteSize = eSize.bytes();
+        switch (instruction) {
+            case LD1R:
+                return eByteSize;
+            case ST1_MULTIPLE_1R:
+            case LD1_MULTIPLE_1R:
+                return regByteSize;
+            case ST1_MULTIPLE_2R:
+            case LD1_MULTIPLE_2R:
+                return regByteSize * 2;
+            case ST1_MULTIPLE_3R:
+            case LD1_MULTIPLE_3R:
+                return regByteSize * 3;
+            case ST1_MULTIPLE_4R:
+            case LD1_MULTIPLE_4R:
+                return regByteSize * 4;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+    }
+
+    /**
+     * AArch64Address specifying a structure memory access of the form "[Xn|SP], imm", where imm is
+     * a post-indexed value to add. Note that the value of imm is dictated by the specific
+     * {instruction, size, eSize} combination. See
+     * {@link #determineStructureImmediateValue(ASIMDInstruction, ASIMDSize, ElementSize)} for what
+     * the expected value is.
+     */
+    public static AArch64Address createStructureImmediatePostIndexAddress(ASIMDInstruction instruction, ASIMDSize size, ElementSize eSize, Register base, int immediate) {
+        int expectedImmediate = determineStructureImmediateValue(instruction, size, eSize);
+        GraalError.guarantee(expectedImmediate == immediate, "provided immediate cannot be encoded in instruction.");
+        return new AArch64Address(ANY_SIZE, base, zr, immediate, false, null, AddressingMode.IMMEDIATE_STRUCTURE_POST_INDEXED);
+    }
+
     private AArch64Address(int bitMemoryTransferSize, Register base, Register offset, int immediate, boolean registerOffsetScaled, AArch64Assembler.ExtendType extendType,
                     AddressingMode addressingMode) {
         this.bitMemoryTransferSize = bitMemoryTransferSize;
@@ -346,14 +418,12 @@ public final class AArch64Address extends AbstractAddress {
             case REGISTER_OFFSET:
                 assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
-                assert offset.getRegisterCategory().equals(AArch64.CPU);
                 assert extendType == null;
                 assert immediate == 0;
                 break;
             case EXTENDED_REGISTER_OFFSET:
                 assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
-                assert offset.getRegisterCategory().equals(AArch64.CPU);
                 assert (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW);
                 assert immediate == 0;
                 break;
@@ -372,6 +442,17 @@ public final class AArch64Address extends AbstractAddress {
                 assert offset.equals(zr);
                 assert extendType == null;
                 assert NumUtil.isSignedNbit(7, immediate);
+                break;
+            case REGISTER_STRUCTURE_POST_INDEXED:
+                assert !registerOffsetScaled;
+                assert !base.equals(zr);
+                assert !(offset.equals(sp) || offset.equals(zr));
+                assert extendType == null;
+                break;
+            case IMMEDIATE_STRUCTURE_POST_INDEXED:
+                assert !base.equals(zr);
+                assert offset.equals(zr);
+                assert extendType == null;
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
@@ -436,6 +517,7 @@ public final class AArch64Address extends AbstractAddress {
             case IMMEDIATE_PAIR_SIGNED_SCALED:
             case IMMEDIATE_PAIR_POST_INDEXED:
             case IMMEDIATE_PAIR_PRE_INDEXED:
+            case IMMEDIATE_STRUCTURE_POST_INDEXED:
             case PC_LITERAL:
                 return immediate;
             default:
@@ -492,6 +574,7 @@ public final class AArch64Address extends AbstractAddress {
                 addressEncoding = String.format(".%s%d", immediate >= 0 ? "+" : "", immediate);
                 break;
             case IMMEDIATE_POST_INDEXED:
+            case IMMEDIATE_STRUCTURE_POST_INDEXED:
                 addressEncoding = String.format("[X%d], %d", base.encoding, immediate);
                 break;
             case IMMEDIATE_PRE_INDEXED:
@@ -502,6 +585,9 @@ public final class AArch64Address extends AbstractAddress {
                 break;
             case IMMEDIATE_PAIR_PRE_INDEXED:
                 addressEncoding = String.format("[X%d, %d << %s]!", base.encoding, immediate, transferSize);
+                break;
+            case REGISTER_STRUCTURE_POST_INDEXED:
+                addressEncoding = String.format("[X%d], X%d", base.encoding, offset.encoding);
                 break;
             default:
                 throw GraalError.shouldNotReachHere();

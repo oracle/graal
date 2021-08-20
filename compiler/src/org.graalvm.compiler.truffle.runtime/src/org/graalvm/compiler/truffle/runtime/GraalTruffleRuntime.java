@@ -31,6 +31,8 @@ import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,7 +48,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -100,6 +104,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
+import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -416,6 +421,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return m;
     }
 
+    /*
+     * Make sure the libgraal version HSTruffleCompilerRuntime.resolveType of this method stays in
+     * sync with this method.
+     */
     @Override
     public ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required) {
         Class<?> c = lookupTypes.get(className);
@@ -1189,4 +1198,94 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         throw new UnsupportedOperationException();
     }
 
+    protected abstract AbstractFastThreadLocal getFastThreadLocalImpl();
+
+    public static class StackTraceHelper {
+        public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {
+            final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
+            final GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            final StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append(reason).append(" at\n");
+            runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
+                int frameIndex = 0;
+
+                @Override
+                public Object visitFrame(FrameInstance frameInstance) {
+                    CallTarget target = frameInstance.getCallTarget();
+                    StringBuilder line = new StringBuilder("  ");
+                    if (frameIndex > 0) {
+                        line.append("  ");
+                    }
+                    line.append(formatStackFrame(frameInstance, target)).append("\n");
+                    frameIndex++;
+
+                    messageBuilder.append(line);
+                    if (frameIndex < limit) {
+                        return null;
+                    } else {
+                        messageBuilder.append("    ...\n");
+                        return frameInstance;
+                    }
+                }
+
+            });
+            final int skip = 3;
+            StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+            String suffix = stackTrace.length > skip + limit ? "\n    ..." : "";
+            messageBuilder.append(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
+            runtime.log(callTarget, messageBuilder.toString());
+        }
+
+        private static String formatStackFrame(FrameInstance frameInstance, CallTarget target) {
+            StringBuilder builder = new StringBuilder();
+            if (target instanceof RootCallTarget) {
+                RootNode root = ((RootCallTarget) target).getRootNode();
+                String name = root.getName();
+                if (name == null) {
+                    builder.append("unnamed-root");
+                } else {
+                    builder.append(name);
+                }
+                Node callNode = frameInstance.getCallNode();
+                SourceSection sourceSection = null;
+                if (callNode != null) {
+                    sourceSection = callNode.getEncapsulatingSourceSection();
+                }
+                if (sourceSection == null) {
+                    sourceSection = root.getSourceSection();
+                }
+
+                if (sourceSection == null || sourceSection.getSource() == null) {
+                    builder.append("(Unknown)");
+                } else {
+                    builder.append("(").append(formatPath(sourceSection)).append(":").append(sourceSection.getStartLine()).append(")");
+                }
+
+                if (target instanceof OptimizedCallTarget) {
+                    OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
+                    if (callTarget.getSourceCallTarget() != null) {
+                        builder.append(" <split-").append(Integer.toHexString(callTarget.hashCode())).append(">");
+                    }
+                }
+
+            } else {
+                builder.append(target.toString());
+            }
+            return builder.toString();
+        }
+
+        private static String formatPath(SourceSection sourceSection) {
+            if (sourceSection.getSource().getPath() != null) {
+                Path path = FileSystems.getDefault().getPath(".").toAbsolutePath();
+                Path filePath = FileSystems.getDefault().getPath(sourceSection.getSource().getPath()).toAbsolutePath();
+
+                try {
+                    return path.relativize(filePath).toString();
+                } catch (IllegalArgumentException e) {
+                    // relativization failed
+                }
+            }
+            return sourceSection.getSource().getName();
+        }
+    }
 }

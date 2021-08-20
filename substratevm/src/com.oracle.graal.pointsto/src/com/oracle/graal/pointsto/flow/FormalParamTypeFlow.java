@@ -78,7 +78,7 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append("FormalParamFlow").append("[").append(method.format("%H.%n")).append("]").append("[").append(position).append("]<").append(getState()).append(">");
+        str.append("FormalParamFlow").append("[").append(method.format("%H.%n(%p)")).append("]").append("[").append(position).append("]<").append(getState()).append(">");
         return str.toString();
     }
 

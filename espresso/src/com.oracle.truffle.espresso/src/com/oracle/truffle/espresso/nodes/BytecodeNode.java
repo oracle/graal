@@ -332,6 +332,7 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualNodeGen;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -1263,26 +1264,9 @@ public final class BytecodeNode extends EspressoMethodNode {
                         BaseQuickNode quickNode = nodes[readCPI(curBCI)];
                         if (quickNode.removedByRedefintion()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            synchronized (this) {
-                                // re-check if node was already replaced by another thread
-                                if (quickNode != nodes[readCPI(curBCI)]) {
-                                    // another thread beat us
-                                    quickNode = nodes[readCPI(curBCI)];
-                                } else {
-                                    // other threads might still have beat us but if
-                                    // so, the resolution failed and so will we below
-                                    BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
-                                    char cpi = original.readCPI(curBCI);
-                                    int nodeOpcode = original.currentBC(curBCI);
-                                    Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                                    quickNode = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
-                                    nodes[readCPI(curBCI)] = quickNode;
-                                }
-                            }
-                            top += quickNode.execute(frame, primitives, refs);
-                        } else {
-                            top += quickNode.execute(frame, primitives, refs);
+                            quickNode = getBaseQuickNode(curBCI, top, statementIndex, quickNode);
                         }
+                        top += quickNode.execute(frame, primitives, refs);
                         break;
                     }
                     case SLIM_QUICK:
@@ -1403,6 +1387,29 @@ public final class BytecodeNode extends EspressoMethodNode {
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
         }
+    }
+
+    private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
+        // block while class redefinition is ongoing
+        ClassRedefinition.check();
+        BaseQuickNode result = quickNode;
+        synchronized (this) {
+            // re-check if node was already replaced by another thread
+            if (result != nodes[readCPI(curBCI)]) {
+                // another thread beat us
+                result = nodes[readCPI(curBCI)];
+            } else {
+                // other threads might still have beat us but if
+                // so, the resolution failed and so will we below
+                BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
+                char cpi = original.readCPI(curBCI);
+                int nodeOpcode = original.currentBC(curBCI);
+                Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
+                result = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().InlineFieldAccessors));
+                nodes[readCPI(curBCI)] = result;
+            }
+        }
+        return result;
     }
 
     private Object getReturnValueAsObject(long[] primitives, Object[] refs, int top) {

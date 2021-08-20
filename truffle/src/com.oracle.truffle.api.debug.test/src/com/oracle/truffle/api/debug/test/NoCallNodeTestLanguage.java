@@ -72,7 +72,7 @@ public class NoCallNodeTestLanguage extends ProxyLanguage {
         @Child NCStatement statement;
 
         NCRootNode(SourceSection sourceSection) {
-            super(ProxyLanguage.getCurrentLanguage());
+            super(ProxyLanguage.get(null));
             this.statement = new NCStatement(sourceSection);
         }
 

@@ -65,16 +65,14 @@ public class ContextAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     }
 
-    public static LanguageContext getContext() {
-        return getCurrentContext(ContextAPITestLanguage.class);
-    }
+    private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(ContextAPITestLanguage.class);
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Object result = "null result";
         if (runinside != null) {
             try {
-                result = runinside.apply(getContext().env);
+                result = runinside.apply(REFERENCE.get(null).env);
             } finally {
                 runinside = null;
             }

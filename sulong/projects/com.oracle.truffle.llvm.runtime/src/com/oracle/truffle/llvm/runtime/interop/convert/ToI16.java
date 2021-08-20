@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -85,11 +86,13 @@ public abstract class ToI16 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected short fromString(String value) {
-        return (short) getSingleStringCharacter(value);
+    protected short fromString(String value,
+                    @Cached BranchProfile exception) {
+        return (short) getSingleStringCharacter(value, exception);
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
+    @GenerateAOT.Exclude
     protected short fromForeign(Object obj,
                     @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -111,7 +114,7 @@ public abstract class ToI16 extends ForeignToLLVM {
         } else if (value instanceof Character) {
             return (short) (char) value;
         } else if (value instanceof String) {
-            return (short) thiz.getSingleStringCharacter((String) value);
+            return (short) thiz.getSingleStringCharacter((String) value, BranchProfile.getUncached());
         } else {
             try {
                 return InteropLibrary.getFactory().getUncached().asShort(value);

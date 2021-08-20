@@ -341,6 +341,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components or registered_graalvm_components(stage1)
+        self.skip_archive = stage1 # Do not build *.tar archive for stage1 distributions
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
@@ -776,6 +777,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         if has_graal_compiler:
             _add(layout, '<jre_base>/lib/jvmci/compiler-name', 'string:graal')
 
+        if "archive_factory" not in kw_args and self.skip_archive:
+            kw_args["archive_factory"] = mx.NullArchiver
+
         super(BaseGraalVmLayoutDistribution, self).__init__(suite, name, deps, layout, path, platformDependent,
                                                             theLicense, exclLibs, path_substitutions=path_substitutions,
                                                             string_substitutions=string_substitutions,
@@ -785,6 +789,22 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
     def getBuildTask(self, args):
         return BaseGraalVmLayoutDistributionTask(args, self)
+
+    def needsUpdate(self, newestInput):
+        if self.skip_archive:
+            # For stage1 distributions we do not have an archive file, therefore we must compare against
+            # output directory
+            output = self.get_output()
+            if exists(output):
+                ts = mx.TimeStampFile(output)
+                if ts.isOlderThan(newestInput):
+                    return "{} is older than {}".format(ts, newestInput)
+                else:
+                    return None
+            else:
+                return "{} does not exist".format(output)
+        else:
+            return super(BaseGraalVmLayoutDistribution, self).needsUpdate(newestInput)
 
     @staticmethod
     def _get_metadata(suites, parent_release_file=None):

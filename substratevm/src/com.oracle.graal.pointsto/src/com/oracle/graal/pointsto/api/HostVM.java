@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.api;
 
+import java.lang.reflect.AnnotatedElement;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 
@@ -120,5 +121,10 @@ public interface HostVM {
     @SuppressWarnings("unused")
     default boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
         return false;
+    }
+
+    @SuppressWarnings("unused")
+    default boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
+        return true;
     }
 }

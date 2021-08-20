@@ -29,16 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import java.io.PrintStream;
-import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.WeakHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
@@ -52,7 +47,14 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 @TypeSystemReference(LLVMTypes.class)
+@GenerateAOT
 public abstract class LLVMNode extends Node {
     public static final int DOUBLE_SIZE_IN_BYTES = 8;
     public static final int FLOAT_SIZE_IN_BYTES = 4;
@@ -76,14 +78,14 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
+    protected final PrintStream nativeCallStatisticsStream() {
         CompilerAsserts.neverPartOfCompilation();
-        return context.get().nativeCallStatsStream();
+        return getContext().nativeCallStatsStream();
     }
 
-    protected static boolean nativeCallStatisticsEnabled(ContextReference<LLVMContext> context) {
+    protected final boolean nativeCallStatisticsEnabled() {
         CompilerAsserts.neverPartOfCompilation();
-        return nativeCallStatisticsStream(context) != null;
+        return nativeCallStatisticsStream() != null;
     }
 
     protected static boolean isFunctionDescriptor(Object object) {
@@ -110,7 +112,7 @@ public abstract class LLVMNode extends Node {
                 assert !(datalayoutNode instanceof RootNode) : "root node must not have a parent";
                 datalayoutNode = datalayoutNode.getParent();
             } else {
-                return LLVMLanguage.getLanguage().getDefaultDataLayout();
+                return LLVMLanguage.get(null).getDefaultDataLayout();
             }
         }
         return ((LLVMHasDatalayoutNode) datalayoutNode).getDatalayout();
@@ -186,13 +188,13 @@ public abstract class LLVMNode extends Node {
         return String.valueOf(value);
     }
 
-    public static boolean isAutoDerefHandle(LLVMLanguage language, LLVMNativePointer addr) {
-        return isAutoDerefHandle(language, addr.asNative());
+    public final boolean isAutoDerefHandle(LLVMNativePointer addr) {
+        return isAutoDerefHandle(addr.asNative());
     }
 
-    public static boolean isAutoDerefHandle(LLVMLanguage language, long addr) {
+    public final boolean isAutoDerefHandle(long addr) {
         // checking the bit is cheaper than getting the assumption in interpreted mode
-        if (CompilerDirectives.inCompiledCode() && language.getNoDerefHandleAssumption().isValid()) {
+        if (CompilerDirectives.inCompiledCode() && getLanguage().getNoDerefHandleAssumption().isValid()) {
             return false;
         }
         return LLVMHandleMemoryBase.isDerefHandleMemory(addr);
@@ -220,7 +222,63 @@ public abstract class LLVMNode extends Node {
         return null;
     }
 
+    public final LLVMContext getContext() {
+        return LLVMContext.get(this);
+    }
+
+    public final LLVMLanguage getLanguage() {
+        return LLVMLanguage.get(this);
+    }
+
     public static Assumption singleContextAssumption() {
-        return LLVMLanguage.getLanguage().singleContextAssumption;
+        return LLVMLanguage.get(null).singleContextAssumption;
+    }
+
+    /**
+     * Allows for a custom AOT preparation of an abstract DSL node class that cannot be fully
+     * prepared in its generated companion class.
+     *
+     * <pre>
+     *     public abstract class AllocatingNode extends Node {
+     *
+     *         &#64;CompilationFinal Allocator allocator = null;
+     *
+     *         &#64;Child private AOTInitHelper aotInitHelper = new AOTInitHelper(new GenerateAOT.Provider() {
+     *              &#64;Override
+     *              public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+     *                  // As no context is available, pick the generic allocator
+     *                  defaultValue = GenericAllocator.INSTANCE;
+     *              }
+     *         });
+     *
+     *         public abstract LLVMManagedPointer execute(int size);
+     *
+     *         private Allocator getAllocator(LLVMContext context) {
+     *             if (allocator == null) {
+     *                 CompilerDirectives.transferToInterpreterAndInvalidate();
+     *                 allocator = context.getAllocator(); // get a context specific allocator
+     *             }
+     *             return allocator;
+     *         }
+     *
+     *         &#64;Specialization
+     *         LLVMManagedPointer allocate(int size, @CachedContext(LLVMLanguage.class) LLVMContext context) {
+     *              return getAllocator(context).allocate(size);
+     *         }
+     *
+     * </pre>
+     */
+    public static final class AOTInitHelper extends Node implements GenerateAOT.Provider {
+
+        private final GenerateAOT.Provider delegate;
+
+        public AOTInitHelper(GenerateAOT.Provider delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+            delegate.prepareForAOT(language, root);
+        }
     }
 }

@@ -58,20 +58,20 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
         return declaredTypeFilter(bb, newState).forNonNull(bb);
     }
 
+    /**
+     * The formal receiver type flow, i.e., the type flow of the 'this' parameter, is linked with
+     * the actual receiver type flow through a non-state-transfer link, i.e., a link that exists
+     * only for a proper iteration of type flow graphs. This happens because the formal receiver ,
+     * i.e., 'this' parameter, state must ONLY reflect those objects of the actual receiver that
+     * generated the context for the method clone which it belongs to. A direct link would instead
+     * transfer all the objects of compatible type from the actual receiver to the formal receiver.
+     * The formal receiver state for the non-initial parameters is updated through the
+     * FormalReceiverTypeFlow.addReceiverState method invoked directly from
+     * VirtualInvokeTypeFlow.update, SpecialInvokeTypeFlow.update or from
+     * InitialReceiverTypeFlow.update.
+     */
     @Override
     public boolean addState(BigBang bb, TypeState add) {
-        /*
-         * The formal receiver type flow, i.e., the type flow of the 'this' parameter is linked with
-         * the actual receiver type flow through a non-state-transfer link, i.e., a link that exists
-         * only for a proper iteration of type flow graphs. This happens because the formal receiver
-         * , i.e., 'this' parameter, state must ONLY reflect those objects of the actual receiver
-         * that generated the context for the method clone which it belongs to. A direct link would
-         * instead transfer all the objects of compatible type from the actual receiver to the
-         * formal receiver. The formal receiver state for the non-initial parameters is updated
-         * through the FormalReceiverTypeFlow.addReceiverState method invoked directly from
-         * VirtualInvokeTypeFlow.update, SpecialInvokeTypeFlow.update or from
-         * InitialReceiverTypeFlow.update.
-         */
         return false;
     }
 

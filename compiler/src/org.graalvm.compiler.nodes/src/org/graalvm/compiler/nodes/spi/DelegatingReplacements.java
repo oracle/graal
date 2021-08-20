@@ -44,7 +44,7 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * A convenience class when want to subclass and override just a portion of the Replacements API.
+ * A convenience class for overriding just a portion of the Replacements API.
  */
 public class DelegatingReplacements implements Replacements {
     protected final Replacements delegate;

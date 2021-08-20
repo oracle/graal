@@ -61,12 +61,14 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.Node;
 
 public class NestingAndPolyglotThreadCancellationTest {
     @Rule public TestName testNameRule = new TestName();
@@ -229,6 +231,9 @@ public class NestingAndPolyglotThreadCancellationTest {
         }
     }
 
+    private static final Node DUMMY_NODE = new Node() {
+    };
+
     @Test
     public void testMultipleContextDeadlock() throws InterruptedException, ExecutionException {
         ExecutorService executorService = Executors.newFixedThreadPool(2);
@@ -237,8 +242,20 @@ public class NestingAndPolyglotThreadCancellationTest {
                 Phaser cancelSignal = new Phaser(2);
                 Future<?> future1 = executorService.submit(() -> {
                     context1.enter();
+                    TruffleInstrument.Env instrumentEnv = context1.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+                    TruffleContext truffleContext = instrumentEnv.getEnteredContext();
+                    context1.leave();
+                    /*
+                     * use internal enter to prevent automatic leave on close
+                     */
+                    Object prev = truffleContext.enter(DUMMY_NODE);
                     try {
                         cancelSignal.arriveAndAwaitAdvance();
+                        /*
+                         * Since we are entered in the current thread and multi-threading is
+                         * enabled. Close should spawn a new thread where the close actually happens
+                         * and that prevents deadlock.
+                         */
                         context1.close(true);
                         cancelSignal.awaitAdvance(cancelSignal.arriveAndDeregister());
                         context2.enter();
@@ -248,7 +265,7 @@ public class NestingAndPolyglotThreadCancellationTest {
                             throw pe;
                         }
                     } finally {
-                        context1.leave();
+                        truffleContext.leave(DUMMY_NODE, prev);
                     }
                 });
                 Future<?> future2 = executorService.submit(() -> {

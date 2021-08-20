@@ -52,13 +52,12 @@ import java.util.List;
 
 import org.graalvm.collections.Pair;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -80,7 +79,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Target_java_lang_invoke_MethodHandleNatives {
     /**
      * Plants an already resolved target into a memberName.
-     * 
+     *
      * @param self the memberName
      * @param ref the target. Can be either a mathod or a field.
      */
@@ -361,7 +360,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Substitution(methodName = "resolve")
-    abstract static class ResolveOverload17 extends Node {
+    abstract static class ResolveOverload17 extends SubstitutionNode {
 
         abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
@@ -376,7 +375,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(value = Class.class) StaticObject caller,
                         int lookupMode,
                         boolean speculativeResolve,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached ResolveNode resolve) {
             StaticObject result = StaticObject.NULL;
             EspressoException error = null;
@@ -399,7 +398,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
     }
 
-    abstract static class ResolveNode extends Node {
+    abstract static class ResolveNode extends SubstitutionNode {
 
         /**
          * Complete resolution of a memberName, full with method lookup, flags overwriting and
@@ -420,7 +419,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
                         @JavaType(value = Class.class) StaticObject caller,
                         @SuppressWarnings("unused") int lookupMode,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
                         @Cached BranchProfile isMethodProfile,
                         @Cached BranchProfile isFieldProfile,

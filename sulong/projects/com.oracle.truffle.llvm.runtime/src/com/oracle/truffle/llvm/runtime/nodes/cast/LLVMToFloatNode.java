@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -56,6 +57,16 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
+    protected final boolean isRecursive;
+
+    protected LLVMToFloatNode() {
+        this(false);
+    }
+
+    protected LLVMToFloatNode(boolean isRecursive) {
+        this.isRecursive = isRecursive;
+    }
+
     protected abstract float executeWith(long value);
 
     protected LLVMToFloatNode createRecursive() {
@@ -63,6 +74,7 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = {"isForeignNumber(from, foreigns, interop)"})
+    @GenerateAOT.Exclude
     protected float doManagedPointer(LLVMManagedPointer from,
                     @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM,
                     @Cached("createRecursive()") LLVMToFloatNode recursive,
@@ -72,7 +84,7 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         return recursive.executeWith(ptr);
     }
 
-    @Specialization
+    @Specialization(guards = "!isRecursive")
     protected float doPointer(LLVMPointer from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("createRecursive()") LLVMToFloatNode recursive) {
@@ -90,9 +102,16 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
     public abstract static class LLVMSignedCastToFloatNode extends LLVMToFloatNode {
 
+        protected LLVMSignedCastToFloatNode() {
+        }
+
+        protected LLVMSignedCastToFloatNode(boolean isRecursive) {
+            super(isRecursive);
+        }
+
         @Override
         protected LLVMToFloatNode createRecursive() {
-            return LLVMSignedCastToFloatNodeGen.create(null);
+            return LLVMSignedCastToFloatNodeGen.create(true, null);
         }
 
         @Specialization
@@ -140,9 +159,16 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
         private static final float LEADING_BIT = 0x1.0p63f;
 
+        protected LLVMUnsignedCastToFloatNode() {
+        }
+
+        protected LLVMUnsignedCastToFloatNode(boolean isRecursive) {
+            super(isRecursive);
+        }
+
         @Override
         protected LLVMToFloatNode createRecursive() {
-            return LLVMUnsignedCastToFloatNodeGen.create(null);
+            return LLVMUnsignedCastToFloatNodeGen.create(true, null);
         }
 
         @Specialization
@@ -186,9 +212,16 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
     public abstract static class LLVMBitcastToFloatNode extends LLVMToFloatNode {
 
+        protected LLVMBitcastToFloatNode() {
+        }
+
+        protected LLVMBitcastToFloatNode(boolean isRecursive) {
+            super(isRecursive);
+        }
+
         @Override
         protected LLVMToFloatNode createRecursive() {
-            return LLVMBitcastToFloatNodeGen.create(null);
+            return LLVMBitcastToFloatNodeGen.create(true, null);
         }
 
         @Specialization
