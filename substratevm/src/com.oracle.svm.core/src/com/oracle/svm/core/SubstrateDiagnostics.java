@@ -112,7 +112,7 @@ public class SubstrateDiagnostics {
 
     /** Prints extensive diagnostic information to the given Log. */
     public static boolean print(Log log, Pointer sp, CodePointer ip) {
-        return print(log, sp, ip, WordFactory.nullPointer());
+        return print(log, sp, ip, WordFactory.nullPointer(), false);
     }
 
     /**
@@ -120,11 +120,11 @@ public class SubstrateDiagnostics {
      * diagnostics, it can happen that the same thread enters this method multiple times.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-    static boolean print(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context) {
+    public static boolean print(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context, boolean frameHasCalleeSavedRegisters) {
         log.newline();
         // Save the state of the initial error so that this state is consistently used, even if
         // further errors occur while printing diagnostics.
-        if (!state.trySet(log, sp, ip, context) && !isInProgressByCurrentThread()) {
+        if (!state.trySet(log, sp, ip, context, frameHasCalleeSavedRegisters) && !isInProgressByCurrentThread()) {
             log.string("Error: printDiagnostics already in progress by another thread.").newline();
             log.newline();
             return false;
@@ -244,9 +244,10 @@ public class SubstrateDiagnostics {
         Pointer sp;
         CodePointer ip;
         RegisterDumper.Context context;
+        boolean frameHasCalleeSavedRegisters;
 
         @SuppressWarnings("hiding")
-        public boolean trySet(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context) {
+        public boolean trySet(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context, boolean frameHasCalleeSavedRegisters) {
             if (diagnosticThread.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread())) {
                 assert diagnosticThunkIndex == 0;
                 assert invocationCount == 0;
@@ -254,6 +255,7 @@ public class SubstrateDiagnostics {
                 this.sp = sp;
                 this.ip = ip;
                 this.context = context;
+                this.frameHasCalleeSavedRegisters = frameHasCalleeSavedRegisters;
                 return true;
             }
             return false;
@@ -264,6 +266,7 @@ public class SubstrateDiagnostics {
             sp = WordFactory.nullPointer();
             ip = WordFactory.nullPointer();
             context = WordFactory.nullPointer();
+            frameHasCalleeSavedRegisters = false;
 
             diagnosticThunkIndex = 0;
             invocationCount = 0;
@@ -286,6 +289,9 @@ public class SubstrateDiagnostics {
                 log.string("General purpose register values:").indent(true);
                 RegisterDumper.singleton().dumpRegisters(log, context, invocationCount <= 2, invocationCount == 1);
                 log.indent(false);
+            } else if (CalleeSavedRegisters.supportedByPlatform() && state.frameHasCalleeSavedRegisters) {
+                CalleeSavedRegisters.singleton().dumpRegisters(log, state.sp, invocationCount <= 2, invocationCount == 1);
+
             }
         }
     }

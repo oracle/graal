@@ -254,7 +254,7 @@ public class SubstrateUtil {
 
     /** Prints extensive diagnostic information to the given Log. */
     public static boolean printDiagnostics(Log log, Pointer sp, CodePointer ip) {
-        return SubstrateDiagnostics.print(log, sp, ip, WordFactory.nullPointer());
+        return SubstrateDiagnostics.print(log, sp, ip, WordFactory.nullPointer(), false);
     }
 
     /**
