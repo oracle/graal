@@ -175,7 +175,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             return graph.unique(new LoadHubNode(tool.getStampProvider(), object));
         }
 
-        assert !object.isConstant() || object.asJavaConstant().isNull();
+        assert !object.isConstant() || object.asJavaConstant().isNull() : "Object should either not be a constant or the null constant" + object;
 
         ObjectLayout objectLayout = getObjectLayout();
         Stamp headerBitsStamp = StampFactory.forUnsignedInteger(8 * objectLayout.getReferenceSize());
