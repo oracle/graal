@@ -441,7 +441,7 @@ public class WasmJsApiSuite {
     @Test
     public void testExportImportedFunctionInDifferentModules() throws IOException, InterruptedException {
         final byte[] m1 = compileWat("export", "(module (import \"a\" \"f\" (func $f (result i32))) (export \"f\" (func $f)))");
-        final byte[] m2 = compileWat("import", "(module (import \"b\" \"f\" (func $f (result i32))) (export \"f\" (func $f)))");
+        final byte[] m2 = compileWat("import", "(module (import \"b\" \"f\" (func $f (result i32))) (func (result i32) (call $f)) (export \"f\" (func $f)))");
         runTest(context -> {
             final Dictionary importObject = new Dictionary();
             importObject.addMember("a", Dictionary.create(new Object[]{
