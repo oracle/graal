@@ -781,8 +781,8 @@ _daCapoIterations = {
     "pmd"         : 30,
     "sunflow"     : 35,
     "tomcat"      : -1,
-    "tradebeans"  : 30,
-    "tradesoap"   : 30,
+    "tradebeans"  : 20,
+    "tradesoap"   : 20,
     "xalan"       : 30,
 }
 
@@ -856,14 +856,20 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             # Stopped working as of 8u92 on the initial release
             del iterations["tomcat"]
 
-        # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
-        if java_home_jdk().javaCompliance >= '9' and "batik" in iterations and self.version() in ["9.12-bach",
-                                                                                                  "9.12-MR1-bach"]:
-            del iterations["batik"]
+        if mx.get_jdk().javaCompliance >= '9' and self.version() in ["9.12-bach", "9.12-MR1-bach"]:
+            if "batik" in iterations:
+                # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
+                del iterations["batik"]
+            if "tradesoap" in iterations:
+                # validation fails transiently but frequently in the first iteration in JDK9+
+                del iterations["tradesoap"]
 
         if self.workloadSize() == "small":
             # Ensure sufficient warmup by doubling the number of default iterations for the small configuration
             iterations = {k: (2 * int(v)) if v != -1 else v for k, v in iterations.items()}
+        if self.workloadSize() in {"huge", "gargantuan"}:
+            # Reduce the default number of iterations for very large workloads to keep the runtime reasonable
+            iterations = {k: max(int((int(v)/2)), 5) if v != -1 else v for k, v in iterations.items()}
         return iterations
 
     def daCapoSizes(self):
@@ -1099,7 +1105,7 @@ _daCapoScalaSizes = {
     "scaladoc":     ["default", "small", "large"],
     "scalap":       ["default", "small", "large"],
     "scalariform":  ["default", "tiny", "small", "large", "huge"],
-    "scalatest":    ["default", "tiny", "small", "large", "huge"],
+    "scalatest":    ["default", "small"],  # 'large' and 'huge' sizes fail validation
     "scalaxb":      ["default", "tiny", "small", "large", "huge"],
     "specs":        ["default", "small", "large"],
     "tmt":          ["default", "tiny", "small", "large", "huge"]
@@ -1133,11 +1139,11 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
     def daCapoIterations(self):
         result = _daCapoScalaConfig.copy()
         if not java_home_jdk().javaCompliance < '11':
-            mx.logv('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
+            mx.logv('Removing scala-dacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
             del result['actors']
-        if java_home_jdk().javaCompliance >= "16":
+        if java_home_jdk().javaCompliance >= '16':
             # See GR-29222 for details.
-            mx.logv('Removing scaladacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
+            mx.logv('Removing scala-dacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
             del result['specs']
         return result
 
@@ -1158,6 +1164,13 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
         if java_home_jdk().javaCompliance >= '9' and java_home_jdk().javaCompliance < '11':
             vmArgs += ["--add-modules", "java.corba"]
         return vmArgs
+
+
+class ScalaDacapoTinyBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'small' configuration."""
+
+    def workloadSize(self):
+        return "tiny"
 
 
 class ScalaDacapoSmallBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
@@ -1189,6 +1202,7 @@ class ScalaDacapoGargantuanBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoTinyBenchmarkSuite())
 mx_benchmark.add_bm_suite(ScalaDacapoSmallBenchmarkSuite())
 mx_benchmark.add_bm_suite(ScalaDacapoLargeBenchmarkSuite())
 mx_benchmark.add_bm_suite(ScalaDacapoHugeBenchmarkSuite())
