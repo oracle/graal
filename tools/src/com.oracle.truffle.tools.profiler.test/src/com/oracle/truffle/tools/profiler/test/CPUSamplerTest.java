@@ -35,12 +35,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -54,6 +57,7 @@ import com.oracle.truffle.tools.profiler.ProfilerNode;
 public class CPUSamplerTest extends AbstractProfilerTest {
 
     private CPUSampler sampler;
+    public static final int FIRST_TIER_THRESHOLD = 10;
 
     final int executionCount = 10;
 
@@ -482,4 +486,32 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         }, () -> sampler.setCollecting(true));
     }
 
+    @Test
+    public void testTiers() {
+        Assume.assumeFalse(Truffle.getRuntime().getClass().toString().contains("Default"));
+        Context.Builder builder = Context.newBuilder().option("engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD)).option("engine.LastTierCompilationThreshold",
+                        Integer.toString(2 * FIRST_TIER_THRESHOLD)).option("engine.BackgroundCompilation", "false");
+        Map<TruffleContext, CPUSamplerData> data;
+        try (Context c = builder.build()) {
+            CPUSampler cpuSampler = CPUSampler.find(c.getEngine());
+            cpuSampler.setCollecting(true);
+            for (int i = 0; i < 3 * FIRST_TIER_THRESHOLD; i++) {
+                c.eval(defaultSourceForSampling);
+            }
+            data = cpuSampler.getData();
+        }
+        CPUSamplerData samplerData = data.values().iterator().next();
+        Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = samplerData.getThreadData().values().iterator().next();
+        ProfilerNode<CPUSampler.Payload> root = profilerNodes.iterator().next();
+        for (ProfilerNode<CPUSampler.Payload> child : root.getChildren()) {
+            CPUSampler.Payload payload = child.getPayload();
+            int numberOfTiers = payload.getNumberOfTiers();
+            Assert.assertEquals(3, numberOfTiers);
+            for (int i = 0; i < numberOfTiers; i++) {
+                Assert.assertTrue(payload.getTierTotalCount(i) >= 0);
+                Assert.assertTrue(payload.getTierSelfCount(i) >= 0);
+            }
+
+        }
+    }
 }
