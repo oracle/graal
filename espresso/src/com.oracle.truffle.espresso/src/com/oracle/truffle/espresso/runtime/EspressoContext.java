@@ -174,6 +174,7 @@ public final class EspressoContext {
     public final EspressoOptions.VerifyMode Verify;
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
     public final boolean Polyglot;
+    public final boolean HotSwapAPI;
     public final boolean ExitHost;
     public final boolean EnableSignals;
     private final String multiThreadingDisabled;
@@ -278,6 +279,7 @@ public final class EspressoContext {
         this.multiThreadingDisabled = multiThreadingDisabledReason;
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
+        this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
