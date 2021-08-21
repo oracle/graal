@@ -1519,6 +1519,23 @@ JNIEXPORT void JNICALL JVM_ReferenceClear(JNIEnv *env, jobject ref) {
   (*getEnv())->JVM_ReferenceClear(env, ref);
 }
 
+JNIEXPORT void JNICALL JVM_DefineArchivedModules(JNIEnv *env, jobject platform_loader, jobject system_loader) {
+  UNIMPLEMENTED(JVM_DefineArchivedModules);
+}
+
+JNIEXPORT jobjectArray JNICALL JVM_GetPermittedSubclasses(JNIEnv* env, jclass current) {
+  UNIMPLEMENTED(JVM_GetPermittedSubclasses);
+  return NULL;
+}
+
+JNIEXPORT void JNICALL JVM_DumpClassListToFile(JNIEnv *env, jstring listFileName) {
+  UNIMPLEMENTED(JVM_DumpClassListToFile);
+}
+
+JNIEXPORT void JNICALL JVM_DumpDynamicArchive(JNIEnv *env, jstring archiveName) {
+  UNIMPLEMENTED(JVM_DumpDynamicArchive);
+}
+
 // region Invocation API
 
 jboolean is_supported_jni_version(jint version) {
