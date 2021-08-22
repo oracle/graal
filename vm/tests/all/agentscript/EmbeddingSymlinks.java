@@ -294,6 +294,13 @@ public final class EmbeddingSymlinks {
                 + "  print(`loaded source named ${ev.name} from ${ev.uri}`);\n"
                 + "});\n"
                 + "\n"
+                + "insight.on('return', (ctx, frame) => {\n"
+                + "  print(`computed add at ${ctx.source.name} from ${ctx.source.uri} with value ${ctx.returnValue(frame)}`);\n"
+                + "}, {\n"
+                + "  roots: true,\n"
+                + "  rootNameFilter: 'add',\n"
+                + "});\n"
+                + "\n"
                 + "", "insight.js").build();
 
         register.apply(insightScript);
