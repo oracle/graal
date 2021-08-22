@@ -1,0 +1,4 @@
+>[0] javac EmbeddingSymlinks*.java -d ${TMP_DIR}
+>[0] java -ea -cp .:${TMP_DIR} EmbeddingSymlinks
+foo add: 42
+bar add 42
