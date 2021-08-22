@@ -25,33 +25,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import org.graalvm.polyglot.Engine;
 
 public final class EmbeddingSymlinks {
-    private EmbeddingSymlinks() {
-    }
-
     public static void main(String... args) throws IOException {
-        Source mainWithFoo = Source.newBuilder("js", "\n"
-                + "import { add } from 'foo';\n"
-                + "\n"
-                + "let a = add(31, 11)\n"
-                + "print(`foo add: ${a}`);\n"
-                + "a\n"
-                + "\n", "main.js").
-                mimeType("application/javascript+module").
-                build();
-        
-        Source mainWithBar = Source.newBuilder("js", "\n"
-                + "import { add } from 'bar';\n"
-                + "\n"
-                + "let a = add(21, 21)\n"
-                + "print(`bar add ${a}`);\n"
-                + "a\n"
-                + "\n", "main.js").
-                mimeType("application/javascript+module").
-                build();
-        
-        File bazJs = File.createTempFile("baz", ".mjs");
+        File bazJs = new File(args[0], "baz.mjs");
         try (Writer w = new FileWriter(bazJs)) {
             w.write(""
                 + "export function add(a, b) {\n"
@@ -59,29 +38,43 @@ public final class EmbeddingSymlinks {
                 + "}\n"
             );
         }
-        bazJs.deleteOnExit();
 
         EnvironmentFileSystem fooFs = new EnvironmentFileSystem("foo", bazJs.toPath());
         try (Context context = Context.newBuilder().allowIO(true).fileSystem(fooFs).build()) {
-            context.eval(mainWithFoo);
+            enableInsight(context.getEngine());
+            Source mainWithFoo = createMainSource("foo");
             Value fourtyTwo = context.eval(mainWithFoo);
             assertEquals(42, fourtyTwo.asInt());
         }
-        
+
         EnvironmentFileSystem barFs = new EnvironmentFileSystem("bar", bazJs.toPath());
         try (Context context = Context.newBuilder().allowIO(true).fileSystem(barFs).build()) {
-            context.eval(mainWithBar);
-            Value fourtyTwo = context.eval(mainWithFoo);
+            enableInsight(context.getEngine());
+            Source mainWithBar = createMainSource("bar");
+            Value fourtyTwo = context.eval(mainWithBar);
             assertEquals(42, fourtyTwo.asInt());
         }
     }
-        
+
+    private static Source createMainSource(String importFromModule) throws IOException {
+        Source mainWithFoo = Source.newBuilder("js", "\n"
+                + "import { add } from '" + importFromModule + "';\n"
+                + "\n"
+                + "let a = add(31, 11)\n"
+                + "print(`" + importFromModule + " add: ${a}`);\n"
+                + "a\n"
+                + "\n", importFromModule + "Main.js").
+                mimeType("application/javascript+module").
+                build();
+        return mainWithFoo;
+    }
+
     static void assertEquals(int a, int b) {
         if (a != b) {
             throw new AssertionError(a + " != " + b);
         }
     }
-    
+
     static RuntimeException notNeeded() {
         throw new IllegalStateException();
     }
@@ -92,7 +85,7 @@ public final class EmbeddingSymlinks {
         EnvironmentFileSystem(String path, Path realPath) {
             this.realFiles.put(path, realPath);
         }
-        
+
         @Override
         public Path parsePath(URI uri) {
             throw notNeeded();
@@ -147,12 +140,12 @@ public final class EmbeddingSymlinks {
         class SharedPath implements Path {
             private final String path;
             private final Path realPath;
-            
+
             SharedPath(String path, Path realPath) {
                 this.path = path;
                 this.realPath = realPath == null ? this : realPath;
             }
-            
+
             @Override
             public File toFile() {
                 return null;
@@ -182,12 +175,12 @@ public final class EmbeddingSymlinks {
             public boolean startsWith(String other) {
                 throw notNeeded();
             }
-            
+
             @Override
             public Iterator<Path> iterator() {
                 throw notNeeded();
             }
-            
+
             @Override
             public java.nio.file.FileSystem getFileSystem() {
                 throw notNeeded();
@@ -284,11 +277,28 @@ public final class EmbeddingSymlinks {
             public WatchKey register(WatchService watcher, WatchEvent.Kind<?>... events) throws IOException {
                 throw notNeeded();
             }
-            
+
             @Override
             public int compareTo(Path other) {
                 throw notNeeded();
             }
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void enableInsight(Engine eng) throws IOException {
+        Function<Source,AutoCloseable> register = eng.getInstruments().get("insight").lookup(Function.class);
+
+        Source insightScript = Source.newBuilder("js", "\n"
+                + "insight.on('source', (ev) => {\n"
+                + "  print(`loaded source named ${ev.name} from ${ev.uri}`);\n"
+                + "});\n"
+                + "\n"
+                + "", "insight.js").build();
+
+        register.apply(insightScript);
+    }
+
+    private EmbeddingSymlinks() {
     }
 }
