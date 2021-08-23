@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk17;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -32,7 +32,7 @@ import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 import jdk.internal.platform.CgroupMetrics;
 
 @TargetClass(value = jdk.internal.platform.CgroupMetrics.class, onlyWith = JDK17OrLater.class)
-public final class Target_jdk_internal_platform_CgroupMetrics {
+public final class Target_jdk_internal_platform_CgroupMetrics_JDK17OrLater {
     @Substitute
     public static boolean isUseContainerSupport() {
         return UseContainerSupport.getValue();

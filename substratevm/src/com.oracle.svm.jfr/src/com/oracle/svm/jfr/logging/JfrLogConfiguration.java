@@ -30,9 +30,13 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK16OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.SubstrateUtil;
 
 import jdk.jfr.internal.LogLevel;
@@ -114,7 +118,39 @@ class JfrLogConfiguration {
         result.put(LogTag.JFR_START, EnumSet.of(JfrLogTag.JFR, JfrLogTag.START));
         return result;
     }
+/*
+    private static Map<LogTag, Set<JfrLogTag>> createLogTagSets() {
+        Map<LogTag, Set<JfrLogTag>> result = new EnumMap<>(LogTag.class);
+        result.put(LogTag.JFR, EnumSet.of(JfrLogTag.JFR));
+        result.put(LogTag.JFR_SYSTEM, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM));
+        result.put(LogTag.JFR_SYSTEM_EVENT, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.EVENT));
+        result.put(LogTag.JFR_SYSTEM_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.SETTING));
+        result.put(LogTag.JFR_SYSTEM_BYTECODE, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.BYTECODE));
+        result.put(LogTag.JFR_SYSTEM_PARSER, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.PARSER));
+        result.put(LogTag.JFR_SYSTEM_METADATA, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.METADATA));
+        result.put(LogTag.JFR_METADATA, EnumSet.of(JfrLogTag.JFR, JfrLogTag.METADATA));
+        result.put(LogTag.JFR_EVENT, EnumSet.of(JfrLogTag.JFR, JfrLogTag.EVENT));
+        result.put(LogTag.JFR_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SETTING));
+        result.put(LogTag.JFR_DCMD, EnumSet.of(JfrLogTag.JFR, JfrLogTag.DCMD));
 
+        // JDK17 support
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            try {
+                LogTag JFR_SYSTEM_STREAMING = Enum.valueOf(LogTag.class, "JFR_SYSTEM_STREAMING");
+                LogTag JFR_SYSTEM_THROTTLE = Enum.valueOf(LogTag.class, "JFR_SYSTEM_THROTTLE");
+                LogTag JFR_START = Enum.valueOf(LogTag.class, "JFR_START");
+
+                result.put(JFR_SYSTEM_STREAMING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.STREAMING));
+                result.put(JFR_SYSTEM_THROTTLE, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.THROTTLE));
+                result.put(JFR_START, EnumSet.of(JfrLogTag.JFR, JfrLogTag.START));
+            } catch (IllegalArgumentException | NullPointerException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return result;
+    }
+*/
     private static class JfrLogSelection {
         private final Set<JfrLogTag> tags;
         private final JfrLogLevel level;
