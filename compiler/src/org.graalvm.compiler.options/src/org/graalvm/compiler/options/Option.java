@@ -29,6 +29,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.options.OptionDescriptor;
+
 /**
  * Describes the attributes of an option whose {@link OptionKey value} is in a static field
  * annotated by this annotation type.
@@ -74,4 +76,9 @@ public @interface Option {
      * Deprecated option.
      */
     boolean deprecated() default false;
+
+    /**
+     * The deprecation reason and the recommended replacement.
+     */
+    String deprecationMessage() default "";
 }
