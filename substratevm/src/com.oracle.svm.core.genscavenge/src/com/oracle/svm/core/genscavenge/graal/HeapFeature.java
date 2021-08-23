@@ -58,6 +58,7 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.hosted.NativeImageOptions;
 
 @AutomaticFeature
 class HeapFeature implements GraalFeature {
@@ -74,7 +75,7 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        HeapImpl heap = new HeapImpl(access);
+        HeapImpl heap = new HeapImpl(access, NativeImageOptions.getPageSize());
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(SubstrateAllocationSnippets.class, new GenScavengeAllocationSnippets());
         ImageSingletons.add(RememberedSet.class, createRememberedSet());
@@ -107,9 +108,9 @@ class HeapFeature implements GraalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         ImageHeapLayouter heapLayouter;
         if (HeapImpl.usesImageHeapChunks()) { // needs CommittedMemoryProvider: registered late
-            heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, true);
+            heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getImageHeapInfo(), false, 0);
         } else {
-            heapLayouter = new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, true);
+            heapLayouter = new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), false, 0);
         }
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
     }

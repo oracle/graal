@@ -156,11 +156,18 @@ public abstract class Heap {
     public abstract int getPreferredAddressSpaceAlignment();
 
     /**
-     * Returns the offset that the image heap should have when mapping the native image file to the
-     * address space in memory.
+     * Returns an offset relative to the heap base, at which the image heap should be mapped in the
+     * address space.
      */
     @Fold
     public abstract int getImageHeapOffsetInAddressSpace();
+
+    /**
+     * Returns the size of the null pages that are prepended to the image heap. Those null pages are
+     * directly embedded into the Native Image file.
+     */
+    @Fold
+    public abstract int getImageHeapNullPageSize();
 
     /**
      * Returns true if the given object is located in the image heap.

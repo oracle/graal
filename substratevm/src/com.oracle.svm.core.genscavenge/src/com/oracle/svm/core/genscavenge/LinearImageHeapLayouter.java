@@ -24,19 +24,19 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
     private final long startOffset;
-    private final boolean compressedNullPadding;
+    private final boolean isAuxImageHeap;
 
-    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset, boolean compressedNullPadding) {
+    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, boolean isAuxImageHeap, long startOffset) {
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
-        this.compressedNullPadding = compressedNullPadding;
+        this.isAuxImageHeap = isAuxImageHeap;
     }
 
     @Override
@@ -52,12 +52,8 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     @Override
     protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
         long beginOffset = startOffset;
-        if (compressedNullPadding) {
-            /*
-             * Zero designates null, so adding some explicit padding at the beginning of the native
-             * image heap is the easiest approach to make object offsets strictly greater than 0.
-             */
-            beginOffset += ConfigurationValues.getObjectLayout().getAlignment();
+        if (!isAuxImageHeap) {
+            beginOffset += Heap.getHeap().getImageHeapNullPageSize();
         }
         LinearImageHeapAllocator allocator = new LinearImageHeapAllocator(beginOffset);
         for (LinearImageHeapPartition partition : getPartitions()) {

@@ -51,6 +51,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     @Uninterruptible(reason = "Still being initialized.")
     protected static int protectSingleIsolateImageHeap() {
         assert !SubstrateOptions.SpawnIsolates.getValue() : "Must be handled by ImageHeapProvider when SpawnIsolates is enabled";
+        assert Heap.getHeap().getImageHeapNullPageSize() == 0 : "Null pages don't make any sense without a heap base.";
         Pointer heapBegin = IMAGE_HEAP_BEGIN.get();
         if (Heap.getHeap().getImageHeapOffsetInAddressSpace() != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
@@ -74,6 +75,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
+
         return CEntryPointErrors.NO_ERROR;
     }
 
