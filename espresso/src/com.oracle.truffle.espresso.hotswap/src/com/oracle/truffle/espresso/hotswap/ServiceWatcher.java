@@ -275,6 +275,7 @@ final class ServiceWatcher {
                         }
                         // object used for comparison with cache
                         Path resourcePath = watchPath.resolve(fileName);
+
                         if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
                             if (watchActions.containsKey(resourcePath)) {
                                 // the parent folder could also be deleted without us noticing that,
@@ -288,6 +289,10 @@ final class ServiceWatcher {
                                 }
                                 if (!Files.exists(watchPath)) {
                                     handleDeletedFolderEvent(watchPath);
+                                } else {
+                                    // we could have lost the file watch on the parent,
+                                    // so handle as if it was potentially recreated
+                                    handleCreatedFolderEvent(watchPath);
                                 }
                                 continue;
                             } else if (watchedFolders.containsKey(resourcePath)) {
