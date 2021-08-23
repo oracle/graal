@@ -541,6 +541,18 @@ public abstract class AArch64ASIMDAssembler {
         AESMC(0b00110 << 12),
         AESIMC(0b00111 << 12),
 
+        /* Advanced SIMD table lookup (C4-355). */
+        TBL(0b0 << 12),
+        TBX(0b1 << 12),
+
+        /* Advanced SIMD permute (C4-355). */
+        UZP1(0b001 << 12),
+        TRN1(0b010 << 12),
+        ZIP1(0b011 << 12),
+        UZP2(0b101 << 12),
+        TRN2(0b110 << 12),
+        ZIP2(0b111 << 12),
+
         /* Advanced SIMD extract (C4-356). */
         EXT(0b00 << 22),
 
@@ -807,6 +819,18 @@ public abstract class AArch64ASIMDAssembler {
         assert (imm7 & 0b0000_111) != imm7;
         int baseEncoding = 0b01_0_111110_0000_000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | imm7 << 16 | rd(dst) | rs1(src));
+    }
+
+    private void tableLookupEncoding(ASIMDInstruction instr, ASIMDSize size, int numTableRegs, Register dst, Register src1, Register src2) {
+        int baseEncoding = 0b0_0_001110_00_0_00000_0_000_00_00000_00000;
+        assert numTableRegs >= 1 && numTableRegs <= 4;
+        int numTableRegsEncoding = (numTableRegs - 1) << 13;
+        emitInt(instr.encoding | baseEncoding | qBit(size) | numTableRegsEncoding | rd(dst) | rs1(src1) | rs2(src2));
+    }
+
+    private void permuteEncoding(ASIMDInstruction instr, ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        int baseEncoding = 0b0_0_001110_00_0_00000_0_000_10_00000_00000;
+        emitInt(instr.encoding | baseEncoding | qBit(size) | elemSizeXX(eSize) | rd(dst) | rs1(src1) | rs2(src2));
     }
 
     private void copyEncoding(ASIMDInstruction instr, boolean setQBit, ElementSize eSize, Register dst, Register src, int index) {
@@ -2335,6 +2359,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register. Should not be null.
      */
     public void saddlvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
         assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for saddlv";
         assert elementSize != ElementSize.DoubleWord : "Invalid lane width for saddlv";
 
@@ -2685,6 +2711,148 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.339 Table vector lookup (single register table variant).<br>
+     *
+     * This instruction is used to perform permutations at a byte granularity. Within the
+     * destination, each byte is determined by using the index register to pick either a value
+     * within the table register, or if the index exceeds the table's boundary, then the dst
+     * register is set to zero.
+     *
+     * <pre>
+     * tbl[0..n-1] = table[0..n-1]
+     * for i in 0..n-1 {
+     *     idx = index[i]
+     *     if (index < n)
+     *      dst[i] = tbl[idx]
+     *     else
+     *      dst[i] = 0
+     * }
+     * </pre>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param table SIMD register.
+     * @param index SIMD register.
+     */
+    public void tblVVV(ASIMDSize size, Register dst, Register table, Register index) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert table.getRegisterCategory().equals(SIMD);
+        assert index.getRegisterCategory().equals(SIMD);
+
+        tableLookupEncoding(ASIMDInstruction.TBL, size, 1, dst, table, index);
+    }
+
+    /**
+     * C7.2.339 Table vector lookup (two register table variant).<br>
+     *
+     * This instruction is used to perform permutations at a byte granularity. A table is formed by
+     * combining the two table registers. Within the destination, each byte is determined by using
+     * the index register to pick either a value within the table, or if the index exceeds the
+     * table's boundary, then the dst register is set to 0.
+     *
+     * <pre>
+     * tbl[0..n-1] = table1[0..n-1]
+     * tbl[n..2n-1] = table2[0..n-1]
+     * for i in 0..n-1 {
+     *     idx = index[i]
+     *     if (index < 2n)
+     *      dst[i] = tbl[idx]
+     *     else
+     *      dst[i] = 0
+     * }
+     * </pre>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param table1 SIMD register.
+     * @param table2 SIMD register.
+     * @param index SIMD register.
+     */
+    public void tblVVVV(ASIMDSize size, Register dst, Register table1, Register table2, Register index) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert assertConsecutiveSIMDRegisters(table1, table2);
+        assert index.getRegisterCategory().equals(SIMD);
+
+        tableLookupEncoding(ASIMDInstruction.TBL, size, 2, dst, table1, index);
+    }
+
+    /**
+     * C7.2.440 Table vector lookup extension (single register table variant).<br>
+     *
+     * This instruction is used to perform permutations at a byte granularity. Within the
+     * destination, each byte is determined by using the index register to pick either a value
+     * within the table register, or if the index exceeds the table's boundary, then the dst
+     * register is unchanged.
+     *
+     * <pre>
+     * tbl[0..n-1] = table[0..n-1]
+     * for i in 0..n-1 {
+     *     idx = index[i]
+     *     if (index < n)
+     *      dst[i] = tbl[idx]
+     * }
+     * </pre>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param table SIMD register.
+     * @param index SIMD register.
+     */
+    public void tbxVVV(ASIMDSize size, Register dst, Register table, Register index) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert table.getRegisterCategory().equals(SIMD);
+        assert index.getRegisterCategory().equals(SIMD);
+
+        tableLookupEncoding(ASIMDInstruction.TBX, size, 1, dst, table, index);
+    }
+
+    /**
+     * C7.2.341 Transpose vectors (primary).
+     * <p>
+     * From the manual: "This instructions reads corresponding even-numbered vector elements from
+     * the two registers, starting at zero, [and] places each result into consecutive elements of a
+     * vector."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void trn1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.TRN1, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.342 Transpose vectors (secondary).
+     * <p>
+     * From the manual: "This instructions reads corresponding odd-numbered vector elements from the
+     * two registers, starting at zero, [and] places each result into consecutive elements of a
+     * vector."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void trn2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.TRN2, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
      * C7.2.350 Unsigned add across long vector.<br>
      *
      * <code>dst = src[0] + ....+ src[n].</code><br>
@@ -2886,6 +3054,54 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.399 Unzip vectors (primary).
+     * <p>
+     * From the manual: "This instructions reads corresponding even-numbered vector elements from
+     * the two source registers, starting at zero, places the result from the first source register
+     * into consecutive elements in the lower half of a vector, and the result from the second
+     * source register into consecutive elements in the upper half of a vector."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void uzp1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.UZP1, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.400 Unzip vectors (secondary).
+     * <p>
+     * From the manual: "This instructions reads corresponding odd-numbered vector elements from the
+     * two source registers, starting at zero, places the result from the first source register into
+     * consecutive elements in the lower half of a vector, and the result from the second source
+     * register into consecutive elements in the upper half of a vector."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void uzp2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.UZP2, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
      * C7.2.402 Extract narrow.<br>
      * <p>
      * From the manual: "This instruction reads each vector element from the source SIMD&FP
@@ -2902,5 +3118,51 @@ public abstract class AArch64ASIMDAssembler {
         assert dstESize != ElementSize.DoubleWord;
 
         twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(dstESize), dst, src);
+    }
+
+    /**
+     * C7.2.403 Zip vectors (primary).
+     * <p>
+     * From the manual: "This instructions reads adjacent vector elements from the lower half of two
+     * source registers as pairs, interleaves the pairs ... and writes the vector to the destination
+     * register."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void zip1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.ZIP1, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.404 Zip vectors (secondary).
+     * <p>
+     * From the manual: "This instructions reads adjacent vector elements from the upper half of two
+     * source registers as pairs, interleaves the pairs ... and writes the vector to the destination
+     * register."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void zip2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.ZIP2, dstSize, eSize, dst, src1, src2);
     }
 }
