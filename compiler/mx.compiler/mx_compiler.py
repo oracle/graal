@@ -464,7 +464,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     dacapo_esa = ['-esa', '-da:java.util.logging...']
 
     # a few iterations to get the chance to catch miscompilations in the gate
-    default_iterations = 4
+    default_iterations = 1
 
     dacapo_suite = mx_graal_benchmark.DaCapoBenchmarkSuite()
     dacapo_gate_iterations = {
