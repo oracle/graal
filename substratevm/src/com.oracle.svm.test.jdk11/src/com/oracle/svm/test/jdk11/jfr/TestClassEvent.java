@@ -33,11 +33,12 @@ import static org.junit.Assert.assertNotNull;
 import jdk.jfr.consumer.RecordingFile;
 import org.junit.Test;
 
+
 public class TestClassEvent {
     @Test
     public void test() throws Exception {
         JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestSingleEvent");
+        Recording recording = jfr.startRecording("TestClassEvent");
 
         ClassEvent event = new ClassEvent();
         event.clazz = TestClassEvent.class;
