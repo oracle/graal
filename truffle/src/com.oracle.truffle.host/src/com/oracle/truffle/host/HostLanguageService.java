@@ -151,7 +151,8 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public boolean isHostValue(Object obj) {
+    public boolean isHostValue(Object value) {
+        Object obj = unwrapIfScoped(value);
         return (obj instanceof HostObject) ||
                         (obj instanceof HostFunction) ||
                         (obj instanceof HostException) ||
@@ -160,12 +161,14 @@ public class HostLanguageService extends AbstractHostService {
 
     @Override
     public Object unboxHostObject(Object hostValue) {
-        return HostObject.valueOf(hostValue);
+        Object obj = unwrapIfScoped(hostValue);
+        return HostObject.valueOf(obj);
     }
 
     @Override
     public Object unboxProxyObject(Object hostValue) {
-        return HostProxy.toProxyHostObject(hostValue);
+        Object obj = unwrapIfScoped(hostValue);
+        return HostProxy.toProxyHostObject(obj);
     }
 
     @Override
@@ -193,18 +196,29 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public boolean isHostFunction(Object obj) {
+    public boolean isHostFunction(Object value) {
+        Object obj = unwrapIfScoped(value);
         return HostFunction.isInstance(obj);
     }
 
     @Override
-    public boolean isHostObject(Object obj) {
+    public boolean isHostObject(Object value) {
+        Object obj = unwrapIfScoped(value);
         return HostObject.isInstance(obj);
     }
 
     @Override
     public boolean isHostProxy(Object value) {
-        return HostProxy.isProxyGuestObject(value);
+        Object obj = unwrapIfScoped(value);
+        return HostProxy.isProxyGuestObject(obj);
+    }
+
+    private static Object unwrapIfScoped(Object obj) {
+        Object o = obj;
+        if (o instanceof ScopedObject) {
+            o = ((ScopedObject) o).unwrapForGuest();
+        }
+        return o;
     }
 
     @Override

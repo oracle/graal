@@ -168,9 +168,12 @@ public class ValueScopingTest {
             assertFails(() -> test.invokeMember("storeValue", o.value), IllegalStateException.class, SCOPE_RELEASED);
 
             test.invokeMember("storeValueAndPin", proxy);
-            // TODO support this test
-            // assertTrue(o.value.isProxyObject());
+            assertTrue(o.value.isProxyObject());
             ValueAssert.assertValue(o.value);
+
+            // host object
+            test.invokeMember("storeValueAndPin", test);
+            assertTrue(o.value.isHostObject());
 
             test.invokeMember("storeMapAndPin", proxy);
             // maps can be pinned too
@@ -197,9 +200,8 @@ public class ValueScopingTest {
             // if a value is stored in guest we remove the scope
             test.invokeMember("storeInGuest", proxy);
             ValueAssert.assertValue(o.value);
-            // does nto fail
+            // does not fail
             o.value.pin();
-
         }
     }
 
