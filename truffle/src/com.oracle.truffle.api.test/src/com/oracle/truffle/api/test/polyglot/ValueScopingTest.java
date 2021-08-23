@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.polyglot;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -90,6 +91,12 @@ public class ValueScopingTest {
         @HostAccess.Export
         public void storeValue(Value v) {
             value = v;
+        }
+
+        @HostAccess.Export
+        public void storeValueAndThrow(Value v) throws Exception {
+            value = v;
+            throw new Exception("method failed");
         }
 
         @HostAccess.Export
@@ -202,6 +209,14 @@ public class ValueScopingTest {
             ValueAssert.assertValue(o.value);
             // does not fail
             o.value.pin();
+
+            // host method execution fails
+            try {
+                test.invokeMember("storeValueAndThrow", proxy);
+                fail("method invocation should throw an exception");
+            } catch (Exception ex) {
+                assertEquals("method failed", ex.getMessage());
+            }
         }
     }
 

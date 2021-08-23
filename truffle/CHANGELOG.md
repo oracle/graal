@@ -24,7 +24,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Deprecated all other means of accessing the current language: `TruffleLanguage.getCurrentLanguage(Class)`,  `LanguageReference.get()`, `Node.lookupLanguageReference(Class)` and `@CachedLanguage`.
 * Added `--engine.TraceDeoptimizeFrame` to trace frame deoptimizations due to `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)`.
 * Added loop condition profiling to `LoopNode`, so the `RepeatingNode` no longer needs to profile or inject the loop count. Language implementations should remove loop condition profiles from their repeating nodes since they are redundant now.
-* Added support for scoped values in guest-to-host callbacks. [Scoped values](https://www.graalvm.org/reference-manual/embed-languages/#controlling-host-callback-parameter-scoping) are automatically released when the callback returns. They can be configured in `HostAccess`.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
