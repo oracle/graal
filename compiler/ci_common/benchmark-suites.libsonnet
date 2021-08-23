@@ -54,10 +54,9 @@
       self._bench_upload(),
       self.benchmark_cmd + ["dacapo-large:*", "--"] + self.extra_vm_args,
       self._bench_upload(),
-      self.benchmark_cmd + ["dacapo-huge:*", "--"] + self.extra_vm_args,
-      self._bench_upload()
+      self.benchmark_cmd + ["dacapo-huge:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "04:00:00",
+    timelimit: "05:30:00",
     forks_batches:: null, # weekly forks disabled
     forks_timelimit:: null,
     min_jdk_version:: 8,
@@ -97,8 +96,7 @@
       self._bench_upload(),
       self.benchmark_cmd + ["scala-dacapo-huge:*", "--"] + self.extra_vm_args,
       self._bench_upload(),
-      self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args,
-      self._bench_upload()
+      self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args
     ],
     timelimit: "05:00:00",
     forks_batches:: null, # weekly forks disabled
