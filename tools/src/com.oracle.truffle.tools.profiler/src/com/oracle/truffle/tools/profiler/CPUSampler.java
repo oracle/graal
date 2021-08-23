@@ -122,6 +122,7 @@ public final class CPUSampler implements Closeable {
     private long period = 10;
     private long delay = 0;
     private int stackLimit = 10000;
+    private boolean sampleContextInitialization = false;
     private SourceSectionFilter filter = DEFAULT_FILTER;
     private Timer samplerThread;
     private SamplingTimerTask samplerTask;
@@ -140,40 +141,42 @@ public final class CPUSampler implements Closeable {
                 }
             }
 
+            @Override
             public void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push and sample synthetic frame
+                // no code is allowed to run during context creation
             }
 
             @Override
             public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                // no code is allowed to run during context creation
             }
 
+            @Override
             public void onLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                // no code is allowed to run during context creation
             }
 
+            @Override
             public void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.pushSyntheticFrame(language, "initializeContext");
             }
 
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.popSyntheticFrame();
             }
 
+            @Override
             public void onLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.popSyntheticFrame();
             }
 
             @Override
             public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
             }
 
             @Override
             public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
             }
 
             @Override
@@ -300,6 +303,21 @@ public final class CPUSampler implements Closeable {
     @SuppressWarnings("unused")
     public synchronized void setDelaySamplingUntilNonInternalLangInit(boolean delaySamplingUntilNonInternalLangInit) {
         // Deprecated, a noop.
+    }
+
+    /**
+     * Enables or disables the sampling of the time spent during context initialization. If
+     * <code>true</code> code executed during context initialization is included in the general
+     * profile instead of grouping it into a single entry by default. If <code>false</code> a single
+     * entry will be created that contains all time spent in initialization. This can be useful to
+     * avoid polluting the general application profile with sampled stack frames that only run
+     * during initialization.
+     *
+     * @since 21.3
+     */
+    public synchronized void setSampleContextInitialization(boolean enabled) {
+        enterChangeConfig();
+        this.sampleContextInitialization = enabled;
     }
 
     /**
@@ -491,7 +509,7 @@ public final class CPUSampler implements Closeable {
             }
             TruffleContext context = activeContexts.keySet().iterator().next();
             Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context));
+            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
             for (StackSample stackSample : sample) {
                 stacks.put(stackSample.thread, stackSample.stack);
             }
@@ -665,7 +683,7 @@ public final class CPUSampler implements Closeable {
                 if (context.isClosed()) {
                     continue;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context));
+                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
                 synchronized (CPUSampler.this) {
                     if (!collecting) {
                         return;

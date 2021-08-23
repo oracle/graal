@@ -209,10 +209,11 @@ hfds arguments,name,node,receiver,receiverName,rootInstance,variables
 
 CLSS public abstract com.oracle.truffle.api.ThreadLocalAction
 cons protected init(boolean,boolean)
+cons protected init(boolean,boolean,boolean)
 innr public abstract static Access
 meth protected abstract void perform(com.oracle.truffle.api.ThreadLocalAction$Access)
 supr java.lang.Object
-hfds hasSideEffects,synchronous
+hfds recurring,hasSideEffects,synchronous
 
 CLSS public abstract static com.oracle.truffle.api.ThreadLocalAction$Access
  outer com.oracle.truffle.api.ThreadLocalAction

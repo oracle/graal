@@ -110,6 +110,7 @@ import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationException;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
+import com.oracle.truffle.polyglot.PolyglotThreadLocalActions.HandshakeConfig;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -565,7 +566,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     synchronized Future<Void> pause() {
         PauseThreadLocalAction pauseAction = new PauseThreadLocalAction(this);
-        Future<Void> future = threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, pauseAction, true, true, false, false);
+        Future<Void> future = threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, pauseAction, new HandshakeConfig(true, true, false, false));
         pauseThreadLocalActions.add(pauseAction);
         return new ContextPauseHandle(pauseAction, future);
     }
@@ -689,7 +690,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                             threadLocalActionIterator.remove();
                         } else {
                             if (activatedActions == null || !activatedActions.contains(threadLocalAction)) {
-                                threadLocalActions.submit(new Thread[]{Thread.currentThread()}, PolyglotEngineImpl.ENGINE_ID, threadLocalAction, true, true, false, false);
+                                threadLocalActions.submit(new Thread[]{Thread.currentThread()}, PolyglotEngineImpl.ENGINE_ID, threadLocalAction, new HandshakeConfig(true, true, false, false));
                             }
                         }
                     }
@@ -888,7 +889,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
         for (PolyglotLanguageContext context : contexts) {
             if (context.isInitialized()) {
-                LANGUAGE.initializeMultiThreading(context.env);
+                context.ensureMultiThreadingInitialized();
             }
         }
         singleThreaded = false;
@@ -2698,7 +2699,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
         @Override
         protected void perform(Access access) {
-            PolyglotContextImpl.this.threadLocalActions.submit(new Thread[]{access.getThread()}, PolyglotEngineImpl.ENGINE_ID, this, true, false, false, true);
+            PolyglotContextImpl.this.threadLocalActions.submit(new Thread[]{access.getThread()}, PolyglotEngineImpl.ENGINE_ID, this, new HandshakeConfig(true, false, false, true));
 
             State localState = PolyglotContextImpl.this.state;
             if (localState.isInvalidOrClosed() || localState.isCancelling()) {

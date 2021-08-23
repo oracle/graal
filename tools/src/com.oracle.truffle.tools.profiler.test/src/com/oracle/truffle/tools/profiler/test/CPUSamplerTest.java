@@ -24,11 +24,16 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -36,13 +41,19 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 public class CPUSamplerTest extends AbstractProfilerTest {
 
-    private static CPUSampler sampler;
+    private CPUSampler sampler;
 
     final int executionCount = 10;
 
@@ -50,8 +61,81 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void setupSampler() {
         sampler = CPUSampler.find(context.getEngine());
         Assert.assertNotNull(sampler);
-        synchronized (sampler) {
-            sampler.setGatherSelfHitTimes(true);
+        sampler.setGatherSelfHitTimes(true);
+    }
+
+    @Test
+    public void testInitializeContext() {
+        RootNode dummy = RootNode.createConstantNode(42);
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeContext(LanguageContext c) throws Exception {
+                for (int i = 0; i < 50; i++) {
+                    Thread.sleep(1);
+                    TruffleSafepoint.pollHere(dummy);
+                }
+            }
+        });
+
+        sampler.setPeriod(1);
+        sampler.clearData();
+        sampler.setCollecting(true);
+        context.initialize(ProxyLanguage.ID);
+        sampler.setCollecting(false);
+
+        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        assertEquals(1, data.size());
+
+        assertEquals(1, searchInitializeContext(data).size());
+    }
+
+    @Test
+    public void testSampleContextInitialization() {
+        RootNode dummy = RootNode.createConstantNode(42);
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeContext(LanguageContext c) throws Exception {
+                for (int i = 0; i < 50; i++) {
+                    Thread.sleep(1);
+                    TruffleSafepoint.pollHere(dummy);
+                }
+            }
+        });
+
+        sampler.setPeriod(1);
+        sampler.setSampleContextInitialization(true);
+        sampler.setCollecting(true);
+        context.initialize(ProxyLanguage.ID);
+        sampler.setCollecting(false);
+
+        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        assertEquals(1, data.size());
+
+        assertEquals(0, searchInitializeContext(data).size());
+    }
+
+    private static List<ProfilerNode<Payload>> searchInitializeContext(Map<TruffleContext, CPUSamplerData> data) {
+        List<ProfilerNode<Payload>> found = new ArrayList<>();
+        for (CPUSamplerData d : data.values()) {
+            Map<Thread, Collection<ProfilerNode<Payload>>> threadData = d.getThreadData();
+            assertEquals(threadData.toString(), 1, threadData.size());
+
+            searchNodes(found, threadData.values().iterator().next(), (node) -> {
+                return node.getRootName().equals("<<" + ProxyLanguage.ID + ":initializeContext>>");
+            });
+
+        }
+        return found;
+    }
+
+    private static void searchNodes(List<ProfilerNode<CPUSampler.Payload>> results, Collection<ProfilerNode<CPUSampler.Payload>> data, Predicate<ProfilerNode<CPUSampler.Payload>> predicate) {
+        for (ProfilerNode<CPUSampler.Payload> node : data) {
+            if (predicate.test(node)) {
+                results.add(node);
+            }
+            searchNodes(results, node.getChildren(), predicate);
         }
     }
 
