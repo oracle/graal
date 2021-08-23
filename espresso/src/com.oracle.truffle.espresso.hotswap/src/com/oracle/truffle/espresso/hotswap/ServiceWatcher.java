@@ -241,11 +241,6 @@ final class ServiceWatcher {
             // register watch on parent folder
             Path dir = resourcePath.getParent();
             dir.register(watchService, WATCH_KINDS);
-
-            // also register an ENTRY_DELETE listener on the parents parent folder to manage
-            // recreation on folders correctly
-            addDeletedFolder(dir, resourcePath);
-            dir.getParent().register(watchService, WATCH_KINDS);
         }
 
         private void addDeletedFolder(Path path, Path leaf) {
@@ -292,9 +287,18 @@ final class ServiceWatcher {
                         Path resourcePath = watchPath.resolve(fileName);
                         if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
                             if (watchActions.containsKey(resourcePath)) {
-                                // IDE sometimes perform a delete -> create cycle
-                                // we only fire actions when the resource was modified,
-                                // so no need for further actions here
+                                // the parent folder could also be deleted without us noticing that,
+                                // so register a watch on the parent
+                                addDeletedFolder(watchPath, resourcePath);
+                                try {
+                                    watchPath.getParent().register(watchService, WATCH_KINDS);
+                                } catch (IOException e) {
+                                    // folder could be already deleted, we check
+                                    // for that below and take action if so
+                                }
+                                if (!Files.exists(watchPath)) {
+                                    handleDeletedFolderEvent(watchPath);
+                                }
                                 continue;
                             } else if (deletedFolderMap.containsKey(resourcePath)) {
                                 handleDeletedFolderEvent(resourcePath);
