@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -44,13 +43,14 @@ import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.FieldInfo;
+import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 public class OmitPreviousConfigTests {
 
@@ -69,7 +69,7 @@ public class OmitPreviousConfigTests {
                     }
                     return resourceURL.toURI();
                 } catch (Exception e) {
-                    throw UserError.abort(e, "Unexpected error while locating the configuration files.");
+                    throw VMError.shouldNotReachHere("Unexpected error while locating the configuration files.", e);
                 }
             });
 
@@ -89,7 +89,7 @@ public class OmitPreviousConfigTests {
                             configurationSet.loadResourceConfig(handler), configurationSet.loadSerializationConfig(handler),
                             configurationSet.loadPredefinedClassesConfig(null, shouldExcludeClassesWithHash, handler), previous);
         } catch (Exception e) {
-            throw UserError.abort(e, "Unexpected error while loading the configuration files.");
+            throw VMError.shouldNotReachHere("Unexpected error while loading the configuration files.", e);
         }
     }
 
