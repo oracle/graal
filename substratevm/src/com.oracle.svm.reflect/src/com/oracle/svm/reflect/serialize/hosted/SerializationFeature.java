@@ -27,6 +27,8 @@ package com.oracle.svm.reflect.serialize.hosted;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
+
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
 import java.io.Serializable;
@@ -40,15 +42,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.util.json.JSONParserException;
-import com.oracle.svm.reflect.serialize.SerializationRegistry;
-import jdk.vm.ci.meta.MetaUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
+import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -57,16 +56,18 @@ import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
+import com.oracle.svm.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
+import jdk.vm.ci.meta.MetaUtil;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
@@ -81,19 +82,18 @@ public class SerializationFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
-
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         SerializationTypeResolver typeResolver = new SerializationTypeResolver(imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
         serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver);
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
 
-        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser(serializationDenyRegistry);
+        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser(serializationDenyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
         ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
                         ConfigurationFile.SERIALIZATION_DENY.getFileName());
 
-        SerializationConfigurationParser parser = new SerializationConfigurationParser(serializationBuilder);
+        SerializationConfigurationParser parser = new SerializationConfigurationParser(serializationBuilder, ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationConfigurationFiles, ConfigurationFiles.Options.SerializationConfigurationResources,
                         ConfigurationFile.SERIALIZATION.getFileName());

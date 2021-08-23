@@ -68,7 +68,7 @@ public class ClassPredefinitionFeature implements Feature {
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
         PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);
-        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry);
+        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry, ConfigurationFiles.Options.StrictConfiguration.getValue());
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
                         ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
                         ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());

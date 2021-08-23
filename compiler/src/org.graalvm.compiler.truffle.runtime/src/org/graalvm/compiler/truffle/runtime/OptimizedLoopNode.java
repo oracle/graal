@@ -30,23 +30,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
-public final class OptimizedLoopNode extends LoopNode {
-
-    @Child private RepeatingNode repeatingNode;
+public final class OptimizedLoopNode extends AbstractOptimizedLoopNode {
 
     OptimizedLoopNode(RepeatingNode repeatingNode) {
-        this.repeatingNode = repeatingNode;
-    }
-
-    @Override
-    public RepeatingNode getRepeatingNode() {
-        return repeatingNode;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        execute(frame);
+        super(repeatingNode);
     }
 
     @Override
@@ -54,7 +41,7 @@ public final class OptimizedLoopNode extends LoopNode {
         Object status;
         long loopCount = 0;
         try {
-            while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame))) {
+            while (inject(repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame)))) {
                 if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.hasNextTier()) {
                     loopCount++;
                 }
@@ -62,6 +49,7 @@ public final class OptimizedLoopNode extends LoopNode {
             }
             return status;
         } finally {
+            profileCounted(loopCount);
             reportLoopCount(this, OptimizedOSRLoopNode.toIntOrMaxInt(loopCount));
         }
     }

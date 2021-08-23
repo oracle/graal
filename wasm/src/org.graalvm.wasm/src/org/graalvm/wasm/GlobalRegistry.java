@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,10 @@ package org.graalvm.wasm;
 
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.globals.WasmGlobal;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * The global registry holds the global values in the WebAssembly engine instance.
@@ -110,102 +110,25 @@ public class GlobalRegistry {
     }
 
     public int loadAsInt(int address) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            return (int) global.getValue();
-        }
-        return (int) globals[address];
-    }
-
-    public int loadFloatAsInt(int address) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            return Float.floatToRawIntBits((float) global.getValue());
-        }
-        return (int) globals[address];
+        return (int) loadAsLong(address);
     }
 
     public long loadAsLong(int address) {
         if (address < 0) {
             final WasmGlobal global = externalGlobals[-address - 1];
-            return (long) global.getValue();
+            return global.loadAsLong();
         }
         return globals[address];
-    }
-
-    public long loadDoubleAsLong(int address) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            return Double.doubleToRawLongBits((double) global.getValue());
-        }
-        return globals[address];
-    }
-
-    public float loadAsFloat(int address) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            return (float) global.getValue();
-        }
-        return Float.intBitsToFloat((int) globals[address]);
-    }
-
-    public double loadAsDouble(int address) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            return (double) global.getValue();
-        }
-        return Double.longBitsToDouble(globals[address]);
     }
 
     public void storeInt(int address, int value) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            global.setValue(value);
-        } else {
-            globals[address] = value;
-        }
+        storeLong(address, value);
     }
 
     public void storeLong(int address, long value) {
         if (address < 0) {
             final WasmGlobal global = externalGlobals[-address - 1];
-            global.setValue(value);
-        } else {
-            globals[address] = value;
-        }
-    }
-
-    public void storeFloat(int address, float value) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            global.setValue(value);
-        } else {
-            globals[address] = Float.floatToRawIntBits(value);
-        }
-    }
-
-    public void storeFloatWithInt(int address, int value) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            global.setValue(value);
-        } else {
-            globals[address] = value;
-        }
-    }
-
-    public void storeDouble(int address, double value) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            global.setValue(value);
-        } else {
-            globals[address] = Double.doubleToRawLongBits(value);
-        }
-    }
-
-    public void storeDoubleWithLong(int address, long value) {
-        if (address < 0) {
-            final WasmGlobal global = externalGlobals[-address - 1];
-            global.setValue(value);
+            global.storeLong(value);
         } else {
             globals[address] = value;
         }
@@ -225,8 +148,8 @@ public class GlobalRegistry {
     }
 
     public WasmGlobal externalGlobal(int address) {
+        CompilerAsserts.neverPartOfCompilation();
         if (address >= 0) {
-            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Global at address " + address + " is not external.");
         }
         return externalGlobals[-address - 1];

@@ -303,8 +303,7 @@ public class ValueAssert {
                     break;
                 case INSTANTIABLE:
                     assertFalse(value.canInstantiate());
-                    // TODO remove PolyglotException if GR-21743 and GR-21744 is fixed.
-                    // assertFails(() -> value.newInstance(), UnsupportedOperationException.class);
+                    assertFails(() -> value.newInstance(), UnsupportedOperationException.class);
                     if (value.isNull()) {
                         assertNull(value.as(Function.class));
                         assertNull(value.as(IsFunctionalInterfaceVarArgs.class));
@@ -326,12 +325,9 @@ public class ValueAssert {
                     break;
                 case ARRAY_ELEMENTS:
                     assertFalse(value.hasArrayElements());
-                    // temporary workaround for GR-21744
-                    // assertFails(() -> value.getArrayElement(0),
-                    // UnsupportedOperationException.class);
-                    // assertFails(() -> value.setArrayElement(0, null),
-                    // UnsupportedOperationException.class);
-                    // assertFails(() -> value.getArraySize(), UnsupportedOperationException.class);
+                    assertFails(() -> value.getArrayElement(0), UnsupportedOperationException.class);
+                    assertFails(() -> value.setArrayElement(0, null), UnsupportedOperationException.class);
+                    assertFails(() -> value.getArraySize(), UnsupportedOperationException.class);
                     if (!value.isNull()) {
                         if ((!value.isHostObject() || (!(value.asHostObject() instanceof List) && !(value.asHostObject() instanceof Object[])))) {
                             assertFails(() -> value.as(List.class), ClassCastException.class);
@@ -972,15 +968,13 @@ public class ValueAssert {
         if (value.fitsInByte()) {
             value.asByte();
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asByte(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asByte(), ClassCastException.class);
         }
         if (value.fitsInShort()) {
             short shortValue = value.asShort();
             assertEquals((byte) shortValue == shortValue, value.fitsInByte());
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asShort(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asShort(), ClassCastException.class);
         }
 
         if (value.fitsInInt()) {
@@ -988,8 +982,7 @@ public class ValueAssert {
             assertEquals((byte) intValue == intValue, value.fitsInByte());
             assertEquals((short) intValue == intValue, value.fitsInShort());
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asInt(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asInt(), ClassCastException.class);
         }
 
         if (value.fitsInLong()) {
@@ -998,22 +991,19 @@ public class ValueAssert {
             assertEquals((short) longValue == longValue, value.fitsInShort());
             assertEquals((int) longValue == longValue, value.fitsInInt());
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asLong(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asLong(), ClassCastException.class);
         }
 
         if (value.fitsInFloat()) {
             value.asFloat();
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asFloat(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asFloat(), ClassCastException.class);
         }
 
         if (value.fitsInDouble()) {
             value.asDouble();
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asDouble(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asDouble(), ClassCastException.class);
         }
     }
 

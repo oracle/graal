@@ -43,6 +43,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -53,10 +54,12 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -109,7 +112,7 @@ public abstract class VMThreads {
      * still holds that mutex.</li>
      * </ul>
      */
-    protected static final VMMutex THREAD_MUTEX = new VMMutex();
+    protected static final VMMutex THREAD_MUTEX = new VMMutex("thread");
 
     /**
      * A condition variable for waiting for and notifying on changes to the {@link IsolateThread}
@@ -139,6 +142,13 @@ public abstract class VMThreads {
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord();
     protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord();
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord();
+    /** The highest stack address. */
+    public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord();
+    /**
+     * The lowest stack address. Note that this value does not necessarily match the value that is
+     * used for the stack overflow check.
+     */
+    public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord();
 
     private static final int STATE_UNINITIALIZED = 1;
     private static final int STATE_INITIALIZING = 2;
@@ -561,6 +571,32 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean ownsThreadMutex() {
         return THREAD_MUTEX.isOwner();
+    }
+
+    public static boolean printLocationInfo(Log log, UnsignedWord value) {
+        for (IsolateThread thread = firstThreadUnsafe(); thread.isNonNull(); thread = nextThread(thread)) {
+            if (thread.equal(value)) {
+                log.string("is a thread");
+                return true;
+            }
+
+            UnsignedWord stackBase = StackBase.get(thread);
+            UnsignedWord stackEnd = StackEnd.get(thread);
+            if (value.belowOrEqual(stackBase) && value.aboveOrEqual(stackEnd)) {
+                log.string("points into the stack for thread ").zhex(thread);
+                return true;
+            }
+
+            if (SubstrateOptions.MultiThreaded.getValue()) {
+                int sizeOfThreadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class).vmThreadSize;
+                UnsignedWord endOfThreadLocals = ((UnsignedWord) thread).add(sizeOfThreadLocals);
+                if (value.aboveOrEqual((UnsignedWord) thread) && value.belowThan(endOfThreadLocals)) {
+                    log.string("points into the thread locals for thread ").zhex(thread);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /*

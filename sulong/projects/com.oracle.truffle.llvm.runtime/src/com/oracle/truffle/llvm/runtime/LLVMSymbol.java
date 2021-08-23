@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -76,30 +76,70 @@ public abstract class LLVMSymbol {
     /**
      * Get the unique index of the symbol. The index is assigned during parsing. Symbols that are
      * not created from parsing or that are alias have the value of -1.
-     *
-     * @param illegalOK if symbols created not from bitcode files can be retrieved.
      */
-    public final int getSymbolIndex(boolean illegalOK) {
-        if (symbolIndex >= 0 || illegalOK) {
+    public final int getSymbolIndexIllegalOk() {
+        return symbolIndex;
+    }
+
+    /**
+     * Get the unique index of the symbol. The index is assigned during parsing. Symbols that are
+     * not created from parsing or that are alias throw an {@link LLVMIllegalSymbolIndexException}.
+     *
+     * @param exception a {@link BranchProfile} for the exception case
+     */
+    public final int getSymbolIndex(BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        if (symbolIndex >= 0) {
             return symbolIndex;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMIllegalSymbolIndexException("Invalid function index: " + symbolIndex);
+        exception.enter();
+        throw new LLVMIllegalSymbolIndexException("invalid symbol index");
+    }
+
+    /**
+     * Get the unique index of the symbol. The index is assigned during parsing. Symbols that are
+     * not created from parsing or that are alias throw an {@link LLVMIllegalSymbolIndexException}.
+     *
+     * This function does not profile the exception case, and can not be used from compiled code.
+     */
+    public final int getSymbolIndexUncached() throws LLVMIllegalSymbolIndexException {
+        CompilerAsserts.neverPartOfCompilation();
+        return getSymbolIndex(BranchProfile.getUncached());
     }
 
     /**
      * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
      * unqiue per bitcode file. Symbols that are not created from parsing or that are alias have the
      * value of null.
-     *
-     * @param illegalOK if symbols created not from bitcode files can be retrieved.
      */
-    public final BitcodeID getBitcodeID(boolean illegalOK) {
-        if (bitcodeID != null || illegalOK) {
+    public final BitcodeID getBitcodeIDIllegalOk() {
+        return bitcodeID;
+    }
+
+    /**
+     * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
+     * unqiue per bitcode file. Symbols that are not created from parsing or that are alias throw an
+     * {@link LLVMIllegalSymbolIndexException}.
+     *
+     * @param exception a {@link BranchProfile} for the exception case
+     */
+    public final BitcodeID getBitcodeID(BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        if (bitcodeID != null) {
             return bitcodeID;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMIllegalSymbolIndexException("Invalid function ID: " + bitcodeID);
+        exception.enter();
+        throw new LLVMIllegalSymbolIndexException("invalid bitcode ID");
+    }
+
+    /**
+     * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
+     * unqiue per bitcode file. Symbols that are not created from parsing or that are alias throw an
+     * {@link LLVMIllegalSymbolIndexException}.
+     *
+     * This function does not profile the exception case, and can not be used from compiled code.
+     */
+    public final BitcodeID getBitcodeIDUncached() throws LLVMIllegalSymbolIndexException {
+        CompilerAsserts.neverPartOfCompilation();
+        return getBitcodeID(BranchProfile.getUncached());
     }
 
     public final boolean hasValidIndexAndID() {

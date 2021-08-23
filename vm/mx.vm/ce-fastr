@@ -1,0 +1,4 @@
+DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-js,fastr
+EXCLUDE_COMPONENTS=nju,nic,ni,nil,dis,pbm,pmh,llmulrl
+FORCE_BASH_LAUNCHERS=polyglot,polybench,RMain
+SKIP_LIBRARIES=polyglot

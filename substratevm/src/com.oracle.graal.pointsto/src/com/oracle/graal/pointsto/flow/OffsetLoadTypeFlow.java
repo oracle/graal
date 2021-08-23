@@ -264,7 +264,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                 return update;
             } else {
                 /* Filter the incoming state with the partition type. */
-                return TypeState.forIntersection(bb, update, partitionType.getTypeFlow(bb, true).getState());
+                return TypeState.forIntersection(bb, update, partitionType.getAssignableTypes(true));
             }
         }
 

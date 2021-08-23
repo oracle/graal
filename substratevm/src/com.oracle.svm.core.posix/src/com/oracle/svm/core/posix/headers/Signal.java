@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
@@ -91,8 +92,19 @@ public class Signal {
     @CFunction
     public static native int raise(int signum);
 
-    @CStruct
+    @CStruct(isIncomplete = true)
     public interface siginfo_t extends PointerBase {
+        @CField
+        int si_signo();
+
+        @CField
+        int si_errno();
+
+        @CField
+        int si_code();
+
+        @CField
+        VoidPointer si_addr();
     }
 
     @Platforms(Platform.LINUX.class)
@@ -278,6 +290,9 @@ public class Signal {
 
     @CConstant
     public static native int SA_SIGINFO();
+
+    @CConstant
+    public static native int SA_NODEFER();
 
     @CStruct(addStructKeyword = true)
     public interface sigaction extends PointerBase {

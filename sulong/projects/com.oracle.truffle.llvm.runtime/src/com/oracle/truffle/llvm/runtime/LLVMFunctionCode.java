@@ -47,6 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCodeFactory.ResolveFunctionNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -92,10 +93,12 @@ public final class LLVMFunctionCode {
     private static final class TagSulongFunctionPointerNode extends RootNode {
 
         private final LLVMFunctionCode functionCode;
+        private final BranchProfile exceptionBranch;
 
         TagSulongFunctionPointerNode(LLVMFunctionCode functionCode) {
             super(LLVMLanguage.get(null));
             this.functionCode = functionCode;
+            this.exceptionBranch = BranchProfile.create();
         }
 
         private static long tagSulongFunctionPointer(int id) {
@@ -104,7 +107,7 @@ public final class LLVMFunctionCode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            int id = functionCode.getLLVMFunction().getSymbolIndex(false);
+            int id = functionCode.getLLVMFunction().getSymbolIndex(exceptionBranch);
             return LLVMNativePointer.create(tagSulongFunctionPointer(id));
         }
     }
@@ -416,14 +419,9 @@ public final class LLVMFunctionCode {
 
     public Object getNativeFunctionSlowPath() {
         CompilerAsserts.neverPartOfCompilation();
-        return getNativeFunction(ResolveFunctionNodeGen.getUncached());
-    }
-
-    public Object getNativeFunction(ResolveFunctionNode resolve) {
-        Function fn = resolve.execute(getFunction(), this);
+        Function fn = ResolveFunctionNodeGen.getUncached().execute(getFunction(), this);
         Object nativeFunction = ((NativeFunction) fn).nativeFunction;
         if (nativeFunction == null) {
-            CompilerDirectives.transferToInterpreter();
             throw new LLVMLinkerException("Native function " + fn.toString() + " not found");
         }
         return nativeFunction;
@@ -434,30 +432,44 @@ public final class LLVMFunctionCode {
     private CallTarget foreignFunctionCallTarget;
     private CallTarget foreignConstructorCallTarget;
 
-    CallTarget getForeignCallTarget(LLVMFunctionDescriptor functionDescriptor) {
-        if (foreignFunctionCallTarget == null) {
-            CompilerDirectives.transferToInterpreter();
+    @TruffleBoundary
+    private void initForeignCallTarget() {
+        synchronized (this) {
+            if (foreignFunctionCallTarget != null) {
+                return;
+            }
+
             LLVMLanguage language = LLVMLanguage.get(null);
             LLVMSourceFunctionType sourceType = getFunction().getSourceType();
             LLVMInteropType interopType = language.getInteropType(sourceType);
 
             RootNode foreignCall;
             if (isIntrinsicFunctionSlowPath()) {
-                FunctionType type = functionDescriptor.getLLVMFunction().getType();
+                FunctionType type = getLLVMFunction().getType();
                 foreignCall = LLVMForeignIntrinsicCallNode.create(language, getIntrinsicSlowPath(), type, (LLVMInteropType.Function) interopType);
             } else {
-                foreignCall = LLVMForeignFunctionCallNode.create(language, functionDescriptor, interopType, sourceType);
+                foreignCall = LLVMForeignFunctionCallNode.create(language, this, interopType, sourceType);
             }
 
             foreignFunctionCallTarget = LLVMLanguage.createCallTarget(foreignCall);
+        }
+    }
+
+    CallTarget getForeignCallTarget() {
+        if (foreignFunctionCallTarget == null) {
+            initForeignCallTarget();
             assert foreignFunctionCallTarget != null;
         }
         return foreignFunctionCallTarget;
     }
 
-    CallTarget getForeignConstructorCallTarget(LLVMFunctionDescriptor functionDescriptor) {
-        if (foreignConstructorCallTarget == null) {
-            CompilerDirectives.transferToInterpreter();
+    @TruffleBoundary
+    private void initForeignConstructorCallTarget() {
+        synchronized (this) {
+            if (foreignConstructorCallTarget != null) {
+                return;
+            }
+
             LLVMLanguage language = LLVMLanguage.get(null);
             LLVMSourceFunctionType sourceType = getFunction().getSourceType();
             LLVMInteropType interopType = language.getInteropType(sourceType);
@@ -465,9 +477,15 @@ public final class LLVMFunctionCode {
             if (extractedType instanceof LLVMInteropType.Value) {
                 LLVMInteropType.Structured structured = ((LLVMInteropType.Value) extractedType).baseType;
                 LLVMForeignCallNode foreignCall = LLVMForeignConstructorCallNode.create(
-                                language, functionDescriptor, interopType, sourceType, structured);
+                                language, this, interopType, sourceType, structured);
                 foreignConstructorCallTarget = LLVMLanguage.createCallTarget(foreignCall);
             }
+        }
+    }
+
+    CallTarget getForeignConstructorCallTarget() {
+        if (foreignConstructorCallTarget == null) {
+            initForeignConstructorCallTarget();
             assert foreignConstructorCallTarget != null;
         }
         return foreignConstructorCallTarget;

@@ -586,7 +586,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                         haystack = fp.read()
                         needle = 'MoveOperations (dynamic counters)'
                         if needle not in haystack:
-                            mx.abort('Expected to see "' + needle + '" in output of length ' + len(haystack) + ':\n' + haystack)
+                            mx.abort('Expected to see "' + needle + '" in output of length ' + str(len(haystack)) + ':\n' + haystack)
                 finally:
                     os.remove(logFile)
 

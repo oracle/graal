@@ -29,6 +29,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -87,7 +88,14 @@ public interface StackOverflowCheck {
      * platforms use this direction.
      */
     interface OSSupport {
-        @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
+        /** The highest address of the stack or zero if not supported. */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        default UnsignedWord lookupStackBase() {
+            return WordFactory.zero();
+        }
+
+        /** The lowest address of the stack. */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         UnsignedWord lookupStackEnd();
     }
 

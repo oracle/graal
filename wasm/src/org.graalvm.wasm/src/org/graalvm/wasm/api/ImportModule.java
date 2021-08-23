@@ -44,6 +44,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
@@ -70,13 +71,17 @@ public class ImportModule extends BuiltinModule {
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null));
+        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null), functions.size());
         for (Map.Entry<String, Pair<WasmFunction, Object>> entry : functions.entrySet()) {
             final String functionName = entry.getKey();
             final Pair<WasmFunction, Object> info = entry.getValue();
             final WasmFunction function = info.getLeft();
             final SymbolTable.FunctionType type = function.type();
-            defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
+            if (info.getRight() instanceof WasmFunctionInstance) {
+                defineExportedFunction(instance, functionName, type.paramTypes(), type.returnTypes(), (WasmFunctionInstance) info.getRight());
+            } else {
+                defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
+            }
         }
         for (Map.Entry<String, WasmMemory> entry : memories.entrySet()) {
             final String memoryName = entry.getKey();

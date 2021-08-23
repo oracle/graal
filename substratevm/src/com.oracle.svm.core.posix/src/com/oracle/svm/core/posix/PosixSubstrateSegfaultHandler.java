@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateSegfaultHandler;
@@ -40,6 +41,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.MemoryProtectionKeyProvider;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
@@ -68,12 +70,23 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         }
 
         if (tryEnterIsolate(uContext)) {
-            if (MemoryProtectionKeyProvider.isAvailable()) {
-                MemoryProtectionKeyProvider.singleton().printSignalInfo(sigInfo);
-            }
-
-            dump(uContext);
+            dump(sigInfo, uContext);
             throw VMError.shouldNotReachHere();
+        }
+    }
+
+    @Override
+    protected void printSignalInfo(Log log, PointerBase signalInfo) {
+        if (MemoryProtectionKeyProvider.isAvailable()) {
+            MemoryProtectionKeyProvider.singleton().printSignalInfo(signalInfo);
+        } else {
+            siginfo_t sigInfo = (siginfo_t) signalInfo;
+            log.string("siginfo: si_signo: ").signed(sigInfo.si_signo()).string(", si_code: ").signed(sigInfo.si_code());
+            if (sigInfo.si_errno() != 0) {
+                log.string(", si_errno: ").signed(sigInfo.si_errno());
+            }
+            log.string(", si_addr: ").signed(sigInfo.si_addr());
+            log.newline();
         }
     }
 
@@ -87,7 +100,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         sigaction structSigAction = StackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
         /* Register sa_sigaction signal handler */
-        structSigAction.sa_flags(Signal.SA_SIGINFO());
+        structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER());
         structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
         Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
         Signal.sigaction(Signal.SignalEnum.SIGBUS, structSigAction, WordFactory.nullPointer());

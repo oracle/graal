@@ -383,9 +383,13 @@ public final class TRegexCompilationRequest {
                         Json.prop("pureNfaStates", pureNFA == null ? 0 : pureNFA.getRoot().getNumberOfStates()),
                         Json.prop("nfaStates", nfa == null ? 0 : nfa.getNumberOfStates()),
                         Json.prop("nfaTransitions", nfa == null ? 0 : nfa.getNumberOfTransitions()),
-                        Json.prop("dfaStatesFwd", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfStates()),
-                        Json.prop("dfaStatesBck", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfStates()),
-                        Json.prop("dfaStatesCG", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfStates()),
+                        Json.prop("dfaFwdStates", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfStates()),
+                        Json.prop("dfaFwdTransitions", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfTransitions()),
+                        Json.prop("dfaBckStates", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfStates()),
+                        Json.prop("dfaBckTransitions", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfTransitions()),
+                        Json.prop("dfaCGStates", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfStates()),
+                        Json.prop("dfaCGTransitions", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfTransitions()),
+                        Json.prop("dfaCGTransitionsCG", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfCGTransitions()),
                         Json.prop("traceFinder", traceFinderNFA != null),
                         Json.prop("compilerResult", compilerResultToString(result))).toString() + ",");
     }

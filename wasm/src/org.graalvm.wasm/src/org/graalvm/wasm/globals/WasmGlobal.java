@@ -45,6 +45,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.wasm.api.ValueType;
 
 public abstract class WasmGlobal implements TruffleObject {
+
     private final ValueType valueType;
     private final boolean mutable;
 
@@ -53,10 +54,6 @@ public abstract class WasmGlobal implements TruffleObject {
         this.mutable = mutable;
     }
 
-    public abstract Object getValue();
-
-    public abstract void setValue(Object value);
-
     public ValueType getValueType() {
         return valueType;
     }
@@ -64,4 +61,12 @@ public abstract class WasmGlobal implements TruffleObject {
     public boolean isMutable() {
         return mutable;
     }
+
+    public abstract int loadAsInt();
+
+    public abstract long loadAsLong();
+
+    public abstract void storeInt(int value);
+
+    public abstract void storeLong(long value);
 }

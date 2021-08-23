@@ -165,7 +165,12 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
     protected static int getImageHeapOffsetInternal(SubstrateObjectConstant constant) {
         Object object = SubstrateObjectConstant.asObject(constant);
         assert object != null;
-        if (Heap.getHeap().isInImageHeap(object)) {
+        /*
+         * Provide offsets only for objects in the primary image heap, any optimizations for
+         * auxiliary image heaps can lead to trouble when generated code and their objects are built
+         * into yet another auxiliary image and the object offsets change.
+         */
+        if (Heap.getHeap().isInPrimaryImageHeap(object)) {
             SignedWord base = (SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
             SignedWord offset = Word.objectToUntrackedPointer(object).subtract(base);
             return NumUtil.safeToInt(offset.rawValue());

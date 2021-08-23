@@ -134,6 +134,9 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "MinSamples", help = "Remove elements from output if they have less samples than this value (default: 0).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> MIN_SAMPLES = new OptionKey<>(0);
 
+    @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
+
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
         try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
             Boolean summariseThreads = env.getOptions().get(SUMMARISE_THREADS);

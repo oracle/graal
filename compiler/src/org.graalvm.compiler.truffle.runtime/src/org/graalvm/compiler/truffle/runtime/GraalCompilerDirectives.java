@@ -31,9 +31,9 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
  */
 public class GraalCompilerDirectives {
     /**
-     * Returns a boolean value indicating whether the method is executed in a compiled tier wich can
-     * be replaced with a higher tier (e.g. a first tier compilation can be replaced with a second
-     * tier compilation).
+     * Returns a boolean value indicating whether the method is executed in a compiled tier which
+     * can be replaced with a higher tier (e.g. a first tier compilation can be replaced with a
+     * second tier compilation).
      *
      * {@link PolyglotCompilerOptions#MultiTier}
      *

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -43,6 +44,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
@@ -65,7 +67,7 @@ final class WindowsVMLockFeature implements Feature {
     private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, WindowsVMMutex>(VMMutex.class) {
         @Override
         protected WindowsVMMutex createReplacement(VMMutex source) {
-            return new WindowsVMMutex();
+            return new WindowsVMMutex(source.getName());
         }
     };
 
@@ -83,7 +85,7 @@ final class WindowsVMLockFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(WindowsVMLockSupport.class, new WindowsVMLockSupport());
+        ImageSingletons.add(VMLockSupport.class, new WindowsVMLockSupport());
         access.registerObjectReplacer(mutexReplacer);
         access.registerObjectReplacer(conditionReplacer);
     }
@@ -107,14 +109,14 @@ final class WindowsVMLockFeature implements Feature {
             nextIndex += conditionSize;
         }
 
-        WindowsVMLockSupport lockSupport = ImageSingletons.lookup(WindowsVMLockSupport.class);
+        WindowsVMLockSupport lockSupport = WindowsVMLockSupport.singleton();
         lockSupport.mutexes = mutexes;
         lockSupport.conditions = conditions;
         lockSupport.syncStructs = new byte[nextIndex];
     }
 }
 
-public final class WindowsVMLockSupport {
+public final class WindowsVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = WindowsVMMutex[].class)//
     WindowsVMMutex[] mutexes;
@@ -132,16 +134,22 @@ public final class WindowsVMLockSupport {
     @UnknownObjectField(types = byte[].class)//
     byte[] syncStructs;
 
+    @Fold
+    public static WindowsVMLockSupport singleton() {
+        return (WindowsVMLockSupport) ImageSingletons.lookup(VMLockSupport.class);
+    }
+
     /**
      * Must be called once early during startup, before any mutex or condition is used.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
     public static void initialize() {
-        for (WindowsVMMutex mutex : ImageSingletons.lookup(WindowsVMLockSupport.class).mutexes) {
+        WindowsVMLockSupport support = WindowsVMLockSupport.singleton();
+        for (WindowsVMMutex mutex : support.mutexes) {
             // critical sections on windows always support recursive locking
             Process.InitializeCriticalSection(mutex.getStructPointer());
         }
-        for (WindowsVMCondition condition : ImageSingletons.lookup(WindowsVMLockSupport.class).conditions) {
+        for (WindowsVMCondition condition : support.conditions) {
             Process.InitializeConditionVariable(condition.getStructPointer());
         }
     }
@@ -159,6 +167,16 @@ public final class WindowsVMLockSupport {
             ImageSingletons.lookup(LogHandler.class).fatalError();
         }
     }
+
+    @Override
+    public VMMutex[] getMutexes() {
+        return mutexes;
+    }
+
+    @Override
+    public VMCondition[] getConditions() {
+        return conditions;
+    }
 }
 
 final class WindowsVMMutex extends VMMutex {
@@ -166,12 +184,13 @@ final class WindowsVMMutex extends VMMutex {
     UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected WindowsVMMutex() {
+    protected WindowsVMMutex(String name) {
+        super(name);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     Process.PCRITICAL_SECTION getStructPointer() {
-        return (Process.PCRITICAL_SECTION) Word.objectToUntrackedPointer(ImageSingletons.lookup(WindowsVMLockSupport.class).syncStructs).add(structOffset);
+        return (Process.PCRITICAL_SECTION) Word.objectToUntrackedPointer(WindowsVMLockSupport.singleton().syncStructs).add(structOffset);
     }
 
     @Override
@@ -229,7 +248,7 @@ final class WindowsVMCondition extends VMCondition {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     Process.PCONDITION_VARIABLE getStructPointer() {
-        return (Process.PCONDITION_VARIABLE) Word.objectToUntrackedPointer(ImageSingletons.lookup(WindowsVMLockSupport.class).syncStructs).add(structOffset);
+        return (Process.PCONDITION_VARIABLE) Word.objectToUntrackedPointer(WindowsVMLockSupport.singleton().syncStructs).add(structOffset);
     }
 
     @Override

@@ -38,6 +38,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -89,7 +90,8 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
     @Specialization(guards = "isRtldDefault(libraryHandle)")
     protected Object doDefaultHandle(@SuppressWarnings("unused") LLVMNativePointer libraryHandle,
                     @SuppressWarnings("unused") LLVMPointer symbolName,
-                    @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr) {
+                    @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr,
+                    @Cached BranchProfile exception) {
         LLVMContext ctx = LLVMContext.get(this);
         String name = readStr.executeWithTarget(symbolName);
         LLVMSymbol symbol = ctx.getGlobalScope().get(name);
@@ -101,7 +103,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
             }
             return nativeSymbol;
         }
-        return ctx.getSymbol(symbol);
+        return ctx.getSymbol(symbol, exception);
     }
 
     @TruffleBoundary

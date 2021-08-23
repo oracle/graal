@@ -51,6 +51,8 @@ import com.oracle.truffle.api.nodes.Node;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
+
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
 public final class WasmException extends AbstractTruffleException {
@@ -87,6 +89,18 @@ public final class WasmException extends AbstractTruffleException {
     @TruffleBoundary
     public static WasmException format(Failure failure, Node location, String format, Object... args) {
         return create(failure, location, String.format(format, args));
+    }
+
+    @BytecodeInterpreterSwitchBoundary
+    @TruffleBoundary
+    public static WasmException format(Failure failure, Node location, String format, Object arg) {
+        return create(failure, location, String.format(format, arg));
+    }
+
+    @BytecodeInterpreterSwitchBoundary
+    @TruffleBoundary
+    public static WasmException format(Failure failure, Node location, String format, int arg) {
+        return create(failure, location, String.format(format, arg));
     }
 
     @ExportMessage

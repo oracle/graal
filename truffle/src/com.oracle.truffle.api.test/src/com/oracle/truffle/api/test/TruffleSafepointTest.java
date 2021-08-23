@@ -1335,6 +1335,76 @@ public class TruffleSafepointTest {
     }
 
     @Test
+    public void testSubmitRecurringWaitWithCancel() {
+        forEachConfig((threads, events) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint.poll(node);
+                return false;
+            })) {
+                AtomicInteger eventCounter = new AtomicInteger();
+                ActionCollector runnable = new ActionCollector(setup, eventCounter, true, false, true);
+                List<Future<Void>> futures = new ArrayList<>();
+                for (int i = 0; i < events; i++) {
+                    futures.add(setup.instrumentEnv.submitThreadLocal(setup.env.getContext(), null, runnable));
+                }
+                for (Future<Void> future : futures) {
+                    waitOrFail(future);
+                    future.cancel(false);
+                }
+
+                setup.stopAndAwait();
+                assertTrue(runnable.ids.size() >= threads * events);
+            }
+        });
+    }
+
+    @Test
+    public void testSubmitRecurringWait() {
+        forEachConfig((threads, events) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint.poll(node);
+                return false;
+            })) {
+                AtomicInteger eventCounter = new AtomicInteger();
+                ActionCollector runnable = new ActionCollector(setup, eventCounter, true, false, true);
+                runnable.verifyLocation = false;
+                List<Future<Void>> futures = new ArrayList<>();
+                for (int i = 0; i < events; i++) {
+                    futures.add(setup.instrumentEnv.submitThreadLocal(setup.env.getContext(), null, runnable));
+                }
+                for (Future<Void> future : futures) {
+                    waitOrFail(future);
+                }
+
+                setup.stopAndAwait();
+                assertTrue(runnable.ids.size() >= threads * events);
+            }
+        });
+    }
+
+    @Test
+    public void testSubmitRecurringCancel() {
+        forEachConfig((threads, events) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint.poll(node);
+                return false;
+            })) {
+                AtomicInteger eventCounter = new AtomicInteger();
+                ActionCollector runnable = new ActionCollector(setup, eventCounter, true, false, true);
+                runnable.verifyLocation = false;
+                List<Future<Void>> futures = new ArrayList<>();
+                for (int i = 0; i < events; i++) {
+                    futures.add(setup.instrumentEnv.submitThreadLocal(setup.env.getContext(), null, runnable));
+                }
+                for (Future<Void> future : futures) {
+                    future.cancel(false);
+                }
+                setup.stopAndAwait();
+            }
+        });
+    }
+
+    @Test
     public void testNoSafepointAfterThreadDispose() {
         final ThreadLocal<Boolean> tl = new ThreadLocal<>();
 
@@ -1757,7 +1827,11 @@ public class TruffleSafepointTest {
         }
 
         ActionCollector(TestSetup setup, AtomicInteger counter, boolean sideEffect, boolean sync) {
-            super(sideEffect, sync);
+            this(setup, counter, sideEffect, sync, false);
+        }
+
+        ActionCollector(TestSetup setup, AtomicInteger counter, boolean sideEffect, boolean sync, boolean recurring) {
+            super(sideEffect, sync, recurring);
             this.setup = setup;
             this.counter = counter;
         }

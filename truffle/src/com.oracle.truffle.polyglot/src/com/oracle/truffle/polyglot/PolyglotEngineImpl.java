@@ -127,6 +127,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
+import com.oracle.truffle.polyglot.PolyglotLoggers.LoggerCache;
 
 final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -220,7 +221,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      * Node location to be used when no node is available. In the future this should no longer be
      * necessary as we should have a node for any VM operation.
      */
-    final HostToGuestRootNode uncachedLocation;
+    @CompilationFinal HostToGuestRootNode uncachedLocation;
 
     final PolyglotLanguageInstance hostLanguageInstance;
     @CompilationFinal AbstractHostService host; // effectively final
@@ -255,7 +256,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         Map<String, InstrumentInfo> instrumentInfos = new LinkedHashMap<>();
         this.idToInstrument = Collections.unmodifiableMap(initializeInstruments(instrumentInfos));
         this.idToInternalInstrumentInfo = Collections.unmodifiableMap(instrumentInfos);
-        engineLogger.setEngine(this);
         this.runtimeData = RUNTIME.createRuntimeData(engineOptions, engineLogger);
 
         this.classToLanguage = new HashMap<>();
@@ -292,7 +292,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         this.idToPublicInstrument = Collections.unmodifiableMap(publicInstruments);
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in, messageInterceptor, storeEngine);
-        this.uncachedLocation = createUncachedLocation(hostLanguageInstance.spi);
 
         if (!boundEngine) {
             initializeMultiContext();
@@ -321,6 +320,18 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             createInstruments(instrumentsOptions, allowExperimentalOptions);
             registerShutDownHook();
         }
+    }
+
+    void ensureUncachedLocationLoaded() {
+        assert Thread.holdsLock(lock);
+        if (this.uncachedLocation == null) {
+            this.uncachedLocation = createUncachedLocation(hostLanguageInstance.spi);
+        }
+    }
+
+    Node getUncachedLocation() {
+        assert uncachedLocation != null : "uncached location not yet initialized";
+        return uncachedLocation;
     }
 
     /**
@@ -465,11 +476,43 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             synchronized (this.lock) {
                 result = this.engineLogger;
                 if (result == null) {
-                    this.engineLogger = result = this.engineLoggerSupplier.apply(OPTION_GROUP_ENGINE);
+                    result = this.engineLoggerSupplier.apply(OPTION_GROUP_ENGINE);
+                    Object logger = EngineAccessor.LANGUAGE.getLoggerCache(result);
+                    LoggerCache loggerCache = (LoggerCache) EngineAccessor.LANGUAGE.getLoggersSPI(logger);
+                    loggerCache.setOwner(this);
+                    if (!logLevels.isEmpty()) {
+                        EngineAccessor.LANGUAGE.configureLoggers(this, logLevels, logger);
+                    }
+                    this.engineLogger = result;
                 }
             }
         }
         return result;
+    }
+
+    Object getOrCreateEngineLoggers() {
+        Object res = engineLoggers;
+        if (res == null) {
+            synchronized (this.lock) {
+                res = engineLoggers;
+                if (res == null) {
+                    LoggerCache loggerCache = PolyglotLoggers.LoggerCache.newEngineLoggerCache(this);
+                    loggerCache.setOwner(this);
+                    res = LANGUAGE.createEngineLoggers(loggerCache);
+                    if (!logLevels.isEmpty()) {
+                        EngineAccessor.LANGUAGE.configureLoggers(this, logLevels, res);
+                    }
+                    for (ContextWeakReference contextRef : contexts) {
+                        PolyglotContextImpl context = contextRef.get();
+                        if (context != null && !context.config.logLevels.isEmpty()) {
+                            LANGUAGE.configureLoggers(context, context.config.logLevels, res);
+                        }
+                    }
+                    engineLoggers = res;
+                }
+            }
+        }
+        return res;
     }
 
     static OptionDescriptors createEngineOptionDescriptors() {
@@ -510,7 +553,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
         this.engineLoggerSupplier = logSupplier;
         this.engineLogger = null;
-        logSupplier.setEngine(this);
 
         intitializeStore(wasStore, storeEngine);
 
@@ -886,6 +928,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     void addContext(PolyglotContextImpl context) {
         assert Thread.holdsLock(this.lock);
+
+        ensureUncachedLocationLoaded();
 
         if (limits != null) {
             limits.validate(context.config.limits);
@@ -1584,6 +1628,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     contextAddedToEngine = true;
                 }
             } else if (context.engine == this) {
+                assert context.engine.uncachedLocation != null;
                 replayEvents = true;
             }
         } catch (Throwable t) {
@@ -1730,26 +1775,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     OptionValuesImpl getEngineOptionValues() {
         return engineOptionValues;
-    }
-
-    Object getOrCreateEngineLoggers() {
-        Object res = engineLoggers;
-        if (res == null) {
-            synchronized (this.lock) {
-                res = engineLoggers;
-                if (res == null) {
-                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.LoggerCache.newEngineLoggerCache(this), logLevels);
-                    for (ContextWeakReference contextRef : contexts) {
-                        PolyglotContextImpl context = contextRef.get();
-                        if (context != null && !context.config.logLevels.isEmpty()) {
-                            LANGUAGE.configureLoggers(context, context.config.logLevels, res);
-                        }
-                    }
-                    engineLoggers = res;
-                }
-            }
-        }
-        return res;
     }
 
     Object getEngineLoggers() {
@@ -2050,10 +2075,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         } else {
             return version;
         }
-    }
-
-    Node getUncachedLocation() {
-        return uncachedLocation;
     }
 
 }

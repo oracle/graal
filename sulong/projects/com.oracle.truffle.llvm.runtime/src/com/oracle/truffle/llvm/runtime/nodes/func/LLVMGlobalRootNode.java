@@ -82,7 +82,7 @@ public class LLVMGlobalRootNode extends RootNode {
         try {
             Object appPath = new LLVMArgumentBuffer(applicationPath);
             LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);
-            Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, getContext().getSymbol(mainFunction)};
+            Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, getContext().getSymbolUncached(mainFunction)};
             Object result = startFunction.call(realArgs);
             getContext().awaitThreadTermination();
             return (int) result;

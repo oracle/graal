@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -809,7 +809,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self):
         super(PolyBenchBenchmarkSuite, self).__init__()
-        self._extensions = [".js", ".rb", ".wasm", ".bc", ".py", ".jar"]
+        self._extensions = [".js", ".rb", ".wasm", ".bc", ".py", ".jar", ".pmh"]
 
     def _get_benchmark_root(self):
         if not hasattr(self, '_benchmark_root'):
@@ -838,13 +838,16 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def benchmarkList(self, bmSuiteArgs):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
-            for group in ["interpreter", "compiler", "warmup"]:
+            for group in ["interpreter", "compiler", "warmup", "nfi"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
                     if os.path.isfile(f_path) and os.path.splitext(f_path)[1] in self._extensions:
                         self._benchmarks.append(os.path.join(group, f))
         return self._benchmarks
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        return self._get_benchmark_root()
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None or len(benchmarks) != 1:

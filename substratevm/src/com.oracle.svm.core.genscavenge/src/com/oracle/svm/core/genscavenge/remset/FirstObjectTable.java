@@ -290,23 +290,24 @@ final class FirstObjectTable {
         for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
             Pointer objStart = getFirstObject(tableStart, objectsStart, objectsLimit, index);
             if (objStart.belowThan(objectsStart) || objectsLimit.belowOrEqual(objStart)) {
-                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object that is outside of the current chunk:  obj: ").hex(objStart).string(", chunk: ")
-                                .hex(objectsStart).string(" - ").hex(objectsLimit).newline();
+                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object that is outside of the current chunk:  obj: ").zhex(objStart)
+                                .string(", chunk: ")
+                                .zhex(objectsStart).string(" - ").zhex(objectsLimit).newline();
                 return false;
             }
 
             Pointer entryStart = objectsStart.add(indexToMemoryOffset(index));
             if (!objStart.belowOrEqual(entryStart)) {
-                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object is not crossing nor starting at a card boundary:  obj: ").hex(objStart)
-                                .string(", chunk: ").hex(objectsStart).string(" - ").hex(objectsLimit).newline();
+                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object is not crossing nor starting at a card boundary:  obj: ").zhex(objStart)
+                                .string(", chunk: ").zhex(objectsStart).string(" - ").zhex(objectsLimit).newline();
                 return false;
             }
 
             Object obj = objStart.toObject();
             Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
             if (!entryStart.belowThan(objEnd)) {
-                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object is not crossing nor starting at a card boundary:  obj: ").hex(objStart)
-                                .string(" - ").hex(objEnd).string(", chunk: ").hex(objectsStart).string(" - ").hex(objectsLimit).newline();
+                Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object is not crossing nor starting at a card boundary:  obj: ").zhex(objStart)
+                                .string(" - ").zhex(objEnd).string(", chunk: ").zhex(objectsStart).string(" - ").zhex(objectsLimit).newline();
                 return false;
             }
         }

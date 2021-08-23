@@ -136,7 +136,6 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
     protected VirtualBoxingNode createVirtualBoxingNode() {
         VirtualBoxingNode node = new VirtualBoxingNode(StampTool.typeOrNull(stamp(NodeView.DEFAULT)), boxingKind);
-        node.setNodeSourcePosition(getNodeSourcePosition());
         return node;
     }
 
@@ -151,7 +150,7 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
         VirtualBoxingNode newVirtual = createVirtualBoxingNode();
         assert newVirtual.getFields().length == 1;
 
-        tool.createVirtualObject(newVirtual, new ValueNode[]{alias}, Collections.<MonitorIdNode> emptyList(), false);
+        tool.createVirtualObject(newVirtual, new ValueNode[]{alias}, Collections.<MonitorIdNode> emptyList(), getNodeSourcePosition(), false);
         tool.replaceWithVirtual(newVirtual);
     }
 

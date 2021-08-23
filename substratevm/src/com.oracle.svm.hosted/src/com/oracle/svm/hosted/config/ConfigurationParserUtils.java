@@ -58,7 +58,8 @@ import com.oracle.svm.hosted.NativeImageOptions;
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<Class<?>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
-        return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader), NativeImageOptions.AllowIncompleteClasspath.getValue());
+        return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader),
+                        NativeImageOptions.AllowIncompleteClasspath.getValue(), ConfigurationFiles.Options.StrictConfiguration.getValue());
     }
 
     /**

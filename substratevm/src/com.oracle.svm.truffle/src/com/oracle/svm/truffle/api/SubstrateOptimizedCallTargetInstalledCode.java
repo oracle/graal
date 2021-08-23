@@ -34,6 +34,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -147,10 +148,16 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try { // Indicates to GC that the code can be freed once there are no activations left
             CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
+            invalidateWithoutDeoptimization1(codeInfo);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
+    }
+
+    @Uninterruptible(reason = "Call interruptible code now that the CodeInfo is tethered.", calleeMustBe = false)
+    private static void invalidateWithoutDeoptimization1(CodeInfo codeInfo) {
+        CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
+        RuntimeCodeInfoHistory.singleton().logMakeNonEntrant(codeInfo);
     }
 
     static Object doInvoke(SubstrateOptimizedCallTarget callTarget, Object[] args) {

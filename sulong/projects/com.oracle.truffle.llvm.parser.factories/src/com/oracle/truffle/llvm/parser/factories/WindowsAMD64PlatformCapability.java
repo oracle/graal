@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -47,8 +48,7 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
         /* DUMMY */;
         @Override
         public int value() {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException();
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -63,14 +63,12 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
 
     @Override
     protected LLVMSyscallOperationNode createSyscallNode(UnknownSyscalls syscall) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not reach.");
+        return LLVMUnsupportedSyscallNode.create(syscall);
     }
 
     @Override
-    public Object createVAListStorage(RootNode rootNode) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not reach.");
+    public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
+        throw CompilerDirectives.shouldNotReachHere("not yet implemented");
     }
 
     @Override
@@ -81,8 +79,7 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
 
     @Override
     public VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("Should not reach.");
+        throw CompilerDirectives.shouldNotReachHere("not yet implemented");
     }
 
 }

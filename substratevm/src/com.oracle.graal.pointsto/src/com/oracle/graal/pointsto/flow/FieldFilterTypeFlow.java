@@ -51,7 +51,7 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
             return update;
         } else {
             /* Filter the incoming state with the field type. */
-            return TypeState.forIntersection(bb, update, declaredType.getTypeFlow(bb, true).getState());
+            return TypeState.forIntersection(bb, update, declaredType.getAssignableTypes(true));
         }
     }
 
@@ -60,6 +60,16 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
         setSaturated();
         /* Swap out this flow with its declared type flow. */
         swapOut(bb, declaredType.getTypeFlow(bb, true));
+    }
+
+    @Override
+    protected void notifyUseOfSaturation(BigBang bb, TypeFlow<?> use) {
+        swapAtUse(bb, declaredType.getTypeFlow(bb, true), use);
+    }
+
+    @Override
+    protected void notifyObserverOfSaturation(BigBang bb, TypeFlow<?> observer) {
+        swapAtObserver(bb, declaredType.getTypeFlow(bb, true), observer);
     }
 
     @Override

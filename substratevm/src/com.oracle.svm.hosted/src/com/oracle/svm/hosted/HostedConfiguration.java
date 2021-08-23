@@ -64,6 +64,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.nativeimage.Platform;
 
 public class HostedConfiguration {
 
@@ -129,8 +130,8 @@ public class HostedConfiguration {
     }
 
     public SVMHost createHostVM(OptionValues options, ForkJoinPool buildExecutor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
-        return new SVMHost(options, buildExecutor, classLoader, classInitializationSupport, automaticSubstitutions);
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
+        return new SVMHost(options, buildExecutor, classLoader, classInitializationSupport, automaticSubstitutions, platform);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
@@ -139,12 +140,12 @@ public class HostedConfiguration {
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtime, deoptimizeAll, aSnippetReflection, executor);
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bigBang, MethodTypeFlow methodTypeFlow) {
-        return new SVMMethodTypeFlowBuilder(bigBang, methodTypeFlow);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodTypeFlow) {
+        return new SVMMethodTypeFlowBuilder(bb, methodTypeFlow);
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bigBang, StructuredGraph graph) {
-        return new SVMMethodTypeFlowBuilder(bigBang, graph);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, StructuredGraph graph) {
+        return new SVMMethodTypeFlowBuilder(bb, graph);
     }
 
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
@@ -169,11 +170,11 @@ public class HostedConfiguration {
         }
     }
 
-    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bigbang, HostedUniverse universe) {
+    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bb, HostedUniverse universe) {
         if (SubstrateOptions.parseOnce()) {
-            return new SubstrateStrengthenGraphs(bigbang, universe);
+            return new SubstrateStrengthenGraphs(bb, universe);
         } else {
-            return new StaticAnalysisResultsBuilder(bigbang, universe);
+            return new StaticAnalysisResultsBuilder(bb, universe);
         }
     }
 

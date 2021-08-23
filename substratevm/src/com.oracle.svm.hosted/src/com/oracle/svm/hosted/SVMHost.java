@@ -28,6 +28,7 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -61,6 +62,8 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -119,7 +122,7 @@ public class SVMHost implements HostVM {
     private final ConcurrentHashMap<DynamicHub, AnalysisType> hubToType = new ConcurrentHashMap<>();
 
     private final Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes;
-
+    private final Platform platform;
     private final OptionValues options;
     private final ForkJoinPool executor;
     private final ClassLoader classLoader;
@@ -146,7 +149,7 @@ public class SVMHost implements HostVM {
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ForkJoinPool executor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
         this.options = options;
         this.executor = executor;
         this.classLoader = classLoader;
@@ -155,6 +158,7 @@ public class SVMHost implements HostVM {
         this.classReachabilityListeners = new ArrayList<>();
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticSubstitutions = automaticSubstitutions;
+        this.platform = platform;
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -720,7 +724,7 @@ public class SVMHost implements HostVM {
 
     @Override
     public boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
-        if (!universe.platformSupported(interfaceType)) {
+        if (!platformSupported(universe, interfaceType)) {
             String message = "The interface " + interfaceType.toJavaName(true) + " is not available in the current platform, but used by " + implementingType.toJavaName(true) + ". " +
                             "GraalVM before version 21.2 ignored such interfaces, but this was an oversight.";
 
@@ -732,6 +736,27 @@ public class SVMHost implements HostVM {
             } else {
                 throw new UnsupportedFeatureException(
                                 message + " The old behavior can be temporarily restored using the option " + commandArgument + ". This option will be removed in a future GraalVM version.");
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
+        if (element instanceof ResolvedJavaType) {
+            Package p = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), (ResolvedJavaType) element).getPackage();
+            if (p != null && !platformSupported(universe, p)) {
+                return false;
+            }
+        }
+
+        Platforms platformsAnnotation = GuardedAnnotationAccess.getAnnotation(element, Platforms.class);
+        if (platform == null || platformsAnnotation == null) {
+            return true;
+        }
+        for (Class<? extends Platform> platformGroup : platformsAnnotation.value()) {
+            if (platformGroup.isInstance(platform)) {
+                return true;
             }
         }
         return false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,18 +43,18 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
 
-    public static void print(BigBang bigbang, String reportsPath, String reportName) {
+    public static void print(BigBang bb, String reportsPath, String reportName) {
         ReportUtils.report("analysis heap histogram", reportsPath, "analysis_heap_histogram_" + reportName, "txt",
-                        writer -> AnalysisHeapHistogramPrinter.doPrint(writer, bigbang));
+                        writer -> AnalysisHeapHistogramPrinter.doPrint(writer, bb));
     }
 
-    private static void doPrint(PrintWriter out, BigBang bigbang) {
-        if (!PointstoOptions.ExhaustiveHeapScan.getValue(bigbang.getOptions())) {
-            String types = Arrays.stream(bigbang.skippedHeapTypes()).map(t -> t.toJavaName()).collect(Collectors.joining(", "));
+    private static void doPrint(PrintWriter out, BigBang bb) {
+        if (!PointstoOptions.ExhaustiveHeapScan.getValue(bb.getOptions())) {
+            String types = Arrays.stream(bb.skippedHeapTypes()).map(t -> t.toJavaName()).collect(Collectors.joining(", "));
             System.out.println("Exhaustive heap scanning is disabled. The analysis heap histogram will not contain all instances of types: " + types);
             System.out.println("Exhaustive heap scanning can be turned on using -H:+ExhaustiveHeapScan.");
         }
-        AnalysisHeapHistogramPrinter printer = new AnalysisHeapHistogramPrinter(bigbang);
+        AnalysisHeapHistogramPrinter printer = new AnalysisHeapHistogramPrinter(bb);
         printer.scanBootImageHeapRoots(fieldComparator, positionComparator);
         printer.printHistogram(out);
     }
@@ -69,8 +69,8 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
 
     private final Map<AnalysisType, Integer> histogram = new HashMap<>();
 
-    private AnalysisHeapHistogramPrinter(BigBang bigbang) {
-        super(bigbang, null, new ReusableSet());
+    private AnalysisHeapHistogramPrinter(BigBang bb) {
+        super(bb, null, new ReusableSet());
     }
 
     @Override
