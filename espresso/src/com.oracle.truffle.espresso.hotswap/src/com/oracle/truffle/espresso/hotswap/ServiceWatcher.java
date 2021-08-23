@@ -227,8 +227,7 @@ final class ServiceWatcher {
 
         private final WatchService watchService;
         private final Map<Path, ServiceWatcher.State> watchActions = Collections.synchronizedMap(new HashMap<>());
-        private final Map<Path, Set<Path>> deletedFolderMap = Collections.synchronizedMap(new HashMap<>());
-        private final Map<Path, Set<Path>> createdFolderMap = Collections.synchronizedMap(new HashMap<>());
+        private final Map<Path, Set<Path>> watchedFolders = Collections.synchronizedMap(new HashMap<>());
 
         private WatcherThread() throws IOException {
             super("hotswap-watcher-1");
@@ -243,20 +242,11 @@ final class ServiceWatcher {
             dir.register(watchService, WATCH_KINDS);
         }
 
-        private void addDeletedFolder(Path path, Path leaf) {
-            Set<Path> set = deletedFolderMap.get(path);
+        private void addWatchedFolder(Path path, Path leaf) {
+            Set<Path> set = watchedFolders.get(path);
             if (set == null) {
                 set = new HashSet<>();
-                deletedFolderMap.put(path, set);
-            }
-            set.add(leaf);
-        }
-
-        private void addCreatedFolder(Path path, Path leaf) {
-            Set<Path> set = createdFolderMap.get(path);
-            if (set == null) {
-                set = new HashSet<>();
-                createdFolderMap.put(path, set);
+                watchedFolders.put(path, set);
             }
             set.add(leaf);
         }
@@ -289,7 +279,7 @@ final class ServiceWatcher {
                             if (watchActions.containsKey(resourcePath)) {
                                 // the parent folder could also be deleted without us noticing that,
                                 // so register a watch on the parent
-                                addDeletedFolder(watchPath, resourcePath);
+                                addWatchedFolder(watchPath, resourcePath);
                                 try {
                                     watchPath.getParent().register(watchService, WATCH_KINDS);
                                 } catch (IOException e) {
@@ -300,7 +290,7 @@ final class ServiceWatcher {
                                     handleDeletedFolderEvent(watchPath);
                                 }
                                 continue;
-                            } else if (deletedFolderMap.containsKey(resourcePath)) {
+                            } else if (watchedFolders.containsKey(resourcePath)) {
                                 handleDeletedFolderEvent(resourcePath);
                             }
                             continue;
@@ -311,7 +301,7 @@ final class ServiceWatcher {
                         }
                         if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
                             // check for parent folder recreation
-                            if (createdFolderMap.containsKey(resourcePath)) {
+                            if (watchedFolders.containsKey(resourcePath)) {
                                 handleCreatedFolderEvent(resourcePath);
                             }
                         }
@@ -325,18 +315,16 @@ final class ServiceWatcher {
 
         private void handleCreatedFolderEvent(Path resourcePath) {
             // remove tracking of recreated folder
-            Set<Path> leaves = createdFolderMap.remove(resourcePath);
+            Set<Path> leaves = watchedFolders.remove(resourcePath);
             // remove delete tracking of leaves of the parent folder
-            deletedFolderMap.getOrDefault(resourcePath.getParent(), Collections.emptySet()).removeAll(leaves);
+            watchedFolders.getOrDefault(resourcePath.getParent(), Collections.emptySet()).removeAll(leaves);
             for (Path leaf : leaves) {
                 Path parent = leaf.getParent();
                 if (parent.equals(resourcePath)) {
                     try {
-                        addDeletedFolder(parent, leaf);
+                        addWatchedFolder(parent, leaf);
                         // re-register for this leaf
                         parent.register(watchService, WATCH_KINDS);
-                        // register for parent deletion
-                        parent.getParent().register(watchService, WATCH_KINDS);
                     } catch (IOException e) {
                         // continue search for other leaves
                     }
@@ -351,8 +339,8 @@ final class ServiceWatcher {
                         // up until the created resource path for the event
                         if (Files.exists(current.getParent())) {
                             folderExist = true;
-                            addDeletedFolder(current.getParent(), leaf);
-                            addCreatedFolder(current, leaf);
+                            addWatchedFolder(current.getParent(), leaf);
+                            addWatchedFolder(current, leaf);
                             try {
                                 current.getParent().register(watchService, WATCH_KINDS);
                                 current.getParent().getParent().register(watchService, WATCH_KINDS);
@@ -372,16 +360,16 @@ final class ServiceWatcher {
             boolean folderExist = false;
 
             while (!folderExist && path != null) {
-                Set<Path> leaves = deletedFolderMap.remove(path);
-                if (deletedFolderMap == null) {
+                Set<Path> leaves = watchedFolders.remove(path);
+                if (leaves == null) {
                     // the folder was recreated in the mean time
                     // so nothing further to do here
                     break;
                 }
                 // register parent and watch for re-creation for all leaves
                 for (Path leaf : leaves) {
-                    addCreatedFolder(path, leaf);
-                    addDeletedFolder(path.getParent(), leaf);
+                    addWatchedFolder(path, leaf);
+                    addWatchedFolder(path.getParent(), leaf);
                 }
                 try {
                     // watch for creation
@@ -421,7 +409,7 @@ final class ServiceWatcher {
                 list.forEach((path) -> {
                     if (watchActions.containsKey(path)) {
                         detectChange(path);
-                    } else if (createdFolderMap.containsKey(path)) {
+                    } else if (watchedFolders.containsKey(path)) {
                         handleCreatedFolderEvent(path);
                     }
                 });
