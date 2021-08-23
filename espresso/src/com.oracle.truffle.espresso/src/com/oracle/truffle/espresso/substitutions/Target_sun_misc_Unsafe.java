@@ -1334,7 +1334,7 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     public static void monitorExit(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject object,
-                                   @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(object)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();

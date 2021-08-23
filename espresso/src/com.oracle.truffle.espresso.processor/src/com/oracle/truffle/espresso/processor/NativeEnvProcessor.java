@@ -218,7 +218,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         AnnotationMirror injectMirror = getAnnotation(typeMirror, inject);
         if (injectMirror == null) {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                    headerMessage + " must be annotated with @Inject", element);
+                            headerMessage + " must be annotated with @Inject", element);
         }
 
         List<TypeElement> allowedTypes = Arrays.asList(meta, substitutionProfiler, espressoContext);
@@ -226,7 +226,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         if (unsupportedType) {
             String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
             processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                    headerMessage + " type not supported, allowed types: " + allowedNames, element);
+                            headerMessage + " type not supported, allowed types: " + allowedNames, element);
         }
     }
 
@@ -234,14 +234,14 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         if (typeMirror.getKind().isPrimitive()) {
             if (getAnnotation(typeMirror, javaType) != null) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                        headerMessage + " (primitive type) cannot be annotated with @JavaType", element);
+                                headerMessage + " (primitive type) cannot be annotated with @JavaType", element);
             }
         } else if (typeMirror.getKind() != TypeKind.VOID) {
             if (processingEnv.getTypeUtils().isSameType(typeMirror, staticObject.asType())) {
                 AnnotationMirror javaTypeMirror = getAnnotation(typeMirror, javaType);
                 if (javaTypeMirror == null) {
                     processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                            headerMessage + " must be annotated with e.g. @JavaType(String.class) hinting the expected type", element);
+                                    headerMessage + " must be annotated with e.g. @JavaType(String.class) hinting the expected type", element);
                 }
             } else {
 

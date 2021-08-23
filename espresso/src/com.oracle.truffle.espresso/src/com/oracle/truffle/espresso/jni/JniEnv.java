@@ -792,13 +792,13 @@ public final class JniEnv extends NativeEnv {
     // region Set*Field
 
     @JniImpl
-    public void SetObjectField(@JavaType(Object.class)StaticObject obj, @Handle(Field.class) long fieldId, @JavaType(Object.class) StaticObject val) {
+    public void SetObjectField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, @JavaType(Object.class) StaticObject val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetBooleanField(@JavaType(Object.class)StaticObject obj, @Handle(Field.class) long fieldId, boolean val) {
+    public void SetBooleanField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, boolean val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
@@ -1749,7 +1749,7 @@ public final class JniEnv extends NativeEnv {
      *             the array.
      */
     @JniImpl
-    public void SetObjectArrayElement(@JavaType(Object[].class)StaticObject array, int index, @JavaType(Object.class) StaticObject value) {
+    public void SetObjectArrayElement(@JavaType(Object[].class) StaticObject array, int index, @JavaType(Object.class) StaticObject value) {
         getInterpreterToVM().setArrayObject(value, index, array);
     }
 

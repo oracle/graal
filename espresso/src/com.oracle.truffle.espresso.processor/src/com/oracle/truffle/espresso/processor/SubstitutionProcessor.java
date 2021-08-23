@@ -189,7 +189,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         AnnotationMirror injectMirror = getAnnotation(typeMirror, inject);
         if (injectMirror == null) {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                    headerMessage + " must be annotated with @Inject", element);
+                            headerMessage + " must be annotated with @Inject", element);
         }
 
         List<TypeElement> allowedTypes = Arrays.asList(meta, substitutionProfiler, espressoContext);
@@ -197,7 +197,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         if (unsupportedType) {
             String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
             processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                    headerMessage + " type not supported, allowed types: " + allowedNames, element);
+                            headerMessage + " type not supported, allowed types: " + allowedNames, element);
         }
     }
 
