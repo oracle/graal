@@ -755,7 +755,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     parentPrimitives[i] = osrPrimitives[i];
                     parentRefs[i] = osrRefs[i];
                 }
-                EspressoFrame.clear(osrPrimitives, osrRefs, i);
             }
         } catch (FrameSlotTypeException e) {
             CompilerDirectives.transferToInterpreter();
