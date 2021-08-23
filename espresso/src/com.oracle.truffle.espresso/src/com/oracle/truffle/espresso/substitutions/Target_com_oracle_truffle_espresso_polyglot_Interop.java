@@ -3585,6 +3585,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * 
      * @since 21.1
      */
+    @Substitution
     @Throws(others = {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnknownKeyException;"),
@@ -3662,6 +3663,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * @see IsHashEntryRemovable
      * @since 21.1
      */
+    @Substitution
     @Throws(others = {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnknownKeyException;")
