@@ -104,7 +104,7 @@ def gate_body(args, tasks):
                                   '-Dlibgraal.CrashAtIsFatal=true']
                         cmd = ["dacapo:avrora", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
                         out = mx.OutputCapture()
-                        exitcode, bench_suite = mx_benchmark.gate_mx_benchmark(cmd, nonZeroIsFatal=False, out=out, err=out)
+                        exitcode, bench_suite, results = mx_benchmark.gate_mx_benchmark(cmd, nonZeroIsFatal=False, out=out, err=out)
                         if exitcode == 0:
                             if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
                                 # Executing a VM that does not configure fatal errors handling
