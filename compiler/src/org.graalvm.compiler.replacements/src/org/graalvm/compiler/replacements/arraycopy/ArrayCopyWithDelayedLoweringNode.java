@@ -29,7 +29,6 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -57,19 +56,19 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode {
 
     public static final NodeClass<ArrayCopyWithDelayedLoweringNode> TYPE = NodeClass.create(ArrayCopyWithDelayedLoweringNode.class);
 
-    private final SnippetTemplate.SnippetInfo snippet;
+    private final ArrayCopySnippets.WorkSnippetID snippet;
 
-    public ArrayCopyWithDelayedLoweringNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, SnippetTemplate.SnippetInfo snippet, JavaKind elementKind) {
+    public ArrayCopyWithDelayedLoweringNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ArrayCopySnippets.WorkSnippetID snippet, JavaKind elementKind) {
         super(TYPE, src, srcPos, dest, destPos, length, elementKind, BytecodeFrame.INVALID_FRAMESTATE_BCI);
         assert StampTool.isPointerNonNull(src) && StampTool.isPointerNonNull(dest) : "must have been null checked";
         this.snippet = snippet;
     }
 
     @NodeIntrinsic
-    public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter SnippetTemplate.SnippetInfo snippet,
+    public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter ArrayCopySnippets.WorkSnippetID snippet,
                     @ConstantNodeParameter JavaKind elementKind);
 
-    public SnippetTemplate.SnippetInfo getSnippet() {
+    public ArrayCopySnippets.WorkSnippetID getSnippet() {
         return snippet;
     }
 
