@@ -25,8 +25,11 @@
 package org.graalvm.polybench.micro.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import org.graalvm.polybench.micro.Microbench;
 import org.graalvm.polybench.micro.MicrobenchLanguage;
 import org.graalvm.polybench.micro.expr.Expression;
@@ -34,6 +37,7 @@ import org.graalvm.polybench.micro.expr.Expression;
 public class MicrobenchRootNode extends RootNode {
 
     @Child Expression benchmark;
+    final LoopConditionProfile loopCondition = LoopConditionProfile.createCountingProfile();
 
     private final int repeat;
 
@@ -45,9 +49,15 @@ public class MicrobenchRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        for (int i = 0; i < repeat; i++) {
-            CompilerDirectives.blackhole(benchmark.execute(frame));
+        try {
+            loopCondition.profileCounted(repeat);
+            for (int i = 0; loopCondition.inject(i < repeat); i++) {
+                CompilerDirectives.blackhole(benchmark.execute(frame));
+                TruffleSafepoint.poll(this);
+            }
+            return null;
+        } finally {
+            LoopNode.reportLoopCount(this, repeat);
         }
-        return null;
     }
 }
