@@ -415,7 +415,7 @@ class NativeImageVM(GraalVm):
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
                 "metric.unit": "#",
-                "metric.value": ("<"+metric_objects[i]+">", long),
+                "metric.value": ("<"+metric_objects[i]+">", int),
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
