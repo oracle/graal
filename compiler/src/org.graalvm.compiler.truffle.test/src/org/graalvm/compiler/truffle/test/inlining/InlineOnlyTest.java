@@ -25,8 +25,12 @@
 
 package org.graalvm.compiler.truffle.test.inlining;
 
+import org.graalvm.polyglot.Context;
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -35,8 +39,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import org.graalvm.polyglot.Context;
-import org.junit.Test;
 
 public class InlineOnlyTest {
     private static final String COMPILATION_ROOT_NAME = "main";
@@ -88,7 +90,7 @@ public class InlineOnlyTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    CompilerAsserts.neverPartOfCompilation("This node should not be inlined");
+                    CompilerDirectives.bailout("This node should not be inlined");
                     return 99;
                 }
 
@@ -136,8 +138,15 @@ public class InlineOnlyTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    CompilerAsserts.compilationConstant(METHOD_INLINED);
+                    if (CompilerDirectives.inCompiledCode()) {
+                        assertFalse(CompilerDirectives.inCompilationRoot());
+                    }
                     return 99;
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private void assertFalse(boolean inCompilationRoot) {
+                    Assert.assertFalse(inCompilationRoot);
                 }
 
                 @Override

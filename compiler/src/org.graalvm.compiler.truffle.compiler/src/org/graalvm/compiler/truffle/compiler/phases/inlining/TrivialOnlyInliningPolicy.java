@@ -36,8 +36,9 @@ final class TrivialOnlyInliningPolicy implements InliningPolicy {
 
     @Override
     public void run(CallTree tree) {
+        String inlineOnly = options.get(PolyglotCompilerOptions.InlineOnly);
         for (CallNode child : tree.getRoot().getChildren()) {
-            if (!InliningPolicy.acceptForInline(child, options)) {
+            if (!InliningPolicy.acceptForInline(child, inlineOnly)) {
                 continue;
             }
             if (child.isTrivial()) {

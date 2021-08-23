@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.options.OptionValues;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,12 +54,15 @@ public interface InliningPolicy {
     }
 
     /**
-     * Checks if the {@link CallNode} should be compiled.
-     * The {@link PolyglotCompilerOptions#InlineOnly InlineOnly} options are used
-     * to determine if the root node should be compiled.
+     * Checks if the {@link CallNode} should be compiled. The
+     * {@link PolyglotCompilerOptions#InlineOnly InlineOnly} options are used to determine if the
+     * root node should be compiled.
      */
-    static boolean acceptForInline(CallNode rootNode, OptionValues options) {
-        Pair<List<String>, List<String>> value = getInlineOnly(options.get(PolyglotCompilerOptions.InlineOnly));
+    static boolean acceptForInline(CallNode rootNode, String inlineOnly) {
+        if (inlineOnly == null) {
+            return true;
+        }
+        Pair<List<String>, List<String>> value = getInlineOnly(inlineOnly);
         if (value != null) {
             String name = rootNode.getName();
             List<String> includes = value.getLeft();
@@ -87,8 +89,8 @@ public interface InliningPolicy {
     }
 
     /**
-     * Returns the include and exclude sets for the {@link PolyglotCompilerOptions#InlineOnly} option.
-     * The {@link Pair#getLeft() left} value is the include set and the
+     * Returns the include and exclude sets for the {@link PolyglotCompilerOptions#InlineOnly}
+     * option. The {@link Pair#getLeft() left} value is the include set and the
      * {@link Pair#getRight() right} value is the exclude set.
      */
     static Pair<List<String>, List<String>> getInlineOnly(String inlineOnly) {
