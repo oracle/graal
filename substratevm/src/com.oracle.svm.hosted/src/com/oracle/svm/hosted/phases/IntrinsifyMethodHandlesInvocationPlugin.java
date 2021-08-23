@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -778,7 +779,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             return tNodes;
         }
 
-        private ValueNode node(ValueNode oNode) throws AbortTransplantException {
+        private ValueNode node(Node oNode) throws AbortTransplantException {
             if (oNode == null) {
                 return null;
             }
@@ -812,9 +813,20 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * have side effects and also do not reference any types or other elements that we
                  * would need to modify.
                  */
+                for (Node input : oNode.inputs()) {
+                    /*
+                     * Make sure all input nodes are transplanted first, and registered in the
+                     * transplanted map.
+                     */
+                    node(input);
+                }
                 List<Node> oNodes = Collections.singletonList(oNode);
                 UnmodifiableEconomicMap<Node, Node> tNodes = b.getGraph().addDuplicates(oNodes, oNode.graph(), 1, transplanted);
-                assert tNodes.size() == 1;
+                /*
+                 * The following assertion looks strange, but NodeMap.size() is not implemented so
+                 * we need to iterate the map to get the size.
+                 */
+                assert StreamSupport.stream(tNodes.getKeys().spliterator(), false).count() == 1;
                 tNode = tNodes.get(oNode);
 
             } else {
@@ -822,6 +834,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             }
 
             tNode = b.add((ValueNode) tNode);
+            assert tNode.verify();
             transplanted.put(oNode, tNode);
             return (ValueNode) tNode;
         }
