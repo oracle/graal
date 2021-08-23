@@ -76,6 +76,8 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
                args
 
     def home(self):
+        if self.name() == 'native-image-java-home':
+            return mx.get_jdk().home
         return mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True)
 
     def generate_java_command(self, args):
@@ -147,7 +149,7 @@ class NativeImageVM(GraalVm):
             self.log_dir = self.output_dir
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.image_build_report_path = os.path.join(self.output_dir, self.executable_name + '-image-build-stats.json')
-            self.base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
+            self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath', '-H:DeadlockWatchdogInterval=30']
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
             self.base_image_build_args += ['-J-ea', '-J-esa'] if vm.is_gate and not bm_suite.skip_build_assertions(self.benchmark_name) else []
@@ -554,8 +556,7 @@ class NativeImageVM(GraalVm):
             hotspot_run_args += config.extra_agent_run_args
 
         hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + hotspot_run_args
-        java_command = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'java')
-        with stages.set_command([java_command] + hotspot_args) as s:
+        with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
             if self.hotspot_pgo and s.exit_code == 0:
                 # Hotspot instrumentation does not produce profiling information for the helloworld benchmark
@@ -962,6 +963,14 @@ def register_graalvm_vms():
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, is_llvm=True), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'native-architecture-' + config_suffix, native_architecture=True), _suite, 10)
             break
+
+    # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'default-ce'), _suite, 5)
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'default-ee'), _suite, 5)
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'pgo-ee'), _suite, 5)
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'g1gc-ee', gc='G1'), _suite, 5)
+    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'g1gc-pgo-ee', gc='G1'), _suite, 5)
+
 
     # Add VMs for libgraal
     if mx_sdk_vm_impl.has_component('LibGraal'):
