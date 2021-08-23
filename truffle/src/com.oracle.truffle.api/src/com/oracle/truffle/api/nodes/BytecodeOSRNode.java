@@ -226,9 +226,9 @@ public interface BytecodeOSRNode extends NodeInterface {
 
     }
 
-    static Object tryOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, VirtualFrame parentFrame) {
+    static Object tryOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
         assert CompilerDirectives.inInterpreter();
-        return NodeAccessor.RUNTIME.tryBytecodeOSR(osrNode, target, interpreterState, parentFrame);
+        return NodeAccessor.RUNTIME.tryBytecodeOSR(osrNode, target, interpreterState, beforeTransfer, parentFrame);
     }
 }
 

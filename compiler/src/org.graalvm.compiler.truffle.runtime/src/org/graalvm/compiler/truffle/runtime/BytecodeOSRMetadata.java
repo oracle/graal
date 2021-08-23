@@ -133,7 +133,7 @@ public final class BytecodeOSRMetadata {
         this.backEdgeCount = 0;
     }
 
-    Object tryOSR(int target, Object interpreterState, VirtualFrame parentFrame) {
+    Object tryOSR(int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
         LazyState state = getLazyState();
         assert state.frameDescriptor == null || state.frameDescriptor == parentFrame.getFrameDescriptor();
         OptimizedCallTarget osrTarget = state.compilationMap.get(target);
@@ -155,6 +155,9 @@ public final class BytecodeOSRMetadata {
         }
         // Case 2: code is compiled and valid
         if (osrTarget.isValid()) {
+            if (beforeTransfer != null) {
+                beforeTransfer.run();
+            }
             // Note: We pass the parent frame as a parameter, so the original arguments are not
             // preserved. In the interface, we call the OSR frame arguments undefined.
             return osrTarget.callOSR(parentFrame);

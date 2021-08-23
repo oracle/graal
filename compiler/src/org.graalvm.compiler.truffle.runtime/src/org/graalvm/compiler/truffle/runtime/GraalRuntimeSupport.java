@@ -110,10 +110,10 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, VirtualFrame parentFrame) {
+    public Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
         CompilerAsserts.neverPartOfCompilation();
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        return osrMetadata.tryOSR(target, interpreterState, parentFrame);
+        return osrMetadata.tryOSR(target, interpreterState, beforeTransfer, parentFrame);
     }
 
     @Override

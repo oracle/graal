@@ -777,7 +777,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         CompilerAsserts.partialEvaluationConstant(startBCI);
         int curBCI = startBCI;
         final InstrumentationSupport instrument = this.instrumentation;
-        int statementIndex = -1;
+        int statementIndex = InstrumentationSupport.NO_STATEMENT;
 
         long[] primitivesTemp = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
         // pop frame cause initializeBody to be skipped on re-entry
@@ -1774,8 +1774,27 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 loopCount[0] = 0;
             }
             if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                // TODO: we need to notify statement exit here
-                Object osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), frame);
+                Runnable beforeTransfer;
+                if (instrument == null) {
+                    beforeTransfer = null;
+                } else {
+                    // Since multiple code locations can jump back to the same bci, we can't
+                    // send a "statement exit" event inside the OSR code (we don't know
+                    // which statement we came from). Instead, we notify statement exit before the
+                    // OSR transfer, and then handle the "statement enter" event inside OSR code.
+                    if (statementIndex == nextStatementIndex) {
+                        // OSR code unconditionally sends a "statement enter" event, even if the
+                        // source and destination bci's are from the same statement. We do not want
+                        // duplicate events, so we do not try OSR here. This situation only occurs
+                        // if the loop happens on one source line and instrumentation is enabled.
+                        return nextStatementIndex;
+                    }
+                    beforeTransfer = () -> {
+                        instrument.notifyStatement(frame, statementIndex, InstrumentationSupport.NO_STATEMENT);
+                    };
+                }
+
+                Object osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), beforeTransfer, frame);
                 if (osrResult != null) {
                     throw new EspressoOSRReturnException(osrResult);
                 }
@@ -2782,6 +2801,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     static final class InstrumentationSupport extends Node {
+        static final int NO_STATEMENT = -1;
+
         @Children private final BaseEspressoStatementNode[] statementNodes;
         @Child private MapperBCI hookBCIToNodeIndex;
 
