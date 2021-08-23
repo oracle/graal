@@ -1520,38 +1520,34 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private static IfNode predecessorIf(FixedNode end) {
-        for (FixedNode node : GraphUtil.predecessorIterable(end)) {
-            if (node instanceof IfNode) {
-                return (IfNode) node;
-            } else if (node instanceof AbstractMergeNode) {
-                return null;
-            }
-        }
-        return null;
-    }
-
+    /**
+     * Try to propagate injected branch probability of the to-be-removed If to the preceding If with
+     * an unknown branch probability. At least one of the ends needs to be connected to that If
+     * without control flow merges in between.
+     */
     private static void propagateInjectedProfile(BranchProbabilityData profile, EndNode trueEnd, EndNode falseEnd) {
-        Node prev = null;
-        for (FixedNode node : GraphUtil.predecessorIterable(trueEnd)) {
-            if (node instanceof IfNode) {
-                IfNode ifNode = (IfNode) node;
-                if (!ProfileSource.isTrusted(ifNode.getProfileData().getProfileSource())) {
-                    if (ifNode == predecessorIf(falseEnd)) {
+        nextEnd: for (EndNode currentEnd : new EndNode[]{trueEnd, falseEnd}) {
+            Node prev = null;
+            for (FixedNode node : GraphUtil.predecessorIterable(currentEnd)) {
+                if (node instanceof IfNode) {
+                    IfNode ifNode = (IfNode) node;
+                    if (!ProfileSource.isTrusted(ifNode.getProfileData().getProfileSource())) {
+                        boolean negated;
                         if (ifNode.trueSuccessor() == prev) {
-                            ifNode.setTrueSuccessorProbability(profile);
+                            negated = currentEnd == falseEnd;
                         } else if (ifNode.falseSuccessor() == prev) {
-                            ifNode.setTrueSuccessorProbability(profile.negated());
+                            negated = currentEnd == trueEnd;
                         } else {
                             throw new GraalError("Illegal state");
                         }
+                        ifNode.setTrueSuccessorProbability(negated ? profile.negated() : profile);
                     }
+                    return;
+                } else if (node instanceof AbstractMergeNode) {
+                    continue nextEnd;
                 }
-                return;
-            } else if (node instanceof AbstractMergeNode) {
-                return;
+                prev = node;
             }
-            prev = node;
         }
     }
 
