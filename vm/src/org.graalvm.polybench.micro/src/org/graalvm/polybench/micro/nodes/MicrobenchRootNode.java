@@ -25,6 +25,7 @@
 package org.graalvm.polybench.micro.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -52,6 +53,7 @@ public class MicrobenchRootNode extends RootNode {
             loopCondition.profileCounted(repeat);
             for (int i = 0; loopCondition.inject(i < repeat); i++) {
                 CompilerDirectives.blackhole(benchmark.execute(frame));
+                TruffleSafepoint.poll(this);
             }
             return null;
         } finally {
