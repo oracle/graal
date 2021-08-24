@@ -615,6 +615,10 @@ public abstract class Accessor {
 
         public abstract Object getHostContext(Object valueContext);
 
+        public abstract Object enterLanguageFromRuntime(TruffleLanguage<?> language);
+
+        public abstract void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev);
+
     }
 
     public abstract static class LanguageSupport extends Support {

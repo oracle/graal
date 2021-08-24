@@ -346,6 +346,18 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Object enterLanguageFromRuntime(TruffleLanguage<?> language) {
+            PolyglotLanguageInstance instance = (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getPolyglotLanguageInstance(language);
+            return PolyglotFastThreadLocals.enterLanguage(instance);
+        }
+
+        @Override
+        public void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev) {
+            PolyglotLanguageInstance instance = (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getPolyglotLanguageInstance(language);
+            PolyglotFastThreadLocals.leaveLanguage(instance, prev);
+        }
+
+        @Override
         public TruffleContext getCurrentCreatorTruffleContext() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             return context != null ? context.creatorTruffleContext : null;
