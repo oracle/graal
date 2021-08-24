@@ -134,7 +134,7 @@ public class TruffleSafepointTest {
 
     @BeforeClass
     public static void beforeClass() {
-        service = Executors.newFixedThreadPool(Integer.MAX_VALUE);
+        service = Executors.newCachedThreadPool();
         CANCELLED.set(false);
     }
 
