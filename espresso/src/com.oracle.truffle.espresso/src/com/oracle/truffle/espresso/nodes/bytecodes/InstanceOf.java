@@ -232,7 +232,7 @@ public abstract class InstanceOf extends Node {
         }
 
         @Fallback
-        public boolean doFallback(Klass maybeSubtype) {
+        public boolean doFallback(@SuppressWarnings("unused") Klass maybeSubtype) {
             return false;
         }
     }
@@ -254,7 +254,7 @@ public abstract class InstanceOf extends Node {
         }
 
         @Specialization
-        public boolean doArrayKlass(ArrayKlass maybeSubtype) {
+        public boolean doArrayKlass(@SuppressWarnings("unused") ArrayKlass maybeSubtype) {
             Meta meta = EspressoContext.get(this).getMeta();
             return superType == meta.java_lang_Cloneable || superType == meta.java_io_Serializable;
         }
@@ -277,8 +277,8 @@ public abstract class InstanceOf extends Node {
         }
 
         @Specialization(guards = "cachedMaybeSubtype == maybeSubtype", limit = "LIMIT")
-        boolean doCached(Klass maybeSubtype,
-                        @Cached("maybeSubtype") Klass cachedMaybeSubtype,
+        boolean doCached(@SuppressWarnings("unused") Klass maybeSubtype,
+                        @SuppressWarnings("unused") @Cached("maybeSubtype") Klass cachedMaybeSubtype,
                         @Cached("superType.isAssignableFrom(maybeSubtype)") boolean result) {
             return result;
         }

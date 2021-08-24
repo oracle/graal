@@ -188,8 +188,8 @@ public abstract class InvokeVirtual extends Node {
 
             @Specialization(limit = "LIMIT", //
                             guards = "resolutionSeed == cachedResolutionSeed")
-            Object doCached(Method resolutionSeed, StaticObject receiver, Object[] args,
-                            @Cached("resolutionSeed") Method cachedResolutionSeed,
+            Object doCached(@SuppressWarnings("unused") Method resolutionSeed, StaticObject receiver, Object[] args,
+                            @SuppressWarnings("unused") @Cached("resolutionSeed") Method cachedResolutionSeed,
                             @Cached("create(cachedResolutionSeed)") InvokeVirtual.WithoutNullCheck invokeVirtual) {
                 assert args[0] == receiver;
                 assert !StaticObject.isNull(receiver);

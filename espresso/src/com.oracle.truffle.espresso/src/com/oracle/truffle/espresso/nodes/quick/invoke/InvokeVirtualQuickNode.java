@@ -49,7 +49,7 @@ public final class InvokeVirtualQuickNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         /*
          * Method signature does not change across methods. Can safely use the constant signature
          * from `resolutionSeed` instead of the non-constant signature from the lookup.

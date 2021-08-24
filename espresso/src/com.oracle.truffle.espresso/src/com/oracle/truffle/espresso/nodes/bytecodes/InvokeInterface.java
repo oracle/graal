@@ -161,8 +161,8 @@ public abstract class InvokeInterface extends Node {
 
             @Specialization(limit = "LIMIT", //
                             guards = "resolutionSeed == cachedResolutionSeed")
-            Object doCached(Method resolutionSeed, StaticObject receiver, Object[] args,
-                            @Cached("resolutionSeed") Method cachedResolutionSeed,
+            Object doCached(@SuppressWarnings("unused") Method resolutionSeed, StaticObject receiver, Object[] args,
+                            @SuppressWarnings("unused") @Cached("resolutionSeed") Method cachedResolutionSeed,
                             @Cached("create(cachedResolutionSeed)") InvokeInterface.WithoutNullCheck invokeInterface) {
                 assert args[0] == receiver;
                 assert !StaticObject.isNull(receiver);
