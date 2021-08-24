@@ -79,7 +79,7 @@ public abstract class WasmMemory implements TruffleObject {
     /**
      * The current size of this memory instance (measured in bytes).
      */
-    public abstract int byteSize();
+    public abstract long byteSize();
 
     /**
      * The minimum size of this memory as declared in the binary (measured in number of

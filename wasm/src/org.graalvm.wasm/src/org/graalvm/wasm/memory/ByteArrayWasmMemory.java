@@ -128,7 +128,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public int byteSize() {
+    public long byteSize() {
         return buffer.length;
     }
 

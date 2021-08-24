@@ -139,8 +139,8 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     }
 
     @Override
-    public int byteSize() {
-        return size * MEMORY_PAGE_SIZE;
+    public long byteSize() {
+        return Integer.toUnsignedLong(size) * MEMORY_PAGE_SIZE;
     }
 
     @Override
