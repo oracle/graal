@@ -22,61 +22,45 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecial;
+import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecialNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class InvokeSpecialNode extends QuickNode {
+public final class InvokeSpecialQuickNode extends QuickNode {
 
-    @CompilationFinal protected MethodVersion method;
-    @Child private DirectCallNode directCallNode;
-
+    @CompilationFinal Method method;
     final int resultAt;
     final boolean returnsPrimitiveType;
+    @Child InvokeSpecial.WithoutNullCheck invokeSpecial;
 
-    public InvokeSpecialNode(Method method, int top, int callerBCI) {
+    public InvokeSpecialQuickNode(Method method, int top, int callerBCI) {
         super(top, callerBCI);
-        this.method = method.getMethodVersion();
-        this.directCallNode = DirectCallNode.create(method.getCallTarget());
+        this.method = method;
         this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
         this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
+        this.invokeSpecial = InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create();
     }
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getMethod().getParsedSignature());
-        nullCheck((StaticObject) args[0]); // nullcheck receiver
-        if (!method.getAssumption().isValid()) {
-            // update to the latest method version and grab a new direct call target
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (removedByRedefintion()) {
-                // accept a slow path once the method has been removed
-                // put method behind a boundary to avoid a deopt loop
-                Method resolutionSeed = method.getMethod();
-                StaticObject receiver = ((StaticObject) args[0]);
-                method = ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass(), receiver).getMethodVersion();
-            } else {
-                method = method.getMethod().getMethodVersion();
-            }
-
-            directCallNode = DirectCallNode.create(method.getCallTarget());
-            adoptChildren();
-        }
-        // TODO(peterssen): IsNull Node?
-        Object result = directCallNode.call(args);
+        /*
+         * Method signature does not change across methods. Can safely use the constant signature
+         * from `method` instead of the non-constant signature from the lookup.
+         */
+        Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getParsedSignature());
+        StaticObject receiver = nullCheck((StaticObject) args[0]);
+        Object result = invokeSpecial.execute(method, receiver, args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getReturnKind());
     }
 
     private int getResultAt() {
@@ -85,6 +69,6 @@ public final class InvokeSpecialNode extends QuickNode {
 
     @Override
     public boolean removedByRedefintion() {
-        return method.getMethod().isRemovedByRedefition();
+        return method.isRemovedByRedefition();
     }
 }

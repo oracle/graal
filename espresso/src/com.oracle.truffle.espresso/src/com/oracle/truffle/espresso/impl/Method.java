@@ -853,6 +853,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return false;
     }
 
+    public final Assumption getLeafAssumption() {
+        return isLeaf;
+    }
+
     public boolean leafAssumption() {
         return isLeaf.isValid();
     }

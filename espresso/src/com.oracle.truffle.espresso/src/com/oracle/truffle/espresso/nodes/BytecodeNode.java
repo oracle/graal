@@ -328,10 +328,10 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -2198,20 +2198,20 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             if (resolved.isPrivate()) {
                 assert getJavaVersion().java9OrLater();
                 // Interface private methods do not appear in itables.
-                invoke = new InvokeSpecialNode(resolved, top, curBCI);
+                invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);
             } else {
                 // Can happen in old classfiles that calls j.l.Object on interfaces.
-                invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);
+                invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);
             }
         } else if (opcode == INVOKEVIRTUAL && (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate())) {
-            invoke = new InvokeSpecialNode(resolved, top, curBCI);
+            invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);
         } else {
             // @formatter:off
             switch (opcode) {
-                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolved, top, curBCI);          break;
-                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolved, top, curBCI); break;
-                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);   break;
-                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolved, top, curBCI);         break;
+                case INVOKESTATIC    : invoke = new InvokeStaticQuickNode(resolved, top, curBCI);         break;
+                case INVOKEINTERFACE : invoke = new InvokeInterfaceQuickNode(resolved, top, curBCI); break;
+                case INVOKEVIRTUAL   : invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);   break;
+                case INVOKESPECIAL   : invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);        break;
                 default              :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
