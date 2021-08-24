@@ -99,7 +99,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @GenerateUncached
-    static abstract class CastImpl extends SubstitutionNode {
+    abstract static class CastImpl extends SubstitutionNode {
 
         static final int LIMIT = 3;
 
@@ -352,7 +352,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     public static @JavaType(Object.class) StaticObject importObject(@JavaType(String.class) StaticObject name, @Inject Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
-                            "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the contextRef.get().");
+                            "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
         Object binding = meta.getContext().getEnv().importSymbol(name.toString());
         if (binding == null) {
@@ -368,7 +368,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
-                            "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the contextRef.get().");
+                            "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
         String bindingName = meta.toHostString(name);
         if (value.isForeignObject()) {

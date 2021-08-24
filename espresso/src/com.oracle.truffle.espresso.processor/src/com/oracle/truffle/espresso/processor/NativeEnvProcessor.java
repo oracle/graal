@@ -243,8 +243,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                     processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
                                     headerMessage + " must be annotated with e.g. @JavaType(String.class) hinting the expected type", element);
                 }
-            } else {
-
             }
         }
     }
