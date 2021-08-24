@@ -113,7 +113,9 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
 
     private void validateAddress(Node node, long address, int length) {
         assert length >= 1;
-        if (address < 0 || address > Integer.MAX_VALUE || address > this.byteSize() - length) {
+        long byteSize = byteSize();
+        assert byteSize >= 0;
+        if (address < 0 || address > byteSize - length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw trapOutOfBounds(node, address, length);
         }
