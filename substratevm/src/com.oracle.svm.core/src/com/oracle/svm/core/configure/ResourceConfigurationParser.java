@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Collections;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -41,6 +40,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.json.JSONParser;
+import com.oracle.svm.core.util.json.JSONParserException;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final ResourcesRegistry registry;
