@@ -44,6 +44,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
+import com.oracle.svm.core.posix.PosixUtils;
 
 // Checkstyle: stop
 
@@ -72,13 +73,15 @@ public class Signal {
     public interface sigset_tPointer extends PointerBase {
     }
 
+    /**
+     * Warning: use {@link #sigaction} or {@link PosixUtils#installSignalHandler}. Do NOT introduce
+     * calls to {@code signal} or {@code sigset}, which are not portable, and when running in
+     * HotSpot, signal chaining (libjsig) will print warnings.
+     */
     public interface SignalDispatcher extends CFunctionPointer {
         @InvokeCFunctionPointer
         void dispatch(int sig);
     }
-
-    @CFunction
-    public static native SignalDispatcher signal(int signum, SignalDispatcher handler);
 
     @CConstant
     public static native SignalDispatcher SIG_DFL();
@@ -289,6 +292,9 @@ public class Signal {
     }
 
     @CConstant
+    public static native int SA_RESTART();
+
+    @CConstant
     public static native int SA_SIGINFO();
 
     @CConstant
@@ -318,8 +324,9 @@ public class Signal {
         sigset_tPointer sa_mask();
     }
 
+    /** @param signum from {@link SignalEnum#getCValue()} */
     @CFunction
-    public static native int sigaction(SignalEnum signum, sigaction act, sigaction oldact);
+    public static native int sigaction(int signum, sigaction act, sigaction oldact);
 
     @CEnum
     @CContext(PosixDirectives.class)
@@ -383,4 +390,7 @@ public class Signal {
 
     @CFunction
     public static native int sigemptyset(sigset_tPointer set);
+
+    @CFunction
+    public static native int sigaddset(sigset_tPointer set, int signum);
 }
