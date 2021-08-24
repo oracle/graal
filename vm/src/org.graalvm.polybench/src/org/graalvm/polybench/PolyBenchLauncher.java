@@ -335,7 +335,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
                 final Optional<Double> value = config.metric.reportAfterIteration(config);
                 if (value.isPresent()) {
-                    log("[" + name + "] " + (warmup ? "warmup" : "run") + " iteration " + i + ": " + round(value.get()) + " " + config.metric.unit());
+                    log("[" + name + "] iteration " + i + ": " + round(value.get()) + " " + config.metric.unit());
                 }
             }
 

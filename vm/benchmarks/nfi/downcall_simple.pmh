@@ -34,5 +34,5 @@ downcall = EXECUTE function
 
 MICROBENCH downcall
     repeat: 1000000
-    warmupIterations: 30
+    warmupIterations: 40
     unit: ns

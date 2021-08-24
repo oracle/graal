@@ -388,6 +388,9 @@ public final class PolyglotCompilerOptions {
 
     // Inlining
 
+    @Option(help = "Restrict inlined methods to ','-separated list of includes (or excludes prefixed with '~').", category = OptionCategory.INTERNAL)
+    public static final OptionKey<String> InlineOnly = new OptionKey<>(null, OptionType.defaultType(String.class));
+
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
