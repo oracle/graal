@@ -24,34 +24,37 @@ package com.oracle.truffle.espresso.nodes.quick;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
-import com.oracle.truffle.espresso.nodes.helper.TypeCheckNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class CheckCastNode extends QuickNode {
+public final class CheckCastQuickNode extends QuickNode {
+
+    static final int stackEffectOf_CHECKCAST = Bytecodes.stackEffectOf(Bytecodes.CHECKCAST);
 
     final Klass typeToCheck;
-    @Child TypeCheckNode typeCheckNode;
+    @Child InstanceOf instanceOf;
 
-    public CheckCastNode(Klass typeToCheck, int top, int callerBCI) {
+    public CheckCastQuickNode(Klass typeToCheck, int top, int callerBCI) {
         super(top, callerBCI);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
-        this.typeCheckNode = TypeCheckNodeGen.create();
+        this.instanceOf = InstanceOf.create(typeToCheck, true);
     }
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         BytecodeNode root = getBytecodeNode();
         StaticObject receiver = BytecodeNode.peekObject(refs, top - 1);
-        if (StaticObject.isNull(receiver) || typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass())) {
-            return 0;
+        if (StaticObject.isNull(receiver) || instanceOf.execute(receiver.getKlass())) {
+            return stackEffectOf_CHECKCAST;
         }
-        enterExceptionProfile();
-        Meta meta = getMeta();
+        root.enterImplicitExceptionProfile();
+        BytecodeNode.popObject(refs, top - 1);
+        Meta meta = typeToCheck.getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
                         getExceptionMessage(root, receiver));
     }

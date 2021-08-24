@@ -23,30 +23,30 @@
 package com.oracle.truffle.espresso.nodes.quick;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
-import com.oracle.truffle.espresso.nodes.helper.TypeCheckNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class InstanceOfNode extends QuickNode {
+public final class InstanceOfQuickNode extends QuickNode {
 
-    final Klass typeToCheck;
-    @Child TypeCheckNode typeCheckNode;
+    @Child InstanceOf instanceOf;
 
-    public InstanceOfNode(Klass typeToCheck, int top, int curBCI) {
+    static final int stackEffectOf_INSTANCEOF = Bytecodes.stackEffectOf(Bytecodes.INSTANCEOF);
+
+    public InstanceOfQuickNode(Klass typeToCheck, int top, int curBCI) {
         super(top, curBCI);
         assert !typeToCheck.isPrimitive();
-        this.typeToCheck = typeToCheck;
-        this.typeCheckNode = TypeCheckNodeGen.create();
+        this.instanceOf = InstanceOf.create(typeToCheck, true);
     }
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         StaticObject receiver = BytecodeNode.popObject(refs, top - 1);
-        boolean result = StaticObject.notNull(receiver) && typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass());
+        boolean result = StaticObject.notNull(receiver) && instanceOf.execute(receiver.getKlass());
         BytecodeNode.putKind(primitives, refs, top - 1, result, JavaKind.Boolean);
-        return 0; // stack effect -> pop receiver, push boolean
+        return stackEffectOf_INSTANCEOF;
     }
 }

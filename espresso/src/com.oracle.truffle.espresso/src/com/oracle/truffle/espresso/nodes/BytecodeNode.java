@@ -301,8 +301,8 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
-import com.oracle.truffle.espresso.nodes.quick.CheckCastNode;
-import com.oracle.truffle.espresso.nodes.quick.InstanceOfNode;
+import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.InstanceOfQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.VolatileArrayAccess;
 import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
@@ -1972,7 +1972,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == CHECKCAST;
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
+        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
         return quick.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -1984,7 +1984,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == INSTANCEOF;
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
+        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
         return quick.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
 

@@ -41,8 +41,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
-import com.oracle.truffle.espresso.nodes.helper.TypeCheckNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -65,6 +64,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @JavaType(Class.class) StaticObject targetClass,
                         @JavaType(Object.class) StaticObject value);
 
+        protected static InstanceOf createInstanceOf(Klass superType) {
+            return InstanceOf.create(superType, true);
+        }
+
         @Specialization(guards = "targetClass.getMirrorKlass() == cachedTargetKlass", limit = "1")
         @JavaType(Object.class)
         StaticObject doCached(
@@ -73,28 +76,35 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached("targetClass.getMirrorKlass()") Klass cachedTargetKlass,
                         @Cached BranchProfile nullTargetClassProfile,
                         @Cached BranchProfile reWrappingProfile,
-                        @Cached TypeCheckNode typeCheckNode,
+                        @Cached("createInstanceOf(cachedTargetKlass)") InstanceOf instanceOfTarget,
                         @Cached CastImpl castImpl) {
             if (StaticObject.isNull(targetClass)) {
                 nullTargetClassProfile.enter();
                 Meta meta = getMeta();
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
-            if (StaticObject.isNull(value) || typeCheckNode.executeTypeCheck(cachedTargetKlass, value.getKlass())) {
+            if (StaticObject.isNull(value) || instanceOfTarget.execute(value.getKlass())) {
                 return value;
             }
             reWrappingProfile.enter();
             return castImpl.execute(getContext(), cachedTargetKlass, value);
         }
 
-        @TruffleBoundary
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "doCached")
         @JavaType(Object.class)
-        StaticObject doGeneric(@JavaType(Class.class) StaticObject targetClass, @JavaType(Object.class) StaticObject value) {
-            return doCached(targetClass, value, targetClass.getMirrorKlass(),
-                            BranchProfile.getUncached(), BranchProfile.getUncached(),
-                            TypeCheckNodeGen.getUncached(), CastImplNodeGen.getUncached());
+        StaticObject doGeneric(@JavaType(Class.class) StaticObject targetClass,
+                        @JavaType(Object.class) StaticObject value,
+                        @Cached InstanceOf.Dynamic instanceOfDynamic,
+                        @Cached CastImpl castImpl) {
+            if (StaticObject.isNull(targetClass)) {
+                Meta meta = getMeta();
+                throw meta.throwException(meta.java_lang_NullPointerException);
+            }
+            if (StaticObject.isNull(value) || instanceOfDynamic.execute(targetClass.getMirrorKlass(), value.getKlass())) {
+                return value;
+            }
+            return castImpl.execute(getContext(), targetClass.getMirrorKlass(), value);
         }
     }
 
@@ -133,9 +143,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         EspressoContext context,
                         Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @Cached TypeCheckNode typeCheck,
+                        @Cached InstanceOf.Dynamic instanceOfDynamic,
                         @Cached BranchProfile exceptionProfile) {
-            if (isNull(value) || typeCheck.executeTypeCheck(targetKlass, value.getKlass())) {
+            if (isNull(value) || instanceOfDynamic.execute(targetKlass, value.getKlass())) {
                 return value;
             }
             exceptionProfile.enter();
