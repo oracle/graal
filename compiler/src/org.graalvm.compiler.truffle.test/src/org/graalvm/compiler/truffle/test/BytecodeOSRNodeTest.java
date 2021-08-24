@@ -253,6 +253,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(42, target.call());
     }
 
+    /*
+     * Test that a callback can be passed and invoked before the OSR transfer.
+     */
     @Test
     public void testBeforeTransferCallback() {
         RootNode rootNode = new Program(new BeforeTransferInfiniteLoop(), new FrameDescriptor());

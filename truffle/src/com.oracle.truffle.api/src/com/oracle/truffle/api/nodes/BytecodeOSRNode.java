@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -47,8 +48,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 /**
  * Interface for Truffle bytecode nodes which can be on-stack replaced (OSR).
  *
- * There are a couple of restrictions Bytecode OSR nodes must satisfy in order for OSR to work
- * correctly:
+ * There are a few restrictions Bytecode OSR nodes must satisfy in order for OSR to work correctly:
  * <ol>
  * <li>The node must extend {@link Node} or a subclass of {@link Node}.</li>
  * <li>The node must provide storage for the OSR metadata maintained by the runtime using an
@@ -56,6 +56,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal}, and the
  * {@link BytecodeOSRNode#getOSRMetadata} and {@link BytecodeOSRNode#setOSRMetadata} methods must
  * proxy accesses to it.</li>
+ * <li>The node should call {@link BytecodeOSRNode#pollOSRBackEdge} and
+ * {@link BytecodeOSRNode#tryOSR} as described by their documentation.</li>
  * </ol>
  *
  * <p>
@@ -86,14 +88,13 @@ public interface BytecodeOSRNode extends NodeInterface {
      * <p>
      * Typically, a bytecode node's {@link ExecutableNode#execute(VirtualFrame)
      * execute(VirtualFrame)} method already contains a dispatch loop. This loop can be extracted
-     * into a separate method which can also be used by
-     * {@link BytecodeOSRNode#executeOSR(VirtualFrame, int, Object)}. For example:
+     * into a separate method which can also be used by this method. For example:
      *
      * <pre>
      * Object execute(VirtualFrame frame) {
      *   return dispatchFromBCI(frame, 0);
      * }
-     * Object executeOSR(VirtualFrame osrFrame, int target) {
+     * Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
      *   return dispatchFromBCI(osrFrame, target);
      * }
      * Object dispatchFromBCI(VirtualFrame frame, int bci) {
@@ -108,7 +109,8 @@ public interface BytecodeOSRNode extends NodeInterface {
      *
      * @param osrFrame the frame to use for OSR.
      * @param target the target location to execute from (e.g., bytecode index).
-     * @param interpreterState
+     * @param interpreterState other interpreter state used to resume execution. See
+     *            {@link BytecodeOSRNode#tryOSR} for more details.
      * @return the result of execution.
      * @since 21.3
      */
@@ -198,23 +200,28 @@ public interface BytecodeOSRNode extends NodeInterface {
      * prevent this.
      *
      * @since 21.3
-     * @param target the target location OSR will execute from (e.g., bytecode index)
+     * @param target the target location OSR will execute from (e.g., bytecode index).
      */
     default void prepareOSR(int target) {
         // do nothing
     }
 
     /**
-     * Reports a back edge to the target location, which may trigger on-stack replacement (OSR) if
-     * the Truffle runtime supports it.
+     * Reports a back edge, returning whether to try performing OSR.
      *
      * <p>
-     * If OSR occurs, this method returns the result of OSR execution. The caller of this method can
-     * forward the result back to its caller rather than continuing execution from the
-     * {@code target}.
+     * An interpreter must ensure this method returns {@code true} immediately before calling
+     * {@link BytecodeOSRNode#tryOSR}. For example:
      *
-     * @param osrNode the node for which to report a back-edge.
-     * @return the result if OSR was performed, or {@code null} otherwise.
+     * <pre>
+     * if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+     *   Object osrResult = BytecodeOSRNode.tryOSR(...);
+     *   ...
+     * }
+     * </pre>
+     *
+     * @param osrNode the node to report a back-edge for.
+     * @return whether to try OSR.
      * @since 21.3
      */
     static boolean pollOSRBackEdge(BytecodeOSRNode osrNode) {
@@ -226,8 +233,67 @@ public interface BytecodeOSRNode extends NodeInterface {
 
     }
 
+    /**
+     * Tries to perform OSR. This method must only be called immediately after a {@code true} result
+     * from {@link BytecodeOSRNode#pollOSRBackEdge}.
+     *
+     * <p>
+     * Depending on the Truffle runtime, this method can trigger OSR compilation and then (typically
+     * in a subsequent call) transfer to OSR code. If OSR occurs, this method returns the result of
+     * OSR execution. The caller of this method can forward the result back to its caller rather
+     * than continuing execution from the {@code target}. For example:
+     *
+     * <pre>
+     * if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+     *   Object osrResult = BytecodeOSRNode.tryOSR(...);
+     *   if (osrResult != null) return osrResult;
+     * }
+     * </pre>
+     *
+     * The optional {@code interpreterState} parameter will be forwarded to
+     * {@link BytecodeOSRNode#executeOSR} when OSR is performed. It should consist of additional
+     * interpreter state (e.g., data pointers) needed to resume execution from {@code target}. The
+     * state should be fixed (i.e., final) for the given {@code target}. For example:
+     *
+     * <pre>
+     * // class definition
+     * class InterpreterState {
+     *     final int dataPtr;
+     *     InterpreterState(int dataPtr) { ... }
+     * }
+     *
+     * // call site
+     * Object osrResult = BytecodeOSRNode.tryOSR(this, target, new InterpreterState(dataPtr), ...);
+     *
+     * // executeOSR
+     * Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+     *     InterpreterState state = (InterpreterState) interpreterState;
+     *     return dispatchFromBCI(osrFrame, target, interpreterState.dataPtr);
+     * }
+     * </pre>
+     *
+     * The optional {@code beforeTransfer} callback will be called before transferring control to
+     * the OSR target. Since this method may or may not perform a transfer, it is a way to ensure
+     * certain actions (e.g., instrumentation events) occur before transferring to OSR code. For
+     * example:
+     *
+     * <pre>
+     * // call site
+     * Object osrResult = BytecodeNode.tryOSR(this, target, ..., () -> {
+     *    instrument.notify(current, target);
+     * });
+     * </pre>
+     *
+     * @param osrNode the node to try OSR for.
+     * @param target the target location OSR will execute from (e.g., bytecode index).
+     * @param interpreterState other interpreter state used to resume execution.
+     * @param beforeTransfer a callback invoked before OSR, if it occurs.
+     * @param parentFrame frame at the current point of execution.
+     * @return the result if OSR was performed, or {@code null} otherwise.
+     * @since 21.3
+     */
     static Object tryOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
-        assert CompilerDirectives.inInterpreter();
+        CompilerAsserts.neverPartOfCompilation();
         return NodeAccessor.RUNTIME.tryBytecodeOSR(osrNode, target, interpreterState, beforeTransfer, parentFrame);
     }
 }
@@ -240,12 +306,12 @@ final class BytecodeOSRValidation {
 
     static boolean validateNode(BytecodeOSRNode node) {
         if (!(node instanceof Node)) {
-            throw new ClassCastException(String.format("%s must be of type Node.", BytecodeOSRNode.class.getSimpleName()));
+            throw new ClassCastException(String.format("%s must be of type Node.", node.getClass()));
         }
         Node osrNode = (Node) node;
         RootNode root = osrNode.getRootNode();
         if (root == null) {
-            throw new AssertionError(String.format("%s was not adopted but executed.", BytecodeOSRNode.class.getSimpleName()));
+            throw new AssertionError(String.format("%s was not adopted but executed.", node.getClass()));
         }
         return true;
     }
