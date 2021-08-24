@@ -77,7 +77,7 @@ public abstract class InvokeInterface extends Node {
     @NodeInfo(shortName = "INVOKEINTERFACE !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
 
-        protected static final int LIMIT = 4;
+        protected static final int LIMIT = 8;
 
         final Method resolutionSeed;
 

@@ -82,7 +82,7 @@ public abstract class InvokeVirtual extends Node {
 
         final Method resolutionSeed;
 
-        protected static final int LIMIT = 4;
+        protected static final int LIMIT = 8;
 
         WithoutNullCheck(Method resolutionSeed) {
             this.resolutionSeed = resolutionSeed;
