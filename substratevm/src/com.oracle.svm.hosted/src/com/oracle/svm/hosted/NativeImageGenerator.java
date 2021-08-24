@@ -59,9 +59,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -136,6 +133,7 @@ import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -228,6 +226,8 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.annotation.AnnotationSupport;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
@@ -1437,6 +1437,10 @@ public class NativeImageGenerator {
         return true;
     }
 
+    private static String format(TypeState state) {
+        return state.typesStream().map(t -> t.toJavaName(true)).collect(Collectors.joining(","));
+    }
+
     private void checkUniverse() {
         if (bb instanceof NativeImagePointsToAnalysis) {
             NativeImagePointsToAnalysis bigbang = (NativeImagePointsToAnalysis) this.bb;
@@ -1460,7 +1464,8 @@ public class NativeImageGenerator {
                                 String methodKey = method.format("%H.%n(%p)");
                                 bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
                                                 "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
-                                                                " with state " + declaredTypeState + " which is incompatible with types in parameter state: " + parameterState);
+                                                                ", with assignable types: " + format(declaredTypeState) +
+                                                                ", which is incompatible with analysis inferred types: " + format(parameterState) + ".");
                             }
                         }
                     }
@@ -1471,11 +1476,14 @@ public class NativeImageGenerator {
                 if (state != null) {
                     AnalysisType declaredType = field.getType();
                     if (declaredType.isInterface()) {
-                        state = TypeState.forSubtraction(bigbang, state, declaredType.getAssignableTypes(true));
+                        TypeState declaredTypeState = declaredType.getAssignableTypes(true);
+                        state = TypeState.forSubtraction(bigbang, state, declaredTypeState);
                         if (!state.isEmpty()) {
                             String fieldKey = field.format("%H.%n");
                             bigbang.getUnsupportedFeatures().addMessage(fieldKey, null,
-                                            "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) + " which is incompatible with types in state: " + state);
+                                            "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) +
+                                                            ", with assignable types: " + format(declaredTypeState) +
+                                                            ", which is incompatible with analysis inferred types: " + format(state) + ".");
                         }
                     }
                 }
