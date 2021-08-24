@@ -117,9 +117,11 @@ class BytecodeDispatchNode extends Node implements BytecodeOSRNode {
       }
 
       if (nextBCI < bci) { // back-edge
-        Object result = BytecodeOSRNode.reportOSRBackEdge(this, nextBCI, null, null, frame);
-        if (result != null) { // OSR was performed
-          return result;
+        if (BytecodeOSRNode.pollOSRBackEdge(this)) { // OSR can be tried
+          Object result = BytecodeOSRNode.tryOSR(this, nextBCI, null, null, frame);
+          if (result != null) { // OSR was performed
+            return result;
+          }
         }
       }
       bci = nextBCI;

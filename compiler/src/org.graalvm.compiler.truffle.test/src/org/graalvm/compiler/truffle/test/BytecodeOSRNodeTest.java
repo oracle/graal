@@ -740,6 +740,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         static final class InterpreterState {
             final int foo;
             final int bar;
+
             InterpreterState(int foo, int bar) {
                 this.foo = foo;
                 this.bar = bar;
@@ -763,10 +764,10 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             // This node only terminates in compiled code.
             while (true) {
                 if (CompilerDirectives.inCompiledCode()) {
-                    return foo+bar;
+                    return foo + bar;
                 }
                 if (BytecodeOSRNode.pollOSRBackEdge(this)) {
-                    Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, new InterpreterState(2*foo, 2*bar), null, frame);
+                    Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, new InterpreterState(2 * foo, 2 * bar), null, frame);
                     if (result != null) {
                         return result;
                     }

@@ -824,11 +824,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                      */
                     setBCI(frame, curBCI);
                 }
-                if (instrument != null && !skipEntryInstrumentation) {
-                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
+                if (instrument != null) {
+                    if (!skipEntryInstrumentation) {
+                        instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
+                    }
+                    skipEntryInstrumentation = false;
                     statementIndex = nextStatementIndex;
                 }
-                skipEntryInstrumentation = false;
 
                 // @formatter:off
                 switch (curOpcode) {

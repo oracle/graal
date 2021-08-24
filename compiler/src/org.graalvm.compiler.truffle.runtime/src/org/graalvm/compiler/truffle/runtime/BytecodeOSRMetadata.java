@@ -230,8 +230,9 @@ public final class BytecodeOSRMetadata {
         if (sourceTags.length != state.frameSlots.length) {
             // In rare scenarios, slots might be added to the descriptor but the frame's tags array
             // has not been expanded (since it is resized lazily).
-            // We need to ensure its length matches the descriptor so PE can elide bounds checks.
-            sourceTags = Arrays.copyOf(sourceTags, state.frameSlots.length);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            source.resize();
+            sourceTags = source.getTags();
         }
 
         for (int i = 0; i < state.frameSlots.length; i++) {
