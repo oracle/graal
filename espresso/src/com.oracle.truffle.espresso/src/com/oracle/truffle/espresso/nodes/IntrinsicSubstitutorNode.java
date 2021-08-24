@@ -98,4 +98,9 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     public int getBci(@SuppressWarnings("unused") Frame frame) {
         return -2;
     }
+
+    @Override
+    public boolean isTrivial() {
+        return !getMethod().isSynchronized() && substitution.isTrivial();
+    }
 }

@@ -51,7 +51,7 @@ import com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espre
 
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
-    @Substitution
+    @Substitution(isTrivial = true)
     public static boolean isForeignObject(@JavaType(Object.class) StaticObject object) {
         return object.isForeignObject();
     }

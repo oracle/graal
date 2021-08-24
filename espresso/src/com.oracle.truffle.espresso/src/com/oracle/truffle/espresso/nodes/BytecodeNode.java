@@ -406,6 +406,8 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private final LivenessAnalysis livenessAnalysis;
 
+    private byte trivialBytecodesCache = -1;
+
     public BytecodeNode(MethodVersion methodVersion, FrameDescriptor frameDescriptor) {
         super(methodVersion);
         CompilerAsserts.neverPartOfCompilation();
@@ -2814,5 +2816,56 @@ public final class BytecodeNode extends EspressoMethodNode {
             CompilerAsserts.partialEvaluationConstant(node);
             return ((WrapperNode) node);
         }
+    }
+
+    private boolean trivialBytecodes() {
+        if (getMethod().isSynchronized()) {
+            return false;
+        }
+        byte[] originalCode = getMethodVersion().getOriginalCode();
+        if (originalCode.length > 18 /* getContext().TrivialMethodSize */) {
+            return false;
+        }
+        BytecodeStream stream = new BytecodeStream(originalCode);
+        for (int bci = 0; bci < stream.endBCI(); bci = stream.nextBCI(bci)) {
+            int bc = stream.currentBC(bci);
+            // Trivial methods should be leaves.
+            if (Bytecodes.isInvoke(bc)) {
+                return false;
+            }
+            if (Bytecodes.LOOKUPSWITCH == bc || Bytecodes.TABLESWITCH == bc) {
+                return false;
+            }
+            if (Bytecodes.MONITORENTER == bc || Bytecodes.MONITOREXIT == bc) {
+                return false;
+            }
+            if (Bytecodes.ANEWARRAY == bc) {
+                // The allocated array is Arrays.fill-ed with StaticObject.NULL but loops are not
+                // allowed in trivial methods.
+                return false;
+            }
+            if (Bytecodes.isBranch(bc)) {
+                int dest = stream.readBranchDest(bci);
+                if (dest <= bci) {
+                    // Back-edge (probably a loop) but loops are not allowed in trivial methods.
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean isTrivial() {
+        CompilerAsserts.neverPartOfCompilation();
+        // These are dynamic and should be checked on every compilation.
+        if (!noForeignObjects.isValid() || implicitExceptionProfile) {
+            return false;
+        }
+        if (trivialBytecodesCache < 0) {
+            // Cache "triviality" of original bytecodes.
+            trivialBytecodesCache = trivialBytecodes() ? (byte) 1 : (byte) 0;
+        }
+        return trivialBytecodesCache != 0;
     }
 }

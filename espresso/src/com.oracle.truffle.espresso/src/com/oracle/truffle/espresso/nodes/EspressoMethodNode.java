@@ -117,4 +117,7 @@ public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
         throw EspressoError.shouldNotReachHere();
     }
 
+    public boolean isTrivial() {
+        return false;
+    }
 }
