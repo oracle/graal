@@ -30,7 +30,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -340,12 +339,16 @@ public class ClassEntry extends StructureTypeEntry {
 
     public MethodEntry ensureMethodEntryForDebugRangeInfo(DebugRangeInfo debugRangeInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         assert listIsSorted(methods);
-        ListIterator<MethodEntry> methodIterator = methods.listIterator();
         String methodName = debugInfoBase.uniqueDebugString(debugRangeInfo.name());
         String paramSignature = debugRangeInfo.paramSignature();
         String returnTypeName = debugRangeInfo.valueType();
-        while (methodIterator.hasNext()) {
-            MethodEntry methodEntry = methodIterator.next();
+        /* Since the methods list is sorted we perform a binary search */
+        int start = 0;
+        int end = methods.size() - 1;
+        assert end < (Integer.MAX_VALUE / 2);
+        while (start <= end) {
+            int middle = (start + end) / 2;
+            MethodEntry methodEntry = methods.get(middle);
             int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
             if (comparisonResult == 0) {
                 methodEntry.updateRangeInfo(debugInfoBase, debugRangeInfo);
@@ -354,13 +357,16 @@ public class ClassEntry extends StructureTypeEntry {
                     indexLocalFileEntry(methodEntry.fileEntry);
                 }
                 return methodEntry;
-            } else if (comparisonResult > 0) {
-                methodIterator.previous();
-                break;
+            } else if (comparisonResult < 0) {
+                start = middle + 1;
+            } else {
+                end = middle;
             }
         }
+        assert start == (end + 1) : start + " != " + end + " + 1";
+        assert start <= methods.size() : start + " > " + methods.size();
         MethodEntry newMethodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext);
-        methodIterator.add(newMethodEntry);
+        methods.add(start, newMethodEntry);
         return newMethodEntry;
     }
 
