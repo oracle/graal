@@ -109,6 +109,99 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return code, out, dims
 
 
+native_image_vm_configurations = {
+    "default": dict(),
+    "gate": dict(
+        is_gate=True
+    ),
+    "llvm": dict(
+        is_llvm=True
+    ),
+    "native-architecture": dict(
+        native_architecture=True
+    ),
+    "pgo": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=1,
+        pgo_inline_explored=False,
+        hotspot_pgo=False
+    ),
+    "pgo-ctx-insens": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=1,
+        pgo_inline_explored=False,
+        hotspot_pgo=False,
+        pgo_context_sensitive=False
+    ),
+    "pgo-aot-inline": dict(
+        pgo_aot_inline=True,
+        pgo_instrumented_iterations=1,
+        pgo_inline_explored=False,
+        hotspot_pgo=False
+    ),
+    "pgo-iterative": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=3,
+        pgo_inline_explored=False,
+        hotspot_pgo=False
+    ),
+    "pgo-inline-explored": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=3,
+        pgo_inline_explored=True,
+        hotspot_pgo=False
+    ),
+    "pgo-hotspot": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=0,
+        pgo_inline_explored=False,
+        hotspot_pgo=True
+    ),
+    "gate-pgo": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=1,
+        pgo_inline_explored=False,
+        hotspot_pgo=False,
+        is_gate=True
+    ),
+    "gate-pgo-hotspot": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=0,
+        pgo_inline_explored=False,
+        hotspot_pgo=True,
+        is_gate=True
+    ),
+    "gate-pgo-aot-inline": dict(
+        pgo_aot_inline=True,
+        pgo_instrumented_iterations=1,
+        pgo_inline_explored=False,
+        hotspot_pgo=False,
+        is_gate=True
+    ),
+    "llvm-pgo": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=1,
+        pgo_inline_explored=False,
+        hotspot_pgo=False,
+        is_llvm=True
+    ),
+    "g1gc-pgo": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=1,
+        pgo_inline_explored=False,
+        hotspot_pgo=False,
+        gc='G1'
+    ),
+    "g1gc": dict(
+        pgo_aot_inline=False,
+        pgo_instrumented_iterations=0,
+        pgo_inline_explored=False,
+        hotspot_pgo=False,
+        gc='G1'
+    )
+}
+
+
 class NativeImageVM(GraalVm):
     """
     This is a VM that should be used for running all Native Image benchmarks. This VM should support all the benchmarks
@@ -955,21 +1048,16 @@ def register_graalvm_vms():
             _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
-    # We support only EE and CE configuration for native-image benchmarks
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, is_gate=True), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, is_llvm=True), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'native-architecture-' + config_suffix, native_architecture=True), _suite, 10)
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture']:
+                final_config_name = '{}-{}'.format(main_config, config_suffix)
+                mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, **native_image_vm_configurations[main_config]), _suite, 10)
             break
 
-    # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries
-    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'default-ce'), _suite, 5)
-    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'default-ee'), _suite, 5)
-    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'pgo-ee'), _suite, 5)
-    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'g1gc-ee', gc='G1'), _suite, 5)
-    mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', 'g1gc-pgo-ee', gc='G1'), _suite, 5)
+    # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
+    for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo']:
+        mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config, **native_image_vm_configurations[java_home_config]), _suite, 5)
 
 
     # Add VMs for libgraal
