@@ -9,7 +9,9 @@
     generated_name:: utils.hyphenize([self.job_prefix, self.suite, self.platform, utils.prefixed_jdk(self.jdk_version), self.os, self.arch, self.job_suffix]),
     job_prefix:: null,
     job_suffix:: null,
-    name: self.generated_name,
+    name:
+      if self.is_jdk_supported(self.jdk_version) then self.generated_name
+      else error "JDK" + self.jdk_version + " is not supported for " + self.generated_name + "! Suite is explicitly marked as working for JDK versions "+ self.min_jdk_version + " until " + self.max_jdk_version,
     suite:: error "'suite' must be set to generate job name",
     timelimit: error "build 'timelimit' is not set for "+ self.name +"!",
     local ol8_image = self.ci_resources.infra.ol8_bench_image,
@@ -18,6 +20,12 @@
       "mount_modules": true
     },
     should_use_hwloc:: std.objectHasAll(self, "is_numa") && self.is_numa && std.length(std.find("bench", self.targets)) > 0,
+    min_jdk_version:: null,
+    max_jdk_version:: null,
+    is_jdk_supported(jdk_version)::
+      if self.min_jdk_version != null && jdk_version < self.min_jdk_version then false
+      else if self.max_jdk_version != null && jdk_version > self.max_jdk_version then false
+      else true
   },
 
   bench_hw:: {
