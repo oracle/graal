@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.test;
 
 import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -73,19 +72,14 @@ public final class GCUtils {
      * @param objectFactory producer of collectible object per an iteration
      */
     public static void assertObjectsCollectible(Function<Integer, Object> objectFactory) {
-        ReferenceQueue<Object> queue = new ReferenceQueue<>();
         List<WeakReference<Object>> collectibleObjects = new ArrayList<>();
         for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
-            collectibleObjects.add(new WeakReference<>(objectFactory.apply(i), queue));
+            collectibleObjects.add(new WeakReference<>(objectFactory.apply(i)));
             System.gc();
         }
-        gc(IsFreed.anyOf(collectibleObjects), true);
-        int refsCleared = 0;
-        while (queue.poll() != null) {
-            refsCleared++;
+        if (!gc(IsFreed.anyOf(collectibleObjects), true)) {
+            Assert.fail("Objects are not collected.");
         }
-        // we need to have any refs cleared for this test to have any value
-        Assert.assertTrue(refsCleared > 0);
     }
 
     /**
