@@ -364,7 +364,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         void addField(String name, String valueType, int offset, @SuppressWarnings("hiding") int size) {
-            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, typeName, valueType, offset, size);
+            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, valueType, offset, size);
             fieldInfos.add(fieldinfo);
         }
 
@@ -416,15 +416,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private class NativeImageDebugHeaderFieldInfo implements DebugFieldInfo {
         private final String name;
-        private final String ownerType;
         private final String valueType;
         private final int offset;
         private final int size;
         private final int modifiers;
 
-        NativeImageDebugHeaderFieldInfo(String name, String ownerType, String valueType, int offset, int size) {
+        NativeImageDebugHeaderFieldInfo(String name, String valueType, int offset, int size) {
             this.name = name;
-            this.ownerType = ownerType;
             this.valueType = valueType;
             this.offset = offset;
             this.size = size;
@@ -434,11 +432,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String name() {
             return name;
-        }
-
-        @Override
-        public String ownerType() {
-            return ownerType;
         }
 
         @Override
@@ -586,11 +579,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public String ownerType() {
-                return typeName();
-            }
-
-            @Override
             public String valueType() {
                 HostedType valueType = field.getType();
                 return toJavaName(valueType);
@@ -653,11 +641,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     }
                 }
                 return name;
-            }
-
-            @Override
-            public String ownerType() {
-                return typeName();
             }
 
             @Override
@@ -740,7 +723,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         void addField(String name, String valueType, int offset, @SuppressWarnings("hiding") int size) {
-            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, typeName(), valueType, offset, size);
+            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, valueType, offset, size);
             fieldInfos.add(fieldinfo);
         }
 
@@ -861,8 +844,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String ownerType() {
-            return getDeclaringClass(hostedMethod, true).toJavaName();
+        public ResolvedJavaType ownerType() {
+            return getDeclaringClass(hostedMethod, true);
         }
 
         @Override
@@ -1072,12 +1055,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String ownerType() {
+        public ResolvedJavaType ownerType() {
             if (method instanceof HostedMethod) {
-                return getDeclaringClass((HostedMethod) method, true).toJavaName();
-            } else {
-                return method.getDeclaringClass().toJavaName();
+                return getDeclaringClass((HostedMethod) method, true);
             }
+            return method.getDeclaringClass();
         }
 
         @Override

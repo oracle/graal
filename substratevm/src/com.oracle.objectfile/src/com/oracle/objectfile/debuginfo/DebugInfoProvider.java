@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 /**
@@ -187,8 +188,6 @@ public interface DebugInfoProvider {
 
         String name();
 
-        String ownerType();
-
         String valueType();
 
         int modifiers();
@@ -232,6 +231,7 @@ public interface DebugInfoProvider {
      * {@link com.oracle.objectfile.debugentry.Range}.
      */
     interface DebugRangeInfo extends DebugMethodInfo {
+        ResolvedJavaType ownerType();
     }
 
     /**
