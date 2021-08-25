@@ -64,9 +64,12 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import org.graalvm.wasm.api.WebAssembly;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class WasmMemory implements TruffleObject {
+
+    private Object growCallback = null;
 
     public abstract void copy(Node node, int src, int dst, int n);
 
@@ -488,5 +491,17 @@ public abstract class WasmMemory implements TruffleObject {
             throw UnsupportedTypeException.create(new Object[]{value}, "Only bytes can be stored into WebAssembly memory.");
         }
         store_i32_8(null, (int) address, rawValue);
+    }
+
+    public void setGrowCallback(Object growCallback) {
+        this.growCallback = growCallback;
+    }
+
+    public Object getGrowCallback() {
+        return growCallback;
+    }
+
+    protected void invokeGrowCallback() {
+        WebAssembly.invokeMemGrowCallback(this);
     }
 }
