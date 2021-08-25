@@ -962,12 +962,13 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def rules(self, output, benchmarks, bmSuiteArgs):
         metric_name = self._get_metric_name(bmSuiteArgs)
+        rules = []
         if metric_name == "time":
             # Special case for metric "time": Instead of reporting the aggregate numbers,
             # report individual iterations. Two metrics will be reported:
             # - "warmup" includes all iterations (warmup and run)
             # - "time" includes only the "run" iterations
-            return [
+            rules += [
                 mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
@@ -990,7 +991,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 }, startPattern=r"::: Running :::")
             ]
         else:
-            return [
+            rules += [
                 mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
@@ -1000,18 +1001,21 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.type": "numeric",
                     "metric.score-function": "id",
                     "metric.iteration": 0,
-                }),
-                mx_benchmark.StdOutRule(r"### Truffle Context eval time \(ms\): (?P<delta>[0-9]+)", {
-                    "benchmark": benchmarks[0],
-                    "metric.name": "context-eval-time",
-                    "metric.value": ("<delta>", float),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0
                 })
             ]
+        rules += [
+            mx_benchmark.StdOutRule(r"### Truffle Context eval time \(ms\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmarks[0],
+                "metric.name": "context-eval-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": "ms",
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0
+            })
+        ]
+        return rules
 
     def _get_metric_name(self, bmSuiteArgs):
         metric = None
