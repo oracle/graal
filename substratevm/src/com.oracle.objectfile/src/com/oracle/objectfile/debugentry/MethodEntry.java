@@ -29,9 +29,7 @@ package com.oracle.objectfile.debugentry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
-
-import java.util.Arrays;
-import java.util.stream.Collectors;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> {
     final TypeEntry[] paramTypes;
@@ -39,9 +37,9 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
     static final int DEOPT = 1 << 0;
     static final int IN_RANGE = 1 << 1;
     static final int INLINED = 1 << 2;
+    private final ResolvedJavaMethod javaMethod;
     int flags;
     final String symbolName;
-    private String signature;
 
     public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
                     FileEntry fileEntry, String methodName, ClassEntry ownerType,
@@ -52,6 +50,7 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
         this.symbolName = debugMethodInfo.symbolNameForMethod();
+        this.javaMethod = debugMethodInfo.getJavaMethod();
         this.flags = 0;
         if (debugMethodInfo.isDeoptTarget()) {
             setIsDeopt();
@@ -161,36 +160,19 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         return symbolName;
     }
 
-    private String getSignature() {
-        if (signature == null) {
-            signature = Arrays.stream(paramTypes).map(TypeEntry::getTypeName).collect(Collectors.joining(", "));
+    public int compareTo(ResolvedJavaMethod other) {
+        /*
+         * first try to sort methods by name, to have a nice sorting when printing types with ptype
+         */
+        int comparisonResult = javaMethod.getName().compareTo(other.getName());
+        if (comparisonResult != 0) {
+            return comparisonResult;
         }
-        return signature;
-    }
-
-    public int compareTo(String methodName, String paramSignature, String returnTypeName) {
-        int nameComparison = memberName.compareTo(methodName);
-        if (nameComparison != 0) {
-            return nameComparison;
-        }
-        int typeComparison = valueType.getTypeName().compareTo(returnTypeName);
-        if (typeComparison != 0) {
-            return typeComparison;
-        }
-        return getSignature().compareTo(paramSignature);
+        return this.javaMethod.hashCode() - other.hashCode();
     }
 
     @Override
     public int compareTo(MethodEntry other) {
-        assert other != null;
-        int nameComparison = methodName().compareTo(other.methodName());
-        if (nameComparison != 0) {
-            return nameComparison;
-        }
-        int typeComparison = valueType.getTypeName().compareTo(other.valueType.getTypeName());
-        if (typeComparison != 0) {
-            return typeComparison;
-        }
-        return getSignature().compareTo(other.getSignature());
+        return compareTo(other.javaMethod);
     }
 }

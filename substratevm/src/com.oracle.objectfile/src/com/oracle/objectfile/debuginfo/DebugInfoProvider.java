@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -201,9 +202,9 @@ public interface DebugInfoProvider {
 
     interface DebugMethodInfo extends DebugMemberInfo {
         /**
-         * @return a string identifying the method parameters.
+         * @return the JavaMethod of the method associated with this DebugMethodInfo.
          */
-        String paramSignature();
+        ResolvedJavaMethod getJavaMethod();
 
         /**
          * @return an array of Strings identifying the method parameters.

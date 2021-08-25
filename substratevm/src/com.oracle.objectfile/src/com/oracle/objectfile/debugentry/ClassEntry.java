@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
@@ -272,7 +273,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
+        String methodName = debugMethodInfo.name();
         String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
         int modifiers = debugMethodInfo.modifiers();
         List<String> paramTypes = debugMethodInfo.paramTypes();
@@ -339,9 +340,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     public MethodEntry ensureMethodEntryForDebugRangeInfo(DebugRangeInfo debugRangeInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         assert listIsSorted(methods);
-        String methodName = debugInfoBase.uniqueDebugString(debugRangeInfo.name());
-        String paramSignature = debugRangeInfo.paramSignature();
-        String returnTypeName = debugRangeInfo.valueType();
+        ResolvedJavaMethod javaMethod = debugRangeInfo.getJavaMethod();
         /* Since the methods list is sorted we perform a binary search */
         int start = 0;
         int end = methods.size() - 1;
@@ -349,7 +348,7 @@ public class ClassEntry extends StructureTypeEntry {
         while (start <= end) {
             int middle = (start + end) / 2;
             MethodEntry methodEntry = methods.get(middle);
-            int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
+            int comparisonResult = methodEntry.compareTo(javaMethod);
             if (comparisonResult == 0) {
                 methodEntry.updateRangeInfo(debugInfoBase, debugRangeInfo);
                 if (methodEntry.fileEntry != null) {

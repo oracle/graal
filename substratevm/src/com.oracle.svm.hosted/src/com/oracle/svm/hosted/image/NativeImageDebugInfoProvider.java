@@ -649,8 +649,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public String paramSignature() {
-                return hostedMethod.format("%P");
+            public ResolvedJavaMethod getJavaMethod() {
+                return hostedMethod;
             }
 
             @Override
@@ -875,8 +875,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String paramSignature() {
-            return hostedMethod.format("%P");
+        public ResolvedJavaMethod getJavaMethod() {
+            return hostedMethod;
         }
 
         @Override
@@ -1099,8 +1099,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String paramSignature() {
-            return method.format("%P");
+        public ResolvedJavaMethod getJavaMethod() {
+            return method;
         }
 
         @Override
