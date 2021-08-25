@@ -164,13 +164,13 @@ public abstract class Heap {
     public abstract int getImageHeapOffsetInAddressSpace();
 
     /**
-     * Returns the number of null bytes that should prepended to the image heap during the image
+     * Returns the number of null bytes that should be prepended to the image heap during the image
      * build. This value must be a multiple of the page size. When the image heap is mapped at
      * runtime, this extra memory gets mapped as well but is marked as inaccessible (see
      * {@link ImageHeapProvider} for more details).
      */
     @Fold
-    public abstract int getImageHeapNullPageSize();
+    public abstract int getImageHeapNullRegionSize();
 
     /**
      * Returns true if the given object is located in the image heap.

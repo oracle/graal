@@ -31,12 +31,13 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
     private final long startOffset;
-    private final boolean isAuxImageHeap;
+    private final int nullRegionSize;
 
-    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, boolean isAuxImageHeap, long startOffset) {
+    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset, int nullRegionSize) {
+        assert startOffset == 0 || startOffset >= Heap.getHeap().getImageHeapOffsetInAddressSpace() : "must be relative to the heap base";
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
-        this.isAuxImageHeap = isAuxImageHeap;
+        this.nullRegionSize = nullRegionSize;
     }
 
     @Override
@@ -52,9 +53,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     @Override
     protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
         long beginOffset = startOffset;
-        if (!isAuxImageHeap) {
-            beginOffset += Heap.getHeap().getImageHeapNullPageSize();
-        }
+        beginOffset += nullRegionSize;
         LinearImageHeapAllocator allocator = new LinearImageHeapAllocator(beginOffset);
         for (LinearImageHeapPartition partition : getPartitions()) {
             partition.allocateObjects(allocator);

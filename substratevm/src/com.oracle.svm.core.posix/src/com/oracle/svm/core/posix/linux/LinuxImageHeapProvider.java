@@ -176,10 +176,10 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
 
-            // Protect the null pages.
-            int nullPageSize = Heap.getHeap().getImageHeapNullPageSize();
-            if (nullPageSize > 0) {
-                if (VirtualMemoryProvider.get().protect(imageHeapBegin, WordFactory.unsigned(nullPageSize), Access.NONE) != 0) {
+            // Protect the null region.
+            int nullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
+            if (nullRegionSize > 0) {
+                if (VirtualMemoryProvider.get().protect(imageHeapBegin, WordFactory.unsigned(nullRegionSize), Access.NONE) != 0) {
                     return CEntryPointErrors.PROTECT_HEAP_FAILED;
                 }
             }

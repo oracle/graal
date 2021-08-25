@@ -444,7 +444,7 @@ public final class HeapImpl extends Heap {
 
     @Fold
     @Override
-    public int getImageHeapNullPageSize() {
+    public int getImageHeapNullRegionSize() {
         if (SubstrateOptions.SpawnIsolates.getValue() && !CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
             /*
              * Prepend a single null page to the image heap so that there is a memory protected gap
@@ -657,8 +657,8 @@ public final class HeapImpl extends Heap {
         if (imageHeapOffsetInAddressSpace > 0) {
             return KnownIntrinsics.heapBase().add(imageHeapOffsetInAddressSpace);
         } else {
-            int nullPageSize = Heap.getHeap().getImageHeapNullPageSize();
-            return KnownIntrinsics.heapBase().add(nullPageSize);
+            int nullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
+            return KnownIntrinsics.heapBase().add(nullRegionSize);
         }
     }
 

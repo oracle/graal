@@ -40,14 +40,15 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
     private final long startOffset;
-    private final boolean isAuxImageHeap;
+    private final int nullRegionSize;
     private final long hugeObjectThreshold;
     private ChunkedImageHeapAllocator allocator;
 
-    public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, boolean isAuxImageHeap, long startOffset) {
+    public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset, int nullRegionSize) {
+        assert startOffset == 0 || startOffset >= Heap.getHeap().getImageHeapOffsetInAddressSpace() : "must be relative to the heap base";
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
-        this.isAuxImageHeap = isAuxImageHeap;
+        this.nullRegionSize = nullRegionSize;
         this.hugeObjectThreshold = HeapPolicy.getLargeArrayThreshold().rawValue();
     }
 
@@ -68,10 +69,7 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
 
     @Override
     protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
-        long position = startOffset;
-        if (!isAuxImageHeap) {
-            position += Heap.getHeap().getImageHeapNullPageSize();
-        }
+        long position = startOffset + nullRegionSize;
         allocator = new ChunkedImageHeapAllocator(imageHeap, position);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             partition.layout(allocator);
@@ -106,7 +104,7 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
         long writableAligned = offsetOfFirstWritableAlignedChunk;
         long writableUnaligned = offsetOfFirstWritableUnalignedChunk;
 
-        if (!isAuxImageHeap) {
+        if (startOffset == 0) {
             // Adjust all offsets by the offset of the image heap in the address space.
             int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
             writableAligned += imageHeapOffsetInAddressSpace;

@@ -87,9 +87,9 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
 
         // Protect the read-only parts at the start of the image heap.
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        int nullPageSize = Heap.getHeap().getImageHeapNullPageSize();
-        Pointer firstPartOfReadOnlyImageHeap = imageHeap.add(nullPageSize);
-        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin.add(nullPageSize)), pageSize);
+        int nullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
+        Pointer firstPartOfReadOnlyImageHeap = imageHeap.add(nullRegionSize);
+        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin.add(nullRegionSize)), pageSize);
         if (writableBeginPageOffset.aboveThan(0)) {
             if (VirtualMemoryProvider.get().protect(firstPartOfReadOnlyImageHeap, writableBeginPageOffset, VirtualMemoryProvider.Access.READ) != 0) {
                 freeImageHeap(allocatedMemory);
@@ -108,9 +108,9 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
             }
         }
 
-        // Protect the null pages.
-        if (nullPageSize > 0) {
-            if (VirtualMemoryProvider.get().protect(imageHeapBegin, WordFactory.unsigned(nullPageSize), Access.NONE) != 0) {
+        // Protect the null region.
+        if (nullRegionSize > 0) {
+            if (VirtualMemoryProvider.get().protect(imageHeapBegin, WordFactory.unsigned(nullRegionSize), Access.NONE) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
