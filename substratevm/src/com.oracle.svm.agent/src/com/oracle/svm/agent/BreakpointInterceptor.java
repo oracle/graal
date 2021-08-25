@@ -690,14 +690,14 @@ final class BreakpointInterceptor {
     }
 
     private static String readLocaleTag(JNIEnvironment jni, JNIObjectHandle locale) {
-        return fromJniString(jni, callObjectMethod(jni, locale, agent.handles().javaUtilLocaleToLanguageTag));
+        return fromJniString(jni, callObjectMethod(jni, locale, agent.handles().getJavaUtilLocaleToLanguageTag(jni)));
     }
 
     private static List<Pair<String, String>> extractBundleInfo(JNIEnvironment jni, JNIObjectHandle result) {
         List<Pair<String, String>> res = new ArrayList<>();
         JNIObjectHandle curr = result;
         while (!nullHandle().equal(curr)) {
-            JNIObjectHandle locale = callObjectMethod(jni, curr, agent.handles().javaUtilResourceBundleGetLocale);
+            JNIObjectHandle locale = callObjectMethod(jni, curr, agent.handles().getJavaUtilResourceBundleGetLocale(jni));
             if (clearException(jni)) {
                 return null;
             }
@@ -715,7 +715,7 @@ final class BreakpointInterceptor {
     }
 
     private static JNIObjectHandle getParent(JNIEnvironment jni, JNIObjectHandle curr) {
-        JNIObjectHandle parent = readObjectField(jni, curr, agent.handles().javaUtilResourceBundleParentField);
+        JNIObjectHandle parent = readObjectField(jni, curr, agent.handles().getJavaUtilResourceBundleParentField(jni));
         if (!clearException(jni)) {
             return parent;
         }

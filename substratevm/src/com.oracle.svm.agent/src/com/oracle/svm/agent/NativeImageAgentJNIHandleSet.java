@@ -72,9 +72,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     private JNIMethodId javaLangReflectConstructorDeclaringClassName;
 
-    final JNIMethodId javaUtilLocaleToLanguageTag;
-    final JNIFieldId javaUtilResourceBundleParentField;
-    final JNIMethodId javaUtilResourceBundleGetLocale;
+    private JNIMethodId javaUtilLocaleToLanguageTag = WordFactory.nullPointer();
+    private JNIFieldId javaUtilResourceBundleParentField = WordFactory.nullPointer();
+    private JNIMethodId javaUtilResourceBundleGetLocale = WordFactory.nullPointer();
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
@@ -107,11 +107,6 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangInvokeWrongMethodTypeException = newClassGlobalRef(env, "java/lang/invoke/WrongMethodTypeException");
         javaLangIllegalArgumentException = newClassGlobalRef(env, "java/lang/IllegalArgumentException");
 
-        JNIObjectHandle javaUtilLocale = findClass(env, "java/util/Locale");
-        javaUtilLocaleToLanguageTag = getMethodId(env, javaUtilLocale, "toLanguageTag", "()Ljava/lang/String;", false);
-        JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
-        javaUtilResourceBundleParentField = getFieldId(env, javaUtilResourceBundle, "parent", "Ljava/util/ResourceBundle;", false);
-        javaUtilResourceBundleGetLocale = getMethodId(env, javaUtilResourceBundle, "getLocale", "()Ljava/util/Locale;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {
@@ -188,5 +183,29 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaLangReflectConstructorDeclaringClassName = getMethodId(env, customSerializationConstructorClass, "getName", "()Ljava/lang/String;", false);
         }
         return javaLangReflectConstructorDeclaringClassName;
+    }
+
+    public JNIMethodId getJavaUtilLocaleToLanguageTag(JNIEnvironment env) {
+        if (javaUtilLocaleToLanguageTag.isNull()) {
+            JNIObjectHandle javaUtilLocale = findClass(env, "java/util/Locale");
+            javaUtilLocaleToLanguageTag = getMethodId(env, javaUtilLocale, "toLanguageTag", "()Ljava/lang/String;", false);
+        }
+        return javaUtilLocaleToLanguageTag;
+    }
+
+    public JNIFieldId getJavaUtilResourceBundleParentField(JNIEnvironment env) {
+        if (javaUtilResourceBundleParentField.isNull()) {
+            JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
+            javaUtilResourceBundleParentField = getFieldId(env, javaUtilResourceBundle, "parent", "Ljava/util/ResourceBundle;", false);
+        }
+        return javaUtilResourceBundleParentField;
+    }
+
+    public JNIMethodId getJavaUtilResourceBundleGetLocale(JNIEnvironment env) {
+        if (javaUtilResourceBundleGetLocale.isNull()) {
+            JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
+            javaUtilResourceBundleGetLocale = getMethodId(env, javaUtilResourceBundle, "getLocale", "()Ljava/util/Locale;", false);
+        }
+        return javaUtilResourceBundleGetLocale;
     }
 }
