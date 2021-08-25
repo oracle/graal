@@ -58,7 +58,6 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
-import com.oracle.svm.hosted.NativeImageOptions;
 
 @AutomaticFeature
 class HeapFeature implements GraalFeature {
@@ -75,7 +74,7 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        HeapImpl heap = new HeapImpl(access, NativeImageOptions.getPageSize());
+        HeapImpl heap = new HeapImpl(access, SubstrateOptions.getPageSize());
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(SubstrateAllocationSnippets.class, new GenScavengeAllocationSnippets());
         ImageSingletons.add(RememberedSet.class, createRememberedSet());

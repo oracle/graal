@@ -36,7 +36,7 @@ import com.oracle.svm.core.heap.Heap;
 public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static UnsignedWord getImageHeapAddressSpaceSize() {
-        Word imageHeapSizeInFile = IMAGE_HEAP_END.get().subtract(IMAGE_HEAP_BEGIN.get());
+        UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
         return imageHeapSizeInFile.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
     }
 

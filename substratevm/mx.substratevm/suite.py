@@ -270,7 +270,7 @@ suite = {
                 "src",
             ],
             "dependencies": [
-                "com.oracle.svm.hosted",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",

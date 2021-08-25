@@ -42,6 +42,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.ImageHeapProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -156,15 +157,17 @@ public abstract class Heap {
     public abstract int getPreferredAddressSpaceAlignment();
 
     /**
-     * Returns an offset relative to the heap base, at which the image heap should be mapped in the
-     * address space.
+     * Returns an offset relative to the heap base, at which the image heap should be mapped into
+     * the address space.
      */
     @Fold
     public abstract int getImageHeapOffsetInAddressSpace();
 
     /**
-     * Returns the size of the null pages that are prepended to the image heap. Those null pages are
-     * directly embedded into the Native Image file.
+     * Returns the number of null bytes that should prepended to the image heap during the image
+     * build. This value must be a multiple of the page size. When the image heap is mapped at
+     * runtime, this extra memory gets mapped as well but is marked as inaccessible (see
+     * {@link ImageHeapProvider} for more details).
      */
     @Fold
     public abstract int getImageHeapNullPageSize();

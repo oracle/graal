@@ -44,7 +44,9 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.option.APIOption;
@@ -53,7 +55,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
-import org.graalvm.nativeimage.ImageSingletons;
 
 public class SubstrateOptions {
 
@@ -575,6 +576,27 @@ public class SubstrateOptions {
 
         public ReportingSupport(String reportingPath) {
             this.reportsPath = reportingPath;
+        }
+    }
+
+    @Option(help = "Define PageSize of a machine that runs the image. The default = 0 (== same as host machine page size)")//
+    protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
+
+    public static int getPageSize() {
+        int value = PageSize.getValue();
+        if (value == 0) {
+            return hostPageSize;
+        }
+        return value;
+    }
+
+    private static int hostPageSize = getHostPageSize();
+
+    private static int getHostPageSize() {
+        try {
+            return GraalUnsafeAccess.getUnsafe().pageSize();
+        } catch (IllegalArgumentException e) {
+            return 4096;
         }
     }
 }
