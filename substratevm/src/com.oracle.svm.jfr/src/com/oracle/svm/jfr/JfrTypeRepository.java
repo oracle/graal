@@ -33,7 +33,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.HiddenClassSupport;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 
 /**
@@ -120,6 +122,9 @@ public class JfrTypeRepository implements JfrConstantPool {
         writer.writeCompressedLong(symbolRepo.getSymbolId(clazz.getName(), true, true));
         writer.writeCompressedLong(typeInfo.getPackageId(clazz.getPackage()));
         writer.writeCompressedLong(clazz.getModifiers());
+        if (HiddenClassSupport.singleton().isHiddenClassSupported()) {
+            writer.writeCompressedLong(HiddenClassSupport.singleton().isHidden(clazz) ? 1 : 0);
+        }
     }
 
     private static int writePackages(JfrChunkWriter writer, TypeInfo typeInfo) {
