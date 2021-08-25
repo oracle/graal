@@ -58,6 +58,9 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
 
 public class OptimizedBlockNodeTest {
@@ -505,6 +508,37 @@ public class OptimizedBlockNodeTest {
         assertNotNull(block.getPartialBlocks());
     }
 
+    @Test
+    public void testSourceSectionsOutOfOrder() {
+        setup(3);
+
+        OptimizedBlockNode<TestElement> block = createBlock(5, 1, null);
+        OptimizedCallTarget target = createTest(block);
+
+        TestElement[] elements = block.getElements();
+        assertEquals(5, elements.length);
+        Source source = Source.newBuilder(ProxyLanguage.ID, "a;\nb;\nc;\nd;\ne;", "test source").build();
+        elements[0].sourceSection = source.createSection(2);
+        elements[1].sourceSection = source.createSection(3);
+        elements[2].sourceSection = source.createSection(1);
+        elements[3].sourceSection = source.createSection(4);
+        elements[4].sourceSection = source.createSection(5);
+
+        target.computeBlockCompilations();
+        target.call();
+        target.compile(true);
+
+        PartialBlocks<TestElement> partialBlocks = block.getPartialBlocks();
+        assertEquals(2, partialBlocks.getBlockTargets().length);
+        assertEquals(1, partialBlocks.getBlockRanges().length);
+        assertEquals(3, partialBlocks.getBlockRanges()[0]);
+
+        assertEquals(2, partialBlocks.getBlockTargets()[0].getRootNode().getSourceSection().getStartLine());
+        assertEquals(2, partialBlocks.getBlockTargets()[0].getRootNode().getSourceSection().getEndLine());
+        assertEquals(4, partialBlocks.getBlockTargets()[1].getRootNode().getSourceSection().getStartLine());
+        assertEquals(5, partialBlocks.getBlockTargets()[1].getRootNode().getSourceSection().getEndLine());
+    }
+
     private static OptimizedBlockNode<TestElement> createBlock(int blockSize, int depth) {
         return createBlock(blockSize, depth, null);
     }
@@ -682,6 +716,7 @@ public class OptimizedBlockNodeTest {
         final int childIndex;
 
         @CompilationFinal TestRootNode root;
+        SourceSection sourceSection;
 
         TestElement(BlockNode<?> childBlock, Object returnValue, int childIndex, Node[] extraDummyChildren) {
             this.childBlock = childBlock;
@@ -704,6 +739,11 @@ public class OptimizedBlockNodeTest {
                 return childBlock.executeGeneric(frame, BlockNode.NO_ARGUMENT);
             }
             return returnValue;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return sourceSection;
         }
 
     }
