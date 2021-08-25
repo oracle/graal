@@ -109,99 +109,6 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return code, out, dims
 
 
-native_image_vm_configurations = {
-    "default": dict(),
-    "gate": dict(
-        is_gate=True
-    ),
-    "llvm": dict(
-        is_llvm=True
-    ),
-    "native-architecture": dict(
-        native_architecture=True
-    ),
-    "pgo": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=1,
-        pgo_inline_explored=False,
-        hotspot_pgo=False
-    ),
-    "pgo-ctx-insens": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=1,
-        pgo_inline_explored=False,
-        hotspot_pgo=False,
-        pgo_context_sensitive=False
-    ),
-    "pgo-aot-inline": dict(
-        pgo_aot_inline=True,
-        pgo_instrumented_iterations=1,
-        pgo_inline_explored=False,
-        hotspot_pgo=False
-    ),
-    "pgo-iterative": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=3,
-        pgo_inline_explored=False,
-        hotspot_pgo=False
-    ),
-    "pgo-inline-explored": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=3,
-        pgo_inline_explored=True,
-        hotspot_pgo=False
-    ),
-    "pgo-hotspot": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=0,
-        pgo_inline_explored=False,
-        hotspot_pgo=True
-    ),
-    "gate-pgo": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=1,
-        pgo_inline_explored=False,
-        hotspot_pgo=False,
-        is_gate=True
-    ),
-    "gate-pgo-hotspot": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=0,
-        pgo_inline_explored=False,
-        hotspot_pgo=True,
-        is_gate=True
-    ),
-    "gate-pgo-aot-inline": dict(
-        pgo_aot_inline=True,
-        pgo_instrumented_iterations=1,
-        pgo_inline_explored=False,
-        hotspot_pgo=False,
-        is_gate=True
-    ),
-    "llvm-pgo": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=1,
-        pgo_inline_explored=False,
-        hotspot_pgo=False,
-        is_llvm=True
-    ),
-    "g1gc-pgo": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=1,
-        pgo_inline_explored=False,
-        hotspot_pgo=False,
-        gc='G1'
-    ),
-    "g1gc": dict(
-        pgo_aot_inline=False,
-        pgo_instrumented_iterations=0,
-        pgo_inline_explored=False,
-        hotspot_pgo=False,
-        gc='G1'
-    )
-}
-
-
 class NativeImageVM(GraalVm):
     """
     This is a VM that should be used for running all Native Image benchmarks. This VM should support all the benchmarks
@@ -262,19 +169,103 @@ class NativeImageVM(GraalVm):
                 self.base_image_build_args += ['-H:+NativeArchitecture']
             self.base_image_build_args += self.extra_image_build_arguments
 
-    def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None,
-                 pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False,
-                 is_gate=False, is_llvm=False, pgo_context_sensitive=True, gc=None, native_architecture=False):
+    def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None, **kwargs):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
-        self.pgo_aot_inline = pgo_aot_inline
-        self.pgo_instrumented_iterations = pgo_instrumented_iterations
-        self.pgo_context_sensitive = pgo_context_sensitive
-        self.pgo_inline_explored = pgo_inline_explored
-        self.hotspot_pgo = hotspot_pgo
-        self.is_gate = is_gate
-        self.is_llvm = is_llvm
-        self.gc = gc
-        self.native_architecture = native_architecture
+        if len(kwargs) > 0:
+            mx.log_deprecation("Ignoring NativeImageVM custom configuration! Use named configuration instead.")
+            mx.warn("Ignoring: {}".format(kwargs))
+
+        self.pgo_aot_inline = False
+        self.pgo_instrumented_iterations = 0
+        self.pgo_context_sensitive = True
+        self.pgo_inline_explored = False
+        self.hotspot_pgo = False
+        self.is_gate = False
+        self.is_llvm = False
+        self.gc = None
+        self.native_architecture = False
+        self.graalvm_edition = None
+        self._configure_from_name(config_name)
+
+    def _configure_from_name(self, config_name):
+        if not config_name:
+            mx.abort("config_name must be set. Use 'default' for the default {} configuration.".format(self.__class__.__name__))
+
+        # special case for the 'default' configuration, other configurations are handled by the regex to ensure consistent ordering
+        if config_name == "default":
+            return
+        if config_name == "default-ce":
+            self.graalvm_edition = "ce"
+            return
+        if config_name == "default-ee":
+            self.graalvm_edition = "ee"
+            return
+
+        # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<gate>gate-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?(?P<edition>ce-|ee-)?$'
+
+        mx.logv("== Registering configuration: {}".format(config_name))
+        match_name = "{}-".format(config_name)  # adding trailing dash to simplify the regex
+        matching = re.match(rule, match_name)
+        if not matching:
+            mx.abort("{} configuration is invalid: {}".format(self.__class__.__name__, config_name))
+
+        if matching.group("native_architecture") is not None:
+            mx.logv("'native-architecture' is enabled for {}".format(config_name))
+            self.native_architecture = True
+
+        if matching.group("gate") is not None:
+            mx.logv("'gate' mode is enabled for {}".format(config_name))
+            self.is_gate = True
+
+        if matching.group("gc") is not None:
+            gc = matching.group("gc")[:-1]
+            if gc == "g1gc":
+                mx.logv("'g1gc' is enabled for {}".format(config_name))
+                self.gc = "G1"
+            else:
+                mx.abort("Unknown GC: {}".format(gc))
+
+        if matching.group("llvm") is not None:
+            mx.logv("'llvm' mode is enabled for {}".format(config_name))
+            self.is_llvm = True
+
+        if matching.group("pgo") is not None:
+            pgo_mode = matching.group("pgo")[:-1]
+            if pgo_mode == "pgo":
+                mx.logv("'pgo' is enabled for {}".format(config_name))
+                self.pgo_instrumented_iterations = 1
+            elif pgo_mode == "pgo-hotspot":
+                mx.logv("'pgo-hotspot' is enabled for {}".format(config_name))
+                self.hotspot_pgo = True
+            elif pgo_mode == "pgo-ctx-insens":
+                mx.logv("'pgo-ctx-insens' is enabled for {}".format(config_name))
+                self.pgo_instrumented_iterations = 1
+                self.pgo_context_sensitive = False
+            else:
+                mx.abort("Unknown pgo mode: {}".format(pgo_mode))
+
+        if matching.group("inliner") is not None:
+            inliner = matching.group("inliner")[:-1]
+            if self.pgo_instrumented_iterations < 1:
+                mx.abort("The selected inliner require PGO! Invalid configuration: {}".format(config_name))
+            if inliner == "aot-inline":
+                mx.logv("'aot-inline' is enabled for {}".format(config_name))
+                self.pgo_aot_inline = True
+            elif inliner == "iterative":
+                mx.logv("'iterative' inliner is enabled for {}".format(config_name))
+                self.pgo_instrumented_iterations = 3
+            elif inliner == "inline-explored":
+                mx.logv("'inline-explored' is enabled for {}".format(config_name))
+                self.pgo_instrumented_iterations = 3
+                self.pgo_inline_explored = True
+            else:
+                mx.abort("Unknown inliner configuration: {}".format(inliner))
+
+        if matching.group("edition") is not None:
+            edition = matching.group("edition")[:-1]
+            mx.logv("GraalVM edition is set to: {}".format(edition))
+            self.graalvm_edition = edition
 
     @staticmethod
     def supported_vm_arg_prefixes():
@@ -1052,12 +1043,12 @@ def register_graalvm_vms():
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             for main_config in ['default', 'gate', 'llvm', 'native-architecture']:
                 final_config_name = '{}-{}'.format(main_config, config_suffix)
-                mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, **native_image_vm_configurations[main_config]), _suite, 10)
+                mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
             break
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
     for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo']:
-        mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config, **native_image_vm_configurations[java_home_config]), _suite, 5)
+        mx_benchmark.add_java_vm(NativeImageVM('native-image-java-home', java_home_config), _suite, 5)
 
 
     # Add VMs for libgraal
