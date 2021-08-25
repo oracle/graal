@@ -105,6 +105,10 @@ public final class GCAccounting {
         return oldChunkBytesAfter;
     }
 
+    UnsignedWord getYoungChunkBytesBefore() {
+        return youngChunkBytesBefore;
+    }
+
     UnsignedWord getYoungChunkBytesAfter() {
         return youngChunkBytesAfter;
     }

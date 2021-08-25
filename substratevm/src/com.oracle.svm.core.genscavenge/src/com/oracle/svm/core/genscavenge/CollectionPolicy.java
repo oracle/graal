@@ -151,7 +151,7 @@ public interface CollectionPolicy {
      * The maximum number of bytes that should be kept readily available for allocation or copying
      * during collections.
      */
-    UnsignedWord getMaximumFreeReservedSize();
+    UnsignedWord getMaximumFreeAlignedChunksSize();
 
     /**
      * The age at which objects should currently be promoted to the old generation, which is between

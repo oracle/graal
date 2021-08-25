@@ -154,10 +154,8 @@ final class BasicCollectionPolicies {
         }
 
         @Override
-        public final UnsignedWord getMaximumFreeReservedSize() {
-            UnsignedWord usedBytes = GCImpl.getChunkBytes();
-            UnsignedWord minHeap = getMinimumHeapSize();
-            return minHeap.aboveThan(usedBytes) ? minHeap.subtract(usedBytes) : WordFactory.zero();
+        public final UnsignedWord getMaximumFreeAlignedChunksSize() {
+            return getMaximumYoungGenerationSize();
         }
 
         @Override

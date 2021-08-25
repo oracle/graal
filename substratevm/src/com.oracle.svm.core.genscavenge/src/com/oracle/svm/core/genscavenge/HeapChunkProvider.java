@@ -51,8 +51,8 @@ import com.oracle.svm.core.thread.VMThreads;
  * thread-safe, so no locking is necessary when calling them.
  *
  * Memory for aligned chunks is not immediately released to the OS. Chunks with a total of up to
- * {@link CollectionPolicy#getMaximumFreeReservedSize()} bytes are saved in an unused chunk list.
- * Memory for unaligned chunks is released immediately.
+ * {@link CollectionPolicy#getMaximumFreeAlignedChunksSize()} bytes are saved in an unused chunk
+ * list. Memory for unaligned chunks is released immediately.
  */
 final class HeapChunkProvider {
     /**
@@ -136,7 +136,7 @@ final class HeapChunkProvider {
         assert HeapChunk.getPrevious(firstChunk).isNull() : "prev must be null";
 
         UnsignedWord freeListBytes = getBytesInUnusedChunks();
-        UnsignedWord reserveBytes = GCImpl.getPolicy().getMaximumFreeReservedSize();
+        UnsignedWord reserveBytes = GCImpl.getPolicy().getMaximumFreeAlignedChunksSize();
 
         AlignedHeader cur = firstChunk;
         if (freeListBytes.belowThan(reserveBytes)) {

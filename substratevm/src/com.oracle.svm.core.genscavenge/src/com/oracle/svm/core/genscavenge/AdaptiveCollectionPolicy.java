@@ -122,6 +122,7 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     private final AdaptiveWeightedAverage avgMinorGcCost = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
     private final AdaptivePaddedAverage avgSurvived = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, SURVIVOR_PADDING);
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
+    private final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
     private final ReciprocalLeastSquareFit minorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long minorCount;
     private long latestMinorMutatorIntervalSeconds;
@@ -476,6 +477,15 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
         } else {
             latestMinorMutatorIntervalSeconds = timer.getMeasuredNanos();
         }
+
+        // Capture the fraction of bytes in aligned chunks at the start to include all allocated
+        // (also dead) objects, because we use it to reserve aligned chunks for future allocations
+        UnsignedWord youngChunkBytes = GCImpl.getGCImpl().getAccounting().getYoungChunkBytesBefore();
+        if (youngChunkBytes.notEqual(0)) {
+            UnsignedWord youngAlignedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getAlignedChunkBytes();
+            avgYoungGenAlignedChunkFraction.sample(UnsignedUtils.toFloat(youngAlignedChunkBytes) / UnsignedUtils.toFloat(youngChunkBytes));
+        }
+
         timer.reset();
         timer.open(); // measure collection pause
     }
@@ -661,7 +671,7 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
-    public UnsignedWord getMaximumFreeReservedSize() {
+    public UnsignedWord getMaximumFreeAlignedChunksSize() {
         guaranteeSizeParametersInitialized();
         /*
          * Keep chunks ready for allocations in eden and for the survivor to-spaces during young
@@ -669,7 +679,9 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
          * unallocated chunks are also allocated). We could alternatively return
          * getCurrentHeapCapacity() to have chunks ready during full GCs as well.
          */
-        return edenSize.add(survivorSize);
+        UnsignedWord total = edenSize.add(survivorSize);
+        float alignedFraction = Math.min(1, Math.max(0, avgYoungGenAlignedChunkFraction.getAverage()));
+        return UnsignedUtils.fromDouble(UnsignedUtils.toDouble(total) * alignedFraction);
     }
 
     @Override
