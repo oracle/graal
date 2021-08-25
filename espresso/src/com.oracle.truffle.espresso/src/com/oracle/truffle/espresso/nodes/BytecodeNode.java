@@ -2823,7 +2823,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             return false;
         }
         byte[] originalCode = getMethodVersion().getOriginalCode();
-        if (originalCode.length > 18 /* getContext().TrivialMethodSize */) {
+        if (originalCode.length > 18) {
             return false;
         }
         BytecodeStream stream = new BytecodeStream(originalCode);
