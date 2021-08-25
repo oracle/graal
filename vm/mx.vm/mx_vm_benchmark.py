@@ -1004,7 +1004,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 mx_benchmark.StdOutRule(r"### Truffle Context eval time \(ms\): (?P<delta>[0-9]+)", {
                     "benchmark": benchmarks[0],
                     "metric.name": "context-eval-time",
-                    "metric.value": ("<delta>", lambda x: float(x)),
+                    "metric.value": ("<delta>", float),
                     "metric.unit": "ms",
                     "metric.type": "numeric",
                     "metric.score-function": "id",
