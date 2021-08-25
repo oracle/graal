@@ -193,7 +193,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     private static Field getInstanceFieldFromIndex(StaticObject holder, int slot) {
-        if (!(0 <= slot && slot < (1 << 16))) {
+        if (!(0 <= slot && slot < (1 << 16)) && slot >= 0) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
         if (holder.isStaticStorage()) {

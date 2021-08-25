@@ -665,14 +665,40 @@ public final class ObjectKlass extends Klass {
 
     Field lookupFieldTableImpl(int slot) {
         KlassVersion current = getKlassVersion();
-        assert slot >= 0 && slot < current.fieldTable.length && !current.fieldTable[slot].isHidden();
-        return current.fieldTable[slot];
+        if (slot > 0) {
+            assert slot >= 0 && slot < current.fieldTable.length && !current.fieldTable[slot].isHidden();
+            return current.fieldTable[slot];
+        } else { // negative values used for extension fields
+            ObjectKlass objectKlass = this;
+            while (objectKlass != null) {
+                try {
+                    ExtensionFieldObject staticExtensionFieldObject = objectKlass.getStaticExtensionFieldObject();
+                    if (staticExtensionFieldObject != null) {
+                        return staticExtensionFieldObject.getInstanceFieldAtSlot(slot);
+                    }
+                } catch (NoSuchFieldException e) {
+                    // continue search in super
+                }
+                objectKlass = objectKlass.getSuperKlass();
+            }
+            throw new IndexOutOfBoundsException("Index out of range: " + slot);
+        }
     }
 
     Field lookupStaticFieldTableImpl(int slot) {
         KlassVersion current = getKlassVersion();
-        assert slot >= 0 && slot < current.staticFieldTable.length;
-        return current.staticFieldTable[slot];
+        if (noAddedFields.isValid()) {
+            assert slot >= 0 && slot < current.staticFieldTable.length;
+            return current.staticFieldTable[slot];
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (slot >= 0 && slot < current.staticFieldTable.length) {
+                return current.staticFieldTable[slot];
+            } else {
+                // check extension fields
+                return getStaticExtensionFieldObject().getStaticFieldAtSlot(slot);
+            }
+        }
     }
 
     public Field requireHiddenField(Symbol<Name> fieldName) {
@@ -1202,7 +1228,7 @@ public final class ObjectKlass extends Klass {
             } else {
                 // add new fields to the extension object
                 extensionFieldObject = (ExtensionFieldObject) object;
-                extensionFieldObject.addNewFields(this, packet.detectedChange.getAddedStaticFields(), pool);
+                extensionFieldObject.addStaticNewFields(this, packet.detectedChange.getAddedStaticFields(), pool);
             }
             extensionFieldObject.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool);
             noAddedFields.invalidate();
@@ -1420,6 +1446,10 @@ public final class ObjectKlass extends Klass {
     public ExtensionFieldObject getStaticExtensionFieldObject() {
         Field[] staticFieldTable = getStaticFieldTable();
         Field extensionField = getStaticFieldTable()[staticFieldTable.length - 1];
+        Object object = extensionField.getHiddenObject(getStatics());
+        if (object == StaticObject.NULL) {
+            return null;
+        }
         return (ExtensionFieldObject) extensionField.getHiddenObject(getStatics());
     }
 
