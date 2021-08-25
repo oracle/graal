@@ -311,8 +311,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("::: Running :::");
             config.metric.reset();
             repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, false, config.iterations);
+            // this log message is parsed in mx_vm_benchmark.py, if changed adapt parse rule.
+            contextEvalTime.ifPresent(delta -> log("### Truffle Context eval time (ms): " + round(delta)));
             log("");
-            contextEvalTime.ifPresent(delta -> log("\tContext eval time (ms): " + round(delta)));
         } catch (Throwable t) {
             throw abort(t);
         }

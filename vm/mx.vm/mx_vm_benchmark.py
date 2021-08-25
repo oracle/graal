@@ -46,6 +46,7 @@ _polybench_modes = [
     ('interpreter', ['--mode=interpreter']),
 ]
 
+
 class GraalVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, name, config_name, extra_java_args, extra_launcher_args):
         """
@@ -999,6 +1000,16 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.type": "numeric",
                     "metric.score-function": "id",
                     "metric.iteration": 0,
+                }),
+                mx_benchmark.StdOutRule(r"### Truffle Context eval time \(ms\): (?P<delta>[0-9]+)", {
+                    "benchmark": benchmarks[0],
+                    "metric.name": "context-eval-time",
+                    "metric.value": ("<delta>", lambda x: float(x)),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0
                 })
             ]
 
