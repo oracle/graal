@@ -32,18 +32,22 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ExtensionFieldObject extends StaticObject {
+    private static AtomicInteger nextAvailableInstanceSlot = new AtomicInteger(-1);
 
     private final Map<Field, Object> fieldValues;
     private final List<Field> addedInstanceFields = new ArrayList<>(1);
+    private int nextAvailableStaticSlot;
 
     public ExtensionFieldObject(ObjectKlass holder, List<ParserField> initialFields, RuntimeConstantPool pool) {
         super(null, false);
+        nextAvailableStaticSlot = holder.getStaticFieldTable().length;
 
         this.fieldValues = new HashMap<>(initialFields.size());
         for (ParserField initialField : initialFields) {
-            LinkedField linkedField = new LinkedField(initialField, 1, LinkedField.IdMode.REGULAR);
+            LinkedField linkedField = new LinkedField(initialField, nextAvailableStaticSlot++, LinkedField.IdMode.REGULAR);
             Field field = new Field(holder, linkedField, pool, true);
             fieldValues.put(field, null);
         }
@@ -51,14 +55,13 @@ public final class ExtensionFieldObject extends StaticObject {
 
     public ExtensionFieldObject() {
         super(null, false);
-
         this.fieldValues = new HashMap<>(1);
     }
 
-    public void addNewFields(ObjectKlass holder, List<ParserField> newFields, RuntimeConstantPool pool) {
+    public void addStaticNewFields(ObjectKlass holder, List<ParserField> newFields, RuntimeConstantPool pool) {
         synchronized (fieldValues) {
             for (ParserField newField : newFields) {
-                LinkedField linkedField = new LinkedField(newField, 1, LinkedField.IdMode.REGULAR);
+                LinkedField linkedField = new LinkedField(newField, nextAvailableStaticSlot++, LinkedField.IdMode.REGULAR);
                 Field field = new Field(holder, linkedField, pool, true);
                 fieldValues.put(field, null);
             }
@@ -93,10 +96,30 @@ public final class ExtensionFieldObject extends StaticObject {
     public void addNewInstanceFields(ObjectKlass holder, List<ParserField> instanceFields, RuntimeConstantPool pool) {
         synchronized (addedInstanceFields) {
             for (ParserField newField : instanceFields) {
-                LinkedField linkedField = new LinkedField(newField, 1, LinkedField.IdMode.REGULAR);
+                LinkedField linkedField = new LinkedField(newField, nextAvailableInstanceSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
                 Field field = new Field(holder, linkedField, pool, true);
                 addedInstanceFields.add(field);
             }
         }
+    }
+
+    @TruffleBoundary
+    public Field getStaticFieldAtSlot(int slot) throws IndexOutOfBoundsException {
+        for (Field field : fieldValues.keySet()) {
+            if (field.getSlot() == slot) {
+                return field;
+            }
+        }
+        throw new IndexOutOfBoundsException("Index out of range: " + slot);
+    }
+
+    @TruffleBoundary
+    public Field getInstanceFieldAtSlot(int slot) throws NoSuchFieldException {
+        for (Field field : addedInstanceFields) {
+            if (field.getSlot() == slot) {
+                return field;
+            }
+        }
+        throw new NoSuchFieldException("Index out of range: " + slot);
     }
 }
