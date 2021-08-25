@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import java.util.IdentityHashMap;
 import java.util.function.Function;
+
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
+
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.svm.util.ClassUtil;
 
 /**
  * Fields that contain native pointers can not be part of the image heap, because the native
@@ -44,14 +47,7 @@ public final class NativeObjectReplacer implements Function<Object, Object> {
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFILibrary"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFISignature"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFISymbol"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$ArrayType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$ClosureType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$EnvType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$NullableType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$ObjectType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$SimpleType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$StringType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$VoidType"), Boolean.FALSE);
+        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativeAllocation$FreeDestructor"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativePointer"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativeString"), Boolean.FALSE);
@@ -60,7 +56,7 @@ public final class NativeObjectReplacer implements Function<Object, Object> {
     @Override
     public Object apply(Object obj) {
         if (disallowedClasses.containsKey(obj.getClass())) {
-            throw new UnsupportedFeatureException(String.format("Native object (%s) stored in pre-initialized context.", obj.getClass().getSimpleName()));
+            throw new UnsupportedFeatureException(String.format("Native object (%s) stored in pre-initialized context.", ClassUtil.getUnqualifiedName(obj.getClass())));
         }
         return obj;
     }

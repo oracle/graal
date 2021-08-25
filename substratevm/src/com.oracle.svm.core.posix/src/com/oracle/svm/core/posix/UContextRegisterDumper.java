@@ -32,7 +32,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 
 public interface UContextRegisterDumper extends RegisterDumper {
-    void dumpRegisters(Log log, ucontext_t uContext);
+    void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo, boolean allowJavaHeapAccess);
 
     PointerBase getHeapBase(ucontext_t uContext);
 
@@ -43,8 +43,8 @@ public interface UContextRegisterDumper extends RegisterDumper {
     PointerBase getIP(ucontext_t uContext);
 
     @Override
-    default void dumpRegisters(Log log, Context context) {
-        dumpRegisters(log, (ucontext_t) context);
+    default void dumpRegisters(Log log, Context context, boolean printLocationInfo, boolean allowJavaHeapAccess) {
+        dumpRegisters(log, (ucontext_t) context, printLocationInfo, allowJavaHeapAccess);
     }
 
     @Override

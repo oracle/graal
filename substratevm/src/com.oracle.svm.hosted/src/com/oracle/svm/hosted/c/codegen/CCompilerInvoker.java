@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
@@ -52,11 +53,11 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
-import org.graalvm.nativeimage.Platform;
 
 public abstract class CCompilerInvoker {
 
@@ -185,8 +186,9 @@ public abstract class CCompilerInvoker {
                                 JavaVersionUtil.JAVA_SPEC, compilerInfo);
             }
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s unsupported)",
-                                AMD64.class.getSimpleName(), compilerInfo.targetArch);
+                String targetPrefix = compilerInfo.targetArch.matches("(.*x|i\\d)86$") ? "32-bit architecture " : "";
+                UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s%s unsupported)",
+                                AMD64.class.getSimpleName(), targetPrefix, compilerInfo.targetArch);
             }
         }
 
@@ -229,7 +231,7 @@ public abstract class CCompilerInvoker {
                 }
 
                 if (scanner.findInLine("clang version ") != null) {
-                    scanner.useDelimiter("[. ]");
+                    scanner.useDelimiter("[. -]");
                     int major = scanner.nextInt();
                     int minor0 = scanner.nextInt();
                     int minor1 = scanner.nextInt();
@@ -353,7 +355,7 @@ public abstract class CCompilerInvoker {
     private CompilerInfo getCCompilerInfo() {
         Path compilerPath = getCCompilerPath().toAbsolutePath();
         if (!SubstrateOptions.CheckToolchain.getValue()) {
-            return new CompilerInfo(compilerPath, null, getClass().getSimpleName(), null, 0, 0, 0, null);
+            return new CompilerInfo(compilerPath, null, ClassUtil.getUnqualifiedName(getClass()), null, 0, 0, 0, null);
         }
         List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
         Process compilerProcess = null;
@@ -422,6 +424,7 @@ public abstract class CCompilerInvoker {
                 return AArch64.class;
             case "i686":
             case "80x86": /* Windows notation */
+            case "x86":
                 /* Graal does not support 32-bit architectures */
             default:
                 return null;

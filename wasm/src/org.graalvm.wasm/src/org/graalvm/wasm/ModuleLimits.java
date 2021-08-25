@@ -151,6 +151,14 @@ public final class ModuleLimits {
         assertUnsignedIntLessOrEqual(count, localCountLimit, Failure.TOO_MANY_LOCALS);
     }
 
+    public void checkTableInstanceSize(int size) {
+        assertUnsignedIntLessOrEqual(size, tableInstanceSizeLimit, Failure.TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED);
+    }
+
+    public void checkMemoryInstanceSize(int size) {
+        assertUnsignedIntLessOrEqual(size, memoryInstanceSizeLimit, Failure.MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED);
+    }
+
     public int tableInstanceSizeLimit() {
         return tableInstanceSizeLimit;
     }

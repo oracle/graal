@@ -208,8 +208,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getTypeName = StaticSymbols.putName("getTypeName");
         public static final Symbol<Name> forName = StaticSymbols.putName("forName");
         public static final Symbol<Name> module = StaticSymbols.putName("module");
+        public static final Symbol<Name> classData = StaticSymbols.putName("classData");
         public static final Symbol<Name> classLoader = StaticSymbols.putName("classLoader");
         public static final Symbol<Name> classRedefinedCount = StaticSymbols.putName("classRedefinedCount");
+        public static final Symbol<Name> componentType = StaticSymbols.putName("componentType");
 
         // j.l.ClassLoader
         public static final Symbol<Name> addClass = StaticSymbols.putName("addClass");
@@ -223,6 +225,11 @@ public final class Symbol<T> extends ByteSequence {
 
         // j.l.Module
         public static final Symbol<Name> loader = StaticSymbols.putName("loader");
+
+        // j.l.RecordComponent
+        public static final Symbol<Name> accessor = StaticSymbols.putName("accessor");
+        public static final Symbol<Name> annotations = StaticSymbols.putName("annotations");
+        public static final Symbol<Name> typeAnnotations = StaticSymbols.putName("typeAnnotations");
 
         // j.l.String
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");
@@ -273,11 +280,14 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> lineNumber = StaticSymbols.putName("lineNumber");
 
         // j.l.System
+        public static final Symbol<Name> err = StaticSymbols.putName("err");
         public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
+        public static final Symbol<Name> in = StaticSymbols.putName("in");
         public static final Symbol<Name> initializeSystemClass = StaticSymbols.putName("initializeSystemClass");
         public static final Symbol<Name> initPhase1 = StaticSymbols.putName("initPhase1");
         public static final Symbol<Name> initPhase2 = StaticSymbols.putName("initPhase2");
         public static final Symbol<Name> initPhase3 = StaticSymbols.putName("initPhase3");
+        public static final Symbol<Name> out = StaticSymbols.putName("out");
         public static final Symbol<Name> security = StaticSymbols.putName("security");
         public static final Symbol<Name> setProperty = StaticSymbols.putName("setProperty");
 
@@ -294,6 +304,9 @@ public final class Symbol<T> extends ByteSequence {
 
         // java.nio.ByteBuffer
         public static final Symbol<Name> wrap = StaticSymbols.putName("wrap");
+
+        // java.nio.ByteOrder
+        public static final Symbol<Name> LITTLE_ENDIAN = StaticSymbols.putName("LITTLE_ENDIAN");
 
         // java.nio.Buffer
         public static final Symbol<Name> address = StaticSymbols.putName("address");
@@ -377,6 +390,14 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> isPrivileged = StaticSymbols.putName("isPrivileged");
         public static final Symbol<Name> privilegedContext = StaticSymbols.putName("privilegedContext");
         public static final Symbol<Name> doPrivileged = StaticSymbols.putName("doPrivileged");
+        public static final Symbol<Name> executePrivileged = StaticSymbols.putName("executePrivileged");
+
+        // jdk.internal.misc.UnsafeConstants
+        public static final Symbol<Name> ADDRESS_SIZE0 = StaticSymbols.putName("ADDRESS_SIZE0");
+        public static final Symbol<Name> PAGE_SIZE = StaticSymbols.putName("PAGE_SIZE");
+        public static final Symbol<Name> BIG_ENDIAN = StaticSymbols.putName("BIG_ENDIAN");
+        public static final Symbol<Name> UNALIGNED_ACCESS = StaticSymbols.putName("UNALIGNED_ACCESS");
+        public static final Symbol<Name> DATA_CACHE_LINE_FLUSH_SIZE = StaticSymbols.putName("DATA_CACHE_LINE_FLUSH_SIZE");
 
         // sun.launcher.LauncherHelper
         public static final Symbol<Name> printHelpMessage = StaticSymbols.putName("printHelpMessage");
@@ -407,6 +428,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
         public static final Symbol<Name> NestHost = StaticSymbols.putName("NestHost");
         public static final Symbol<Name> NestMembers = StaticSymbols.putName("NestMembers");
+        public static final Symbol<Name> PermittedSubclasses = StaticSymbols.putName("PermittedSubclasses");
+        public static final Symbol<Name> Record = StaticSymbols.putName("Record");
         public static final Symbol<Name> RuntimeVisibleAnnotations = StaticSymbols.putName("RuntimeVisibleAnnotations");
         public static final Symbol<Name> RuntimeInvisibleAnnotations = StaticSymbols.putName("RuntimeInvisibleAnnotations");
         public static final Symbol<Name> RuntimeVisibleTypeAnnotations = StaticSymbols.putName("RuntimeVisibleTypeAnnotations");
@@ -431,6 +454,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getZone = StaticSymbols.putName("getZone");
         public static final Symbol<Name> getId = StaticSymbols.putName("getId");
         public static final Symbol<Name> of = StaticSymbols.putName("of");
+        public static final Symbol<Name> compose = StaticSymbols.putName("compose");
 
         public static final Symbol<Name> hour = StaticSymbols.putName("hour");
         public static final Symbol<Name> minute = StaticSymbols.putName("minute");
@@ -480,6 +504,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
         public static final Symbol<Name> HIDDEN_IS_ALIVE = StaticSymbols.putName("0HIDDEN_IS_ALIVE");
         public static final Symbol<Name> HIDDEN_SUSPEND_LOCK = StaticSymbols.putName("0HIDDEN_SUSPEND_LOCK");
+        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
+        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
+        public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
 
         // Class
         public static final Symbol<Name> HIDDEN_MIRROR_KLASS = StaticSymbols.putName("0HIDDEN_MIRROR_KLASS");
@@ -491,9 +518,6 @@ public final class Symbol<T> extends ByteSequence {
 
         // Reference
         public static final Symbol<Name> HIDDEN_HOST_REFERENCE = StaticSymbols.putName("0HIDDEN_HOST_REFERENCE");
-        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
-        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
-        public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
 
         // Polyglot ExceptionType
         public static final Symbol<Name> EXIT = StaticSymbols.putName("EXIT");
@@ -507,6 +531,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> generateProxyClass = StaticSymbols.putName("generateProxyClass");
         public static final Symbol<Name> removeBeanInfo = StaticSymbols.putName("removeBeanInfo");
 
+        public static final Symbol<Name> platformClassLoader = StaticSymbols.putName("platformClassLoader");
+        public static final Symbol<Name> bootModules = StaticSymbols.putName("bootModules");
+        public static final Symbol<Name> descriptor = StaticSymbols.putName("descriptor");
+        public static final Symbol<Name> ofSystem = StaticSymbols.putName("ofSystem");
     }
 
     /**
@@ -549,12 +577,23 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> java_lang_ClassLoader = StaticSymbols.putType("Ljava/lang/ClassLoader;");
         public static final Symbol<Type> java_lang_ClassLoader$NativeLibrary = StaticSymbols.putType("Ljava/lang/ClassLoader$NativeLibrary;");
+        public static final Symbol<Type> jdk_internal_loader_NativeLibraries = StaticSymbols.putType("Ljdk/internal/loader/NativeLibraries;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
 
         public static final Symbol<Type> java_io_InputStream = StaticSymbols.putType("Ljava/io/InputStream;");
         public static final Symbol<Type> java_io_PrintStream = StaticSymbols.putType("Ljava/io/PrintStream;");
+        public static final Symbol<Type> java_nio_file_Path = StaticSymbols.putType("Ljava/nio/file/Path;");
+        public static final Symbol<Type> java_nio_file_Path_array = StaticSymbols.putType("[Ljava/nio/file/Path;");
+        public static final Symbol<Type> java_nio_file_Paths = StaticSymbols.putType("Ljava/nio/file/Paths;");
 
+        public static final Symbol<Type> jdk_internal_loader_ClassLoaders = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders;");
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
+        public static final Symbol<Type> jdk_internal_module_ModuleLoaderMap = StaticSymbols.putType("Ljdk/internal/module/ModuleLoaderMap;");
+        public static final Symbol<Type> jdk_internal_module_SystemModuleFinders = StaticSymbols.putType("Ljdk/internal/module/SystemModuleFinders;");
+        public static final Symbol<Type> jdk_internal_module_SystemModules = StaticSymbols.putType("Ljdk/internal/module/SystemModules;");
+        public static final Symbol<Type> java_lang_module_ModuleFinder = StaticSymbols.putType("Ljava/lang/module/ModuleFinder;");
+        public static final Symbol<Type> java_lang_module_ModuleFinder_array = StaticSymbols.putType("[Ljava/lang/module/ModuleFinder;");
+        public static final Symbol<Type> jdk_internal_module_ModulePath = StaticSymbols.putType("Ljdk/internal/module/ModulePath;");
 
         public static final Symbol<Type> java_beans_Introspector = StaticSymbols.putType("Ljava/beans/Introspector;");
         public static final Symbol<Type> java_beans_ThreadGroupContext = StaticSymbols.putType("Ljava/beans/ThreadGroupContext;");
@@ -674,6 +713,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_io_Serializable = StaticSymbols.putType("Ljava/io/Serializable;");
         public static final Symbol<Type> java_nio_ByteBuffer = StaticSymbols.putType("Ljava/nio/ByteBuffer;");
         public static final Symbol<Type> java_nio_DirectByteBuffer = StaticSymbols.putType("Ljava/nio/DirectByteBuffer;");
+        public static final Symbol<Type> java_nio_ByteOrder = StaticSymbols.putType("Ljava/nio/ByteOrder;");
 
         public static final Symbol<Type> java_security_PrivilegedActionException = StaticSymbols.putType("Ljava/security/PrivilegedActionException;");
 
@@ -733,6 +773,13 @@ public final class Symbol<T> extends ByteSequence {
         // Modules
         public static final Symbol<Type> java_lang_Module = StaticSymbols.putType("Ljava/lang/Module;");
 
+        // Record
+        public static final Symbol<Type> java_lang_Record = StaticSymbols.putType("Ljava/lang/Record;");
+        public static final Symbol<Type> java_lang_reflect_RecordComponent = StaticSymbols.putType("Ljava/lang/reflect/RecordComponent;");
+
+        // Unsafe Constants (required for 13+)
+        public static final Symbol<Type> jdk_internal_misc_UnsafeConstants = StaticSymbols.putType("Ljdk/internal/misc/UnsafeConstants;");
+
         // Stack walking API
         public static final Symbol<Type> java_lang_StackWalker = StaticSymbols.putType("Ljava/lang/StackWalker;");
         public static final Symbol<Type> java_lang_StackStreamFactory = StaticSymbols.putType("Ljava/lang/StackStreamFactory;");
@@ -779,6 +826,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnsupportedMessageException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnsupportedTypeException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnsupportedTypeException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/InvalidArrayIndexException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ForeignException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ForeignException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ExceptionType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;");
     }
@@ -860,6 +909,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
                         Type.java_lang_Object_array);
         public static final Symbol<Signature> _byte_array_String_Class_array_int = StaticSymbols.putSignature(Type._byte_array, Type.java_lang_String, Type.java_lang_Class_array, Type._int);
+        public static final Symbol<Signature> _byte_array_ClassLoader_String_List_int = StaticSymbols.putSignature(Type._byte_array, Type.java_lang_ClassLoader, Type.java_lang_String,
+                        Type.java_util_List,
+                        Type._int);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.java_lang_Byte, Type._byte);
@@ -874,6 +926,19 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> java_util_Iterator = StaticSymbols.putSignature(Type.java_util_Iterator);
         public static final Symbol<Signature> java_util_Set = StaticSymbols.putSignature(Type.java_util_Set);
+
+        public static final Symbol<Signature> java_lang_reflect_Method_init_signature = StaticSymbols.putSignature(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* name */ Type.java_lang_String,
+                        /* parameterTypes */ Type.java_lang_Class_array,
+                        /* returnType */ Type.java_lang_Class,
+                        /* checkedExceptions */ Type.java_lang_Class_array,
+                        /* modifiers */ Type._int,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array,
+                        /* parameterAnnotations */ Type._byte_array,
+                        /* annotationDefault */ Type._byte_array);
 
         public static final Symbol<Signature> MethodType_Class_Class = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Class_array);
         public static final Symbol<Signature> MethodType_String_ClassLoader = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_String, Type.java_lang_ClassLoader);
@@ -951,7 +1016,20 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> InvalidArrayIndexException_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long);
         public static final Symbol<Signature> InvalidArrayIndexException_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long,
                         Type.java_lang_Throwable);
+
+        public static final Symbol<Signature> InvalidBufferOffsetException_long_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException, Type._long,
+                        Type._long);
+        public static final Symbol<Signature> InvalidBufferOffsetException_long_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException,
+                        Type._long, Type._long,
+                        Type.java_lang_Throwable);
+
         public static final Symbol<Signature> _void_sun_misc_Signal = StaticSymbols.putSignature(Type._void, Type.sun_misc_Signal);
         public static final Symbol<Signature> _void_jdk_internal_misc_Signal = StaticSymbols.putSignature(Type._void, Type.jdk_internal_misc_Signal);
+
+        public static final Symbol<Signature> Path_String_String_array = StaticSymbols.putSignature(Type.java_nio_file_Path, Type.java_lang_String, Type.java_lang_String_array);
+        public static final Symbol<Signature> ModuleFinder = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder);
+        public static final Symbol<Signature> ModuleFinder_SystemModules = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.jdk_internal_module_SystemModules);
+        public static final Symbol<Signature> ModuleFinder_Path_array = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.java_nio_file_Path_array);
+        public static final Symbol<Signature> ModuleFinder_ModuleFinder_array = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.java_lang_module_ModuleFinder_array);
     }
 }

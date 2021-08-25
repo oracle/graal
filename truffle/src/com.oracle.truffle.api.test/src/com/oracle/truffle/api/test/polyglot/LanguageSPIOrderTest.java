@@ -67,7 +67,7 @@ public class LanguageSPIOrderTest {
     private static final Map<String, OrderContext> currentContext = new HashMap<>();
 
     static final String PUBLIC = "SPIPublicLanguage";
-    static final String INTERNAL = "SPIInternalLanguage";
+    public static final String INTERNAL = "SPIInternalLanguage";
     static final String DEPENDENT = "SPIDependentLanguage";
     static final String TRANSITIVE = "SPITransitiveLanguage";
     static final String CYCLIC1 = "SPICyclicLanguage1";

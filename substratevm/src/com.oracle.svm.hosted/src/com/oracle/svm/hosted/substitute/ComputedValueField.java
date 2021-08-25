@@ -82,6 +82,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     private final Class<?> targetClass;
     private final Field targetField;
     private final boolean isFinal;
+    private final boolean disableCaching;
 
     private JavaConstant constantValue;
 
@@ -93,12 +94,14 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     private JavaConstant valueCacheNullKey;
     private final ReentrantReadWriteLock valueCacheLock = new ReentrantReadWriteLock();
 
-    public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal) {
+    public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal,
+                    boolean disableCaching) {
         this.original = original;
         this.annotated = annotated;
         this.kind = kind;
         this.targetClass = targetClass;
         this.isFinal = isFinal;
+        this.disableCaching = disableCaching;
 
         Field f = null;
         switch (kind) {
@@ -116,6 +119,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         guarantee(!isFinal || isFinalValid(kind));
         this.targetField = f;
         this.valueCache = EconomicMap.create();
+    }
+
+    public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal) {
+        this(original, annotated, kind, targetClass, targetName, isFinal, false);
     }
 
     public static boolean isFinalValid(RecomputeFieldValue.Kind kind) {
@@ -296,6 +303,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     }
 
     private void putCached(JavaConstant receiver, JavaConstant result) {
+        if (disableCaching) {
+            return;
+        }
         WriteLock writeLock = valueCacheLock.writeLock();
         try {
             writeLock.lock();

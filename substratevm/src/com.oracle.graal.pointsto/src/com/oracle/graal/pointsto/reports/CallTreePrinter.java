@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.invokeComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.methodComparator;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -54,17 +53,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class CallTreePrinter {
 
-    public static void print(BigBang bigbang, String path, String reportName) {
-        CallTreePrinter printer = new CallTreePrinter(bigbang);
+    public static void print(BigBang bb, String reportsPath, String reportName) {
+        CallTreePrinter printer = new CallTreePrinter(bb);
         printer.buildCallTree();
 
-        ReportUtils.report("call tree", path + File.separatorChar + "reports", "call_tree_" + reportName, "txt",
-                        writer -> printer.printMethods(writer));
-        ReportUtils.report("list of used methods", path + File.separatorChar + "reports", "used_methods_" + reportName, "txt",
-                        writer -> printer.printUsedMethods(writer));
-        ReportUtils.report("list of used classes", path + File.separatorChar + "reports", "used_classes_" + reportName, "txt",
+        ReportUtils.report("call tree", reportsPath, "call_tree_" + reportName, "txt",
+                        printer::printMethods);
+        ReportUtils.report("list of used methods", reportsPath, "used_methods_" + reportName, "txt",
+                        printer::printUsedMethods);
+        ReportUtils.report("list of used classes", reportsPath, "used_classes_" + reportName, "txt",
                         writer -> printer.printClasses(writer, false));
-        ReportUtils.report("list of used packages", path + File.separatorChar + "reports", "used_packages_" + reportName, "txt",
+        ReportUtils.report("list of used packages", reportsPath, "used_packages_" + reportName, "txt",
                         writer -> printer.printClasses(writer, true));
     }
 
@@ -140,11 +139,11 @@ public final class CallTreePrinter {
         }
     }
 
-    private final BigBang bigbang;
+    private final BigBang bb;
     private final Map<AnalysisMethod, MethodNode> methodToNode;
 
-    public CallTreePrinter(BigBang bigbang) {
-        this.bigbang = bigbang;
+    public CallTreePrinter(BigBang bb) {
+        this.bb = bb;
         /* Use linked hash map for predictable iteration order. */
         this.methodToNode = new LinkedHashMap<>();
     }
@@ -152,7 +151,7 @@ public final class CallTreePrinter {
     public void buildCallTree() {
 
         /* Add all the roots to the tree. */
-        bigbang.getUniverse().getMethods().stream()
+        bb.getUniverse().getMethods().stream()
                         .filter(m -> m.isRootMethod() && !methodToNode.containsKey(m))
                         .sorted(methodComparator)
                         .forEach(method -> methodToNode.put(method, new MethodNode(method, true)));

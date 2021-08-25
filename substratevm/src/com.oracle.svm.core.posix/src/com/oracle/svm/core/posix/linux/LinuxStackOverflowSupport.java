@@ -37,8 +37,23 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
 class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public UnsignedWord lookupStackBase() {
+        Pthread.pthread_attr_t attr = StackValue.get(Pthread.pthread_attr_t.class);
+        PosixUtils.checkStatusIs0(Pthread.pthread_getattr_np(Pthread.pthread_self(), attr), "LinuxStackOverflowSupport: pthread_getattr_np");
 
-    @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
+        WordPointer stackaddrPtr = StackValue.get(WordPointer.class);
+        WordPointer stacksizePtr = StackValue.get(WordPointer.class);
+        PosixUtils.checkStatusIs0(Pthread.pthread_attr_getstack(attr, stackaddrPtr, stacksizePtr), "LinuxStackOverflowSupport: pthread_attr_getstack");
+        PosixUtils.checkStatusIs0(Pthread.pthread_attr_destroy(attr), "LinuxStackOverflowSupport: pthread_attr_destroy");
+
+        UnsignedWord stackaddr = stackaddrPtr.read();
+        UnsignedWord stacksize = stacksizePtr.read();
+        return stackaddr.add(stacksize);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackEnd() {
         Pthread.pthread_attr_t attr = StackValue.get(Pthread.pthread_attr_t.class);

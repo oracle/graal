@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,10 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -47,14 +51,12 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.GlobalModifier;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
 /**
  * Represents an instantiated WebAssembly module.
@@ -64,7 +66,11 @@ import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     public WasmInstance(WasmContext context, WasmModule module) {
-        super(context, module);
+        this(context, module, module.numFunctions());
+    }
+
+    public WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions) {
+        super(context, module, numberOfFunctions);
     }
 
     public String name() {
@@ -93,12 +99,8 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         return null;
     }
 
-    private WasmFunctionInstance functionInstance(WasmFunction function) {
-        return new WasmFunctionInstance(contextUid(), function, target(function.index()));
-    }
-
     private void ensureLinked() {
-        WasmContext.getCurrent().linker().tryLink(this);
+        WasmContext.get(null).linker().tryLink(this);
     }
 
     @ExportMessage
@@ -108,7 +110,8 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    public Object readMember(String member) throws UnknownIdentifierException {
+    public Object readMember(String member,
+                    @Shared("error") @Cached BranchProfile errorBranch) throws UnknownIdentifierException {
         ensureLinked();
         final SymbolTable symbolTable = symbolTable();
         final WasmFunction function = symbolTable.exportedFunctions().get(member);
@@ -122,30 +125,35 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         if (symbolTable.exportedMemoryNames().contains(member)) {
             return memory();
         }
+        errorBranch.enter();
         throw UnknownIdentifierException.create(member);
     }
 
     @ExportMessage
     @TruffleBoundary
-    public void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
+    public void writeMember(String member, Object value,
+                    @Shared("error") @Cached BranchProfile errorBranch) throws UnknownIdentifierException, UnsupportedMessageException {
         ensureLinked();
         // This method works only for mutable globals.
         final SymbolTable symbolTable = symbolTable();
         final Integer index = symbolTable.exportedGlobals().get(member);
         if (index == null) {
+            errorBranch.enter();
             throw UnknownIdentifierException.create(member);
         }
         final int address = globalAddress(index);
         if (!(value instanceof Number)) {
+            errorBranch.enter();
             throw UnsupportedMessageException.create();
         }
         final boolean mutable = symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
         if (module().isParsed() && !mutable) {
             // Constant variables cannot be modified after linking.
+            errorBranch.enter();
             throw UnsupportedMessageException.create();
         }
         long longValue = ((Number) value).longValue();
-        WasmContext.getCurrent().globals().storeLong(address, longValue);
+        WasmContext.get(null).globals().storeLong(address, longValue);
     }
 
     @ExportMessage
@@ -181,7 +189,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     private static Object readGlobal(WasmInstance instance, SymbolTable symbolTable, int globalIndex) {
         final int address = instance.globalAddress(globalIndex);
-        final GlobalRegistry globals = WasmContext.getCurrent().globals();
+        final GlobalRegistry globals = WasmContext.get(null).globals();
         final byte type = symbolTable.globalValueType(globalIndex);
         switch (type) {
             case WasmType.I32_TYPE:
@@ -189,10 +197,11 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
             case WasmType.I64_TYPE:
                 return globals.loadAsLong(address);
             case WasmType.F32_TYPE:
-                return globals.loadAsFloat(address);
+                return Float.intBitsToFloat(globals.loadAsInt(address));
             case WasmType.F64_TYPE:
-                return globals.loadAsDouble(address);
+                return Double.longBitsToDouble(globals.loadAsLong(address));
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException("Unknown type: " + type);
         }
     }
@@ -219,9 +228,12 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         ExportedMembers(WasmInstance instance, SymbolTable symbolTable) {
             this.instance = instance;
             this.symbolTable = symbolTable;
-            this.exportedFunctions = new ArrayList<>(symbolTable.exportedFunctions().values());
+            this.exportedFunctions = new ArrayList<>(symbolTable.exportedFunctions().size());
+            for (WasmFunction function : symbolTable.exportedFunctions().getValues()) {
+                exportedFunctions.add(function);
+            }
             this.exportedGlobals = new IntArrayList();
-            for (int globalIndex : symbolTable.exportedGlobals().values()) {
+            for (int globalIndex : symbolTable.exportedGlobals().getValues()) {
                 this.exportedGlobals.add(globalIndex);
             }
         }
@@ -246,10 +258,11 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
 
         @ExportMessage
         @TruffleBoundary
-        Object readArrayElement(long absoluteIndex) throws InvalidArrayIndexException {
+        Object readArrayElement(long absoluteIndex,
+                        @Cached BranchProfile errorBranch) throws InvalidArrayIndexException {
             long index = absoluteIndex;
             if (!isArrayElementReadable(index)) {
-                transferToInterpreter();
+                errorBranch.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             if (index < exportedFunctions.size()) {

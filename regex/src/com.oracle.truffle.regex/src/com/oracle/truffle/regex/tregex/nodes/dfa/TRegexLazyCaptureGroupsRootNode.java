@@ -40,39 +40,52 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexProfile;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
+import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
 public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
 
     @Child private TRegexExecutorEntryNode entryNode;
+    @Child private DirectCallNode findStartCallNode;
     private final RegexProfile.TracksRegexProfile profiler;
+    private final CallTarget findStartCallTarget;
 
-    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode captureGroupNode, RegexProfile.TracksRegexProfile profiler) {
+    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode captureGroupNode, RegexProfile.TracksRegexProfile profiler,
+                    CallTarget findStartCallTarget) {
         super(language, source);
         this.entryNode = insert(captureGroupNode);
         this.profiler = profiler;
+        this.findStartCallTarget = findStartCallTarget;
+        if (findStartCallTarget != null) {
+            this.findStartCallNode = insert(DirectCallNode.create(findStartCallTarget));
+        }
     }
 
     @Override
     public final Void execute(VirtualFrame frame) {
         final Object[] args = frame.getArguments();
-        assert args.length == 3;
-        final LazyCaptureGroupsResult receiver = (LazyCaptureGroupsResult) args[0];
-        final int startIndex = (int) args[1];
-        final int max = (int) args[2];
-        final int[] result = (int[]) entryNode.execute(receiver.getInput(), receiver.getFromIndex(), startIndex, max);
+        assert args.length == 1;
+        final RegexResult receiver = (RegexResult) args[0];
+        final int start;
+        if (findStartCallTarget != null) {
+            start = (int) findStartCallNode.call(receiver);
+        } else {
+            start = receiver.getStart();
+        }
+        final int[] result = (int[]) entryNode.execute(receiver.getInput(), receiver.getFromIndex(), start, receiver.getEnd());
         if (CompilerDirectives.inInterpreter()) {
             RegexProfile profile = profiler.getRegexProfile();
             profile.profileCaptureGroupAccess(result[1] - result[0], result[1] - (receiver.getFromIndex() + 1));
         }
-        receiver.setResult(result);
+        receiver.setIndices(result);
         return null;
     }
 

@@ -37,7 +37,6 @@ import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
@@ -47,7 +46,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Mechanism for injecting special code into
- * {@linkplain HotSpotTruffleCompilerRuntime#getTruffleCallBoundaryMethods() call boundary methods}.
+ * {@linkplain HotSpotTruffleCompilerImpl#installTruffleCallBoundaryMethod(jdk.vm.ci.meta.ResolvedJavaMethod)
+ * call boundary methods}.
  */
 public abstract class TruffleCallBoundaryInstrumentation extends CompilationResultBuilder {
     protected final GraalHotSpotVMConfig config;

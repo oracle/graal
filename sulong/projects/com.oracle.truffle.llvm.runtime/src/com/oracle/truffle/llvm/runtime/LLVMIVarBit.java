@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,10 @@ package com.oracle.truffle.llvm.runtime;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.memory.ByteArraySupport;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 
 /**
  * Abstract type for variable width integers. Depending on the concrete bit width, either the
@@ -170,5 +173,27 @@ public abstract class LLVMIVarBit {
         byte[] array = new byte[Long.BYTES];
         ByteArraySupport.bigEndian().putLong(array, 0, from);
         return array;
+    }
+
+    @ExplodeLoop
+    public static LLVMIVarBit fromI1Vector(int bits, LLVMI1Vector from) {
+        CompilerAsserts.partialEvaluationConstant(bits);
+        if (bits <= LLVMIVarBitSmall.MAX_SIZE) {
+            long value = 0;
+            for (int i = 0; i < bits; i++) {
+                if (from.getValue(i)) {
+                    value |= 1 << i;
+                }
+            }
+            return LLVMIVarBitSmall.create(bits, value, bits, false);
+        } else {
+            byte[] value = new byte[(bits + 7) >> 3];
+            for (int i = 0; i < bits; i++) {
+                if (from.getValue(i)) {
+                    value[value.length - 1 - (i >> 3)] |= 1 << (i & 7);
+                }
+            }
+            return LLVMIVarBitLarge.create(bits, value, bits, false);
+        }
     }
 }

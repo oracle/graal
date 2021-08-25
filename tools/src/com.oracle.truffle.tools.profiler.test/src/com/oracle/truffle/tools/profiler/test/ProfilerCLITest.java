@@ -49,6 +49,7 @@ public class ProfilerCLITest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testSamplerJson() {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -63,11 +64,17 @@ public class ProfilerCLITest {
             context.eval(defaultSourceForSampling);
         }
         CPUSampler sampler = CPUSampler.find(context.getEngine());
-        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
-        final long period = sampler.getPeriod();
-        final long sampleCount = sampler.getSampleCount();
-        final boolean gatherSelfHitTimes = sampler.isGatherSelfHitTimes();
-        context.close();
+        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap;
+        final long period;
+        final long sampleCount;
+        final boolean gatherSelfHitTimes;
+        synchronized (sampler) {
+            threadToNodesMap = sampler.getThreadToNodesMap();
+            period = sampler.getPeriod();
+            sampleCount = sampler.getSampleCount();
+            gatherSelfHitTimes = sampler.isGatherSelfHitTimes();
+            context.close();
+        }
         JSONObject output = new JSONObject(out.toString());
 
         Assert.assertEquals("Period wrong in json", period, Long.valueOf((Integer) output.get("period")).longValue());

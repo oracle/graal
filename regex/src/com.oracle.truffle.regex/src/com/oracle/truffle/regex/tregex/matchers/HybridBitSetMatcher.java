@@ -44,7 +44,6 @@ package com.oracle.truffle.regex.tregex.matchers;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.charset.CompressedCodePointSet;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -72,7 +71,12 @@ import com.oracle.truffle.regex.util.BitSets;
  *
  * @see CompressedCodePointSet
  */
-public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
+public final class HybridBitSetMatcher extends InvertibleCharMatcher {
+
+    /**
+     * Maximum number of ranges for unrolled binary search.
+     */
+    private static final int EXPLODE_THRESHOLD = 16;
 
     @CompilationFinal(dimensions = 1) private final int[] sortedRanges;
     @CompilationFinal(dimensions = 2) private final long[][] bitSets;
@@ -92,13 +96,17 @@ public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
     }
 
     public static HybridBitSetMatcher create(boolean invert, CompressedCodePointSet ccps) {
-        return HybridBitSetMatcherNodeGen.create(invert, ccps.getRanges(), ccps.getBitSets());
+        return new HybridBitSetMatcher(invert, ccps.getRanges(), ccps.getBitSets());
     }
 
-    @Specialization
+    @Override
     public boolean match(int c) {
         CompilerAsserts.partialEvaluationConstant(this);
-        return matchTree(0, (sortedRanges.length >>> 1) - 1, c);
+        if ((sortedRanges.length / 2) > EXPLODE_THRESHOLD) {
+            return matchLoop(c);
+        } else {
+            return matchTree(0, (sortedRanges.length >>> 1) - 1, c);
+        }
     }
 
     private boolean matchTree(int fromIndex, int toIndex, int c) {
@@ -116,6 +124,23 @@ public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
         } else {
             return result(bitSets[mid] == null || BitSets.get(bitSets[mid], lowByte(c)));
         }
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private boolean matchLoop(final int c) {
+        int fromIndex = 0;
+        int toIndex = (sortedRanges.length >>> 1) - 1;
+        while (fromIndex <= toIndex) {
+            final int mid = (fromIndex + toIndex) >>> 1;
+            if (c < sortedRanges[mid << 1]) {
+                toIndex = mid - 1;
+            } else if (c > sortedRanges[(mid << 1) + 1]) {
+                fromIndex = mid + 1;
+            } else {
+                return result(bitSets[mid] == null || BitSets.get(bitSets[mid], lowByte(c)));
+            }
+        }
+        return result(false);
     }
 
     @Override

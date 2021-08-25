@@ -268,6 +268,11 @@ public final class JavaAWTSubstitutions {
         int getNumberOfButtons() {
             throw new UnsupportedOperationException();
         }
+
+        @Substitute
+        static long getDefaultXColormap() {
+            throw new UnsupportedOperationException();
+        }
     }
 
     @TargetClass(className = "java.awt.Window", onlyWith = IsHeadless.class)
@@ -368,6 +373,205 @@ public final class JavaAWTSubstitutions {
 
         @Substitute
         static long SetToolkitErrorHandler() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static long XMaxRequestSize(long display) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XChangePropertyS(long display, long window, long atom,
+                        long type, int format, int mode, String value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static int XGetWindowProperty(long display, long window, long atom,
+                        long long_offset, long long_length,
+                        long delete, long req_type, long actualy_type,
+                        long actualy_format, long nitems_ptr,
+                        long bytes_after, long data_ptr) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static boolean XAllocColor(long display, long colormap, long screen_in_out) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static long XGetSelectionOwner(long display, long selection) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static long XCreateBitmapFromData(long display, long drawable, long data, int width, int height) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XFreePixmap(long display, long pixmap) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XChangeWindowAttributes(long display, long window, long valuemask, long attributes) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static long RootWindow(long display, long screen_number) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static long XCreatePixmapCursor(long display, long source, long mask, long fore, long back, int x, int y) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static String ServerVendor(long display) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static boolean XQueryBestCursor(long display, long drawable, int width, int height, long width_return, long height_return) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XResizeWindow(long display, long window, int width, int height) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XReparentWindow(long display, long window, long parent, int x, int y) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XDeleteProperty(long display, long window, long atom) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static int XGetWMNormalHints(long display, long window, long hints, long supplied_return) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XBell(long display, int percent) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static boolean XShapeQueryExtension(long display, long event_base_return, long error_base_return) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XMoveResizeWindow(long display, long window, int x, int y, int width, int height) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XMoveWindow(long display, long window, int x, int y) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void SetZOrder(long display, long window, long above) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static int XQueryTree(long display, long window, long root_return, long parent_return, long children_return, long nchildren_return) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void SetRectangularShape(long display, long window,
+                        int lox, int loy, int hix, int hiy,
+                        sun.java2d.pipe.Region region) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XFlush(long display) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XMapRaised(long display, long window) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static int XSendEvent(long display, long window, boolean propagate, long event_mask, long event) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XChangePropertyImpl(long display, long window, long atom,
+                        long type, int format, int mode, long data,
+                        int nelements) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XUnmapWindow(long display, long window) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static boolean XQueryPointer(long display, long window, long root_return, long child_return, long root_x_return, long root_y_return, long win_x_return, long win_y_return, long mask_return) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static int XGetWindowAttributes(long display, long window, long attr_ptr) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XUngrabServer(long display) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static int XKeysymToKeycode(long display, long keysym) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static long XGetModifierMapping(long display) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static int ScreenCount(long display) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static int XCreateFontCursor(long display, int shape) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XFreeModifiermap(long keymap) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XSelectInput(long display, long window, long event_mask) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        static void XGrabServer(long display) {
             throw new UnsupportedOperationException();
         }
     }
@@ -606,6 +810,22 @@ public final class JavaAWTSubstitutions {
         protected boolean initFlipBackbuffer(long pData) {
             throw new UnsupportedOperationException();
         }
+
+        @Substitute
+        protected boolean initTexture(long pData,
+                        boolean isOpaque, boolean texNonPow2,
+                        boolean texRect,
+                        int width, int height) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Substitute
+        protected boolean initFBObject(long pData,
+                        boolean isOpaque, boolean texNonPow2,
+                        boolean texRect,
+                        int width, int height) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     @TargetClass(className = "sun.java2d.opengl.OGLRenderQueue", onlyWith = IsHeadless.class)
@@ -670,6 +890,15 @@ public final class JavaAWTSubstitutions {
 
         @Substitute
         private static void loadNativeLibraries() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    @TargetClass(className = "sun.awt.X11.XInputMethod", onlyWith = IsHeadless.class)
+    static final class Target_sun_awt_X11_XInputMethod {
+
+        @Substitute
+        private boolean openXIMNative(long display) {
             throw new UnsupportedOperationException();
         }
     }

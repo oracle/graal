@@ -1,5 +1,6 @@
 {
   local common = import "../../common.jsonnet",
+  local bench_common = import "../../bench-common.libsonnet",
   local config = import '../../repo-configuration.libsonnet',
   local ci_resources = import "../../ci-resources.libsonnet",
 
@@ -15,30 +16,19 @@
     ]
   },
 
-  local prefixed_jdk(jdk_version) =
-    if jdk_version == null || std.length(std.toString(jdk_version)) == 0 then
-      null
-    else
-      "jdk" + std.toString(jdk_version),
-
   // Benchmarking building blocks
   // ****************************
-  bench_base:: common.build_base + {
-    local ol8_image = self.ci_resources.infra.ol8_bench_image,
+  compiler_bench_base:: bench_common.bench_base + {
     job_prefix:: "bench-compiler",
-    job_suffix:: null,
-    generated_name:: std.join("-", std.filterMap(function(el) el != null, function(el) std.toString(el), [self.job_prefix, self.suite, self.platform, prefixed_jdk(self.jdk_version), self.os, self.arch, self.job_suffix])),
-    name: self.generated_name,
-    suite:: error "'suite' must be set to generate job name",
-    timelimit: error "build 'timelimit' is not set for "+ self.name +"!",
-    docker+: {
-      "image": ol8_image,
-      "mount_modules": true
-    },
     environment+: {
       MX_PYTHON_VERSION : "3",
       BENCH_RESULTS_FILE_PATH : "bench-results.json"
     },
+    plain_benchmark_cmd:: ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--machine-name=${MACHINE_NAME}", "--tracker=rss"],
+    benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
+    min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
+    max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
+    extra_vm_args:: ["--profiler=${MX_PROFILER}", "--jvm=${JVM}", "--jvm-config=${JVM_CONFIG}", "-XX:+PrintConcurrentLocks", "-Dgraal.CompilationFailureAction=Diagnose"] + self.min_heap_size + self.max_heap_size,
     should_mx_build:: true,
     setup+: [
       ["cd", "./" + config.compiler.compiler_suite],
@@ -55,9 +45,10 @@
     notify_groups:: ["compiler_bench"],
   },
 
-  compiler_benchmark:: self.bench_base + self.compiler_benchmarks_notifications + {
+  compiler_benchmark:: self.compiler_bench_base + self.compiler_benchmarks_notifications + {
+    _bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: ["bench-uploader.py", filename],
     teardown+: [
-      ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
+      self._bench_upload()
     ]
   },
 
@@ -97,21 +88,6 @@
       for i in std.range(0, suite_obj.forks_batches - 1)]
     else
       [],
-
-  // Job frequencies
-  // ***************
-  on_demand:: {
-    targets+: [],
-  },
-  post_merge:: {
-    targets+: ["post-merge"],
-  },
-  daily:: {
-    targets+: ["daily"],
-  },
-  weekly:: {
-    targets+: ["weekly"],
-  },
 
   // JVM configurations
   // ******************

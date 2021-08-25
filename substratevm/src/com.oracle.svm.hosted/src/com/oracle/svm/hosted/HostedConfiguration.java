@@ -34,10 +34,13 @@ import java.util.concurrent.ForkJoinPool;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
@@ -48,6 +51,7 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
+import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
@@ -60,6 +64,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.nativeimage.Platform;
 
 public class HostedConfiguration {
 
@@ -125,14 +130,22 @@ public class HostedConfiguration {
     }
 
     public SVMHost createHostVM(OptionValues options, ForkJoinPool buildExecutor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
-        return new SVMHost(options, buildExecutor, classLoader, classInitializationSupport, automaticSubstitutions);
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
+        return new SVMHost(options, buildExecutor, classLoader, classInitializationSupport, automaticSubstitutions, platform);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
                     SharedRuntimeConfigurationBuilder runtime, boolean deoptimizeAll, SnippetReflectionProvider aSnippetReflection, ForkJoinPool executor) {
 
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtime, deoptimizeAll, aSnippetReflection, executor);
+    }
+
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodTypeFlow) {
+        return new SVMMethodTypeFlowBuilder(bb, methodTypeFlow);
+    }
+
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, StructuredGraph graph) {
+        return new SVMMethodTypeFlowBuilder(bb, graph);
     }
 
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
@@ -157,11 +170,11 @@ public class HostedConfiguration {
         }
     }
 
-    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bigbang, HostedUniverse universe) {
+    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bb, HostedUniverse universe) {
         if (SubstrateOptions.parseOnce()) {
-            return new SubstrateStrengthenGraphs(bigbang, universe);
+            return new SubstrateStrengthenGraphs(bb, universe);
         } else {
-            return new StaticAnalysisResultsBuilder(bigbang, universe);
+            return new StaticAnalysisResultsBuilder(bb, universe);
         }
     }
 

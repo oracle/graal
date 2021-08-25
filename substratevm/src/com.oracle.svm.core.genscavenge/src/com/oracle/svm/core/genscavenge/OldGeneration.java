@@ -118,10 +118,10 @@ public final class OldGeneration extends Generation {
 
     @Override
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Old generation: ").indent(true);
+        log.string("Old generation: ").indent(true);
         getFromSpace().report(log, traceHeapChunks).newline();
         getToSpace().report(log, traceHeapChunks).newline();
-        log.redent(false).string("]");
+        log.redent(false);
         return log;
     }
 

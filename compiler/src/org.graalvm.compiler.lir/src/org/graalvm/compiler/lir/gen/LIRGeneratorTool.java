@@ -294,8 +294,8 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     void emitSpeculationFence();
 
-    default VirtualStackSlot allocateStackSlots(int slots) {
-        return getResult().getFrameMapBuilder().allocateStackSlots(slots);
+    default VirtualStackSlot allocateStackMemory(int sizeInBytes, int alignmentInBytes) {
+        return getResult().getFrameMapBuilder().allocateStackMemory(sizeInBytes, alignmentInBytes);
     }
 
     default Value emitTimeStampWithProcid() {

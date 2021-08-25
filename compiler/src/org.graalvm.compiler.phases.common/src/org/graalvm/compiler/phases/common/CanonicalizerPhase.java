@@ -57,6 +57,7 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
@@ -490,6 +491,49 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         fixed.replaceAtPredecessor(canonical);
                         GraphUtil.killCFG(fixed);
                         return true;
+
+                    } else if (fixed instanceof WithExceptionNode) {
+                        /*
+                         * A fixed node with an exception edge is handled similarly to a
+                         * FixedWithNextNode. The only difference is that the exception edge needs
+                         * to be killed as part of canonicalization (unless the canonical node is a
+                         * new WithExceptionNode too).
+                         */
+                        WithExceptionNode withException = (WithExceptionNode) fixed;
+
+                        // When removing a fixed node, new canonicalization
+                        // opportunities for its successor may arise
+                        assert withException.next() != null;
+                        tool.addToWorkList(withException.next());
+                        if (canonical == null) {
+                            // case 3
+                            node.replaceAtUsages(null);
+                            GraphUtil.unlinkAndKillExceptionEdge(withException);
+                            GraphUtil.killWithUnusedFloatingInputs(withException);
+                        } else if (canonical instanceof FloatingNode) {
+                            // case 4
+                            withException.killExceptionEdge();
+                            graph.replaceSplitWithFloating(withException, (FloatingNode) canonical, withException.next());
+                        } else {
+                            assert canonical instanceof FixedNode;
+                            if (canonical.predecessor() == null) {
+                                assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
+                                // case 5
+                                if (canonical instanceof WithExceptionNode) {
+                                    graph.replaceWithExceptionSplit(withException, (WithExceptionNode) canonical);
+                                } else {
+                                    withException.killExceptionEdge();
+                                    graph.replaceSplitWithFixed(withException, (FixedWithNextNode) canonical, withException.next());
+                                }
+                            } else {
+                                assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
+                                // case 6
+                                node.replaceAtUsages(canonical);
+                                GraphUtil.unlinkAndKillExceptionEdge(withException);
+                                GraphUtil.killWithUnusedFloatingInputs(withException);
+                            }
+                        }
+
                     } else {
                         assert fixed instanceof FixedWithNextNode;
                         FixedWithNextNode fixedWithNext = (FixedWithNextNode) fixed;

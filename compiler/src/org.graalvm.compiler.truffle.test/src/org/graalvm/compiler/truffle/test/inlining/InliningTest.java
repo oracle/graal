@@ -28,7 +28,7 @@ import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -40,21 +40,27 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class InliningTest {
 
+    private static final int FIRST_TIER_COMPILATION_THRESHOLD = 10;
+    private static final int LAST_TIER_COMPILATION_THRESHOLD = 20;
     private static final String COMPILATION_ROOT_NAME = "main";
 
     @Test
     public void testNoInlineOnLatencyMode() {
         try (Context c = Context.newBuilder().allowExperimentalOptions(true).//
                         option("engine.CompilationFailureAction", "Throw").//
-                        option("engine.CompileImmediately", "true").//
+                        option("engine.CompileImmediately", "false").//
+                        option("engine.FirstTierCompilationThreshold", String.valueOf(FIRST_TIER_COMPILATION_THRESHOLD)).//
+                        option("engine.LastTierCompilationThreshold", String.valueOf(LAST_TIER_COMPILATION_THRESHOLD)).//
                         option("engine.BackgroundCompilation", "false").//
                         option("engine.CompileOnly", COMPILATION_ROOT_NAME).//
                         option("engine.Mode", "latency").//
                         build()) {
-            // First compilation will succeed (and produce a deopt) because nothing is resolved.
-            c.eval(InliningTestLanguage.ID, "");
-            // Second compilation will fail if any inlining happens
-            c.eval(InliningTestLanguage.ID, "");
+            for (int i = 0; i < FIRST_TIER_COMPILATION_THRESHOLD; i++) {
+                c.eval(InliningTestLanguage.ID, "");
+            }
+            for (int i = 0; i < LAST_TIER_COMPILATION_THRESHOLD; i++) {
+                c.eval(InliningTestLanguage.ID, "");
+            }
         }
     }
 
@@ -75,7 +81,7 @@ public class InliningTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    CompilerAsserts.neverPartOfCompilation("This node should not be inlined");
+                    CompilerDirectives.bailout("This node should not be inlined");
                     return 42;
                 }
             });

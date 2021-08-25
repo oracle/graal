@@ -144,6 +144,10 @@ final class JNIInvocationInterface {
          |               | Formatted low level log messages are sent to this function.                       |
          |               | If present, then _flush_log is also required to be present.                       |
          |---------------|-----------------------------------------------------------------------------------|
+         | _fatal_log    | extraInfo is a pointer to a "void(const char *buf, size_t count)" function.       |
+         |               | Formatted low level log messages are sent to this function.                       |
+         |               | This log function is used for logging fatal crash data.                           |
+         |---------------|-----------------------------------------------------------------------------------|
          | _flush_log    | extraInfo is a pointer to a "void()" function.                                    |
          |               | This function is called when the low level log stream should be flushed.          |
          |               | If present, then _log is also required to be present.                             |

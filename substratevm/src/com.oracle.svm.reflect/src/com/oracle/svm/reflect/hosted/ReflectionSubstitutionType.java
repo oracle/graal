@@ -37,12 +37,15 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -54,12 +57,15 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.ExceptionHelpers;
@@ -167,7 +173,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
         ValueNode expectedNode = graphKit.createConstant(expected, JavaKind.Object);
 
         graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Static, throwFailedCast, expectedNode, actual);
-        graphKit.append(new DeadEndNode());
+        graphKit.append(new LoweredDeadEndNode());
     }
 
     private static ValueNode createCheckcast(HostedGraphKit graphKit, ValueNode value, ResolvedJavaType type, boolean nonNull) {
@@ -246,7 +252,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
         ValueNode msgNode = graphKit.createConstant(msg, JavaKind.Object);
 
         graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Static, throwIllegalArgumentException, msgNode);
-        graphKit.append(new DeadEndNode());
+        graphKit.append(new LoweredDeadEndNode());
     }
 
     private static class ReflectiveInvokeMethod extends ReflectionSubstitutionMethod {
@@ -298,7 +304,9 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             } else {
                 invokeKind = InvokeKind.Virtual;
             }
-            ValueNode ret = graphKit.createJavaCallWithException(invokeKind, targetMethod, args);
+
+            InvokeWithExceptionNode invoke = graphKit.createJavaCallWithException(invokeKind, targetMethod, args);
+            ValueNode ret = invoke;
 
             graphKit.noExceptionPart();
 
@@ -316,6 +324,23 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             graphKit.throwInvocationTargetException(graphKit.exceptionObject());
 
             graphKit.endInvokeWithException();
+
+            if (invokeKind.isDirect()) {
+                InvocationPlugin invocationPlugin = providers.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
+                if (invocationPlugin != null && !invocationPlugin.inlineOnly()) {
+                    /*
+                     * The BytecodeParser applies invocation plugins directly during bytecode
+                     * parsing. We cannot do that because GraphKit is not a GraphBuilderContext. To
+                     * get as close as possible to the BytecodeParser behavior, we create a new
+                     * graph for the intrinsic and inline it immediately.
+                     */
+                    Bytecode code = new ResolvedJavaMethodBytecode(targetMethod);
+                    StructuredGraph intrinsicGraph = new SubstrateIntrinsicGraphBuilder(graphKit.getOptions(), graphKit.getDebug(), providers, code).buildGraph(invocationPlugin);
+                    if (intrinsicGraph != null) {
+                        InliningUtil.inline(invoke, intrinsicGraph, false, targetMethod);
+                    }
+                }
+            }
 
             return graphKit.finalizeGraph();
         }

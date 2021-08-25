@@ -430,6 +430,36 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             for (CacheExpression cache : specialization.getCaches()) {
 
+                if (ElementUtils.typeEquals(cache.getParameter().getType(), node.getTemplateType().asType())) {
+                    if (specialization.getGuards().isEmpty()) {
+                        if (cache.usesDefaultCachedInitializer()) {
+                            // guaranteed recursion
+                            cache.addError("Failed to generate code for @%s: " + //
+                                            "Recursive AOT preparation detected. Recursive AOT preparation is not supported as this would lead to infinite compiled code." + //
+                                            "Resolve this problem by either: %n" + //
+                                            " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                            " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                            " - Add a specialization guard that guarantees that the recursion is finite. %n" + //
+                                            " - Remove the cached parameter value. %n", //
+                                            getSimpleName(types.GenerateAOT),
+                                            getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude));
+                            continue;
+                        }
+                    }
+                }
+
+                if (cache.isMergedLibrary()) {
+                    cache.addError("Merged librares are not supported in combination with AOT preparation. " + //
+                                    "Resolve this problem by either: %n" + //
+                                    " - Setting @%s(..., useForAOT=false) to disable AOT preparation for this export. %n" + //
+                                    " - Using a dispatched library without receiver expression. %n" + //
+                                    " - Adding the @%s.%s annotation to the specialization or exported method.",
+                                    getSimpleName(types.ExportLibrary),
+                                    getSimpleName(types.GenerateAOT),
+                                    getSimpleName(types.GenerateAOT_Exclude));
+                    continue;
+                }
+
                 TypeMirror type = cache.getParameter().getType();
                 if (NodeCodeGenerator.isSpecializedNode(type)) {
                     List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), ElementUtils.castTypeElement(type));
@@ -450,21 +480,31 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     }
                 }
 
-                if (cache.isCachedLibrary() && cache.getCachedLibraryLimit() != null && !cache.getCachedLibraryLimit().equals("")) {
-                    cache.addError("Failed to generate code for @%s: " + //
-                                    "@%s with automatic dispatch cannot be prepared for AOT." + //
-                                    "Resolve this problem by either: %n" + //
-                                    " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
-                                    " - Configure the specialization to be replaced with a more generic specialization. %n" + //
-                                    " - Remove the cached parameter value. %n" + //
-                                    " - Define a cached library initializer expression for manual dispatch.",
-                                    getSimpleName(types.GenerateAOT),
-                                    getSimpleName(types.CachedLibrary),
-                                    getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude));
-                    continue;
+                boolean cachedLibraryAOT = false;
+                if (cache.isCachedLibrary()) {
+                    cachedLibraryAOT = ElementUtils.findAnnotationMirror(ElementUtils.fromTypeMirror(cache.getParameter().getType()), types.GenerateAOT) != null;
                 }
 
-                if (specialization.isDynamicParameterBound(cache.getDefaultExpression(), true)) {
+                if (cache.isCachedLibrary() && cache.getCachedLibraryLimit() != null && !cache.getCachedLibraryLimit().equals("")) {
+                    if (!cachedLibraryAOT) {
+                        cache.addError("Failed to generate code for @%s: " + //
+                                        "@%s with automatic dispatch cannot be prepared for AOT." + //
+                                        "Resolve this problem by either: %n" + //
+                                        " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                        " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                        " - Remove the cached parameter value. %n" + //
+                                        " - Define a cached library initializer expression for manual dispatch. %n" + //
+                                        " - Add the @%s annotation to the %s library class to enable AOT for the library.",
+                                        getSimpleName(types.GenerateAOT),
+                                        getSimpleName(types.CachedLibrary),
+                                        getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude),
+                                        getSimpleName(types.GenerateAOT), getSimpleName(type));
+                        continue;
+                    }
+                }
+
+                if (!cache.isCachedContext() && !cache.isCachedLanguage() &&
+                                specialization.isDynamicParameterBound(cache.getDefaultExpression(), true)) {
                     /*
                      * We explicitly support cached language references and lookups thereof in AOT.
                      * But the generated code introduces a check to ensure that only the language of
@@ -474,17 +514,22 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         continue;
                     }
 
-                    cache.addError("Failed to generate code for @%s: " + //
-                                    "Cached values in specializations included for AOT must not bind dynamic values. " + //
-                                    "Such caches are only allowed to bind static values, values read from the node or values from the current language instance using a language reference. " + //
-                                    "Resolve this problem by either: %n" + //
-                                    " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
-                                    " - Configure the specialization to be replaced with a more generic specialization. %n" + //
-                                    " - Remove the cached parameter value. %n" + //
-                                    " - Avoid binding dynamic parameters in the cache initializer expression.",
-                                    getSimpleName(types.GenerateAOT),
-                                    getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude));
-                    continue outer;
+                    if (!cachedLibraryAOT) {
+                        cache.addError("Failed to generate code for @%s: " + //
+                                        "Cached values in specializations included for AOT must not bind dynamic values. " + //
+                                        "Such caches are only allowed to bind static values, values read from the node or values from the current language instance using a language reference. " + //
+                                        "Resolve this problem by either: %n" + //
+                                        " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                        " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                        " - Remove the cached parameter value. %n" + //
+                                        " - Avoid binding dynamic parameters in the cache initializer expression. %n" + //
+                                        " - If a cached library is used add the @%s annotation to the library class to enable AOT for the library.",
+                                        getSimpleName(types.GenerateAOT),
+                                        getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude),
+                                        getSimpleName(types.GenerateAOT));
+                        continue outer;
+                    }
+
                 }
             }
         }
@@ -763,16 +808,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
 
-            for (GuardExpression guard : specialization.getGuards()) {
-                if (guard.getExpression().isNodeReceiverBound()) {
-                    uncachable = false;
-                    if (requireUncachable) {
-                        guard.addError("Failed to generate code for @%s: One of the guards bind non-static methods or fields . " +
-                                        "Add a static modifier to the bound guard method or field to resolve this.", types.GenerateUncached.asElement().getSimpleName().toString());
-                    }
-                    break;
-                }
-            }
             if (!specialization.getExceptions().isEmpty()) {
                 uncachable = false;
                 if (requireUncachable) {
@@ -2360,7 +2395,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     continue parameters;
                 }
 
-                TypeMirror supplierType;
+                TypeMirror referenceType;
                 if (isLanguageReference) {
                     TypeMirror typeArgument = getFirstTypeArgument(languageType);
                     if (typeArgument == null || !ElementUtils.isAssignable(typeArgument, types.TruffleLanguage)) {
@@ -2370,24 +2405,29 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     } else {
                         verifyLanguageType(types.CachedLanguage, cache, typeArgument);
                     }
-                    supplierType = languageType;
+                    referenceType = languageType;
                     languageType = typeArgument;
                 } else {
                     verifyLanguageType(types.CachedLanguage, cache, languageType);
-                    supplierType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleLanguage_LanguageReference), Arrays.asList(languageType));
+                    referenceType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleLanguage_LanguageReference), Arrays.asList(languageType));
                 }
                 if (cache.hasErrors()) {
                     continue parameters;
                 }
-                String fieldName = ElementUtils.firstLetterLowerCase(ElementUtils.getSimpleName(languageType)) + "Reference_";
-                CodeVariableElement variableElement = new CodeVariableElement(supplierType, fieldName);
-                List<? extends Element> elements = Arrays.asList(variableElement);
-                DSLExpressionResolver localResolver = resolver.copy(elements);
-                DSLExpression accessReference = new DSLExpression.Variable(null, "null");
-                cache.setReferenceType(supplierType);
+
+                DSLExpressionResolver cachedResolver = importStatics(resolver, types.TruffleLanguage_LanguageReference);
+                DSLExpression.Variable thisReceiver = new DSLExpression.Variable(null, "this");
+                cachedResolver.addVariable("this", new CodeVariableElement(types.Node, "this"));
+
+                DSLExpression expression = new DSLExpression.Call(null, "create", Arrays.asList(new DSLExpression.ClassLiteral(languageType)));
+                if (isLanguage) {
+                    expression = new DSLExpression.Call(expression, "get", Collections.singletonList(thisReceiver));
+                }
+
+                cache.setReferenceType(referenceType);
                 cache.setLanguageType(languageType);
-                cache.setDefaultExpression(resolveCachedExpression(localResolver, cache, null, accessReference, null));
-                cache.setUncachedExpression(resolveCachedExpression(localResolver, cache, null, accessReference, null));
+                cache.setDefaultExpression(resolveCachedExpression(cachedResolver, cache, null, expression, null));
+                cache.setUncachedExpression(resolveCachedExpression(cachedResolver, cache, null, expression, null));
                 cache.setAlwaysInitialized(true);
             } else if (cache.isCachedContext()) {
                 AnnotationMirror cachedContext = cache.getMessageAnnotation();
@@ -2402,21 +2442,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 if (cache.hasErrors()) {
                     continue parameters;
                 }
-                TypeMirror contextType = null;
-                TypeElement languageTypeElement = ElementUtils.fromTypeMirror(languageType);
-                TypeMirror superType = languageTypeElement.getSuperclass();
-                while (languageTypeElement != null) {
-                    superType = languageTypeElement.getSuperclass();
-                    languageTypeElement = ElementUtils.fromTypeMirror(superType);
-                    if (ElementUtils.elementEquals(context.getTypeElement(types.TruffleLanguage), languageTypeElement)) {
-                        contextType = getFirstTypeArgument(superType);
-                        break;
-                    }
-                }
+                TypeMirror contextType = findContextTypeFromLanguage(languageType);
                 if (contextType == null || contextType.getKind() != TypeKind.DECLARED) {
-                    cache.addError("Invalid @%s specification. The context type could not be inferred from super type '%s' in language '%s'.",
+                    cache.addError("Invalid @%s specification. The context type could not be inferred from super type in language '%s'.",
                                     types.CachedContext.asElement().getSimpleName().toString(),
-                                    ElementUtils.getSimpleName(superType),
                                     ElementUtils.getSimpleName(languageType));
                     continue parameters;
                 }
@@ -2435,11 +2464,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
                 TypeMirror referenceType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleLanguage_ContextReference), Arrays.asList(contextType));
 
-                DSLExpression accessReference = new DSLExpression.Variable(null, "null");
                 cache.setReferenceType(referenceType);
                 cache.setLanguageType(languageType);
-                cache.setDefaultExpression(resolveCachedExpression(resolver, cache, null, accessReference, null));
-                cache.setUncachedExpression(resolveCachedExpression(resolver, cache, null, accessReference, null));
+
+                DSLExpressionResolver cachedResolver = importStatics(resolver, types.TruffleLanguage_ContextReference);
+                DSLExpression.Variable thisReceiver = new DSLExpression.Variable(null, "this");
+                cachedResolver.addVariable("this", new CodeVariableElement(types.Node, "this"));
+                DSLExpression expression = new DSLExpression.Call(null, "create", Arrays.asList(new DSLExpression.ClassLiteral(languageType)));
+                if (!cache.isReference()) {
+                    expression = new DSLExpression.Call(expression, "get", Collections.singletonList(thisReceiver));
+                }
+                cache.setDefaultExpression(resolveCachedExpression(cachedResolver, cache, null, expression, null));
+                cache.setUncachedExpression(resolveCachedExpression(cachedResolver, cache, null, expression, null));
                 cache.setAlwaysInitialized(true);
             } else if (cache.isBind()) {
                 AnnotationMirror dynamic = cache.getMessageAnnotation();
@@ -2482,6 +2518,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
         }
         return uncachedSpecialization;
+    }
+
+    public static TypeMirror findContextTypeFromLanguage(TypeMirror languageType) {
+        TypeElement languageTypeElement = ElementUtils.fromTypeMirror(languageType);
+        TypeMirror superType = languageTypeElement.getSuperclass();
+        ProcessorContext context = ProcessorContext.getInstance();
+        while (languageTypeElement != null) {
+            superType = languageTypeElement.getSuperclass();
+            languageTypeElement = ElementUtils.fromTypeMirror(superType);
+            if (ElementUtils.elementEquals(context.getTypeElement(context.getTypes().TruffleLanguage), languageTypeElement)) {
+                return getFirstTypeArgument(superType);
+            }
+        }
+        return null;
     }
 
     private static TypeMirror getFirstTypeArgument(TypeMirror languageType) {
@@ -2530,9 +2580,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
             specialization.setUncachedSpecialization(uncachedSpecialization);
         }
+
         if (uncachedLibraries != null && uncachedLibraries.size() != libraries.size()) {
             throw new AssertionError("Unexpected number of uncached libraries.");
         }
+
         boolean seenDynamicParameterBound = false;
 
         for (int i = 0; i < libraries.size(); i++) {
@@ -2604,6 +2656,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
                 if (substituteCachedExpression == null && supportsLibraryMerge(receiverExpression, receiverParameter.getVariableElement())) {
                     substituteCachedExpression = receiverExpression;
+
                     cachedLibrary.setMergedLibrary(true);
                 }
             }
@@ -2889,9 +2942,25 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     if (handledCaches.contains(cache)) {
                         continue;
                     }
+                    cache.setIsUsedInGuard(true);
+
                     handledCaches.add(cache);
                     if (cache.isWeakReferenceGet()) {
                         newGuards.add(createWeakReferenceGuard(resolver, specialization, cache));
+                    }
+                    if (cache.getSharedGroup() != null) {
+                        if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                            guard.addError("This guard references a @%s cache with a primitive type. This is not supported. " +
+                                            "Resolve this by either:%n" +
+                                            " - Removing the @%s annotation from the referenced cache.%n" +
+                                            " - Removing the guard.%n" +
+                                            " - Removing the reference from the cache to the guard.",
+                                            getSimpleName(types.Cached_Shared),
+                                            getSimpleName(types.Cached_Shared));
+                        } else {
+                            // generated code will verify that the returned shared value is
+                            // non-null.
+                        }
                     }
                 }
             }

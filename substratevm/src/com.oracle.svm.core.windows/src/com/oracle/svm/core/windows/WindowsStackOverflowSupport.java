@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -40,8 +41,28 @@ import com.oracle.svm.core.windows.headers.MemoryAPI;
 
 @Platforms({Platform.WINDOWS.class})
 class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public UnsignedWord lookupStackBase() {
+        int sizeOfMInfo = SizeOf.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);
+        MemoryAPI.MEMORY_BASIC_INFORMATION minfo = StackValue.get(sizeOfMInfo);
+        MemoryAPI.VirtualQuery(minfo, minfo, WordFactory.unsigned(sizeOfMInfo));
+        Pointer stackBottom = (Pointer) minfo.AllocationBase();
+        UnsignedWord stackSize = minfo.RegionSize();
 
-    @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
+        // Add up the sizes of all the regions with the same AllocationBase.
+        while (true) {
+            MemoryAPI.VirtualQuery(stackBottom.add(stackSize), minfo, WordFactory.unsigned(sizeOfMInfo));
+            if (stackBottom.equal(minfo.AllocationBase())) {
+                stackSize = stackSize.add(minfo.RegionSize());
+            } else {
+                break;
+            }
+        }
+        return stackBottom.add(stackSize);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackEnd() {
         MemoryAPI.MEMORY_BASIC_INFORMATION minfo = StackValue.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);

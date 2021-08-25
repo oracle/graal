@@ -34,22 +34,22 @@ public final class Target_jdk_internal_misc_Signal {
     @SuppressWarnings("unused")
     @Substitution
     @TruffleBoundary
-    public static int findSignal0(@Host(String.class) StaticObject name,
+    public static int findSignal0(@JavaType(String.class) StaticObject name,
                     @InjectMeta Meta meta) {
         return Target_sun_misc_Signal.findSignal(name, meta);
     }
 
     @SuppressWarnings("unused")
     @Substitution
-    public static void raise(@Host(typeName = "Ljdk/internal/misc/Signal;") StaticObject signal,
+    public static void raise(@JavaType(internalName = "Ljdk/internal/misc/Signal;") StaticObject signal,
                     @InjectMeta Meta meta) {
         Target_sun_misc_Signal.raise(signal, meta);
     }
 
     @SuppressWarnings("unused")
     @Substitution
-    public static @Host(typeName = "Ljdk/internal/misc/Signal$Handler;") StaticObject handle(@Host(typeName = "Ljdk/internal/misc/Signal;") StaticObject signal,
-                    @Host(typeName = "Ljdk/internal/misc/Signal$Handler;") StaticObject handler,
+    public static @JavaType(internalName = "Ljdk/internal/misc/Signal$Handler;") StaticObject handle(@JavaType(internalName = "Ljdk/internal/misc/Signal;") StaticObject signal,
+                    @JavaType(internalName = "Ljdk/internal/misc/Signal$Handler;") StaticObject handler,
                     @InjectMeta Meta meta) {
         return Target_sun_misc_Signal.handle(signal, handler, meta);
     }

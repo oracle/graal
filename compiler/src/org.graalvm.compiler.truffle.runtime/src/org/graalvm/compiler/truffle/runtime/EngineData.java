@@ -33,7 +33,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
@@ -58,6 +57,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Split
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceDeoptimizeFrame;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
@@ -135,7 +135,9 @@ public final class EngineData {
     @CompilationFinal public boolean callTargetStatisticDetails;
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
+    @CompilationFinal public boolean traceDeoptimizeFrame;
     @CompilationFinal public boolean compileAOTOnCreate;
+    @CompilationFinal public boolean firstTierOnly;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
@@ -254,7 +256,7 @@ public final class EngineData {
         this.splittingGrowthLimit = options.get(SplittingGrowthLimit);
 
         // inlining options
-        this.inlining = options.get(Inlining) && options.get(Mode) != EngineModeEnum.LATENCY;
+        this.inlining = options.get(Inlining);
 
         // compilation options
         this.compilation = options.get(Compilation);
@@ -262,6 +264,7 @@ public final class EngineData {
         this.compileImmediately = options.get(CompileImmediately);
         this.multiTier = !compileImmediately && options.get(MultiTier);
         this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
+        this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
 
         // compilation queue options
         priorityQueue = options.get(PriorityQueue);
@@ -282,6 +285,7 @@ public final class EngineData {
         this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
         this.profilingEnabled = options.get(Profiling);
         this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
+        this.traceDeoptimizeFrame = options.get(TraceDeoptimizeFrame);
         this.compilationFailureAction = computeCompilationFailureAction(options);
         validateOptions();
         parsedCompileOnly = null;
@@ -404,10 +408,6 @@ public final class EngineData {
         if (multiTier) {
             return options.get(FirstTierCompilationThreshold);
         } else {
-            // TODO: GR-29467 - Legacy behaviour, should be removed
-            if (options.hasBeenSet(CompilationThreshold)) {
-                return options.get(CompilationThreshold);
-            }
             return options.get(SingleTierCompilationThreshold);
         }
     }
@@ -422,10 +422,6 @@ public final class EngineData {
     private int computeCallAndLoopThresholdInFirstTier(OptionValues options) {
         if (compileImmediately) {
             return 0;
-        }
-        // TODO: GR-29467 - Legacy behaviour, should be removed
-        if (options.hasBeenSet(CompilationThreshold)) {
-            return options.get(CompilationThreshold);
         }
         return options.get(LastTierCompilationThreshold);
     }

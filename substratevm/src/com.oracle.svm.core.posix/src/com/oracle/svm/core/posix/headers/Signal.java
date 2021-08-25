@@ -38,11 +38,13 @@ import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
+import com.oracle.svm.core.posix.PosixUtils;
 
 // Checkstyle: stop
 
@@ -71,13 +73,15 @@ public class Signal {
     public interface sigset_tPointer extends PointerBase {
     }
 
+    /**
+     * Warning: use {@link #sigaction} or {@link PosixUtils#installSignalHandler}. Do NOT introduce
+     * calls to {@code signal} or {@code sigset}, which are not portable, and when running in
+     * HotSpot, signal chaining (libjsig) will print warnings.
+     */
     public interface SignalDispatcher extends CFunctionPointer {
         @InvokeCFunctionPointer
         void dispatch(int sig);
     }
-
-    @CFunction
-    public static native SignalDispatcher signal(int signum, SignalDispatcher handler);
 
     @CConstant
     public static native SignalDispatcher SIG_DFL();
@@ -91,8 +95,19 @@ public class Signal {
     @CFunction
     public static native int raise(int signum);
 
-    @CStruct
+    @CStruct(isIncomplete = true)
     public interface siginfo_t extends PointerBase {
+        @CField
+        int si_signo();
+
+        @CField
+        int si_errno();
+
+        @CField
+        int si_code();
+
+        @CField
+        VoidPointer si_addr();
     }
 
     @Platforms(Platform.LINUX.class)
@@ -277,7 +292,13 @@ public class Signal {
     }
 
     @CConstant
+    public static native int SA_RESTART();
+
+    @CConstant
     public static native int SA_SIGINFO();
+
+    @CConstant
+    public static native int SA_NODEFER();
 
     @CStruct(addStructKeyword = true)
     public interface sigaction extends PointerBase {
@@ -303,8 +324,9 @@ public class Signal {
         sigset_tPointer sa_mask();
     }
 
+    /** @param signum from {@link SignalEnum#getCValue()} */
     @CFunction
-    public static native int sigaction(SignalEnum signum, sigaction act, sigaction oldact);
+    public static native int sigaction(int signum, sigaction act, sigaction oldact);
 
     @CEnum
     @CContext(PosixDirectives.class)
@@ -368,4 +390,7 @@ public class Signal {
 
     @CFunction
     public static native int sigemptyset(sigset_tPointer set);
+
+    @CFunction
+    public static native int sigaddset(sigset_tPointer set, int signum);
 }

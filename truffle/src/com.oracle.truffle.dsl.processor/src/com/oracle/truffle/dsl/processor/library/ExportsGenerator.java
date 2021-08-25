@@ -86,6 +86,7 @@ import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -107,10 +108,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     private static final String ENABLED_MESSAGES_NAME = "ENABLED_MESSAGES";
 
     private final ProcessorContext context = ProcessorContext.getInstance();
-    private final Map<String, CodeVariableElement> libraryConstants;
+    private final StaticConstants constants;
 
-    public ExportsGenerator(Map<String, CodeVariableElement> libraryConstants) {
-        this.libraryConstants = libraryConstants;
+    public ExportsGenerator(StaticConstants constants) {
+        this.constants = constants;
     }
 
     static class CacheKey {
@@ -175,7 +176,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
     @Override
     public List<CodeTypeElement> create(ProcessorContext context1, AnnotationProcessor<?> processor, ExportsData exports) {
-        libraryConstants.clear();
+        constants.clear();
 
         String className = createGenClassName(exports.getTemplateType());
         CodeTypeElement genClass = createClass(exports, null, modifiers(Modifier.FINAL), className, null);
@@ -205,6 +206,15 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 processor.registerService(serviceBinaryName, serviceImplName, libraryExports.getTemplateType());
             }
 
+            if (libraryExports.needsEagerExportProvider()) {
+                ElementUtils.setVisibility(genClass.getModifiers(), PUBLIC);
+                TypeElement provider = createAOTExportProvider(libraryExports, genClass);
+                genClass.add(provider);
+                String serviceBinaryName = context.getEnvironment().getElementUtils().getBinaryName(ElementUtils.castTypeElement(context.getTypes().EagerExportProvider)).toString();
+                String serviceImplName = ElementUtils.getBinaryName(provider);
+                processor.registerService(serviceBinaryName, serviceImplName, libraryExports.getTemplateType());
+            }
+
             final TypeElement libraryBaseTypeElement = libraryExports.getLibrary().getTemplateType();
             final DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
 
@@ -224,7 +234,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         statics.end();
         statics.end();
 
-        genClass.addAll(libraryConstants.values());
+        genClass.addAll(constants.libraries.values());
+        genClass.addAll(constants.contextReferences.values());
+        genClass.addAll(constants.languageReferences.values());
         return Arrays.asList(genClass);
     }
 
@@ -317,8 +329,21 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeExecutableElement constructor = new CodeExecutableElement(modifiers(PRIVATE), null, exportsClass.getSimpleName().toString());
         builder = constructor.createBuilder();
-        builder.startStatement().startSuperCall().typeLiteral(libraryBaseType).typeLiteral(libraryExport.getReceiverType()).string(
-                        Boolean.valueOf(libraryExport.isBuiltinDefaultExport()).toString()).end().end();
+        builder.startStatement().startSuperCall();
+        builder.typeLiteral(libraryBaseType).typeLiteral(libraryExport.getReceiverType());
+        builder.string(Boolean.valueOf(libraryExport.isBuiltinDefaultExport()).toString());
+        boolean useForAOT = false;
+
+        // we ignore the value if generate AOT is not enabled for the library
+        // this might be the case for the dynamic dispatch library where
+        // AOT is not enabled for the library but enabled for the export.
+        if (libraryExport.getLibrary().isGenerateAOT()) {
+            useForAOT = libraryExport.isUseForAOT();
+        }
+        builder.string(Boolean.valueOf(useForAOT).toString());
+        builder.string(Integer.toString(libraryExport.getUseForAOTPriority()));
+
+        builder.end().end();
         exportsClass.add(constructor);
 
         if (libraryExport.hasExportDelegation()) {
@@ -395,7 +420,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         createCached.renameArguments("receiver");
         builder = createCached.createBuilder();
         if (!ElementUtils.typeEquals(exportReceiverType, context.getType(Object.class))) {
-            builder.startAssert().string("receiver instanceof ").type(exportReceiverType).end();
+            builder.startAssert().string("receiver instanceof ").type(exportReceiverType);
+            if (libraryExport.isUseForAOT()) {
+                builder.string(" || receiver instanceof ").type(types.LibraryExport).build();
+            }
+            builder.end();
         }
         builder.startReturn();
         if (libraryExport.hasExportDelegation()) {
@@ -480,6 +509,41 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return providerClass;
     }
 
+    CodeTypeElement createAOTExportProvider(ExportsLibrary libraryExports, CodeTypeElement genClass) {
+        String libraryName = libraryExports.getLibrary().getTemplateType().getSimpleName().toString();
+        CodeTypeElement providerClass = createClass(libraryExports, null, modifiers(PUBLIC, STATIC, FINAL), libraryName + "EagerProvider", null);
+        providerClass.getImplements().add(context.getTypes().EagerExportProvider);
+
+        ExecutableElement init = ElementUtils.findMethod((DeclaredType) genClass.asType(), "init");
+        if (init == null) {
+            CodeExecutableElement genInit = genClass.add(new CodeExecutableElement(modifiers(PRIVATE, STATIC), context.getType(void.class), "init"));
+            genInit.createBuilder().lineComment("This method is intended to ensure class initialization.");
+            init = genInit;
+        }
+
+        for (ExecutableElement method : ElementFilter.methodsIn(context.getTypes().EagerExportProvider.asElement().getEnclosedElements())) {
+            CodeExecutableElement m = null;
+            switch (method.getSimpleName().toString()) {
+                case "ensureRegistered":
+                    m = CodeExecutableElement.cloneNoAnnotations(method);
+                    m.createBuilder().startStatement().startStaticCall(init).end().end();
+                    break;
+                case "getLibraryClassName":
+                    m = CodeExecutableElement.cloneNoAnnotations(method);
+                    m.createBuilder().startReturn().doubleQuote(context.getEnvironment().getElementUtils().getBinaryName(libraryExports.getLibrary().getTemplateType()).toString()).end();
+                    break;
+            }
+            if (m != null) {
+                m.getModifiers().remove(Modifier.ABSTRACT);
+                providerClass.add(m);
+            }
+        }
+        if (providerClass.getEnclosedElements().size() != 2) {
+            throw new AssertionError();
+        }
+        return providerClass;
+    }
+
     CodeTypeElement createCached(ExportsLibrary libraryExports, Map<String, ExportMessageData> messages) {
         TypeMirror exportReceiverType = libraryExports.getReceiverType();
         final Modifier classVisibility = resolveSubclassVisibility(libraryExports);
@@ -523,13 +587,17 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             boolean needsCast;
             if (hasConstructorCacheInitializer(messages)) {
                 needsCast = true;
-            } else if (libraryExports.needsDynamicDispatch() || !libraryExports.isFinalReceiver()) {
+            } else if (!libraryExports.needsDynamicDispatch() && !libraryExports.isFinalReceiver()) {
                 needsCast = !useSuperAccepts(libraryExports, messages);
             } else {
                 needsCast = false;
             }
 
-            if (ElementUtils.needsCastTo(context.getType(Object.class), libraryExports.getReceiverType()) && needsCast) {
+            if (libraryExports.isUseForAOT() && !mergedLibraries.isEmpty()) {
+                builder.startIf().string("!(", receiverLocalName).string(" instanceof ").type(types.LibraryExport).string(")").end().startBlock();
+            }
+
+            if (needsCast && ElementUtils.needsCastTo(context.getType(Object.class), libraryExports.getReceiverType())) {
                 String oldReceiverName = receiverLocalName;
                 receiverLocalName = "castReceiver";
                 builder.declaration(libraryExports.getReceiverType(), receiverLocalName,
@@ -547,6 +615,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 var.getAnnotationMirrors().add(new CodeAnnotationMirror(types.Node_Child));
             }
 
+            if (libraryExports.isUseForAOT()) {
+                builder.end();
+            }
+
             if (acceptsMessage != null && acceptsMessage.getSpecializedNode() != null && acceptsMessage.isDeclared()) {
                 SpecializationData firstSpecialization = null;
                 for (SpecializationData s : acceptsMessage.getSpecializedNode().getSpecializations()) {
@@ -556,9 +628,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     firstSpecialization = s;
                     break;
                 }
-
                 FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, acceptsMessage.getSpecializedNode(),
-                                cachedSharedNodes, libraryExports.getSharedExpressions(), libraryConstants);
+                                cachedSharedNodes, libraryExports.getSharedExpressions(), constants);
                 List<CacheExpression> caches = new ArrayList<>();
                 for (CacheKey key : eagerCaches.keySet()) {
                     caches.add(key.cache);
@@ -649,6 +720,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 CodeTree mergedLibraryInitializer = writeExpression(key.cache, "receiver", context.getType(Object.class), libraryExports.getReceiverType());
                 String identifier = key.getCache().getMergedLibraryIdentifier();
                 builder.startElseIf();
+                if (libraryExports.isUseForAOT()) {
+                    builder.string("this.", identifier, " != null && ");
+                }
+
                 builder.string("!this.", identifier);
                 builder.startCall(".accepts").tree(mergedLibraryInitializer).end();
                 builder.end().startBlock();
@@ -734,7 +809,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 boolean shared = true;
                 if (dummyNodeClass == null) {
                     FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, cachedSpecializedNode, cachedSharedNodes, libraryExports.getSharedExpressions(),
-                                    libraryConstants);
+                                    constants);
                     dummyNodeClass = createClass(libraryExports, null, modifiers(), "Dummy", types.Node);
                     factory.create(dummyNodeClass);
                     sharedNodes.put(cachedSpecializedNode, dummyNodeClass);
@@ -760,10 +835,15 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                         continue;
                     }
                     if (!shared) {
+                        if (simpleName.equals("prepareForAOT")) {
+                            TypeMirror aotProviderType = new GeneratedTypeMirror(ElementUtils.getPackageName(types.GenerateAOT_Provider), "GenerateAOT.Provider");
+                            cacheClass.getImplements().add(aotProviderType);
+                        }
                         // only execute method needed for shared
                         cacheClass.getEnclosedElements().add(element);
                     }
                 }
+
             }
             if (cachedExecute == null) {
                 throw new AssertionError("execute not found");
@@ -1039,6 +1119,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 if (constructor != null) {
                     boolean doCast = !((TypeElement) ((DeclaredType) receiverType).asElement()).getTypeParameters().isEmpty();
                     CodeTreeBuilder builder = constructor.appendBuilder().startStatement().string("this.receiverClass_ = ");
+
                     if (doCast) {
                         builder.cast(receiverClassType);
                         constructor.addAnnotationMirror(LibraryGenerator.createSuppressWarningsUnchecked(context));
@@ -1058,7 +1139,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     }
 
     private CodeVariableElement useLibraryConstant(TypeMirror typeConstant) {
-        return FlatNodeGenFactory.createLibraryConstant(libraryConstants, typeConstant);
+        return FlatNodeGenFactory.createLibraryConstant(constants, typeConstant);
     }
 
     private CodeVariableElement useDispatchLibraryConstant() {
@@ -1218,7 +1299,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     directCall.getModifiers().add(Modifier.STATIC);
                 }
             } else {
-                FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), libraryConstants);
+                FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), constants);
                 CodeExecutableElement generatedUncached = factory.createUncached();
                 if (firstNode) {
                     uncachedClass.getEnclosedElements().addAll(factory.createUncachedFields());

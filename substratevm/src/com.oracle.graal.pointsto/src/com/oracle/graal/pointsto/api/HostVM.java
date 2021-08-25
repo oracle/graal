@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.api;
 
+import java.lang.reflect.AnnotatedElement;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 
@@ -37,12 +38,13 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -106,12 +108,23 @@ public interface HostVM {
 
     void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
 
-    default AnalysisParsedGraph parseBytecode(BigBang bb, AnalysisMethod analysisMethod) {
-        return AnalysisParsedGraph.parseBytecode(bb, analysisMethod);
+    default boolean hasNeverInlineDirective(@SuppressWarnings("unused") ResolvedJavaMethod method) {
+        /* No inlining by the static analysis unless explicitly overwritten by the VM. */
+        return true;
+    }
+
+    default InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy() {
+        /* No inlining by the static analysis unless explicitly overwritten by the VM. */
+        return InlineBeforeAnalysisPolicy.NO_INLINING;
     }
 
     @SuppressWarnings("unused")
     default boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
         return false;
+    }
+
+    @SuppressWarnings("unused")
+    default boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
+        return true;
     }
 }

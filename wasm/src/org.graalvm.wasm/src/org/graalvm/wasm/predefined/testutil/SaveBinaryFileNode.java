@@ -82,7 +82,7 @@ public class SaveBinaryFileNode extends WasmBuiltinRootNode {
 
     @CompilerDirectives.TruffleBoundary
     private void saveFile(int filenamePtr, int dataPtr, int size) {
-        final WasmContext context = contextReference().get();
+        final WasmContext context = getContext();
         Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, dumping works with only 1 memory.", Failure.UNSPECIFIED_MALFORMED);
         final WasmMemory memory = context.memories().memory(0);
 

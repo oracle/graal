@@ -69,6 +69,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
@@ -77,7 +78,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -296,7 +296,7 @@ public abstract class LocalizationFeature implements Feature {
             /*- Fallthrough to also allow adding custom locales */
         }
         List<String> invalid = new ArrayList<>();
-        for (String tag : Options.IncludeLocales.getValue().values()) {
+        for (String tag : OptionUtils.flatten(",", Options.IncludeLocales.getValue().values())) {
             Locale locale = parseLocaleFromTag(tag);
             if (locale != null) {
                 locales.add(locale);
@@ -456,29 +456,16 @@ public abstract class LocalizationFeature implements Feature {
 
         boolean somethingFound = false;
         for (Locale locale : wantedLocales) {
-            ResourceBundle resourceBundle;
+            List<ResourceBundle> resourceBundle;
             try {
-                resourceBundle = ModuleSupport.getResourceBundle(baseName, locale, Thread.currentThread().getContextClassLoader());
+                resourceBundle = ImageSingletons.lookup(ClassLoaderSupport.class).getResourceBundle(baseName, locale);
             } catch (MissingResourceException mre) {
-                if (!baseName.contains("/")) {
-                    // fallthrough
-                    continue;
-                }
-                // Due to a possible bug in the JDK, bundle names not following proper naming
-                // convention
-                // need to be
-                // converted to fully qualified class names before loading can succeed.
-                // see GR-24211
-                String dotBundleName = baseName.replace("/", ".");
-                try {
-                    resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, locale, Thread.currentThread().getContextClassLoader());
-                } catch (MissingResourceException ex) {
-                    // fallthrough
-                    continue;
-                }
+                continue;
             }
-            somethingFound = true;
-            prepareBundle(baseName, resourceBundle, locale);
+            somethingFound = !resourceBundle.isEmpty();
+            for (ResourceBundle bundle : resourceBundle) {
+                prepareBundle(baseName, bundle, locale);
+            }
         }
 
         if (!somethingFound) {

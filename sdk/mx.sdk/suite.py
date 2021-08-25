@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.297.0",
+  "mxversion" : "5.309.1",
   "name" : "sdk",
-  "version" : "21.2.0",
+  "version" : "21.3.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -108,7 +108,41 @@ suite = {
       "sha1" : "4cb5f6c20b10912ef3c12f4c4c3ebcdbcbe3a555",
       "version" : "3.16.0.1",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
-      "license" : "BSD-new"
+      "license" : "BSD-new",
+      "requires" : ["java.logging"],
+      "exports" : [
+        "org.graalvm.shadowed.org.fusesource.hawtjni.runtime",
+        "org.graalvm.shadowed.org.fusesource.jansi",
+        "org.graalvm.shadowed.org.fusesource.jansi.internal",
+        "org.graalvm.shadowed.org.jline.builtins",
+        "org.graalvm.shadowed.org.jline.builtins.ssh",
+        "org.graalvm.shadowed.org.jline.builtins.telnet",
+        "org.graalvm.shadowed.org.jline.console",
+        "org.graalvm.shadowed.org.jline.console.impl",
+        "org.graalvm.shadowed.org.jline.keymap",
+        "org.graalvm.shadowed.org.jline.reader",
+        "org.graalvm.shadowed.org.jline.reader.impl",
+        "org.graalvm.shadowed.org.jline.reader.impl.completer",
+        "org.graalvm.shadowed.org.jline.reader.impl.history",
+        "org.graalvm.shadowed.org.jline.style",
+        "org.graalvm.shadowed.org.jline.terminal",
+        "org.graalvm.shadowed.org.jline.terminal.impl",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jansi",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.freebsd",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.linux",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.osx",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.solaris",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jansi.win",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jna",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jna.freebsd",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jna.linux",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jna.osx",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jna.solaris",
+        "org.graalvm.shadowed.org.jline.terminal.impl.jna.win",
+        "org.graalvm.shadowed.org.jline.terminal.spi",
+        "org.graalvm.shadowed.org.jline.utils",
+        "org.graalvm.shadowed.org.jline.widget",
+      ],
     },
     "LLVM_ORG" : {
       "version" : "10.0.0-6-gad4288df64-bg263fb7a415",
@@ -341,7 +375,7 @@ suite = {
           "org.graalvm.word",
           "org.graalvm.polyglot.impl to org.graalvm.truffle",
           "org.graalvm.word.impl to jdk.internal.vm.compiler",
-          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.builder,com.oracle.svm.svm_enterprise",
+          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise",
         ],
         "uses" : [
           "org.graalvm.polyglot.impl.AbstractPolyglotImpl"
@@ -370,6 +404,9 @@ suite = {
       "subDir" : "src",
       "moduleInfo" : {
         "name" : "org.graalvm.launcher",
+        "exports" : [
+          "org.graalvm.launcher",
+        ],
       },
       "dependencies" : [
         "org.graalvm.launcher",

@@ -104,6 +104,7 @@ public final class Polyglot {
      * </ul>
      * <p>
      *
+     * @throws NullPointerException is targetClass is null
      * @throws ClassCastException
      *             <ul>
      *             <li>if {@code value} is a foreign object, {@code targetClass} is a primitive type

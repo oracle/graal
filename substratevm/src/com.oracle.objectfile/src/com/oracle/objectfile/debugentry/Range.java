@@ -34,9 +34,7 @@ package com.oracle.objectfile.debugentry;
 
 public class Range {
     private static final String CLASS_DELIMITER = ".";
-    private final FileEntry fileEntry;
-    private MethodEntry methodEntry;
-    private final String symbolName;
+    private final MethodEntry methodEntry;
     private final String fullMethodNameWithParams;
     private final int lo;
     private final int hi;
@@ -49,30 +47,20 @@ public class Range {
     /*
      * Create a primary range.
      */
-    public Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line) {
-        this(symbolName, stringTable, methodEntry, fileEntry, lo, hi, line, null);
-    }
-
-    /*
-     * Create a secondary range.
-     */
-    public Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary) {
-        this(symbolName, stringTable, methodEntry, methodEntry.fileEntry, lo, hi, line, primary);
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line) {
+        this(stringTable, methodEntry, lo, hi, line, null);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    private Range(String symbolName, StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line,
-                    Range primary) {
-        this.fileEntry = fileEntry;
-        if (fileEntry != null) {
-            stringTable.uniqueDebugString(fileEntry.getFileName());
-            stringTable.uniqueDebugString(fileEntry.getPathName());
-        }
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary) {
         assert methodEntry != null;
+        if (methodEntry.fileEntry != null) {
+            stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
+            stringTable.uniqueDebugString(methodEntry.fileEntry.getPathName());
+        }
         this.methodEntry = methodEntry;
-        this.symbolName = stringTable.uniqueString(symbolName);
         this.fullMethodNameWithParams = stringTable.uniqueString(constructClassAndMethodNameWithParams());
         this.lo = lo;
         this.hi = hi;
@@ -101,7 +89,7 @@ public class Range {
     }
 
     public String getSymbolName() {
-        return symbolName;
+        return methodEntry.getSymbolName();
     }
 
     public int getHi() {
@@ -159,16 +147,8 @@ public class Range {
         return getExtendedMethodName(true, true, false);
     }
 
-    public String getMethodReturnTypeName() {
-        return methodEntry.valueType.typeName;
-    }
-
-    public TypeEntry[] getParamTypes() {
-        return methodEntry.paramTypes;
-    }
-
     public FileEntry getFileEntry() {
-        return fileEntry;
+        return methodEntry.fileEntry;
     }
 
     public int getModifiers() {
@@ -177,10 +157,14 @@ public class Range {
 
     @Override
     public String toString() {
-        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), fileEntry.getFullName(), line);
+        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), methodEntry.getFullFileName(), line);
     }
 
     public String getFileName() {
-        return fileEntry.getFileName();
+        return methodEntry.getFileName();
+    }
+
+    public MethodEntry getMethodEntry() {
+        return methodEntry;
     }
 }

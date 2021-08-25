@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -48,8 +46,8 @@ public abstract class AllocateGlobalsBlockNode extends LLVMNode implements LLVMA
     }
 
     @Specialization
-    LLVMPointer doAllocate(@CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().allocateMemory(this, size);
+    LLVMPointer doAllocate() {
+        return getLanguage().getLLVMMemory().allocateMemory(this, size);
     }
 
     public static AllocateGlobalsBlockNode create(StructureType type, DataLayout dataLayout) throws TypeOverflowException {

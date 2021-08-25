@@ -32,13 +32,14 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
+import java.util.WeakHashMap;
 
 abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location> implements Closeable {
     private static final Charset UTF8 = Charset.forName("UTF-8");
@@ -474,11 +475,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             writeByte(POOL_NULL);
             return;
         }
-        Character id = constantPool.get(object);
+        Object[] found = new Object[1];
+        int type = findPoolType(object, found);
+        Character id = constantPool.get(object, type);
         if (id == null) {
-            addPoolEntry(object);
+            addPoolEntry(object, type, found);
         } else {
-            int type = findPoolType(object, null);
             writeByte(type);
             writeShort(id.charValue());
         }
@@ -647,14 +649,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     }
 
     @SuppressWarnings("unchecked")
-    private void addPoolEntry(Object obj) throws IOException {
+    private void addPoolEntry(Object obj, int type, Object[] found) throws IOException {
         Object object = obj;
-        char index = constantPool.add(object);
+        char index = constantPool.add(object, type);
         writeByte(POOL_NEW);
         writeShort(index);
 
-        Object[] found = {null};
-        int type = findPoolType(object, found);
         writeByte(type);
         switch (type) {
             case POOL_FIELD: {
@@ -881,42 +881,111 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         return true;
     }
 
-    private static final class ConstantPool extends LinkedHashMap<Object, Character> {
+    private static HashSet<Class<?>> badToString;
 
-        private final LinkedList<Character> availableIds;
+    /**
+     * This is a helper to identify objects that are encoded as POOL_STRING and have a poor
+     * {@link Object#toString()} implementation where two objects that are
+     * {@link Object#equals(Object)} have different String representations. Only the first mismatch
+     * is reported since this is a systematic issue and reporting every failure would be too much
+     * useless output.
+     */
+    private static synchronized void reportBadToString(Object lookupKey, Object value) {
+        if (badToString == null) {
+            badToString = new HashSet<>();
+        }
+        if (badToString.add(lookupKey.getClass())) {
+            System.err.println("GraphProtocol: toString mismatch for " + lookupKey.getClass() + ": " + value + " != " + lookupKey.toString());
+        }
+    }
+
+    private static boolean checkToString(Object lookupKey, Object value) {
+        if (!lookupKey.toString().equals(value)) {
+            reportBadToString(lookupKey, value);
+        }
+        return true;
+    }
+
+    /**
+     * This class maintains a limited pool of constants for use by the graph protocol. Once the
+     * cache fills up the oldest slots are replaced with new values in a cyclic fashion.
+     */
+    private static final class ConstantPool {
         private char nextId;
-        private static final long serialVersionUID = -2676889957907285681L;
+        /*
+         * A mapping from an object to the pool entry that represents it. Normally the value is the
+         * Character id of the entry but for {@link POOL_STRING} entries a second forwarding entry
+         * might be created. A {@link POOL_STRING} can be looked up either by the original object or
+         * by the toString representation of that object. To handle this case the original object is
+         * inserted with the toString as the value. That string should then be looked up to get the
+         * actual id. This is done to avoid excessive toString calls during encoding.
+         */
+        private final WeakHashMap<Object, Object> map = new WeakHashMap<>();
+        private final Object[] keys = new Object[CONSTANT_POOL_MAX_SIZE];
 
         ConstantPool() {
-            super(50, 0.65f);
-            availableIds = new LinkedList<>();
         }
 
-        @Override
-        protected boolean removeEldestEntry(java.util.Map.Entry<Object, Character> eldest) {
-            if (size() > CONSTANT_POOL_MAX_SIZE) {
-                availableIds.addFirst(eldest.getValue());
-                return true;
+        private static Object getLookupKey(Object key) {
+            // Collections must be converted to a String early since they can be mutated after
+            // being inserted into the map.
+            return (key instanceof Collection) ? key.toString() : key;
+        }
+
+        Character get(Object initialKey, int type) {
+            Object key = getLookupKey(initialKey);
+            Object value = map.get(key);
+            if (value instanceof String) {
+                Character id = (Character) map.get(value);
+                if (id != null && keys[id].equals(value)) {
+                    assert checkToString(key, value);
+                    return id;
+                }
+                value = null;
             }
-            return false;
-        }
-
-        private Character nextAvailableId() {
-            if (!availableIds.isEmpty()) {
-                return availableIds.removeFirst();
+            Character id = (Character) value;
+            if (id != null && keys[id].equals(key)) {
+                return id;
             }
-            return nextId++;
+            if (type == POOL_STRING && !(key instanceof String)) {
+                // See if the String representation is already in the map
+                String string = key.toString();
+                id = get(string, type);
+                if (id != null) {
+                    // Add an entry that forwards from the object to the string.
+                    map.put(key, string);
+                    return id;
+                }
+            }
+            return null;
         }
 
-        public char add(Object obj) {
-            Character id = nextAvailableId();
-            put(obj, id);
+        char add(Object initialKey, int type) {
+            char id = nextId++;
+            if (nextId == CONSTANT_POOL_MAX_SIZE) {
+                nextId = 0;
+            }
+            if (keys[id] != null) {
+                map.remove(keys[id]);
+            }
+            Object key = getLookupKey(initialKey);
+            if (type == POOL_STRING && !(key instanceof String)) {
+                // Insert a forwarding entry from the original object to the string representation
+                // and then directly insert the string with the pool id.
+                String string = key.toString();
+                map.put(key, string);
+                map.put(string, id);
+                keys[id] = string;
+            } else {
+                map.put(key, id);
+                keys[id] = key;
+            }
             return id;
         }
 
         void reset() {
-            clear();
-            availableIds.clear();
+            map.clear();
+            Arrays.fill(keys, null);
             nextId = 0;
         }
     }

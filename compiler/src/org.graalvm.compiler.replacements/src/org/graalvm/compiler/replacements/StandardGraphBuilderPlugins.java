@@ -86,6 +86,7 @@ import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.SignumNode;
 import org.graalvm.compiler.nodes.calc.SqrtNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
@@ -767,6 +768,7 @@ public class StandardGraphBuilderPlugins {
             }
         }
         r.register1("abs", Float.TYPE, new InvocationPlugin() {
+
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Float, b.append(new AbsNode(value).canonical(null)));
@@ -786,6 +788,21 @@ public class StandardGraphBuilderPlugins {
         registerRound(supportsRound, r, "rint", RoundingMode.NEAREST);
         registerRound(supportsRound, r, "ceil", RoundingMode.UP);
         registerRound(supportsRound, r, "floor", RoundingMode.DOWN);
+
+        r.register1("signum", float.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode f) {
+                b.addPush(JavaKind.Float, new SignumNode(f));
+                return true;
+            }
+        });
+        r.register1("signum", double.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode d) {
+                b.addPush(JavaKind.Double, new SignumNode(d));
+                return true;
+            }
+        });
     }
 
     private static void registerRound(boolean supportsRound, Registration r, String name, RoundingMode mode) {
@@ -916,7 +933,7 @@ public class StandardGraphBuilderPlugins {
                  */
                 if (targetMethod.canBeInlined() && targetMethod.getCodeSize() == 1) {
                     ValueNode object = receiver.get();
-                    if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
+                    if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getMetaAccess(), b.getAssumptions())) {
                         RegisterFinalizerNode regFin = new RegisterFinalizerNode(object);
                         b.add(regFin);
                         b.setStateAfter(regFin);
@@ -1232,7 +1249,8 @@ public class StandardGraphBuilderPlugins {
             assert !memoryOrder.emitBarriers : "Barriers for address based Unsafe put is not supported.";
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            b.add(new UnsafeMemoryStoreNode(address, value, unsafeAccessKind, OFF_HEAP_LOCATION));
+            ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
+            b.add(new UnsafeMemoryStoreNode(address, maskedValue, unsafeAccessKind, OFF_HEAP_LOCATION));
             b.getGraph().markUnsafeAccess();
             return true;
         }
@@ -1714,6 +1732,9 @@ public class StandardGraphBuilderPlugins {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode counters) {
+                if (b.needsExplicitException()) {
+                    return false;
+                }
                 if (result.isConstant()) {
                     b.push(JavaKind.Boolean, result);
                     return true;

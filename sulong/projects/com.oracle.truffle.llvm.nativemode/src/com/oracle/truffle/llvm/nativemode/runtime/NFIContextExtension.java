@@ -34,11 +34,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
-import com.oracle.truffle.llvm.runtime.LibraryLocator;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -46,7 +43,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -57,7 +53,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nativemode.runtime.NFIContextExtensionFactory.CreateClosureNodeGen;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
@@ -69,7 +69,6 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
-import org.graalvm.collections.Equivalence;
 
 public final class NFIContextExtension extends NativeContextExtension {
 
@@ -266,9 +265,8 @@ public final class NFIContextExtension extends NativeContextExtension {
 
         @Specialization
         Object doCreateClosure(
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                         @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary) {
-            NFIContextExtension ctxExt = (NFIContextExtension) ctxExtKey.get(ctx);
+            NFIContextExtension ctxExt = (NFIContextExtension) ctxExtKey.get(LLVMContext.get(this));
             Object signature = ctxExt.getCachedSignature(signatureSource);
             return signatureLibrary.createClosure(signature, nativeWrapper);
         }
@@ -287,7 +285,7 @@ public final class NFIContextExtension extends NativeContextExtension {
          */
         try {
             Source signatureSource = signatureSourceCache.getSignatureSource(code.getLLVMFunction().getType());
-            RootNode root = CreateClosureNodeGen.create(LLVMLanguage.getLanguage(), signatureSource, new LLVMNativeWrapper(code));
+            RootNode root = CreateClosureNodeGen.create(LLVMLanguage.get(null), signatureSource, new LLVMNativeWrapper(code));
             return Truffle.getRuntime().createCallTarget(root);
         } catch (UnsupportedNativeTypeException ex) {
             // ignore, fall back to tagged id
@@ -554,7 +552,8 @@ public final class NFIContextExtension extends NativeContextExtension {
         return signatureSourceCache.getSignatureSourceSkipStackArg(type);
     }
 
-    private Object createSignature(Source signatureSource) {
+    @Override
+    public Object createSignature(Source signatureSource) {
         synchronized (signatureCache) {
             Object ret = signatureCache.get(signatureSource);
             if (ret == null) {

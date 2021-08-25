@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Testing DSL Specializations
+permalink: /graalvm-as-a-platform/language-implementation-framework/SpecializationTesting/
+---
 # Testing Truffle DSL Specializations
 
 This document discusses the tools for testing Truffle DSL specializations.

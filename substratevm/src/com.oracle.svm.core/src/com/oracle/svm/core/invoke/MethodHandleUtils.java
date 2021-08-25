@@ -39,6 +39,18 @@ import sun.invoke.util.Wrapper;
 // Checkstyle: resume
 
 public class MethodHandleUtils {
+    public static Object cast(Object obj, Class<?> type) {
+        Wrapper destinationWrapper;
+        if (type.isPrimitive()) {
+            destinationWrapper = Wrapper.forPrimitiveType(type);
+        } else if (Wrapper.isWrapperType(type)) {
+            destinationWrapper = Wrapper.forWrapperType(type);
+        } else {
+            destinationWrapper = Wrapper.OBJECT;
+        }
+        return destinationWrapper.cast(obj, type);
+    }
+
     @AlwaysInline("constant fold as much as possible in signature polymorphic wrappers")
     public static long longUnbox(Object retVal, MethodHandle methodHandle) {
         return longUnbox(retVal, methodHandle.type().returnType());

@@ -93,4 +93,7 @@ public final class ClassInitializationOptions {
 
     @Option(help = "Prints class initialization info for all classes detected by analysis.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> PrintClassInitialization = new HostedOptionKey<>(false);
+
+    @Option(help = "Assert class initialization is specified for all classes.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> AssertInitializationSpecifiedForAllClasses = new HostedOptionKey<>(false);
 }

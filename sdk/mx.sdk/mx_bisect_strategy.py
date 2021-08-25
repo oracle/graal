@@ -39,12 +39,11 @@
 # SOFTWARE.
 #
 
-import os
+import os.path
 import subprocess
 import tempfile
 import mx
 import mx_fetchjdk
-from jdk_distribution_parser import JdkDistribution
 from mx import VC
 from mx_bisect import BuildSteps
 import shutil
@@ -137,27 +136,22 @@ class BuildStepsGraalVMStrategy(BuildSteps):
         for proc in arr:
             proc.communicate()
 
-    def _fetch_jdk(self, jdk_distribution, paths):
+    def _fetch_jdk(self, jdk_id, paths):
         if not self._mx_path:
             self._mx_path = mx.get_jdk().home
+        old_quiet = mx._opts.quiet
         mx._opts.quiet = True
-        tmp_dir = tempfile.gettempdir()
         _, repo_path = VC.get_vc_root(paths[0])
-        common_location = os.path.join(repo_path, 'common.json')
-        fetch_args = ['--to', tmp_dir, '--java-distribution', jdk_distribution, '--configuration', common_location]
-        JdkDistribution._jdk_distributions = []
-        args = mx_fetchjdk._parse_fetchsettings(fetch_args)
-        distribution = args["java-distribution"]
-        base_path = args["base-path"]
-        jdk_home = distribution.get_final_path(base_path)
-        if mx.is_darwin():
-            jdk_home = os.join(jdk_home, 'Contents', 'Home')
-        if jdk_home != self._jdk_home:
-            try:
-                mx_fetchjdk.fetch_jdk(fetch_args)
-                self._jdk_home = jdk_home
-                os.environ['JAVA_HOME'] = jdk_home
-            except (OSError, IOError) as err:
-                mx.log(str(err))
-                self._jdk_home = mx.get_jdk().home
-        mx._opts.quiet = False
+        try:
+            # Change directory so that fetch-jdk finds common.json and jdk-binaries.json in repo_path
+            old_cwd = os.getcwd()
+            os.chdir(repo_path)
+            jdk_home = mx_fetchjdk.fetch_jdk(['--to', tempfile.gettempdir(), '--jdk-id', jdk_id, ''])
+            self._jdk_home = jdk_home
+            os.environ['JAVA_HOME'] = jdk_home
+        except (OSError, IOError) as err:
+            mx.log(str(err))
+            self._jdk_home = mx.get_jdk().home
+        finally:
+            os.chdir(old_cwd)
+            mx._opts.quiet = old_quiet

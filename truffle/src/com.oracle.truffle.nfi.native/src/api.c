@@ -79,21 +79,21 @@ static void newClosureRef(TruffleEnv *tenv, void *closure) {
     struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
     struct __TruffleContextInternal *context = ienv->context;
     JNIEnv *env = ienv->jniEnv;
-    (*env)->CallVoidMethod(env, context->LibFFIContext, context->LibFFIContext_newClosureRef, (jlong) closure);
+    (*env)->CallVoidMethod(env, context->LibFFIContext, context->LibFFIContext_newClosureRef, (jlong)(intptr_t)closure);
 }
 
 static void releaseClosureRef(TruffleEnv *tenv, void *closure) {
     struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
     struct __TruffleContextInternal *context = ienv->context;
     JNIEnv *env = ienv->jniEnv;
-    (*env)->CallVoidMethod(env, context->LibFFIContext, context->LibFFIContext_releaseClosureRef, (jlong) closure);
+    (*env)->CallVoidMethod(env, context->LibFFIContext, context->LibFFIContext_releaseClosureRef, (jlong)(intptr_t)closure);
 }
 
 static TruffleObject getClosureObject(TruffleEnv *tenv, void *closure) {
     struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
     struct __TruffleContextInternal *context = ienv->context;
     JNIEnv *env = ienv->jniEnv;
-    jobject local = (*env)->CallObjectMethod(env, context->LibFFIContext, context->LibFFIContext_getClosureObject, (jlong) closure);
+    jobject local = (*env)->CallObjectMethod(env, context->LibFFIContext, context->LibFFIContext_getClosureObject, (jlong)(intptr_t)closure);
     jobject global = (*env)->NewGlobalRef(env, local);
     (*env)->DeleteLocalRef(env, local);
     return (TruffleObject) global;
@@ -115,7 +115,7 @@ const struct __TruffleNativeAPI truffleNativeAPI = {
 
 static TruffleEnv *lookupTruffleEnvOrError(int status, JNIEnv *env, struct __TruffleContextInternal *ctx) {
     if (status == JNI_OK) {
-        struct __TruffleEnvInternal *ret = (struct __TruffleEnvInternal *) (*env)->CallLongMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_getNativeEnv);
+        struct __TruffleEnvInternal *ret = (struct __TruffleEnvInternal *)(intptr_t)(*env)->CallLongMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_getNativeEnv);
         ret->jniEnv = env;
         return (TruffleEnv*) ret;
     } else {

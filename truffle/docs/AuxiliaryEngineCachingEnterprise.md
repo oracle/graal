@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Auxiliary Engine Caching
+permalink: /graalvm-as-a-platform/language-implementation-framework/AuxiliaryEngineCachingEnterprise/
+---
 # Auxiliary Engine Caching
 
 The following document describes how the auxiliary engine cache of GraalVM works.
@@ -32,8 +38,8 @@ For example, one can rebuild the JavaScript image by adding the auxiliary engine
 graalvm/bin/native-image --macro:js-launcher -H:+AuxiliaryEngineCache -H:ReservedAuxiliaryImageBytes=1073741824
 ```
 
-The `--macro` argument value depends on the guest language 
-By default, auxiliary images of up to 1GB are possible. 
+The `--macro` argument value depends on the guest language
+By default, auxiliary images of up to 1GB are possible.
 The maximum size can be increased or decreased as needed.
 The amount of reserved bytes does not actually impact the memory consumed by the application.
 In future versions, the auxiliary engine cache will be enabled by default when the `--macro:js-launcher` macro is used.
@@ -135,7 +141,7 @@ If the language does not support it, then no data will be persisted.
 * The persisted auxiliary engine image can only be used with the same SVM native image that it was created with.
 Using the engine image with any other native-image will fail.
 
-* There can only be one active auxiliary image per native-image isolate. 
+* There can only be one active auxiliary image per native-image isolate.
 Trying to load multiple auxiliary images at the same time will fail.
 Currently, auxiliary images can also not be unloaded, but it is planned to lift this restriction in the future.
 

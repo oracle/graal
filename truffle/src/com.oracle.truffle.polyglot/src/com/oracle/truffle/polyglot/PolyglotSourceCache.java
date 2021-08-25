@@ -200,7 +200,7 @@ final class PolyglotSourceCache {
         void listSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> sources) {
             PolyglotImpl polygot = language.getImpl();
             for (SourceKey key : sourceCache.keySet()) {
-                sources.add(polygot.getOrCreatePolyglotSource((Source) key.key));
+                sources.add(PolyglotImpl.getOrCreatePolyglotSource(polygot, (Source) key.key));
             }
         }
 
@@ -245,7 +245,7 @@ final class PolyglotSourceCache {
             cleanupStaleEntries();
             PolyglotImpl polygot = language.getImpl();
             for (WeakCacheValue value : sourceCache.values()) {
-                sources.add(polygot.getOrCreatePolyglotSource(value.source));
+                sources.add(PolyglotImpl.getOrCreatePolyglotSource(polygot, value.source));
             }
         }
 

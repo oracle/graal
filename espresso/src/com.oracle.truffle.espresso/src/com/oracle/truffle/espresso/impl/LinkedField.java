@@ -22,21 +22,46 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_OBFUSCATE;
+import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.staticobject.StaticProperty;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.staticobject.StaticProperty;
 
 final class LinkedField extends StaticProperty {
-    private final ParserField parserField;
+    enum IdMode {
+        REGULAR,
+        WITH_TYPE,
+        OBFUSCATED,
+    }
+
+    @CompilationFinal private ParserField parserField;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot) {
-        super(parserField.getPropertyKind(), parserField.isFinal());
-        this.parserField = parserField;
+    LinkedField(ParserField parserField, int slot, IdMode mode) {
+        this.parserField = maybeCorrectParserField(parserField, mode);
         this.slot = slot;
+    }
+
+    private static ParserField maybeCorrectParserField(ParserField parserField, IdMode mode) {
+        switch (mode) {
+            case REGULAR:
+                return parserField;
+            case WITH_TYPE:
+                return parserField.withFlags(FIELD_ID_TYPE);
+            case OBFUSCATED:
+                return parserField.withFlags(FIELD_ID_OBFUSCATE);
+        }
+        throw EspressoError.shouldNotReachHere();
     }
 
     /**
@@ -45,10 +70,59 @@ final class LinkedField extends StaticProperty {
      */
     @Override
     protected String getId() {
-        return getName().toString();
+        Symbol<Name> name = getName();
+        switch (idMode()) {
+            case WITH_TYPE:
+                // Field name and type.
+                return idFromNameAndType(name, getType());
+            case OBFUSCATED:
+                // "{primitive, hidden, reference}Field{slot}"
+                return (getKind().isPrimitive() ? "primitive" : (isHidden() ? "hidden" : "reference")) + "Field" + slot;
+            case REGULAR:
+                // Regular name
+                return name.toString();
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private IdMode idMode() {
+        int flags = getFlags();
+        if ((flags & FIELD_ID_TYPE) == FIELD_ID_TYPE) {
+            // Field name and type.
+            return IdMode.WITH_TYPE;
+        } else if ((flags & FIELD_ID_OBFUSCATE) == FIELD_ID_OBFUSCATE) {
+            return IdMode.OBFUSCATED;
+        } else {
+            return IdMode.REGULAR;
+        }
+    }
+
+    static String idFromNameAndType(Symbol<Name> name, ByteSequence t) {
+        // Strip 'L' and ';' from the type symbol.
+        int arrayDims = Types.getArrayDimensions(t);
+        if (arrayDims > 0) {
+            // Component string
+            StringBuilder typeString = new StringBuilder(idFromNameAndType(name, t.subSequence(arrayDims, t.length() - arrayDims)));
+            typeString.append('_');
+            // Append a number of ']'
+            while (arrayDims > 0) {
+                typeString.append(']');
+                arrayDims--;
+            }
+            return typeString.toString();
+        }
+        String typeString = t.toString();
+        if (Types.isReference(t)) {
+            typeString = typeString.substring(1, typeString.length() - 1);
+            typeString = typeString.replace('/', '_');
+        }
+        return name.toString() + "_" + typeString;
     }
 
     public Symbol<Name> getName() {
+        // no need to go through getParserField(), since name
+        // can't change on redefinition on a linked field
         return parserField.getName();
     }
 
@@ -60,19 +134,21 @@ final class LinkedField extends StaticProperty {
     }
 
     public Symbol<Type> getType() {
-        return parserField.getType();
+        return getParserField().getType();
     }
 
     public int getFlags() {
-        return parserField.getFlags();
+        return getParserField().getFlags();
     }
 
     public JavaKind getKind() {
+        // no need to go through getParserField(), since kind
+        // can't change on redefinition on a linked field
         return parserField.getKind();
     }
 
     public Attribute getAttribute(Symbol<Name> name) {
-        for (Attribute a : parserField.getAttributes()) {
+        for (Attribute a : getParserField().getAttributes()) {
             if (name.equals(a.getName())) {
                 return a;
             }
@@ -81,10 +157,23 @@ final class LinkedField extends StaticProperty {
     }
 
     public boolean isHidden() {
-        return parserField.isHidden();
+        return getParserField().isHidden();
     }
 
     ParserField getParserField() {
-        return parserField;
+        ParserField current = parserField;
+        if (!current.getRedefineAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            do {
+                current = parserField;
+            } while (!current.getRedefineAssumption().isValid());
+        }
+        return current;
+    }
+
+    public void redefine(ParserField newParserField) {
+        ParserField old = parserField;
+        parserField = maybeCorrectParserField(newParserField, idMode());
+        old.getRedefineAssumption().invalidate();
     }
 }

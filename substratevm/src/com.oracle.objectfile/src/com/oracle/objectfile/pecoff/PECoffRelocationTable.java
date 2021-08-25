@@ -58,7 +58,7 @@ public class PECoffRelocationTable extends ObjectFile.Element {
         long toLong();
     }
 
-    private static final class Entry implements RelocationRecord {
+    static final class Entry implements RelocationRecord {
         final PECoffSection section;
         final long offset;
         final PECoffRelocationMethod t;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,15 +30,11 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -51,19 +47,17 @@ public abstract class GraalVMResolveHandle extends LLVMIntrinsic {
 
     @Specialization
     protected LLVMManagedPointer doIntrinsic(Object rawHandle,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMToNativeNode forceAddressNode,
-                    @CachedLanguage LLVMLanguage language,
                     @Cached ConditionProfile isDerefProfile,
                     @Cached BranchProfile invalidHandle,
                     @Cached("createClassProfile()") ValueProfile derefHandleContainerProfile,
                     @Cached("createClassProfile()") ValueProfile handleContainerProfile) {
         long address = forceAddressNode.executeWithTarget(rawHandle).asNative();
         try {
-            if (!language.getNoDerefHandleAssumption().isValid() && isDerefProfile.profile(LLVMHandleMemoryBase.isDerefHandleMemory(address))) {
-                return derefHandleContainerProfile.profile(context.getDerefHandleContainer()).getValue(this, address).copy();
+            if (!getLanguage().getNoDerefHandleAssumption().isValid() && isDerefProfile.profile(LLVMHandleMemoryBase.isDerefHandleMemory(address))) {
+                return derefHandleContainerProfile.profile(getContext().getDerefHandleContainer()).getValue(this, address).copy();
             } else {
-                return handleContainerProfile.profile(context.getHandleContainer()).getValue(this, address).copy();
+                return handleContainerProfile.profile(getContext().getHandleContainer()).getValue(this, address).copy();
             }
         } catch (ArrayIndexOutOfBoundsException | NullPointerException ex) {
             invalidHandle.enter();

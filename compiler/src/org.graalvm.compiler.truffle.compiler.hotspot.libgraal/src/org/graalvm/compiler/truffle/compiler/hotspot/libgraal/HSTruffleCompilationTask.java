@@ -24,12 +24,14 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.InliningData;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callInliningData;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsCancelled;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsLastTier;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callHasNextTier;
 import static org.graalvm.nativebridge.jni.JNIMethodScope.env;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -52,6 +54,12 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
     @Override
     public boolean isCancelled() {
         return callIsCancelled(env(), getHandle());
+    }
+
+    @TruffleFromLibGraal(HasNextTier)
+    @Override
+    public boolean hasNextTier() {
+        return callHasNextTier(env(), getHandle());
     }
 
     @TruffleFromLibGraal(IsLastTier)

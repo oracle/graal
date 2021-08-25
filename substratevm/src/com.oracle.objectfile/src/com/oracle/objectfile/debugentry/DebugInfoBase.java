@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
@@ -239,15 +240,14 @@ public abstract class DebugInfoBase {
             Path filePath = debugCodeInfo.filePath();
             String className = TypeEntry.canonicalize(debugCodeInfo.ownerType());
             String methodName = debugCodeInfo.name();
-            String symbolName = debugCodeInfo.symbolNameForMethod();
             int lo = debugCodeInfo.addressLo();
             int hi = debugCodeInfo.addressHi();
             int primaryLine = debugCodeInfo.line();
 
             /* Search for a method defining this primary range. */
             ClassEntry classEntry = ensureClassEntry(className);
-            MethodEntry methodEntry = classEntry.getMethodEntry(debugCodeInfo, this, debugContext);
-            Range primaryRange = classEntry.makePrimaryRange(symbolName, stringTable, methodEntry, lo, hi, primaryLine);
+            MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
+            Range primaryRange = new Range(stringTable, methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
@@ -255,7 +255,6 @@ public abstract class DebugInfoBase {
                 Path filePathAtLine = debugLineInfo.filePath();
                 String classNameAtLine = TypeEntry.canonicalize(debugLineInfo.ownerType());
                 String methodNameAtLine = debugLineInfo.name();
-                String symbolNameAtLine = debugLineInfo.symbolNameForMethod();
                 int loAtLine = lo + debugLineInfo.addressLo();
                 int hiAtLine = lo + debugLineInfo.addressHi();
                 int line = debugLineInfo.line();
@@ -264,8 +263,8 @@ public abstract class DebugInfoBase {
                  * symbol for them and don't see a break in the address range.
                  */
                 ClassEntry subClassEntry = ensureClassEntry(classNameAtLine);
-                MethodEntry subMethodEntry = subClassEntry.getMethodEntry(debugLineInfo, this, debugContext);
-                Range subRange = new Range(symbolNameAtLine, stringTable, subMethodEntry, loAtLine, hiAtLine, line, primaryRange);
+                MethodEntry subMethodEntry = subClassEntry.ensureMethodEntryForDebugRangeInfo(debugLineInfo, this, debugContext);
+                Range subRange = new Range(stringTable, subMethodEntry, loAtLine, hiAtLine, line, primaryRange);
                 classEntry.indexSubRange(subRange);
                 try (DebugContext.Scope s = debugContext.scope("Subranges")) {
                     debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]", classNameAtLine, methodNameAtLine, filePathAtLine, fileNameAtLine, line, loAtLine, hiAtLine);
@@ -390,10 +389,12 @@ public abstract class DebugInfoBase {
         return fileEntry;
     }
 
-    protected FileEntry ensureFileEntry(String fileName, Path filePath, Path cachePath) {
+    protected FileEntry ensureFileEntry(DebugFileInfo debugFileInfo) {
+        String fileName = debugFileInfo.fileName();
         if (fileName == null || fileName.length() == 0) {
             return null;
         }
+        Path filePath = debugFileInfo.filePath();
         Path fileAsPath;
         if (filePath == null) {
             fileAsPath = Paths.get(fileName);
@@ -403,7 +404,7 @@ public abstract class DebugInfoBase {
         /* Reuse any existing entry. */
         FileEntry fileEntry = findFile(fileAsPath);
         if (fileEntry == null) {
-            fileEntry = addFileEntry(fileName, filePath, cachePath);
+            fileEntry = addFileEntry(fileName, filePath, debugFileInfo.cachePath());
         }
         return fileEntry;
     }

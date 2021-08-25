@@ -440,44 +440,29 @@ public class ComponentInstallerTest extends CommandTestBase {
 
     @Test
     public void testFindGraalVMHome() throws Exception {
-        System.getProperties().remove(CommonConstants.ENV_GRAALVM_HOME);
-        System.getProperties().remove("GRAAL_HOME");
+        System.getProperties().remove(CommonConstants.ENV_GRAALVM_HOME_DEV);
 
         ComponentInstaller installer = new ComponentInstaller(new String[]{});
 
         Path relComps = Paths.get("lib/installer/components");
         Path graal = targetPath.resolve("ggg");
         Path invalidBase = targetPath.resolve("invalid");
-        Path invalidBase2 = targetPath.resolve("invalid2");
         Files.createDirectories(graal.resolve(relComps));
         Files.write(graal.resolve("release"), Arrays.asList("Hello, GraalVM!"));
-
-        // check the legacy env setting:
-        helper.fakeEnv.put("GRAAL_HOME", graal.toString());
 
         Environment env = helper.createFakedEnv();
         installer.setInput(env);
 
         Path result;
-
-        result = installer.findGraalHome();
-        assertTrue(Files.isSameFile(graal, result));
-
-        // check that Sysprop overrides the env. First ensure we fail with an invalid home:
-
-        helper.fakeEnv.put("GRAAL_HOME", invalidBase.toString());
+        helper.fakeEnv.put(CommonConstants.ENV_GRAALVM_HOME_DEV, graal.toString());
         try {
             result = installer.findGraalHome();
-            fail("Should fail, invalid home provided.");
+            fail("Should fail, invalid way to provide home.");
         } catch (FailedOperationException ex) {
             // expected
         }
-        System.setProperty("GRAAL_HOME", graal.toString());
 
-        result = installer.findGraalHome();
-        assertTrue(Files.isSameFile(graal, result));
-
-        System.setProperty("GRAAL_HOME", invalidBase2.toString());
+        System.setProperty(CommonConstants.ENV_GRAALVM_HOME_DEV, invalidBase.toString());
         try {
             result = installer.findGraalHome();
             fail("Should fail, invalid home provided.");
@@ -485,26 +470,14 @@ public class ComponentInstallerTest extends CommandTestBase {
             // expected
         }
 
-        helper.fakeEnv.put(CommonConstants.ENV_GRAALVM_HOME, graal.toString());
-        result = installer.findGraalHome();
-        assertTrue(Files.isSameFile(graal, result));
-        helper.fakeEnv.put(CommonConstants.ENV_GRAALVM_HOME, invalidBase.toString());
-
-        try {
-            result = installer.findGraalHome();
-            fail("Should fail, invalid home provided.");
-        } catch (FailedOperationException ex) {
-            // expected
-        }
-        System.setProperty(CommonConstants.ENV_GRAALVM_HOME, graal.toString());
+        System.setProperty(CommonConstants.ENV_GRAALVM_HOME_DEV, graal.toString());
         result = installer.findGraalHome();
         assertTrue(Files.isSameFile(graal, result));
     }
 
     @Test
     public void testAutoFindGraalVMHome() throws Exception {
-        System.getProperties().remove(CommonConstants.ENV_GRAALVM_HOME);
-        System.getProperties().remove("GRAAL_HOME");
+        System.getProperties().remove(CommonConstants.ENV_GRAALVM_HOME_DEV);
 
         // Undefine all, and use last resort: copy the JAR
         URL locInstaller = getClassLocation(ComponentInstaller.class);

@@ -41,6 +41,7 @@ public final class GraalFrameInstance implements FrameInstance {
 
     private static final int CALL_TARGET_INDEX = 0;
     private static final int CALL_TARGET_FRAME_INDEX = 1;
+    private static final int OPTIMIZATION_TIER_FRAME_INDEX = 2;
 
     private static final int CALL_NODE_NOTIFY_INDEX = 1;
 
@@ -58,7 +59,7 @@ public final class GraalFrameInstance implements FrameInstance {
             CALL_INLINED_CALL = GraalRuntimeSupport.class.getDeclaredMethod(GraalRuntimeSupport.CALL_INLINED_METHOD_NAME, Node.class, CallTarget.class, Object[].class);
             CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
 
-            CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class);
+            CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class, CompilationState.class);
             CALL_OSR_METHOD = OptimizedOSRLoopNode.OSRRootNode.class.getDeclaredMethod("callProxy", OSRRootNode.class, VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
             throw new InternalError(e);
@@ -78,6 +79,11 @@ public final class GraalFrameInstance implements FrameInstance {
     public Frame getFrame(FrameAccess access) {
         if (access == FrameAccess.READ_WRITE || access == FrameAccess.MATERIALIZE) {
             if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
+                final OptimizedCallTarget callTarget = (OptimizedCallTarget) getCallTarget();
+                if (callTarget.engine.traceDeoptimizeFrame) {
+                    GraalTruffleRuntime.StackTraceHelper.logHostAndGuestStacktrace("FrameInstance#getFrame(MATERIALIZE)", callTarget);
+                }
+
                 callTargetFrame.materializeVirtualObjects(false);
             }
         }
@@ -91,6 +97,16 @@ public final class GraalFrameInstance implements FrameInstance {
     @Override
     public boolean isVirtualFrame() {
         return callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX);
+    }
+
+    @Override
+    public int getCompilationTier() {
+        return ((CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).getTier();
+    }
+
+    @Override
+    public boolean isCompilationRoot() {
+        return ((CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).isCompilationRoot();
     }
 
     @Override

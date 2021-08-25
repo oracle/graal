@@ -29,10 +29,13 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.json.JSONParser;
 
 public class TraceProcessor extends AbstractProcessor {
@@ -40,33 +43,89 @@ public class TraceProcessor extends AbstractProcessor {
     private final JniProcessor jniProcessor;
     private final ReflectionProcessor reflectionProcessor;
     private final SerializationProcessor serializationProcessor;
+    private final ClassLoadingProcessor classLoadingProcessor;
+
+    private final TraceProcessor omittedConfigProcessor;
 
     public TraceProcessor(AccessAdvisor accessAdvisor, TypeConfiguration jniConfiguration, TypeConfiguration reflectionConfiguration,
-                    ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration, SerializationConfiguration serializationConfiguration) {
+                    ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration, SerializationConfiguration serializationConfiguration,
+                    PredefinedClassesConfiguration predefinedClassesConfiguration, TraceProcessor omittedConfigProcessor) {
         advisor = accessAdvisor;
         jniProcessor = new JniProcessor(this.advisor, jniConfiguration, reflectionConfiguration);
         reflectionProcessor = new ReflectionProcessor(this.advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
         serializationProcessor = new SerializationProcessor(this.advisor, serializationConfiguration);
+        classLoadingProcessor = new ClassLoadingProcessor(predefinedClassesConfiguration);
+        this.omittedConfigProcessor = omittedConfigProcessor;
     }
 
     public TypeConfiguration getJniConfiguration() {
-        return jniProcessor.getConfiguration();
+        TypeConfiguration result = jniProcessor.getConfiguration();
+        if (omittedConfigProcessor != null) {
+            result = new TypeConfiguration(result);
+            result.removeAll(omittedConfigProcessor.jniProcessor.getConfiguration());
+        }
+        return result;
     }
 
     public TypeConfiguration getReflectionConfiguration() {
-        return reflectionProcessor.getConfiguration();
+        TypeConfiguration result = reflectionProcessor.getConfiguration();
+        if (omittedConfigProcessor != null) {
+            result = new TypeConfiguration(result);
+            result.removeAll(omittedConfigProcessor.reflectionProcessor.getConfiguration());
+        }
+        return result;
     }
 
     public ProxyConfiguration getProxyConfiguration() {
-        return reflectionProcessor.getProxyConfiguration();
+        ProxyConfiguration result = reflectionProcessor.getProxyConfiguration();
+        if (omittedConfigProcessor != null) {
+            result = new ProxyConfiguration(result);
+            result.removeAll(omittedConfigProcessor.reflectionProcessor.getProxyConfiguration());
+        }
+        return result;
     }
 
     public ResourceConfiguration getResourceConfiguration() {
-        return reflectionProcessor.getResourceConfiguration();
+        ResourceConfiguration result = reflectionProcessor.getResourceConfiguration();
+        if (omittedConfigProcessor != null) {
+            result = new ResourceConfiguration(result);
+            result.removeAll(omittedConfigProcessor.reflectionProcessor.getResourceConfiguration());
+        }
+        return result;
     }
 
     public SerializationConfiguration getSerializationConfiguration() {
-        return serializationProcessor.getSerializationConfiguration();
+        SerializationConfiguration result = serializationProcessor.getSerializationConfiguration();
+        if (omittedConfigProcessor != null) {
+            result = new SerializationConfiguration(result);
+            result.removeAll(omittedConfigProcessor.serializationProcessor.getSerializationConfiguration());
+        }
+        return result;
+    }
+
+    public PredefinedClassesConfiguration getPredefinedClassesConfiguration() {
+        return classLoadingProcessor.getPredefinedClassesConfiguration();
+    }
+
+    public ConfigurationBase getConfiguration(ConfigurationFile configFile) {
+        assert configFile.canBeGeneratedByAgent();
+        switch (configFile) {
+            case DYNAMIC_PROXY:
+                return getProxyConfiguration();
+            case JNI:
+                return getJniConfiguration();
+            case REFLECTION:
+                return getReflectionConfiguration();
+            case RESOURCES:
+                return getResourceConfiguration();
+            case SERIALIZATION:
+                return getSerializationConfiguration();
+            case PREDEFINED_CLASSES_NAME:
+                return getPredefinedClassesConfiguration();
+            default:
+                assert false; // should never reach here
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -107,6 +166,9 @@ public class TraceProcessor extends AbstractProcessor {
                     break;
                 case "serialization":
                     serializationProcessor.processEntry(entry);
+                    break;
+                case "classloading":
+                    classLoadingProcessor.processEntry(entry);
                     break;
                 default:
                     logWarning("Unknown tracer, ignoring: " + tracer);

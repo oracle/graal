@@ -153,8 +153,8 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         }
 
         // Load array base addresses.
-        masm.loadAddress(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array1Value), array1BaseOffset));
-        masm.loadAddress(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array2Value), array2BaseOffset));
+        masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
+        masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
 
         // Calculate minimal length in chars for different kind cases.
         // Conditions could be squashed but let's keep it readable.
@@ -195,7 +195,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         masm.bind(MAIN_LOOP_LABEL);
         if (isLU || isUL) {
             // Load 32 bits and unpack it to entire 64bit register.
-            masm.ldr(32, result, AArch64Address.createRegisterOffsetAddress(array1, vecCount, false));
+            masm.ldr(32, result, AArch64Address.createRegisterOffsetAddress(32, array1, vecCount, false));
             masm.ubfm(64, temp, result, 0, 7);
             masm.lsr(64, result, result, 8);
             masm.bfm(64, temp, result, 48, 7);
@@ -206,10 +206,10 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
             // Unpacked value placed in temp now
 
             masm.lsl(64, result, vecCount, 1);
-            masm.ldr(64, result, AArch64Address.createRegisterOffsetAddress(array2, result, false));
+            masm.ldr(64, result, AArch64Address.createRegisterOffsetAddress(64, array2, result, false));
         } else {
-            masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, vecCount, false));
-            masm.ldr(64, result, AArch64Address.createRegisterOffsetAddress(array2, vecCount, false));
+            masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(64, array1, vecCount, false));
+            masm.ldr(64, result, AArch64Address.createRegisterOffsetAddress(64, array2, vecCount, false));
         }
         masm.eor(64, result, temp, result);
         masm.cbnz(64, result, STRING_DIFFER_LABEL);
@@ -222,14 +222,14 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         masm.cbz(64, tailCount, LENGTH_DIFFER_LABEL);
 
         // Compare tail of long string ...
-        masm.loadAddress(array1, AArch64Address.createRegisterOffsetAddress(array1, length, false));
+        masm.add(64, array1, array1, length);
 
-        // Go back to bytes because the following array2's offset is caculated in byte.
+        // Go back to bytes because the following array2's offset is calculated in bytes.
         if (isLU || isUL) {
             masm.lsl(64, length, length, 1);
         }
 
-        masm.loadAddress(array2, AArch64Address.createRegisterOffsetAddress(array2, length, false));
+        masm.add(64, array2, array2, length);
 
         // ... or string less than vector length.
         masm.bind(COMPARE_SHORT_LABEL);

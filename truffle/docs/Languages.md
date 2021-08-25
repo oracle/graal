@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Language Implementations
+permalink: /graalvm-as-a-platform/language-implementation-framework/Languages/
+---
 # Language Implementations
 
 This page is intended to keep track of the growing number of language implementations and experiments on top of Truffle.

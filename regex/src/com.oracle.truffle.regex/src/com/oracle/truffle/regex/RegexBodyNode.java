@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -76,12 +77,13 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
         return language;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Override
     public SourceSection getSourceSection() {
         if (sourceSection == null) {
-            String patternSrc = "/" + source.getPattern() + "/" + source.getFlags();
-            Source src = Source.newBuilder(RegexLanguage.ID, patternSrc, source.getPattern()).internal(true).mimeType("application/js-regex").build();
+            String patternSrc = source.toStringEscaped();
+            String name = patternSrc.length() > 30 ? patternSrc.substring(0, 30) + "..." : patternSrc;
+            Source src = Source.newBuilder(RegexLanguage.ID, patternSrc, name).internal(true).mimeType("application/js-regex").build();
             sourceSection = src.createSection(0, patternSrc.length());
         }
         return sourceSection;
@@ -102,10 +104,11 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
         return new RegexBodyNodeWrapper(this, this, probe);
     }
 
+    @TruffleBoundary
     @Override
-    @CompilerDirectives.TruffleBoundary
     public final String toString() {
-        return "regex " + getEngineLabel() + ": " + source.toStringEscaped();
+        String src = source.toStringEscaped();
+        return "regex " + getEngineLabel() + ": " + (src.length() > 30 ? src.substring(0, 30) + "..." : src);
     }
 
     protected String getEngineLabel() {

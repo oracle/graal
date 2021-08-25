@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class DebugExprFunctionCallNode extends LLVMExpressionNode {
@@ -64,24 +65,30 @@ public abstract class DebugExprFunctionCallNode extends LLVMExpressionNode {
     @TruffleBoundary
     public DebugExprType getType() {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
-        if (library.isMemberExisting(scope, functionName)) {
+        if (library.isMemberReadable(scope, functionName)) {
             try {
                 Object member = library.readMember(scope, functionName);
-                try {
+                if (LLVMManagedPointer.isInstance(member)) {
+                    LLVMManagedPointer pointer = LLVMManagedPointer.cast(member);
+                    if (pointer.getOffset() == 0) {
+                        member = pointer.getObject();
+                    }
+                }
+                if (member instanceof LLVMFunctionDescriptor) {
                     LLVMFunctionDescriptor ldv = (LLVMFunctionDescriptor) member;
                     Type returnType = ldv.getLLVMFunction().getType().getReturnType();
                     DebugExprType t = DebugExprType.getTypeFromLLVMType(returnType);
                     return t;
-                } catch (ClassCastException e) {
+                } else {
+                    throw DebugExprException.create(this, "variable %s does not point to a function", functionName);
                 }
-                throw DebugExprException.create(this, "no type found for function %s", functionName);
             } catch (UnsupportedMessageException e) {
                 throw DebugExprException.create(this, "error while accessing function %s", functionName);
             } catch (UnknownIdentifierException e) {
-                throw DebugExprException.symbolNotFound(this, functionName, null);
+                // fallthrough
             }
         }
-        throw DebugExprException.create(this, "no type found for function %s", functionName);
+        throw DebugExprException.symbolNotFound(this, functionName, null);
     }
 
     @Specialization

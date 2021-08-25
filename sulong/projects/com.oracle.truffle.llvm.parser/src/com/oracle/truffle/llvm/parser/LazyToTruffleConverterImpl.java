@@ -109,6 +109,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final DebugInfoFunctionProcessor diProcessor;
     private final DataLayout dataLayout;
 
+    private boolean parsed;
     private RootCallTarget resolved;
     private LLVMFunction rootFunction;
 
@@ -139,6 +140,14 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         this.rootFunction = rootFunction;
     }
 
+    private synchronized void doParse() {
+        if (!parsed) {
+            // parse the function block
+            parser.parse(diProcessor, source, runtime, LLVMLanguage.getContext());
+            parsed = true;
+        }
+    }
+
     private RootCallTarget generateCallTarget() {
         LLVMContext context = LLVMLanguage.getContext();
         NodeFactory nodeFactory = runtime.getNodeFactory();
@@ -157,8 +166,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
         }
 
-        // parse the function block
-        parser.parse(diProcessor, source, runtime, LLVMLanguage.getContext());
+        doParse();
 
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
@@ -349,7 +357,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
     @Override
     public LLVMSourceFunctionType getSourceType() {
-        convert();
+        CompilerAsserts.neverPartOfCompilation();
+        doParse();
+
         return method.getSourceFunction().getSourceType();
     }
 

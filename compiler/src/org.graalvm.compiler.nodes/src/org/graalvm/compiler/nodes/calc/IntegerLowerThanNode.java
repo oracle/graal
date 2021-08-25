@@ -437,4 +437,23 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             }
         }
     }
+
+    @Override
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        if (other instanceof IntegerLowerThanNode) {
+            IntegerLowerThanNode otherLowerThan = (IntegerLowerThanNode) other;
+            if (getOp() == otherLowerThan.getOp() && getX() == otherLowerThan.getX()) {
+                // x < A => x < B?
+                LogicNode compareYs = getOp().create(getY(), otherLowerThan.getY(), NodeView.DEFAULT);
+                if (!thisNegated && compareYs.isTautology()) {
+                    // A < B, therefore x < A => x < B
+                    return TriState.TRUE;
+                } else if (thisNegated && compareYs.isContradiction()) {
+                    // !(A < B) [== A >= B], therefore !(x < A) [== x >= A] => !(x < B) [== x >= B]
+                    return TriState.FALSE;
+                }
+            }
+        }
+        return super.implies(thisNegated, other);
+    }
 }

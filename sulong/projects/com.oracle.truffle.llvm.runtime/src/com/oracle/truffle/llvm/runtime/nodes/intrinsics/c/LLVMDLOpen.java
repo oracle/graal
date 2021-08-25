@@ -29,13 +29,25 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
+import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_GLOBAL;
+import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_LAZY;
+import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_LOCAL;
+import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_NOW;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
@@ -48,15 +60,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_GLOBAL;
-import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_LAZY;
-import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_LOCAL;
-import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags.RTLD_NOW;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
@@ -75,8 +78,9 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         }
     }
 
-    @ExportLibrary(LLVMAsForeignLibrary.class)
-    protected static final class LLVMDLHandler {
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 1)
+    @ExportLibrary(InteropLibrary.class)
+    protected static final class LLVMDLHandler implements TruffleObject {
         final Object library;
 
         private LLVMDLHandler(Object library) {
@@ -97,20 +101,34 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         public Object getLibrary() {
             return library;
         }
+
+        @ExportMessage
+        boolean isPointer(@CachedLibrary("this.library") InteropLibrary interop) {
+            return interop.isPointer(library);
+        }
+
+        @ExportMessage
+        long asPointer(@CachedLibrary("this.library") InteropLibrary interop) throws UnsupportedMessageException {
+            return interop.asPointer(library);
+        }
+
+        @ExportMessage
+        void toNative(@CachedLibrary("this.library") InteropLibrary interop) {
+            interop.toNative(library);
+        }
     }
 
     @Specialization
     protected Object doOp(Object file,
                     int flag,
-                    @Cached() LLVMReadStringNode readStr,
-                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                    @Cached() LLVMReadStringNode readStr) {
         // Default settings for RTLD flags.
         RTLDFlags globalOrLocal = RTLD_LOCAL;
         RTLDFlags lazyOrNow = RTLD_NOW;
         boolean hasFirstFlag;
 
         // Check for flag settings for each platform.
-        PlatformCapability<?> sysContextExt = LLVMLanguage.getLanguage().getCapability(PlatformCapability.class);
+        PlatformCapability<?> sysContextExt = LLVMLanguage.get(this).getCapability(PlatformCapability.class);
         if (sysContextExt.isGlobalDLOpenFlagSet(flag)) {
             globalOrLocal = RTLD_GLOBAL;
         }
@@ -119,9 +137,9 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         }
         hasFirstFlag = sysContextExt.isFirstDLOpenFlagSet(flag);
         try {
-            return LLVMManagedPointer.create(new LLVMDLHandler(loadLibrary(ctx, globalOrLocal, lazyOrNow, hasFirstFlag, flag, file, readStr)));
+            return LLVMManagedPointer.create(new LLVMDLHandler(loadLibrary(getContext(), globalOrLocal, lazyOrNow, hasFirstFlag, flag, file, readStr)));
         } catch (RuntimeException e) {
-            ctx.setDLError(1);
+            getContext().setDLError(1);
             return LLVMNativePointer.createNull();
         }
     }

@@ -44,25 +44,18 @@ public final class ClassForNameSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
+        if (PredefinedClassesSupport.isPredefined(clazz)) {
+            return; // must be defined at runtime before it can be looked up
+        }
         singleton().knownClasses.put(clazz.getName(), clazz);
     }
 
-    public static Class<?> forNameOrNull(String className, boolean initialize) {
+    public static Class<?> forNameOrNull(String className, ClassLoader classLoader) {
         Class<?> result = singleton().knownClasses.get(className);
         if (result == null) {
-            return null;
+            result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
         }
-        if (initialize) {
-            DynamicHub.fromClass(result).ensureInitialized();
-        }
-        return result;
-    }
-
-    public static Class<?> forName(String className, boolean initialize) throws ClassNotFoundException {
-        Class<?> result = forNameOrNull(className, initialize);
-        if (result == null) {
-            throw new ClassNotFoundException(className);
-        }
+        // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         return result;
     }
 }

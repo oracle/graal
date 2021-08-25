@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unused")
@@ -46,5 +51,59 @@ public interface InliningPolicy {
     }
 
     default void run(CallTree tree) {
+    }
+
+    /**
+     * Checks if the {@link CallNode} should be compiled. The
+     * {@link PolyglotCompilerOptions#InlineOnly InlineOnly} options are used to determine if the
+     * root node should be compiled.
+     */
+    static boolean acceptForInline(CallNode rootNode, String inlineOnly) {
+        if (inlineOnly == null) {
+            return true;
+        }
+        Pair<List<String>, List<String>> value = getInlineOnly(inlineOnly);
+        if (value != null) {
+            String name = rootNode.getName();
+            List<String> includes = value.getLeft();
+            boolean included = includes.isEmpty();
+            if (name != null) {
+                for (int i = 0; !included && i < includes.size(); i++) {
+                    if (name.contains(includes.get(i))) {
+                        included = true;
+                    }
+                }
+            }
+            if (!included) {
+                return false;
+            }
+            if (name != null) {
+                for (String exclude : value.getRight()) {
+                    if (name.contains(exclude)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns the include and exclude sets for the {@link PolyglotCompilerOptions#InlineOnly}
+     * option. The {@link Pair#getLeft() left} value is the include set and the
+     * {@link Pair#getRight() right} value is the exclude set.
+     */
+    static Pair<List<String>, List<String>> getInlineOnly(String inlineOnly) {
+        List<String> includesList = new ArrayList<>();
+        List<String> excludesList = new ArrayList<>();
+        String[] items = inlineOnly.split(",");
+        for (String item : items) {
+            if (item.startsWith("~")) {
+                excludesList.add(item.substring(1));
+            } else {
+                includesList.add(item);
+            }
+        }
+        return Pair.create(includesList, excludesList);
     }
 }

@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.config;
 
 import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
@@ -32,6 +33,7 @@ import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -135,13 +137,31 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     @Override
     public void registerMethod(Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = methodParameterTypes.toArray(new Class<?>[0]);
-        registry.register((Executable) type.getDeclaredMethod(methodName, parameterTypesArray));
+        Method method;
+        try {
+            method = type.getDeclaredMethod(methodName, parameterTypesArray);
+        } catch (NoClassDefFoundError e) {
+            /*
+             * getDeclaredMethod() builds a set of all the declared methods, which can fail when a
+             * symbolic reference from another method to a type (via parameters, return value)
+             * cannot be resolved. getMethod() builds a different set of methods and can still
+             * succeed. This case must be handled for predefined classes when, during the run
+             * observed by the agent, a referenced class was not loaded and is not available now
+             * precisely because the application used getMethod() instead of getDeclaredMethod().
+             */
+            try {
+                method = type.getMethod(methodName, parameterTypesArray);
+            } catch (Throwable ignored) {
+                throw e;
+            }
+        }
+        registry.register(method);
     }
 
     @Override
     public void registerConstructor(Class<?> clazz, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = methodParameterTypes.toArray(new Class<?>[0]);
-        registry.register((Executable) clazz.getDeclaredConstructor(parameterTypesArray));
+        registry.register(clazz.getDeclaredConstructor(parameterTypesArray));
     }
 
     @Override
@@ -151,6 +171,6 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
 
     @Override
     public String getSimpleName(Class<?> type) {
-        return type.getSimpleName();
+        return ClassUtil.getUnqualifiedName(type);
     }
 }

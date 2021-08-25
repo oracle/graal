@@ -40,17 +40,19 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+import java.io.IOException;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
-import java.io.IOException;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false)
@@ -68,7 +70,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        final WasmContext context = getCurrentContext();
+        final WasmContext context = WasmContext.get(null);
         final String moduleName = isFirst ? "main" : request.getSource().getName();
         isFirst = false;
         final byte[] data = request.getSource().getBytes().toByteArray();
@@ -92,10 +94,6 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         return new WasmOptionsOptionDescriptors();
     }
 
-    static WasmContext getCurrentContext() {
-        return getCurrentContext(WasmLanguage.class);
-    }
-
     @Override
     protected void finalizeContext(WasmContext context) {
         super.finalizeContext(context);
@@ -111,4 +109,11 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             throw new RuntimeException("Error while closing WasmFilesManager.");
         }
     }
+
+    private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
+
+    public static WasmLanguage get(Node node) {
+        return REFERENCE.get(node);
+    }
+
 }

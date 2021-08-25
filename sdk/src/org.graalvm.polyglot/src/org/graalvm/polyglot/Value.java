@@ -40,10 +40,6 @@
  */
 package org.graalvm.polyglot;
 
-import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
-import org.graalvm.polyglot.proxy.Proxy;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteOrder;
@@ -63,6 +59,10 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
+import org.graalvm.polyglot.proxy.Proxy;
 
 /**
  * Represents a polyglot value that can be accessed using a set of language agnostic operations.
@@ -151,14 +151,10 @@ import java.util.function.Function;
  * @see PolyglotException
  * @since 19.0
  */
-public final class Value {
+public final class Value extends AbstractValue {
 
-    final Object receiver;
-    final AbstractValueDispatch dispatch;
-
-    Value(AbstractValueDispatch dispatch, Object value) {
-        this.dispatch = dispatch;
-        this.receiver = value;
+    Value(AbstractValueDispatch dispatch, Object context, Object receiver) {
+        super(dispatch, context, receiver);
     }
 
     /**
@@ -179,7 +175,7 @@ public final class Value {
      * @since 19.0 revised in 20.1
      */
     public Value getMetaObject() {
-        return dispatch.getMetaObject(receiver);
+        return dispatch.getMetaObject(this.context, receiver);
     }
 
     /**
@@ -206,7 +202,7 @@ public final class Value {
      * @since 20.1
      */
     public boolean isMetaObject() {
-        return dispatch.isMetaObject(receiver);
+        return dispatch.isMetaObject(this.context, receiver);
     }
 
     /**
@@ -222,7 +218,7 @@ public final class Value {
      * @since 20.1
      */
     public String getMetaQualifiedName() {
-        return dispatch.getMetaQualifiedName(receiver);
+        return dispatch.getMetaQualifiedName(this.context, receiver);
     }
 
     /**
@@ -236,7 +232,7 @@ public final class Value {
      * @since 20.1
      */
     public String getMetaSimpleName() {
-        return dispatch.getMetaSimpleName(receiver);
+        return dispatch.getMetaSimpleName(this.context, receiver);
     }
 
     /**
@@ -255,7 +251,7 @@ public final class Value {
      * @since 20.1
      */
     public boolean isMetaInstance(Object instance) {
-        return dispatch.isMetaInstance(receiver, instance);
+        return dispatch.isMetaInstance(this.context, receiver, instance);
     }
 
     /**
@@ -269,7 +265,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean hasArrayElements() {
-        return dispatch.hasArrayElements(receiver);
+        return dispatch.hasArrayElements(this.context, receiver);
     }
 
     /**
@@ -285,7 +281,7 @@ public final class Value {
      * @since 19.0
      */
     public Value getArrayElement(long index) {
-        return dispatch.getArrayElement(receiver, index);
+        return dispatch.getArrayElement(this.context, receiver, index);
     }
 
     /**
@@ -303,7 +299,7 @@ public final class Value {
      * @since 19.0
      */
     public void setArrayElement(long index, Object value) {
-        dispatch.setArrayElement(receiver, index, value);
+        dispatch.setArrayElement(this.context, receiver, index, value);
     }
 
     /**
@@ -319,7 +315,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean removeArrayElement(long index) {
-        return dispatch.removeArrayElement(receiver, index);
+        return dispatch.removeArrayElement(this.context, receiver, index);
     }
 
     /**
@@ -332,7 +328,7 @@ public final class Value {
      * @since 19.0
      */
     public long getArraySize() {
-        return dispatch.getArraySize(receiver);
+        return dispatch.getArraySize(this.context, receiver);
     }
 
     // region Buffer Methods
@@ -359,7 +355,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasBufferElements() {
-        return dispatch.hasBufferElements(receiver);
+        return dispatch.hasBufferElements(this.context, receiver);
     }
 
     /**
@@ -378,7 +374,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean isBufferWritable() throws UnsupportedOperationException {
-        return dispatch.isBufferWritable(receiver);
+        return dispatch.isBufferWritable(this.context, receiver);
     }
 
     /**
@@ -391,7 +387,7 @@ public final class Value {
      * @since 21.1
      */
     public long getBufferSize() throws UnsupportedOperationException {
-        return dispatch.getBufferSize(receiver);
+        return dispatch.getBufferSize(this.context, receiver);
     }
 
     /**
@@ -414,7 +410,7 @@ public final class Value {
      * @since 21.1
      */
     public byte readBufferByte(long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return dispatch.readBufferByte(receiver, byteOffset);
+        return dispatch.readBufferByte(this.context, receiver, byteOffset);
     }
 
     /**
@@ -435,7 +431,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferByte(long byteOffset, byte value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        dispatch.writeBufferByte(receiver, byteOffset, value);
+        dispatch.writeBufferByte(this.context, receiver, byteOffset, value);
     }
 
     /**
@@ -462,7 +458,7 @@ public final class Value {
      * @since 21.1
      */
     public short readBufferShort(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return dispatch.readBufferShort(receiver, order, byteOffset);
+        return dispatch.readBufferShort(this.context, receiver, order, byteOffset);
     }
 
     /**
@@ -487,7 +483,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferShort(ByteOrder order, long byteOffset, short value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        dispatch.writeBufferShort(receiver, order, byteOffset, value);
+        dispatch.writeBufferShort(this.context, receiver, order, byteOffset, value);
     }
 
     /**
@@ -513,7 +509,7 @@ public final class Value {
      * @since 21.1
      */
     public int readBufferInt(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return dispatch.readBufferInt(receiver, order, byteOffset);
+        return dispatch.readBufferInt(this.context, receiver, order, byteOffset);
     }
 
     /**
@@ -538,7 +534,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferInt(ByteOrder order, long byteOffset, int value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        dispatch.writeBufferInt(receiver, order, byteOffset, value);
+        dispatch.writeBufferInt(this.context, receiver, order, byteOffset, value);
     }
 
     /**
@@ -564,7 +560,7 @@ public final class Value {
      * @since 21.1
      */
     public long readBufferLong(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return dispatch.readBufferLong(receiver, order, byteOffset);
+        return dispatch.readBufferLong(this.context, receiver, order, byteOffset);
     }
 
     /**
@@ -589,7 +585,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferLong(ByteOrder order, long byteOffset, long value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        dispatch.writeBufferLong(receiver, order, byteOffset, value);
+        dispatch.writeBufferLong(this.context, receiver, order, byteOffset, value);
     }
 
     /**
@@ -616,7 +612,7 @@ public final class Value {
      * @since 21.1
      */
     public float readBufferFloat(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return dispatch.readBufferFloat(receiver, order, byteOffset);
+        return dispatch.readBufferFloat(this.context, receiver, order, byteOffset);
     }
 
     /**
@@ -641,7 +637,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        dispatch.writeBufferFloat(receiver, order, byteOffset, value);
+        dispatch.writeBufferFloat(this.context, receiver, order, byteOffset, value);
     }
 
     /**
@@ -668,7 +664,7 @@ public final class Value {
      * @since 21.1
      */
     public double readBufferDouble(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return dispatch.readBufferDouble(receiver, order, byteOffset);
+        return dispatch.readBufferDouble(this.context, receiver, order, byteOffset);
     }
 
     /**
@@ -693,7 +689,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        dispatch.writeBufferDouble(receiver, order, byteOffset, value);
+        dispatch.writeBufferDouble(this.context, receiver, order, byteOffset, value);
     }
 
     // endregion
@@ -715,7 +711,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean hasMembers() {
-        return dispatch.hasMembers(receiver);
+        return dispatch.hasMembers(this.context, receiver);
     }
 
     /**
@@ -729,7 +725,7 @@ public final class Value {
      */
     public boolean hasMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return dispatch.hasMember(receiver, identifier);
+        return dispatch.hasMember(this.context, receiver, identifier);
     }
 
     /**
@@ -744,7 +740,7 @@ public final class Value {
      */
     public Value getMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return dispatch.getMember(receiver, identifier);
+        return dispatch.getMember(this.context, receiver, identifier);
     }
 
     /**
@@ -761,7 +757,7 @@ public final class Value {
      * @since 19.0
      */
     public Set<String> getMemberKeys() {
-        return dispatch.getMemberKeys(receiver);
+        return dispatch.getMemberKeys(this.context, receiver);
     }
 
     /**
@@ -779,7 +775,7 @@ public final class Value {
      */
     public void putMember(String identifier, Object value) {
         Objects.requireNonNull(identifier, "identifier");
-        dispatch.putMember(receiver, identifier, value);
+        dispatch.putMember(this.context, receiver, identifier, value);
     }
 
     /**
@@ -795,7 +791,7 @@ public final class Value {
      */
     public boolean removeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return dispatch.removeMember(receiver, identifier);
+        return dispatch.removeMember(this.context, receiver, identifier);
     }
 
     // executable
@@ -808,7 +804,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean canExecute() {
-        return dispatch.canExecute(receiver);
+        return dispatch.canExecute(this.context, receiver);
     }
 
     /**
@@ -829,9 +825,9 @@ public final class Value {
     public Value execute(Object... arguments) {
         if (arguments.length == 0) {
             // specialized entry point for zero argument execute calls
-            return dispatch.execute(receiver);
+            return dispatch.execute(this.context, receiver);
         } else {
-            return dispatch.execute(receiver, arguments);
+            return dispatch.execute(this.context, receiver, arguments);
         }
     }
 
@@ -851,9 +847,9 @@ public final class Value {
     public void executeVoid(Object... arguments) {
         if (arguments.length == 0) {
             // specialized entry point for zero argument execute calls
-            dispatch.executeVoid(receiver);
+            dispatch.executeVoid(this.context, receiver);
         } else {
-            dispatch.executeVoid(receiver, arguments);
+            dispatch.executeVoid(this.context, receiver, arguments);
         }
     }
 
@@ -866,7 +862,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean canInstantiate() {
-        return dispatch.canInstantiate(receiver);
+        return dispatch.canInstantiate(this.context, receiver);
     }
 
     /**
@@ -883,7 +879,7 @@ public final class Value {
      */
     public Value newInstance(Object... arguments) {
         Objects.requireNonNull(arguments, "arguments");
-        return dispatch.newInstance(receiver, arguments);
+        return dispatch.newInstance(this.context, receiver, arguments);
     }
 
     /**
@@ -900,7 +896,7 @@ public final class Value {
      */
     public boolean canInvokeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return dispatch.canInvoke(identifier, receiver);
+        return dispatch.canInvoke(this.context, identifier, receiver);
     }
 
     /**
@@ -922,9 +918,9 @@ public final class Value {
         Objects.requireNonNull(identifier, "identifier");
         if (arguments.length == 0) {
             // specialized entry point for zero argument invoke calls
-            return dispatch.invoke(receiver, identifier);
+            return dispatch.invoke(this.context, receiver, identifier);
         } else {
-            return dispatch.invoke(receiver, identifier, arguments);
+            return dispatch.invoke(this.context, receiver, identifier, arguments);
         }
     }
 
@@ -936,7 +932,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isString() {
-        return dispatch.isString(receiver);
+        return dispatch.isString(this.context, receiver);
     }
 
     /**
@@ -949,7 +945,7 @@ public final class Value {
      * @since 19.0
      */
     public String asString() {
-        return dispatch.asString(receiver);
+        return dispatch.asString(this.context, receiver);
     }
 
     /**
@@ -962,7 +958,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInInt() {
-        return dispatch.fitsInInt(receiver);
+        return dispatch.fitsInInt(this.context, receiver);
     }
 
     /**
@@ -976,7 +972,7 @@ public final class Value {
      * @since 19.0
      */
     public int asInt() {
-        return dispatch.asInt(receiver);
+        return dispatch.asInt(this.context, receiver);
     }
 
     /**
@@ -988,7 +984,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isBoolean() {
-        return dispatch.isBoolean(receiver);
+        return dispatch.isBoolean(this.context, receiver);
     }
 
     /**
@@ -1002,7 +998,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean asBoolean() {
-        return dispatch.asBoolean(receiver);
+        return dispatch.asBoolean(this.context, receiver);
     }
 
     /**
@@ -1016,7 +1012,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNumber() {
-        return dispatch.isNumber(receiver);
+        return dispatch.isNumber(this.context, receiver);
     }
 
     /**
@@ -1029,7 +1025,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInLong() {
-        return dispatch.fitsInLong(receiver);
+        return dispatch.fitsInLong(this.context, receiver);
     }
 
     /**
@@ -1043,7 +1039,7 @@ public final class Value {
      * @since 19.0
      */
     public long asLong() {
-        return dispatch.asLong(receiver);
+        return dispatch.asLong(this.context, receiver);
     }
 
     /**
@@ -1056,7 +1052,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInDouble() {
-        return dispatch.fitsInDouble(receiver);
+        return dispatch.fitsInDouble(this.context, receiver);
     }
 
     /**
@@ -1070,7 +1066,7 @@ public final class Value {
      * @since 19.0
      */
     public double asDouble() {
-        return dispatch.asDouble(receiver);
+        return dispatch.asDouble(this.context, receiver);
     }
 
     /**
@@ -1083,7 +1079,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInFloat() {
-        return dispatch.fitsInFloat(receiver);
+        return dispatch.fitsInFloat(this.context, receiver);
     }
 
     /**
@@ -1097,7 +1093,7 @@ public final class Value {
      * @since 19.0
      */
     public float asFloat() {
-        return dispatch.asFloat(receiver);
+        return dispatch.asFloat(this.context, receiver);
     }
 
     /**
@@ -1110,7 +1106,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInByte() {
-        return dispatch.fitsInByte(receiver);
+        return dispatch.fitsInByte(this.context, receiver);
     }
 
     /**
@@ -1124,7 +1120,7 @@ public final class Value {
      * @since 19.0
      */
     public byte asByte() {
-        return dispatch.asByte(receiver);
+        return dispatch.asByte(this.context, receiver);
     }
 
     /**
@@ -1137,7 +1133,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInShort() {
-        return dispatch.fitsInShort(receiver);
+        return dispatch.fitsInShort(this.context, receiver);
     }
 
     /**
@@ -1151,7 +1147,7 @@ public final class Value {
      * @since 19.0
      */
     public short asShort() {
-        return dispatch.asShort(receiver);
+        return dispatch.asShort(this.context, receiver);
     }
 
     /**
@@ -1162,7 +1158,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNull() {
-        return dispatch.isNull(receiver);
+        return dispatch.isNull(this.context, receiver);
     }
 
     /**
@@ -1174,7 +1170,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNativePointer() {
-        return dispatch.isNativePointer(receiver);
+        return dispatch.isNativePointer(this.context, receiver);
     }
 
     /**
@@ -1186,7 +1182,7 @@ public final class Value {
      * @since 19.0
      */
     public long asNativePointer() {
-        return dispatch.asNativePointer(receiver);
+        return dispatch.asNativePointer(this.context, receiver);
     }
 
     /**
@@ -1198,7 +1194,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isHostObject() {
-        return dispatch.isHostObject(receiver);
+        return dispatch.isHostObject(this.context, receiver);
     }
 
     /**
@@ -1211,7 +1207,7 @@ public final class Value {
      */
     @SuppressWarnings("unchecked")
     public <T> T asHostObject() {
-        return (T) dispatch.asHostObject(receiver);
+        return (T) dispatch.asHostObject(this.context, receiver);
     }
 
     /**
@@ -1223,7 +1219,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isProxyObject() {
-        return dispatch.isProxyObject(receiver);
+        return dispatch.isProxyObject(this.context, receiver);
     }
 
     /**
@@ -1237,7 +1233,7 @@ public final class Value {
      */
     @SuppressWarnings("unchecked")
     public <T extends Proxy> T asProxyObject() {
-        return (T) dispatch.asProxyObject(receiver);
+        return (T) dispatch.asProxyObject(this.context, receiver);
     }
 
     /**
@@ -1495,7 +1491,7 @@ public final class Value {
         if (targetType == Value.class) {
             return (T) this;
         }
-        return dispatch.as(receiver, targetType);
+        return dispatch.as(this.context, receiver, targetType);
     }
 
     /**
@@ -1521,7 +1517,7 @@ public final class Value {
      */
     public <T> T as(TypeLiteral<T> targetType) {
         Objects.requireNonNull(targetType, "targetType");
-        return dispatch.as(receiver, targetType);
+        return dispatch.as(this.context, receiver, targetType);
     }
 
     /**
@@ -1535,7 +1531,7 @@ public final class Value {
      */
     @Override
     public String toString() {
-        return dispatch.toString(receiver);
+        return super.toString();
     }
 
     /**
@@ -1545,7 +1541,7 @@ public final class Value {
      * @since 19.0
      */
     public SourceSection getSourceLocation() {
-        return dispatch.getSourceLocation(receiver);
+        return dispatch.getSourceLocation(this.context, receiver);
     }
 
     /**
@@ -1560,7 +1556,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isDate() {
-        return dispatch.isDate(receiver);
+        return dispatch.isDate(this.context, receiver);
     }
 
     /**
@@ -1575,7 +1571,7 @@ public final class Value {
      * @since 19.2.0
      */
     public LocalDate asDate() {
-        return dispatch.asDate(receiver);
+        return dispatch.asDate(this.context, receiver);
     }
 
     /**
@@ -1587,7 +1583,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isTime() {
-        return dispatch.isTime(receiver);
+        return dispatch.isTime(this.context, receiver);
     }
 
     /**
@@ -1602,7 +1598,7 @@ public final class Value {
      * @since 19.2.0
      */
     public LocalTime asTime() {
-        return dispatch.asTime(receiver);
+        return dispatch.asTime(this.context, receiver);
     }
 
     /**
@@ -1652,7 +1648,7 @@ public final class Value {
      * @since 19.2.0
      */
     public Instant asInstant() {
-        return dispatch.asInstant(receiver);
+        return dispatch.asInstant(this.context, receiver);
     }
 
     /**
@@ -1677,7 +1673,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isTimeZone() {
-        return dispatch.isTimeZone(receiver);
+        return dispatch.isTimeZone(this.context, receiver);
     }
 
     /**
@@ -1691,7 +1687,7 @@ public final class Value {
      * @since 19.2.0
      */
     public ZoneId asTimeZone() {
-        return dispatch.asTimeZone(receiver);
+        return dispatch.asTimeZone(this.context, receiver);
     }
 
     /**
@@ -1703,7 +1699,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isDuration() {
-        return dispatch.isDuration(receiver);
+        return dispatch.isDuration(this.context, receiver);
     }
 
     /**
@@ -1717,7 +1713,7 @@ public final class Value {
      * @since 19.2.0
      */
     public Duration asDuration() {
-        return dispatch.asDuration(receiver);
+        return dispatch.asDuration(this.context, receiver);
     }
 
     /**
@@ -1728,7 +1724,7 @@ public final class Value {
      * @since 19.3
      */
     public boolean isException() {
-        return dispatch.isException(receiver);
+        return dispatch.isException(this.context, receiver);
     }
 
     /**
@@ -1740,7 +1736,7 @@ public final class Value {
      * @since 19.3
      */
     public RuntimeException throwException() {
-        return dispatch.throwException(receiver);
+        return dispatch.throwException(this.context, receiver);
     }
 
     /**
@@ -1758,11 +1754,11 @@ public final class Value {
      * @since 19.3.0
      */
     public Context getContext() {
-        Context context = dispatch.getContext();
-        if (context != null && context.currentAPI != null) {
-            return context.currentAPI;
+        Context c = dispatch.getContext(this.context);
+        if (c != null && c.currentAPI != null) {
+            return c.currentAPI;
         } else {
-            return context;
+            return c;
         }
     }
 
@@ -1776,10 +1772,7 @@ public final class Value {
      */
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof Value)) {
-            return false;
-        }
-        return dispatch.equalsImpl(receiver, ((Value) obj).receiver);
+        return super.equals(obj);
     }
 
     /**
@@ -1792,7 +1785,7 @@ public final class Value {
      */
     @Override
     public int hashCode() {
-        return dispatch.hashCodeImpl(receiver);
+        return super.hashCode();
     }
 
     /**
@@ -1806,7 +1799,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasIterator() {
-        return dispatch.hasIterator(receiver);
+        return dispatch.hasIterator(this.context, receiver);
     }
 
     /**
@@ -1821,7 +1814,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getIterator() {
-        return dispatch.getIterator(receiver);
+        return dispatch.getIterator(this.context, receiver);
     }
 
     /**
@@ -1836,7 +1829,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean isIterator() {
-        return dispatch.isIterator(receiver);
+        return dispatch.isIterator(this.context, receiver);
     }
 
     /**
@@ -1853,7 +1846,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasIteratorNextElement() {
-        return dispatch.hasIteratorNextElement(receiver);
+        return dispatch.hasIteratorNextElement(this.context, receiver);
     }
 
     /**
@@ -1875,7 +1868,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getIteratorNextElement() {
-        return dispatch.getIteratorNextElement(receiver);
+        return dispatch.getIteratorNextElement(this.context, receiver);
     }
 
     /**
@@ -1890,7 +1883,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasHashEntries() {
-        return dispatch.hasHashEntries(receiver);
+        return dispatch.hasHashEntries(this.context, receiver);
     }
 
     /**
@@ -1903,7 +1896,7 @@ public final class Value {
      * @since 21.1
      */
     public long getHashSize() throws UnsupportedOperationException {
-        return dispatch.getHashSize(receiver);
+        return dispatch.getHashSize(this.context, receiver);
     }
 
     /**
@@ -1917,7 +1910,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasHashEntry(Object key) {
-        return dispatch.hasHashEntry(receiver, key);
+        return dispatch.hasHashEntry(this.context, receiver, key);
     }
 
     /**
@@ -1932,7 +1925,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashValue(Object key) throws UnsupportedOperationException {
-        return dispatch.getHashValue(receiver, key);
+        return dispatch.getHashValue(this.context, receiver, key);
     }
 
     /**
@@ -1947,7 +1940,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashValueOrDefault(Object key, Object defaultValue) throws UnsupportedOperationException {
-        return dispatch.getHashValueOrDefault(receiver, key, defaultValue);
+        return dispatch.getHashValueOrDefault(this.context, receiver, key, defaultValue);
     }
 
     /**
@@ -1964,7 +1957,7 @@ public final class Value {
      * @since 21.1
      */
     public void putHashEntry(Object key, Object value) throws IllegalArgumentException, UnsupportedOperationException {
-        dispatch.putHashEntry(receiver, key, value);
+        dispatch.putHashEntry(this.context, receiver, key, value);
     }
 
     /**
@@ -1980,7 +1973,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean removeHashEntry(Object key) throws UnsupportedOperationException {
-        return dispatch.removeHashEntry(receiver, key);
+        return dispatch.removeHashEntry(this.context, receiver, key);
     }
 
     /**
@@ -1999,7 +1992,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashEntriesIterator() throws UnsupportedOperationException {
-        return dispatch.getHashEntriesIterator(receiver);
+        return dispatch.getHashEntriesIterator(this.context, receiver);
     }
 
     /**
@@ -2014,7 +2007,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashKeysIterator() throws UnsupportedOperationException {
-        return dispatch.getHashKeysIterator(receiver);
+        return dispatch.getHashKeysIterator(this.context, receiver);
     }
 
     /**
@@ -2029,7 +2022,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashValuesIterator() throws UnsupportedOperationException {
-        return dispatch.getHashValuesIterator(receiver);
+        return dispatch.getHashValuesIterator(this.context, receiver);
     }
 
     /**
@@ -2051,4 +2044,35 @@ public final class Value {
         return Engine.getImpl().asValue(o);
     }
 
+}
+
+abstract class AbstractValue {
+
+    final Object receiver;
+    final Object context;
+    final AbstractValueDispatch dispatch;
+
+    AbstractValue(AbstractValueDispatch dispatch, Object context, Object receiver) {
+        this.context = context;
+        this.dispatch = dispatch;
+        this.receiver = receiver;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof AbstractValue)) {
+            return false;
+        }
+        return dispatch.equalsImpl(this.context, receiver, ((AbstractValue) obj).receiver);
+    }
+
+    @Override
+    public int hashCode() {
+        return dispatch.hashCodeImpl(this.context, receiver);
+    }
+
+    @Override
+    public String toString() {
+        return dispatch.toString(this.context, receiver);
+    }
 }

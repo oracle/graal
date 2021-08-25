@@ -100,7 +100,7 @@ public class NodeDefaultsTest extends InteropLibraryBaseTest {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             Frame frame = Truffle.getRuntime().createMaterializedFrame(new Object[]{});
-            Node n = new TestNode(ProxyLanguage.getCurrentLanguage(), frame.getFrameDescriptor());
+            Node n = new TestNode(ProxyLanguage.get(null), frame.getFrameDescriptor());
             NodeLibrary l = createLibrary(NodeLibrary.class, n);
             Object v = 42 * 42;
             // Integer is not associated with a language

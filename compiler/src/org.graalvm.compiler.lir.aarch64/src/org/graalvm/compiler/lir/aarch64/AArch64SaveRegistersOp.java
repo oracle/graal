@@ -56,7 +56,7 @@ public class AArch64SaveRegistersOp extends SaveRegistersOp {
     }
 
     protected void saveRegister(CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot result, Register input) {
-        AArch64Move.reg2stack(crb, masm, result, input.asValue());
+        AArch64Move.reg2stack(crb, masm, result, input);
     }
 
     @Override

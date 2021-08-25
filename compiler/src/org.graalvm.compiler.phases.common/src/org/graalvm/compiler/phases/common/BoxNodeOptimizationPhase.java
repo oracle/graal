@@ -64,7 +64,7 @@ public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
         ControlFlowGraph cfg = null;
         Graph.Mark before = graph.getMark();
         boxLoop: for (BoxNode box : graph.getNodes(BoxNode.TYPE)) {
-            if (box.isAlive()) {
+            if (box.isAlive() && !box.hasIdentity()) {
                 final ValueNode primitiveVal = box.getValue();
                 assert primitiveVal != null : "Box " + box + " has no value";
                 // try to optimize with dominating box of the same value

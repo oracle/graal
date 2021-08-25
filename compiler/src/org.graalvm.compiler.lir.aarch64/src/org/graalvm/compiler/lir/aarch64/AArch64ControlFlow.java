@@ -33,7 +33,9 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.function.Function;
 
+import jdk.vm.ci.meta.PlatformKind;
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
@@ -213,12 +215,12 @@ public class AArch64ControlFlow {
     public static class CondMoveOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CondMoveOp> TYPE = LIRInstructionClass.create(CondMoveOp.class);
 
-        @Def protected Value result;
-        @Use protected Value trueValue;
-        @Use protected Value falseValue;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue trueValue;
+        @Use({REG}) protected AllocatableValue falseValue;
         private final AArch64Assembler.ConditionFlag condition;
 
-        public CondMoveOp(Variable result, AArch64Assembler.ConditionFlag condition, Value trueValue, Value falseValue) {
+        public CondMoveOp(Variable result, AArch64Assembler.ConditionFlag condition, AllocatableValue trueValue, AllocatableValue falseValue) {
             super(TYPE);
             assert trueValue.getPlatformKind() == falseValue.getPlatformKind() && trueValue.getPlatformKind() == result.getPlatformKind();
             this.result = result;
@@ -242,7 +244,7 @@ public class AArch64ControlFlow {
     public static class CondSetOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CondSetOp> TYPE = LIRInstructionClass.create(CondSetOp.class);
 
-        @Def protected Value result;
+        @Def({REG}) protected AllocatableValue result;
         private final AArch64Assembler.ConditionFlag condition;
 
         public CondSetOp(Variable result, AArch64Assembler.ConditionFlag condition) {
@@ -366,7 +368,7 @@ public class AArch64ControlFlow {
             masm.sub(32, idxScratchReg, indexReg, lowKey);
             int keyDiff = highKey - lowKey;
             if (AArch64MacroAssembler.isComparisonImmediate(keyDiff)) {
-                masm.cmp(32, idxScratchReg, keyDiff);
+                masm.compare(32, idxScratchReg, keyDiff);
             } else {
                 masm.mov(scratchReg, keyDiff);
                 masm.cmp(32, idxScratchReg, scratchReg);
@@ -395,7 +397,7 @@ public class AArch64ControlFlow {
         long imm = c.getJavaConstant().asLong();
         final int size = key.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         if (AArch64MacroAssembler.isComparisonImmediate(imm)) {
-            masm.cmp(size, asRegister(key), (int) imm);
+            masm.compare(size, asRegister(key), NumUtil.safeToInt(imm));
         } else {
             AArch64Move.move(crb, masm, asAllocatableValue(scratchValue), c);
             masm.cmp(size, asRegister(key), asRegister(scratchValue));
@@ -417,5 +419,43 @@ public class AArch64ControlFlow {
             isFarBranch = !crb.labelWithinRange(instruction, label, maxLIRDistance);
         }
         return isFarBranch;
+    }
+
+    @Opcode("CMOV")
+    public static class ASIMDCondMoveOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<ASIMDCondMoveOp> TYPE = LIRInstructionClass.create(ASIMDCondMoveOp.class);
+
+        @Def({REG}) AllocatableValue result;
+        /*
+         * For each element, the condition reg is expected to contain either all ones or all zeros
+         * to pick between trueVal and falseVal.
+         */
+        @Use({REG}) AllocatableValue condition;
+        /*
+         * trueVal & falseVal cannot be assigned the same reg as the result reg, as condition is
+         * moved into the result reg before trueVal & falseVal are used.
+         */
+        @Alive({REG}) AllocatableValue trueVal;
+        @Alive({REG}) AllocatableValue falseVal;
+
+        public ASIMDCondMoveOp(AllocatableValue result, AllocatableValue condition, AllocatableValue trueVal, AllocatableValue falseVal) {
+            super(TYPE);
+            PlatformKind conditionKind = condition.getPlatformKind();
+            PlatformKind trueKind = trueVal.getPlatformKind();
+            PlatformKind falseKind = falseVal.getPlatformKind();
+            assert conditionKind.getSizeInBytes() == trueKind.getSizeInBytes() && conditionKind.getVectorLength() == trueKind.getVectorLength() : condition + " " + trueVal;
+            assert trueKind == falseKind : trueVal + " " + falseVal;
+            this.result = result;
+            this.condition = condition;
+            this.trueVal = trueVal;
+            this.falseVal = falseVal;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            AArch64ASIMDAssembler.ASIMDSize size = AArch64ASIMDAssembler.ASIMDSize.fromVectorKind(result.getPlatformKind());
+            masm.neon.moveVV(size, asRegister(result), asRegister(condition));
+            masm.neon.bslVVV(size, asRegister(result), asRegister(trueVal), asRegister(falseVal));
+        }
     }
 }

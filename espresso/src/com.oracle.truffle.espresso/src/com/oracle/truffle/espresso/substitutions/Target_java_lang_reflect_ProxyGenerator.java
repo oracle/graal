@@ -22,30 +22,38 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.plugins.jdkproxy.JDKProxyRedefinitionPlugin;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
-public class Target_java_lang_reflect_ProxyGenerator {
+public final class Target_java_lang_reflect_ProxyGenerator {
 
     @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
-    public static @Host(byte[].class) StaticObject generateProxyClass(
-                    @Host(String.class) StaticObject proxyName,
-                    @Host(Class[].class) StaticObject interfaces,
-                    int classModifier,
-                    // Checkstyle: stop
-                    @GuestCall(target = "java_lang_reflect_ProxyGenerator_generateProxyClass", original = true) DirectCallNode original,
-                    // Checkstyle: resume
-                    @InjectMeta Meta meta) {
+    abstract static class GenerateProxyClass extends SubstitutionNode {
 
-        // for class redefinition we need to collect details about generated JDK Dynamic proxies
-        JDKProxyRedefinitionPlugin plugin = meta.getContext().lookup(JDKProxyRedefinitionPlugin.class);
-        if (plugin != null) {
-            plugin.collectProxyArguments(proxyName, interfaces, classModifier, original);
+        abstract @JavaType(byte[].class) StaticObject execute(
+                        @JavaType(String.class) StaticObject proxyName, @JavaType(Class[].class) StaticObject interfaces, int classModifier);
+
+        @Specialization
+        @JavaType(byte[].class)
+        StaticObject doCached(
+                        @JavaType(String.class) StaticObject proxyName,
+                        @JavaType(Class[].class) StaticObject interfaces,
+                        int classModifier,
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().java_lang_reflect_ProxyGenerator_generateProxyClass.getCallTargetNoSubstitution())") DirectCallNode original) {
+            // for class redefinition we need to collect details about generated JDK Dynamic proxies
+            JDKProxyRedefinitionPlugin plugin = context.lookup(JDKProxyRedefinitionPlugin.class);
+            if (plugin != null) {
+                plugin.collectProxyArguments(proxyName, interfaces, classModifier, original);
+            }
+            // call original method
+            return (StaticObject) original.call(proxyName, interfaces, classModifier);
         }
-        // call original method
-        return (StaticObject) original.call(proxyName, interfaces, classModifier);
     }
 }

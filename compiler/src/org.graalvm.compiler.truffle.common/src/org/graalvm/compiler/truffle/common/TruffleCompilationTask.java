@@ -50,4 +50,6 @@ public interface TruffleCompilationTask {
     }
 
     TruffleInliningData inliningData();
+
+    boolean hasNextTier();
 }

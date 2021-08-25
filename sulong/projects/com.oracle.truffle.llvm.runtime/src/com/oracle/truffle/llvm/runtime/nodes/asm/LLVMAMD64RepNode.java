@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -77,8 +77,7 @@ public abstract class LLVMAMD64RepNode extends LLVMStatementNode {
                     return true;
                 }
             } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }

@@ -149,7 +149,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      */
     protected TypeState filterReceiverState(BigBang bb, TypeState invokeState) {
         if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
-            return TypeState.forIntersection(bb, invokeState, receiverType.getTypeFlow(bb, true).getState());
+            return TypeState.forIntersection(bb, invokeState, receiverType.getAssignableTypes(true));
         }
         return invokeState;
     }

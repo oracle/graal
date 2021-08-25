@@ -25,26 +25,21 @@ package com.oracle.truffle.espresso;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
-import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
-import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
-import com.oracle.truffle.espresso.staticobject.StaticProperty;
-import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
-import com.oracle.truffle.espresso.staticobject.StaticShape;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
+import com.oracle.truffle.api.staticobject.StaticProperty;
+import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -54,10 +49,14 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
+import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @Registration(id = EspressoLanguage.ID, //
@@ -67,7 +66,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
                 contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
                 dependentLanguages = {"nfi", "llvm"})
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
-public final class EspressoLanguage extends TruffleLanguage<EspressoContext> implements ClassLoaderCache {
+public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ID = "java";
     public static final String NAME = "Java";
@@ -91,17 +90,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     private long startupClockNanos = 0;
 
-    private ClassLoader cl;
-
-    private static final StaticClassLoaderCache staticCLC = new StaticClassLoaderCache();
-
-    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array", StaticPropertyKind.Object, true);
+    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array");
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilerDirectives.CompilationFinal //
     private static StaticShape<StaticObjectFactory> arrayShape;
 
-    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty("foreignObject", StaticPropertyKind.Object, true);
+    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty("foreignObject");
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilerDirectives.CompilationFinal //
@@ -173,7 +168,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     @Override
     protected CallTarget parse(final ParsingRequest request) throws Exception {
-        assert getCurrentContext().isInitialized();
+        assert EspressoContext.get(null).isInitialized();
         String contents = request.getSource().getCharacters().toString();
         if (DestroyVMNode.EVAL_NAME.equals(contents)) {
             RootNode node = new DestroyVMNode(this);
@@ -206,10 +201,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return signatures;
     }
 
-    public static EspressoContext getCurrentContext() {
-        return getCurrentContext(EspressoLanguage.class);
-    }
-
     @Override
     protected boolean isThreadAccessAllowed(Thread thread,
                     boolean singleThreaded) {
@@ -233,31 +224,24 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         context.disposeThread(thread);
     }
 
-    @Override
-    public void setClassLoader(ClassLoader cl) {
-        this.cl = cl;
-    }
-
-    @Override
-    public ClassLoader getClassLoader() {
-        return cl;
-    }
-
     public static StaticProperty getArrayProperty() {
         return ARRAY_PROPERTY;
     }
 
-    public static StaticShape<StaticObjectFactory> getArrayShape() {
+    public StaticShape<StaticObjectFactory> getArrayShape() {
         if (arrayShape == null) {
-            initializeArrayShape();
+            return initializeArrayShape();
         }
         return arrayShape;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static synchronized void initializeArrayShape() {
-        if (arrayShape == null) {
-            arrayShape = StaticShape.newBuilder(staticCLC).property(ARRAY_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
+    private StaticShape<StaticObjectFactory> initializeArrayShape() {
+        synchronized (EspressoLanguage.class) {
+            if (arrayShape == null) {
+                arrayShape = StaticShape.newBuilder(this).property(ARRAY_PROPERTY, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
+            }
+            return arrayShape;
         }
     }
 
@@ -265,31 +249,26 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return FOREIGN_PROPERTY;
     }
 
-    public static StaticShape<StaticObjectFactory> getForeignShape() {
+    public StaticShape<StaticObjectFactory> getForeignShape() {
         if (foreignShape == null) {
-            initializeForeignShape();
+            return initializeForeignShape();
         }
         return foreignShape;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static synchronized void initializeForeignShape() {
-        if (foreignShape == null) {
-            foreignShape = StaticShape.newBuilder(staticCLC).property(FOREIGN_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
+    private StaticShape<StaticObjectFactory> initializeForeignShape() {
+        synchronized (EspressoLanguage.class) {
+            if (foreignShape == null) {
+                foreignShape = StaticShape.newBuilder(this).property(FOREIGN_PROPERTY, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
+            }
+            return foreignShape;
         }
     }
 
-    private static class StaticClassLoaderCache implements ClassLoaderCache {
-        private ClassLoader cl;
+    private static final LanguageReference<EspressoLanguage> REFERENCE = LanguageReference.create(EspressoLanguage.class);
 
-        @Override
-        public void setClassLoader(ClassLoader cl) {
-            this.cl = cl;
-        }
-
-        @Override
-        public ClassLoader getClassLoader() {
-            return cl;
-        }
+    public static EspressoLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 }

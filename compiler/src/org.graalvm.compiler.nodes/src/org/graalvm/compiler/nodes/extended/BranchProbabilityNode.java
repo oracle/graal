@@ -27,7 +27,6 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -35,10 +34,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.IfNode;
@@ -51,8 +46,15 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Instances of this node class will look for a preceding if node and put the given probability into
@@ -176,7 +178,45 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                 }
                 replaceAndDelete(currentCondition);
                 if (tool != null) {
-                    tool.addToWorkList(currentCondition.usages());
+                    // @formatter:off
+                    // Try to eliminate useless Conditional == Constant eagerly, e.g.:
+                    //
+                    // <condition>
+                    //    |  C(1) C(0)
+                    //    |   |   /
+                    // Conditional
+                    //    |
+                    // BranchProbability
+                    //    |     C(0|1)
+                    //    |       /
+                    // IntegerEquals
+                    //    |
+                    //   If
+                    //
+                    // Should be directly simplified to:
+                    //
+                    // <condition>
+                    //    |
+                    //   If
+                    //
+                    // This allows the If to be simplified immediately after injecting the profile.
+                    // @formatter:on
+                    if (currentCondition instanceof ConditionalNode &&
+                                    ((ConditionalNode) currentCondition).trueValue().isConstant() && ((ConditionalNode) currentCondition).falseValue().isConstant()) {
+                        for (IntegerEqualsNode eq : currentCondition.usages().filter(IntegerEqualsNode.class).snapshot()) {
+                            if (eq.getY().isConstant() || eq.getX().isConstant()) {
+                                ValueNode canonical = eq.canonical(tool);
+                                if (canonical != eq && canonical != null) {
+                                    tool.addToWorkList(eq.usages());
+                                    eq.replaceAtUsages(graph().maybeAddOrUnique(canonical));
+                                    GraphUtil.killWithUnusedFloatingInputs(eq);
+                                }
+                            }
+                        }
+                    }
+                    if (currentCondition.hasUsages()) {
+                        tool.addToWorkList(currentCondition.usages());
+                    }
                 }
             } else {
                 if (!isSubstitutionGraph()) {

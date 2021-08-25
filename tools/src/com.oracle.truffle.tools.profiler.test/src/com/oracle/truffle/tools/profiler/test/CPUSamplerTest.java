@@ -24,11 +24,16 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -36,26 +41,19 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.instrumentation.ProvidedTags;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 public class CPUSamplerTest extends AbstractProfilerTest {
 
-    private static CPUSampler sampler;
+    private CPUSampler sampler;
 
     final int executionCount = 10;
 
@@ -63,13 +61,86 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void setupSampler() {
         sampler = CPUSampler.find(context.getEngine());
         Assert.assertNotNull(sampler);
-        synchronized (sampler) {
-            sampler.setGatherSelfHitTimes(true);
-            sampler.setDelaySamplingUntilNonInternalLangInit(false);
+        sampler.setGatherSelfHitTimes(true);
+    }
+
+    @Test
+    public void testInitializeContext() {
+        RootNode dummy = RootNode.createConstantNode(42);
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeContext(LanguageContext c) throws Exception {
+                for (int i = 0; i < 50; i++) {
+                    Thread.sleep(1);
+                    TruffleSafepoint.pollHere(dummy);
+                }
+            }
+        });
+
+        sampler.setPeriod(1);
+        sampler.clearData();
+        sampler.setCollecting(true);
+        context.initialize(ProxyLanguage.ID);
+        sampler.setCollecting(false);
+
+        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        assertEquals(1, data.size());
+
+        assertEquals(1, searchInitializeContext(data).size());
+    }
+
+    @Test
+    public void testSampleContextInitialization() {
+        RootNode dummy = RootNode.createConstantNode(42);
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeContext(LanguageContext c) throws Exception {
+                for (int i = 0; i < 50; i++) {
+                    Thread.sleep(1);
+                    TruffleSafepoint.pollHere(dummy);
+                }
+            }
+        });
+
+        sampler.setPeriod(1);
+        sampler.setSampleContextInitialization(true);
+        sampler.setCollecting(true);
+        context.initialize(ProxyLanguage.ID);
+        sampler.setCollecting(false);
+
+        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        assertEquals(1, data.size());
+
+        assertEquals(0, searchInitializeContext(data).size());
+    }
+
+    private static List<ProfilerNode<Payload>> searchInitializeContext(Map<TruffleContext, CPUSamplerData> data) {
+        List<ProfilerNode<Payload>> found = new ArrayList<>();
+        for (CPUSamplerData d : data.values()) {
+            Map<Thread, Collection<ProfilerNode<Payload>>> threadData = d.getThreadData();
+            assertEquals(threadData.toString(), 1, threadData.size());
+
+            searchNodes(found, threadData.values().iterator().next(), (node) -> {
+                return node.getRootName().equals("<<" + ProxyLanguage.ID + ":initializeContext>>");
+            });
+
+        }
+        return found;
+    }
+
+    private static void searchNodes(List<ProfilerNode<CPUSampler.Payload>> results, Collection<ProfilerNode<CPUSampler.Payload>> data, Predicate<ProfilerNode<CPUSampler.Payload>> predicate) {
+        for (ProfilerNode<CPUSampler.Payload> node : data) {
+            if (predicate.test(node)) {
+                results.add(node);
+            }
+            searchNodes(results, node.getChildren(), predicate);
         }
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testCollectingAndHasData() {
 
         sampler.setCollecting(true);
@@ -106,6 +177,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                     ")");
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testCorrectRootStructure() {
 
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
@@ -154,6 +226,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     @Test
     @Ignore("non-deterministic failures on spark")
+    @SuppressWarnings("deprecation")
     public void testCorrectRootStructureRecursive() {
 
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
@@ -161,6 +234,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         for (int i = 0; i < executionCount; i++) {
             eval(defaultRecursiveSourceForSampling);
         }
+        sampler.setCollecting(false);
 
         Collection<ProfilerNode<CPUSampler.Payload>> children = sampler.getRootNodes();
         Assert.assertEquals(1, children.size());
@@ -201,6 +275,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         for (int i = 0; i < executionCount; i++) {
             eval(defaultSourceForSampling);
         }
+        sampler.setCollecting(false);
+        Assert.assertTrue(sampler.hasData());
         Assert.assertTrue(sampler.hasStackOverflowed());
     }
 
@@ -208,246 +284,10 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertEquals("Timeline length and self hit count to not match!", payload.getSelfHitCount(), payload.getSelfHitTimes().size());
     }
 
-    @TruffleLanguage.Registration(id = RecreateShadowStackTestLanguage.ID, name = "RecreateShadowStackTestLanguage", version = "0.1")
-    @ProvidedTags({StandardTags.StatementTag.class, StandardTags.RootTag.class})
-    public static class RecreateShadowStackTestLanguage extends TruffleLanguage<Integer> {
-
-        public static final String ID = "RecreateShadowStackTestLanguage";
-
-        @Override
-        protected Integer createContext(Env env) {
-            return 0;
-        }
-
-        @Override
-        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-            return true;
-        }
-
-        @Override
-        protected CallTarget parse(ParsingRequest request) throws Exception {
-            com.oracle.truffle.api.source.Source source = request.getSource();
-            SourceSection statement = null;
-            SourceSection root = null;
-            StatementNode startSamplerChild = null;
-
-            String sourceString = source.getCharacters().toString();
-            if (sourceString.equals("Statement Root")) {
-                // Case when we want to test statements and roots
-                statement = source.createSection(0, 9);
-                root = source.createSection(10, 4);
-                startSamplerChild = new StatementNode(statement, new SleepNode());
-            } else if (sourceString.equals("Root Root")) {
-                // Case when we want to test roots only
-                statement = source.createUnavailableSection();
-                root = source.createSection(0, 4);
-                RootCallTarget sleepTarget = Truffle.getRuntime().createCallTarget(new SRootNode(this, new RootNode(root, new SleepNode())));
-                startSamplerChild = new StatementNode(statement, new CallNode(Truffle.getRuntime().createDirectCallNode(sleepTarget)));
-            } else {
-                Assert.fail("Unsupported parse request.");
-            }
-
-            RootCallTarget innerTarget = Truffle.getRuntime().createCallTarget(
-                            new SRootNode(this, new RootNode(root,
-                                            new DummyNode(new StatementNode(statement,
-                                                            new DummyNode(new StatementNode(statement, new DummyNode(new StartSamplerNode(sampler, startSamplerChild)))))))));
-            DirectCallNode directCallNode = Truffle.getRuntime().createDirectCallNode(innerTarget);
-            return Truffle.getRuntime().createCallTarget(
-                            new SRootNode(this,
-                                            new RootNode(root, new DummyNode(new StatementNode(statement, new DummyNode(new StatementNode(statement, new DummyNode(new CallNode(directCallNode)))))))));
-
-        }
-
-        abstract static class SamplerTestNode extends Node {
-            public abstract Object execute(VirtualFrame frame);
-        }
-
-        @GenerateWrapper
-        abstract static class SamplerTestInstrumentableNode extends SamplerTestNode implements InstrumentableNode {
-
-            final SourceSection sourceSection;
-
-            protected SamplerTestInstrumentableNode(SourceSection sourceSection) {
-                this.sourceSection = sourceSection;
-            }
-
-            @Override
-            public abstract Object execute(VirtualFrame frame);
-
-            @Override
-            public boolean isInstrumentable() {
-                return true;
-            }
-
-            @Override
-            public SourceSection getSourceSection() {
-                return sourceSection;
-            }
-
-            @Override
-            public WrapperNode createWrapper(ProbeNode probe) {
-                return new SamplerTestInstrumentableNodeWrapper(sourceSection, this, probe);
-            }
-        }
-
-        static class SleepNode extends SamplerTestNode {
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    Assert.fail("Thread interrupted");
-                }
-                return 5;
-            }
-        }
-
-        static class DummyNode extends SamplerTestNode {
-            @Child SamplerTestNode node;
-
-            DummyNode(SamplerTestNode node) {
-                this.node = node;
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return node.execute(frame);
-            }
-        }
-
-        static class StatementNode extends SamplerTestInstrumentableNode {
-
-            @Child SamplerTestNode node;
-
-            StatementNode(SourceSection sourceSection, SamplerTestNode node) {
-                super(sourceSection);
-                this.node = node;
-            }
-
-            @Override
-            public boolean hasTag(Class<? extends Tag> tag) {
-                return tag == StandardTags.StatementTag.class;
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return node.execute(frame);
-            }
-        }
-
-        static class RootNode extends SamplerTestInstrumentableNode {
-
-            @Child SamplerTestNode node;
-
-            RootNode(SourceSection sourceSection, SamplerTestNode node) {
-                super(sourceSection);
-                this.node = node;
-            }
-
-            @Override
-            public boolean hasTag(Class<? extends Tag> tag) {
-                return tag == StandardTags.RootTag.class;
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return node.execute(frame);
-            }
-        }
-
-        static class SRootNode extends com.oracle.truffle.api.nodes.RootNode {
-
-            @Child SamplerTestNode child;
-
-            SRootNode(RecreateShadowStackTestLanguage language, SamplerTestNode child) {
-                super(language);
-                this.child = child;
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return child.execute(frame);
-            }
-        }
-
-        static class CallNode extends SamplerTestNode {
-            @Child DirectCallNode callNode;
-
-            CallNode(DirectCallNode callNode) {
-                this.callNode = callNode;
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return callNode.call(new Object[]{});
-            }
-        }
-
-        static class StartSamplerNode extends SamplerTestNode {
-            CPUSampler sampler;
-            @Child SamplerTestNode child;
-
-            StartSamplerNode(CPUSampler sampler, SamplerTestNode child) {
-                this.sampler = sampler;
-                this.child = child;
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Assert.assertTrue("Found roots before enabling sampler", sampler.getRootNodes().isEmpty());
-                sampler.setCollecting(true);
-                return child.execute(frame);
-            }
-        }
-    }
-
     @Test
-    public void testCorrectInitShadowStackStatements() {
-        sampler.setMode(CPUSampler.Mode.STATEMENTS);
-        sampler.setFilter(NO_INTERNAL_STATEMENT_TAG_FILTER);
-        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Statement Root", "test").buildLiteral();
-        context.eval(test);
-        Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
-
-        ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
-        current = checkStackState(current, "Statement", false);
-        current = checkStackState(current, "Statement", false);
-        current = checkStackState(current, "Statement", false);
-        current = checkStackState(current, "Statement", false);
-        checkStackState(current, "Statement", true);
-    }
-
-    private static ProfilerNode<CPUSampler.Payload> checkStackState(ProfilerNode<CPUSampler.Payload> current, String expectedSource, boolean top) {
-        Assert.assertEquals("Stack not correct", expectedSource, current.getSourceSection().getCharacters().toString());
-        if (top) {
-            Assert.assertFalse("Stack too deep", current.getChildren().iterator().hasNext());
-            return null;
-        } else {
-            Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
-            return current.getChildren().iterator().next();
-        }
-
-    }
-
-    @Test
-    public void testCorrectInitShadowStackRoots() {
-        sampler.setMode(CPUSampler.Mode.ROOTS);
-        sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
-        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Root Root", "test").buildLiteral();
-        context.eval(test);
-        Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
-
-        ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
-        current = checkStackState(current, "Root", false);
-        current = checkStackState(current, "Root", false);
-        checkStackState(current, "Root", true);
-    }
-
-    @Test
+    @SuppressWarnings("deprecation")
     public void testMultiThreadedRecursive() {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
-        sampler.setCollecting(true);
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
@@ -456,6 +296,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 }
             }
         };
+        runnable.run();
         Runnable recursiveRunnable = new Runnable() {
             @Override
             public void run() {
@@ -464,6 +305,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 }
             }
         };
+        recursiveRunnable.run();
+        sampler.setCollecting(true);
         Thread first = new Thread(runnable);
         first.start();
         try {
@@ -479,6 +322,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         } catch (InterruptedException e) {
             Assert.fail("Thread interrupted");
         }
+        sampler.setCollecting(false);
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
         traverseAndCompareForDifferentSources(rootNodes, threadToNodesMap.get(first));
@@ -507,9 +351,9 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testMultiThreaded() {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
-        sampler.setCollecting(true);
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
@@ -518,6 +362,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 }
             }
         };
+        runnable.run();
+        sampler.setCollecting(true);
         Thread first = new Thread(runnable);
         first.start();
         try {
@@ -533,6 +379,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         } catch (InterruptedException e) {
             Assert.fail("Thread interrupted");
         }
+        sampler.setCollecting(false);
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
         traverseAndCompareForSameSource(rootNodes, threadToNodesMap.get(first), threadToNodesMap.get(second));
@@ -555,6 +402,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testThreadSafe() throws InterruptedException {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
@@ -572,6 +420,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Thread execThread = new Thread(runnable);
         execThread.start();
         ensureIterations(iterations, 2);
+        sampler.setCollecting(false);
         Collection<ProfilerNode<CPUSampler.Payload>> oldNodes = sampler.getRootNodes();
         try {
             // NOTE: Execution is still running in a separate thread.

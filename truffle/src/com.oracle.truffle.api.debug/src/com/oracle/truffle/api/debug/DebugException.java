@@ -221,7 +221,7 @@ public final class DebugException extends RuntimeException {
                 }
                 if (hostInfo) {
                     StackTraceElement[] stack = SuspendedEvent.cutToHostDepth(getRawStackTrace());
-                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(stack, debugStack.iterator(), true,
+                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(session.getDebugger().getEnv(), stack, debugStack.iterator(), true,
                                     new Function<StackTraceElement, DebugStackTraceElement>() {
                                         @Override
                                         public DebugStackTraceElement apply(StackTraceElement element) {

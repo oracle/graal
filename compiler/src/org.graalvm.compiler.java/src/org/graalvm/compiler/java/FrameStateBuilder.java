@@ -415,11 +415,15 @@ public final class FrameStateBuilder implements SideEffectsState {
             throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
         }
         for (int i = 0; i < lockedObjects.length; i++) {
+            if (monitorIds[i] != other.monitorIds[i]) {
+                if (MonitorIdNode.monitorIdentityEquals(monitorIds[i], other.monitorIds[i])) {
+                    continue;
+                }
+                throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - monitors do not match", other));
+            }
+            // ID's match now also the objects should match
             if (originalValue(lockedObjects[i], false) != originalValue(other.lockedObjects[i], false)) {
                 throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
-            }
-            if (monitorIds[i] != other.monitorIds[i]) {
-                throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - monitors do not match", other));
             }
         }
     }
@@ -434,8 +438,13 @@ public final class FrameStateBuilder implements SideEffectsState {
             stack[i] = merge(stack[i], other.stack[i], block);
         }
         for (int i = 0; i < lockedObjects.length; i++) {
+            assert monitorIds[i] == other.monitorIds[i] || MonitorIdNode.monitorIdentityEquals(monitorIds[i], other.monitorIds[i]);
             lockedObjects[i] = merge(lockedObjects[i], other.lockedObjects[i], block);
-            assert monitorIds[i] == other.monitorIds[i];
+            if (monitorIds[i] != other.monitorIds[i]) {
+                monitorIds[i].setMultipleEntry();
+                other.monitorIds[i].setMultipleEntry();
+                monitorIds[i] = graph.addWithoutUnique(new MonitorIdNode(monitorIds[i].getLockDepth(), monitorIds[i].getBci(), true));
+            }
         }
 
         if (sideEffects == null) {

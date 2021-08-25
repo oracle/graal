@@ -29,8 +29,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.substitutions.Collect;
 
-final class NFISulongNativeAccess extends NFINativeAccess {
+public final class NFISulongNativeAccess extends NFINativeAccess {
 
     NFISulongNativeAccess(TruffleLanguage.Env env) {
         super(env);
@@ -48,6 +49,7 @@ final class NFISulongNativeAccess extends NFINativeAccess {
         return null; // not supported
     }
 
+    @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
         @Override
         public String id() {

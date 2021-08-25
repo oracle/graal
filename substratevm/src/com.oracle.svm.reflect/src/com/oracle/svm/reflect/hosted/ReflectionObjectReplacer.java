@@ -31,6 +31,8 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -42,6 +44,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.Delete;
 
+import sun.reflect.generics.repository.AbstractRepository;
 import sun.reflect.generics.repository.ClassRepository;
 import sun.reflect.generics.repository.ConstructorRepository;
 import sun.reflect.generics.repository.FieldRepository;
@@ -55,9 +58,37 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
         this.metaAccess = metaAccess;
     }
 
+    static class Identity {
+        private final Object wrapped;
+
+        Identity(Object wrapped) {
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(wrapped);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return ((Identity) obj).wrapped == wrapped;
+        }
+    }
+
+    private final Set<Identity> scanned = ConcurrentHashMap.newKeySet();
+
     @Override
     public Object apply(Object original) {
+        if (original instanceof AccessibleObject || original instanceof Parameter || original instanceof AbstractRepository) {
+            if (scanned.add(new Identity(original))) {
+                scan(original);
+            }
+        }
+        return original;
+    }
 
+    private void scan(Object original) {
         /*
          * Reflection accessors use Unsafe, so ensure that all reflectively accessible fields are
          * registered as unsafe-accessible, whether they have been explicitly registered or their
@@ -142,7 +173,5 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
             classRepository.getSuperclass();
             classRepository.getSuperInterfaces();
         }
-
-        return original;
     }
 }

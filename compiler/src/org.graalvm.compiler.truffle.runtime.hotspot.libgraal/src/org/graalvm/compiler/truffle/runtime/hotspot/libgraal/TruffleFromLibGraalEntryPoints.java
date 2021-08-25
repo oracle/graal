@@ -62,8 +62,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetThreadLocalPendingHandshakeOffset;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetValidRootAssumptionConstant;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.InliningData;
@@ -75,6 +73,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSpecializationMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTruffleBoundary;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
@@ -93,8 +92,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Formatter;
 import java.util.Set;
@@ -227,26 +224,6 @@ final class TruffleFromLibGraalEntryPoints {
         return ((TruffleCompilerRuntime) truffleRuntime).getFrameSlotKindTagForJavaKind(JavaKind.values()[ordinal]);
     }
 
-    @TruffleFromLibGraal(GetTruffleCallBoundaryMethods)
-    static long[] getTruffleCallBoundaryMethods(Object truffleRuntime) {
-        Collection<ResolvedJavaMethod> source;
-        Iterable<ResolvedJavaMethod> iterable = ((HotSpotTruffleCompilerRuntime) truffleRuntime).getTruffleCallBoundaryMethods();
-        if (iterable instanceof Collection) {
-            source = (Collection<ResolvedJavaMethod>) iterable;
-        } else {
-            source = new ArrayList<>();
-            for (ResolvedJavaMethod m : iterable) {
-                source.add(m);
-            }
-        }
-        long[] res = new long[source.size()];
-        int i = 0;
-        for (ResolvedJavaMethod m : source) {
-            res[i++] = LibGraal.translate(m);
-        }
-        return res;
-    }
-
     @TruffleFromLibGraal(Log)
     static void log(Object truffleRuntime, String loggerId, Object compilable, String message) {
         ((TruffleCompilerRuntime) truffleRuntime).log(loggerId, (CompilableTruffleAST) compilable, message);
@@ -330,6 +307,11 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(IsLastTier)
     static boolean isLastTier(Object task) {
         return ((TruffleCompilationTask) task).isLastTier();
+    }
+
+    @TruffleFromLibGraal(HasNextTier)
+    static boolean hasNextTier(Object task) {
+        return ((TruffleCompilationTask) task).hasNextTier();
     }
 
     @TruffleFromLibGraal(InliningData)
@@ -503,11 +485,6 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(AddInlinedTarget)
     static void addInlinedTarget(Object inlining, Object target) {
         ((TruffleInliningData) inlining).addInlinedTarget(((CompilableTruffleAST) target));
-    }
-
-    @TruffleFromLibGraal(GetThreadLocalPendingHandshakeOffset)
-    static int getThreadLocalPendingHandshakeOffset(Object truffleRuntime) {
-        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).getThreadLocalPendingHandshakeOffset();
     }
 
     /*----------------------*/

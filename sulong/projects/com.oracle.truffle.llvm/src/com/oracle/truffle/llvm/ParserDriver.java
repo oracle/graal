@@ -95,7 +95,7 @@ final class ParserDriver {
     /**
      * Parses a {@code source} and all its (explicit and implicit) dependencies.
      *
-     * @return a {@link CallTarget} that on execute initializes (i.e., initalize globals, run
+     * @return a {@link CallTarget} that on execute initializes (i.e., initialize globals, run
      *         constructors, etc.) the module represented by {@code source} and all dependencies.
      */
     public static CallTarget parse(LLVMContext context, BitcodeID bitcodeID, Source source) {
@@ -542,7 +542,7 @@ final class ParserDriver {
             return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
         } else {
             // check if the functions should be resolved eagerly or lazily.
-            boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
+            boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING) && !context.getEnv().getOptions().get(SulongEngineOption.AOTCacheStore);
             LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), dependencies, source, language);
             return LLVMLanguage.createCallTarget(loadModules);
         }

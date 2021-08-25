@@ -34,6 +34,11 @@ typedef struct {
   char fSHA2;
   char fCRC32;
   char fLSE;
+  char fDCPOP;
+  char fSHA3;
+  char fSHA512;
+  char fSVE;
+  char fSVE2;
   char fSTXRPREFETCH;
   char fA53MAC;
   char fDMBATOMICS;

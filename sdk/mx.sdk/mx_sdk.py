@@ -173,9 +173,15 @@ def jdk_enables_jvmci_by_default(jdk):
     return mx_sdk_vm.jdk_enables_jvmci_by_default(jdk)
 
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
+                  root_module_names=None,
+                  missing_export_target_action='create',
+                  with_source=lambda x: True,
+                  vendor_info=None,
+                  use_upgrade_module_path=False):
     return mx_sdk_vm.jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    root_module_names=root_module_names,
                                    missing_export_target_action=missing_export_target_action,
                                    with_source=with_source,
-                                   vendor_info=vendor_info)
+                                   vendor_info=vendor_info,
+                                   use_upgrade_module_path=use_upgrade_module_path)

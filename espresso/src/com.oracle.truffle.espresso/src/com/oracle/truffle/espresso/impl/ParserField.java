@@ -22,20 +22,23 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 
 import java.lang.reflect.Modifier;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 
 public final class ParserField {
+
+    private final Assumption redefineAssumption = Truffle.getRuntime().createAssumption();
 
     public static final ParserField[] EMPTY_ARRAY = new ParserField[0];
     // re-use the Constants.ACC_FINALIZER flag to mark hidden fields
@@ -50,6 +53,10 @@ public final class ParserField {
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
+    public ParserField withFlags(int newFlags) {
+        return new ParserField(flags | newFlags, name, type, attributes);
+    }
+
     public int getFlags() {
         return flags;
     }
@@ -60,6 +67,10 @@ public final class ParserField {
 
     public Symbol<Type> getType() {
         return type;
+    }
+
+    public Assumption getRedefineAssumption() {
+        return redefineAssumption;
     }
 
     public Attribute[] getAttributes() {
@@ -89,30 +100,30 @@ public final class ParserField {
         return Types.getJavaKind(type);
     }
 
-    public StaticPropertyKind getPropertyKind() {
+    public Class<?> getPropertyType() {
         if (type.length() == 1) {
             char ch = (char) type.byteAt(0);
             switch (ch) {
                 case 'Z':
-                    return StaticPropertyKind.Boolean;
+                    return boolean.class;
                 case 'C':
-                    return StaticPropertyKind.Char;
+                    return char.class;
                 case 'F':
-                    return StaticPropertyKind.Float;
+                    return float.class;
                 case 'D':
-                    return StaticPropertyKind.Double;
+                    return double.class;
                 case 'B':
-                    return StaticPropertyKind.Byte;
+                    return byte.class;
                 case 'S':
-                    return StaticPropertyKind.Short;
+                    return short.class;
                 case 'I':
-                    return StaticPropertyKind.Int;
+                    return int.class;
                 case 'J':
-                    return StaticPropertyKind.Long;
+                    return long.class;
                 default:
                     throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
             }
         }
-        return StaticPropertyKind.Object;
+        return Object.class;
     }
 }

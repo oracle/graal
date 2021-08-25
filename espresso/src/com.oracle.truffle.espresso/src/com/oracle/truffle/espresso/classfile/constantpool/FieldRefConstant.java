@@ -148,10 +148,11 @@ public interface FieldRefConstant extends MemberRefConstant {
     }
 
     final class Resolved implements FieldRefConstant, Resolvable.ResolvedConstant {
-        private final Field resolved;
+        private final Field.FieldVersion resolved;
 
-        Resolved(Field resolved) {
-            this.resolved = Objects.requireNonNull(resolved);
+        Resolved(Field resolvedField) {
+            Objects.requireNonNull(resolvedField);
+            this.resolved = resolvedField.getFieldVersion();
         }
 
         @Override
@@ -160,7 +161,7 @@ public interface FieldRefConstant extends MemberRefConstant {
         }
 
         @Override
-        public Field value() {
+        public Field.FieldVersion value() {
             return resolved;
         }
 
@@ -171,7 +172,7 @@ public interface FieldRefConstant extends MemberRefConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return resolved.getName();
+            return resolved.getField().getName();
         }
 
         @Override

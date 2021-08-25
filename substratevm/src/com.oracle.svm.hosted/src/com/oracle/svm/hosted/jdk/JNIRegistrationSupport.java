@@ -80,6 +80,7 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
 
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries = null;
+    private boolean isSunMSCAPIProviderReachable = false;
 
     public static JNIRegistrationSupport singleton() {
         return ImageSingletons.lookup(JNIRegistrationSupport.class);
@@ -88,6 +89,13 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         nativeLibraries = ((BeforeAnalysisAccessImpl) access).getNativeLibraries();
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        if (isWindows()) {
+            isSunMSCAPIProviderReachable = access.isReachable(clazz(access, "sun.security.mscapi.SunMSCAPI"));
+        }
     }
 
     @Override
@@ -186,10 +194,10 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
                     continue;
                 }
 
-                if (libname.equals("sunec")) {
+                if (libname.equals("sunmscapi") && !isSunMSCAPIProviderReachable) {
                     /*
-                     * Ignore `sunec` library if it is not statically linked (we will use `SunEC` in
-                     * mode without full ECC implementation anyway).
+                     * Ignore `sunmscapi` library if `SunMSCAPI` provider is not reachable (it's
+                     * always registered as a workaround in `Target_java_security_Provider`).
                      */
                     debug.log(DebugContext.INFO_LEVEL, "%s: IGNORED", library);
                     continue;

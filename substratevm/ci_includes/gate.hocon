@@ -57,6 +57,7 @@ builds += [
     timelimit: "45:00"
     environment : {
       MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
+      MX_BUILD_EXPLODED : "true" # test native-image MX_BUILD_EXPLODED compatibility
     }
     run: [
       ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit,maven"]

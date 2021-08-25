@@ -97,5 +97,9 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return execute(input, adjustFromIndex(fromIndex, input));
     }
 
+    public boolean isBacktracking() {
+        return false;
+    }
+
     protected abstract RegexResult execute(Object input, int fromIndex);
 }

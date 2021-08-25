@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle AOT Overview
+permalink: /graalvm-as-a-platform/language-implementation-framework/AOTOverview/
+---
 # Truffle AOT Overview
 
 There are several different flavors of AOT preinitialization, compilation, and caching supported in Truffle.
@@ -31,7 +37,7 @@ This allows languages to assume specific context options to be compilation final
 An exception from this rule is `InteropLibrary`, where nodes may be shared unconditionally between languages instances.
 
 
-### Supporting Context Independent Code 
+### Supporting Context Independent Code
 
 Codesharing requires that all code data structures are independent of their context.
 For example, code is context-independent if it can be executed with one context and then executed again with a new context without deoptimizing the code.
@@ -46,7 +52,7 @@ The following criteria should be satisfied when supporting context independent c
 * Function inline caches should be modified and implemented as a two-level inline cache. The first level speculates on the function instance's identity and the second level on the underlying CallTarget instance. The first level cache must be disabled if multiple contexts are initialized, as this would unnecessarily cause deoptimization.
 * The DynamicObject root Shape instance should be stored in the language instance instead of the language context. Otherwise, any inline cache on shapes will not stabilize and ultimately end up in the generic state.
 * All Node implementations must not store context-dependent data structures or context-dependent runtime values.
-* Loading and parsing of sources, even with language-internal builtins, should be performed using [TruffleLanguage.Env.parse](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#parse-com.oracle.truffle.api.TruffleLanguage.ParsingRequest-) to cache Source parsing per language instance. 
+* Loading and parsing of sources, even with language-internal builtins, should be performed using [TruffleLanguage.Env.parse](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#parse-com.oracle.truffle.api.TruffleLanguage.ParsingRequest-) to cache Source parsing per language instance.
 * All assumption instances should be stored in the language instance instead of the context. With multiple contexts initialized, the context instance read using context references may no longer be a constant. In this case any assumption read from the context would not be folded and they would cause significant runtime performance overhead. Assumptions from the language can be folded by the compiler in both single and multiple context mode.
 
 It is expected that an AST created for multiple contexts is compiled to less efficient machine code as it does not allow for speculation on the identity of runtime values.
@@ -76,8 +82,8 @@ By default, if language functions are created but never executed, they are not c
 Auxiliary engine caching supports triggering compilation for root nodes that were loaded but never executed.
 In such a case the framework calls the [RootNode.prepareForAOT](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#prepareForAOT--) method.
 
-More information on making a language implementation ready for compilation without prior execution can be found in the [AOT tutorial](AOT.md). 
-Note that not every language can be compiled without prior execution and produce efficient machine code. 
+More information on making a language implementation ready for compilation without prior execution can be found in the [AOT tutorial](AOT.md).
+Note that not every language can be compiled without prior execution and produce efficient machine code.
 Statically typed languages are typically more suitable for this.
 
 
@@ -85,4 +91,3 @@ Statically typed languages are typically more suitable for this.
 
 It is planned to also support persisting runtime values of polyglot context instances to disk.
 More information will appear here as soon as this feature is implemented.
-

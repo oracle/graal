@@ -45,7 +45,7 @@ public final class Target_sun_misc_Signal {
     @SuppressWarnings("unused")
     @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
-    public static int findSignal(@Host(String.class) StaticObject name,
+    public static int findSignal(@JavaType(String.class) StaticObject name,
                     @InjectMeta Meta meta) {
         if (StaticObject.isNull(name)) {
             throw meta.throwNullPointerException();
@@ -60,7 +60,7 @@ public final class Target_sun_misc_Signal {
     @SuppressWarnings("unused")
     @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
-    public static void raise(@Host(Signal.class) StaticObject signal,
+    public static void raise(@JavaType(Signal.class) StaticObject signal,
                     @InjectMeta Meta meta) {
         if (StaticObject.isNull(signal)) {
             throw meta.throwNullPointerException();
@@ -89,7 +89,7 @@ public final class Target_sun_misc_Signal {
     @SuppressWarnings("unused")
     @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
-    public static @Host(SignalHandler.class) StaticObject handle(@Host(Signal.class) StaticObject signal, @Host(SignalHandler.class) StaticObject handler,
+    public static @JavaType(SignalHandler.class) StaticObject handle(@JavaType(Signal.class) StaticObject signal, @JavaType(SignalHandler.class) StaticObject handler,
                     @InjectMeta Meta meta) {
         if (StaticObject.isNull(signal)) {
             throw meta.throwNullPointerException();

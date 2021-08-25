@@ -4,6 +4,11 @@ Fixes:
 
 * Fix LLVM toolchain not working correctly for C++ on MacOS 11.3.
 
+* Fix exceptions being swallowed and not printed out on Sulong context disposal.
+
+* Thread return values are now correctly removed from the context when joining the
+  respective thread.
+
 New features:
 
 * Support implicitly typed XADD instructions in inline assembly.
@@ -11,6 +16,12 @@ New features:
 * Support some atomic variants of certain inline assembly instructions. Currently
   supported instructions are: xchg, cmpxchg and xadd along with their explicitly typed
   variants, and various unary instructions including incb/w/l/q and decb/w/l/q.
+
+* System calls that return pointers are now supported.
+
+* Support passing pointers as operands to inline assembly instructions.
+
+* Support C++ virtual calls via interop.
 
 # Version 21.1.0
 

@@ -32,7 +32,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -86,9 +85,15 @@ public abstract class LIRTest extends JTTTest {
         @Override
         public void generate(NodeLIRBuilderTool gen) {
             LIRTestSpecification ops = getLIROperations();
-            Stream<Value> v = values().stream().map(node -> gen.operand(node));
+            Value[] generatedValues = new Value[values().size()];
+            int index = 0;
+            for (ValueNode node : values()) {
+                Value value = gen.operand(node);
+                generatedValues[index++] = value;
+                ops.addGeneratedValue(value, node);
+            }
 
-            ops.generate(gen.getLIRGeneratorTool(), v.toArray(size -> new Value[size]));
+            ops.generate(gen.getLIRGeneratorTool(), generatedValues);
             Value result = ops.getResult();
             if (result != null) {
                 gen.setResult(this, result);

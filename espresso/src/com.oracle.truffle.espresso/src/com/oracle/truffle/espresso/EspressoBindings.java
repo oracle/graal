@@ -25,10 +25,10 @@ package com.oracle.truffle.espresso;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -61,7 +61,7 @@ public final class EspressoBindings implements TruffleObject {
     final StaticObject loader;
     boolean withNativeJavaVM;
 
-    public EspressoBindings(@Host(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM) {
+    public EspressoBindings(@JavaType(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM) {
         this.withNativeJavaVM = withNativeJavaVM;
         assert StaticObject.notNull(loader) : "boot classloader (null) not supported";
         this.loader = loader;
@@ -96,12 +96,13 @@ public final class EspressoBindings implements TruffleObject {
 
     @ExportMessage
     Object readMember(String member,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException {
         if (!isMemberReadable(member)) {
             error.enter();
             throw UnknownIdentifierException.create(member);
         }
+        EspressoContext context = EspressoContext.get(self);
         if (withNativeJavaVM && JAVA_VM.equals(member)) {
             return context.getVM().getJavaVM();
         }

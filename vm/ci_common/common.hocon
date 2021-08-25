@@ -17,7 +17,8 @@ common_vm_darwin: ${common_vm} ${darwin} {
   }
   environment: {
     LANG: en_US.UTF-8
-    MACOSX_DEPLOYMENT_TARGET: "10.11"
+    # for compatibility with macOS Sierra
+    MACOSX_DEPLOYMENT_TARGET: "10.12"
   }
   setup: ${common_vm.setup}
 }
@@ -40,7 +41,7 @@ common_vm_windows-jdk11: ${common_vm} ${windows} ${devkits.windows-jdk11} {
   }
 }
 
-common_vm_windows-jdk16: ${common_vm} ${windows} ${devkits.windows-jdk16} {
+common_vm_windows-jdk17: ${common_vm} ${windows} ${devkits.windows-jdk17} {
   downloads : {
     MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
   }
@@ -65,8 +66,8 @@ js_windows_jdk11: ${common_vm_windows-jdk11} ${js_windows_common} {
   ]
 }
 
-js_windows_jdk16: ${common_vm_windows-jdk16} ${js_windows_common} {
-  setup: ${common_vm_windows-jdk16.setup} [
+js_windows_jdk17: ${common_vm_windows-jdk17} ${js_windows_common} {
+  setup: ${common_vm_windows-jdk17.setup} [
     # Keep in sync with the "devkits" object defined in the top level common.json file.
     # When this file has been converted to jsonnet, the value can be computed instead
     # using Jsonnet std lib functions.
@@ -84,17 +85,13 @@ js_windows: ${common_vm_windows} ${js_windows_common} {
 }
 
 # SULONG
-sulong_linux: ${sulong.deps.linux}
-sulong_darwin: ${sulong.deps.darwin}
+sulong_linux: ${sulong.deps.common} ${sulong.deps.linux}
+sulong_darwin: ${sulong.deps.common} ${sulong.deps.darwin}
 
 # TRUFFLERUBY
-truffleruby_linux: ${sulong_linux} {
-  packages: {
-    ruby: "==2.6.3"
-  }
-}
+truffleruby_linux: ${sulong_linux} ${truffleruby.deps.common} ${truffleruby.deps.linux}
 
-truffleruby_darwin: ${sulong_darwin} {}
+truffleruby_darwin: ${sulong_darwin} ${truffleruby.deps.common} ${truffleruby.deps.darwin}
 
 # FASTR
 # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
@@ -109,16 +106,17 @@ fastr: {
   }
   downloads: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
-    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "11", platformspecific: true },
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "12", platformspecific: true },
   }
 }
 
 fastr_linux: ${fastr} {
   packages: {
-    readline: "==6.3"
-    pcre: "==8.43"
-    zlib: ">=1.2.11"
-    curl: ">=7.50.1"
+    readline: "==6.3",
+    pcre: "==8.43",
+    zlib: ">=1.2.11",
+    curl: ">=7.50.1",
+    gnur: "==4.0.3-gcc4.8.5-pcre8.42"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
@@ -134,7 +132,8 @@ fastr_linux: ${fastr} {
 
 fastr_darwin: ${fastr} {
   packages: {
-    "pcre": "==8.43"
+    "pcre": "==8.43",
+    "gnur": "==4.0.3-gcc10.2-pcre8.42"
   }
   environment:  {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
@@ -187,7 +186,7 @@ vm_windows-jdk11: ${common_vm_windows-jdk11} {
   capabilities: [windows, amd64]
 }
 
-vm_windows-jdk16: ${common_vm_windows-jdk16} {
+vm_windows-jdk17: ${common_vm_windows-jdk17} {
   capabilities: [windows, amd64]
 }
 
@@ -251,7 +250,7 @@ deploy_daily_vm_windows-jdk11: ${vm_windows-jdk11} {
   targets: [deploy, daily]
 }
 
-deploy_daily_vm_windows-jdk16: ${vm_windows-jdk16} {
+deploy_daily_vm_windows-jdk17: ${vm_windows-jdk17} {
   targets: [deploy, daily]
 }
 
@@ -333,8 +332,7 @@ libgraal_compiler: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
 libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
   environment: {
     # The Truffle TCK tests run as a part of Truffle TCK gate
-    # IsolatedNamespaceTest breaks tools tests GR-30941
-    TEST_LIBGRAAL_EXCLUDE: "com.oracle.truffle.tck.tests.* com.oracle.truffle.nfi.test.IsolatedNamespaceTest"
+    TEST_LIBGRAAL_EXCLUDE: "com.oracle.truffle.tck.tests.*"
   }
   run: [
     # -ea assertions are enough to keep execution time reasonable
@@ -446,11 +444,11 @@ builds += [
   }
   ${libgraal_compiler} ${vm_java_8}  { name: gate-vm-libgraal-compiler-8-linux-amd64 }
   ${libgraal_compiler} ${vm_java_11} { name: gate-vm-libgraal-compiler-11-linux-amd64 }
-  ${libgraal_compiler} ${vm_java_16} { name: gate-vm-libgraal-compiler-16-linux-amd64 }
+  ${libgraal_compiler} ${vm_java_17} { name: gate-vm-libgraal-compiler-17-linux-amd64 }
 
   ${libgraal_truffle} ${vm_java_8}  { name: gate-vm-libgraal-truffle-8-linux-amd64 }
   ${libgraal_truffle} ${vm_java_11} { name: gate-vm-libgraal-truffle-11-linux-amd64 }
-  ${libgraal_truffle} ${vm_java_16} { name: gate-vm-libgraal-truffle-16-linux-amd64 }
+  ${libgraal_truffle} ${vm_java_17} { name: gate-vm-libgraal-truffle-17-linux-amd64 }
 
   ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
@@ -468,25 +466,25 @@ builds += [
   # Linux/AMD64
   ${vm_java_8}  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java8-linux-amd64}
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java11-linux-amd64}
-  ${vm_java_16} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java16}]] ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java16-linux-amd64}
+  ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java17-linux-amd64}
 
   # Linux/AARCH64
   ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64}]]        ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java11-linux-aarch64}
-  ${vm_java_16} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64_java16}]] ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java16-linux-aarch64}
+  ${vm_java_17} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64_java17}]] ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java17-linux-aarch64}
 
   # Darwin/AMD64
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {                                                                                                                 name: deploy-vm-base-java11-darwin-amd64}
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java11-darwin-amd64}
-  ${vm_java_16} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {                                                                                                                 name: deploy-vm-base-java16-darwin-amd64}
-  ${vm_java_16} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java16}]] ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java16-darwin-amd64}
+  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {                                                                                                                 name: deploy-vm-base-java17-darwin-amd64}
+  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java17-darwin-amd64}
 
   # Windows/AMD64
   ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_base_windows_amd64}                       {                                                                                                                          name: deploy-vm-base-java8-windows-amd64}
   ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_installables_windows_amd64}               {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]]        ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java8-windows-amd64}
   ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {                                                                                                                          name: deploy-vm-base-java11-windows-amd64}
   ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]]        ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java11-windows-amd64}
-  ${vm_java_16} ${deploy_daily_vm_windows-jdk16} ${svm-common-windows-jdk16} ${js_windows_jdk16} ${deploy_graalvm_base_windows_amd64}         {                                                                                                                          name: deploy-vm-base-java16-windows-amd64}
-  ${vm_java_16} ${deploy_daily_vm_windows-jdk16} ${svm-common-windows-jdk16} ${js_windows_jdk16} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows_java16}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java16-windows-amd64}
+  ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {                                                                                                                          name: deploy-vm-base-java17-windows-amd64}
+  ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows_java17}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java17-windows-amd64}
 
   #
   # Deploy GraalVM+Ruby images

@@ -29,12 +29,15 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import java.util.ArrayDeque;
+import java.util.BitSet;
+import java.util.List;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -58,10 +61,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import java.util.ArrayDeque;
-import java.util.BitSet;
-import java.util.List;
 
 /**
  * The {@link LoadModulesNode} initialise the library. This involves building the scopes (local
@@ -93,7 +92,6 @@ public final class LoadModulesNode extends LLVMRootNode {
     final String sourceName;
     final BitcodeID bitcodeID;
     final Source source;
-    @CompilationFinal ContextReference<LLVMContext> ctxRef;
 
     @Child LLVMStatementNode initContext;
 
@@ -174,12 +172,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-
-        if (ctxRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.ctxRef = lookupContextReference(LLVMLanguage.class);
-        }
-        LLVMContext context = ctxRef.get();
+        LLVMContext context = getContext();
 
         synchronized (context) {
             if (!hasInitialised) {
@@ -226,7 +219,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     @SuppressWarnings("unchecked")
     private LLVMScope loadModule(VirtualFrame frame, LLVMContext context) {
 
-        stackAccess.executeEnter(frame, ctxRef.get().getThreadingStack().getStack());
+        stackAccess.executeEnter(frame, getContext().getThreadingStack().getStack());
         try {
             LLVMLoadingPhase phase;
             LLVMLocalScope localScope = null;

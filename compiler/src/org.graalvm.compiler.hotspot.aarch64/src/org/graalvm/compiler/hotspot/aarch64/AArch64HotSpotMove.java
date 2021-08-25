@@ -102,7 +102,7 @@ public class AArch64HotSpotMove {
                 Register scratch = sc.getRegister();
                 masm.adrp(scratch);
                 masm.add(64, scratch, scratch, 1);
-                masm.ldr(64, asRegister(result), AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                masm.ldr(64, asRegister(result), AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
                 masm.nop();
                 crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);
             }
@@ -143,7 +143,7 @@ public class AArch64HotSpotMove {
                 if (encoding.hasShift()) {
                     masm.lsr(64, resultRegister, ptr, encoding.getShift());
                 } else {
-                    masm.movx(resultRegister, ptr);
+                    masm.mov(64, resultRegister, ptr);
                 }
             } else if (nonNull) {
                 masm.sub(64, resultRegister, ptr, base);
@@ -152,7 +152,7 @@ public class AArch64HotSpotMove {
                 }
             } else {
                 // if ptr is null it still has to be null after compression
-                masm.cmp(64, ptr, 0);
+                masm.compare(64, ptr, 0);
                 masm.csel(64, resultRegister, ptr, base, AArch64Assembler.ConditionFlag.NE);
                 masm.sub(64, resultRegister, resultRegister, base);
                 if (encoding.hasShift()) {
@@ -199,7 +199,7 @@ public class AArch64HotSpotMove {
                 if (shift != 0) {
                     masm.lsl(64, resReg, inputRegister, shift);
                 } else if (!resReg.equals(inputRegister)) {
-                    masm.movx(resReg, inputRegister);
+                    masm.mov(64, resReg, inputRegister);
                 }
                 return;
             }
@@ -241,7 +241,7 @@ public class AArch64HotSpotMove {
             if (pic || encoding.hasBase() || encoding.getShift() != 0) {
                 if (pic) {
                     masm.adrpAdd(scratch);
-                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
                     masm.add(64, result, scratch, ptr, AArch64Assembler.ExtendType.UXTX, encoding.getShift());
                     crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);
                 } else {

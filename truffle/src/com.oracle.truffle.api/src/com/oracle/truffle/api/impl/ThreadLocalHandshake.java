@@ -107,7 +107,19 @@ public abstract class ThreadLocalHandshake {
     public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread,
                     Consumer<T> onDone, boolean sideEffecting, boolean syncStartOfEvent, boolean syncEndOfEvent) {
         testSupport();
+        assert threads.length > 0;
         Handshake<T> handshake = new Handshake<>(threads, onThread, onDone, sideEffecting, threads.length, syncStartOfEvent, syncEndOfEvent);
+        if (syncStartOfEvent || syncEndOfEvent) {
+            synchronized (ThreadLocalHandshake.class) {
+                addHandshakes(threads, handshake);
+            }
+        } else {
+            addHandshakes(threads, handshake);
+        }
+        return handshake;
+    }
+
+    private <T extends Consumer<Node>> void addHandshakes(Thread[] threads, Handshake<T> handshake) {
         for (int i = 0; i < threads.length; i++) {
             Thread t = threads[i];
             if (!t.isAlive()) {
@@ -115,7 +127,6 @@ public abstract class ThreadLocalHandshake {
             }
             getThreadState(t).addHandshake(t, handshake);
         }
-        return handshake;
     }
 
     @SuppressWarnings("static-method")
@@ -359,7 +370,11 @@ public abstract class ThreadLocalHandshake {
             try {
                 HandshakeEntry current = lookupEntry(handshake);
                 if (current != null) {
-                    assert !current.reactivated : "Reactivated handshake was not processed!";
+                    /*
+                     * We cannot guarantee that side-effecting events are processed as they can be
+                     * disabled.
+                     */
+                    assert !current.reactivated || current.handshake.sideEffecting : "Reactivated handshake was not processed!";
                     handshake.deactivateThread();
                     claimEntry(current);
                     /*

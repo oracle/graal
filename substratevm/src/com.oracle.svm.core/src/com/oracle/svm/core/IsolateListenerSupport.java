@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.graal.snippets.CEntryPointSnippets.IsolateCreationWatcher;
 
 public class IsolateListenerSupport {
     private IsolateListener[] listeners;
@@ -60,12 +59,6 @@ public class IsolateListenerSupport {
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public void afterCreateIsolate(Isolate isolate) {
-        // The IsolateCreationWatcher will be removed, see GR-30740.
-        if (ImageSingletons.contains(IsolateCreationWatcher.class)) {
-            IsolateCreationWatcher singletonWatcher = ImageSingletons.lookup(IsolateCreationWatcher.class);
-            singletonWatcher.registerIsolate(isolate);
-        }
-
         for (int i = 0; i < listeners.length; i++) {
             listeners[i].afterCreateIsolate(isolate);
         }

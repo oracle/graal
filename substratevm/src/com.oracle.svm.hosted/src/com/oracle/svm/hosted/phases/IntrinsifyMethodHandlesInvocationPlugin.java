@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -106,7 +107,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
@@ -166,18 +167,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     public static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
-
-        private static IntrinsificationRegistry singleton() {
-            return ImageSingletons.lookup(IntrinsificationRegistry.class);
-        }
-
-        public static AutoCloseable startThreadLocalnRegistry() {
-            return IntrinsificationPluginRegistry.startThreadLocalRegistry(singleton());
-        }
-
-        public static AutoCloseable pauseThreadLocalRegistry() {
-            return IntrinsificationPluginRegistry.pauseThreadLocalRegistry(singleton());
-        }
     }
 
     private final ParsingReason reason;
@@ -194,9 +183,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final Set<String> methodHandleInvokeMethodNames;
 
     private final Class<?> varHandleClass;
+    private final Class<?> varHandleAccessModeClass;
     private final ResolvedJavaType varHandleType;
     private final Field varHandleVFormField;
     private final Method varFormInitMethod;
+    private final Method varHandleIsAccessModeSupportedMethod;
+    private final Method varHandleAccessModeTypeMethod;
 
     private static final Method unsupportedFeatureMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
 
@@ -227,18 +219,24 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             try {
                 varHandleClass = Class.forName("java.lang.invoke.VarHandle");
+                varHandleAccessModeClass = Class.forName("java.lang.invoke.VarHandle$AccessMode");
                 varHandleType = universeProviders.getMetaAccess().lookupJavaType(varHandleClass);
                 varHandleVFormField = ReflectionUtil.lookupField(varHandleClass, "vform");
                 Class<?> varFormClass = Class.forName("java.lang.invoke.VarForm");
                 varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+                varHandleIsAccessModeSupportedMethod = ReflectionUtil.lookupMethod(varHandleClass, "isAccessModeSupported", varHandleAccessModeClass);
+                varHandleAccessModeTypeMethod = ReflectionUtil.lookupMethod(varHandleClass, "accessModeType", varHandleAccessModeClass);
             } catch (ClassNotFoundException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
         } else {
             varHandleClass = null;
+            varHandleAccessModeClass = null;
             varHandleType = null;
             varHandleVFormField = null;
             varFormInitMethod = null;
+            varHandleIsAccessModeSupportedMethod = null;
+            varHandleAccessModeTypeMethod = null;
         }
     }
 
@@ -350,6 +348,25 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 Object varHandle = SubstrateObjectConstant.asObject(args[0].asJavaConstant());
                 Object varForm = varHandleVFormField.get(varHandle);
                 varFormInitMethod.invoke(varForm, 0);
+
+                /*
+                 * The AccessMode used for the access that we are going to intrinsify is hidden in a
+                 * AccessDescriptor object that is also passed in as a parameter to the intrinsified
+                 * method. Initializing all AccessMode enum values is easier than trying to extract
+                 * the actual AccessMode.
+                 */
+                for (Object accessMode : varHandleAccessModeClass.getEnumConstants()) {
+                    /*
+                     * Force initialization of the @Stable field VarHandle.vform.memberName_table.
+                     * Starting with JDK 17, this field is lazily initialized.
+                     */
+                    varHandleIsAccessModeSupportedMethod.invoke(varHandle, accessMode);
+                    /*
+                     * Force initialization of the @Stable field
+                     * VarHandle.typesAndInvokers.methodType_table.
+                     */
+                    varHandleAccessModeTypeMethod.invoke(varHandle, accessMode);
+                }
             } catch (ReflectiveOperationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -521,7 +538,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
-        if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
+        if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
             return reportUnsupportedFeature(b, methodHandleMethod);
         }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
@@ -571,7 +588,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      * Successfully intrinsified during analysis, remember that we can intrinsify
                      * when parsing for compilation.
                      */
-                    intrinsificationRegistry.add(b.getCallingContext(), Boolean.TRUE);
+                    intrinsificationRegistry.add(b.getMethod(), b.bci(), Boolean.TRUE);
                 }
                 return true;
             } catch (AbortTransplantException ex) {
@@ -602,16 +619,23 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
      * calls, field stores, exceptions, ... look as if they are coming from the original invocation
      * site of the method handle. This means the static analysis is not storing any analysis results
      * for these calls, because lookup of analysis results requires a unique bci.
+     *
+     * During this process, values are not pushed and popped from the frame state as usual. Instead,
+     * at most one value is temporarily pushed onto the frame state's stack. During the generation
+     * process {@link #tempFrameStackValue} is used to represent the value currently temporarily
+     * pushed onto the stack.
      */
     class Transplanter {
         private final BytecodeParser b;
         private final ResolvedJavaMethod methodHandleMethod;
         private final NodeMap<Node> transplanted;
+        private JavaKind tempFrameStackValue;
 
         Transplanter(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod, NodeMap<Node> transplanted) {
             this.b = (BytecodeParser) b;
             this.methodHandleMethod = methodHandleMethod;
             this.transplanted = transplanted;
+            this.tempFrameStackValue = null;
         }
 
         void graph(StructuredGraph graph) throws AbortTransplantException {
@@ -623,6 +647,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
                 } else if (oNode instanceof ReturnNode) {
                     ReturnNode oReturn = (ReturnNode) oNode;
+                    /* Push the returned result. */
                     if (returnResultKind != JavaKind.Void) {
                         b.push(returnResultKind, node(oReturn.result()));
                     }
@@ -632,6 +657,36 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 } else {
                     throw bailout();
                 }
+            }
+        }
+
+        /**
+         * @return whether the current frame has enough space for a new value of the given kind to
+         *         be pushed to the stack.
+         */
+        private boolean frameStackHasSpaceForKind(JavaKind javaKind) {
+            return b.getFrameStateBuilder().stackSize() + (javaKind.needsTwoSlots() ? 2 : 1) <= b.getMethod().getMaxStackSize();
+        }
+
+        /**
+         * If space is available, temporarily push {@code value} onto frame's stack.
+         */
+        private void pushToFrameStack(ValueNode value) {
+            JavaKind kind = value.getStackKind();
+            /* Pushing new value if there is space. */
+            if (frameStackHasSpaceForKind(kind)) {
+                b.push(kind, value);
+                tempFrameStackValue = kind;
+            }
+        }
+
+        /*
+         * Remove temp value, if present, from stack.
+         */
+        private void popTempFrameStackValue() {
+            if (tempFrameStackValue != null) {
+                b.pop(tempFrameStackValue);
+                tempFrameStackValue = null;
             }
         }
 
@@ -724,7 +779,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             return tNodes;
         }
 
-        private ValueNode node(ValueNode oNode) throws AbortTransplantException {
+        private ValueNode node(Node oNode) throws AbortTransplantException {
             if (oNode == null) {
                 return null;
             }
@@ -758,9 +813,20 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * have side effects and also do not reference any types or other elements that we
                  * would need to modify.
                  */
+                for (Node input : oNode.inputs()) {
+                    /*
+                     * Make sure all input nodes are transplanted first, and registered in the
+                     * transplanted map.
+                     */
+                    node(input);
+                }
                 List<Node> oNodes = Collections.singletonList(oNode);
                 UnmodifiableEconomicMap<Node, Node> tNodes = b.getGraph().addDuplicates(oNodes, oNode.graph(), 1, transplanted);
-                assert tNodes.size() == 1;
+                /*
+                 * The following assertion looks strange, but NodeMap.size() is not implemented so
+                 * we need to iterate the map to get the size.
+                 */
+                assert StreamSupport.stream(tNodes.getKeys().spliterator(), false).count() == 1;
                 tNode = tNodes.get(oNode);
 
             } else {
@@ -768,12 +834,27 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             }
 
             tNode = b.add((ValueNode) tNode);
+            assert tNode.verify();
             transplanted.put(oNode, tNode);
             return (ValueNode) tNode;
         }
 
         private void transplantInvoke(FixedWithNextNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
             maybeEmitClassInitialization(b, invokeKind == InvokeKind.Static, tTargetMethod.getDeclaringClass());
+
+            if (invokeResultKind == JavaKind.Void) {
+                /*
+                 * Invokedynamics can be parsed into a NewInstanceNode & InvokeNode combo. In this
+                 * situation, it is necessary to push the NewInstanceNode onto the stack so that it
+                 * is included in the stateDuring FrameState of the InvokeNode.
+                 */
+                Node pred = oNode.predecessor();
+                if (pred.getClass() == NewInstanceNode.class && transplanted.containsKey(pred)) {
+                    Node tNew = transplanted.get(pred);
+                    pushToFrameStack((ValueNode) tNew);
+                }
+            }
+
             b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false);
 
             if (invokeResultKind != JavaKind.Void) {
@@ -783,6 +864,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * intrinsification can happen.
                  */
                 transplanted.put(oNode, b.pop(invokeResultKind));
+            } else {
+                popTempFrameStackValue();
             }
         }
 
@@ -845,15 +928,16 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     private static boolean reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
+        if (SubstrateOptions.areMethodHandlesSupported()) {
+            /* Do nothing, the method will be compiled elsewhere */
+            return false;
+        }
+
         String message = "Invoke with MethodHandle argument could not be reduced to at most a single call or single field access. " +
                         "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
                         "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
 
-        if (SubstrateOptions.areMethodHandlesSupported()) {
-            /* Do nothing, the method will be compiled elsewhere */
-            return false;
-
-        } else if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+        if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             /*
              * Ensure that we have space on the expression stack for the (unused) return value of
              * the invoke.
@@ -862,7 +946,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             b.handleReplacedInvoke(InvokeKind.Static, b.getMetaAccess().lookupJavaMethod(unsupportedFeatureMethod),
                             new ValueNode[]{ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph())}, false);
             /* The invoked method throws an exception and therefore never returns. */
-            b.append(new DeadEndNode());
+            b.append(new LoweredDeadEndNode());
             return true;
 
         } else {

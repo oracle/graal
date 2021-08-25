@@ -86,11 +86,13 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
-    public static void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor) {
+    public static void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         Pointer rememberedSetStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();
         if (CardTable.isDirty(rememberedSetStart, objectIndex)) {
-            CardTable.setClean(rememberedSetStart, objectIndex);
+            if (clean) {
+                CardTable.setClean(rememberedSetStart, objectIndex);
+            }
 
             Pointer objectsStart = UnalignedHeapChunk.getObjectStart(chunk);
             Object obj = objectsStart.toObject();

@@ -26,6 +26,7 @@ package com.oracle.svm.core.meta;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -171,7 +172,7 @@ public abstract class SubstrateObjectConstant implements JavaConstant, Compressi
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + '[' + getJavaKind().getJavaName() + ']';
+        return ClassUtil.getUnqualifiedName(getClass()) + '[' + getJavaKind().getJavaName() + ']';
     }
 
     public abstract ResolvedJavaType getType(MetaAccessProvider provider);

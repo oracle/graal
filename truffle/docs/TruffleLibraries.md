@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Library Guide
+permalink: /graalvm-as-a-platform/language-implementation-framework/TruffleLibraries/
+---
 # Truffle Library Guide
 
 Truffle Libraries allow language implementations to use polymorphic dispatch for receiver types with support for implementation-specific caching/profiling and automatic support for uncached dispatch.

@@ -45,7 +45,7 @@ import sys
 import zipfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections import OrderedDict
-from os.path import exists
+from os.path import exists, isdir, join
 
 import mx
 import mx_benchmark
@@ -229,10 +229,11 @@ def _truffle_gate_runner(args, tasks):
     with Task('Truffle Signature Tests', tasks) as t:
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
-        if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
-    with Task('Truffle DSL max state bit tests', tasks) as t:
-        if t:
-            _truffle_gate_state_bitwidth_tests()
+        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast']))
+    if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
+        with Task('Truffle DSL max state bit tests', tasks) as t:
+            if t:
+                _truffle_gate_state_bitwidth_tests()
 
 # The Truffle DSL specialization state bit width computation is complicated and
 # rarely used as the default maximum bit width of 32 is rarely exceeded. Therefore
@@ -240,7 +241,7 @@ def _truffle_gate_runner(args, tasks):
 # force using multiple state fields for the tests. This makes sure the tests
 # do not break for rarely used combination of features and bit widths.
 def _truffle_gate_state_bitwidth_tests():
-    runs = [1, 2, 4, 8, 16, 32, 64]
+    runs = [1, 2, 4, 8, 16, 64]
     for run_bits in runs:
         build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
                       '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]
@@ -306,15 +307,20 @@ def _collect_class_path_entries_by_resource(requiredResources, entries_collector
     """
     def has_resource(dist):
         if dist.isJARDistribution() and exists(dist.path):
-            with zipfile.ZipFile(dist.path, "r") as zf:
+            if isdir(dist.path):
                 for requiredResource in requiredResources:
-                    try:
-                        zf.getinfo(requiredResource)
-                    except KeyError:
-                        pass
-                    else:
+                    if exists(join(dist.path, requiredResource)):
                         return True
-                return False
+            else:
+                with zipfile.ZipFile(dist.path, "r") as zf:
+                    for requiredResource in requiredResources:
+                        try:
+                            zf.getinfo(requiredResource)
+                        except KeyError:
+                            pass
+                        else:
+                            return True
+                    return False
         else:
             return False
     _collect_class_path_entries(has_resource, entries_collector, properties_collector)
@@ -412,11 +418,13 @@ class TruffleArchiveParticipant:
         self.services = services
         self.arc = arc
 
-    def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
+    def __process__(self, arcname, contents_supplier, is_source):
+        if is_source:
+            return False
         m = TruffleArchiveParticipant.providersRE.match(arcname)
         if m:
             provider = m.group(2)
-            for service in _decode(contents).strip().split(os.linesep):
+            for service in _decode(contents_supplier()).strip().split(os.linesep):
                 assert service
                 version = m.group(1)
                 if version is None:

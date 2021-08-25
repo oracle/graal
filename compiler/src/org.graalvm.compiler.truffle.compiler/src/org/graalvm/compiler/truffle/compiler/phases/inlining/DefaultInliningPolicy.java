@@ -110,10 +110,14 @@ final class DefaultInliningPolicy implements InliningPolicy {
     }
 
     private void inline(CallTree tree) {
+        String inlineOnly = options.get(PolyglotCompilerOptions.InlineOnly);
         final int inliningBudget = options.get(PolyglotCompilerOptions.InliningInliningBudget);
         final PriorityQueue<CallNode> inlineQueue = getQueue(tree, CallNode.State.Expanded);
         CallNode candidate;
         while ((candidate = inlineQueue.poll()) != null) {
+            if (!InliningPolicy.acceptForInline(candidate, inlineOnly)) {
+                continue;
+            }
             if (candidate.isTrivial()) {
                 candidate.inline();
                 continue;

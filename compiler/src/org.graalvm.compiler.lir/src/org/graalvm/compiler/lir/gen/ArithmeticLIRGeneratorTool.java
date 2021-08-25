@@ -72,6 +72,8 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitXor(Value a, Value b);
 
+    Value emitXorFP(Value a, Value b);
+
     Value emitShl(Value a, Value b);
 
     Value emitShr(Value a, Value b);
@@ -91,6 +93,10 @@ public interface ArithmeticLIRGeneratorTool {
     Value emitMathAbs(Value input);
 
     Value emitMathSqrt(Value input);
+
+    Value emitMathSignum(Value input);
+
+    Value emitMathCopySign(Value magnitude, Value sign);
 
     Value emitBitCount(Value operand);
 

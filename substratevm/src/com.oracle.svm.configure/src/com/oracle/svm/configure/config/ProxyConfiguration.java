@@ -26,14 +26,24 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 
-public class ProxyConfiguration implements JsonPrintable {
+public class ProxyConfiguration implements ConfigurationBase {
     private final ConcurrentHashMap.KeySetView<List<String>, Boolean> interfaceLists = ConcurrentHashMap.newKeySet();
+
+    public ProxyConfiguration() {
+    }
+
+    public ProxyConfiguration(ProxyConfiguration other) {
+        for (List<String> interfaceList : other.interfaceLists) {
+            interfaceLists.add(new ArrayList<>(interfaceList));
+        }
+    }
 
     public void add(List<String> interfaceList) {
         interfaceLists.add(interfaceList);
@@ -41,6 +51,14 @@ public class ProxyConfiguration implements JsonPrintable {
 
     public boolean contains(List<String> interfaceList) {
         return interfaceLists.contains(interfaceList);
+    }
+
+    public boolean contains(String... interfaces) {
+        return contains(Arrays.asList(interfaces));
+    }
+
+    public void removeAll(ProxyConfiguration other) {
+        interfaceLists.removeAll(other.interfaceLists);
     }
 
     @Override
@@ -71,6 +89,12 @@ public class ProxyConfiguration implements JsonPrintable {
             prefix = ",";
         }
         writer.unindent().newline();
-        writer.append(']').newline();
+        writer.append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return interfaceLists.isEmpty();
+    }
+
 }

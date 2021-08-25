@@ -40,6 +40,10 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -47,8 +51,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"unused", "static-method"})
@@ -66,6 +68,7 @@ public class WasmType implements TruffleObject {
     public static final WasmType VOID = new WasmType("void");
 
     public static String toString(int valueType) {
+        CompilerAsserts.neverPartOfCompilation();
         switch (valueType) {
             case I32_TYPE:
                 return "i32";

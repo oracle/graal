@@ -30,9 +30,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 @TargetClass(className = "com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType {
 
-    @Alias
-    static native Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType[] values();
-
     @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType POINTER;
 
     @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType VOID;

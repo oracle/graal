@@ -14,9 +14,7 @@ Sulong is part of [GraalVM](https://www.graalvm.org). If you are a user of Graal
 to run C/C++/... programs on GraalVM, we recommend downloading a pre-built binary of
 [GraalVM](https://www.graalvm.org/downloads).
 
-See [GraalVM LLVM Runtime](docs/user/README.md) and [graalvm.org](https://www.graalvm.org) for
-documentation about using the GraalVM LLVM runtime.
-
+See [GraalVM LLVM Runtime](../docs/reference-manual/llvm/README.md) and [graalvm.org](https://www.graalvm.org/reference-manual/llvm/) for documentation about using the GraalVM LLVM runtime.
 
 # Contributor Documentation
 

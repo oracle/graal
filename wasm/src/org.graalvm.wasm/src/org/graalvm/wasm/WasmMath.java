@@ -109,6 +109,20 @@ public final class WasmMath {
     }
 
     /**
+     * Returns the value of the {@code long} argument as an {@code int}; throwing an exception if
+     * the value overflows an unsigned {@code int}.
+     *
+     * @throws ArithmeticException if the argument is outside of the unsigned int32 range
+     * @since 1.8
+     */
+    public static int toUnsignedIntExact(long value) {
+        if (value < 0 || value > 0xffff_ffffL) {
+            throw new ArithmeticException("unsigned int overflow");
+        }
+        return (int) value;
+    }
+
+    /**
      * Converts the given unsigned {@code int} to the closest {@code float} value.
      */
     public static float unsignedIntToFloat(int x) {

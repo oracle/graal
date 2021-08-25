@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -62,96 +61,90 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
 
         public abstract void executeWithTarget(LLVMPointer receiver, long offset, long value);
 
-        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-        protected void doOp(LLVMNativePointer addr, long offset, long value,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI64(this, addr.asNative() + offset, value);
+        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        protected void doOp(LLVMNativePointer addr, long offset, long value) {
+            getLanguage().getLLVMMemory().putI64(this, addr.asNative() + offset, value);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        @Specialization(guards = "isAutoDerefHandle(addr)")
         protected static void doOpDerefHandleI64(LLVMNativePointer addr, long offset, long value,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             doOpManagedI64(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doOpDerefHandleI64")
+        @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doOpDerefHandleI64")
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, Object value,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-        protected void doOpNative(LLVMNativePointer addr, long offset, LLVMNativePointer value,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI64(this, addr.asNative() + offset, value.asNative());
+        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        protected void doOpNative(LLVMNativePointer addr, long offset, LLVMNativePointer value) {
+            getLanguage().getLLVMMemory().putI64(this, addr.asNative() + offset, value.asNative());
         }
 
-        @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(language, addr)")
+        @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(addr)")
         protected void doOp(LLVMNativePointer addr, long offset, Object value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI64(this, addr.asNative() + offset, toAddress.executeWithTarget(value).asNative());
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress) {
+            getLanguage().getLLVMMemory().putI64(this, addr.asNative() + offset, toAddress.executeWithTarget(value).asNative());
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doOpManagedI64(LLVMManagedPointer address, long offset, long value,
                         @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeI64(address.getObject(), address.getOffset() + offset, value);
         }
 
         @Specialization(limit = "3", replaces = "doOpManagedI64")
+        @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, Object value,
                         @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
             nativeWrite.writeGenericI64(address.getObject(), address.getOffset() + offset, value);
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(language, address)")
-    protected void doOp(LLVMNativePointer address, long value,
-                    @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putI64(this, address, value);
+    @Specialization(guards = "!isAutoDerefHandle(address)")
+    protected void doOp(LLVMNativePointer address, long value) {
+        getLanguage().getLLVMMemory().putI64(this, address, value);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)")
+    @Specialization(guards = "isAutoDerefHandle(addr)")
     protected static void doOpDerefHandleI64(LLVMNativePointer addr, long value,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         doOpManagedI64(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)", replaces = "doOpDerefHandleI64")
+    @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doOpDerefHandleI64")
     protected static void doOpDerefHandle(LLVMNativePointer addr, Object value,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         doOpManaged(getReceiver.execute(addr), value, nativeWrite);
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(language, address)")
-    protected void doOpNative(LLVMNativePointer address, LLVMNativePointer value,
-                    @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putI64(this, address, value.asNative());
+    @Specialization(guards = "!isAutoDerefHandle(address)")
+    protected void doOpNative(LLVMNativePointer address, LLVMNativePointer value) {
+        getLanguage().getLLVMMemory().putI64(this, address, value.asNative());
     }
 
-    @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(language, addr)")
+    @Specialization(replaces = "doOpNative", guards = "!isAutoDerefHandle(addr)")
     protected void doOp(LLVMNativePointer addr, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
-                    @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putI64(this, addr, toAddress.executeWithTarget(value).asNative());
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress) {
+        getLanguage().getLLVMMemory().putI64(this, addr, toAddress.executeWithTarget(value).asNative());
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static void doOpManagedI64(LLVMManagedPointer address, long value,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeI64(address.getObject(), address.getOffset(), value);
     }
 
     @Specialization(limit = "3", replaces = "doOpManagedI64")
+    @GenerateAOT.Exclude
     protected static void doOpManaged(LLVMManagedPointer address, Object value,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         nativeWrite.writeGenericI64(address.getObject(), address.getOffset(), value);

@@ -40,18 +40,20 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.TruffleLanguage.Env;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.nodes.Node;
 
 public final class WasmContext {
-    private final Uid uid;
     private final Env env;
     private final WasmLanguage language;
     private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
@@ -64,12 +66,7 @@ public final class WasmContext {
     private int moduleNameCount;
     private final FdManager filesManager;
 
-    public static WasmContext getCurrent() {
-        return WasmLanguage.getCurrentContext();
-    }
-
     public WasmContext(Env env, WasmLanguage language) {
-        this.uid = new Uid();
         this.env = env;
         this.language = language;
         this.equivalenceClasses = new HashMap<>();
@@ -82,10 +79,6 @@ public final class WasmContext {
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
         instantiateBuiltinInstances();
-    }
-
-    public Uid uid() {
-        return uid;
     }
 
     public Env environment() {
@@ -204,6 +197,10 @@ public final class WasmContext {
         }
     }
 
-    public class Uid {
+    private static final ContextReference<WasmContext> REFERENCE = ContextReference.create(WasmLanguage.class);
+
+    public static WasmContext get(Node node) {
+        return REFERENCE.get(node);
     }
+
 }

@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Native Function Interface
+permalink: /graalvm-as-a-platform/language-implementation-framework/NFI/
+---
 # Truffle Native Function Interface
 
 Truffle includes a way to call native functions, called the Native Function Interface (NFI).

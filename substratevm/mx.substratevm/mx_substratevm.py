@@ -34,8 +34,7 @@ import tempfile
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
-from os.path import join, exists, basename, dirname
-from shutil import move
+from os.path import join, exists, dirname
 import pipes
 from xml.dom.minidom import parse
 from argparse import ArgumentParser
@@ -168,6 +167,9 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
         primary_suite_dir = config.primary_suite_dir
     else:
         config_args = []
+        dynamic_imports = [x for x, _ in mx.get_dynamic_imports()]
+        if dynamic_imports:
+            config_args += ['--dynamicimports', ','.join(dynamic_imports)]
         primary_suite_dir = None
 
     args = config_args + cmd_args
@@ -358,7 +360,15 @@ def svm_gate_body(args, tasks):
                 # ContextPreInitializationNativeImageTest can only run with its own image.
                 # See class javadoc for details.
                 native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args)
-                native_unittest(['com.oracle.truffle.api.test.TruffleSafepointTest'] + truffle_args)
+
+                # Regular Truffle tests that can run with isolated compilation
+                native_unittest(['com.oracle.truffle.api.test.TruffleSafepointTest',
+                                 'com.oracle.truffle.api.staticobject.test',
+                                 'com.oracle.truffle.api.test.polyglot.ContextPolicyTest'] + truffle_args)
+
+                # White Box Truffle compilation tests that need access to compiler graphs.
+                compiler_args = truffle_args + ['-H:-SupportCompileInIsolates']
+                native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + compiler_args)
 
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
@@ -416,7 +426,12 @@ def native_unittests_task():
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
 
-    native_unittest(['--build-args', _native_unittest_features])
+    additional_build_args = [
+        '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
+        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
+    ]
+
+    native_unittest(['--build-args', _native_unittest_features] + additional_build_args)
 
 
 def javac_image_command(javac_path):
@@ -426,7 +441,6 @@ def javac_image_command(javac_path):
 
 def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False):
     build_args = build_args or []
-
     javaProperties = {}
     for dist in suite.dists:
         if isinstance(dist, mx.ClasspathDependency):
@@ -440,29 +454,24 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
     run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
-    junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
+    junit_test_dir = junit_native_dir if preserve_image else tempfile.mkdtemp(dir=junit_native_dir)
     try:
         unittest_deps = []
         def dummy_harness(test_deps, vm_launcher, vm_args):
             unittest_deps.extend(test_deps)
-        unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
+        unittest_file = join(junit_test_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, blacklist, whitelist, None, None)
         if not exists(unittest_file):
             mx.abort('No matching unit tests found. Skip image build and execution.')
         with open(unittest_file, 'r') as f:
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-        unittest_image = native_image(build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
-        if preserve_image:
-            build_dir = join(svmbuild_dir(), 'junit')
-            mkpath(build_dir)
-            unittest_image_dst = join(build_dir, basename(unittest_image))
-            move(unittest_image, unittest_image_dst)
-            unittest_image = unittest_image_dst
+        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_test_dir])
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:
-        remove_tree(junit_tmp_dir)
+        if not preserve_image:
+            remove_tree(junit_test_dir)
 
 _mask_str = '#'
 
@@ -506,7 +515,7 @@ def _native_unittest(native_image, cmdline_args):
         except IOError:
             mx.log('warning: could not read blacklist: ' + blacklist)
 
-    unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test']
+    unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
     _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image)
 
 
@@ -831,9 +840,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            main_module="org.graalvm.nativeimage.driver",
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
-            main_module="org.graalvm.nativeimage.driver",
             main_class=_native_image_launcher_main_class(),
             build_args=[],
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
@@ -841,17 +850,21 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     library_configs=[
         mx_sdk_vm.LibraryConfig(
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
             destination="<lib:native-image-agent>",
             jvm_library=True,
             jar_distributions=[
+                'substratevm:SVM_CONFIGURE',
                 'substratevm:JVMTI_AGENT_BASE',
                 'substratevm:SVM_AGENT',
             ],
             build_args=[
-                '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature'
+                '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
+                '--enable-url-protocols=jar',
             ],
         ),
         mx_sdk_vm.LibraryConfig(
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
             destination="<lib:native-image-diagnostics-agent>",
             jvm_library=True,
             jar_distributions=[
@@ -968,7 +981,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             jar_distributions=jar_distributions,
             build_args=[
                 '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
-                '--initialize-at-build-time',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowFoldMethods',
                 '-H:+ReportExceptionStackTraces',
@@ -1005,6 +1017,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            main_module="org.graalvm.nativeimage.configure",
             destination="bin/<exe:native-image-configure>",
             jar_distributions=["substratevm:SVM_CONFIGURE"],
             main_class="com.oracle.svm.configure.ConfigurationTool",
@@ -1085,17 +1099,28 @@ def hellomodule(args):
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
-    config = GraalVMConfig.build(native_images=['native-image'])
+    config = GraalVMConfig.build(native_images=['native-image', 'lib:native-image-agent', 'lib:native-image-diagnostics-agent'])
     with native_image_context(hosted_assertions=False, config=config) as native_image:
+        module_path_sep = ';' if mx.is_windows() else ':'
+        moduletest_run_args = [
+            '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
+            '--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
+            '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'
+        ]
+        mx.log('Running module-tests on JVM:')
         build_dir = join(svmbuild_dir(), 'hellomodule')
+        mx.run([
+            vm_executable_path('java', config),
+            # also test if native-image-agent works
+            '-agentlib:native-image-agent=config-output-dir=' + join(build_dir, 'config-output-dir-{pid}-{datetime}/'),
+            ] + moduletest_run_args)
+
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
-        module_path_sep = ';' if mx.is_windows() else ':'
         built_image = native_image([
-            '--verbose', '-ea', '-H:Path=' + build_dir,
-            '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
-            '--add-exports=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
-            '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
+            '--verbose', '-H:Path=' + build_dir,
+            '--trace-class-initialization=hello.lib.Greeter', # also test native-image-diagnostics-agent
+            ] + moduletest_run_args)
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])
 
@@ -1122,26 +1147,35 @@ def clinittest(args):
 
         # Build and run the example
         native_image(
-            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.TestClassInitializationMustBeSafe',
-             '-H:Features=com.oracle.svm.test.TestClassInitializationMustBeSafeFeature',
+            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarly',
+             '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarlyFeature',
              '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + args)
         mx.run([join(build_dir, 'clinittest')])
 
         # Check the reports for initialized classes
-        def check_class_initialization(classes_file_name, marker, prefix=''):
+        def check_class_initialization(classes_file_name):
             classes_file = os.path.join(build_dir, 'reports', classes_file_name)
+            wrongly_initialized_lines = []
+
+            def checkLine(line, marker, init_kind, msg, wrongly_initialized_lines):
+                if marker + "," in line and not ((init_kind + ",") in line and msg in line):
+                    wrongly_initialized_lines += [(line,
+                                                   "Classes marked with " + marker + " must have init kind " + init_kind + " and message " + msg)]
             with open(classes_file) as f:
-                wrongly_initialized_classes = [line.strip() for line in f if line.strip().startswith(prefix) and marker not in line.strip()]
-                if len(wrongly_initialized_classes) > 0:
-                    mx.abort("Only classes with marker " + marker + " must be in file " + classes_file + ". Found:\n" +
-                             str(wrongly_initialized_classes))
+                for line in f:
+                    checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
+                    checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
+                if len(wrongly_initialized_lines) > 0:
+                    msg = ""
+                    for (line, error) in wrongly_initialized_lines:
+                        msg += "In line \n" + line + error + "\n"
+                    mx.abort("Error in initialization reporting:\n" + msg)
 
         reports = os.listdir(os.path.join(build_dir, 'reports'))
-        delayed_classes = next(report for report in reports if report.startswith('run_time_classes'))
-        safe_classes = next(report for report in reports if report.startswith('safe_classes'))
+        all_classes_file = next(report for report in reports if report.startswith('class_initialization_report'))
 
-        check_class_initialization(delayed_classes, 'MustBeDelayed', prefix='com.oracle.svm.test')
-        check_class_initialization(safe_classes, 'MustBeSafe')
+        check_class_initialization(all_classes_file)
 
     native_image_context_run(build_and_test_clinittest_image, args)
 

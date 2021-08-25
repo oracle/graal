@@ -38,7 +38,6 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.ValueConsumer;
 import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
@@ -125,8 +124,8 @@ public final class HotSpotZapRegistersPhase extends PostAllocationOptimizationPh
                     inst.visitEachTemp(tempConsumer);
                     inst.visitEachOutput(defConsumer);
 
-                    ZapRegistersOp zap = diagnosticLirGenTool.createZapRegisters(destroyedRegisters.toArray(new Register[destroyedRegisters.size()]));
-                    buffer.append(index + 1, (LIRInstruction) zap);
+                    LIRInstruction zap = diagnosticLirGenTool.createZapRegisters(destroyedRegisters.toArray(new Register[destroyedRegisters.size()]));
+                    buffer.append(index + 1, zap);
                     debug.log("Insert ZapRegister after %s", inst);
                 }
             }

@@ -40,11 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.nodes.Node;
-
-public abstract class CharMatcher extends Node {
-
-    public static final CharMatcher[] EMPTY = {};
+public abstract class CharMatcher {
 
     /**
      * Check if a given code point matches this {@link CharMatcher}.
@@ -53,13 +49,13 @@ public abstract class CharMatcher extends Node {
      * @return {@code true} if the character matches.
      * @see com.oracle.truffle.api.CompilerDirectives#isPartialEvaluationConstant(Object)
      */
-    public abstract boolean execute(int c);
+    public abstract boolean match(int c);
 
     /**
      * Conservatively estimate the equivalent number of integer comparisons of calling
-     * {@link #execute(int)}.
+     * {@link #match(int)}.
      *
-     * @return the number of integer comparisons one call to {@link #execute(int)} is roughly
+     * @return the number of integer comparisons one call to {@link #match(int)} is roughly
      *         equivalent to. Array loads are treated as two comparisons.
      */
     public abstract int estimatedCost();

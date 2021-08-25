@@ -60,6 +60,8 @@ public interface SharedMethod extends ResolvedJavaMethod {
      */
     Deoptimizer.StubType getDeoptStubType();
 
+    boolean hasCodeOffsetInImage();
+
     int getCodeOffsetInImage();
 
     int getDeoptOffsetInImage();

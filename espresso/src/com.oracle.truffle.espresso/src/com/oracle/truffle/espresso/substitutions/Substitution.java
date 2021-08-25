@@ -22,17 +22,53 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.METHOD;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {METHOD})
-public @interface Substitution {
+/**
+ * <p>
+ * Marks methods and classes (Truffle's {@link com.oracle.truffle.api.nodes.Node nodes} to be used
+ * as substitutions for guest Java methods.
+ *
+ * Usages of this annotation must enclosed by a final class annotated with
+ * {@link EspressoSubstitutions}.
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.METHOD, ElementType.TYPE})
+@interface Substitution {
+    /**
+     * Substituted method name.
+     *
+     * <p>
+     * Setting this parameter overrides any automatic name assigned to the substitution.
+     *
+     * <h3>Example:</h3>
+     * 
+     * <pre>
+     * &#064;Substitution(methodName = "&lt;init&gt;")
+     * </pre>
+     */
     String methodName() default "";
 
+    /**
+     * Set to <code>true</code> to substitute instance methods. <code>false</code> for static
+     * methods.
+     *
+     * <p>
+     * The receiver's type is never part of the substituted method signature. For instance method
+     * substitutions, the receiver parameter (<i>this</i>) must be present.
+     *
+     * <h3>Example substitution for {@link Object#hashCode() Object#hashCode()I}</h3>
+     *
+     * <pre>
+     * &#064;Substitution(hasReceiver = true)
+     * public static int hashCode(@JavaType(Object.class) StaticObject receiver) {
+     *     return 42;
+     * }
+     * </pre>
+     */
     boolean hasReceiver() default false;
 
     Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;

@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -50,13 +52,22 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class StackTraceEntry {
 
+    private static final Set<Class<?>> DEFAULT_TAGS;
+    static {
+        Set<Class<?>> tags = new HashSet<>();
+        tags.add(RootTag.class);
+        DEFAULT_TAGS = Collections.unmodifiableSet(tags);
+    }
+
     /*
      * Unknown is used when it is used as part of a payload.
      */
     static final byte STATE_UNKNOWN = 0;
     static final byte STATE_INTERPRETED = 1;
-    static final byte STATE_COMPILED = 2;
-    static final byte STATE_COMPILATION_ROOT = 3;
+    static final byte STATE_FIRST_TIER_COMPILED = 2;
+    static final byte STATE_FIRST_TIER_COMPILATION_ROOT = 3;
+    static final byte STATE_LAST_TIER_COMPILED = 4;
+    static final byte STATE_LAST_TIER_COMPILATION_ROOT = 5;
 
     private final SourceSection sourceSection;
     private final String rootName;
@@ -65,11 +76,28 @@ public final class StackTraceEntry {
     private final byte state;
     private volatile StackTraceElement stackTraceElement;
 
+    StackTraceEntry(String rootName) {
+        this.sourceSection = null;
+        this.rootName = rootName;
+        this.tags = DEFAULT_TAGS;
+        this.instrumentedNode = null;
+        this.state = STATE_UNKNOWN;
+        this.stackTraceElement = null;
+    }
+
     StackTraceEntry(Instrumenter instrumenter, EventContext context, byte state) {
         this.tags = instrumenter.queryTags(context.getInstrumentedNode());
         this.sourceSection = context.getInstrumentedSourceSection();
         this.instrumentedNode = context.getInstrumentedNode();
         this.rootName = extractRootName(instrumentedNode);
+        this.state = state;
+    }
+
+    StackTraceEntry(Set<Class<?>> tags, SourceSection sourceSection, RootNode root, Node node, byte state) {
+        this.tags = tags;
+        this.sourceSection = sourceSection;
+        this.instrumentedNode = node;
+        this.rootName = extractRootName(root);
         this.state = state;
     }
 
@@ -97,7 +125,7 @@ public final class StackTraceEntry {
      * @since 19.0
      */
     public boolean isCompiled() {
-        return state == STATE_COMPILED || state == STATE_COMPILATION_ROOT;
+        return state != STATE_INTERPRETED && state != STATE_UNKNOWN;
     }
 
     /**
@@ -118,7 +146,7 @@ public final class StackTraceEntry {
      * @since 19.0
      */
     public boolean isInlined() {
-        return state == STATE_COMPILED;
+        return state == STATE_FIRST_TIER_COMPILED || state == STATE_LAST_TIER_COMPILED;
     }
 
     /**
@@ -195,11 +223,7 @@ public final class StackTraceEntry {
             return "<Unknown>";
         }
         Source source = sourceSection.getSource();
-        if (source == null) {
-            // TODO the source == null branch can be removed if the deprecated
-            // SourceSection#createUnavailable has be removed.
-            return "<Unknown>";
-        } else if (source.getPath() == null) {
+        if (source.getPath() == null) {
             return source.getName();
         } else {
             return source.getPath();
@@ -231,7 +255,7 @@ public final class StackTraceEntry {
             if (rootNode.getName() == null) {
                 return rootNode.toString();
             } else {
-                return rootNode.getName();
+                return rootNode.getQualifiedName();
             }
         } else {
             return "<Unknown>";
@@ -249,7 +273,7 @@ public final class StackTraceEntry {
      */
     @Override
     public int hashCode() {
-        return 31 * (31 + rootName.hashCode()) + sourceSection.hashCode();
+        return 31 * (31 + rootName.hashCode()) + (sourceSection != null ? sourceSection.hashCode() : 0);
     }
 
     /**
@@ -278,10 +302,10 @@ public final class StackTraceEntry {
             case STATE_UNKNOWN:
                 s = "";
                 break;
-            case STATE_COMPILATION_ROOT:
+            case STATE_LAST_TIER_COMPILATION_ROOT:
                 s = ", Interpreted";
                 break;
-            case STATE_COMPILED:
+            case STATE_LAST_TIER_COMPILED:
                 s = ", Compiled";
                 break;
             case STATE_INTERPRETED:

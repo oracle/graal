@@ -8,4 +8,8 @@
     vm_suite:: "vm",
     compiler_suite:: "compiler"
   },
+
+  native_image:: {
+    vm_suite:: "vm",
+  }
 }

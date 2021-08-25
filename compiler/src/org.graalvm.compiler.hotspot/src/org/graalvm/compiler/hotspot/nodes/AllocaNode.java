@@ -47,23 +47,24 @@ import jdk.vm.ci.meta.Value;
 public final class AllocaNode extends FixedWithNextNode implements LIRLowerable {
 
     public static final NodeClass<AllocaNode> TYPE = NodeClass.create(AllocaNode.class);
-    /**
-     * The number of slots in block.
-     */
-    protected final int slots;
 
-    public AllocaNode(@InjectedNodeParameter WordTypes wordTypes, int slots) {
+    private final int sizeInBytes;
+    private final int alignmentInBytes;
+
+    public AllocaNode(@InjectedNodeParameter WordTypes wordTypes, int sizeInBytes, int alignmentInBytes) {
         super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
-        this.slots = slots;
+        assert sizeInBytes > 0 && alignmentInBytes > 0;
+        this.sizeInBytes = sizeInBytes;
+        this.alignmentInBytes = alignmentInBytes;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        VirtualStackSlot array = gen.getLIRGeneratorTool().allocateStackSlots(slots);
+        VirtualStackSlot array = gen.getLIRGeneratorTool().allocateStackMemory(sizeInBytes, alignmentInBytes);
         Value result = gen.getLIRGeneratorTool().emitAddress(array);
         gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native Word alloca(@ConstantNodeParameter int slots);
+    public static native Word alloca(@ConstantNodeParameter int sizeInBytes, @ConstantNodeParameter int alignmentInBytes);
 }

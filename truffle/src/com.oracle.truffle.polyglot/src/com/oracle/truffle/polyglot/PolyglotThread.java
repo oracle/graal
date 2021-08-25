@@ -44,20 +44,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotThread extends Thread {
 
     private final PolyglotLanguageContext languageContext;
 
-    PolyglotContextImpl context;
-
-    final CallTarget callTarget;
+    private final CallTarget callTarget;
 
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group, long stackSize) {
         super(group, runnable, createDefaultName(languageContext), stackSize);
         this.languageContext = languageContext;
         setUncaughtExceptionHandler(languageContext.getPolyglotExceptionHandler());
-        this.callTarget = ThreadSpawnRootNode.lookup(languageContext);
+        this.callTarget = ThreadSpawnRootNode.lookup(languageContext.getLanguageInstance());
     }
 
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group) {
@@ -97,25 +98,34 @@ final class PolyglotThread extends Thread {
         void execute();
     }
 
-    private static final class ThreadSpawnRootNode extends HostToGuestRootNode {
+    static final class ThreadSpawnRootNode extends RootNode {
 
-        ThreadSpawnRootNode(PolyglotLanguageContext languageContext) {
-            super(languageContext);
+        ThreadSpawnRootNode(PolyglotLanguageInstance languageInstance) {
+            super(languageInstance.spi);
         }
 
         @Override
-        protected Class<?> getReceiverType() {
-            return PolyglotThread.class;
+        public Object execute(VirtualFrame frame) {
+            Object[] args = frame.getArguments();
+            return executeImpl((PolyglotLanguageContext) args[0], (PolyglotThread) args[1], (PolyglotThreadRunnable) args[2]);
         }
 
-        @Override
-        protected boolean needsEnter() {
-            return false;
-        }
-
-        @Override
-        protected boolean needsExceptionWrapping() {
-            return false;
+        @TruffleBoundary
+        private static Object executeImpl(PolyglotLanguageContext languageContext, PolyglotThread thread, PolyglotThreadRunnable run) {
+            Object[] prev = languageContext.enterThread(thread);
+            assert prev == null; // is this assertion correct?
+            try {
+                run.execute();
+            } catch (CancelExecution cancel) {
+                if (PolyglotEngineOptions.TriggerUncaughtExceptionHandlerForCancel.getValue(languageContext.context.engine.getEngineOptionValues())) {
+                    throw cancel;
+                } else {
+                    return null;
+                }
+            } finally {
+                languageContext.leaveAndDisposePolyglotThread(prev, thread);
+            }
+            return null;
         }
 
         @Override
@@ -123,34 +133,10 @@ final class PolyglotThread extends Thread {
             return true;
         }
 
-        @Override
-        @TruffleBoundary
-        protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
-            PolyglotThread thread = (PolyglotThread) receiver;
-            PolyglotThreadRunnable run = (PolyglotThreadRunnable) args[HostToGuestRootNode.ARGUMENT_OFFSET];
-            PolyglotContextImpl prev;
-            try {
-                prev = languageContext.enterThread(thread);
-            } catch (PolyglotEngineException polyglotException) {
-                if (polyglotException.closingContext) {
-                    return null;
-                } else {
-                    throw polyglotException;
-                }
-            }
-            assert prev == null; // is this assertion correct?
-            try {
-                run.execute();
-            } finally {
-                languageContext.leaveAndDisposePolyglotThread(prev, thread);
-            }
-            return null;
-        }
-
-        public static CallTarget lookup(PolyglotLanguageContext languageContext) {
-            CallTarget target = lookupHostCodeCache(languageContext, ThreadSpawnRootNode.class, CallTarget.class);
+        public static CallTarget lookup(PolyglotLanguageInstance languageInstance) {
+            CallTarget target = languageInstance.lookupCallTarget(ThreadSpawnRootNode.class);
             if (target == null) {
-                target = installHostCodeCache(languageContext, ThreadSpawnRootNode.class, createTarget(new ThreadSpawnRootNode(languageContext)), CallTarget.class);
+                target = languageInstance.installCallTarget(new ThreadSpawnRootNode(languageInstance));
             }
             return target;
         }

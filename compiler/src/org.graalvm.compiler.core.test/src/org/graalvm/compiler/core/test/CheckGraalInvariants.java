@@ -159,7 +159,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             String javaClassPath = System.getProperty("java.class.path");
             if (javaClassPath != null) {
                 for (String path : javaClassPath.split(File.pathSeparator)) {
-                    if (path.contains("libgraal") && !path.contains("processor")) {
+                    if (path.contains("libgraal") && !path.contains("processor") && !path.contains("management")) {
                         classpath += File.pathSeparator + path;
                     }
                 }

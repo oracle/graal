@@ -55,15 +55,20 @@ import java.security.cert.CertPathValidator;
 import java.security.cert.CertStore;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyAgreement;
@@ -96,8 +101,11 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.jdk.SecurityProvidersFilter;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -106,18 +114,26 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
 @AutomaticFeature
-public class SecurityServicesFeature extends JNIRegistrationUtil implements Feature {
+public class SecurityServicesFeature extends JNIRegistrationUtil implements Feature, SecurityProvidersFilter {
 
-    static class Options {
+    public static class Options {
         @Option(help = "Enable automatic registration of security services.")//
         public static final HostedOptionKey<Boolean> EnableSecurityServicesFeature = new HostedOptionKey<>(true);
 
         @Option(help = "Enable tracing of security services automatic registration.")//
-        static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
+
+        @Option(help = "Comma-separated list of additional security service types (fully qualified class names) for automatic registration. Note that these must be JCA compliant.")//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+        @Option(help = "Comma-separated list of additional security provider fully qualified class names to mark as used." +
+                        "Note that this option is only necessary if you use custom engine classes not available in JCA that are not JCA compliant.")//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     /*
@@ -125,7 +141,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
      * Documentation:
      * https://docs.oracle.com/javase/8/docs/technotes/guides/security/SunProviders.html
      * https://docs.oracle.com/en/java/javase/11/security/oracle-providers.html
-     * 
+     *
      * The security services names are defined in Java Cryptography Architecture Standard Algorithm
      * Name Documentation:
      * https://docs.oracle.com/javase/8/docs/technotes/guides/security/StandardNames.html.
@@ -158,11 +174,31 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     /** All available services, organized by service type. */
     private Map<String, Set<Service>> availableServices;
 
+    /** All providers deemed to be used by this feature. */
+    private final Set<Provider> usedProviders = new HashSet<>();
+
+    /** Providers marked as used by the user. */
+    private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
+
+    /** Provider verification cache cleaner that removes unused providers from the cache. */
+    private Function<Object, Object> verificationCacheCleaner;
+
+    /** Provider verification cache that contains only used providers. */
+    private Object filteredVerificationCache;
+
+    /** Provider list that contains only used providers. */
+    private ProviderList filteredProviderList;
+    /** List of providers deemed not to be used by this feature. */
+    private List<Provider> removedProviders;
+
+    private boolean shouldFilterProviders = true;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
         ModuleSupport.openModuleByClass(Security.class, getClass());
         disableExperimentalFipsMode(a);
+        ImageSingletons.add(SecurityProvidersFilter.class, this);
     }
 
     /**
@@ -184,6 +220,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        addManuallyConfiguredUsedProviders(a);
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
@@ -207,6 +244,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
              * result of SeedGenerator.getSystemEntropy().
              */
             rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+            if (isWindows()) {
+                /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
+                rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
+            }
         }
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
@@ -248,6 +289,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        loader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
+        verificationCacheCleaner = constructVerificationCacheCleaner();
+
         if (Options.EnableSecurityServicesFeature.getValue()) {
             registerServiceReachabilityHandlers(access);
         }
@@ -266,6 +310,77 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
         }
+
+        if (isWindows()) {
+            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, clazz(access, "sun.security.mscapi.SunMSCAPI"));
+            // statically linking sunmscapi conflicts with sunEC
+            // after the removal of sunEC in jdk 16, we can statically link sunmscapi
+            if (JavaVersionUtil.JAVA_SPEC >= 16) {
+                access.registerReachabilityHandler(SecurityServicesFeature::linkSunMSCAPI, clazz(access, "sun.security.mscapi.SunMSCAPI"));
+                /* Resolve calls to sun_security_mscapi* as builtIn. */
+                PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
+            }
+        }
+    }
+
+    private void addManuallyConfiguredUsedProviders(DuringSetupAccess access) {
+        for (String value : Options.AdditionalSecurityProviders.getValue().values()) {
+            for (String className : value.split(",")) {
+                Class<?> classByName = access.findClassByName(className);
+                UserError.guarantee(classByName != null,
+                                "Manually marked security provider class doesn't exist: %s. Make sure that the class name is correct and that the class is on the image builder classpath.", className);
+                trace("Marked provider %s as used", className);
+                manuallyMarkedUsedProviderClassNames.add(className);
+            }
+        }
+    }
+
+    public boolean shouldRemoveProvider(Provider p) {
+        if (usedProviders.contains(p)) {
+            return false;
+        }
+        return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
+    }
+
+    @Override
+    public Object cleanVerificationCache(Object cache) {
+        if (shouldFilterProviders) {
+            Object cleanedCache = verificationCacheCleaner.apply(cache);
+            if (filteredVerificationCache == null || !filteredVerificationCache.equals(cleanedCache)) {
+                filteredVerificationCache = cleanedCache;
+            }
+        }
+        return filteredVerificationCache;
+    }
+
+    @Override
+    public ProviderList cleanUnregisteredProviders(ProviderList providerList) {
+        if (shouldFilterProviders) {
+            List<Provider> filteredProviders = new ArrayList<>(providerList.providers());
+            filteredProviders.removeIf(this::shouldRemoveProvider);
+            if (filteredProviderList == null || !filteredProviderList.providers().equals(filteredProviders)) {
+                filteredProviderList = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
+                if (Options.TraceSecurityServices.getValue()) {
+                    removedProviders = new ArrayList<>(providerList.providers());
+                    removedProviders.removeIf(provider -> !shouldRemoveProvider(provider));
+                }
+            }
+        }
+        return filteredProviderList;
+    }
+
+    private void traceRemovedProviders() {
+        if (removedProviders == null || removedProviders.isEmpty()) {
+            trace("No security providers have been removed.");
+        } else {
+            trace("The following security providers were deemed to be unused and removed:");
+            SecurityServicesPrinter.indent();
+            trace("ProviderName - ProviderClass");
+            for (Provider p : removedProviders) {
+                trace("%s - %s", p.getName(), p.getClass().getName());
+            }
+            SecurityServicesPrinter.dedent();
+        }
     }
 
     private static void linkSunEC(DuringAnalysisAccess a) {
@@ -281,6 +396,52 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         }
     }
 
+    private static void linkSunMSCAPI(DuringAnalysisAccess a) {
+        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
+        /* We statically link sunmscapi thus we classify it as builtIn library */
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunmscapi");
+
+        nativeLibraries.addStaticJniLibrary("sunmscapi");
+        /* Library sunmscapi depends on ncrypt and crypt32 */
+        nativeLibraries.addDynamicNonJniLibrary("ncrypt");
+        nativeLibraries.addDynamicNonJniLibrary("crypt32");
+    }
+
+    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
+        registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
+                        "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
+                        "java.security.SignatureException", "java.lang.OutOfMemoryError");
+
+        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                        method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+        a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
+                        method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
+        a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
+                        method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
+        a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
+                        method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
+                        method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+    }
+
+    private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(constructor(a, "java.util.ArrayList"));
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificate", byte[].class, Collection.class));
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificateChain", String.class, Collection.class));
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateKeyAndCertificateChain", boolean.class, String.class, long.class, long.class, int.class, Collection.class));
+    }
+
+    private static void registerGenerateCKeyPair(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(constructor(a, "sun.security.mscapi.CKeyPair", String.class, long.class, long.class, int.class));
+    }
+
+    private static void registerCPrivateKeyOf(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CPrivateKey", "of", String.class, long.class, long.class, int.class));
+    }
+
+    private static void registerCPublicKeyOf(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
+    }
+
     private static void linkJaas(DuringAnalysisAccess a) {
         JNIRuntimeAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
 
@@ -290,8 +451,19 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         nativeLibraries.addStaticJniLibrary("jaas");
     }
 
+    private static Set<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
+        Set<Class<?>> allKnownServices = new HashSet<>(Arrays.asList(knownServices));
+        for (String value : Options.AdditionalSecurityServiceTypes.getValue().values()) {
+            for (String serviceClazzName : value.split(",")) {
+                Class<?> serviceClazz = access.findClassByName(serviceClazzName);
+                UserError.guarantee(serviceClazz != null, "Unable to find additional security service class %s", serviceClazzName);
+                allKnownServices.add(serviceClazz);
+            }
+        }
+        return allKnownServices;
+    }
+
     private void registerServiceReachabilityHandlers(BeforeAnalysisAccess access) {
-        loader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
         ctrParamClassAccessor = getConstructorParameterClassAccessor(loader);
         getSpiClassMethod = getSpiClassMethod();
         availableServices = computeAvailableServices();
@@ -312,7 +484,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
          * See: https://docs.oracle.com/en/java/javase/11/security/index.html for more details.
          */
 
-        for (Class<?> serviceClass : knownServices) {
+        for (Class<?> serviceClass : computeKnownServices(access)) {
             BiConsumer<DuringAnalysisAccess, Executable> handler = (a, t) -> registerServices(a, t, serviceClass);
             for (Method method : serviceClass.getMethods()) {
                 if (method.getName().equals("getInstance")) {
@@ -341,10 +513,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
          * of a newly allocated SPI object. This only applies to SPIs in the java.security package,
          * but not any of its sub-packages. See java.security.Security.getSpiClass().
          */
+        // Checkstyle: allow Class.getSimpleName
+        String serviceType = serviceClass.getSimpleName();
+        // Checkstyle: disallow Class.getSimpleName
         if (serviceClass.getPackage().getName().equals("java.security")) {
-            registerSpiClass(serviceClass, getSpiClassMethod);
+            registerSpiClass(getSpiClassMethod, serviceType);
         }
-        registerServices(access, trigger, serviceClass.getSimpleName());
+        registerServices(access, trigger, serviceType);
     }
 
     ConcurrentHashMap<String, Boolean> processedServiceClasses = new ConcurrentHashMap<>();
@@ -367,7 +542,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
             Set<Service> services = availableServices.get(serviceType);
             for (Service service : services) {
-                registerService(loader, service, ctrParamClassAccessor);
+                registerService(service);
             }
         }
     }
@@ -399,7 +574,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
      */
     private static Function<String, Class<?>> getConstructorParameterClassAccessor(ImageClassLoader loader) {
         Map<String, /* EngineDescription */ Object> knownEngines = ReflectionUtil.readStaticField(Provider.class, "knownEngines");
-        Class<?> clazz = loader.findClass("java.security.Provider$EngineDescription").getOrFail();
+        Class<?> clazz = loader.findClassOrFail("java.security.Provider$EngineDescription");
         Field consParamClassNameField = ReflectionUtil.lookupField(clazz, "constructorParameterClassName");
 
         /*
@@ -451,9 +626,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
      * MessageDigestSpi. Only available for SPIs in the java.security package, but not any of its
      * sub-packages.
      */
-    private static void registerSpiClass(Class<?> serviceClass, Method getSpiClassMethod) {
+    private static void registerSpiClass(Method getSpiClassMethod, String serviceType) {
         try {
-            Class<?> spiClass = (Class<?>) getSpiClassMethod.invoke(null, serviceClass.getSimpleName());
+            Class<?> spiClass = (Class<?>) getSpiClassMethod.invoke(null, serviceType);
             /* The constructor doesn't need to be registered, objects are not allocated. */
             RuntimeReflection.register(spiClass);
         } catch (IllegalAccessException | InvocationTargetException ex) {
@@ -461,24 +636,28 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         }
     }
 
-    private static void registerProvider(Provider provider) {
-        registerForReflection(provider.getClass());
-        try {
-            Method getVerificationResult = ReflectionUtil.lookupMethod(Class.forName("javax.crypto.JceSecurity"), "getVerificationResult", Provider.class);
-            /*
-             * Trigger initialization of JceSecurity.verificationResults used by
-             * JceSecurity.canUseProvider() at runtime to check whether a provider is properly
-             * signed and can be used by JCE. It does that via jar verification which we cannot
-             * support. See also Target_javax_crypto_JceSecurity.
-             */
-            getVerificationResult.invoke(null, provider);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
+    private void registerProvider(Provider provider) {
+        if (!usedProviders.contains(provider)) {
+            usedProviders.add(provider);
+            registerForReflection(provider.getClass());
+
+            try {
+                Method getVerificationResult = ReflectionUtil.lookupMethod(loader.findClassOrFail("javax.crypto.JceSecurity"), "getVerificationResult", Provider.class);
+                /*
+                 * Trigger initialization of JceSecurity.verificationResults used by
+                 * JceSecurity.canUseProvider() at runtime to check whether a provider is properly
+                 * signed and can be used by JCE. It does that via jar verification which we cannot
+                 * support. See also Target_javax_crypto_JceSecurity.
+                 */
+                getVerificationResult.invoke(null, provider);
+            } catch (ReflectiveOperationException ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
         }
     }
 
     @SuppressWarnings("try")
-    private static void registerService(ImageClassLoader loader, Service service, Function<String, Class<?>> ctrParamClassAccessor) {
+    private void registerService(Service service) {
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
             try (TracingAutoCloseable ignored = trace(service)) {
@@ -515,7 +694,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
      * and dynamically allocated by sun.security.provider.KeyStoreDelegator.engineLoad().
      */
     private static void registerJks(ImageClassLoader loader) {
-        Class<?> javaKeyStoreJks = loader.findClass("sun.security.provider.JavaKeyStore$JKS").getOrFail();
+        Class<?> javaKeyStoreJks = loader.findClassOrFail("sun.security.provider.JavaKeyStore$JKS");
         registerForReflection(javaKeyStoreJks);
         trace("Registered KeyStore.JKS implementation class: %s", javaKeyStoreJks.getName());
     }
@@ -544,12 +723,56 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        traceRemovedProviders();
         SecurityServicesPrinter.endTracing();
+        shouldFilterProviders = false;
     }
 
     private static void registerForReflection(Class<?> clazz) {
         RuntimeReflection.register(clazz);
         RuntimeReflection.register(clazz.getConstructors());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Function<Object, Object> constructVerificationCacheCleaner() {
+        /*
+         * Before JDK 16, the verification cache was a Provider -> Verification result
+         * IdentityHashMap.
+         */
+        if (JavaVersionUtil.JAVA_SPEC <= 15) {
+            return obj -> {
+                Map<Provider, Object> original = (Map<Provider, Object>) obj;
+                Map<Provider, Object> verificationResults = new IdentityHashMap<>(original);
+
+                verificationResults.keySet().removeIf(this::shouldRemoveProvider);
+
+                return verificationResults;
+            };
+        }
+        /*
+         * For JDK 16 and later, the verification cache is an IdentityWrapper -> Verification result
+         * ConcurrentHashMap. The IdentityWrapper contains the actual provider in the 'obj' field.
+         */
+        Class<?> identityWrapper = loader.findClassOrFail("javax.crypto.JceSecurity$IdentityWrapper");
+        Field providerField = ReflectionUtil.lookupField(identityWrapper, "obj");
+
+        Predicate<Object> listRemovalPredicate = wrapper -> {
+            try {
+                return shouldRemoveProvider((Provider) providerField.get(wrapper));
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        };
+
+        return obj -> {
+            Map<Object, Object> original = (Map<Object, Object>) obj;
+            Map<Object, Object> verificationResults = new ConcurrentHashMap<>(original);
+
+            verificationResults.keySet().removeIf(listRemovalPredicate);
+
+            return verificationResults;
+        };
+
     }
 
     private static boolean isSignature(Service s) {
@@ -651,7 +874,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         private int indent = 0;
 
         SecurityServicesPrinter() {
-            File reportFile = reportFile();
+            File reportFile = reportFile(SubstrateOptions.reportsPath());
             // Checkstyle: stop
             System.out.println("# Printing security services automatic registration to: " + reportFile);
             // Checkstyle: resume
@@ -690,8 +913,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             }
         }
 
-        private static File reportFile() {
-            String reportsPath = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
+        private static File reportFile(String reportsPath) {
             return ReportUtils.reportFile(reportsPath, "security_services", "txt");
         }
     }

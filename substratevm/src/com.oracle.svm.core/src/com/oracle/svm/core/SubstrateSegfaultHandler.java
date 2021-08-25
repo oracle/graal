@@ -28,6 +28,7 @@ import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATI
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -97,6 +98,8 @@ public abstract class SubstrateSegfaultHandler {
     /** Installs the platform dependent segfault handler. */
     protected abstract void install();
 
+    protected abstract void printSignalInfo(Log log, PointerBase signalInfo);
+
     /** Called from the platform dependent segfault handler to enter the isolate. */
     @Uninterruptible(reason = "Called from uninterruptible code.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
@@ -134,27 +137,31 @@ public abstract class SubstrateSegfaultHandler {
     /** Called from the platform dependent segfault handler to print diagnostics. */
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
-    protected static void dump(RegisterDumper.Context context) {
+    protected static void dump(PointerBase signalInfo, RegisterDumper.Context context) {
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
-        dumpInterruptibly(context);
+        dumpInterruptibly(signalInfo, context);
     }
 
-    private static void dumpInterruptibly(RegisterDumper.Context context) {
-        Log log = Log.log();
-        log.autoflush(true);
+    private static void dumpInterruptibly(PointerBase signalInfo, RegisterDumper.Context context) {
+        PointerBase callerIP = RegisterDumper.singleton().getIP(context);
+        LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
+        Log log = Log.enterFatalContext(logHandler, (CodePointer) callerIP, "[ [ SubstrateSegfaultHandler caught a segfault. ] ]", null);
+        if (log != null) {
+            log.newline();
+            log.string("[ [ SubstrateSegfaultHandler caught a segfault in thread ").zhex(CurrentIsolate.getCurrentThread()).string(" ] ]").newline();
+            ImageSingletons.lookup(SubstrateSegfaultHandler.class).printSignalInfo(log, signalInfo);
 
-        log.newline();
-        log.string("[ [ SubstrateSegfaultHandler caught a segfault. ] ]").newline();
-
-        PointerBase sp = RegisterDumper.singleton().getSP(context);
-        PointerBase ip = RegisterDumper.singleton().getIP(context);
-        SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context);
-
-        log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-        log.newline();
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+            PointerBase sp = RegisterDumper.singleton().getSP(context);
+            PointerBase ip = RegisterDumper.singleton().getIP(context);
+            boolean printedDiagnostics = SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context, false);
+            if (printedDiagnostics) {
+                log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
+                log.newline();
+            }
+        }
+        logHandler.fatalError();
     }
 
     static class SingleIsolateSegfaultSetup implements IsolateListener {

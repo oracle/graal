@@ -657,6 +657,7 @@ public class AMD64Move {
          * long register when unsafe casts occurred (e.g., for a write barrier where arithmetic
          * operations are then performed on the pointer).
          */
+        assert !result.getRegisterCategory().equals(AMD64.MASK) : "no general const-to-mask moves supported";
         switch (input.getJavaKind().getStackKind()) {
             case Int:
                 // Do not optimize with an XOR as this instruction may be between
