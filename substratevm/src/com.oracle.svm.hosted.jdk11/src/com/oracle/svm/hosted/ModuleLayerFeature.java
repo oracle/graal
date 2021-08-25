@@ -30,7 +30,6 @@ import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
-import jdk.internal.module.ModuleReferenceImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -107,12 +106,12 @@ public final class ModuleLayerFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        // Because we synthesize the boot layer after analysis, we need to
-        // register every type in ModuleLayer's object graph as in heap
-        access.registerAsInHeap(ModuleLayer.class);
-        access.registerAsInHeap(Configuration.class);
-        access.registerAsInHeap(ResolvedModule.class);
-        access.registerAsInHeap(ModuleReferenceImpl.class);
+        FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        Map<String, Module> baseModules = ModuleLayer.boot().modules()
+                .stream()
+                .collect(Collectors.toMap(Module::getName, m -> m));
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules);
+        BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
     }
 
     @Override

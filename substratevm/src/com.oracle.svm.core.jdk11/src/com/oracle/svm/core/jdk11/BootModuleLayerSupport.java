@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk11;
 
-import com.oracle.svm.core.annotate.UnknownObjectField;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,7 +34,6 @@ public final class BootModuleLayerSupport {
         return ImageSingletons.lookup(BootModuleLayerSupport.class);
     }
 
-    @UnknownObjectField(types = ModuleLayer.class)
     private ModuleLayer bootLayer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
