@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
@@ -71,6 +72,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Field> reflectionFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Executable> queriedMethods;
 
     private final Set<Class<?>> processedClasses = new HashSet<>();
 
@@ -79,6 +81,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public ReflectionDataBuilder(FeatureAccessImpl access) {
         arrayReflectionData = getArrayReflectionData();
         accessors = new ReflectionDataAccessors(access);
+        queriedMethods = SubstrateOptions.ConfigureReflectionMetadata.getValue() ? ConcurrentHashMap.newKeySet() : null;
     }
 
     private static DynamicHub.ReflectionData getArrayReflectionData() {
@@ -123,14 +126,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void register(ConfigurationCondition condition, Executable... methods) {
+    public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods) {
         checkNotSealed();
-        registerConditionalConfiguration(condition, () -> registerMethods(methods));
+        if (queriedOnly && !SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
+            throw UserError.abort("Found manual reflection metadata configuration. Please use --configure-reflection-metadata to enable this behavior.");
+        }
+        registerConditionalConfiguration(condition, () -> registerMethods(queriedOnly, methods));
     }
 
-    private void registerMethods(Executable[] methods) {
+    private void registerMethods(boolean queriedOnly, Executable[] methods) {
         for (Executable method : methods) {
-            if (reflectionMethods.add(method)) {
+            boolean added = queriedOnly ? queriedMethods.add(method) : reflectionMethods.add(method);
+            if (added) {
                 modifiedClasses.add(method.getDeclaringClass());
             }
         }
@@ -449,6 +456,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
         }
         return result.toArray(EMPTY_CLASSES);
+    }
+
+    @Override
+    public Set<Executable> getQueriedOnlyMethods() {
+        return queriedMethods;
     }
 
     static final class ReflectionDataAccessors {

@@ -42,6 +42,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIMethodId javaLangReflectMemberGetName;
     final JNIMethodId javaLangReflectMemberGetDeclaringClass;
+    private JNIMethodId javaLangReflectExecutableGetParameterTypes = WordFactory.nullPointer();
 
     final JNIMethodId javaUtilEnumerationHasMoreElements;
 
@@ -51,6 +52,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle jdkInternalReflectDelegatingClassLoader;
 
     final JNIMethodId javaLangObjectGetClass;
+
+    final JNIObjectHandle javaLangStackOverflowError;
 
     private JNIMethodId javaLangInvokeMethodTypeParameterArray = WordFactory.nullPointer();
     private JNIMethodId javaLangInvokeMethodTypeReturnType = WordFactory.nullPointer();
@@ -94,9 +97,19 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
 
+        javaLangStackOverflowError = newClassGlobalRef(env, "java/lang/StackOverflowError");
+
         javaLangIllegalAccessException = newClassGlobalRef(env, "java/lang/IllegalAccessException");
         javaLangInvokeWrongMethodTypeException = newClassGlobalRef(env, "java/lang/invoke/WrongMethodTypeException");
         javaLangIllegalArgumentException = newClassGlobalRef(env, "java/lang/IllegalArgumentException");
+    }
+
+    JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {
+        if (javaLangReflectExecutableGetParameterTypes.isNull()) {
+            JNIObjectHandle javaLangReflectExecutable = findClass(env, "java/lang/reflect/Executable");
+            javaLangReflectExecutableGetParameterTypes = getMethodId(env, javaLangReflectExecutable, "getParameterTypes", "()[Ljava/lang/Class;", false);
+        }
+        return javaLangReflectExecutableGetParameterTypes;
     }
 
     JNIMethodId getJavaLangInvokeMethodTypeReturnType(JNIEnvironment env) {

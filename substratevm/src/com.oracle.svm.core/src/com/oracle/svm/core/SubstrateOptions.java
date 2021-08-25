@@ -616,4 +616,8 @@ public class SubstrateOptions {
             SubstrateDiagnostics.updateInitialInvocationCounts(newValue);
         }
     };
+
+    @APIOption(name = "configure-reflection-metadata")//
+    @Option(help = "Limit method reflection metadata to configuration entries instead of including it for all reachable methods")//
+    public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
 }

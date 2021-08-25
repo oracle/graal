@@ -98,23 +98,23 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public void registerPublicMethods(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), type.getElement().getMethods());
+    public void registerPublicMethods(boolean queriedOnly, ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), queriedOnly, type.getElement().getMethods());
     }
 
     @Override
-    public void registerDeclaredMethods(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), type.getElement().getDeclaredMethods());
+    public void registerDeclaredMethods(boolean queriedOnly, ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), queriedOnly, type.getElement().getDeclaredMethods());
     }
 
     @Override
-    public void registerPublicConstructors(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), type.getElement().getConstructors());
+    public void registerPublicConstructors(boolean queriedOnly, ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), queriedOnly, type.getElement().getConstructors());
     }
 
     @Override
-    public void registerDeclaredConstructors(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), type.getElement().getDeclaredConstructors());
+    public void registerDeclaredConstructors(boolean queriedOnly, ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), queriedOnly, type.getElement().getDeclaredConstructors());
     }
 
     @Override
@@ -123,12 +123,12 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public boolean registerAllMethodsWithName(ConditionalElement<Class<?>> type, String methodName) {
+    public boolean registerAllMethodsWithName(boolean queriedOnly, ConditionalElement<Class<?>> type, String methodName) {
         boolean found = false;
         Executable[] methods = type.getElement().getDeclaredMethods();
         for (Executable method : methods) {
             if (method.getName().equals(methodName)) {
-                registry.register(type.getCondition(), method);
+                registerExecutable(type.getCondition(), queriedOnly, method);
                 found = true;
             }
         }
@@ -136,16 +136,14 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public boolean registerAllConstructors(ConditionalElement<Class<?>> type) {
+    public boolean registerAllConstructors(boolean queriedOnly, ConditionalElement<Class<?>> type) {
         Executable[] methods = type.getElement().getDeclaredConstructors();
-        for (Executable method : methods) {
-            registry.register(type.getCondition(), method);
-        }
+        registerExecutable(type.getCondition(), queriedOnly, methods);
         return methods.length > 0;
     }
 
     @Override
-    public void registerMethod(ConditionalElement<Class<?>> type, String methodName, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerMethod(boolean queriedOnly, ConditionalElement<Class<?>> type, String methodName, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
         Method method;
         try {
@@ -165,19 +163,23 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
                 throw e;
             }
         }
-        registry.register(type.getCondition(), method);
+        registerExecutable(type.getCondition(), queriedOnly, method);
     }
 
     @Override
-    public void registerConstructor(ConditionalElement<Class<?>> type, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerConstructor(boolean queriedOnly, ConditionalElement<Class<?>> type, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
-        registry.register(type.getCondition(), type.getElement().getDeclaredConstructor(parameterTypesArray));
+        registerExecutable(type.getCondition(), queriedOnly, type.getElement().getDeclaredConstructor(parameterTypesArray));
     }
 
     private static Class<?>[] getParameterTypes(List<ConditionalElement<Class<?>>> methodParameterTypes) {
         return methodParameterTypes.stream()
                         .map(ConditionalElement::getElement)
                         .toArray(Class<?>[]::new);
+    }
+
+    private void registerExecutable(ConfigurationCondition condition, boolean queriedOnly, Executable... executable) {
+        registry.register(condition, queriedOnly, executable);
     }
 
     @Override

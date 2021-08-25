@@ -80,7 +80,19 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Executable... methods) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), methods);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, methods);
+    }
+
+    /**
+     * Makes the provided methods available for reflection queries at run time. The methods will be
+     * returned by {@link Class#getMethod}, {@link Class#getMethods}, and all the other methods on
+     * {@link Class} that return a single or a list of methods, but will not be invocable and will
+     * not be considered reachable.
+     *
+     * @since 21.3
+     */
+    public static void registerAsQueried(Executable... methods) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), true, methods);
     }
 
     /**

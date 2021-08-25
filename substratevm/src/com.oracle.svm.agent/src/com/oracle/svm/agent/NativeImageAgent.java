@@ -121,6 +121,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         boolean configurationWithOrigins = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
+        boolean trackReflectionMetadata = true;
 
         String[] tokens = !options.isEmpty() ? options.split(",") : new String[0];
         for (String token : tokens) {
@@ -189,6 +190,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 build = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.equals("experimental-configuration-with-origins")) {
                 configurationWithOrigins = true;
+            } else if (token.equals("track-reflection-metadata")) {
+                trackReflectionMetadata = true;
+            } else if (token.startsWith("track-reflection-metadata=")) {
+                trackReflectionMetadata = Boolean.parseBoolean(getTokenValue(token));
             } else {
                 return usage(1, "unknown option: '" + token + "'.");
             }
@@ -306,7 +311,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         }
 
         try {
-            BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier, experimentalClassLoaderSupport, experimentalClassDefineSupport);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
+                            experimentalClassLoaderSupport, experimentalClassDefineSupport, trackReflectionMetadata);
         } catch (Throwable t) {
             return error(3, t.toString());
         }

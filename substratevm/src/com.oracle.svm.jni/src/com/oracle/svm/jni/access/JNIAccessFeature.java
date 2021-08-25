@@ -137,7 +137,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(ConfigurationCondition condition, Executable... methods) {
+        public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods) {
             abortIfSealed();
             registerConditionalConfiguration(condition, () -> newMethods.addAll(Arrays.asList(methods)));
         }

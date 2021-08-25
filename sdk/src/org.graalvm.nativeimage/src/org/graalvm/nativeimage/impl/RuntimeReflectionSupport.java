@@ -40,6 +40,10 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.lang.reflect.Executable;
+import java.util.Set;
+
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // specific to java.lang.reflect reflection
+    Set<Executable> getQueriedOnlyMethods();
 }

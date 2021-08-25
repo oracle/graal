@@ -904,6 +904,7 @@ meth public !varargs static void register(boolean,java.lang.reflect.Field[])
  anno 0 java.lang.Deprecated()
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
+meth public !varargs static void registerAsQueried(java.lang.reflect.Executable[])
 meth public !varargs static void register(java.lang.reflect.Field[])
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object
