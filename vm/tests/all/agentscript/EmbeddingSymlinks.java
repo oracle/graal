@@ -8,7 +8,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
@@ -24,6 +23,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import org.graalvm.polyglot.Engine;
@@ -93,7 +93,13 @@ public final class EmbeddingSymlinks {
 
         @Override
         public Path parsePath(String path) {
-            return new SharedPath(path, realFiles.get(path));
+            final Path realPath = realFiles.get(path);
+            if (realPath != null) {
+                return new LogicalPath(path, realPath);
+            } else {
+                Path original = new File(path).toPath();
+                return new PhysicalPath(original);
+            }
         }
 
         @Override
@@ -112,7 +118,7 @@ public final class EmbeddingSymlinks {
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            return Files.newByteChannel(path, options, attrs);
+            return ((SharedPath)path).newChannel(options, attrs);
         }
 
         @Override
@@ -127,24 +133,17 @@ public final class EmbeddingSymlinks {
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            if (path instanceof SharedPath) {
-                return ((SharedPath)path).realPath;
-            }
-            return path;
+            return ((SharedPath)path).getRealPath();
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
             throw notNeeded();
         }
-        class SharedPath implements Path {
-            private final String path;
-            private final Path realPath;
 
-            SharedPath(String path, Path realPath) {
-                this.path = path;
-                this.realPath = realPath == null ? this : realPath;
-            }
+        abstract class SharedPath implements Path {
+            abstract Path getRealPath();
+            abstract SeekableByteChannel newChannel(Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException;
 
             @Override
             public File toFile() {
@@ -197,11 +196,6 @@ public final class EmbeddingSymlinks {
             }
 
             @Override
-            public Path getFileName() {
-                return Paths.get(this.path);
-            }
-
-            @Override
             public Path getParent() {
                 throw notNeeded();
             }
@@ -222,14 +216,6 @@ public final class EmbeddingSymlinks {
             }
 
             @Override
-            public boolean startsWith(Path other) {
-                if (other instanceof SharedPath) {
-                    return this.path.startsWith(((SharedPath) other).path);
-                }
-                return false;
-            }
-
-            @Override
             public boolean endsWith(Path other) {
                 throw notNeeded();
             }
@@ -246,11 +232,6 @@ public final class EmbeddingSymlinks {
 
             @Override
             public Path relativize(Path other) {
-                throw notNeeded();
-            }
-
-            @Override
-            public URI toUri() {
                 throw notNeeded();
             }
 
@@ -277,6 +258,103 @@ public final class EmbeddingSymlinks {
             @Override
             public int compareTo(Path other) {
                 throw notNeeded();
+            }
+        }
+
+        class LogicalPath extends SharedPath {
+            private final String path;
+            private final Path realPath;
+
+            LogicalPath(String path, Path realPath) {
+                assert realPath != null : "No real for " + path;
+                this.path = path;
+                this.realPath = realPath;
+            }
+
+            @Override
+            Path getRealPath() {
+                return new PhysicalPath(realPath);
+            }
+
+            @Override
+            SeekableByteChannel newChannel(Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
+                throw notNeeded();
+            }
+
+            @Override
+            public Path getFileName() {
+                return Paths.get(this.path);
+            }
+
+            @Override
+            public URI toUri() {
+                return realPath.toUri();
+            }
+
+            @Override
+            public boolean startsWith(Path other) {
+                if (other instanceof LogicalPath) {
+                    return this.path.startsWith(((LogicalPath) other).path);
+                }
+                return false;
+            }
+        }
+
+        class PhysicalPath extends SharedPath {
+            private final Path delegate;
+
+            PhysicalPath(Path delegate) {
+                this.delegate = delegate;
+            }
+
+            @Override
+            Path getRealPath() {
+                return this;
+            }
+
+            @Override
+            SeekableByteChannel newChannel(Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+                return Files.newByteChannel(delegate, options, attrs);
+            }
+
+            @Override
+            public Path getFileName() {
+                return delegate.getFileName();
+            }
+
+            @Override
+            public boolean startsWith(Path other) {
+                return delegate.startsWith(other);
+            }
+
+            @Override
+            public URI toUri() {
+                return delegate.toUri();
+            }
+
+            @Override
+            public int hashCode() {
+                int hash = 5;
+                hash = 37 * hash + Objects.hashCode(this.delegate);
+                return hash;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) {
+                    return true;
+                }
+                if (obj == null) {
+                    return false;
+                }
+                if (getClass() != obj.getClass()) {
+                    return false;
+                }
+                final PhysicalPath other = (PhysicalPath) obj;
+                if (!Objects.equals(this.delegate, other.delegate)) {
+                    return false;
+                }
+                return true;
             }
         }
     }
