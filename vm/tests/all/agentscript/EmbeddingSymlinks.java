@@ -251,11 +251,7 @@ public final class EmbeddingSymlinks {
 
             @Override
             public URI toUri() {
-                try {
-                    return new URI("dbenv", null, null, -1, "/" + this.path, null, null);
-                } catch (URISyntaxException ex) {
-                    throw new IllegalStateException(ex);
-                }
+                throw notNeeded();
             }
 
             @Override
