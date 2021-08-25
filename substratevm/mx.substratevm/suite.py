@@ -1408,7 +1408,6 @@ suite = {
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
-            "com.oracle.svm.test.jdk11",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
           ],
@@ -1419,6 +1418,20 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
+        },
+
+        "SVM_TESTS_JDK11" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.svm.test.jdk11",
+            ],
+            "distDependencies": [
+                "mx:JUNIT_TOOL",
+                "SVM",
+            ],
+            "javaCompliance": "11+",
+            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {
