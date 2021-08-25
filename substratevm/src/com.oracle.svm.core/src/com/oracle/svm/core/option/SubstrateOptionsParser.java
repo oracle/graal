@@ -48,7 +48,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
@@ -371,16 +370,15 @@ public class SubstrateOptionsParser {
         // Print a warning if the option is deprecated.
         OptionKey<?> option = optionParseResult.getOptionKey();
         OptionDescriptor descriptor = option.getDescriptor();
-        if (descriptor != null) {
+        if (descriptor != null && descriptor.isDeprecated()) {
+            String message = "Warning: Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions";
             String deprecationMessage = descriptor.getDeprecationMessage();
-            boolean hasDeprecationMessage = deprecationMessage != null && !deprecationMessage.isEmpty();
-            if (descriptor.isDeprecated() || hasDeprecationMessage) {
-                String message = "Warning: Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions";
-                if (hasDeprecationMessage) {
-                    message += ": " + descriptor.getDeprecationMessage();
-                }
-                System.err.println(message);
+            if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
+                message += ": " + deprecationMessage;
             }
+            // Checkstyle: stop
+            System.err.println(message);
+            // Checkstyle: resume
         }
         return true;
     }

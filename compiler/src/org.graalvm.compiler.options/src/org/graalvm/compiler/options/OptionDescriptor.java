@@ -119,9 +119,9 @@ public final class OptionDescriptor {
         this.optionKey = optionKey;
         this.declaringClass = declaringClass;
         this.fieldName = fieldName;
-        this.deprecated = deprecated;
+        this.deprecated = deprecated || deprecationMessage != null && !deprecationMessage.isEmpty();
         this.deprecationMessage = deprecationMessage;
-        assert !optionValueType.isPrimitive() : "must used boxed optionValueType instead of " + optionValueType;
+        assert !optionValueType.isPrimitive() : "must use boxed optionValueType instead of " + optionValueType;
     }
 
     /**

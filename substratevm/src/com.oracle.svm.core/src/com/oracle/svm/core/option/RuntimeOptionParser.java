@@ -177,17 +177,14 @@ public final class RuntimeOptionParser {
         // Print a warning if the option is deprecated.
         OptionKey<?> option = parseResult.getOptionKey();
         OptionDescriptor descriptor = option.getDescriptor();
-        if (descriptor != null) {
+        if (descriptor != null && descriptor.isDeprecated()) {
+            Log log = Log.log();
+            log.string("Warning: Option '").string(descriptor.getName()).string("' is deprecated and might be removed from future versions");
             String deprecationMessage = descriptor.getDeprecationMessage();
-            boolean hasDeprecationMessage = deprecationMessage != null && !deprecationMessage.isEmpty();
-            if (descriptor.isDeprecated() || hasDeprecationMessage) {
-                Log log = Log.log();
-                log.string("Warning: Option '").string(descriptor.getName()).string("' is deprecated and might be removed from future versions");
-                if (hasDeprecationMessage) {
-                    log.string(": ").string(deprecationMessage);
-                }
-                log.newline();
+            if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
+                log.string(": ").string(deprecationMessage);
             }
+            log.newline();
         }
     }
 
