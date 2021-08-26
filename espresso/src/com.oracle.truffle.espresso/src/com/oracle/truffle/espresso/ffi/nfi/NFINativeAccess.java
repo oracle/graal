@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -159,6 +160,9 @@ public class NFINativeAccess implements NativeAccess {
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
         CompilerAsserts.neverPartOfCompilation();
+        if (!Files.exists(libraryPath)) {
+            return null;
+        }
         String nfiSource = String.format("load(RTLD_LAZY) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }
