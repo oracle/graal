@@ -99,7 +99,8 @@ public abstract class ClassInfo {
     }
 
     public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Symbol.Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), definingLoader, "L" + name + ";", context);
+        Symbol<Symbol.Type> type = klass.getContext().getTypes().fromName(name);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), definingLoader, type, context);
 
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();

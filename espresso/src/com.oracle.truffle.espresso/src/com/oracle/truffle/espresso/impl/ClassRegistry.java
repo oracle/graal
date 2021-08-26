@@ -364,10 +364,9 @@ public abstract class ClassRegistry implements ContextAccess {
     @SuppressWarnings("try")
     public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
         Meta meta = getMeta();
-        String strType = typeOrNull == null ? null : typeOrNull.toString();
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(getContext().getTimers())) {
-            parserKlass = getParserKlass(bytes, strType, info);
+            parserKlass = getParserKlass(bytes, typeOrNull, info);
         }
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 
@@ -389,9 +388,9 @@ public abstract class ClassRegistry implements ContextAccess {
         return klass;
     }
 
-    private ParserKlass getParserKlass(byte[] bytes, String strType, ClassDefinitionInfo info) {
+    private ParserKlass getParserKlass(byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), strType, context, info);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, context, info);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());

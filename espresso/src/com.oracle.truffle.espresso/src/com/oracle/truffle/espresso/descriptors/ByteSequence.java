@@ -163,6 +163,18 @@ public abstract class ByteSequence {
         }
     }
 
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
+    public String toHexString() {
+        StringBuilder r = new StringBuilder(length() * 2);
+        for (int i = 0; i < length(); ++i) {
+            byte b = byteAt(i);
+            r.append(HEX[(b >> 4) & 0xf]);
+            r.append(HEX[b & 0xf]);
+        }
+        return r.toString();
+    }
+
     public int lastIndexOf(byte b) {
         for (int i = length() - 1; i >= 0; i--) {
             if (byteAt(i) == b) {

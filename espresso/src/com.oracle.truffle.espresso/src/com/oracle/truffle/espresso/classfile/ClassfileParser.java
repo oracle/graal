@@ -156,7 +156,7 @@ public final class ClassfileParser {
 
     private final ClasspathFile classfile;
 
-    private final String requestedClassType;
+    private final Symbol<Type> requestedClassType;
 
     private final EspressoContext context;
 
@@ -177,7 +177,7 @@ public final class ClassfileParser {
 
     private ConstantPool pool;
 
-    private ClassfileParser(ClassfileStream stream, StaticObject loader, String requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+    private ClassfileParser(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;
         this.context = context;
         this.classfile = null;
@@ -188,7 +188,7 @@ public final class ClassfileParser {
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassfileStream stream, EspressoContext context) {
-        this(stream, null, "", context, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        this(stream, null, null, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -220,12 +220,12 @@ public final class ClassfileParser {
         }
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context) {
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName, EspressoContext context) {
         return parse(stream, loader, requestedClassName, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
-        return new ClassfileParser(stream, loader, requestedClassName, context, info).parseClass();
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+        return new ClassfileParser(stream, loader, requestedClassType, context, info).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -405,7 +405,7 @@ public final class ClassfileParser {
         classType = thisKlassType;
 
         // Checks if name in class file matches requested name
-        if (requestedClassType != null && !requestedClassType.equals(classType.toString())) {
+        if (requestedClassType != null && !classDefinitionInfo.isHidden() && !requestedClassType.equals(classType)) {
             throw ConstantPool.noClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
         }
 
@@ -440,9 +440,10 @@ public final class ClassfileParser {
         stream.checkEndOfFile();
 
         if (classDefinitionInfo.isHidden()) {
+            assert requestedClassType != null;
             int futureKlassID = context.getNewKlassId();
             classDefinitionInfo.initKlassID(futureKlassID);
-            thisKlassName = context.getNames().getOrCreate(thisKlassName.toString() + "+" + futureKlassID);
+            thisKlassName = context.getNames().getOrCreate(Types.hiddenClassName(requestedClassType, futureKlassID));
             thisKlassType = context.getTypes().fromName(thisKlassName);
             pool = pool.patchForHiddenClass(thisKlassIndex, thisKlassName);
         }
