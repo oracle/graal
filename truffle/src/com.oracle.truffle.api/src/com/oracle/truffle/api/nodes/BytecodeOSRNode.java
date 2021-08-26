@@ -287,7 +287,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param osrNode the node to try OSR for.
      * @param target the target location OSR will execute from (e.g., bytecode index).
      * @param interpreterState other interpreter state used to resume execution.
-     * @param beforeTransfer a callback invoked before OSR, if it occurs.
+     * @param beforeTransfer a callback invoked before OSR. Can be {@code null}.
      * @param parentFrame frame at the current point of execution.
      * @return the result if OSR was performed, or {@code null} otherwise.
      * @since 21.3
