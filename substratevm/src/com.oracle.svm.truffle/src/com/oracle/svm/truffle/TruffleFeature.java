@@ -687,7 +687,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
                 }
             }
 
-            System.out.println("WARNING: suspicious method reachable for runtime compilation: " + printNode.getImplementationMethod().format("%H.%n(%p)"));
+            System.out.println("Warning: suspicious method reachable for runtime compilation: " + printNode.getImplementationMethod().format("%H.%n(%p)"));
             System.out.println("Check the complete tree of reachable methods using the option " + GraalFeature.Options.PrintRuntimeCompileMethods.getDescriptor().getFieldName());
             System.out.println("Suspicious method is called from");
             for (GraalFeature.CallTreeNode cur = printNode; cur != null; cur = cur.getParent()) {

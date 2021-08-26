@@ -332,7 +332,7 @@ public class ServiceLoaderFeature implements Feature {
             RuntimeReflection.register(implementationClass);
             if (implementationClass.isArray() || implementationClass.isInterface() || Modifier.isAbstract(implementationClass.getModifiers())) {
                 if (trace) {
-                    System.out.println("  WARNING class cannot be instantiated (fail lazy): " + implementationClassName);
+                    System.out.println("  Warning: class cannot be instantiated (fail lazy): " + implementationClassName);
                 }
                 /*
                  * The class cannot be instantiated. However since java.util.ServiceLoader.stream()

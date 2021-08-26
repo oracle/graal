@@ -325,7 +325,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     }
 
     private static void warn(String message) {
-        inform("WARNING: " + message);
+        inform("Warning: " + message);
     }
 
     private static <T> T error(T result, String message) {
