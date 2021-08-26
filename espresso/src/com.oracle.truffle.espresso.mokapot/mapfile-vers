@@ -32,6 +32,7 @@ SUNWprivate_1.1 {
                 getJavaVM;
                 mokapotAttachThread;
                 mokapotGetRTLD_DEFAULT;
+                mokapotGetProcessHandle;
                 getPackageAt;
 
                 # Espresso management native API

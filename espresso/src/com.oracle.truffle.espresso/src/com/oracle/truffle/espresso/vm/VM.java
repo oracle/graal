@@ -171,6 +171,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject getPackageAt;
 
     private final long rtldDefaultValue;
+    private final long processHandleValue;
 
     private final JavaVersion javaVersion;
 
@@ -329,12 +330,18 @@ public final class VM extends NativeEnv implements ContextAccess {
             TruffleObject mokapotGetRTLDDefault = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotGetRTLD_DEFAULT",
                             NativeSignature.create(NativeType.POINTER));
+            @Pointer
+            TruffleObject mokapotGetProcessHandle = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotGetProcessHandle",
+                            NativeSignature.create(NativeType.POINTER));
 
             getPackageAt = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getPackageAt",
                             NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
             this.mokapotEnvPtr = initializeAndGetEnv(true, initializeMokapotContext, jniEnv.getNativePointer());
             this.rtldDefaultValue = getUncached().asPointer(getUncached().execute(mokapotGetRTLDDefault));
+            this.processHandleValue = getUncached().asPointer(getUncached().execute(mokapotGetProcessHandle));
+            getLogger().finest(() -> String.format("Got RTLD_DEFAULT=0x%016x and ProcessHandle=0x%016x", rtldDefaultValue, processHandleValue));
             assert getUncached().isPointer(this.mokapotEnvPtr);
             assert !getUncached().isNull(this.mokapotEnvPtr);
 
@@ -1214,7 +1221,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
         TruffleObject library = handle2Lib.get(nativePtr);
         if (library == null) {
-            if (nativePtr == rtldDefaultValue) {
+            if (nativePtr == rtldDefaultValue || nativePtr == processHandleValue) {
                 library = getNativeAccess().loadDefaultLibrary();
                 if (library == null) {
                     getLogger().warning("JVM_FindLibraryEntry from default/global namespace is not supported: " + name);

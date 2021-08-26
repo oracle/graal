@@ -42,6 +42,10 @@ JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT() {
     return os_get_RTLD_DEFAULT();
 }
 
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle() {
+    return os_get_ProcessHandle();
+}
+
 #define JNI_INVOKE_INTERFACE_METHODS(V) \
   V(DestroyJavaVM) \
   V(AttachCurrentThread) \
