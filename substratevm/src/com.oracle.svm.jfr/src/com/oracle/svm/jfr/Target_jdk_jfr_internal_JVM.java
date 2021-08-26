@@ -26,8 +26,10 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
+import com.oracle.svm.core.jdk.JDK14OrLater;
 import com.oracle.svm.core.jdk.JDK15OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -38,7 +40,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK14OrEarlier;
 import com.oracle.svm.core.jdk.JDK15OrLater;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 
 import jdk.jfr.Event;
@@ -372,8 +373,36 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#flush}. */
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class) //
+    @TargetElement(onlyWith = JDK14OrLater.class) //
     public void flush() {
+        // Temporarily do nothing. This is used for JFR streaming.
+    }
+
+    /** See {@link JVM#include}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public void include(Thread thread) {
+        // Temporarily do nothing. This is used for JFR streaming.
+    }
+
+    /** See {@link JVM#exclude}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public void exclude(Thread thread) {
+        // Temporarily do nothing. This is used for JFR streaming.
+    }
+
+    /** See {@link JVM#isExcluded}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public boolean isExcluded(Thread thread) {
+        // Temporarily do nothing. This is used for JFR streaming.
+        return false;
+    }
+    /** See {@link JVM#markChunkFinal}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public void markChunkFinal() {
         // Temporarily do nothing. This is used for JFR streaming.
     }
 }
