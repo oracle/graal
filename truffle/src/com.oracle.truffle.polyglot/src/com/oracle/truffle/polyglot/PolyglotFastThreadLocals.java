@@ -98,6 +98,20 @@ final class PolyglotFastThreadLocals {
         return data;
     }
 
+    private static Object[] createFastThreadLocalsForLanguage(PolyglotLanguageInstance instance) {
+        Object[] data = new Object[LANGUAGE_START + (instance.language.engine.languages.length * LANGUAGE_ELEMENTS)];
+        data[THREAD_INDEX] = null; // not available if only engine is entered
+        data[CONTEXT_INDEX] = null; // not available if only engine is entered
+
+        // we take the first language we find. should we fail maybe if there is more than one?
+        data[getLanguageIndex(instance) + LANGUAGE_SPI_OFFSET] = instance.spi;
+        return data;
+    }
+
+    private static int getLanguageIndex(PolyglotLanguageInstance instance) {
+        return LANGUAGE_START + (instance.language.cache.getStaticIndex() * LANGUAGE_ELEMENTS);
+    }
+
     @SuppressWarnings({"unchecked"})
     public static <C extends TruffleLanguage<?>> LanguageReference<C> createLanguageReference(Node legacyNode, Class<? extends TruffleLanguage<?>> language) {
         LanguageReference<C> ref = createLanguageReference(language);
@@ -139,6 +153,17 @@ final class PolyglotFastThreadLocals {
 
     public static void leave(Object[] prev) {
         IMPL.set(prev);
+    }
+
+    public static Object enterLanguage(PolyglotLanguageInstance language) {
+        Object[] prev = IMPL.get();
+        IMPL.set(createFastThreadLocalsForLanguage(language));
+        return prev;
+    }
+
+    public static void leaveLanguage(PolyglotLanguageInstance instance, Object prev) {
+        assert IMPL.get()[getLanguageIndex(instance) + LANGUAGE_SPI_OFFSET] != null : "language not entered";
+        IMPL.set((Object[]) prev);
     }
 
     public static void cleanup(Object[] threadLocals) {
@@ -224,12 +249,12 @@ final class PolyglotFastThreadLocals {
     }
 
     private static void updateLanguageObjects(Object[] data, PolyglotLanguageContext languageContext) {
-        int index = languageContext.language.cache.getStaticIndex();
-        int languageIndex = LANGUAGE_START + (index * LANGUAGE_ELEMENTS);
+        PolyglotLanguageInstance instance = languageContext.getLanguageInstance();
+        int languageIndex = getLanguageIndex(instance);
         assert languageIndex + LANGUAGE_ELEMENTS - 1 < data.length : "unexpected fast thread local state";
 
         data[languageIndex + LANGUAGE_CONTEXT_OFFSET] = languageContext.getContextImpl();
-        data[languageIndex + LANGUAGE_SPI_OFFSET] = languageContext.getLanguageInstance().spi;
+        data[languageIndex + LANGUAGE_SPI_OFFSET] = instance.spi;
     }
 
     /*
