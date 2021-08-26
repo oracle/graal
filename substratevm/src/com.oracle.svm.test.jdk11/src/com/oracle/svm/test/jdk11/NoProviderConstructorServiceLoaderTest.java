@@ -30,6 +30,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.Assert;
@@ -47,8 +48,6 @@ import org.junit.Test;
  * failure due to service loader handling in jersey #2652"</a> for more details.
  */
 public class NoProviderConstructorServiceLoaderTest {
-
-    private static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
     public static class TestFeature implements Feature {
         @Override
@@ -83,7 +82,7 @@ public class NoProviderConstructorServiceLoaderTest {
      */
     @Test
     public void testLazyStreamNativeImage() {
-        Assume.assumeTrue("native image specific behavior", IS_AOT);
+        Assume.assumeTrue("native image specific behavior", ImageInfo.inImageRuntimeCode());
         Set<String> simpleNames = ServiceLoader.load(ServiceInterface.class).stream()
                         .map(provider -> provider.type().getSimpleName())
                         .collect(Collectors.toSet());
@@ -97,7 +96,7 @@ public class NoProviderConstructorServiceLoaderTest {
      */
     @Test
     public void testEagerStreamNativeImage() {
-        Assume.assumeTrue("native image specific behavior", IS_AOT);
+        Assume.assumeTrue("native image specific behavior", ImageInfo.inImageRuntimeCode());
         Set<String> simpleNames = ServiceLoader.load(ServiceInterface.class).stream()
                         .map(provider -> provider.get().getClass().getSimpleName())
                         .collect(Collectors.toSet());
@@ -111,7 +110,7 @@ public class NoProviderConstructorServiceLoaderTest {
      */
     @Test
     public void testEagerIteratorNativeImage() {
-        Assume.assumeTrue("native image specific behavior", IS_AOT);
+        Assume.assumeTrue("native image specific behavior", ImageInfo.inImageRuntimeCode());
         Set<String> simpleNames = new HashSet<>();
         ServiceLoader.load(ServiceInterface.class).iterator()
                         .forEachRemaining(s -> simpleNames.add(s.getClass().getSimpleName()));
@@ -123,7 +122,7 @@ public class NoProviderConstructorServiceLoaderTest {
      */
     @Test(expected = ServiceConfigurationError.class)
     public void testLazyStreamHotspot() {
-        Assume.assumeFalse("hotspot specific behavior", IS_AOT);
+        Assume.assumeFalse("hotspot specific behavior", ImageInfo.inImageRuntimeCode());
         Set<String> simpleNames = ServiceLoader.load(ServiceInterface.class).stream()
                         .map(provider -> provider.type().getSimpleName())
                         .collect(Collectors.toSet());
@@ -135,7 +134,7 @@ public class NoProviderConstructorServiceLoaderTest {
      */
     @Test(expected = ServiceConfigurationError.class)
     public void testEagerStreamHotspot() {
-        Assume.assumeFalse("hotspot specific behavior", IS_AOT);
+        Assume.assumeFalse("hotspot specific behavior", ImageInfo.inImageRuntimeCode());
         Set<String> simpleNames = ServiceLoader.load(ServiceInterface.class).stream()
                         .map(provider -> provider.get().getClass().getSimpleName())
                         .collect(Collectors.toSet());
@@ -147,7 +146,7 @@ public class NoProviderConstructorServiceLoaderTest {
      */
     @Test(expected = ServiceConfigurationError.class)
     public void testEagerIteratorHotspot() {
-        Assume.assumeFalse("hotspot specific behavior", IS_AOT);
+        Assume.assumeFalse("hotspot specific behavior", ImageInfo.inImageRuntimeCode());
         Set<String> simpleNames = new HashSet<>();
         ServiceLoader.load(ServiceInterface.class).iterator()
                         .forEachRemaining(s -> simpleNames.add(s.getClass().getSimpleName()));
