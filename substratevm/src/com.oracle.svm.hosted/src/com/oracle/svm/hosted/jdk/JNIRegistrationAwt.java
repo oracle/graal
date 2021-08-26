@@ -33,7 +33,11 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+
+import jdk.vm.ci.services.Services;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,11 +46,15 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import java.awt.GraphicsEnvironment;
+import java.util.Optional;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticFeature
 @SuppressWarnings({"unused"})
 public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
+
+    private static final int JDK_UPDATE = GraalServices.getJavaUpdateVersion();
+    private static final boolean IS_OPENJDK = Optional.ofNullable(Services.getSavedProperties().get("java.vm.name")).orElse("").startsWith("OpenJDK");
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -161,7 +169,13 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         nativeLibraries.addStaticJniLibrary("fontmanager", isHeadless() ? "awt_headless" : "awt_xawt");
-        nativeLibraries.addStaticJniLibrary("harfbuzz");
+        // harfbuzz became a separate library in OpenJDK 16/11.0.10 (JDK-8249821) and then went back
+        // to be included in fontmanager library in OpenJDK 17/11.0.13 (or 11.0.12 for OracleJDK).
+        // See JDK-8255790.
+        int jdk11HbUpdateBound = IS_OPENJDK ? 12 : 11;
+        if (JavaVersionUtil.JAVA_SPEC == 16 || (JavaVersionUtil.JAVA_SPEC == 11 && JDK_UPDATE >= 10 && JDK_UPDATE <= jdk11HbUpdateBound)) {
+            nativeLibraries.addStaticJniLibrary("harfbuzz");
+        }
 
         nativeLibraries.addDynamicNonJniLibrary("freetype");
 
