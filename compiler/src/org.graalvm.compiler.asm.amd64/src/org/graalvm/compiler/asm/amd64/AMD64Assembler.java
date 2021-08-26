@@ -1385,6 +1385,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitOperandHelper(dst, src, 1, getDisp8Scale(useEvex, size));
             asm.emitByte(imm8);
         }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
+            asm.evexPrefix(dst, mask, Register.None, src, size, pp, mmmmm, wEvex, z, b);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src);
+            asm.emitByte(imm8);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
+            asm.evexPrefix(dst, mask, Register.None, src, size, pp, mmmmm, wEvex, z, b);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src, 1, getDisp8Scale(true, size));
+            asm.emitByte(imm8);
+        }
     }
 
     /**
@@ -1587,6 +1603,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPBLENDMQ       = new VexRVMOp("VPBLENDMQ",   P_66, M_0F38, W1,  0x64, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W1);
         public static final VexRVMOp VBLENDMPS       = new VexRVMOp("VBLENDMPS",   P_66, M_0F38, W0,  0x65, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W0);
         public static final VexRVMOp VBLENDMPD       = new VexRVMOp("VBLENDMPD",   P_66, M_0F38, W1,  0x65, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W1);
+        public static final VexRVMOp VPERMT2B        = new VexRVMOp("VPERMT2B",    P_66, M_0F38, W0,  0x7D, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W0);
         // @formatter:on
 
         protected VexRVMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -1625,6 +1642,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
         }
 
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
+            asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src2);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
+            boolean useEvex = asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
+        }
+
         public boolean isPacked() {
             return pp == P_ || pp == P_66;
         }
@@ -1651,6 +1682,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitModRM(dst, src2);
         }
 
+        @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
             GraalError.guarantee(assertion.check((AMD64) asm.target.arch, LZ, dst, src1, src2, null), "emitting invalid instruction");
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
@@ -1668,6 +1700,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitOperandHelper(dst, src2, 0);
         }
 
+        @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
             GraalError.guarantee(assertion.check((AMD64) asm.target.arch, LZ, dst, src1, null, null), "emitting invalid instruction");
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
