@@ -26,19 +26,15 @@ package com.oracle.truffle.espresso.substitutions;
 import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
 public final class Target_java_lang_invoke_VarHandles {
 
     @Substitution
-    abstract static class GetStaticFieldFromBaseAndOffset extends Node {
+    abstract static class GetStaticFieldFromBaseAndOffset extends SubstitutionNode {
         abstract @JavaType(Field.class) StaticObject execute(
                         @JavaType(Object.class) StaticObject base,
                         long offset,
@@ -48,8 +44,7 @@ public final class Target_java_lang_invoke_VarHandles {
         public static @JavaType(Field.class) StaticObject doCached(@JavaType(Object.class) StaticObject base,
                         long offset,
                         @JavaType(Class.class) StaticObject fieldType,
-                        @SuppressWarnings("unused") @CachedContext(EspressoLanguage.class) EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Cached("create(getContext().getMeta().java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset.getCallTargetNoSubstitution())") DirectCallNode original) {
             // getStaticFieldFromBaseAndOffset expects the static base to be the j.l.Class
             return (StaticObject) original.call(base.getKlass().mirror(), offset, fieldType);
         }
