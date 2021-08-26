@@ -329,7 +329,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     }
 
     private static <T> T error(T result, String message) {
-        inform("ERROR: " + message);
+        inform("Error: " + message);
         return result;
     }
 
