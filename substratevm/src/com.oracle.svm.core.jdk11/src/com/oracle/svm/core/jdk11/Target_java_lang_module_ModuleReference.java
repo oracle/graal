@@ -22,11 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
+@TargetClass(value = java.lang.module.ModuleReference.class, onlyWith = JDK11OrLater.class)
 @SuppressWarnings("unused")
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
+public final class Target_java_lang_module_ModuleReference {
+
 }

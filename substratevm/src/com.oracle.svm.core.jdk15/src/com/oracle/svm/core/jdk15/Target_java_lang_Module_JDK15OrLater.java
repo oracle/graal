@@ -22,11 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk15;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk11.ModuleUtil;
 
 @SuppressWarnings("unused")
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
+@TargetClass(value = Module.class, onlyWith = JDK15OrLater.class)
+public final class Target_java_lang_Module_JDK15OrLater {
+
+    //Checkstyle: allow synchronization
+    @Substitute
+    private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
+        if (Arrays.stream(pns).anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Bad package name");
+        }
+        List<String> packages = Arrays.stream(pns).map(Object::toString).collect(Collectors.toUnmodifiableList());
+        ModuleUtil.defineModule(module, isOpen, packages);
+    }
 }
