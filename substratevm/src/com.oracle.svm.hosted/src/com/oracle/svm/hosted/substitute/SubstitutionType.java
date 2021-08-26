@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -49,10 +50,13 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
      */
     private final boolean isUserSubstitution;
 
+    private final ResolvedJavaField[][] instanceFields;
+
     public SubstitutionType(ResolvedJavaType original, ResolvedJavaType annotated, boolean isUserSubstitution) {
         this.annotated = annotated;
         this.original = original;
         this.isUserSubstitution = isUserSubstitution;
+        this.instanceFields = new ResolvedJavaField[][]{annotated.getInstanceFields(false), annotated.getInstanceFields(true)};
     }
 
     public boolean isUserSubstitution() {
@@ -65,6 +69,19 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
 
     public ResolvedJavaType getAnnotated() {
         return annotated;
+    }
+
+    void addInstanceField(ResolvedJavaField field) {
+        for (int i = 0; i < instanceFields.length; i++) {
+            ResolvedJavaField[] newFields = Arrays.copyOf(instanceFields[i], instanceFields[i].length + 1, ResolvedJavaField[].class);
+            newFields[newFields.length - 1] = field;
+            instanceFields[i] = newFields;
+        }
+    }
+
+    @Override
+    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        return instanceFields[includeSuperclasses ? 1 : 0];
     }
 
     @Override
@@ -212,11 +229,6 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
         /* We don't want to speculate with substitutions. */
         return null;
-    }
-
-    @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        return annotated.getInstanceFields(includeSuperclasses);
     }
 
     @Override

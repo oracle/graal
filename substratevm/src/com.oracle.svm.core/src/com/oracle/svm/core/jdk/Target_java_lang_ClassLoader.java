@@ -25,21 +25,13 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.net.URLConnection;
 import java.security.ProtectionDomain;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
-
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -50,7 +42,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -67,61 +58,6 @@ final class Target_jdk_internal_loader_Resource_JDK11OrLater {
 @SuppressWarnings("unused")
 final class Target_sun_misc_Resource_JDK8OrEarlier {
 
-}
-
-@SuppressWarnings("unchecked")
-class ResourcesHelper {
-
-    private static <T> T urlToResource(String resourceName, URL url) {
-        try {
-            if (url == null) {
-                return null;
-            }
-            URLConnection urlConnection = url.openConnection();
-            Object resource = ImageSingletons.lookup(JDKVersionSpecificResourceBuilder.class).buildResource(resourceName, url, urlConnection);
-            VMError.guarantee(resource != null);
-            return (T) resource;
-        } catch (IOException e) {
-            return null;
-        } catch (ClassCastException classCastException) {
-            throw VMError.shouldNotReachHere(classCastException);
-        }
-    }
-
-    static <T> T nameToResource(String resourceName) {
-        return urlToResource(resourceName, nameToResourceURL(resourceName));
-    }
-
-    static <T> Enumeration<T> nameToResources(String resourceName) {
-        Enumeration<URL> urls = Resources.createURLs(resourceName);
-        List<T> resourceURLs = new ArrayList<>();
-        while (urls.hasMoreElements()) {
-            resourceURLs.add(urlToResource(resourceName, urls.nextElement()));
-        }
-        return Collections.enumeration(resourceURLs);
-    }
-
-    static URL nameToResourceURL(String resourceName) {
-        return Resources.createURL(resourceName);
-    }
-
-    static InputStream nameToResourceInputStream(String resourceName) throws IOException {
-        URL url = nameToResourceURL(resourceName);
-        return url != null ? url.openStream() : null;
-    }
-
-    static List<URL> nameToResourceListURLs(String resourcesName) {
-        Enumeration<URL> urls = Resources.createURLs(resourcesName);
-        List<URL> resourceURLs = new ArrayList<>();
-        while (urls.hasMoreElements()) {
-            resourceURLs.add(urls.nextElement());
-        }
-        return resourceURLs;
-    }
-
-    static Enumeration<URL> nameToResourceEnumerationURLs(String resourcesName) {
-        return Collections.enumeration(nameToResourceListURLs(resourcesName));
-    }
 }
 
 @TargetClass(ClassLoader.class)
@@ -162,10 +98,6 @@ public final class Target_java_lang_ClassLoader {
         VMError.guarantee(scl != null);
         return scl;
     }
-
-    @Alias
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    native Stream<Package> packages();
 
     @Delete
     private static native void initSystemClassLoader();
@@ -252,7 +184,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
+    @SuppressWarnings("unused")
     Class<?> loadClass(Target_java_lang_Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
         try {
@@ -260,22 +192,6 @@ public final class Target_java_lang_ClassLoader {
         } catch (ClassNotFoundException e) {
             return null;
         }
-    }
-
-    /**
-     * All ClassLoaderValue are reset at run time for now. See also
-     * {@link Target_jdk_internal_loader_BootLoader#CLASS_LOADER_VALUE_MAP} for resetting of the
-     * boot class loader.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
-    @TargetElement(onlyWith = JDK11OrLater.class)//
-    ConcurrentHashMap<?, ?> classLoaderValueMap;
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
-    private boolean trySetObjectField(String name, Object obj) {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.trySetObjectField(String name, Object obj)");
     }
 
     @Substitute //
@@ -291,13 +207,6 @@ public final class Target_java_lang_ClassLoader {
             return null;
         }
         return ClassForNameSupport.forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    @SuppressWarnings({"unused"})
-    public Target_java_lang_Module getUnnamedModule() {
-        return DynamicHub.singleModuleReference.get();
     }
 
     /*

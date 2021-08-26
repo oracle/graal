@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.301.0",
+  "mxversion" : "5.309.2",
   "name": "java-benchmarks",
 
   "javac.lint.overrides": "none",
@@ -44,6 +44,11 @@ suite = {
     "DACAPO" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar"],
       "sha1" : "e39957904b7e79caf4fa54f30e8e4ee74d4e9e37",
+    },
+
+    "DACAPO_MR1_BACH" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-MR1-bach.jar"],
+      "sha1" : "9cf63ef9620032b47f1a4897fe910755596b371a",
     },
 
     "DACAPO_SCALA" : {

@@ -111,26 +111,26 @@ public class ConfigurationSet {
 
     public ProxyConfiguration loadProxyConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(Arrays.asList(types))), exceptionHandler);
+        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(Arrays.asList(types)), true), exceptionHandler);
         return proxyConfiguration;
     }
 
     public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
                     Function<IOException, Exception> exceptionHandler) throws Exception {
         PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs, shouldExcludeClassesWithHash);
-        loadConfig(predefinedClassesConfigPaths, new PredefinedClassesConfigurationParser(predefinedClassesConfiguration::add), exceptionHandler);
+        loadConfig(predefinedClassesConfigPaths, new PredefinedClassesConfigurationParser(predefinedClassesConfiguration::add, true), exceptionHandler);
         return predefinedClassesConfiguration;
     }
 
     public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
-        loadConfig(resourceConfigPaths, new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration)), exceptionHandler);
+        loadConfig(resourceConfigPaths, new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration), true), exceptionHandler);
         return resourceConfiguration;
     }
 
     public SerializationConfiguration loadSerializationConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         SerializationConfiguration serializationConfiguration = new SerializationConfiguration();
-        loadConfig(serializationConfigPaths, new SerializationConfigurationParser(serializationConfiguration), exceptionHandler);
+        loadConfig(serializationConfigPaths, new SerializationConfigurationParser(serializationConfiguration, true), exceptionHandler);
         return serializationConfiguration;
     }
 

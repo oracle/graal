@@ -63,7 +63,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.nodes.ExpectByteArrayHostObjectNode;
 import com.oracle.truffle.regex.runtime.nodes.ExpectStringOrTruffleObjectNode;
@@ -251,7 +250,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         Object input = args[0];
         long fromIndex = toLongNode.execute(args[1]);
         if (fromIndex > Integer.MAX_VALUE) {
-            return NoMatchResult.getInstance();
+            return RegexResult.getNoMatchInstance();
         }
         return invokeCache.execute(member, getExecCallTarget(), input, (int) fromIndex);
     }
@@ -350,7 +349,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
             Object input = expectStringOrTruffleObjectNode.execute(args[0]);
             long fromIndex = toLongNode.execute(args[1]);
             if (fromIndex > Integer.MAX_VALUE) {
-                return NoMatchResult.getInstance();
+                return RegexResult.getNoMatchInstance();
             }
             return execNode.execute(getRegexObject().getExecCallTarget(), input, (int) fromIndex);
         }
@@ -399,7 +398,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
             byte[] input = expectByteArrayHostObjectNode.execute(args[0]);
             long fromIndex = toLongNode.execute(args[1]);
             if (fromIndex > Integer.MAX_VALUE) {
-                return NoMatchResult.getInstance();
+                return RegexResult.getNoMatchInstance();
             }
             return execNode.execute(regexObj.getExecCallTarget(), input, (int) fromIndex);
         }

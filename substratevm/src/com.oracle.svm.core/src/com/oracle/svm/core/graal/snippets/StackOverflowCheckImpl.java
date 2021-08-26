@@ -83,6 +83,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -200,6 +201,28 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
          * again.
          */
         yellowZoneStateTL.set(0x7EFEFEFE);
+    }
+
+    @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
+    private static void updateStackOverflowBoundary(long requestedSize) {
+        UnsignedWord stackEnd = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class).lookupStackEnd(WordFactory.unsigned(requestedSize));
+        VMThreads.StackEnd.set(stackEnd);
+
+        /*
+         * Set up our yellow and red zones. That memory is not memory protected, it is a soft limit
+         * that we can change.
+         */
+        stackBoundaryTL.set(stackEnd.add(Options.StackYellowZoneSize.getValue() + Options.StackRedZoneSize.getValue()));
+        yellowZoneStateTL.set(STATE_YELLOW_ENABLED);
+    }
+
+    @Override
+    public void updateStackOverflowBoundary() {
+        long threadSize = JavaThreads.getRequestedThreadSize(Thread.currentThread());
+
+        if (threadSize != 0) {
+            updateStackOverflowBoundary(threadSize);
+        }
     }
 }
 

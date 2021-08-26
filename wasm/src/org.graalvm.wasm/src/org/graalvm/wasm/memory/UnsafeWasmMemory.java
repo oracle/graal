@@ -111,18 +111,14 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
         this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
     }
 
-    public void validateAddress(Node node, int address, int offset) {
-        assert offset >= 1;
-        if (address < 0 || address > this.byteSize() - offset) {
+    private void validateAddress(Node node, long address, int length) {
+        assert length >= 1;
+        long byteSize = byteSize();
+        assert byteSize >= 0;
+        if (address < 0 || address > byteSize - length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw trapOutOfBounds(node, address, offset);
+            throw trapOutOfBounds(node, address, length);
         }
-    }
-
-    @TruffleBoundary
-    private WasmException trapOutOfBounds(Node node, int address, int offset) {
-        throw WasmException.format(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, "%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
-                        offset, address, address, byteSize());
     }
 
     @Override
@@ -145,8 +141,8 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     }
 
     @Override
-    public int byteSize() {
-        return size * MEMORY_PAGE_SIZE;
+    public long byteSize() {
+        return Integer.toUnsignedLong(size) * MEMORY_PAGE_SIZE;
     }
 
     @Override
@@ -185,155 +181,155 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     }
 
     @Override
-    public int load_i32(Node node, int address) {
+    public int load_i32(Node node, long address) {
         validateAddress(node, address, 4);
         final int value = unsafe.getInt(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64(Node node, int address) {
+    public long load_i64(Node node, long address) {
         validateAddress(node, address, 8);
         final long value = unsafe.getLong(startAddress + address);
         return value;
     }
 
     @Override
-    public float load_f32(Node node, int address) {
+    public float load_f32(Node node, long address) {
         validateAddress(node, address, 4);
         final float value = unsafe.getFloat(startAddress + address);
         return value;
     }
 
     @Override
-    public double load_f64(Node node, int address) {
+    public double load_f64(Node node, long address) {
         validateAddress(node, address, 8);
         final double value = unsafe.getDouble(startAddress + address);
         return value;
     }
 
     @Override
-    public int load_i32_8s(Node node, int address) {
+    public int load_i32_8s(Node node, long address) {
         validateAddress(node, address, 1);
         final int value = unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
-    public int load_i32_8u(Node node, int address) {
+    public int load_i32_8u(Node node, long address) {
         validateAddress(node, address, 1);
         final int value = 0x0000_00ff & unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
-    public int load_i32_16s(Node node, int address) {
+    public int load_i32_16s(Node node, long address) {
         validateAddress(node, address, 2);
         final int value = unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
-    public int load_i32_16u(Node node, int address) {
+    public int load_i32_16u(Node node, long address) {
         validateAddress(node, address, 2);
         final int value = 0x0000_ffff & unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_8s(Node node, int address) {
+    public long load_i64_8s(Node node, long address) {
         validateAddress(node, address, 1);
         final long value = unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_8u(Node node, int address) {
+    public long load_i64_8u(Node node, long address) {
         validateAddress(node, address, 1);
         final long value = 0x0000_0000_0000_00ffL & unsafe.getByte(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_16s(Node node, int address) {
+    public long load_i64_16s(Node node, long address) {
         validateAddress(node, address, 2);
         final long value = unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_16u(Node node, int address) {
+    public long load_i64_16u(Node node, long address) {
         validateAddress(node, address, 2);
         final long value = 0x0000_0000_0000_ffffL & unsafe.getShort(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_32s(Node node, int address) {
+    public long load_i64_32s(Node node, long address) {
         validateAddress(node, address, 4);
         final long value = unsafe.getInt(startAddress + address);
         return value;
     }
 
     @Override
-    public long load_i64_32u(Node node, int address) {
+    public long load_i64_32u(Node node, long address) {
         validateAddress(node, address, 4);
         final long value = 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
         return value;
     }
 
     @Override
-    public void store_i32(Node node, int address, int value) {
+    public void store_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
     }
 
     @Override
-    public void store_i64(Node node, int address, long value) {
+    public void store_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         unsafe.putLong(startAddress + address, value);
 
     }
 
     @Override
-    public void store_f32(Node node, int address, float value) {
+    public void store_f32(Node node, long address, float value) {
         validateAddress(node, address, 4);
         unsafe.putFloat(startAddress + address, value);
 
     }
 
     @Override
-    public void store_f64(Node node, int address, double value) {
+    public void store_f64(Node node, long address, double value) {
         validateAddress(node, address, 8);
         unsafe.putDouble(startAddress + address, value);
     }
 
     @Override
-    public void store_i32_8(Node node, int address, byte value) {
+    public void store_i32_8(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         unsafe.putByte(startAddress + address, value);
     }
 
     @Override
-    public void store_i32_16(Node node, int address, short value) {
+    public void store_i32_16(Node node, long address, short value) {
         validateAddress(node, address, 2);
         unsafe.putShort(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_8(Node node, int address, byte value) {
+    public void store_i64_8(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         unsafe.putByte(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_16(Node node, int address, short value) {
+    public void store_i64_16(Node node, long address, short value) {
         validateAddress(node, address, 2);
         unsafe.putShort(startAddress + address, value);
     }
 
     @Override
-    public void store_i64_32(Node node, int address, int value) {
+    public void store_i64_32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
     }

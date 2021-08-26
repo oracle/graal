@@ -165,7 +165,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
     }
 
-    void checkParameterOrReturnType(String headerMessage, TypeMirror typeMirror, Element element) {
+    private void checkParameterOrReturnType(String headerMessage, TypeMirror typeMirror, Element element) {
         if (typeMirror.getKind().isPrimitive()) {
             if (getAnnotation(typeMirror, javaType) != null) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
@@ -185,10 +185,28 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
     }
 
-    void checkTargetMethod(ExecutableElement targetElement) {
+    private void checkInjectedParameter(String headerMessage, TypeMirror typeMirror, Element element) {
+        AnnotationMirror injectMirror = getAnnotation(typeMirror, inject);
+        if (injectMirror == null) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            headerMessage + " must be annotated with @Inject", element);
+        }
+
+        List<TypeElement> allowedTypes = Arrays.asList(meta, substitutionProfiler, espressoContext);
+        boolean unsupportedType = allowedTypes.stream().noneMatch(allowedType -> env().getTypeUtils().isSameType(typeMirror, allowedType.asType()));
+        if (unsupportedType) {
+            String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                            headerMessage + " type not supported, allowed types: " + allowedNames, element);
+        }
+    }
+
+    private void checkTargetMethod(ExecutableElement targetElement) {
         for (VariableElement param : targetElement.getParameters()) {
             if (isActualParameter(param)) {
                 checkParameterOrReturnType("Substitution parameter", param.asType(), param);
+            } else {
+                checkInjectedParameter("Substitution parameter", param.asType(), param);
             }
         }
         checkParameterOrReturnType("Substitution return type", targetElement.getReturnType(), targetElement);
@@ -199,10 +217,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             ExecutableElement methodElement = (ExecutableElement) element;
             Set<Modifier> modifiers = methodElement.getModifiers();
             if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitution cannot be private nor protected", element);
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Substitution method cannot be private nor protected", element);
             }
             if (!modifiers.contains(Modifier.STATIC)) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitutions must be static", element);
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Substitution method must be static", element);
             }
             checkTargetMethod(methodElement);
         }
@@ -210,7 +228,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             TypeElement typeElement = (TypeElement) element;
             Set<Modifier> modifiers = typeElement.getModifiers();
             if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitution cannot be private nor protected", element);
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Substitution method cannot be private nor protected", element);
             }
             ExecutableElement targetMethod = findNodeExecute(typeElement);
             if (targetMethod != null) {

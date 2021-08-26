@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
     "version" : "21.3.0",
-    "mxversion" : "5.307.0",
+    "mxversion" : "5.309.2",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "4003cf5c2b79653485052209659e94f2c0c0991c",
+                "version": "08bdfb723dc052539181f8d9e43832ff574869e7",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},

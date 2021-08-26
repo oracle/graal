@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,49 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.result;
 
-import java.util.Arrays;
+package com.oracle.truffle.espresso.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+/**
+ * An exception thrown if an iterator is finished.
+ * <p>
+ * This exception is thrown by the {@link Interop#getIteratorNextElement getIteratorNextElement}
+ * when the iterator has no more elements to return.
+ *
+ * @since 21.1
+ */
+public final class StopIterationException extends InteropException {
 
-@ExportLibrary(InteropLibrary.class)
-public final class SingleIndexArrayResult extends RegexResult {
+    private static final long serialVersionUID = 1857745390734085182L;
 
-    @CompilationFinal(dimensions = 1) private final int[] indices;
+    private static final StopIterationException INSTANCE = new StopIterationException();
 
-    public SingleIndexArrayResult(int[] indices) {
-        this.indices = indices;
+    private StopIterationException() {
+        super(null);
     }
 
-    public int[] getIndices() {
-        return indices;
+    private StopIterationException(Throwable cause) {
+        super(null, cause);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 21.1
+     */
     @Override
-    public int getStart(int groupNumber) {
-        return indices[groupNumber * 2];
+    public String getMessage() {
+        return "Iteration was stopped.";
     }
 
-    @Override
-    public int getEnd(int groupNumber) {
-        return indices[groupNumber * 2 + 1];
+    /**
+     * Creates an {@link StopIterationException} to indicate that iteration was stopped.
+     *
+     * @since 21.1
+     */
+    public static StopIterationException create() {
+        return INSTANCE;
     }
 
-    @TruffleBoundary
-    @Override
-    public String toString() {
-        return Arrays.toString(indices);
-    }
-
-    @TruffleBoundary
-    @ExportMessage
-    @Override
-    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "TRegexResult" + toString();
+    /**
+     * Creates an {@link StopIterationException} to indicate that iteration was stopped.
+     * <p>
+     * In addition a cause may be provided. The cause should only be set if the guest language code
+     * caused this problem. An example for this is a language specific proxy mechanism that invokes
+     * guest language code to describe an object. If the guest language code fails to execute and
+     * this interop exception is a valid interpretation of the error, then the error should be
+     * provided as cause. The cause can then be used by the source language as new exception cause
+     * if the {@link InteropException} is translated to a source language error.
+     *
+     * @param cause the guest language exception that caused the error.
+     * @since 21.1
+     */
+    public static StopIterationException create(Throwable cause) {
+        return new StopIterationException(cause);
     }
 }

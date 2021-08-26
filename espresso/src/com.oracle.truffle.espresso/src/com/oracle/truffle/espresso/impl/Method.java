@@ -301,10 +301,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return (BootstrapMethodsAttribute) getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
-    public byte[] getCode() {
-        return getCodeAttribute().getCode();
-    }
-
     public byte[] getOriginalCode() {
         return getCodeAttribute().getOriginalCode();
     }
@@ -956,7 +952,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Method forceSplit() {
-        Method result = new Method(this, getCodeAttribute().forceSplit());
+        Method result = new Method(this, getCodeAttribute());
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
         result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
@@ -1258,11 +1254,27 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private final CodeAttribute codeAttribute;
         @CompilationFinal private CallTarget callTarget;
 
+        @CompilationFinal(dimensions = 1) //
+        private volatile byte[] code = null;
+
         MethodVersion(RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
             this.assumption = Truffle.getRuntime().createAssumption();
             this.pool = pool;
             this.linkedMethod = linkedMethod;
             this.codeAttribute = codeAttribute;
+        }
+
+        public byte[] getCode() {
+            if (code == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                synchronized (this) {
+                    if (code == null) {
+                        byte[] originalCode = getCodeAttribute().getOriginalCode();
+                        code = Arrays.copyOf(originalCode, originalCode.length);
+                    }
+                }
+            }
+            return code;
         }
 
         public Method getMethod() {
@@ -1391,7 +1403,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public int getCodeSize() {
-            return codeAttribute.getCode() != null ? codeAttribute.getCode().length : 0;
+            return getCode() != null ? getCode().length : 0;
         }
 
         public LineNumberTableAttribute getLineNumberTableAttribute() {
@@ -1550,7 +1562,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public long getLastBCI() {
             int bci = 0;
-            BytecodeStream bs = new BytecodeStream(getCodeAttribute().getCode());
+            BytecodeStream bs = new BytecodeStream(getCode());
             int end = bs.endBCI();
 
             while (bci < end) {

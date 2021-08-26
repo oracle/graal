@@ -221,7 +221,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
      */
     @Substitution
     public static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
-                    @JavaType(Object[].class) StaticObject args, @InjectMeta Meta meta) {
+                    @JavaType(Object[].class) StaticObject args, @Inject Meta meta) {
         StaticObject curMethod = guestMethod;
 
         Method reflectedMethod = null;

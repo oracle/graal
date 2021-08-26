@@ -27,10 +27,12 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.svm.core.util.json.JSONParser;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+
+import com.oracle.svm.core.util.json.JSONParser;
 
 public class SerializationConfigurationParser extends ConfigurationParser {
 
@@ -39,7 +41,8 @@ public class SerializationConfigurationParser extends ConfigurationParser {
 
     private final RuntimeSerializationSupport serializationSupport;
 
-    public SerializationConfigurationParser(RuntimeSerializationSupport serializationSupport) {
+    public SerializationConfigurationParser(RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
+        super(strictConfiguration);
         this.serializationSupport = serializationSupport;
     }
 
@@ -48,11 +51,15 @@ public class SerializationConfigurationParser extends ConfigurationParser {
         JSONParser parser = new JSONParser(reader);
         Object json = parser.parse();
         for (Object serializationKey : asList(json, "first level of document must be an array of serialization lists")) {
-            Map<String, Object> data = asMap(serializationKey, "second level of document must be serialization descriptor objects ");
-            String className = asString(data.get(NAME_KEY));
-            Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
-            String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            serializationSupport.registerWithTargetConstructorClass(className, customTargetConstructorClass);
+            parseSerializationDescriptorObject(asMap(serializationKey, "second level of document must be serialization descriptor objects"));
         }
+    }
+
+    private void parseSerializationDescriptorObject(Map<String, Object> data) {
+        checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY));
+        String targetSerializationClass = asString(data.get(NAME_KEY));
+        Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
+        String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
+        serializationSupport.registerWithTargetConstructorClass(targetSerializationClass, customTargetConstructorClass);
     }
 }
