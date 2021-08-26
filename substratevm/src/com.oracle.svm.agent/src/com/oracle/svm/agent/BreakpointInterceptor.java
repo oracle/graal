@@ -702,7 +702,11 @@ final class BreakpointInterceptor {
                 return null;
             }
             String localeTag = readLocaleTag(jni, locale);
-            JNIObjectHandle clazz = callObjectMethod(jni, result, agent.handles().javaLangObjectGetClass);
+            if (localeTag.equals("und")) {
+                /*- Root locale is serialized into "und" */
+                localeTag = "";
+            }
+            JNIObjectHandle clazz = callObjectMethod(jni, curr, agent.handles().javaLangObjectGetClass);
             if (!clearException(jni)) {
                 JNIObjectHandle classNameHandle = callObjectMethod(jni, clazz, agent.handles().javaLangClassGetName);
                 if (!clearException(jni)) {
