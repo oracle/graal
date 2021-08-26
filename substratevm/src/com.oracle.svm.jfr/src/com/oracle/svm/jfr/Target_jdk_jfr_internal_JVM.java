@@ -369,4 +369,11 @@ public final class Target_jdk_jfr_internal_JVM {
     public boolean shouldRotateDisk() {
         return SubstrateJVM.get().shouldRotateDisk();
     }
+
+    /** See {@link JVM#flush}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class) //
+    public void flush() {
+        // Temporarily do nothing. This is used for JFR streaming.
+    }
 }
