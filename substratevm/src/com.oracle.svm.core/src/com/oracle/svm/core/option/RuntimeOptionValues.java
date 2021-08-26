@@ -126,6 +126,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
                 }
                 builder.help(helpMsg);
                 builder.deprecated(descriptor.isDeprecated());
+                builder.deprecationMessage(descriptor.getDeprecationMessage());
                 graalvmDescriptors.add(builder.build());
             }
         }
