@@ -218,11 +218,19 @@ public final class EspressoContext {
     }
 
     public int getNewKlassId() {
-        return klassIdProvider.getAndIncrement();
+        int id = klassIdProvider.getAndIncrement();
+        if (id < 0) {
+            throw EspressoError.shouldNotReachHere("Exhausted klass IDs");
+        }
+        return id;
     }
 
     public int getNewLoaderId() {
-        return loaderIdProvider.getAndIncrement();
+        int id = loaderIdProvider.getAndIncrement();
+        if (id < 0) {
+            throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
+        }
+        return id;
     }
 
     public int getBootClassLoaderID() {
