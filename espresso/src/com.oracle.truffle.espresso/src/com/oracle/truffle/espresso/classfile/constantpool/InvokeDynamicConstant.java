@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -52,6 +53,8 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         return Tag.INVOKEDYNAMIC;
     }
 
+    Symbol<Signature> getSignature(ConstantPool pool);
+
     default boolean isResolved() {
         return false;
     }
@@ -67,6 +70,16 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         public void dump(ByteBuffer buf) {
             buf.putChar(bootstrapMethodAttrIndex);
             buf.putChar(nameAndTypeIndex);
+        }
+
+        @Override
+        public void validate(ConstantPool pool) {
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool);
+        }
+
+        @Override
+        public Symbol<Signature> getSignature(ConstantPool pool) {
+            return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
 
         @Override
@@ -198,6 +211,11 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         public Symbol<Signature> getSignature(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere("String already resolved");
         }
+
+        @Override
+        public NameAndTypeConstant getNameAndType(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("String already resolved");
+        }
     }
 
     final class CallSiteLink {
@@ -273,6 +291,11 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
         @Override
         public Symbol<Signature> getSignature(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
+        }
+
+        @Override
+        public NameAndTypeConstant getNameAndType(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
         }
 
