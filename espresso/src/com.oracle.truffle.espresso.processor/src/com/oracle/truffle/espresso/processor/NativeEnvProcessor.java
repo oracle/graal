@@ -23,10 +23,12 @@
 package com.oracle.truffle.espresso.processor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.AnnotationMirror;
@@ -180,6 +182,9 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         boolean prependEnv = prependEnvValue || isJni(element, implAnnotation);
         String className = envClassName;
 
+        // Sanity check.
+        checkIntrinsicElement(element);
+
         // Obtain the name of the method to be substituted in.
         String substitutedMethodName = getSubstutitutedMethodName(element);
 
@@ -207,6 +212,73 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                         substitutedMethodName,
                         espressoTypes, h);
         commitSubstitution(element, targetPackage, substitutorName, classFile);
+    }
+
+    private void checkInjectedParameter(String headerMessage, TypeMirror typeMirror, Element element) {
+        AnnotationMirror injectMirror = getAnnotation(typeMirror, inject);
+        if (injectMirror == null) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            headerMessage + " must be annotated with @Inject", element);
+        }
+
+        List<TypeElement> allowedTypes = Arrays.asList(meta, substitutionProfiler, espressoContext);
+        boolean unsupportedType = allowedTypes.stream().noneMatch(allowedType -> env().getTypeUtils().isSameType(typeMirror, allowedType.asType()));
+        if (unsupportedType) {
+            String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                            headerMessage + " type not supported, allowed types: " + allowedNames, element);
+        }
+    }
+
+    private void checkParameterOrReturnType(String headerMessage, TypeMirror typeMirror, Element element) {
+        if (typeMirror.getKind().isPrimitive()) {
+            if (getAnnotation(typeMirror, javaType) != null) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                                headerMessage + " (primitive type) cannot be annotated with @JavaType", element);
+            }
+        } else if (typeMirror.getKind() != TypeKind.VOID) {
+            if (processingEnv.getTypeUtils().isSameType(typeMirror, staticObject.asType())) {
+                AnnotationMirror javaTypeMirror = getAnnotation(typeMirror, javaType);
+                if (javaTypeMirror == null) {
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                                    headerMessage + " must be annotated with e.g. @JavaType(String.class) hinting the expected type", element);
+                }
+            }
+        }
+    }
+
+    private void checkTargetMethod(ExecutableElement targetElement) {
+        for (VariableElement param : targetElement.getParameters()) {
+            if (isActualParameter(param)) {
+                checkParameterOrReturnType("Native (intrinsic) method parameter", param.asType(), param);
+            } else {
+                checkInjectedParameter("Injected parameter", param.asType(), param);
+            }
+        }
+        checkParameterOrReturnType("Native (intrinsic) method return type", targetElement.getReturnType(), targetElement);
+    }
+
+    private void checkIntrinsicElement(Element element) {
+        if (element.getKind() == ElementKind.METHOD) {
+            ExecutableElement methodElement = (ExecutableElement) element;
+            Set<Modifier> modifiers = methodElement.getModifiers();
+            if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Native (intrinsic) method cannot be private nor protected", element);
+            }
+            checkTargetMethod(methodElement);
+        }
+        // Not supported yet.
+        if (element.getKind() == ElementKind.CLASS) {
+            TypeElement typeElement = (TypeElement) element;
+            Set<Modifier> modifiers = typeElement.getModifiers();
+            if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Native (intrinsic) method cannot be private nor protected", element);
+            }
+            ExecutableElement targetMethod = findNodeExecute(typeElement);
+            if (targetMethod != null) {
+                checkTargetMethod(targetMethod);
+            }
+        }
     }
 
     private static boolean isJni(Element vmElement, TypeElement implAnnotation) {

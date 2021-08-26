@@ -40,7 +40,7 @@ public final class Target_jdk_internal_reflect_Reflection {
      * Therefore, we are creating this java11 substitution as a workaround.
      */
     @Substitution
-    public static @JavaType(Class.class) StaticObject getCallerClass(@InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
+    public static @JavaType(Class.class) StaticObject getCallerClass(@Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         return meta.getVM().JVM_GetCallerClass(VM.jvmCallerDepth(), profiler);
     }
 }
