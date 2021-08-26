@@ -27,6 +27,7 @@ package com.oracle.svm.core.posix.darwin;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -45,9 +46,24 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackEnd() {
+        return lookupStackEnd(WordFactory.zero());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public UnsignedWord lookupStackEnd(UnsignedWord requestedStackSize) {
         Pthread.pthread_t self = Pthread.pthread_self();
         UnsignedWord stackaddr = DarwinPthread.pthread_get_stackaddr_np(self);
         UnsignedWord stacksize = DarwinPthread.pthread_get_stacksize_np(self);
+        if (requestedStackSize.notEqual(WordFactory.zero())) {
+            /*
+             * if stackSize > requestedStackSize, then artificially limit stack end to match
+             * requested stack size.
+             */
+            if (stacksize.aboveThan(requestedStackSize)) {
+                return stackaddr.subtract(requestedStackSize);
+            }
+        }
         return stackaddr.subtract(stacksize);
     }
 }

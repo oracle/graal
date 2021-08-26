@@ -151,17 +151,17 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution
-    public static @JavaType(Thread.class) StaticObject currentThread(@InjectMeta Meta meta) {
-        return meta.getContext().getCurrentThread();
+    public static @JavaType(Thread.class) StaticObject currentThread(@Inject EspressoContext context) {
+        return context.getCurrentThread();
     }
 
     @Substitution
-    public static @JavaType(Thread[].class) StaticObject getThreads(@InjectMeta Meta meta) {
+    public static @JavaType(Thread[].class) StaticObject getThreads(@Inject Meta meta) {
         return StaticObject.createArray(meta.java_lang_Thread.array(), meta.getContext().getActiveThreads());
     }
 
     @Substitution
-    public static @JavaType(StackTraceElement[][].class) StaticObject dumpThreads(@JavaType(Thread[].class) StaticObject threads, @InjectMeta Meta meta) {
+    public static @JavaType(StackTraceElement[][].class) StaticObject dumpThreads(@JavaType(Thread[].class) StaticObject threads, @Inject Meta meta) {
         if (StaticObject.isNull(threads)) {
             throw meta.throwNullPointerException();
         }
@@ -360,7 +360,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution
-    public static boolean holdsLock(@JavaType(Object.class) StaticObject object, @InjectMeta Meta meta) {
+    public static boolean holdsLock(@JavaType(Object.class) StaticObject object, @Inject Meta meta) {
         if (StaticObject.isNull(object)) {
             throw meta.throwNullPointerException();
         }
@@ -369,7 +369,7 @@ public final class Target_java_lang_Thread {
 
     @TruffleBoundary
     @Substitution
-    public static void sleep(long millis, @InjectMeta Meta meta) {
+    public static void sleep(long millis, @Inject Meta meta) {
         StaticObject thread = meta.getContext().getCurrentThread();
         try {
             fromRunnable(thread, meta, State.TIMED_WAITING);
@@ -465,7 +465,7 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void setNativeName(@JavaType(Object.class) StaticObject self, @JavaType(String.class) StaticObject name,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Thread hostThread = getHostFromGuestThread(self);
         hostThread.setName(meta.toHostString(name));
     }

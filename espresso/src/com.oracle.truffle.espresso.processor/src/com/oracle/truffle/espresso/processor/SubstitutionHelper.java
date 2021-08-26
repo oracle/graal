@@ -36,6 +36,7 @@ import javax.lang.model.element.TypeElement;
 public class SubstitutionHelper {
     final boolean hasMetaInjection;
     final boolean hasProfileInjection;
+    final boolean hasContextInjection;
 
     // Target of the substitution, cab be a public static method or a node.
     private final Element target;
@@ -59,6 +60,7 @@ public class SubstitutionHelper {
                         : getMethodTarget();
         this.hasMetaInjection = processor.hasMetaInjection(targetMethod);
         this.hasProfileInjection = processor.hasProfileInjection(targetMethod);
+        this.hasContextInjection = processor.hasContextInjection(targetMethod);
     }
 
     public boolean isNodeTarget() {

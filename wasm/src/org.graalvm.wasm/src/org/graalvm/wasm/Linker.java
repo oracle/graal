@@ -364,8 +364,8 @@ public class Linker {
                 baseAddress = offsetAddress;
             }
 
-            Assert.assertUnsignedIntLessOrEqual(baseAddress, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
-            Assert.assertUnsignedIntLessOrEqual(baseAddress + byteLength, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+            Assert.assertUnsignedIntLessOrEqual(baseAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+            Assert.assertUnsignedIntLessOrEqual(baseAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
 
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                 byte b = data[writeOffset];

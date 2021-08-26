@@ -26,21 +26,17 @@ package hello;
 
 import hello.lib.Greeter;
 
+import java.lang.module.Configuration;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Module helloAppModule = Main.class.getModule();
-        assert helloAppModule.getName().equals("moduletests.hello.app");
-        assert helloAppModule.isExported("hello");
-
         Module helloLibModule = Greeter.class.getModule();
-        assert helloLibModule.getName().equals("moduletests.hello.lib");
-        assert helloLibModule.isExported("hello.lib");
-
-        assert helloAppModule.canRead(helloLibModule);
-        // assert !helloLibModule.canRead(helloAppModule); GR-30957
+        testModuleObjects(helloAppModule, helloLibModule);
 
         System.out.println("Basic Module test involving " + helloAppModule + " and " + helloLibModule);
         Greeter.greet();
@@ -52,5 +48,61 @@ public class Main {
         Method greetMethod = hello.privateLib2.PrivateGreeter.class.getDeclaredMethod("greet");
         greetMethod.setAccessible(true);
         greetMethod.invoke(null);
+
+        System.out.println("Now testing boot module layer");
+        testBootLayer(helloAppModule, helloLibModule);
+    }
+
+    private static void testModuleObjects(Module helloAppModule, Module helloLibModule) {
+        assert helloAppModule.getName().equals("moduletests.hello.app");
+        assert helloAppModule.isExported(Main.class.getPackageName());
+        assert helloAppModule.isNamed();
+        assert helloAppModule.getPackages().contains(Main.class.getPackageName());
+
+        assert helloLibModule.getName().equals("moduletests.hello.lib");
+        assert helloLibModule.isExported(Greeter.class.getPackageName());
+        assert helloLibModule.isNamed();
+        assert helloLibModule.getPackages().contains(Greeter.class.getPackageName());
+
+        assert !helloAppModule.isOpen(Main.class.getPackageName(), helloLibModule);
+        assert helloLibModule.isOpen(hello.privateLib2.PrivateGreeter.class.getPackageName(), helloAppModule);
+
+        assert helloAppModule.canRead(helloLibModule);
+        assert !helloLibModule.canRead(helloAppModule);
+    }
+
+    @SuppressWarnings("OptionalGetWithoutIsPresent")
+    private static void testBootLayer(Module helloAppModule, Module helloLibModule) {
+        ModuleLayer bootLayer = ModuleLayer.boot();
+
+        System.out.println("Now testing boot module layer configuration");
+        Configuration cf = bootLayer.configuration();
+        assert cf.findModule("java.base").get()
+                .reference()
+                .descriptor()
+                .exports()
+                .stream().anyMatch(e -> (e.source().equals("java.lang") && !e.isQualified()));
+
+        System.out.println("Now testing boot module layer module set");
+        Set<Module> modules = bootLayer.modules();
+        assert modules.contains(Object.class.getModule());
+        int uniqueModuleNameCount = modules.stream().map(Module::getName).collect(Collectors.toSet()).size();
+        assert modules.size() == uniqueModuleNameCount;
+
+        System.out.println("Now testing if boot module layer contains java.base");
+        Module base = Object.class.getModule();
+        assert bootLayer.findModule("java.base").get() == base;
+        assert base.getLayer() == bootLayer;
+
+        System.out.println("Now testing boot module layer java.base loader");
+        assert bootLayer.findLoader("java.base") == null;
+
+        System.out.println("Now testing boot module layer parent");
+        assert bootLayer.parents().size() == 1;
+        assert bootLayer.parents().get(0) == ModuleLayer.empty();
+
+        System.out.println("Now testing if user modules are part of the boot layer");
+        assert ModuleLayer.boot().modules().contains(helloAppModule);
+        assert ModuleLayer.boot().modules().contains(helloLibModule);
     }
 }

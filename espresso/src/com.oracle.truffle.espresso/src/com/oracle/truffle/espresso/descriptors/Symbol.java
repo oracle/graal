@@ -828,6 +828,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/InvalidArrayIndexException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException = StaticSymbols.putType(
                         "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_StopIterationException = StaticSymbols.putType(
+                        "Lcom/oracle/truffle/espresso/polyglot/StopIterationException;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnknownKeyException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnknownKeyException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ForeignException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ForeignException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ExceptionType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;");
     }
@@ -1009,8 +1012,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> UnknownIdentifierException_String_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException,
                         Type.java_lang_String, Type.java_lang_Throwable);
 
-        public static final Symbol<Signature> ArityException_int_int = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_ArityException, Type._int, Type._int);
-        public static final Symbol<Signature> ArityException_int_int_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_ArityException, Type._int, Type._int,
+        public static final Symbol<Signature> ArityException_int_int_int = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_ArityException, Type._int, Type._int, Type._int);
+        public static final Symbol<Signature> ArityException_int_int_int_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_ArityException, Type._int, Type._int,
+                        Type._int,
                         Type.java_lang_Throwable);
 
         public static final Symbol<Signature> InvalidArrayIndexException_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long);
@@ -1022,6 +1026,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> InvalidBufferOffsetException_long_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException,
                         Type._long, Type._long,
                         Type.java_lang_Throwable);
+
+        public static final Symbol<Signature> StopIterationException = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_StopIterationException);
+        public static final Symbol<Signature> StopIterationException_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_StopIterationException, Type.java_lang_Throwable);
+        public static final Symbol<Signature> UnknownKeyException_Object = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnknownKeyException,
+                        Type.java_lang_Object);
+        public static final Symbol<Signature> UnknownKeyException_Object_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnknownKeyException,
+                        Type.java_lang_Object, Type.java_lang_Throwable);
 
         public static final Symbol<Signature> _void_sun_misc_Signal = StaticSymbols.putSignature(Type._void, Type.sun_misc_Signal);
         public static final Symbol<Signature> _void_jdk_internal_misc_Signal = StaticSymbols.putSignature(Type._void, Type.jdk_internal_misc_Signal);

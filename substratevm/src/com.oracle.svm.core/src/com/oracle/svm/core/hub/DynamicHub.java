@@ -53,6 +53,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 
+import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -81,7 +82,6 @@ import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_Reflection;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -344,8 +344,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         }
         return new java.security.ProtectionDomain(cs, perms);
     });
-
-    public static final LazyFinalReference<Target_java_lang_Module> singleModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 
     private final LazyFinalReference<DynamicHubCompanion> companion = new LazyFinalReference<>(() -> new DynamicHubCompanion(this));
 

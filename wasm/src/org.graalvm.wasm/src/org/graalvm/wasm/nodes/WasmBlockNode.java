@@ -42,7 +42,6 @@ package org.graalvm.wasm.nodes;
 
 import static org.graalvm.wasm.BinaryStreamParser.length;
 import static org.graalvm.wasm.BinaryStreamParser.value;
-import static org.graalvm.wasm.WasmMath.addExactUnsigned;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
 import static org.graalvm.wasm.constants.Instructions.BR_IF;
@@ -823,13 +822,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // endregion
 
                     int baseAddress = popInt(stacklocals, stackPointer - 1);
-                    int address;
-                    try {
-                        address = addExactUnsigned(memOffset, baseAddress);
-                    } catch (ArithmeticException e) {
-                        errorBranch();
-                        throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, this);
-                    }
+                    final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
                     int value = memory.load_i32(this, address);
                     pushInt(stacklocals, stackPointer - 1, value);
@@ -1446,15 +1439,17 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return callNode.execute(target, args);
     }
 
+    /**
+     * The static address offset (u32) is added to the dynamic address (u32) operand, yielding a
+     * 33-bit effective address that is the zero-based index at which the memory is accessed.
+     */
+    private static long effectiveMemoryAddress(int staticAddressOffset, int dynamicAddress) {
+        return Integer.toUnsignedLong(dynamicAddress) + Integer.toUnsignedLong(staticAddressOffset);
+    }
+
     private void load(WasmMemory memory, long[] stack, int stackPointer, int opcode, int memOffset) {
         final int baseAddress = popInt(stack, stackPointer);
-        final int address;
-        try {
-            address = addExactUnsigned(memOffset, baseAddress);
-        } catch (ArithmeticException e) {
-            errorBranch();
-            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, this);
-        }
+        final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
         switch (opcode) {
             case I32_LOAD: {
@@ -1534,13 +1529,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     private void store(WasmMemory memory, long[] stack, int stackPointer, int opcode, int memOffset) {
         final int baseAddress = popInt(stack, stackPointer - 2);
-        int address;
-        try {
-            address = addExactUnsigned(memOffset, baseAddress);
-        } catch (ArithmeticException e) {
-            errorBranch();
-            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, this);
-        }
+        final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
         switch (opcode) {
             case I32_STORE: {

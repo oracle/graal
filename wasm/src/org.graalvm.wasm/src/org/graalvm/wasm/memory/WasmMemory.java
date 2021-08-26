@@ -45,9 +45,12 @@ import java.nio.charset.StandardCharsets;
 
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmNode;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -76,7 +79,7 @@ public abstract class WasmMemory implements TruffleObject {
     /**
      * The current size of this memory instance (measured in bytes).
      */
-    public abstract int byteSize();
+    public abstract long byteSize();
 
     /**
      * The minimum size of this memory as declared in the binary (measured in number of
@@ -110,54 +113,61 @@ public abstract class WasmMemory implements TruffleObject {
     public abstract void reset();
 
     // Checkstyle: stop
-    public abstract int load_i32(Node node, int address);
+    public abstract int load_i32(Node node, long address);
 
-    public abstract long load_i64(Node node, int address);
+    public abstract long load_i64(Node node, long address);
 
-    public abstract float load_f32(Node node, int address);
+    public abstract float load_f32(Node node, long address);
 
-    public abstract double load_f64(Node node, int address);
+    public abstract double load_f64(Node node, long address);
 
-    public abstract int load_i32_8s(Node node, int address);
+    public abstract int load_i32_8s(Node node, long address);
 
-    public abstract int load_i32_8u(Node node, int address);
+    public abstract int load_i32_8u(Node node, long address);
 
-    public abstract int load_i32_16s(Node node, int address);
+    public abstract int load_i32_16s(Node node, long address);
 
-    public abstract int load_i32_16u(Node node, int address);
+    public abstract int load_i32_16u(Node node, long address);
 
-    public abstract long load_i64_8s(Node node, int address);
+    public abstract long load_i64_8s(Node node, long address);
 
-    public abstract long load_i64_8u(Node node, int address);
+    public abstract long load_i64_8u(Node node, long address);
 
-    public abstract long load_i64_16s(Node node, int address);
+    public abstract long load_i64_16s(Node node, long address);
 
-    public abstract long load_i64_16u(Node node, int address);
+    public abstract long load_i64_16u(Node node, long address);
 
-    public abstract long load_i64_32s(Node node, int address);
+    public abstract long load_i64_32s(Node node, long address);
 
-    public abstract long load_i64_32u(Node node, int address);
+    public abstract long load_i64_32u(Node node, long address);
 
-    public abstract void store_i32(Node node, int address, int value);
+    public abstract void store_i32(Node node, long address, int value);
 
-    public abstract void store_i64(Node node, int address, long value);
+    public abstract void store_i64(Node node, long address, long value);
 
-    public abstract void store_f32(Node node, int address, float value);
+    public abstract void store_f32(Node node, long address, float value);
 
-    public abstract void store_f64(Node node, int address, double value);
+    public abstract void store_f64(Node node, long address, double value);
 
-    public abstract void store_i32_8(Node node, int address, byte value);
+    public abstract void store_i32_8(Node node, long address, byte value);
 
-    public abstract void store_i32_16(Node node, int address, short value);
+    public abstract void store_i32_16(Node node, long address, short value);
 
-    public abstract void store_i64_8(Node node, int address, byte value);
+    public abstract void store_i64_8(Node node, long address, byte value);
 
-    public abstract void store_i64_16(Node node, int address, short value);
+    public abstract void store_i64_16(Node node, long address, short value);
 
-    public abstract void store_i64_32(Node node, int address, int value);
+    public abstract void store_i64_32(Node node, long address, int value);
     // Checkstyle: resume
 
     public abstract WasmMemory duplicate();
+
+    @TruffleBoundary
+    protected final WasmException trapOutOfBounds(Node node, long address, int length) {
+        final String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
+                        length, address, address, byteSize());
+        return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
+    }
 
     /**
      * Reads the null-terminated UTF-8 string starting at {@code startOffset}.
