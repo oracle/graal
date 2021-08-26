@@ -53,9 +53,7 @@ public class NoProviderConstructorServiceLoaderTest {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             RuntimeClassInitialization.initializeAtBuildTime(NoProviderConstructorServiceLoaderTest.class);
-            RuntimeClassInitialization.initializeAtBuildTime(ServiceInterface.class);
-            RuntimeClassInitialization.initializeAtBuildTime(ProperService.class);
-            RuntimeClassInitialization.initializeAtBuildTime(NoProviderConstructorService.class);
+            RuntimeClassInitialization.initializeAtBuildTime(NoProviderConstructorServiceLoaderTest.class.getClasses());
         }
     }
 
