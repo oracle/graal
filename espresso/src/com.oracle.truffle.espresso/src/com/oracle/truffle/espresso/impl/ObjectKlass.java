@@ -127,7 +127,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private final Field[] staticFieldTable;
 
-    @CompilationFinal private Assumption noAddedFields = Truffle.getRuntime().createAssumption();
+    private final Assumption noAddedFields = Truffle.getRuntime().createAssumption();
 
     // used for class redefintion when refreshing vtables etc.
     private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
@@ -518,7 +518,6 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Field[] getDeclaredFields() {
-        KlassVersion currentKlass = getKlassVersion();
         if (noAddedFields.isValid()) {
             // Speculate that there are no hidden fields except the extension field
             // we always filter the extension fields, so subtract 1 from the new length
@@ -676,8 +675,8 @@ public final class ObjectKlass extends Klass {
     }
 
     Field lookupFieldTableImpl(int slot) {
-        if (slot > 0) {
-            assert slot >= 0 && slot < fieldTable.length && !fieldTable[slot].isHidden();
+        if (slot >= 0) {
+            assert slot < fieldTable.length && !fieldTable[slot].isHidden();
             return fieldTable[slot];
         } else { // negative values used for extension fields
             ObjectKlass objectKlass = this;
@@ -697,17 +696,11 @@ public final class ObjectKlass extends Klass {
     }
 
     Field lookupStaticFieldTableImpl(int slot) {
-        if (noAddedFields.isValid()) {
-            assert slot >= 0 && slot < staticFieldTable.length;
+        if (slot >= 0) {
+            assert slot < staticFieldTable.length;
             return staticFieldTable[slot];
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (slot >= 0 && slot < staticFieldTable.length) {
-                return staticFieldTable[slot];
-            } else {
-                // check extension fields
-                return getStaticExtensionFieldObject().getStaticFieldAtSlot(slot);
-            }
+        } else { // negative values used for extension fields
+            return getStaticExtensionFieldObject().getStaticFieldAtSlot(slot);
         }
     }
 
@@ -1427,7 +1420,6 @@ public final class ObjectKlass extends Klass {
     }
 
     public ExtensionFieldObject getStaticExtensionFieldObject() {
-        Field[] staticFieldTable = getStaticFieldTable();
         Field extensionField = getStaticFieldTable()[staticFieldTable.length - 1];
         Object object = extensionField.getHiddenObject(getStatics());
         if (object == StaticObject.NULL) {

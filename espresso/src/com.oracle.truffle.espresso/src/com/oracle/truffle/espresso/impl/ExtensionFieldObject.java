@@ -22,11 +22,8 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,11 +31,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+
 public final class ExtensionFieldObject extends StaticObject {
     private static AtomicInteger nextAvailableInstanceSlot = new AtomicInteger(-1);
 
     private final Map<Field, Object> fieldValues;
-    private final List<Field> addedInstanceFields = new ArrayList<>(1);
+
+    @CompilationFinal(dimensions = 1) private Field[] addedInstanceFields = Field.EMPTY_ARRAY;
+
     private int nextAvailableStaticSlot;
 
     public ExtensionFieldObject(ObjectKlass holder, List<ParserField> initialFields, RuntimeConstantPool pool) {
@@ -73,7 +78,7 @@ public final class ExtensionFieldObject extends StaticObject {
             synchronized (addedInstanceFields) {
                 List<Field> result = new ArrayList<>();
                 result.addAll(fieldValues.keySet());
-                result.addAll(addedInstanceFields);
+                result.addAll(Arrays.asList(addedInstanceFields));
                 return Collections.unmodifiableList(result);
             }
         }
@@ -94,11 +99,18 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void addNewInstanceFields(ObjectKlass holder, List<ParserField> instanceFields, RuntimeConstantPool pool) {
+        CompilerAsserts.neverPartOfCompilation();
         synchronized (addedInstanceFields) {
+            List<Field> toAdd = new ArrayList<>(instanceFields.size());
             for (ParserField newField : instanceFields) {
                 LinkedField linkedField = new LinkedField(newField, nextAvailableInstanceSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
                 Field field = new Field(holder, linkedField, pool, true);
-                addedInstanceFields.add(field);
+                toAdd.add(field);
+            }
+            int nextIndex = addedInstanceFields.length;
+            addedInstanceFields = Arrays.copyOf(addedInstanceFields, addedInstanceFields.length + toAdd.size());
+            for (Field field : toAdd) {
+                addedInstanceFields[nextIndex++] = field;
             }
         }
     }
@@ -113,11 +125,23 @@ public final class ExtensionFieldObject extends StaticObject {
         throw new IndexOutOfBoundsException("Index out of range: " + slot);
     }
 
-    @TruffleBoundary
     public Field getInstanceFieldAtSlot(int slot) throws NoSuchFieldException {
-        for (Field field : addedInstanceFields) {
-            if (field.getSlot() == slot) {
-                return field;
+        return binarySearch(addedInstanceFields, slot);
+    }
+
+    private static Field binarySearch(Field[] arr, int slot) throws NoSuchFieldException {
+        int firstIndex = 0;
+        int lastIndex = arr.length - 1;
+
+        while (firstIndex <= lastIndex) {
+            int middleIndex = (firstIndex + lastIndex) / 2;
+
+            if (arr[middleIndex].getSlot() == slot) {
+                return arr[middleIndex];
+            } else if (arr[middleIndex].getSlot() > slot) {
+                firstIndex = middleIndex + 1;
+            } else if (arr[middleIndex].getSlot() < slot) {
+                lastIndex = middleIndex - 1;
             }
         }
         throw new NoSuchFieldException("Index out of range: " + slot);
