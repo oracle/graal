@@ -50,9 +50,7 @@ public class AbstractServiceLoaderTest {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             RuntimeClassInitialization.initializeAtBuildTime(AbstractServiceLoaderTest.class);
-            RuntimeClassInitialization.initializeAtBuildTime(ServiceInterface.class);
-            RuntimeClassInitialization.initializeAtBuildTime(ConcreteService.class);
-            RuntimeClassInitialization.initializeAtBuildTime(AbstractService.class);
+            RuntimeClassInitialization.initializeAtBuildTime(AbstractServiceLoaderTest.class.getClasses());
         }
     }
 
