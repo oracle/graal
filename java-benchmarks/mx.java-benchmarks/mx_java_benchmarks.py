@@ -438,9 +438,9 @@ mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
 
 class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_regex(self):
-        # Example of Micronaut startup log:
+        # Example of Micronaut startup log (there can be some formatting in between):
         # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
-        return r"^\[main\] INFO io.micronaut.runtime.Micronaut - Startup completed in (?P<startup>\d+)ms."
+        return r"^.*\[main\].*INFO.*io.micronaut.runtime.Micronaut.*- Startup completed in (?P<startup>\d+)ms."
 
     def get_application_startup_units(self):
         return 'ms'
