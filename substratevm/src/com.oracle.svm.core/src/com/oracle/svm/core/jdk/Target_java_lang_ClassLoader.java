@@ -152,7 +152,7 @@ public final class Target_java_lang_ClassLoader {
         if (clazz != null) {
             return clazz;
         }
-        if (!PredefinedClassesSupport.supportsBytecodes()) {
+        if (!PredefinedClassesSupport.hasBytecodeClasses()) {
             throw new ClassNotFoundException(name);
         }
         if (parent != null) {
@@ -272,8 +272,8 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
-        if (!PredefinedClassesSupport.supportsBytecodes()) {
-            throw PredefinedClassesSupport.throwBytecodeSupportDisabled();
+        if (!PredefinedClassesSupport.hasBytecodeClasses()) {
+            throw PredefinedClassesSupport.throwNoBytecodeClasses();
         }
         byte[] array;
         int off;
