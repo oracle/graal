@@ -87,7 +87,7 @@ public final class Types {
     }
 
     public static ByteSequence hiddenClassName(Symbol<Type> type, int id) {
-        int idSize = intergerStringSize(id);
+        int idSize = integerStringSize(id);
         assert type.byteAt(0) == 'L';
         assert type.byteAt(type.length() - 1) == ';';
         int length = type.length() - 2 + 1 + idSize;
@@ -110,7 +110,7 @@ public final class Types {
         return result;
     }
 
-    static int intergerStringSize(int x) {
+    static int integerStringSize(int x) {
         assert x >= 0;
         int p = 10;
         for (int i = 1; i < 10; i++) {

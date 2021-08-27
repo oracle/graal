@@ -339,7 +339,7 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> Polyglot = new OptionKey<>(false);
 
     @Option(help = "Enable hotspot extension API.", //
-            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> HotSwapAPI = new OptionKey<>(false);
 
     @Option(help = "Expose the <JavaVM> binding.", //
