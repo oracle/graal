@@ -78,8 +78,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -2644,16 +2644,18 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     private static boolean overridesPatchContext(String languageId) {
-        if (ImageInfo.inImageRuntimeCode()) {
-            return true;
-        }
-        LanguageCache cache = LanguageCache.languages().get(languageId);
-        for (Method m : cache.loadLanguage().getClass().getDeclaredMethods()) {
-            if (m.getName().equals("patchContext")) {
-                return true;
+        if (TruffleOptions.AOT) {
+            return LanguageCache.overridesPathContext(languageId);
+        } else {
+            // Used by context pre-initialization tests on HotSpot
+            LanguageCache cache = LanguageCache.languages().get(languageId);
+            for (Method m : cache.loadLanguage().getClass().getDeclaredMethods()) {
+                if (m.getName().equals("patchContext")) {
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
     }
 
     synchronized void registerOnDispose(Closeable closeable) {
