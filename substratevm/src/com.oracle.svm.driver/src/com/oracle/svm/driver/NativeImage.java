@@ -815,7 +815,7 @@ public class NativeImage {
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry();
 
-        /* Default handler needs to be fist */
+        /* Default handler needs to be first */
         defaultOptionHandler = new DefaultOptionHandler(this);
         registerOptionHandler(defaultOptionHandler);
         apiOptionHandler = new APIOptionHandler(this);
