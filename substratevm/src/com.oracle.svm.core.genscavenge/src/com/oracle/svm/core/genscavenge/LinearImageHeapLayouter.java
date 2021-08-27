@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
@@ -34,7 +35,9 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     private final int nullRegionSize;
 
     public LinearImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset, int nullRegionSize) {
+        assert startOffset >= 0;
         assert startOffset == 0 || startOffset >= Heap.getHeap().getImageHeapOffsetInAddressSpace() : "must be relative to the heap base";
+        assert nullRegionSize >= 0;
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
         this.nullRegionSize = nullRegionSize;
@@ -52,14 +55,21 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
 
     @Override
     protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
-        long beginOffset = startOffset;
-        beginOffset += nullRegionSize;
+        long beginOffset = startOffset + spaceReservedForNull();
+        assert beginOffset >= ConfigurationValues.getObjectLayout().getAlignment() : "Zero designates null";
         LinearImageHeapAllocator allocator = new LinearImageHeapAllocator(beginOffset);
         for (LinearImageHeapPartition partition : getPartitions()) {
             partition.allocateObjects(allocator);
         }
         initializeHeapInfo(imageHeap.countDynamicHubs());
         return createLayoutInfo(startOffset, getWritablePrimitive().getStartOffset());
+    }
+
+    private long spaceReservedForNull() {
+        if (startOffset == 0 && nullRegionSize == 0) {
+            return ConfigurationValues.getObjectLayout().getAlignment();
+        }
+        return nullRegionSize;
     }
 
     /**
