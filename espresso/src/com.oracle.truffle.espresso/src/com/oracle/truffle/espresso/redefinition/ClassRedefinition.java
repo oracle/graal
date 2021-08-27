@@ -254,11 +254,12 @@ public final class ClassRedefinition {
             constantPoolChanged = true;
         }
         Iterator<Method> oldIt = oldMethods.iterator();
-        Iterator<ParserMethod> newIt = newMethods.iterator();
+        Iterator<ParserMethod> newIt;
         while (oldIt.hasNext()) {
             Method oldMethod = oldIt.next();
             ParserMethod oldParserMethod = oldMethod.getLinkedMethod().getParserMethod();
             // verify that there is a new corresponding method
+            newIt = newMethods.iterator();
             while (newIt.hasNext()) {
                 ParserMethod newMethod = newIt.next();
                 if (isSameMethod(oldParserMethod, newMethod)) {
@@ -343,10 +344,11 @@ public final class ClassRedefinition {
         ArrayList<ParserField> newFieldsList = new ArrayList<>(Arrays.asList(newFields));
 
         Iterator<Field> oldFieldsIt = oldFieldsList.iterator();
-        Iterator<ParserField> newFieldsIt = newFieldsList.iterator();
+        Iterator<ParserField> newFieldsIt;
 
         while (oldFieldsIt.hasNext()) {
             Field oldField = oldFieldsIt.next();
+            newFieldsIt = newFieldsList.iterator();
             // search for a new corresponding field
             while (newFieldsIt.hasNext()) {
                 ParserField newField = newFieldsIt.next();
