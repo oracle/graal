@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -66,12 +66,12 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new LoadStaticFieldTypeFlow(methodFlows, this);
         }
 
         @Override
-        public void initClone(BigBang bb) {
+        public void initClone(PointsToAnalysis bb) {
             fieldFlow.addUse(bb, this);
         }
 
@@ -99,13 +99,13 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
             this.objectFlow = objectFlow;
         }
 
-        LoadInstanceFieldTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, LoadInstanceFieldTypeFlow original) {
+        LoadInstanceFieldTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, LoadInstanceFieldTypeFlow original) {
             super(methodFlows, original);
             this.objectFlow = methodFlows.lookupCloneOf(bb, original.objectFlow);
         }
 
         @Override
-        public LoadFieldTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public LoadFieldTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new LoadInstanceFieldTypeFlow(bb, methodFlows, this);
         }
 
@@ -121,7 +121,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
             assert this.isClone();
 
@@ -143,7 +143,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
             assert this.isClone();
             /* When receiver flow saturates start observing the flow of the field declaring type. */
             replaceObservedWith(bb, field.getDeclaringClass());

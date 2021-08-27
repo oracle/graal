@@ -66,7 +66,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
@@ -394,8 +394,8 @@ public class NativeImageGeneratorRunner {
             }
 
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
-            analysisExecutor = Inflation.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
-            compilationExecutor = Inflation.createExecutor(debug, maxConcurrentThreads);
+            analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
+            compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
             generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData);
             generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
                             compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames());

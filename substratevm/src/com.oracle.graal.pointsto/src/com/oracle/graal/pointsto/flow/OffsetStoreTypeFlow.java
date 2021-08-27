@@ -31,7 +31,7 @@ import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -71,7 +71,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         this.objectFlow = objectFlow;
     }
 
-    public OffsetStoreTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
+    public OffsetStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
         super(original, methodFlows);
         this.objectType = original.objectType;
         this.valueFlow = methodFlows.lookupCloneOf(bb, original.valueFlow);
@@ -89,10 +89,10 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public abstract TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows);
+    public abstract TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
     @Override
-    public abstract boolean addState(BigBang bb, TypeState add);
+    public abstract boolean addState(PointsToAnalysis bb, TypeState add);
 
     @Override
     public void setObserved(TypeFlow<?> newObjectFlow) {
@@ -100,10 +100,10 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public abstract void onObservedUpdate(BigBang bb);
+    public abstract void onObservedUpdate(PointsToAnalysis bb);
 
     @Override
-    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         assert this.isClone();
         /* When receiver object flow saturates start observing the flow of the the object type. */
         replaceObservedWith(bb, objectType);
@@ -121,24 +121,24 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, arrayType, arrayType.getComponentType(), objectFlow, valueFlow);
         }
 
-        public StoreIndexedTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, StoreIndexedTypeFlow original) {
+        public StoreIndexedTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, StoreIndexedTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public StoreIndexedTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public StoreIndexedTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new StoreIndexedTypeFlow(bb, methodFlows, this);
         }
 
         @Override
-        public boolean addState(BigBang bb, TypeState add) {
+        public boolean addState(PointsToAnalysis bb, TypeState add) {
             /* Only a clone should be updated */
             assert this.isClone();
             return super.addState(bb, add, true);
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
             assert this.isClone();
 
@@ -172,12 +172,12 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
-        AbstractUnsafeStoreTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
+        AbstractUnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public final AbstractUnsafeStoreTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public final AbstractUnsafeStoreTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             AbstractUnsafeStoreTypeFlow copy = makeCopy(bb, methodFlows);
             // Register the unsafe store. It will be force-updated when new unsafe fields are
             // registered. Only the clones are registered since the original flows are not updated.
@@ -185,10 +185,10 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             return copy;
         }
 
-        protected abstract AbstractUnsafeStoreTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows);
+        protected abstract AbstractUnsafeStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
         @Override
-        public void initClone(BigBang bb) {
+        public void initClone(PointsToAnalysis bb) {
             /*
              * Unsafe store type flow models unsafe writes to both instance and static fields. From
              * an analysis stand point for static fields the base doesn't matter. An unsafe store
@@ -200,13 +200,13 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public boolean addState(BigBang bb, TypeState add) {
+        public boolean addState(PointsToAnalysis bb, TypeState add) {
             /* Only a clone should be updated */
             assert this.isClone();
             return super.addState(bb, add, true);
         }
 
-        void handleUnsafeAccessedFields(BigBang bb, List<AnalysisField> unsafeAccessedFields, AnalysisObject object) {
+        void handleUnsafeAccessedFields(PointsToAnalysis bb, List<AnalysisField> unsafeAccessedFields, AnalysisObject object) {
             for (AnalysisField field : unsafeAccessedFields) {
                 /* Write through the field filter flow. */
                 if (field.hasUnsafeFrozenTypeState()) {
@@ -221,7 +221,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
             assert this.isClone();
 
@@ -258,12 +258,12 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
-        public UnsafeStoreTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, UnsafeStoreTypeFlow original) {
+        public UnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeStoreTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public UnsafeStoreTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public UnsafeStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new UnsafeStoreTypeFlow(bb, methodFlows, this);
         }
 
@@ -282,12 +282,12 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
-        public CompareAndSwapTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, CompareAndSwapTypeFlow original) {
+        public CompareAndSwapTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, CompareAndSwapTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public CompareAndSwapTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public CompareAndSwapTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new CompareAndSwapTypeFlow(bb, methodFlows, this);
         }
 
@@ -306,12 +306,12 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
-        public AtomicWriteTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, AtomicWriteTypeFlow original) {
+        public AtomicWriteTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AtomicWriteTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public AtomicWriteTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public AtomicWriteTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new AtomicWriteTypeFlow(bb, methodFlows, this);
         }
 
@@ -333,26 +333,26 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             this.partitionType = partitionType;
         }
 
-        public UnsafePartitionStoreTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, UnsafePartitionStoreTypeFlow original) {
+        public UnsafePartitionStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafePartitionStoreTypeFlow original) {
             super(bb, methodFlows, original);
             this.partitionKind = original.partitionKind;
             this.partitionType = original.partitionType;
         }
 
         @Override
-        public UnsafePartitionStoreTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public UnsafePartitionStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new UnsafePartitionStoreTypeFlow(bb, methodFlows, this);
         }
 
         @Override
-        public boolean addState(BigBang bb, TypeState add) {
+        public boolean addState(PointsToAnalysis bb, TypeState add) {
             /* Only a clone should be updated */
             assert this.isClone();
             return super.addState(bb, add, true);
         }
 
         @Override
-        public TypeState filter(BigBang bb, TypeState update) {
+        public TypeState filter(PointsToAnalysis bb, TypeState update) {
             if (partitionType.equals(bb.getObjectType())) {
                 /* No need to filter. */
                 return update;
@@ -363,7 +363,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
             assert this.isClone();
 
@@ -393,12 +393,12 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, objectFlow, valueFlow);
         }
 
-        public JavaWriteTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, JavaWriteTypeFlow original) {
+        public JavaWriteTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, JavaWriteTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public JavaWriteTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public JavaWriteTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new JavaWriteTypeFlow(bb, methodFlows, this);
         }
 

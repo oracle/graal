@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.common.JVMCIError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -194,8 +195,8 @@ public class PermissionsFeature implements Feature {
                             Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
-            reflectionProxy = bb.forClass("com.oracle.svm.reflect.helpers.ReflectionProxy");
-            reflectionFieldAccessorFactory = bb.forClass(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory");
+            reflectionProxy = bb.getMetaAccess().lookupJavaType(loadClassOrFail("com.oracle.svm.reflect.helpers.ReflectionProxy"));
+            reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadClassOrFail(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory"));
             VMError.guarantee(reflectionProxy != null && reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
             Set<AnalysisMethod> deniedMethods = new HashSet<>();
@@ -239,6 +240,16 @@ public class PermissionsFeature implements Feature {
                                     });
                 }
             }
+        }
+    }
+
+    private static Class<?> loadClassOrFail(String className) {
+        try {
+            // Checkstyle: stop
+            return Class.forName(className);
+            // Checkstyle: resume
+        } catch (ClassNotFoundException e) {
+            throw JVMCIError.shouldNotReachHere(e);
         }
     }
 
@@ -368,7 +379,7 @@ public class PermissionsFeature implements Feature {
      * @param maxDepth maximal call trace depth
      * @param maxReports maximal number of reports
      * @param callGraph call graph obtained from
-     *            {@link PermissionsFeature#callGraph(com.oracle.graal.pointsto.BigBang, java.util.Set, org.graalvm.compiler.debug.DebugContext)}
+     *            {@link PermissionsFeature#callGraph(BigBang, java.util.Set, org.graalvm.compiler.debug.DebugContext)}
      * @param contextFilters filters removing known valid calls
      * @param visited visited methods
      * @param depth current depth
@@ -503,7 +514,7 @@ public class PermissionsFeature implements Feature {
      * @throws IllegalStateException if owner cannot be resolved
      */
     private static Set<AnalysisMethod> findMethods(BigBang bb, Class<?> owner, Predicate<ResolvedJavaMethod> filter) {
-        AnalysisType clazz = bb.forClass(owner);
+        AnalysisType clazz = bb.getMetaAccess().lookupJavaType(owner);
         if (clazz == null) {
             throw new IllegalStateException("Cannot resolve " + owner.getName() + ".");
         }
@@ -684,7 +695,7 @@ public class PermissionsFeature implements Feature {
         private final ImageClassLoader imageClassLoader;
 
         SafeServiceLoaderRecognizer(BigBang bb, ImageClassLoader imageClassLoader) {
-            AnalysisType serviceLoaderIterator = bb.forClass("java.util.ServiceLoader$LazyIterator");
+            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType(loadClassOrFail("java.util.ServiceLoader$LazyIterator"));
             Set<AnalysisMethod> methods = findMethods(bb, serviceLoaderIterator, (m) -> m.getName().equals("nextService"));
             if (methods.size() != 1) {
                 throw new IllegalStateException("Failed to lookup ServiceLoader$LazyIterator.nextService().");

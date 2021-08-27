@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.svm.util.ReflectionUtil;
@@ -90,7 +90,7 @@ public class TypeStateUtils {
     }
 
     /** Returns the union of the two analysis object arrays of the same type. */
-    protected static AnalysisObject[] union(BigBang bb, AnalysisObject[] a1, AnalysisObject[] a2) {
+    protected static AnalysisObject[] union(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         // assert this.type() == other.type();
 
         if (a1.length == 1 && bb.analysisPolicy().isSummaryObject(a1[0])) {
@@ -112,7 +112,7 @@ public class TypeStateUtils {
         }
     }
 
-    private static AnalysisObject[] arraysUnion(BigBang bb, AnalysisObject[] a1, AnalysisObject[] a2) {
+    private static AnalysisObject[] arraysUnion(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         // assert bb.options().allocationSiteSensitiveHeap();
         assert a1.length >= a2.length : "Union is commutative, must call it with a1 being the bigger state";
         assert a1.length > 1 || !bb.analysisPolicy().isSummaryObject(a1[0]);
@@ -200,7 +200,7 @@ public class TypeStateUtils {
 
     }
 
-    private static AnalysisObject[] checkUnionSize(BigBang bb, AnalysisObject[] oa1, AnalysisObject[] oa2, AnalysisObject[] result) {
+    private static AnalysisObject[] checkUnionSize(PointsToAnalysis bb, AnalysisObject[] oa1, AnalysisObject[] oa2, AnalysisObject[] result) {
         assert result.length >= 2;
 
         if (PointstoOptions.LimitObjectArrayLength.getValue(bb.getOptions()) && (result.length > PointstoOptions.MaxObjectSetSize.getValue(bb.getOptions()))) {
@@ -220,7 +220,7 @@ public class TypeStateUtils {
      * Returns the intersection of the two analysis object arrays of the same type. If one of them
      * contains a single context insensitive object, the other array is returned.
      */
-    protected static AnalysisObject[] intersection(BigBang bb, AnalysisObject[] a1, AnalysisObject[] a2) {
+    protected static AnalysisObject[] intersection(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         // assert this.type() == other.type();
 
         if (a1.length == 1 && a1[0].isContextInsensitiveObject()) {
@@ -237,7 +237,7 @@ public class TypeStateUtils {
     }
 
     /** Returns a list containing the intersection of the two object arrays. */
-    private static AnalysisObject[] arraysIntersection(BigBang bb, AnalysisObject[] a1, AnalysisObject[] a2) {
+    private static AnalysisObject[] arraysIntersection(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         assert a1.length <= a2.length : "Intersection is commutative, must call it with a1 being the shorter array";
 
         if (a1 == a2) {

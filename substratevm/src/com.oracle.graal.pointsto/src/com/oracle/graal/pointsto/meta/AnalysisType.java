@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,13 +39,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.BigBang.ConstantObjectsProfiler;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.PointsToAnalysis.ConstantObjectsProfiler;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -262,7 +263,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return uniqueConstant;
     }
 
-    public AnalysisObject getCachedConstantObject(BigBang bb, JavaConstant constant) {
+    public AnalysisObject getCachedConstantObject(PointsToAnalysis bb, JavaConstant constant) {
 
         /*
          * Constant caching is only used we certain analysis policies. Ideally we would store the
@@ -301,7 +302,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return result;
     }
 
-    private void mergeConstantObjects(BigBang bb) {
+    private void mergeConstantObjects(PointsToAnalysis bb) {
         ConstantContextSensitiveObject uConstant = new ConstantContextSensitiveObject(bb, this, null);
         if (UNIQUE_CONSTANT_UPDATER.compareAndSet(this, null, uConstant)) {
             constantObjectsCache.values().stream().forEach(constantObject -> {
@@ -414,7 +415,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
         universe.hostVM.checkForbidden(this, usageKind);
 
-        BigBang bb = universe.getBigbang();
+        PointsToAnalysis bb = ((PointsToAnalysis) universe.getBigbang());
         TypeState typeState = TypeState.forExactType(bb, this, true);
         TypeState typeStateNonNull = TypeState.forExactType(bb, this, false);
 
@@ -431,7 +432,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      * through type flows.
      */
     public void registerAsAssignable(BigBang bb) {
-        TypeState typeState = TypeState.forType(bb, this, true);
+        TypeState typeState = TypeState.forType(((PointsToAnalysis) bb), this, true);
         /*
          * Register the assignable type with its super types. Skip this type, it can lead to a
          * deadlock when this is called when the type is created.
@@ -512,8 +513,8 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     private synchronized void addAssignableType(BigBang bb, TypeState typeState) {
-        assignableTypesState = TypeState.forUnion(bb, assignableTypesState, typeState);
-        assignableTypesNonNullState = assignableTypesState.forNonNull(bb);
+        assignableTypesState = TypeState.forUnion(((PointsToAnalysis) bb), assignableTypesState, typeState);
+        assignableTypesNonNullState = assignableTypesState.forNonNull(((PointsToAnalysis) bb));
     }
 
     public void ensureInitialized() {

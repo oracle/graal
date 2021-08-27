@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -45,7 +45,7 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState update) {
+    public TypeState filter(PointsToAnalysis bb, TypeState update) {
         if (declaredType.equals(bb.getObjectType())) {
             /* No need to filter. */
             return update;
@@ -56,19 +56,19 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         setSaturated();
         /* Swap out this flow with its declared type flow. */
         swapOut(bb, declaredType.getTypeFlow(bb, true));
     }
 
     @Override
-    protected void notifyUseOfSaturation(BigBang bb, TypeFlow<?> use) {
+    protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
         swapAtUse(bb, declaredType.getTypeFlow(bb, true), use);
     }
 
     @Override
-    protected void notifyObserverOfSaturation(BigBang bb, TypeFlow<?> observer) {
+    protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
         swapAtObserver(bb, declaredType.getTypeFlow(bb, true), observer);
     }
 

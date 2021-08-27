@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow;
+package com.oracle.graal.pointsto;
 
-import org.graalvm.compiler.nodes.ValueNode;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.typestate.TypeState;
-
-import jdk.vm.ci.code.BytecodePosition;
-
-public class SourceTypeFlow extends SourceTypeFlowBase {
+/**
+ * The heap crawling algorithm used for updating type flow is is mostly implemented in
+ * {@link AnalysisObjectScanner} and its superclass {@link ObjectScanner}.
+ * 
+ * This interface is a first small step in a bigger effort to separate heap crawling from the
+ * analysis. If these two parts are cleanly separated, it should allow mixing different algorithms
+ * and configurations more easily.
+ */
+public interface HeapScanning {
 
     /**
-     * Source flow has an immutable type state.
+     * @return types that should not be crawled
      */
-    public SourceTypeFlow(ValueNode node, TypeState state) {
-        super(node, state);
-    }
+    AnalysisType[] skippedHeapTypes();
 
-    public SourceTypeFlow(PointsToAnalysis bb, SourceTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(bb, original, methodFlows);
-    }
-
-    @Override
-    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        return new SourceTypeFlow(bb, this, methodFlows);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("SourceFlow<").append(getState()).append(">");
-        return str.toString();
-    }
+    /**
+     * @return policy deciding what to scan
+     */
+    HeapScanningPolicy scanningPolicy();
 }

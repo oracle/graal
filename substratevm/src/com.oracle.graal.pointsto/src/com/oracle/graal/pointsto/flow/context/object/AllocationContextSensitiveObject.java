@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow.context.object;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -49,7 +49,7 @@ public class AllocationContextSensitiveObject extends ContextSensitiveAnalysisOb
      * has the same type and allocation site information as the original heap object, but a specific
      * context information.
      */
-    public AllocationContextSensitiveObject(BigBang bb, AnalysisType type, BytecodeLocation allocationSite, AnalysisContext context) {
+    public AllocationContextSensitiveObject(PointsToAnalysis bb, AnalysisType type, BytecodeLocation allocationSite, AnalysisContext context) {
         super(bb.getUniverse(), type, AnalysisObjectKind.AllocationContextSensitive);
         assert bb.trackConcreteAnalysisObjects(type);
         this.allocationLabel = allocationSite;
@@ -69,7 +69,7 @@ public class AllocationContextSensitiveObject extends ContextSensitiveAnalysisOb
     }
 
     @Override
-    public ArrayElementsTypeFlow getArrayElementsFlow(BigBang bb, boolean isStore) {
+    public ArrayElementsTypeFlow getArrayElementsFlow(PointsToAnalysis bb, boolean isStore) {
         assert type.isArray();
         assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
 

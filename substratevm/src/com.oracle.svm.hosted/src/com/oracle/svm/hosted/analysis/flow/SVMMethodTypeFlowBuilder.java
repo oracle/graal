@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
@@ -60,11 +60,11 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
-    public SVMMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodFlow) {
+    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodFlow) {
         super(bb, methodFlow);
     }
 
-    public SVMMethodTypeFlowBuilder(BigBang bb, StructuredGraph graph) {
+    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
         super(bb, graph);
     }
 

@@ -70,7 +70,7 @@ import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.jdk.AnnotationSupportConfig;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -580,7 +580,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
      * AnnotationSubstitutionType.getInterfaces() is called.
      */
     private static ResolvedJavaType findAnnotationInterfaceType(ResolvedJavaType annotationType) {
-        VMError.guarantee(Inflation.toWrappedType(annotationType) instanceof AnnotationSubstitutionType);
+        VMError.guarantee(NativeImagePointsToAnalysis.toWrappedType(annotationType) instanceof AnnotationSubstitutionType);
         ResolvedJavaType[] interfaces = annotationType.getInterfaces();
         VMError.guarantee(interfaces.length == 1, "Unexpected number of interfaces for annotation proxy class.");
         return interfaces[0];
