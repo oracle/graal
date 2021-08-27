@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 public class TypeConfiguration implements ConfigurationBase {
     private final ConcurrentMap<String, ConfigurationType> types = new ConcurrentHashMap<>();
@@ -67,7 +67,9 @@ public class TypeConfiguration implements ConfigurationBase {
 
     public void add(ConfigurationType type) {
         ConfigurationType previous = types.putIfAbsent(type.getQualifiedJavaName(), type);
-        UserError.guarantee(previous == null || previous == type, "Cannot replace existing type %s with %s", previous, type);
+        if (previous != null && previous != type) {
+            VMError.shouldNotReachHere("Cannot replace existing type " + previous + " with " + type);
+        }
     }
 
     public ConfigurationType getOrCreateType(String qualifiedForNameString) {
