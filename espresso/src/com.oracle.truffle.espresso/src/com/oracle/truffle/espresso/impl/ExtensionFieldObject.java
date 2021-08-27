@@ -26,103 +26,108 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class ExtensionFieldObject extends StaticObject {
-    private static AtomicInteger nextAvailableInstanceSlot = new AtomicInteger(-1);
+    private static AtomicInteger nextAvailableFieldSlot = new AtomicInteger(-1);
+    private static final FieldAndValueObject NULL_OBJECT = new FieldAndValueObject(null);
+    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
-    private final Map<Field, Object> fieldValues;
+    private final DynamicObject fieldStorage;
 
     @CompilationFinal(dimensions = 1) private Field[] addedInstanceFields = Field.EMPTY_ARRAY;
 
-    private int nextAvailableStaticSlot;
+    public ExtensionFieldObject() {
+        super(null, false);
+        this.fieldStorage = new FieldsHolderObject(Shape.newBuilder().layout(FieldsHolderObject.class).build());
+    }
 
     public ExtensionFieldObject(ObjectKlass holder, List<ParserField> initialFields, RuntimeConstantPool pool) {
-        super(null, false);
-        nextAvailableStaticSlot = holder.getStaticFieldTable().length;
+        this();
 
-        this.fieldValues = new HashMap<>(initialFields.size());
         for (ParserField initialField : initialFields) {
-            LinkedField linkedField = new LinkedField(initialField, nextAvailableStaticSlot++, LinkedField.IdMode.REGULAR);
+            LinkedField linkedField = new LinkedField(initialField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
             Field field = new Field(holder, linkedField, pool, true);
-            fieldValues.put(field, null);
+            LIBRARY.put(fieldStorage, field.getSlot(), new FieldAndValueObject(field));
         }
     }
 
-    public ExtensionFieldObject() {
-        super(null, false);
-        this.fieldValues = new HashMap<>(1);
-    }
-
     public void addStaticNewFields(ObjectKlass holder, List<ParserField> newFields, RuntimeConstantPool pool) {
-        synchronized (fieldValues) {
-            for (ParserField newField : newFields) {
-                LinkedField linkedField = new LinkedField(newField, nextAvailableStaticSlot++, LinkedField.IdMode.REGULAR);
-                Field field = new Field(holder, linkedField, pool, true);
-                fieldValues.put(field, null);
-            }
+        for (ParserField newField : newFields) {
+            LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
+            Field field = new Field(holder, linkedField, pool, true);
+            LIBRARY.put(fieldStorage, field.getSlot(), new FieldAndValueObject(field));
         }
     }
 
     public Collection<Field> getDeclaredAddedFields() {
-        synchronized (fieldValues) {
-            synchronized (addedInstanceFields) {
-                List<Field> result = new ArrayList<>();
-                result.addAll(fieldValues.keySet());
-                result.addAll(Arrays.asList(addedInstanceFields));
-                return Collections.unmodifiableList(result);
-            }
+        List<Field> result = new ArrayList<>();
+        Property[] propertyArray = LIBRARY.getPropertyArray(fieldStorage);
+        for (Property property : propertyArray) {
+            result.add(getFieldAndValue((int) property.getKey()).field);
         }
+        result.addAll(Arrays.asList(addedInstanceFields));
+        return Collections.unmodifiableList(result);
     }
 
-    @TruffleBoundary
     public Object getValue(Field field) {
-        synchronized (fieldValues) {
-            return fieldValues.get(field);
-        }
+        return getOrCreateFieldAndValue(field).value;
     }
 
-    @TruffleBoundary
     public void setValue(Field field, Object value) {
-        synchronized (fieldValues) {
-            fieldValues.put(field, value);
+        getOrCreateFieldAndValue(field).value = value;
+    }
+
+    private FieldAndValueObject getFieldAndValue(int slot) {
+        return (FieldAndValueObject) LIBRARY.getOrDefault(fieldStorage, slot, NULL_OBJECT);
+    }
+
+    private FieldAndValueObject getOrCreateFieldAndValue(Field field) {
+        // fetch to check is exist to avoid producing garbage
+        FieldAndValueObject result = getFieldAndValue(field.getSlot());
+        if (result == NULL_OBJECT) {
+            result = new FieldAndValueObject(field);
+            LIBRARY.put(fieldStorage, field.getSlot(), result);
         }
+        return result;
     }
 
     public void addNewInstanceFields(ObjectKlass holder, List<ParserField> instanceFields, RuntimeConstantPool pool) {
         CompilerAsserts.neverPartOfCompilation();
-        synchronized (addedInstanceFields) {
-            List<Field> toAdd = new ArrayList<>(instanceFields.size());
-            for (ParserField newField : instanceFields) {
-                LinkedField linkedField = new LinkedField(newField, nextAvailableInstanceSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
-                Field field = new Field(holder, linkedField, pool, true);
-                toAdd.add(field);
-            }
-            int nextIndex = addedInstanceFields.length;
-            addedInstanceFields = Arrays.copyOf(addedInstanceFields, addedInstanceFields.length + toAdd.size());
-            for (Field field : toAdd) {
-                addedInstanceFields[nextIndex++] = field;
-            }
+        if (instanceFields.isEmpty()) {
+            return;
+        }
+        List<Field> toAdd = new ArrayList<>(instanceFields.size());
+        for (ParserField newField : instanceFields) {
+            LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
+            Field field = new Field(holder, linkedField, pool, true);
+            toAdd.add(field);
+        }
+        int nextIndex = addedInstanceFields.length;
+        addedInstanceFields = Arrays.copyOf(addedInstanceFields, addedInstanceFields.length + toAdd.size());
+        for (Field field : toAdd) {
+            addedInstanceFields[nextIndex++] = field;
         }
     }
 
-    @TruffleBoundary
     public Field getStaticFieldAtSlot(int slot) throws IndexOutOfBoundsException {
-        for (Field field : fieldValues.keySet()) {
-            if (field.getSlot() == slot) {
-                return field;
-            }
+        FieldAndValueObject fieldAndValue = getFieldAndValue(slot);
+        if (fieldAndValue == NULL_OBJECT) {
+            throw new IndexOutOfBoundsException("Index out of range: " + slot);
+        } else {
+            return fieldAndValue.field;
         }
-        throw new IndexOutOfBoundsException("Index out of range: " + slot);
     }
 
     public Field getInstanceFieldAtSlot(int slot) throws NoSuchFieldException {
@@ -145,5 +150,20 @@ public final class ExtensionFieldObject extends StaticObject {
             }
         }
         throw new NoSuchFieldException("Index out of range: " + slot);
+    }
+
+    private static final class FieldsHolderObject extends DynamicObject implements TruffleObject {
+        FieldsHolderObject(Shape shape) {
+            super(shape);
+        }
+    }
+
+    private static final class FieldAndValueObject {
+        private final Field field;
+        private Object value;
+
+        public FieldAndValueObject(Field field) {
+            this.field = field;
+        }
     }
 }
