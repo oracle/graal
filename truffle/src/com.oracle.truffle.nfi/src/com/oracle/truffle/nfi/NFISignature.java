@@ -77,6 +77,21 @@ final class NFISignature implements TruffleObject {
     final int nativeArgCount;
     final int managedArgCount;
 
+    static final NFISignature NO_SIGNATURE = new NFISignature();
+
+    /**
+     * Only for NO_SIGNATURE marker object.
+     */
+    private NFISignature() {
+        backendId = null;
+        cachedState = null;
+        nativeSignature = null;
+        retType = null;
+        argTypes = null;
+        nativeArgCount = -1;
+        managedArgCount = -1;
+    }
+
     NFISignature(String backendId, SignatureCachedState cachedState, Object nativeSignature, NFIType retType, NFIType[] argTypes, int nativeArgCount, int managedArgCount) {
         this.backendId = backendId;
         this.cachedState = cachedState;

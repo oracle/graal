@@ -108,6 +108,9 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     ret->LibFFIContext_releaseClosureRef = (*env)->GetMethodID(env, LibFFIContext, "releaseClosureRef", "(J)V");
     ret->LibFFIContext_getClosureObject = (*env)->GetMethodID(env, LibFFIContext, "getClosureObject", "(J)Ljava/lang/Object;");
 
+    ret->NativeArgumentBuffer_Pointer = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/backend/libffi/NativeArgumentBuffer$Pointer"));
+    ret->NativeArgumentBuffer_Pointer_pointer = (*env)->GetFieldID(env, ret->NativeArgumentBuffer_Pointer, "pointer", "J");
+
     ret->Object = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/Object"));
     ret->String = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/String"));
     ret->UnsatisfiedLinkError = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/backend/libffi/NFIUnsatisfiedLinkError"));
@@ -168,6 +171,8 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_
     (*env)->DeleteGlobalRef(env, ctx->LibFFIType_StringType);
 
     (*env)->DeleteGlobalRef(env, ctx->NativeString);
+
+    (*env)->DeleteGlobalRef(env, ctx->NativeArgumentBuffer_Pointer);
 
     (*env)->DeleteGlobalRef(env, ctx->Object);
     (*env)->DeleteGlobalRef(env, ctx->String);
