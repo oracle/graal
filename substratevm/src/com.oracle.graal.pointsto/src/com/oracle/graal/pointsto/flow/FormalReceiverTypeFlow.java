@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ParameterNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -45,12 +45,12 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
     }
 
     @Override
-    public FormalReceiverTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public FormalReceiverTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new FormalReceiverTypeFlow(this, methodFlows);
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState newState) {
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the incoming value using the receiver's
          * declared type.
@@ -71,12 +71,12 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
      * InitialReceiverTypeFlow.update.
      */
     @Override
-    public boolean addState(BigBang bb, TypeState add) {
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
         return false;
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /*
          * The saturation of the actual receiver doesn't result in the saturation of the formal
          * receiver; some callees, depending how low in the type hierarchies they are, may only see
@@ -84,7 +84,7 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
          */
     }
 
-    public boolean addReceiverState(BigBang bb, TypeState add) {
+    public boolean addReceiverState(PointsToAnalysis bb, TypeState add) {
         // The type state of a receiver cannot be null.
         return super.addState(bb, add.forNonNull(bb));
     }

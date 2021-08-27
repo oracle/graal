@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -67,12 +67,12 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new FilterTypeFlow(methodFlows, this);
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState update) {
+    public TypeState filter(PointsToAnalysis bb, TypeState update) {
         TypeState result;
         if (isExact) {
             /*
@@ -100,7 +100,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         if (isAssignable) {
             /* Swap this flow out at its uses/observers with its declared type flow. */
             setSaturated();
@@ -111,7 +111,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    protected void notifyUseOfSaturation(BigBang bb, TypeFlow<?> use) {
+    protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
         if (isAssignable) {
             swapAtUse(bb, declaredType.getTypeFlow(bb, includeNull), use);
         } else {
@@ -120,7 +120,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    protected void notifyObserverOfSaturation(BigBang bb, TypeFlow<?> observer) {
+    protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
         if (isAssignable) {
             swapAtObserver(bb, declaredType.getTypeFlow(bb, includeNull), observer);
         } else {
@@ -129,7 +129,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean addState(BigBang bb, TypeState add) {
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
         assert this.isClone();
         return super.addState(bb, add);
     }

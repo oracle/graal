@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
@@ -51,7 +51,7 @@ public class InitialParamTypeFlow extends TypeFlow<AnalysisMethod> {
     }
 
     @Override
-    public TypeFlow<AnalysisMethod> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<AnalysisMethod> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return this;
     }
 

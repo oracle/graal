@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.typestore;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 
@@ -48,6 +48,6 @@ public abstract class ArrayElementsTypeStore {
 
     public abstract ArrayElementsTypeFlow readFlow();
 
-    public abstract void init(BigBang bb);
+    public abstract void init(PointsToAnalysis bb);
 
 }

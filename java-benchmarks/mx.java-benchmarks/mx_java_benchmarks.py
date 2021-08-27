@@ -547,6 +547,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def subgroup(self):
         return "graal-compiler"
 
+    def name(self):
+        raise NotImplementedError()
+
     def daCapoClasspathEnvVarName(self):
         raise NotImplementedError()
 
@@ -565,6 +568,15 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def daCapoIterations(self):
         raise NotImplementedError()
 
+    def daCapoSizes(self):
+        raise NotImplementedError()
+
+    def existingSizes(self):
+        return list(dict.fromkeys([s for bench, sizes in self.daCapoSizes().items() for s in sizes]))
+
+    def workloadSize(self):
+        raise NotImplementedError()
+
     def validateEnvironment(self):
         if not self.daCapoPath():
             raise RuntimeError(
@@ -577,10 +589,23 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-n", default=None)
+        parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
+
+        if args.size:
+            if args.size not in self.existingSizes():
+                mx.abort("Unknown workload size '{}'. "
+                         "Existing benchmark sizes are: {}".format(args.size, ','.join(self.existingSizes())))
+
+            if args.size != self.workloadSize():
+                mx.abort("Mismatch between suite-defined workload size ('{}') "
+                         "and user-provided one ('{}')!".format(self.workloadSize(), args.size))
+
+        otherArgs = ["-s", self.workloadSize()] + remaining
+
         if args.n:
             if args.n.isdigit():
-                return ["-n", args.n] + remaining
+                return ["-n", args.n] + otherArgs
             if args.n == "-1":
                 return None
         else:
@@ -589,7 +614,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 return None
             else:
                 iterations = iterations + self.getExtraIterationCount(iterations)
-                return ["-n", str(iterations)] + remaining
+                return ["-n", str(iterations)] + otherArgs
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -648,11 +673,11 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        bench_list = [key for key, value in self.daCapoIterations().items() if value != -1]
-        if java_home_jdk().javaCompliance >= '9' and "batik" in bench_list:
-            # batik crashes on JDK9+. This is fixed in the upcoming dacapo chopin release
-            bench_list.remove("batik")
-        return bench_list
+        missing_sizes = set(self.daCapoIterations().keys()).difference(set(self.daCapoSizes().keys()))
+        if len(missing_sizes) > 0:
+            mx.abort("Missing size definitions for benchmark(s): {}".format(missing_sizes))
+        return [b for b, it in self.daCapoIterations().items()
+                if self.workloadSize() in self.daCapoSizes().get(b, []) and it != -1]
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
@@ -744,43 +769,111 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
 
 _daCapoIterations = {
-    "avrora"     : 20,
-    "batik"      : 40,
-    "eclipse"    : -1,
-    "fop"        : 40,
-    "h2"         : 25,
-    "jython"     : 40,
-    "luindex"    : 15,
-    "lusearch"   : 40,
-    "pmd"        : 30,
-    "sunflow"    : 35,
-    "tomcat"     : -1, # Stopped working as of 8u92
-    "tradebeans" : -1,
-    "tradesoap"  : -1,
-    "xalan"      : 30,
+    "avrora"      : 20,
+    "batik"       : 40,
+    "eclipse"     : -1,
+    "fop"         : 40,
+    "h2"          : 25,
+    "jython"      : 50,
+    "luindex"     : 20,
+    "lusearch"    : 40,
+    "lusearch-fix": -1,
+    "pmd"         : 30,
+    "sunflow"     : 35,
+    "tomcat"      : -1,
+    "tradebeans"  : 20,
+    "tradesoap"   : 20,
+    "xalan"       : 30,
+}
+
+
+_daCapoSizes = {
+    "avrora":       ["default", "small", "large"],
+    "batik":        ["default", "small", "large"],
+    "eclipse":      ["default", "small", "large"],
+    "fop":          ["default", "small"],
+    "h2":           ["default", "small", "large", "huge"],
+    "jython":       ["default", "small", "large"],
+    "luindex":      ["default", "small"],
+    "lusearch":     ["default", "small", "large"],
+    "lusearch-fix": ["default", "small", "large"],
+    "pmd":          ["default", "small", "large"],
+    "sunflow":      ["default", "small", "large"],
+    "tomcat":       ["default", "small", "large", "huge"],
+    "tradebeans":   ["default", "small", "large", "huge"],
+    "tradesoap":    ["default", "small", "large", "huge"],
+    "xalan":        ["default", "small", "large"]
 }
 
 
 class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
-    """DaCapo 9.12 (Bach) benchmark suite implementation."""
+    """DaCapo benchmark suite implementation."""
 
     def name(self):
-        return "dacapo"
+        if self.workloadSize() == "default":
+            return "dacapo"
+        else:
+            return "dacapo-{}".format(self.workloadSize())
 
     def version(self):
-        return '9.12-bach'
+        return super(DaCapoBenchmarkSuite, self).version()
+
+    def defaultSuiteVersion(self):
+        return "9.12-MR1-bach"
+
+    def availableSuiteVersions(self):
+        return ["9.12-bach", "9.12-MR1-bach"]
+
+    def workloadSize(self):
+        return "default"
 
     def daCapoSuiteTitle(self):
-        return "DaCapo 9.12"
+        title = None
+        if self.version() == "9.12-bach":
+            title = "DaCapo 9.12"
+        elif self.version() == "9.12-MR1-bach":
+            title = "DaCapo 9.12-MR1"
+        return title
 
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_CP"
 
     def daCapoLibraryName(self):
-        return "DACAPO"
+        if self.version() == "9.12-bach":  # 2009 release
+            return "DACAPO"
+        elif self.version() == "9.12-MR1-bach":  # 2018 maintenance release
+            return "DACAPO_MR1_BACH"
+        else:
+            return None
 
     def daCapoIterations(self):
-        return _daCapoIterations
+        iterations = _daCapoIterations.copy()
+        if self.version() == "9.12-bach":
+            del iterations["eclipse"]
+            del iterations["tradebeans"]
+            del iterations["tradesoap"]
+            del iterations["lusearch-fix"]
+            # Stopped working as of 8u92 on the initial release
+            del iterations["tomcat"]
+
+        if mx.get_jdk().javaCompliance >= '9' and self.version() in ["9.12-bach", "9.12-MR1-bach"]:
+            if "batik" in iterations:
+                # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
+                del iterations["batik"]
+            if "tradesoap" in iterations:
+                # validation fails transiently but frequently in the first iteration in JDK9+
+                del iterations["tradesoap"]
+
+        if self.workloadSize() == "small":
+            # Ensure sufficient warmup by doubling the number of default iterations for the small configuration
+            iterations = {k: (2 * int(v)) if v != -1 else v for k, v in iterations.items()}
+        if self.workloadSize() in {"huge", "gargantuan"}:
+            # Reduce the default number of iterations for very large workloads to keep the runtime reasonable
+            iterations = {k: max(int((int(v)/2)), 5) if v != -1 else v for k, v in iterations.items()}
+        return iterations
+
+    def daCapoSizes(self):
+        return _daCapoSizes
 
     def flakySuccessPatterns(self):
         return [
@@ -792,8 +885,38 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
                 re.MULTILINE),
         ]
 
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(DaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        if java_home_jdk().javaCompliance >= '16':
+            vmArgs += ["--add-opens", "java.base/java.lang=ALL-UNNAMED"]
+        return vmArgs
+
+
+class DacapoSmallBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'small' configuration."""
+
+    def workloadSize(self):
+        return "small"
+
+
+class DacapoLargeBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'large' configuration."""
+
+    def workloadSize(self):
+        return "large"
+
+
+class DacapoHugeBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'huge' configuration."""
+
+    def workloadSize(self):
+        return "huge"
+
 
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoSmallBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoLargeBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoHugeBenchmarkSuite())
 
 
 class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
@@ -973,12 +1096,30 @@ _daCapoScalaConfig = {
     "tmt"         : 12
 }
 
+_daCapoScalaSizes = {
+    "actors":       ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "apparat":      ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "factorie":     ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "kiama":        ["default", "small"],
+    "scalac":       ["default", "small", "large"],
+    "scaladoc":     ["default", "small", "large"],
+    "scalap":       ["default", "small", "large"],
+    "scalariform":  ["default", "tiny", "small", "large", "huge"],
+    "scalatest":    ["default", "small"],  # 'large' and 'huge' sizes fail validation
+    "scalaxb":      ["default", "tiny", "small", "large", "huge"],
+    "specs":        ["default", "small", "large"],
+    "tmt":          ["default", "tiny", "small", "large", "huge"]
+}
+
 
 class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
     """Scala DaCapo benchmark suite implementation."""
 
     def name(self):
-        return "scala-dacapo"
+        if self.workloadSize() == "default":
+            return "scala-dacapo"
+        else:
+            return "scala-dacapo-{}".format(self.workloadSize())
 
     def version(self):
         return "0.1.0"
@@ -992,12 +1133,22 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
     def daCapoLibraryName(self):
         return "DACAPO_SCALA"
 
+    def workloadSize(self):
+        return "default"
+
     def daCapoIterations(self):
         result = _daCapoScalaConfig.copy()
         if not java_home_jdk().javaCompliance < '11':
-            mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
+            mx.logv('Removing scala-dacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
             del result['actors']
+        if java_home_jdk().javaCompliance >= '16':
+            # See GR-29222 for details.
+            mx.logv('Removing scala-dacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
+            del result['specs']
         return result
+
+    def daCapoSizes(self):
+        return _daCapoScalaSizes
 
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
         skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
@@ -1015,8 +1166,47 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
         return vmArgs
 
 
-mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
+class ScalaDacapoTinyBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'small' configuration."""
 
+    def workloadSize(self):
+        return "tiny"
+
+
+class ScalaDacapoSmallBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'small' configuration."""
+
+    def workloadSize(self):
+        return "small"
+
+
+class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'large' configuration."""
+
+    def workloadSize(self):
+        return "large"
+
+
+class ScalaDacapoHugeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'huge' configuration."""
+
+    def workloadSize(self):
+        return "huge"
+
+
+class ScalaDacapoGargantuanBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'gargantuan' configuration."""
+
+    def workloadSize(self):
+        return "gargantuan"
+
+
+mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoTinyBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoSmallBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoLargeBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoHugeBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoGargantuanBenchmarkSuite())
 
 
 _allSpecJVM2008Benches = [
@@ -1107,7 +1297,14 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
-        return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks
+
+        # The startup benchmarks are executed by spawning a new JVM. However, this new VM doesn't
+        # inherit the flags passed to the main process.
+        # According to the SpecJVM jar help message, one must use the '--jvmArgs' option to specify
+        # options to pass to the startup benchmarks. It has no effect on the non startup benchmarks.
+        startupJVMArgs = ["--jvmArgs", " ".join(vmArgs)] if "startup" in ' '.join(benchmarks) else []
+
+        return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks + startupJVMArgs
 
     def runArgs(self, bmSuiteArgs):
         runArgs = super(SpecJvm2008BenchmarkSuite, self).runArgs(bmSuiteArgs)
@@ -1116,6 +1313,15 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             # Skips initial check benchmark which tests for javac.jar on classpath.
             runArgs += ["-pja", "-Dspecjvm.run.initial.check=false"]
         return runArgs
+    
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(SpecJvm2008BenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        if java_home_jdk().javaCompliance >= '16' and \
+                ("xml.transform" in self.benchmarkList(bmSuiteArgs) or
+                 "startup.xml.transform" in self.benchmarkList(bmSuiteArgs)):
+            vmArgs += ["--add-exports=java.xml/com.sun.org.apache.xerces.internal.parsers=ALL-UNNAMED",
+                       "--add-exports=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED"]
+        return vmArgs
 
     def benchmarkList(self, bmSuiteArgs):
         if java_home_jdk().javaCompliance >= '9':
@@ -1168,17 +1374,23 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 
 
-_SpecJbb_specific_vmArgs = [
-    "-XX:+UseNUMA",
-    "-XX:+AlwaysPreTouch",
-    "-XX:+UseLargePagesInMetaspace",
-    "-XX:-UseAdaptiveSizePolicy",
-    "-XX:-UseAdaptiveNUMAChunkSizing",
-    "-XX:+PrintGCDetails"
-]
+def _get_specjbb_vmArgs(java_compliance):
+    args = [
+        "-XX:+UseNUMA",
+        "-XX:+AlwaysPreTouch",
+        "-XX:-UseAdaptiveSizePolicy",
+        "-XX:-UseAdaptiveNUMAChunkSizing",
+        "-XX:+PrintGCDetails"
+    ]
 
-if mx.is_linux():
-    _SpecJbb_specific_vmArgs.append("-XX:+UseTransparentHugePages")
+    if java_compliance < '16':
+        # JDK-8243161: Deprecated in JDK15 and marked obsolete in JDK16
+        args.append("-XX:+UseLargePagesInMetaspace")
+
+    if mx.is_linux():
+        args.append("-XX:+UseTransparentHugePages")
+
+    return args
 
 
 class HeapSettingsMixin(object):
@@ -1230,7 +1442,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2005BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2005 = mx.get_env("SPECJBB2005")
@@ -1371,7 +1583,7 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2013BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2013 = mx.get_env("SPECJBB2013")
@@ -1481,7 +1693,7 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2015BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2015 = mx.get_env("SPECJBB2015")
@@ -1621,25 +1833,21 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return "graal-compiler"
 
     def renaissanceLibraryName(self):
-        return "RENAISSANCE_{}".format(self.renaissanceVersionToRun())
+        return "RENAISSANCE_{}".format(self.version())
 
     def renaissanceIterations(self):
         benchmarks = _renaissanceConfig.copy()
-        if self.renaissanceVersionToRun() == "0.9.0":
+        if self.version() == "0.9.0":
             del benchmarks["scala-doku"]  # was introduced in 0.10.0
         return benchmarks
 
-    def renaissanceVersionToRun(self):
-        current_version = self.defaultRenaissanceVersion()
-        version_to_run = self.desiredVersion() if self.desiredVersion() else current_version
-        if version_to_run not in self.availableRenaissanceVersions():
-            mx.abort("Available Renaissance versions are : {}".format(self.availableRenaissanceVersions()))
-        return version_to_run
+    def version(self):
+        return super(RenaissanceBenchmarkSuite, self).version()
 
-    def defaultRenaissanceVersion(self):
+    def defaultSuiteVersion(self):
         return "0.11.0"
 
-    def availableRenaissanceVersions(self):
+    def availableSuiteVersions(self):
         return ["0.9.0", "0.10.0", "0.11.0"]
 
     def renaissancePath(self):
@@ -1696,7 +1904,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                     "benchmark": ("<benchmark>", str),
                     "benchmark-configuration": ("<config>", str),
                     "bench-suite": self.benchSuiteName(),
-                    "bench-suite-version": self.renaissanceVersionToRun(),
+                    "bench-suite-version": self.version(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "warmup",

@@ -43,8 +43,8 @@ public final class Target_java_lang_Module {
     public static void addExports0(@JavaType(internalName = "Ljava/lang/Module;") StaticObject from,
                     @JavaType(String.class) StaticObject pn,
                     @JavaType(internalName = "Ljava/lang/Module;") StaticObject to,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(pn)) {
             throw meta.throwNullPointerException();
         }
@@ -55,8 +55,8 @@ public final class Target_java_lang_Module {
     @TruffleBoundary
     public static void addExportsToAll0(@JavaType(internalName = "Ljava/lang/Module;") StaticObject from,
                     @JavaType(String.class) StaticObject pn,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(pn)) {
             throw meta.throwNullPointerException();
         }
@@ -67,8 +67,8 @@ public final class Target_java_lang_Module {
     @TruffleBoundary
     public static void addExportsToAllUnnamed0(@JavaType(internalName = "Ljava/lang/Module;") StaticObject from,
                     @JavaType(String.class) StaticObject pn,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(pn)) {
             throw meta.throwNullPointerException();
         }
@@ -82,8 +82,8 @@ public final class Target_java_lang_Module {
                     @SuppressWarnings("unused") @JavaType(String.class) StaticObject version,
                     @SuppressWarnings("unused") @JavaType(String.class) StaticObject location,
                     @JavaType(Object[].class) StaticObject pns,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(module)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();

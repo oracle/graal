@@ -31,7 +31,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.phases.common.LazyValue;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 
@@ -45,7 +45,7 @@ import com.oracle.graal.pointsto.typestate.PointsToStats;
  */
 public final class TypeFlowBuilder<T extends TypeFlow<?>> {
 
-    public static <U extends TypeFlow<?>> TypeFlowBuilder<U> create(BigBang bb, Object source, Class<U> clazz, Supplier<U> supplier) {
+    public static <U extends TypeFlow<?>> TypeFlowBuilder<U> create(PointsToAnalysis bb, Object source, Class<U> clazz, Supplier<U> supplier) {
         TypeFlowBuilder<U> builder = new TypeFlowBuilder<>(source, clazz, new LazyValue<>(supplier));
         PointsToStats.registerTypeFlowBuilder(bb, builder);
         return builder;

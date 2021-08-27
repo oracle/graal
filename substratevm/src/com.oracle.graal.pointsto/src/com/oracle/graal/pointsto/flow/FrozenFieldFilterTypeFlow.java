@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -44,14 +44,14 @@ public class FrozenFieldFilterTypeFlow extends TypeFlow<AnalysisField> {
 
     private final UnsafeWriteSinkTypeFlow unsafeSink;
 
-    public FrozenFieldFilterTypeFlow(BigBang bb, AnalysisField field, UnsafeWriteSinkTypeFlow unsafeSink) {
+    public FrozenFieldFilterTypeFlow(PointsToAnalysis bb, AnalysisField field, UnsafeWriteSinkTypeFlow unsafeSink) {
         super(field, field.getType());
         this.unsafeSink = unsafeSink;
         this.source.getInstanceFieldFlow().addObserver(bb, this);
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState update) {
+    public TypeState filter(PointsToAnalysis bb, TypeState update) {
         /*
          * Filter using the current type state of the field, i.e., the type state constructed
          * through normal writes and non frozen unsafe writes, if any.
@@ -65,7 +65,7 @@ public class FrozenFieldFilterTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
-    public void onObservedUpdate(BigBang bb) {
+    public void onObservedUpdate(PointsToAnalysis bb) {
         /*
          * The field type state has changed. Since the type states can only increase, the new filter
          * will be more coarse, i.e., will let more objects go through. Push the unsafe writes,

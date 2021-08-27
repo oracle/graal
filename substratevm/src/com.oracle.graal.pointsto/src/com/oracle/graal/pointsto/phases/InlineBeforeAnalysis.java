@@ -52,7 +52,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.util.ClassUtil;
@@ -82,7 +82,7 @@ public class InlineBeforeAnalysis {
     }
 
     @SuppressWarnings("try")
-    public static StructuredGraph decodeGraph(BigBang bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
+    public static StructuredGraph decodeGraph(PointsToAnalysis bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
 
@@ -152,10 +152,10 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         }
     }
 
-    private final BigBang bb;
+    private final PointsToAnalysis bb;
     private final InlineBeforeAnalysisPolicy<S> policy;
 
-    InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
+    InlineBeforeAnalysisGraphDecoder(PointsToAnalysis bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
         super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, bb.getProviders(), null,
                         bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},

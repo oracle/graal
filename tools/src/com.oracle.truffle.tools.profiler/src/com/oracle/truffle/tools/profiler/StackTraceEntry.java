@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.profiler;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -51,83 +52,107 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class StackTraceEntry {
 
-    /*
-     * Unknown is used when it is used as part of a payload.
-     */
-    static final byte STATE_UNKNOWN = 0;
-    static final byte STATE_INTERPRETED = 1;
-    static final byte STATE_FIRST_TIER_COMPILED = 2;
-    static final byte STATE_FIRST_TIER_COMPILATION_ROOT = 3;
-    static final byte STATE_LAST_TIER_COMPILED = 4;
-    static final byte STATE_LAST_TIER_COMPILATION_ROOT = 5;
+    private static final Set<Class<?>> DEFAULT_TAGS;
+    static {
+        Set<Class<?>> tags = new HashSet<>();
+        tags.add(RootTag.class);
+        DEFAULT_TAGS = Collections.unmodifiableSet(tags);
+    }
 
     private final SourceSection sourceSection;
     private final String rootName;
     private final Set<Class<?>> tags;
     private final Node instrumentedNode;
-    private final byte state;
+    private final int compilationTier;
+    private final boolean compilationRoot;
     private volatile StackTraceElement stackTraceElement;
 
-    public StackTraceEntry(String rootName) {
+    StackTraceEntry(String rootName) {
         this.sourceSection = null;
         this.rootName = rootName;
-        this.tags = Collections.emptySet();
+        this.tags = DEFAULT_TAGS;
         this.instrumentedNode = null;
-        this.state = STATE_UNKNOWN;
         this.stackTraceElement = null;
+        compilationTier = 0;
+        compilationRoot = true;
     }
 
-    StackTraceEntry(Instrumenter instrumenter, EventContext context, byte state) {
+    StackTraceEntry(Instrumenter instrumenter, EventContext context, int compilationTier, boolean compilationRoot) {
         this.tags = instrumenter.queryTags(context.getInstrumentedNode());
         this.sourceSection = context.getInstrumentedSourceSection();
         this.instrumentedNode = context.getInstrumentedNode();
         this.rootName = extractRootName(instrumentedNode);
-        this.state = state;
+        this.compilationTier = compilationTier;
+        this.compilationRoot = compilationRoot;
     }
 
-    StackTraceEntry(Set<Class<?>> tags, SourceSection sourceSection, RootNode root, Node node, byte state) {
+    StackTraceEntry(Set<Class<?>> tags, SourceSection sourceSection, RootNode root, Node node, int compilationTier, boolean compilationRoot) {
         this.tags = tags;
         this.sourceSection = sourceSection;
         this.instrumentedNode = node;
         this.rootName = extractRootName(root);
-        this.state = state;
+        this.compilationTier = compilationTier;
+        this.compilationRoot = compilationRoot;
     }
 
-    StackTraceEntry(StackTraceEntry location, byte state) {
+    StackTraceEntry(StackTraceEntry location, int compilationTier, boolean compilationRoot) {
         this.sourceSection = location.sourceSection;
         this.instrumentedNode = location.instrumentedNode;
         this.rootName = location.rootName;
         this.tags = location.tags;
         this.stackTraceElement = location.stackTraceElement;
-        this.state = state;
+        this.compilationTier = compilationTier;
+        this.compilationRoot = compilationRoot;
     }
 
-    StackTraceEntry(Instrumenter instrumenter, Node node, byte state) {
+    StackTraceEntry(Instrumenter instrumenter, Node node, int compilationTier, boolean compilationRoot) {
         this.tags = instrumenter.queryTags(node);
         this.sourceSection = node.getSourceSection();
         this.instrumentedNode = node;
         this.rootName = extractRootName(instrumentedNode);
-        this.state = state;
+        this.compilationTier = compilationTier;
+        this.compilationRoot = compilationRoot;
+    }
+
+    /**
+     * @return with which tier was this entry compiled. Note: Tier 0 represents the interpreter.
+     * @since 21.3.0
+     */
+    public int getTier() {
+        return compilationTier;
+    }
+
+    /**
+     * @return <code>true</code> if the entry was a compilation root, <code>false</code> if it was
+     *         inlined. Interpreted enries are implicitly considered compilation roots.
+     * @since 21.3.0
+     */
+    public boolean isCompilationRoot() {
+        return compilationRoot;
     }
 
     /**
      * Returns <code>true</code> if this stack entry was executed in compiled mode at the time when
      * the stack trace was captured, else <code>false</code>.
      *
+     * @deprecated Use {@link #getTier()}
      * @since 19.0
      */
+    @Deprecated
     public boolean isCompiled() {
-        return state != STATE_INTERPRETED && state != STATE_UNKNOWN;
+        return compilationTier > 0;
     }
 
     /**
      * Returns <code>true</code> if this stack entry was executed in interpreted mode at the time
      * when the stack trace was captured, else <code>false</code>.
      *
+     * @deprecated Use {@link #getTier()}
      * @since 19.0
      */
+    @Deprecated
     public boolean isInterpreted() {
-        return state == STATE_INTERPRETED;
+        return compilationTier == 0;
     }
 
     /**
@@ -135,10 +160,12 @@ public final class StackTraceEntry {
      * in a parent stack entry at the time when the stack trace was captured, else
      * <code>false</code>.
      *
+     * @deprecated Use {@link #getTier()}
      * @since 19.0
      */
+    @Deprecated
     public boolean isInlined() {
-        return state == STATE_FIRST_TIER_COMPILED || state == STATE_LAST_TIER_COMPILED;
+        return !compilationRoot;
     }
 
     /**
@@ -215,11 +242,7 @@ public final class StackTraceEntry {
             return "<Unknown>";
         }
         Source source = sourceSection.getSource();
-        if (source == null) {
-            // TODO the source == null branch can be removed if the deprecated
-            // SourceSection#createUnavailable has be removed.
-            return "<Unknown>";
-        } else if (source.getPath() == null) {
+        if (source.getPath() == null) {
             return source.getName();
         } else {
             return source.getPath();
@@ -293,22 +316,6 @@ public final class StackTraceEntry {
      */
     @Override
     public String toString() {
-        String s = "";
-        switch (state) {
-            case STATE_UNKNOWN:
-                s = "";
-                break;
-            case STATE_LAST_TIER_COMPILATION_ROOT:
-                s = ", Interpreted";
-                break;
-            case STATE_LAST_TIER_COMPILED:
-                s = ", Compiled";
-                break;
-            case STATE_INTERPRETED:
-                s = ", Interpreted";
-                break;
-        }
-        return "StackLocation [rootName=" + rootName + ", tags=" + tags + ", sourceSection=" + sourceSection + s + "]";
+        return "StackLocation [rootName=" + rootName + ", tags=" + tags + ", sourceSection=" + sourceSection + ", tier=" + compilationTier + ", root=" + compilationRoot + "]";
     }
-
 }

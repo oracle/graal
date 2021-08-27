@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Provides functionality for scanning constant objects.
  *
- * The scanning is done in parallel. The set of visited elements is a special datastructure whose
+ * The scanning is done in parallel. The set of visited elements is a special data structure whose
  * structure can be reused over multiple scanning iterations to save CPU resources. (For details
  * {@link ReusableSet}).
  */

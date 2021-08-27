@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -40,12 +40,12 @@ public class SourceTypeFlow extends SourceTypeFlowBase {
         super(node, state);
     }
 
-    public SourceTypeFlow(BigBang bb, SourceTypeFlow original, MethodFlowsGraph methodFlows) {
+    public SourceTypeFlow(PointsToAnalysis bb, SourceTypeFlow original, MethodFlowsGraph methodFlows) {
         super(bb, original, methodFlows);
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new SourceTypeFlow(bb, this, methodFlows);
     }
 

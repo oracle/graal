@@ -111,7 +111,7 @@ final class ShadowStack {
         Node current = node.getParent();
         while (current != null) {
             if (sourceSectionFilter.includes(current) && current.getSourceSection() != null) {
-                sourceLocations.add(new StackTraceEntry(instrumenter, current, StackTraceEntry.STATE_INTERPRETED));
+                sourceLocations.add(new StackTraceEntry(instrumenter, current, 0, true));
             }
             current = current.getParent();
         }
@@ -135,9 +135,9 @@ final class ShadowStack {
         StackPushPopNode(ShadowStack profilerStack, Instrumenter instrumenter, EventContext context, boolean ignoreInlinedRoots) {
             this.profilerStack = profilerStack;
             this.cachedThread = Thread.currentThread();
-            this.interpretedLocation = new StackTraceEntry(instrumenter, context, StackTraceEntry.STATE_INTERPRETED);
-            this.compiledLocation = new StackTraceEntry(interpretedLocation, StackTraceEntry.STATE_LAST_TIER_COMPILED);
-            this.compilationRootLocation = new StackTraceEntry(interpretedLocation, StackTraceEntry.STATE_LAST_TIER_COMPILATION_ROOT);
+            this.interpretedLocation = new StackTraceEntry(instrumenter, context, 0, true);
+            this.compiledLocation = new StackTraceEntry(interpretedLocation, 2, false);
+            this.compilationRootLocation = new StackTraceEntry(interpretedLocation, 2, true);
             this.isAttachedToRootTag = context.hasTag(StandardTags.RootTag.class);
             this.ignoreInlinedRoots = ignoreInlinedRoots;
             this.cachedStack = getStack();

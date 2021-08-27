@@ -72,7 +72,7 @@ public final class Target_java_lang_System {
 
     @Substitution
     public static void arraycopy(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
-                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
             doArrayCopy(src, srcPos, dest, destPos, length, meta, profiler);

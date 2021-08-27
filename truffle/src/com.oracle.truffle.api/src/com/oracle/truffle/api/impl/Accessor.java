@@ -615,6 +615,10 @@ public abstract class Accessor {
 
         public abstract Object getHostContext(Object valueContext);
 
+        public abstract Object enterLanguageFromRuntime(TruffleLanguage<?> language);
+
+        public abstract void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev);
+
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -764,6 +768,8 @@ public abstract class Accessor {
         public abstract boolean isSynchronousTLAction(ThreadLocalAction action);
 
         public abstract boolean isSideEffectingTLAction(ThreadLocalAction action);
+
+        public abstract boolean isRecurringTLAction(ThreadLocalAction action);
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
 

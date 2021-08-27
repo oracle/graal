@@ -3472,7 +3472,19 @@ public abstract class TruffleLanguage<C> {
          *     }
          * });
          * </pre>
-         *
+         * <p>
+         * By default thread-local actions are executed once per configured thread and do not repeat
+         * themselves. If a ThreadLocalAction is configured to be
+         * {@link ThreadLocalAction#ThreadLocalAction(boolean, boolean, boolean) recurring} then the
+         * action will automatically be rescheduled in the same configuration until it is
+         * {@link Future#cancel(boolean) cancelled}. For recurring actions, an invocation of
+         * {@link Future#get()} will only wait for the first action to to be performed.
+         * {@link Future#isDone()} will return <code>true</code> only if the action was canceled.
+         * Canceling a recurring action will result in the current event being canceled and no
+         * further events being submitted. Using recurring events should be preferred over
+         * submitting the event again for the current thread while performing the thread-local
+         * action as recurring events are also resubmitted in case all threads leave and later
+         * reenter.
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
@@ -3488,6 +3500,7 @@ public abstract class TruffleLanguage<C> {
          * @see TruffleSafepoint
          * @since 21.1
          */
+        // Note keep the javadoc in sync with TruffleInstrument.Env.submitThreadLocal
         public Future<Void> submitThreadLocal(Thread[] threads, ThreadLocalAction action) {
             return submitThreadLocalInternal(threads, action, true);
         }

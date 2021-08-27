@@ -1333,8 +1333,8 @@ public class BinaryParser extends BinaryStreamParser {
                 // directly.
                 final WasmMemory memory = linkedInstance.memory();
 
-                Assert.assertUnsignedIntLessOrEqual(offsetAddress, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
-                Assert.assertUnsignedIntLessOrEqual(offsetAddress + byteLength, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
 
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     final byte b = read1();

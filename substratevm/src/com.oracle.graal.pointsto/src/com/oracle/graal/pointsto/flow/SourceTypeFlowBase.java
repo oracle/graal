@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -74,17 +74,17 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
         this.sourceState = state;
     }
 
-    public SourceTypeFlowBase(BigBang bb, SourceTypeFlowBase original, MethodFlowsGraph methodFlows) {
+    public SourceTypeFlowBase(PointsToAnalysis bb, SourceTypeFlowBase original, MethodFlowsGraph methodFlows) {
         this(bb, original, methodFlows, original.sourceState);
     }
 
-    public SourceTypeFlowBase(@SuppressWarnings("unused") BigBang bb, SourceTypeFlowBase original, MethodFlowsGraph methodFlows, TypeState state) {
+    public SourceTypeFlowBase(@SuppressWarnings("unused") PointsToAnalysis bb, SourceTypeFlowBase original, MethodFlowsGraph methodFlows, TypeState state) {
         super(original, methodFlows);
         this.sourceState = state;
     }
 
     @Override
-    public void initClone(BigBang bb) {
+    public void initClone(PointsToAnalysis bb) {
         /* When the clone is linked check if the all-instantiated contains the source state type. */
         if (sourceState.isNull() || sourceState.isEmpty() || bb.getAllInstantiatedTypeFlow().getState().containsType(sourceState.exactType())) {
             /* If yes, set the state and propagate it to uses. */
@@ -100,7 +100,7 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public void onObservedUpdate(BigBang bb) {
+    public void onObservedUpdate(PointsToAnalysis bb) {
         /* When the all-instantiated changes it will notify the source flow. */
         if (bb.getAllInstantiatedTypeFlow().getState().containsType(sourceState.exactType())) {
             /* The source state type was instantiated. */
@@ -112,17 +112,17 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
     }
 
     @Override
-    protected void onSaturated(BigBang bb) {
+    protected void onSaturated(PointsToAnalysis bb) {
         AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
     }
 
@@ -132,7 +132,7 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean addState(BigBang bb, TypeState add) {
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
         /* Only a clone should be updated */
         assert this.isClone();
         return super.addState(bb, add);

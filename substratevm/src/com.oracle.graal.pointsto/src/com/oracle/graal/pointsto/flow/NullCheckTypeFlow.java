@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -52,7 +52,7 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new NullCheckTypeFlow(methodFlows, this);
     }
 
@@ -62,7 +62,7 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState newState) {
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
         if (blockNull) {
             return newState.forNonNull(bb);
         } else if (newState.canBeNull()) {
@@ -73,7 +73,7 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean addState(BigBang bb, TypeState add) {
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
         assert this.isClone();
         return super.addState(bb, add);
     }

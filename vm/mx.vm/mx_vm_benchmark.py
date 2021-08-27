@@ -806,6 +806,21 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return mx_benchmark.js_vm_registry
 
 
+class ExcludeWarmupRule(mx_benchmark.StdOutRule):
+    """Rule that behaves as the StdOutRule, but skips input until a certain pattern."""
+
+    def __init__(self, *args, **kwargs):
+        self.startPattern = re.compile(kwargs.pop('startPattern'))
+        super(ExcludeWarmupRule, self).__init__(*args, **kwargs)
+
+    def parse(self, text):
+        m = self.startPattern.search(text)
+        if m:
+            return super(ExcludeWarmupRule, self).parse(text[m.end()+1:])
+        else:
+            return []
+
+
 class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self):
         super(PolyBenchBenchmarkSuite, self).__init__()
@@ -861,18 +876,46 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def rules(self, output, benchmarks, bmSuiteArgs):
         metric_name = self._get_metric_name(bmSuiteArgs)
-        return [
-            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
-                "benchmark": ("<name>", str),
-                "metric.better": "lower",
-                "metric.name": metric_name,
-                "metric.unit": ("<unit>", str),
-                "metric.value": ("<value>", float),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.iteration": 0,
-            })
-        ]
+        if metric_name == "time":
+            # Special case for metric "time": Instead of reporting the aggregate numbers,
+            # report individual iterations. Two metrics will be reported:
+            # - "warmup" includes all iterations (warmup and run)
+            # - "time" includes only the "run" iterations
+            return [
+                mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                    "benchmark": ("<name>", str),
+                    "metric.better": "lower",
+                    "metric.name": "warmup",
+                    "metric.unit": ("<unit>", str),
+                    "metric.value": ("<value>", float),
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.iteration": ("$iteration", int),
+                }),
+                ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                    "benchmark": ("<name>", str),
+                    "metric.better": "lower",
+                    "metric.name": "time",
+                    "metric.unit": ("<unit>", str),
+                    "metric.value": ("<value>", float),
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.iteration": ("<iteration>", int),
+                }, startPattern=r"::: Running :::")
+            ]
+        else:
+            return [
+                mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
+                    "benchmark": ("<name>", str),
+                    "metric.better": "lower",
+                    "metric.name": metric_name,
+                    "metric.unit": ("<unit>", str),
+                    "metric.value": ("<value>", float),
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.iteration": 0,
+                })
+            ]
 
     def _get_metric_name(self, bmSuiteArgs):
         metric = None

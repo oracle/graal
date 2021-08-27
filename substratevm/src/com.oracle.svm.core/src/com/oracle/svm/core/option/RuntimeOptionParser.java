@@ -173,6 +173,19 @@ public final class RuntimeOptionParser {
             }
             throw new IllegalArgumentException(parseResult.getError());
         }
+
+        // Print a warning if the option is deprecated.
+        OptionKey<?> option = parseResult.getOptionKey();
+        OptionDescriptor descriptor = option.getDescriptor();
+        if (descriptor != null && descriptor.isDeprecated()) {
+            Log log = Log.log();
+            log.string("Warning: Option '").string(descriptor.getName()).string("' is deprecated and might be removed from future versions");
+            String deprecationMessage = descriptor.getDeprecationMessage();
+            if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
+                log.string(": ").string(deprecationMessage);
+            }
+            log.newline();
+        }
     }
 
     public OptionKey<?> lookupOption(String name, Collection<OptionDescriptor> fuzzyMatches) {

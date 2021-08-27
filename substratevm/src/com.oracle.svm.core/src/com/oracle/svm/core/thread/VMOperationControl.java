@@ -126,7 +126,7 @@ public final class VMOperationControl {
         VMOperationControl control = get();
         assert control.mainQueues.isEmpty();
 
-        Thread thread = new Thread(control.dedicatedVMOperationThread, "VMOperationThread");
+        Thread thread = new Thread(null, control.dedicatedVMOperationThread, "VMOperationThread", SubstrateOptions.InternalThreadStackSize.getValue());
         thread.setDaemon(true);
         thread.start();
         control.dedicatedVMOperationThread.waitUntilStarted();

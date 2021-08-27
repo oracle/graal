@@ -37,4 +37,5 @@ run = EXECUTE million_upcalls_prim_args closure
 
 MICROBENCH run
     batchSize: 1000000
+    warmupIterations: 80
     unit: ns

@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.profiler.impl;
 
 import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
+import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.SAMPLE_CONTEXT_INITIALIZATION;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
@@ -112,6 +113,7 @@ public class CPUSamplerInstrument extends TruffleInstrument {
             sampler.setStackLimit(env.getOptions().get(CPUSamplerCLI.STACK_LIMIT));
             sampler.setFilter(getSourceSectionFilter(env));
             sampler.setGatherSelfHitTimes(env.getOptions().get(GATHER_HIT_TIMES));
+            sampler.setSampleContextInitialization(env.getOptions().get(SAMPLE_CONTEXT_INITIALIZATION));
             sampler.setCollecting(true);
         }
         env.registerService(sampler);

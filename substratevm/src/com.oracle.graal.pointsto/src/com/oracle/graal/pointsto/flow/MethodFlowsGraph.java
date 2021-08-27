@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.nodes.Invoke;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
@@ -121,7 +121,7 @@ public class MethodFlowsGraph {
         this.isClone = true;
     }
 
-    public void cloneOriginalFlows(BigBang bb) {
+    public void cloneOriginalFlows(PointsToAnalysis bb) {
 
         assert this.isClone && context != null;
 
@@ -155,7 +155,7 @@ public class MethodFlowsGraph {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends TypeFlow<?>> T lookupCloneOf(BigBang bb, T original) {
+    public <T extends TypeFlow<?>> T lookupCloneOf(PointsToAnalysis bb, T original) {
         assert original != null : "Looking for the clone of a 'null' flow in " + this;
         assert !original.isClone() : "Looking for the clone of the already cloned flow " + original + " in " + this;
         assert !(original instanceof FieldTypeFlow) : "Trying to clone a field type flow";
@@ -193,7 +193,7 @@ public class MethodFlowsGraph {
         return (T) clone;
     }
 
-    public void linkClones(final BigBang bb) {
+    public void linkClones(final PointsToAnalysis bb) {
 
         MethodFlowsGraph originalMethodFlowsGraph = method.getTypeFlow().originalMethodFlows;
 
@@ -464,7 +464,7 @@ public class MethodFlowsGraph {
      *
      * @return a list containing all the callers for the given context sensitive method
      */
-    public List<MethodFlowsGraph> callers(BigBang bb) {
+    public List<MethodFlowsGraph> callers(PointsToAnalysis bb) {
         /*
          * This list is seldom needed thus it is created lazily instead of storing a mapping from a
          * caller context to a caller graph for each method graph.
@@ -501,7 +501,7 @@ public class MethodFlowsGraph {
      * @param callerFlowGraph the context sensitive caller.
      * @return the InvokeTypeFlow object belonging to the caller that linked to this callee.
      */
-    public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, BigBang bb) {
+    public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, PointsToAnalysis bb) {
         for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
             for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
                 // 'this' method graph was found among the callees of an invoke flow in the caller

@@ -36,14 +36,17 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -161,5 +164,49 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
     private AMD64Address calleeSaveAddress(AMD64MacroAssembler asm, int frameSize, Register register) {
         return asm.makeAddress(frameRegister, frameSize + getOffsetInFrame(register));
+    }
+
+    @Override
+    public void dumpRegisters(Log log, Pointer callerSP, boolean printLocationInfo, boolean allowJavaHeapAccess) {
+        log.string("Callee saved registers (sp=").zhex(callerSP).string(")").indent(true);
+        /*
+         * The loop to print all registers is manually unrolled so that the register order is
+         * defined, and also so that the lookup of the "offset in frame" can be constant folded at
+         * image build time using a @Fold method.
+         */
+        dumpReg(log, "RAX ", callerSP, offsetInFrameOrNull(AMD64.rax), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RBX ", callerSP, offsetInFrameOrNull(AMD64.rbx), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RCX ", callerSP, offsetInFrameOrNull(AMD64.rcx), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RDX ", callerSP, offsetInFrameOrNull(AMD64.rdx), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RBP ", callerSP, offsetInFrameOrNull(AMD64.rbp), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RSI ", callerSP, offsetInFrameOrNull(AMD64.rsi), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RDI ", callerSP, offsetInFrameOrNull(AMD64.rdi), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RSP ", callerSP, offsetInFrameOrNull(AMD64.rsp), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R8  ", callerSP, offsetInFrameOrNull(AMD64.r8), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R9  ", callerSP, offsetInFrameOrNull(AMD64.r9), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R10 ", callerSP, offsetInFrameOrNull(AMD64.r10), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R11 ", callerSP, offsetInFrameOrNull(AMD64.r11), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R12 ", callerSP, offsetInFrameOrNull(AMD64.r12), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R13 ", callerSP, offsetInFrameOrNull(AMD64.r13), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R14 ", callerSP, offsetInFrameOrNull(AMD64.r14), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R15 ", callerSP, offsetInFrameOrNull(AMD64.r15), printLocationInfo, allowJavaHeapAccess);
+        log.indent(false);
+    }
+
+    private static void dumpReg(Log log, String label, Pointer callerSP, int offsetInFrameOrNull, boolean printLocationInfo, boolean allowJavaHeapAccess) {
+        if (offsetInFrameOrNull != 0) {
+            long value = callerSP.readLong(offsetInFrameOrNull);
+            RegisterDumper.dumpReg(log, label, value, printLocationInfo, allowJavaHeapAccess);
+        }
+    }
+
+    @Fold
+    static int offsetInFrameOrNull(Register register) {
+        AMD64CalleeSavedRegisters that = AMD64CalleeSavedRegisters.singleton();
+        if (that.calleeSavedRegisters.contains(register)) {
+            return that.getOffsetInFrame(register);
+        } else {
+            return 0;
+        }
     }
 }

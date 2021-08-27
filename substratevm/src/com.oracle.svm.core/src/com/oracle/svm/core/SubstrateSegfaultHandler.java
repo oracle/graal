@@ -155,7 +155,7 @@ public abstract class SubstrateSegfaultHandler {
 
             PointerBase sp = RegisterDumper.singleton().getSP(context);
             PointerBase ip = RegisterDumper.singleton().getIP(context);
-            boolean printedDiagnostics = SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context);
+            boolean printedDiagnostics = SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context, false);
             if (printedDiagnostics) {
                 log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
                 log.newline();

@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -80,12 +81,7 @@ public final class StatisticsPrinter {
         print(out, "app_type_checks", typeChecksStats[2]);
         print(out, "app_removable_type_checks", typeChecksStats[3]);
 
-        print(out, "typeflow_time_ms", bb.typeFlowTimer.getTotalTime());
-        print(out, "objects_time_ms", bb.checkObjectsTimer.getTotalTime());
-        print(out, "features_time_ms", bb.processFeaturesTimer.getTotalTime());
-        print(out, "total_analysis_time_ms", bb.analysisTimer.getTotalTime());
-
-        printLast(out, "total_memory_bytes", bb.analysisTimer.getTotalMemory());
+        bb.printTimerStatistics(out);
 
         endObject(out);
     }
@@ -100,15 +96,15 @@ public final class StatisticsPrinter {
         return out.format("{%n");
     }
 
-    private static void print(PrintWriter out, String key, long value) {
+    public static void print(PrintWriter out, String key, long value) {
         out.format("%s\"%s\": %d,%n", INDENT, key, value);
     }
 
-    private static void print(PrintWriter out, String key, double value) {
+    public static void print(PrintWriter out, String key, double value) {
         out.format("%s\"%s\": %.2f,%n", INDENT, key, value);
     }
 
-    private static void printLast(PrintWriter out, String key, long value) {
+    public static void printLast(PrintWriter out, String key, long value) {
         out.format("%s\"%s\": %d%n", INDENT, key, value);
     }
 
@@ -155,12 +151,17 @@ public final class StatisticsPrinter {
     }
 
     private static long[] getTypeCheckStats(BigBang bb) {
+        if (!(bb instanceof PointsToAnalysis)) {
+            /*- Type check stats are only available if points-to analysis is on. */
+            return new long[4];
+        }
+        PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
         long totalFilters = 0;
         long totalRemovableFilters = 0;
         long appTotalFilters = 0;
         long appTotalRemovableFilters = 0;
 
-        for (AnalysisMethod method : bb.getUniverse().getMethods()) {
+        for (AnalysisMethod method : pointsToAnalysis.getUniverse().getMethods()) {
 
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = method.getTypeFlow();
@@ -171,8 +172,8 @@ public final class StatisticsPrinter {
                     totalFilters++;
                     InstanceOfTypeFlow originalInstanceOf = entry.getValue();
 
-                    boolean isSaturated = methodFlow.isSaturated(bb, originalInstanceOf);
-                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(bb, originalInstanceOf);
+                    boolean isSaturated = methodFlow.isSaturated(pointsToAnalysis, originalInstanceOf);
+                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pointsToAnalysis, originalInstanceOf);
                     if (!isSaturated && instanceOfTypeState.typesCount() < 2) {
                         totalRemovableFilters++;
                     }

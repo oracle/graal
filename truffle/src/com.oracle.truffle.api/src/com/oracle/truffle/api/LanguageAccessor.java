@@ -618,6 +618,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public boolean isRecurringTLAction(ThreadLocalAction action) {
+            return action.isRecurring();
+        }
+
+        @Override
         public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
             action.perform(access);
         }

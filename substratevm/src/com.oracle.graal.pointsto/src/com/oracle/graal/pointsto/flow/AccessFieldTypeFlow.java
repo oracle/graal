@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -54,7 +54,7 @@ public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public final boolean addState(BigBang bb, TypeState add) {
+    public final boolean addState(PointsToAnalysis bb, TypeState add) {
         /* Only a clone should be updated */
         assert this.isClone();
         return super.addState(bb, add);
@@ -64,7 +64,7 @@ public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
      * When the type flow constraints are relaxed the object state can contain types that are not
      * part of the field's declaring class hierarchy. We filter those out.
      */
-    protected TypeState filterObjectState(BigBang bb, TypeState objectState) {
+    protected TypeState filterObjectState(PointsToAnalysis bb, TypeState objectState) {
         if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
             return TypeState.forIntersection(bb, objectState, field.getDeclaringClass().getAssignableTypes(true));
         }

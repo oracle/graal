@@ -121,6 +121,10 @@ suite = {
     "TREGEX" : {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.regex",
+        "requires" : [
+          "java.logging",
+          "jdk.unsupported", # sun.misc.Unsafe
+        ],
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],

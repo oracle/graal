@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -146,6 +145,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.Timer;
@@ -220,6 +220,7 @@ import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.annotation.AnnotationSupport;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
@@ -686,7 +687,7 @@ public class NativeImageGenerator {
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
             }
 
-            try (StopTimer t = bb.analysisTimer.start()) {
+            try (StopTimer t = bb.getAnalysisTimer().start()) {
 
                 /*
                  * Iterate until analysis reaches a fixpoint.
@@ -715,7 +716,7 @@ public class NativeImageGenerator {
                         /*
                          * Allow features to change the universe.
                          */
-                        try (StopTimer t2 = bb.processFeaturesTimer.start()) {
+                        try (StopTimer t2 = bb.getProcessFeaturesTimer().start()) {
                             int numTypes = aUniverse.getTypes().size();
                             int numMethods = aUniverse.getMethods().size();
                             int numFields = aUniverse.getFields().size();
@@ -747,9 +748,7 @@ public class NativeImageGenerator {
 
                 checkUniverse();
 
-                bb.typeFlowTimer.print();
-                bb.checkObjectsTimer.print();
-                bb.processFeaturesTimer.print();
+                bb.printTimers();
 
                 /* report the unsupported features by throwing UnsupportedFeatureException */
                 bb.getUnsupportedFeatures().report(bb);
@@ -863,7 +862,6 @@ public class NativeImageGenerator {
                 }
 
                 nativeLibraries = setupNativeLibraries(imageName, aConstantReflection, aMetaAccess, aSnippetReflection, cEnumProcessor, classInitializationSupport, debug);
-
                 try (Indent ignored2 = debug.logAndIndent("process startup initializers")) {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
@@ -956,17 +954,17 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            bb.addSystemClass(Object.class, false, false).registerAsInHeap();
-            bb.addSystemField(DynamicHub.class, "vtable");
-            bb.addSystemClass(String.class, false, false).registerAsInHeap();
-            bb.addSystemClass(String[].class, false, false).registerAsInHeap();
-            bb.addSystemField(String.class, "value").registerAsInHeap();
-            bb.addSystemClass(long[].class, false, false).registerAsInHeap();
-            bb.addSystemClass(byte[].class, false, false).registerAsInHeap();
-            bb.addSystemClass(byte[][].class, false, false).registerAsInHeap();
-            bb.addSystemClass(Object[].class, false, false).registerAsInHeap();
-            bb.addSystemClass(CFunctionPointer[].class, false, false).registerAsInHeap();
-            bb.addSystemClass(PointerBase[].class, false, false).registerAsInHeap();
+            bb.addRootClass(Object.class, false, false).registerAsInHeap();
+            bb.addRootField(DynamicHub.class, "vtable");
+            bb.addRootClass(String.class, false, false).registerAsInHeap();
+            bb.addRootClass(String[].class, false, false).registerAsInHeap();
+            bb.addRootField(String.class, "value").registerAsInHeap();
+            bb.addRootClass(long[].class, false, false).registerAsInHeap();
+            bb.addRootClass(byte[].class, false, false).registerAsInHeap();
+            bb.addRootClass(byte[][].class, false, false).registerAsInHeap();
+            bb.addRootClass(Object[].class, false, false).registerAsInHeap();
+            bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInHeap();
+            bb.addRootClass(PointerBase[].class, false, false).registerAsInHeap();
 
             try {
                 bb.addRootMethod(SubstrateArraycopySnippets.class.getDeclaredMethod("doArraycopy", Object.class, int.class, Object.class, int.class, int.class));
@@ -977,10 +975,10 @@ public class NativeImageGenerator {
 
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
-                    bb.addSystemClass(kind.toJavaClass(), false, true);
-                    bb.addSystemField(kind.toBoxedJavaClass(), "value");
-                    bb.addSystemMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass());
-                    bb.addSystemMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value");
+                    bb.addRootClass(kind.toJavaClass(), false, true);
+                    bb.addRootField(kind.toBoxedJavaClass(), "value");
+                    bb.addRootMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass());
+                    bb.addRootMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value");
                     /*
                      * Register the cache location as reachable.
                      * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
@@ -1001,7 +999,7 @@ public class NativeImageGenerator {
             registerReplacements(debug, featureHandler, null, aProviders, aProviders.getSnippetReflection(), true, initForeignCalls);
 
             for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options)) {
-                HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, graph).registerUsedElements(false);
+                HostedConfiguration.instance().createMethodTypeFlowBuilder(((NativeImagePointsToAnalysis) bb), graph).registerUsedElements(false);
             }
         }
     }
@@ -1030,7 +1028,7 @@ public class NativeImageGenerator {
         aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, aReplacments, aStampProvider,
                         aSnippetReflection, aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
-        return new Inflation(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback);
+        return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback);
     }
 
     @SuppressWarnings("try")
@@ -1405,42 +1403,45 @@ public class NativeImageGenerator {
     }
 
     private void checkUniverse() {
-        /*
-         * Check that the type states for method parameters and fields are compatible with the
-         * declared type. This is required for interface types because interfaces are not trusted
-         * according to the Java language specification, but we trust all interface types (see
-         * HostedType.isTrustedInterfaceType)
-         *
-         * TODO Enable checks for non-interface types too.
-         */
-        for (AnalysisMethod method : aUniverse.getMethods()) {
-            for (int i = 0; i < method.getTypeFlow().getOriginalMethodFlows().getParameters().length; i++) {
-                TypeState parameterState = method.getTypeFlow().getParameterTypeState(bb, i);
-                if (parameterState != null) {
-                    AnalysisType declaredType = method.getTypeFlow().getOriginalMethodFlows().getParameter(i).getDeclaredType();
-                    if (declaredType.isInterface()) {
-                        TypeState declaredTypeState = declaredType.getAssignableTypes(true);
-                        parameterState = TypeState.forSubtraction(bb, parameterState, declaredTypeState);
-                        if (!parameterState.isEmpty()) {
-                            String methodKey = method.format("%H.%n(%p)");
-                            bb.getUnsupportedFeatures().addMessage(methodKey, method,
-                                            "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
-                                                            " with state " + declaredTypeState + " which is incompatible with types in parameter state: " + parameterState);
+        if (bb instanceof NativeImagePointsToAnalysis) {
+            NativeImagePointsToAnalysis bigbang = (NativeImagePointsToAnalysis) this.bb;
+            /*
+             * Check that the type states for method parameters and fields are compatible with the
+             * declared type. This is required for interface types because interfaces are not
+             * trusted according to the Java language specification, but we trust all interface
+             * types (see HostedType.isTrustedInterfaceType)
+             *
+             * TODO Enable checks for non-interface types too.
+             */
+            for (AnalysisMethod method : aUniverse.getMethods()) {
+                for (int i = 0; i < method.getTypeFlow().getOriginalMethodFlows().getParameters().length; i++) {
+                    TypeState parameterState = method.getTypeFlow().getParameterTypeState(bigbang, i);
+                    if (parameterState != null) {
+                        AnalysisType declaredType = method.getTypeFlow().getOriginalMethodFlows().getParameter(i).getDeclaredType();
+                        if (declaredType.isInterface()) {
+                            TypeState declaredTypeState = declaredType.getAssignableTypes(true);
+                            parameterState = TypeState.forSubtraction(bigbang, parameterState, declaredTypeState);
+                            if (!parameterState.isEmpty()) {
+                                String methodKey = method.format("%H.%n(%p)");
+                                bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
+                                                "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
+                                                                " with state " + declaredTypeState + " which is incompatible with types in parameter state: " + parameterState);
+                            }
                         }
                     }
                 }
             }
-        }
-        for (AnalysisField field : aUniverse.getFields()) {
-            TypeState state = field.getTypeState();
-            if (state != null) {
-                AnalysisType declaredType = field.getType();
-                if (declaredType.isInterface()) {
-                    state = TypeState.forSubtraction(bb, state, declaredType.getAssignableTypes(true));
-                    if (!state.isEmpty()) {
-                        String fieldKey = field.format("%H.%n");
-                        bb.getUnsupportedFeatures().addMessage(fieldKey, null,
-                                        "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) + " which is incompatible with types in state: " + state);
+            for (AnalysisField field : aUniverse.getFields()) {
+                TypeState state = field.getTypeState();
+                if (state != null) {
+                    AnalysisType declaredType = field.getType();
+                    if (declaredType.isInterface()) {
+                        state = TypeState.forSubtraction(bigbang, state, declaredType.getAssignableTypes(true));
+                        if (!state.isEmpty()) {
+                            String fieldKey = field.format("%H.%n");
+                            bigbang.getUnsupportedFeatures().addMessage(fieldKey, null,
+                                            "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) + " which is incompatible with types in state: " + state);
+                        }
                     }
                 }
             }

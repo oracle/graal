@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.events.ClassLoadingStatistics;
@@ -128,7 +127,7 @@ public class JfrManager {
                 String[] keyVal = option.split("=");
                 JfrStartArgument arg = findArgument(possibleArguments, keyVal[0]);
                 if (arg == null) {
-                    throw UserError.abort("Unknown argument '" + keyVal[0] + "' in " + SubstrateOptions.StartFlightRecording.getName());
+                    throw VMError.shouldNotReachHere("Unknown argument '" + keyVal[0] + "' in " + SubstrateOptions.StartFlightRecording.getName());
                 }
                 optionsMap.put(arg, keyVal[1]);
             }
@@ -156,7 +155,7 @@ public class JfrManager {
         } else if ("false".equalsIgnoreCase(value)) {
             return false;
         } else {
-            throw UserError.abort("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. Expected a boolean value.");
+            throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. Expected a boolean value.");
         }
     }
 
@@ -198,7 +197,7 @@ public class JfrManager {
                 }
                 throw new IllegalArgumentException("Unit is invalid.");
             } catch (IllegalArgumentException e) {
-                throw UserError.abort("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
+                throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
             }
         }
         return null;
@@ -237,7 +236,7 @@ public class JfrManager {
                         return number;
                 }
             } catch (IllegalArgumentException e) {
-                throw UserError.abort("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
+                throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
             }
         }
         return null;
