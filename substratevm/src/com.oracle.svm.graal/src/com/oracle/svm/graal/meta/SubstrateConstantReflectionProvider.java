@@ -25,6 +25,7 @@
 package com.oracle.svm.graal.meta;
 
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -128,29 +130,48 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         if (field.constantValue != null) {
             return field.constantValue;
         }
-        if (field.location < 0) {
+        int location = field.location;
+        if (location < 0) {
             return null;
         }
-
-        JavaConstant base;
-        if (receiver == null) {
-            assert field.isStatic();
-            if (field.type.getStorageKind() == JavaKind.Object) {
-                base = SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticObjectFields());
+        JavaKind kind = field.getStorageKind();
+        Object baseObject;
+        if (field.isStatic()) {
+            if (kind == JavaKind.Object) {
+                baseObject = StaticFieldsSupport.getStaticObjectFields();
             } else {
-                base = SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticPrimitiveFields());
+                baseObject = StaticFieldsSupport.getStaticPrimitiveFields();
             }
         } else {
-            assert !field.isStatic();
-            base = receiver;
+            if (receiver == null || !field.getDeclaringClass().isInstance(receiver)) {
+                return null;
+            }
+            baseObject = SubstrateObjectConstant.asObject(receiver);
+            if (baseObject == null) {
+                return null;
+            }
         }
 
-        assert SubstrateObjectConstant.asObject(base) != null;
-        try {
-            return SubstrateMemoryAccessProviderImpl.readUnsafeConstant(field.type.getStorageKind(), base, field.location, field.isVolatile());
-        } catch (IllegalArgumentException e) {
-            return null;
+        boolean isVolatile = field.isVolatile();
+        JavaConstant result;
+        if (isVolatile) {
+            MembarNode.memoryBarrier(MemoryBarriers.JMM_PRE_VOLATILE_READ);
         }
+        /*
+         * We know that the memory offset we are reading from is a proper field location: we already
+         * checked that the receiver is an instance of an instance field's declaring class; and for
+         * static fields the offsets are into the known data arrays that hold the fields. So we can
+         * use read methods that do not perform further checks.
+         */
+        if (kind == JavaKind.Object) {
+            result = SubstrateMemoryAccessProviderImpl.readObjectUnchecked(baseObject, location, false);
+        } else {
+            result = SubstrateMemoryAccessProviderImpl.readPrimitiveUnchecked(kind, baseObject, location, kind.getByteCount() * 8);
+        }
+        if (isVolatile) {
+            MembarNode.memoryBarrier(MemoryBarriers.JMM_POST_VOLATILE_READ);
+        }
+        return result;
     }
 
     @Override
