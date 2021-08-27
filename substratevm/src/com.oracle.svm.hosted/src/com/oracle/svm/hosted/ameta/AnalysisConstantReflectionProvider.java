@@ -24,19 +24,11 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordBase;
-
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -49,7 +41,6 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -58,6 +49,10 @@ import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.WordBase;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
@@ -141,84 +136,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return ValueSupplier.eagerValue(universe.lookup(originalConstantReflection.readFieldValue(field.wrapped, receiver)));
     }
 
-    /*
-     * Static fields of classes that are initialized at run time have the default (uninitialized)
-     * value in the image heap. But there is one important exception:
-     *
-     * Fields that are static final and either primitive or of type String are initialized using the
-     * ConstantValue attribute of the class file, not using a class initializer. While we have class
-     * initializers available at run time, we no longer have the class files. So we need to preserve
-     * the values from the ConstantValue attribute in a different form. The easiest way is to just
-     * have these values as the default value of the static field in the image heap.
-     *
-     * Unfortunately, JVMCI does not allow us to access the default value: since the class is still
-     * uninitialized in the image generator, the JVMCI methods to read the field do not return a
-     * value. But the Java HotSpot VM actually already has the fields initialized to the values
-     * defined in the ConstantValue attributes. So reading the field via Unsafe actually produces
-     * the correct value that we want.
-     *
-     * Another complication are classes that are re-initialized at run time, i.e., initialized both
-     * during image generation and at run time. We must not return a value for a field that is
-     * initialized by a class initializer (that could be an arbitrary and wrong value from the image
-     * generator). Fortunately, the ConstantValue attribute is only used for static final fields of
-     * primitive types or the String type. By limiting the Unsafe read to these narrow cases, it is
-     * pretty likely (although not guaranteed) that we are not returning an unintended value for a
-     * class that is re-initialized at run time.
-     */
     public JavaConstant readUninitializedStaticValue(AnalysisField field) {
         assert classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass());
-        JavaKind kind = field.getJavaKind();
-
-        boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().getName().equals("Ljava/lang/String;");
-        if (!canHaveConstantValueAttribute || !field.isFinal()) {
-            return JavaConstant.defaultForKind(kind);
-        }
-
-        assert Modifier.isStatic(field.getModifiers());
-
-        /* On HotSpot the base of a static field is the Class object. */
-        Object base = field.getDeclaringClass().getJavaClass();
-        long offset = field.wrapped.getOffset();
-
-        /*
-         * We cannot rely on the reflectionField because it can be null if there is some incomplete
-         * classpath issue or the field is either missing or hidden from reflection. However we can
-         * still use it to double check our assumptions.
-         */
-        Field reflectionField = field.getJavaField();
-        if (reflectionField != null) {
-            assert kind == JavaKind.fromJavaClass(reflectionField.getType());
-
-            Object reflectionFieldBase = Unsafe.getUnsafe().staticFieldBase(reflectionField);
-            long reflectionFieldOffset = Unsafe.getUnsafe().staticFieldOffset(reflectionField);
-
-            AnalysisError.guarantee(reflectionFieldBase == base && reflectionFieldOffset == offset);
-        }
-
-        switch (kind) {
-            case Boolean:
-                return JavaConstant.forBoolean(Unsafe.getUnsafe().getBoolean(base, offset));
-            case Byte:
-                return JavaConstant.forByte(Unsafe.getUnsafe().getByte(base, offset));
-            case Char:
-                return JavaConstant.forChar(Unsafe.getUnsafe().getChar(base, offset));
-            case Short:
-                return JavaConstant.forShort(Unsafe.getUnsafe().getShort(base, offset));
-            case Int:
-                return JavaConstant.forInt(Unsafe.getUnsafe().getInt(base, offset));
-            case Long:
-                return JavaConstant.forLong(Unsafe.getUnsafe().getLong(base, offset));
-            case Float:
-                return JavaConstant.forFloat(Unsafe.getUnsafe().getFloat(base, offset));
-            case Double:
-                return JavaConstant.forDouble(Unsafe.getUnsafe().getDouble(base, offset));
-            case Object:
-                Object value = Unsafe.getUnsafe().getObject(base, offset);
-                assert value == null || value instanceof String : "String is currently the only specified object type for the ConstantValue class file attribute";
-                return SubstrateObjectConstant.forObject(value);
-            default:
-                throw AnalysisError.shouldNotReachHere();
-        }
+        return UninitializedStaticFieldValueReader.readUninitializedStaticValue(field, val -> SubstrateObjectConstant.forObject(val));
     }
 
     public JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
