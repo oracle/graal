@@ -34,8 +34,12 @@ import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -47,10 +51,24 @@ import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import sun.misc.Unsafe;
 
+/**
+ * Snippets for finding IndexOf when the String to find ({@code target}) is constant.
+ *
+ * The main goal of these snippets is to step through the searched String ({@code source}) for
+ * target, but skip over indexes where it is known that there cannot be a match. On a mismatch, to
+ * determine the number of characters we can skip over, two additional values are maintained:
+ *
+ * <ul>
+ * <li>{@code cache}: A hashed cache of the characters target[0:targetCount-1]. This is used to
+ * check if a character can possibly match any character within target[0:targetCount-1].</li>
+ *
+ * <li>{@code md2}: The distance of between the character target[targetCount-1] and the second to
+ * last index of that character within target, or targetCount if there isn't another match.</li>
+ * </ul>
+ */
 public class ConstantStringIndexOfSnippets implements Snippets {
     private static final Unsafe UNSAFE = getUnsafe();
 
@@ -76,8 +94,12 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.add("origFromIndex", stringIndexOf.getArgument(6));
             JavaConstant targetArg = stringIndexOf.getArgument(3).asJavaConstant();
             char[] targetCharArray = loadCharArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
-            args.addConst("md2", md2(targetCharArray));
-            args.addConst("cache", computeCache(targetCharArray));
+            int[] targetIntArray = new int[targetCharArray.length];
+            for (int i = 0; i < targetIntArray.length; i++) {
+                targetIntArray[i] = targetCharArray[i];
+            }
+            args.addConst("md2", computeMd2(targetIntArray));
+            args.addConst("cache", computeCache(targetIntArray));
             template(stringIndexOf, args).instantiate(providers.getMetaAccess(), stringIndexOf, DEFAULT_REPLACER, args);
         }
 
@@ -91,8 +113,12 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.add("origFromIndex", latin1IndexOf.getArgument(4));
             JavaConstant targetArg = latin1IndexOf.getArgument(2).asJavaConstant();
             byte[] targetByteArray = loadByteArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
-            args.addConst("md2", md2(targetByteArray));
-            args.addConst("cache", computeCache(targetByteArray));
+            int[] targetIntArray = new int[targetByteArray.length];
+            for (int i = 0; i < targetIntArray.length; i++) {
+                targetIntArray[i] = targetByteArray[i];
+            }
+            args.addConst("md2", computeMd2(targetIntArray));
+            args.addConst("cache", computeCache(targetIntArray));
             template(latin1IndexOf, args).instantiate(providers.getMetaAccess(), latin1IndexOf, DEFAULT_REPLACER, args);
         }
 
@@ -107,18 +133,26 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.add("origFromIndex", utf16IndexOf.getArgument(4));
             JavaConstant targetArg = utf16IndexOf.getArgument(2).asJavaConstant();
             byte[] targetByteArray = loadByteArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
-            args.addConst("md2", md2Utf16(tool.getMetaAccess(), targetByteArray));
-            args.addConst("cache", computeCacheUtf16(tool.getMetaAccess(), targetByteArray));
+            /* Convert byte array of chars into int array */
+            int[] targetIntArray = new int[targetByteArray.length / 2];
+            int mask = NumUtil.getNbitNumberInt(8);
+            for (int i = 0; i < targetIntArray.length; i++) {
+                int lowVal = targetByteArray[i * 2];
+                int highVal = targetByteArray[i * 2 + 1];
+                targetIntArray[i] = (highVal & mask) << 8 | (lowVal & mask);
+            }
+            args.addConst("md2", computeMd2(targetIntArray));
+            args.addConst("cache", computeCache(targetIntArray));
             template(utf16IndexOf, args).instantiate(providers.getMetaAccess(), utf16IndexOf, DEFAULT_REPLACER, args);
         }
     }
 
-    static int md2(char[] target) {
+    static int computeMd2(int[] target) {
         int c = target.length;
         if (c == 0) {
             return 0;
         }
-        char lastChar = target[c - 1];
+        int lastChar = target[c - 1];
         int md2 = c;
         for (int i = 0; i < c - 1; i++) {
             if (target[i] == lastChar) {
@@ -128,66 +162,12 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         return md2;
     }
 
-    static long computeCache(char[] s) {
-        int c = s.length;
-        int cache = 0;
-        int i;
-        for (i = 0; i < c - 1; i++) {
-            cache |= (1 << (s[i] & 63));
-        }
-        return cache;
-    }
-
-    static int md2(byte[] target) {
+    static long computeCache(int[] target) {
         int c = target.length;
-        if (c == 0) {
-            return 0;
-        }
-        byte lastByte = target[c - 1];
-        int md2 = c;
-        for (int i = 0; i < c - 1; i++) {
-            if (target[i] == lastByte) {
-                md2 = (c - 1) - i;
-            }
-        }
-        return md2;
-    }
-
-    static long computeCache(byte[] s) {
-        int c = s.length;
-        int cache = 0;
+        long cache = 0;
         int i;
         for (i = 0; i < c - 1; i++) {
-            cache |= (1 << (s[i] & 63));
-        }
-        return cache;
-    }
-
-    static int md2Utf16(MetaAccessProvider metaAccess, byte[] target) {
-        int c = target.length / 2;
-        if (c == 0) {
-            return 0;
-        }
-        long base = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-        char lastChar = UNSAFE.getChar(target, base + (c - 1) * 2);
-        int md2 = c;
-        for (int i = 0; i < c - 1; i++) {
-            char currChar = UNSAFE.getChar(target, base + i * 2);
-            if (currChar == lastChar) {
-                md2 = (c - 1) - i;
-            }
-        }
-        return md2;
-    }
-
-    static long computeCacheUtf16(MetaAccessProvider metaAccess, byte[] s) {
-        int c = s.length / 2;
-        int cache = 0;
-        int i;
-        long base = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-        for (i = 0; i < c - 1; i++) {
-            char currChar = UNSAFE.getChar(s, base + i * 2);
-            cache |= (1 << (currChar & 63));
+            cache |= 1L << target[i];
         }
         return cache;
     }
@@ -197,7 +177,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
 
     @Snippet
     public static int indexOfConstant(char[] source, int sourceOffset, int sourceCount,
-                    char[] target, int targetOffset, int targetCount,
+                    @NonNullParameter char[] target, int targetOffset, int targetCount,
                     int origFromIndex, @ConstantParameter int md2, @ConstantParameter long cache) {
         int fromIndex = origFromIndex;
         if (fromIndex >= sourceCount) {
@@ -209,6 +189,8 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         if (targetCount == 0) {
             return fromIndex;
         }
+        // it is impossible for the source to be null
+        char[] nonNullSource = (char[]) PiNode.piCastNonNull(source, SnippetAnchorNode.anchor());
 
         int targetCountLess1 = targetCount - 1;
         int sourceEnd = sourceCount - targetCountLess1;
@@ -217,7 +199,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         int lastChar = UNSAFE.getChar(target, base + targetCountLess1 * 2);
 
         outer_loop: for (long i = sourceOffset + fromIndex; i < sourceEnd;) {
-            int src = UNSAFE.getChar(source, base + (i + targetCountLess1) * 2);
+            int src = UNSAFE.getChar(nonNullSource, base + (i + targetCountLess1) * 2);
             if (src == lastChar) {
                 // With random strings and a 4-character alphabet,
                 // reverse matching at this point sets up 0.8% fewer
@@ -231,9 +213,9 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                     ExplodeLoopNode.explodeLoop();
                 }
                 for (long j = 0; j < targetCountLess1; j++) {
-                    char sourceChar = UNSAFE.getChar(source, base + (i + j) * 2);
+                    char sourceChar = UNSAFE.getChar(nonNullSource, base + (i + j) * 2);
                     if (UNSAFE.getChar(target, base + (targetOffset + j) * 2) != sourceChar) {
-                        if ((cache & (1 << sourceChar)) == 0) {
+                        if ((cache & (1L << sourceChar)) == 0) {
                             if (md2 < j + 1) {
                                 i += j + 1;
                                 continue outer_loop;
@@ -245,7 +227,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                 }
                 return (int) (i - sourceOffset);
             }
-            if ((cache & (1 << src)) == 0) {
+            if ((cache & (1L << src)) == 0) {
                 i += targetCountLess1;
             }
             i++;
@@ -255,7 +237,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
 
     @Snippet
     public static int utf16IndexOfConstant(byte[] source, int sourceCount,
-                    byte[] target, int targetCount,
+                    @NonNullParameter byte[] target, int targetCount,
                     int origFromIndex, @ConstantParameter int md2, @ConstantParameter long cache) {
         int fromIndex = origFromIndex;
         if (fromIndex >= sourceCount) {
@@ -267,6 +249,8 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         if (targetCount == 0) {
             return fromIndex;
         }
+        // it is impossible for the source to be null
+        byte[] nonNullSource = (byte[]) PiNode.piCastNonNull(source, SnippetAnchorNode.anchor());
 
         int targetCountLess1 = targetCount - 1;
         int sourceEnd = sourceCount - targetCountLess1;
@@ -275,7 +259,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         int lastChar = UNSAFE.getChar(target, base + targetCountLess1 * 2);
 
         outer_loop: for (long i = fromIndex; i < sourceEnd;) {
-            int src = UNSAFE.getChar(source, base + (i + targetCountLess1) * 2);
+            int src = UNSAFE.getChar(nonNullSource, base + (i + targetCountLess1) * 2);
             if (src == lastChar) {
                 // With random strings and a 4-character alphabet,
                 // reverse matching at this point sets up 0.8% fewer
@@ -289,9 +273,9 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                     ExplodeLoopNode.explodeLoop();
                 }
                 for (long j = 0; j < targetCountLess1; j++) {
-                    char sourceChar = UNSAFE.getChar(source, base + (i + j) * 2);
+                    char sourceChar = UNSAFE.getChar(nonNullSource, base + (i + j) * 2);
                     if (UNSAFE.getChar(target, base + j * 2) != sourceChar) {
-                        if ((cache & (1 << sourceChar)) == 0) {
+                        if ((cache & (1L << sourceChar)) == 0) {
                             if (md2 < j + 1) {
                                 i += j + 1;
                                 continue outer_loop;
@@ -303,7 +287,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                 }
                 return (int) i;
             }
-            if ((cache & (1 << src)) == 0) {
+            if ((cache & (1L << src)) == 0) {
                 i += targetCountLess1;
             }
             i++;
@@ -313,7 +297,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
 
     @Snippet
     public static int latin1IndexOfConstant(byte[] source, int sourceCount,
-                    byte[] target, int targetCount,
+                    @NonNullParameter byte[] target, int targetCount,
                     int origFromIndex, @ConstantParameter int md2, @ConstantParameter long cache) {
         int fromIndex = origFromIndex;
         if (fromIndex >= sourceCount) {
@@ -325,6 +309,8 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         if (targetCount == 0) {
             return fromIndex;
         }
+        // it is impossible for the source to be null
+        byte[] nonNullSource = (byte[]) PiNode.piCastNonNull(source, SnippetAnchorNode.anchor());
 
         int targetCountLess1 = targetCount - 1;
         int sourceEnd = sourceCount - targetCountLess1;
@@ -333,7 +319,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
         int lastByte = UNSAFE.getByte(target, base + targetCountLess1);
 
         outer_loop: for (long i = fromIndex; i < sourceEnd;) {
-            int src = UNSAFE.getByte(source, base + i + targetCountLess1);
+            int src = UNSAFE.getByte(nonNullSource, base + i + targetCountLess1);
             if (src == lastByte) {
                 // With random strings and a 4-character alphabet,
                 // reverse matching at this point sets up 0.8% fewer
@@ -347,9 +333,9 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                     ExplodeLoopNode.explodeLoop();
                 }
                 for (long j = 0; j < targetCountLess1; j++) {
-                    byte sourceByte = UNSAFE.getByte(source, base + i + j);
+                    byte sourceByte = UNSAFE.getByte(nonNullSource, base + i + j);
                     if (UNSAFE.getByte(target, base + j) != sourceByte) {
-                        if ((cache & (1 << sourceByte)) == 0) {
+                        if ((cache & (1L << sourceByte)) == 0) {
                             if (md2 < j + 1) {
                                 i += j + 1;
                                 continue outer_loop;
@@ -361,7 +347,7 @@ public class ConstantStringIndexOfSnippets implements Snippets {
                 }
                 return (int) i;
             }
-            if ((cache & (1 << src)) == 0) {
+            if ((cache & (1L << src)) == 0) {
                 i += targetCountLess1;
             }
             i++;
