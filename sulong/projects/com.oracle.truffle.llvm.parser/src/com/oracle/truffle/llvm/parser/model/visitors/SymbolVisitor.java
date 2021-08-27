@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.SelectConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.UnaryOperationConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
@@ -107,6 +108,10 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
     }
 
     default void visit(BigIntegerConstant constant) {
+        defaultAction(constant);
+    }
+
+    default void visit(UnaryOperationConstant constant) {
         defaultAction(constant);
     }
 
