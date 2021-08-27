@@ -35,9 +35,9 @@ suite = {
       "packedResource": True,
     },
 
-    "MICRONAUT_HW_1.0.1": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.1.zip"],
-      "sha1": "d933a93ac89a6b351e8fb12a32e990a3213e55ae",
+    "MICRONAUT_HW_1.0.2": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.2.zip"],
+      "sha1": "daba8f34099dfd884b59fe73855e74d139efe18d",
       "packedResource": True,
     },
 
