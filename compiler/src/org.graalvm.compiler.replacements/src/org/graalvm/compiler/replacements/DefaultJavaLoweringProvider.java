@@ -620,6 +620,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
+        ValueNode object = loadHubOrNullNode.getValue();
+        if (object.isConstant() && !object.asJavaConstant().isNull()) {
+            ValueNode synonym = LoadHubNode.findSynonym(object, loadHubOrNullNode.stamp(NodeView.DEFAULT), tool.getMetaAccess(), tool.getConstantReflection());
+            if (synonym != null) {
+                loadHubOrNullNode.replaceAtUsagesAndDelete(graph.maybeAddOrUnique(synonym));
+                return;
+            }
+        }
         final FixedWithNextNode predecessor = tool.lastFixedNode();
         final ValueNode value = loadHubOrNullNode.getValue();
         AbstractPointerStamp stamp = (AbstractPointerStamp) value.stamp(NodeView.DEFAULT);
