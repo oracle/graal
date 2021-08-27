@@ -1004,6 +1004,18 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testFuncTypeMultipleParameters() throws IOException, InterruptedException {
+        final byte[] source = compileWat("data", "(module (func (export \"func\") (param i32 i64) (result f32) f32.const 0))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, source, null);
+            final WasmFunctionInstance fn = (WasmFunctionInstance) WebAssembly.instanceExport(instance, "func");
+            final String fnType = WebAssembly.functionTypeToString(fn.function());
+            Assert.assertEquals("func_type", "0(i32 i64)f32", fnType);
+        });
+    }
+
+    @Test
     public void testInitialMemorySizeOutOfBounds() throws IOException {
         runTest(context -> {
             try {
