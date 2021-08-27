@@ -32,9 +32,10 @@ meth public void setGatherSelfHitTimes(boolean)
 meth public void setMode(com.oracle.truffle.tools.profiler.CPUSampler$Mode)
  anno 0 java.lang.Deprecated()
 meth public void setPeriod(long)
+meth public void setSampleContextInitialization(boolean)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds COPY_PAYLOAD,DEFAULT_FILTER,MERGE_PAYLOAD,PAYLOAD_FACTORY,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,safepointStackSampler,samplerTask,samplerThread,stackLimit
+hfds COPY_PAYLOAD,DEFAULT_FILTER,MERGE_PAYLOAD,PAYLOAD_FACTORY,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,safepointStackSampler,sampleContextInitialization,samplerTask,samplerThread,stackLimit
 hcls MutableSamplerData,SamplingTimerTask
 
 CLSS public final static !enum com.oracle.truffle.tools.profiler.CPUSampler$Mode
@@ -50,14 +51,21 @@ supr java.lang.Enum<com.oracle.truffle.tools.profiler.CPUSampler$Mode>
 CLSS public final static com.oracle.truffle.tools.profiler.CPUSampler$Payload
  outer com.oracle.truffle.tools.profiler.CPUSampler
 meth public int getCompiledHitCount()
+ anno 0 java.lang.Deprecated()
 meth public int getHitCount()
 meth public int getInterpretedHitCount()
+ anno 0 java.lang.Deprecated()
+meth public int getNumberOfTiers()
 meth public int getSelfCompiledHitCount()
+ anno 0 java.lang.Deprecated()
 meth public int getSelfHitCount()
 meth public int getSelfInterpretedHitCount()
+ anno 0 java.lang.Deprecated()
+meth public int getTierSelfCount(int)
+meth public int getTierTotalCount(int)
 meth public java.util.List<java.lang.Long> getSelfHitTimes()
 supr java.lang.Object
-hfds compiledHitCount,interpretedHitCount,selfCompiledHitCount,selfHitTimes,selfInterpretedHitCount
+hfds selfHitTimes,selfTierCount,tierCount
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUSamplerData
 meth public com.oracle.truffle.api.TruffleContext getContext()
@@ -169,17 +177,22 @@ hfds children,parent,payload,sourceLocation
 
 CLSS public final com.oracle.truffle.tools.profiler.StackTraceEntry
 meth public boolean equals(java.lang.Object)
+meth public boolean isCompilationRoot()
 meth public boolean isCompiled()
+ anno 0 java.lang.Deprecated()
 meth public boolean isInlined()
+ anno 0 java.lang.Deprecated()
 meth public boolean isInterpreted()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public int getTier()
 meth public int hashCode()
 meth public java.lang.StackTraceElement toStackTraceElement()
 meth public java.lang.String getRootName()
 meth public java.lang.String toString()
 meth public java.util.Set<java.lang.Class<?>> getTags()
 supr java.lang.Object
-hfds STATE_FIRST_TIER_COMPILATION_ROOT,STATE_FIRST_TIER_COMPILED,STATE_INTERPRETED,STATE_LAST_TIER_COMPILATION_ROOT,STATE_LAST_TIER_COMPILED,STATE_UNKNOWN,instrumentedNode,rootName,sourceSection,stackTraceElement,state,tags
+hfds DEFAULT_TAGS,compilationRoot,compilationTier,instrumentedNode,rootName,sourceSection,stackTraceElement,tags
 
 CLSS public abstract interface java.io.Closeable
 intf java.lang.AutoCloseable

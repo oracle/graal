@@ -161,7 +161,7 @@ public final class CPUTracer implements Closeable {
         return payloadMap.computeIfAbsent(sourceSection, new Function<SourceSection, Payload>() {
             @Override
             public Payload apply(SourceSection section) {
-                return new Payload(new StackTraceEntry(CPUTracer.this.env.getInstrumenter(), context, StackTraceEntry.STATE_INTERPRETED));
+                return new Payload(new StackTraceEntry(CPUTracer.this.env.getInstrumenter(), context, 0, true));
             }
         });
     }
