@@ -58,6 +58,8 @@ public interface CollectionPolicy {
         switch (name) {
             case "Adaptive":
                 return new AdaptiveCollectionPolicy();
+            case "Proportionate":
+                return new ProportionateSpacesPolicy();
             case "BySpaceAndTime":
                 return new BasicCollectionPolicies.BySpaceAndTime();
             case "OnlyCompletely":
