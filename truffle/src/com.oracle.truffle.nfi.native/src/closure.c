@@ -48,6 +48,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <ffi.h>
 #include "internal.h"
@@ -105,7 +106,8 @@ static jobjectArray create_arg_buffers(struct __TruffleContextInternal *ctx, JNI
     for (i = 0; i < cif->nargs; i++) {
         switch (data->argTypes[i]) {
             case ARG_BUFFER: {
-                    jobject buffer = (*env)->NewDirectByteBuffer(env, args[i], cif->arg_types[i]->size);
+                    jobject buffer = (*env)->AllocObject(env, ctx->NativeArgumentBuffer_Pointer);
+                    (*env)->SetLongField(env, buffer, ctx->NativeArgumentBuffer_Pointer_pointer, (jlong)(intptr_t) args[i]);
                     (*env)->SetObjectArrayElement(env, argBuffers, i, buffer);
                     (*env)->DeleteLocalRef(env, buffer);
                 }
@@ -158,7 +160,6 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
 
-    int retSize;
     jobject retBuffer;
     jobjectArray argBuffers;
     jobject retPatches;
@@ -169,11 +170,8 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
 
     (*env)->PushLocalFrame(env, 8);
 
-    retSize = cif->rtype->size;
-    if (retSize < sizeof(ffi_arg)) {
-        retSize = sizeof(ffi_arg);
-    }
-    retBuffer = (*env)->NewDirectByteBuffer(env, ret, retSize);
+    retBuffer = (*env)->AllocObject(env, ctx->NativeArgumentBuffer_Pointer);
+    (*env)->SetLongField(env, retBuffer, ctx->NativeArgumentBuffer_Pointer_pointer, (jlong)(intptr_t) ret);
 
     argBuffers = create_arg_buffers(ctx, env, data, cif, args, retBuffer);
 

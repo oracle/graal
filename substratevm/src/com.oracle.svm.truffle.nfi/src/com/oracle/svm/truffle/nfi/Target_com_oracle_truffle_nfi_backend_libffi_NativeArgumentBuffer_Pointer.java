@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
+ * published by the Free Software Foundation.  Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,33 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <ffi.h>
-#include <trufflenfi.h>
-#include <stdint.h>
+package com.oracle.svm.truffle.nfi;
 
-typedef struct {
-    ffi_closure ffiClosure;
-    void *nativeClosureHandle;
-    void *isolate;
-    int32_t envArgIdx;
-} svm_closure_data;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 
-typedef struct {
-    ffi_cif cif;
-    ffi_type *args[1];
-} svm_cif_data;
+@TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.NativeArgumentBuffer", innerClass = "Pointer", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer {
 
-typedef struct {
-    const struct __TruffleThreadAPI *functions;
-    void *contextHandle;
-    void *isolate;
+    @Alias
+    Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer(@SuppressWarnings("unused") long pointer) {
+    }
 
-    struct __TruffleThreadAPI threadAPI;
-    struct __TruffleNativeAPI nativeAPI;
-} svm_truffle_context;
-
-typedef struct {
-    const struct __TruffleNativeAPI *functions;
-    svm_truffle_context *context;
-    void *isolateThread;
-} svm_truffle_env;
+    @Alias long pointer;
+}

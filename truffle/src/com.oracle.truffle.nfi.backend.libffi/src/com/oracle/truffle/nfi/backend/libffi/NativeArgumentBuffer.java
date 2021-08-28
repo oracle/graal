@@ -41,8 +41,6 @@
 package com.oracle.truffle.nfi.backend.libffi;
 
 import java.lang.reflect.Field;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -199,9 +197,18 @@ abstract class NativeArgumentBuffer {
         }
     }
 
+    // allocated by native code
+    static final class Pointer {
+
+        long pointer;
+
+        Pointer(long pointer) {
+            this.pointer = pointer;
+        }
+    }
+
     static final class Direct extends NativeArgumentBuffer {
         private static final Unsafe UNSAFE;
-        private static final long BUFFER_ADDR_FIELD_OFFSET;
 
         static {
             Field unsafeField;
@@ -217,24 +224,15 @@ abstract class NativeArgumentBuffer {
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
-
-            try {
-                Field bufferAddrField = Buffer.class.getDeclaredField("address");
-                BUFFER_ADDR_FIELD_OFFSET = UNSAFE.objectFieldOffset(bufferAddrField);
-            } catch (NoSuchFieldException e) {
-                throw new RuntimeException(e);
-            }
         }
 
-        private long buffer;
+        private final long buffer;
         private int position;
-        private int size;
 
-        Direct(ByteBuffer primBuffer, int objCount) {
+        Direct(Pointer pointer, int objCount) {
             super(objCount);
-            this.buffer = UNSAFE.getLong(primBuffer, BUFFER_ADDR_FIELD_OFFSET);
-            this.position = primBuffer.position();
-            this.size = primBuffer.limit();
+            this.buffer = pointer.pointer;
+            this.position = 0;
         }
 
         @Override
@@ -247,15 +245,8 @@ abstract class NativeArgumentBuffer {
             position = newPosition;
         }
 
-        private void checkBounds(int startIndex, int length) {
-            if (!(length >= 1 && startIndex >= 0 && startIndex <= size - length)) {
-                throw CompilerDirectives.shouldNotReachHere();
-            }
-        }
-
         @Override
         public byte getInt8() {
-            checkBounds(position, Byte.BYTES);
             byte v = UNSAFE.getByte(buffer + position);
             position += Byte.BYTES;
             return v;
@@ -263,14 +254,12 @@ abstract class NativeArgumentBuffer {
 
         @Override
         public void putInt8(byte b) {
-            checkBounds(position, Byte.BYTES);
             UNSAFE.putByte(buffer + position, b);
             position += Byte.BYTES;
         }
 
         @Override
         public short getInt16() {
-            checkBounds(position, Short.BYTES);
             short v = UNSAFE.getShort(buffer + position);
             position += Short.BYTES;
             return v;
@@ -278,14 +267,12 @@ abstract class NativeArgumentBuffer {
 
         @Override
         public void putInt16(short s) {
-            checkBounds(position, Short.BYTES);
             UNSAFE.putShort(buffer + position, s);
             position += Short.BYTES;
         }
 
         @Override
         public int getInt32() {
-            checkBounds(position, Integer.BYTES);
             int v = UNSAFE.getInt(buffer + position);
             position += Integer.BYTES;
             return v;
@@ -293,14 +280,12 @@ abstract class NativeArgumentBuffer {
 
         @Override
         public void putInt32(int i) {
-            checkBounds(position, Integer.BYTES);
             UNSAFE.putInt(buffer + position, i);
             position += Integer.BYTES;
         }
 
         @Override
         public long getInt64() {
-            checkBounds(position, Long.BYTES);
             long v = UNSAFE.getLong(buffer + position);
             position += Long.BYTES;
             return v;
@@ -308,14 +293,12 @@ abstract class NativeArgumentBuffer {
 
         @Override
         public void putInt64(long l) {
-            checkBounds(position, Long.BYTES);
             UNSAFE.putLong(buffer + position, l);
             position += Long.BYTES;
         }
 
         @Override
         public float getFloat() {
-            checkBounds(position, Float.BYTES);
             float v = UNSAFE.getFloat(buffer + position);
             position += Float.BYTES;
             return v;
@@ -323,14 +306,12 @@ abstract class NativeArgumentBuffer {
 
         @Override
         public void putFloat(float f) {
-            checkBounds(position, Float.BYTES);
             UNSAFE.putFloat(buffer + position, f);
             position += Float.BYTES;
         }
 
         @Override
         public double getDouble() {
-            checkBounds(position, Double.BYTES);
             double v = UNSAFE.getDouble(buffer + position);
             position += Double.BYTES;
             return v;
@@ -338,7 +319,6 @@ abstract class NativeArgumentBuffer {
 
         @Override
         public void putDouble(double d) {
-            checkBounds(position, Double.BYTES);
             UNSAFE.putDouble(buffer + position, d);
             position += Double.BYTES;
         }

@@ -326,7 +326,7 @@ final class LibFFIType {
         public Object fromPrimitive(long primitive) {
             switch (simpleType) {
                 case VOID:
-                    return NativePointer.create(nfiLanguage, 0);
+                    return NativePointer.NULL;
                 case UINT8:
                     return primitive & (short) 0xFF;
                 case SINT8:
@@ -407,7 +407,7 @@ final class LibFFIType {
 
         @Override
         public Object deserializeRet(Node node, NativeArgumentBuffer buffer) {
-            return NativePointer.create(LibFFILanguage.get(node), 0);
+            return NativePointer.NULL;
         }
     }
 
