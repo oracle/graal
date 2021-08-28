@@ -56,6 +56,7 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
