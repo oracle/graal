@@ -88,6 +88,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.Assert;
@@ -1643,6 +1644,61 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    @SuppressWarnings("try")
+    public void testAuxImageStore() throws Exception {
+        setPatchable(FIRST);
+        Path testFolder = Files.createTempDirectory("testSources").toRealPath();
+        try {
+            Path home = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
+            Path resource = Files.write(home.resolve("testImageStore.test"), Collections.singleton("test"));
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), home.toString());
+            AtomicReference<com.oracle.truffle.api.source.Source> buildTimeSourceRef = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                buildTimeSourceRef.set(createSource(env, resource, true));
+            });
+            doContextPreinitialize(FIRST);
+            List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            CountingContext firstLangCtx = findContext(FIRST, contexts);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertNotNull(buildTimeSourceRef.get());
+
+            Engine engine = Engine.create();
+            AbstractPolyglotImpl impl = findImpl();
+            Object engineImpl = impl.getAPIAccess().getReceiver(engine);
+            AtomicReference<com.oracle.truffle.api.source.Source> storeTimeSourceRef = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                storeTimeSourceRef.set(createSource(env, resource, true));
+            });
+            setPreInitializeOption(FIRST);
+            try {
+                TestAPIAccessor.engineAccess().preinitializeContext(engineImpl);
+            } finally {
+                clearPreInitializeOption();
+            }
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(2, contexts.size());
+            AtomicReference<com.oracle.truffle.api.source.Source> runtimeSourceRef = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+                runtimeSourceRef.set(createSource(env, resource, true));
+            });
+            try (Context ctx = Context.create()) {
+                assertEquals(1, firstLangCtx.patchContextCount);
+                assertSame(buildTimeSourceRef.get(), storeTimeSourceRef.get());
+                assertSame(buildTimeSourceRef.get(), runtimeSourceRef.get());
+            }
+        } finally {
+            delete(testFolder);
+        }
+    }
+
+    AbstractPolyglotImpl findImpl() throws ReflectiveOperationException {
+        Method getImplMethod = Engine.class.getDeclaredMethod("getImpl");
+        getImplMethod.setAccessible(true);
+        return (AbstractPolyglotImpl) getImplMethod.invoke(null);
+    }
+
+    @Test
     public void testAccessPriviledgePatching() throws ReflectiveOperationException {
         setPatchable(FIRST, SECOND);
 
@@ -2024,7 +2080,19 @@ public class ContextPreInitializationTest {
     }
 
     private static void doContextPreinitialize(String... languages) throws ReflectiveOperationException {
-        final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
+        setPreInitializeOption(languages);
+        try {
+            final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
+            final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
+            preInitMethod.setAccessible(true);
+            preInitMethod.invoke(null);
+        } finally {
+            // PreinitializeContexts should only be set during pre-initialization, not at runtime
+            clearPreInitializeOption();
+        }
+    }
+
+    private static void setPreInitializeOption(String... languages) {
         final StringBuilder languagesOptionValue = new StringBuilder();
         for (String language : languages) {
             languagesOptionValue.append(language).append(',');
@@ -2033,14 +2101,10 @@ public class ContextPreInitializationTest {
             languagesOptionValue.replace(languagesOptionValue.length() - 1, languagesOptionValue.length(), "");
             System.setProperty("polyglot.image-build-time.PreinitializeContexts", languagesOptionValue.toString());
         }
-        final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
-        preInitMethod.setAccessible(true);
-        try {
-            preInitMethod.invoke(null);
-        } finally {
-            // PreinitializeContexts should only be set during pre-initialization, not at runtime
-            System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
-        }
+    }
+
+    private static void clearPreInitializeOption() {
+        System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
     }
 
     @SuppressWarnings("unchecked")

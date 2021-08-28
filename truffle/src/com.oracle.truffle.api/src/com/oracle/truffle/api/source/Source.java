@@ -1080,7 +1080,6 @@ public abstract class Source {
         }
 
         useContent = enforceInterfaceContracts(useContent);
-        SourceImpl.Key key = null;
         String relativePathInLanguageHome = null;
         if (useTruffleFile != null) {
             // The relativePathInLanguageHome has to be calculated also for Sources created in the
@@ -1090,18 +1089,17 @@ public abstract class Source {
             if (relativePathInLanguageHome != null) {
                 Object fsEngineObject = SourceAccessor.ACCESSOR.languageSupport().getFileSystemEngineObject(SourceAccessor.ACCESSOR.languageSupport().getFileSystemContext(useTruffleFile));
                 if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {
-                    key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
+                    SourceImpl.Key key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
                                     useUrl, useUri, useName, usePath, internal, interactive, cached,
                                     relativePathInLanguageHome);
+                    Source source = SOURCES.intern(key);
+                    SourceAccessor.onSourceCreated(source);
+                    return source;
                 }
             }
         }
-        if (key == null) {
-            key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome);
-        }
-        Source source = SOURCES.intern(key);
-        SourceAccessor.onSourceCreated(source);
-        return source;
+        SourceImpl.Key key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome);
+        return SOURCES.intern(key);
     }
 
     static byte[] readBytes(URLConnection connection) throws IOException {
