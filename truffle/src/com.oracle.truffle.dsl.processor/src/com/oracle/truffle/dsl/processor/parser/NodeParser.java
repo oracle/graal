@@ -314,6 +314,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             node.setGenerateStatistics(true);
         }
 
+        if (isAssignable(templateType.asType(), types.ExecuteTracingSupport)) {
+            // TODO OT: check which events are overridden
+            node.setGenerateExecuteTracing(true);
+        }
+
         AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
         if (generateAOT != null) {
             node.setGenerateAOT(true);

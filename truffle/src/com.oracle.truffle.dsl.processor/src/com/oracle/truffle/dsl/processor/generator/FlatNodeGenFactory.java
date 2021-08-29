@@ -1363,7 +1363,7 @@ public class FlatNodeGenFactory {
         }
 
         generateStatisticsFields(clazz);
-
+        generateExecuteTracingFields(clazz);
     }
 
     private void generateStatisticsFields(CodeTypeElement clazz) {
@@ -1382,6 +1382,20 @@ public class FlatNodeGenFactory {
 
             b = clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), types.SpecializationStatistics_NodeStatistics, "statistics_")).createInitBuilder();
             b.startStaticCall(types.SpecializationStatistics_NodeStatistics, "create").string("this").string("SPECIALIZATION_NAMES").end();
+        }
+    }
+
+    private static final String ARGUMENT_NAMES_NAME = "ARGUMENT_NAMES";
+
+    private void generateExecuteTracingFields(CodeTypeElement clazz) {
+        if (node.isGenerateExecuteTracing()) {
+            ArrayType stringArray = new ArrayCodeTypeMirror(context.getType(String.class));
+            CodeTreeBuilder b = clazz.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), stringArray, "ARGUMENT_NAMES")).createInitBuilder();
+            b.startNewArray(stringArray, null);
+            for (VariableElement parameter : node.getExecutableTypes().get(0).getMethod().getParameters()) {
+                b.doubleQuote(parameter.getSimpleName().toString());
+            }
+            b.end();
         }
     }
 
@@ -1904,6 +1918,7 @@ public class FlatNodeGenFactory {
             builder.tree(GeneratorUtils.createShouldNotReachHere("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
                             "Use an execute method that takes all arguments as parameters."));
         } else {
+            generateTraceOnEnterCall(builder, frameState);
             SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
             FrameState originalFrameState = frameState.copy();
             builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
@@ -2455,6 +2470,8 @@ public class FlatNodeGenFactory {
             }
             builder.tree(createFastPathExecuteChild(builder, originalFrameState, frameState, currentType, group, execution));
         }
+
+        generateTraceOnEnterCall(builder, frameState);
 
         if (needsAOTReset() && node.needsRewrites(context)) {
             builder.startIf();
@@ -5352,6 +5369,16 @@ public class FlatNodeGenFactory {
             builder.end();
         }
         return new ChildExecutionResult(builder.build(), throwsUnexpected);
+    }
+
+    private void generateTraceOnEnterCall(CodeTreeBuilder builder, FrameState frameState) {
+        if (node.isGenerateExecuteTracing()) {
+            builder.startIf().startCall("isTracingEnabled").end(2);
+            builder.startBlock().startStatement().startCall("traceOnEnter");
+            builder.startGroup().string(ARGUMENT_NAMES_NAME).end();
+            frameState.addReferencesTo(builder);
+            builder.end(3);  // call traceOnEnter, statement, block
+        }
     }
 
     private static class ChildExecutionResult {
