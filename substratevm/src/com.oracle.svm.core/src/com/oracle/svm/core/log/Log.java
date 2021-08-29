@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
@@ -364,6 +365,21 @@ public abstract class Log implements AutoCloseable {
     @Override
     public void close() {
         return;
+    }
+
+    /**
+     * Enters a fatal logging context which may redirect or suppress further log output if
+     * {@code logHandler} is a {@link LogHandlerExtension}.
+     *
+     * @return {@code null} if fatal error logging is to be suppressed, otherwise the {@link Log}
+     *         object to be used for fatal error logging
+     */
+    public static Log enterFatalContext(LogHandler logHandler, CodePointer callerIP, String msg, Throwable ex) {
+        if (logHandler instanceof LogHandlerExtension) {
+            LogHandlerExtension ext = (LogHandlerExtension) logHandler;
+            return ext.enterFatalContext(callerIP, msg, ex);
+        }
+        return Log.log();
     }
 
     /**

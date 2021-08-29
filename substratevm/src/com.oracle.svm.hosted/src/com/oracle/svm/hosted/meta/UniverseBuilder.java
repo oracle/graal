@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -64,10 +65,12 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.svm.core.InvalidVTableEntryHandler;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
@@ -82,6 +85,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -998,10 +1002,23 @@ public class UniverseBuilder {
          */
         buildVTable(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap, vtablesSlots);
 
+        /*
+         * To avoid segfaults when jumping to address 0, all unused vtable entries are filled with a
+         * stub that reports a fatal error.
+         */
+        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidVTableEntryHandler.HANDLER_METHOD);
+
         for (HostedType type : hUniverse.orderedTypes) {
             if (type.vtable == null) {
                 assert type.isInterface() || type.isPrimitive();
                 type.vtable = new HostedMethod[0];
+            }
+
+            HostedMethod[] vtableArray = type.vtable;
+            for (int i = 0; i < vtableArray.length; i++) {
+                if (vtableArray[i] == null) {
+                    vtableArray[i] = invalidVTableEntryHandler;
+                }
             }
         }
 
@@ -1009,7 +1026,7 @@ public class UniverseBuilder {
             /* Check that all vtable entries are the correctly resolved methods. */
             for (HostedType type : hUniverse.orderedTypes) {
                 for (HostedMethod m : type.vtable) {
-                    assert m == null || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
+                    assert m == null || m.equals(invalidVTableEntryHandler) || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
                 }
             }
         }
@@ -1313,5 +1330,15 @@ public class UniverseBuilder {
         }
         assert list1.size() == list2.size();
         return true;
+    }
+}
+
+@AutomaticFeature
+final class InvalidVTableEntryFeature implements Feature {
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
+        access.registerAsCompiled(InvalidVTableEntryHandler.HANDLER_METHOD);
     }
 }
