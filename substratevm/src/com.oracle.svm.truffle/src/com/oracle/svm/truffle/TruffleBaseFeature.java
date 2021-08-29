@@ -632,34 +632,21 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
 @TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
+    int offset;
+
     public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
-
-        private static final int svmArrayBaseOffset;
-        private static final int svmArrayIndexScale;
-
         /*
          * We have to use reflection to access private members instead of aliasing them
          * in the substitution class since substitutions are present only at runtime
          */
-        private static final Method staticPropertyKindGetInternalKind;
-        private static final byte objectStaticPropertyKindByte;
+        private static final Method staticPropertyGetInternalKind;
 
         static {
-            try {
-                // Checkstyle: stop
-                Class<?> staticPropertyKindClass = Class.forName("com.oracle.truffle.api.staticobject.StaticPropertyKind");
-                staticPropertyKindGetInternalKind = ReflectionUtil.lookupMethod(StaticProperty.class, "getInternalKind");
-                Object objectStaticPropertyKind = ReflectionUtil.readField(staticPropertyKindClass, "Object", null);
-                Method staticPropertyKindToByte = ReflectionUtil.lookupMethod(staticPropertyKindClass, "toByte");
-                objectStaticPropertyKindByte = (byte) staticPropertyKindToByte.invoke(objectStaticPropertyKind);
-                // Checkstyle: resume
-            } catch (ReflectiveOperationException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-
-            // Find SVM array base offset and array index scale
-            svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Object);
-            svmArrayIndexScale = ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.Object);
+            // Checkstyle: stop
+            staticPropertyGetInternalKind = ReflectionUtil.lookupMethod(StaticProperty.class, "getInternalKindName");
+            // Checkstyle: resume
         }
 
         @Override
@@ -667,27 +654,86 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
                         Object receiver, Object originalValue) {
             int offset = (int) originalValue;
             StaticProperty receiverStaticProperty = (StaticProperty) receiver;
-            try {
-                byte internalKindByte = (byte) staticPropertyKindGetInternalKind.invoke(receiverStaticProperty);
 
-                /*
-                 * Re-computation is performed only if the kind is Object:
-                 * First, reverse the offset computation to find the index, and then
-                 * redo the offset computation with the SVM base offset and scale
-                 */
-                if (internalKindByte == objectStaticPropertyKindByte) {
-                    int index = (offset - Unsafe.ARRAY_OBJECT_BASE_OFFSET) / Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-                    return svmArrayBaseOffset + svmArrayIndexScale * index;
-                }
-            } catch (ReflectiveOperationException e) {
+            String internalKindName;
+            try {
+                // Checkstyle: stop
+                internalKindName = (String) staticPropertyGetInternalKind.invoke(receiverStaticProperty);
+                // Checkstyle: resume
+            } catch (IllegalAccessException | InvocationTargetException e) {
                 throw VMError.shouldNotReachHere(e);
             }
-            return originalValue;
+
+            int baseOffset;
+            int indexScale;
+            JavaKind javaKind;
+            switch (internalKindName) {
+                case "boolean":
+                    javaKind = JavaKind.Boolean;
+                    baseOffset = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;
+                    break;
+                case "byte":
+                    javaKind = JavaKind.Byte;
+                    baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
+                    break;
+                case "char":
+                    javaKind = JavaKind.Char;
+                    baseOffset = Unsafe.ARRAY_CHAR_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_CHAR_INDEX_SCALE;
+                    break;
+                case "double":
+                    javaKind = JavaKind.Double;
+                    baseOffset = Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_DOUBLE_INDEX_SCALE;
+                    break;
+                case "float":
+                    javaKind = JavaKind.Float;
+                    baseOffset = Unsafe.ARRAY_FLOAT_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_FLOAT_INDEX_SCALE;
+                    break;
+                case "int":
+                    javaKind = JavaKind.Int;
+                    baseOffset = Unsafe.ARRAY_INT_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_INT_INDEX_SCALE;
+                    break;
+                case "long":
+                    javaKind = JavaKind.Long;
+                    baseOffset = Unsafe.ARRAY_LONG_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_LONG_INDEX_SCALE;
+                    break;
+                case "Object":
+                    javaKind = JavaKind.Object;
+                    baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+                    break;
+                case "short":
+                    javaKind = JavaKind.Short;
+                    baseOffset = Unsafe.ARRAY_SHORT_BASE_OFFSET;
+                    indexScale = Unsafe.ARRAY_SHORT_INDEX_SCALE;
+                    break;
+                default:
+                    return originalValue;
+            }
+
+            /*
+             * Reverse the offset computation to find the index
+             */
+            int index = (offset - baseOffset) / indexScale;
+
+            /*
+             * Find SVM array base offset and array index scale for this JavaKind
+             */
+            int svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
+            int svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
+
+            /*
+             * Redo the offset computation with the SVM array base offset and array index scale
+             */
+            return svmArrayBaseOffset + svmArrayIndexScaleOffset * index;
         }
     }
-
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
-    int offset;
 }
 
 @TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator", onlyWith = TruffleBaseFeature.IsEnabled.class)
