@@ -248,7 +248,9 @@ public final class ResourcesFeature implements Feature {
                 if (matches(includePatterns, excludePatterns, relativeFilePath)) {
                     matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
                 }
-                Files.list(entry).forEach(queue::push);
+                try (Stream<Path> files = Files.list(entry)) {
+                    files.forEach(queue::push);
+                }
             } else {
                 if (matches(includePatterns, excludePatterns, relativeFilePath)) {
                     try (InputStream is = Files.newInputStream(entry)) {
