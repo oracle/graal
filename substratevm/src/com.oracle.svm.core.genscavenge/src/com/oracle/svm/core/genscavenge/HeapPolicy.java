@@ -45,7 +45,7 @@ import com.oracle.svm.core.util.VMError;
 
 /** HeapPolicy contains policies for the parameters and behaviors of the heap and collector. */
 public final class HeapPolicy {
-    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded.");
+    public static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded.");
 
     static final long LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE = 0;
     static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
