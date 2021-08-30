@@ -611,18 +611,18 @@ public class FlatNodeGenFactory {
         }
 
         for (ExecutableTypeData type : genericExecutableTypes) {
-            createExecute(clazz, type, Collections.<ExecutableTypeData> emptyList());
+            wrapWithTraceOnReturn(createExecute(clazz, type, Collections.<ExecutableTypeData> emptyList()));
         }
 
         for (ExecutableTypeData type : specializedExecutableTypes) {
-            createExecute(clazz, type, genericExecutableTypes);
+            wrapWithTraceOnReturn(createExecute(clazz, type, genericExecutableTypes));
         }
 
         for (ExecutableTypeData type : voidExecutableTypes) {
             List<ExecutableTypeData> genericAndSpecialized = new ArrayList<>();
             genericAndSpecialized.addAll(genericExecutableTypes);
             genericAndSpecialized.addAll(specializedExecutableTypes);
-            createExecute(clazz, type, genericAndSpecialized);
+            wrapWithTraceOnReturn(createExecute(clazz, type, genericAndSpecialized));
         }
 
         clazz.addOptional(createExecuteAndSpecialize());
@@ -701,15 +701,15 @@ public class FlatNodeGenFactory {
             }
 
             for (ExecutableTypeData type : genericExecutableTypes) {
-                uncached.add(createUncachedExecute(type));
+                wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
             for (ExecutableTypeData type : specializedExecutableTypes) {
-                uncached.add(createUncachedExecute(type));
+                wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
             for (ExecutableTypeData type : voidExecutableTypes) {
-                uncached.add(createUncachedExecute(type));
+                wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
             if (cost == null || cost.equals("MONOMORPHIC") /* the default */) {
@@ -5399,6 +5399,39 @@ public class FlatNodeGenFactory {
             builder.startBlock().startStatement().startCall("traceOnException").startGroup().string("traceThrowable").end(4);
             builder.startThrow().string("traceThrowable").end();
             builder.end();  // catchBlock
+        }
+    }
+
+    private void wrapWithTraceOnReturn(CodeExecutableElement method) {
+        if (node.isGenerateTraceOnReturn()) {
+            CodeTypeElement enclosingClass = (CodeTypeElement) method.getEnclosingElement();
+
+            CodeExecutableElement traceMethod = CodeExecutableElement.clone(method);
+            traceMethod.getAnnotationMirrors().clear();
+
+            method.setSimpleName(CodeNames.of(method.getSimpleName().toString() + "Traced"));
+            method.setVisibility(PRIVATE);
+
+            CodeTreeBuilder builder = traceMethod.createBuilder();
+
+            CodeTreeBuilder builder2 = builder.create();
+            builder2.startCall(method.getSimpleName().toString());
+            for (VariableElement param : traceMethod.getParameters()) {
+                builder2.string(param.getSimpleName().toString());
+            }
+            builder2.end();
+
+            if (!isVoid(method.getReturnType())) {
+                builder.declaration(context.getType(Object.class), "traceValue", builder2);
+                builder.startIf().startCall("isTracingEnabled").end(2);
+                builder.startBlock().startStatement().startCall("traceOnReturn").string("traceValue").end(3);
+                builder.startReturn().string("traceValue").end();
+            } else {
+                builder.startStatement().tree(builder2.build()).end();
+                builder.startIf().startCall("isTracingEnabled").end(2);
+                builder.startBlock().startStatement().startCall("traceOnReturn").string("null").end(3);
+            }
+            enclosingClass.add(traceMethod);
         }
     }
 
