@@ -43,7 +43,7 @@ public abstract class HiddenClassSupport {
         return ImageSingletons.lookup(HiddenClassSupport.class);
     }
 
-    public abstract  boolean isHiddenClassSupported();
+    public abstract boolean isHiddenClassSupported();
 
     /** Same as {@code Class.isHidden()}. */
     public abstract boolean isHidden(Class<?> clazz);
@@ -55,7 +55,9 @@ public abstract class HiddenClassSupport {
  */
 final class HiddenClassSupportBeforeJDK15 extends HiddenClassSupport {
     @Override
-    public boolean isHiddenClassSupported() { return false; }
+    public boolean isHiddenClassSupported() {
+        return false;
+    }
 
     @Override
     public boolean isHidden(Class<?> clazz) {
