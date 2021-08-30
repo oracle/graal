@@ -77,6 +77,37 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Snippets for lowering {@link System#arraycopy}.
+ *
+ * <ul>
+ * <li>{@link #arraycopyNativeExceptionSnippet}: this snippet is used when the array copy is know to
+ * fail, either because at least on of the objects is not an array, or one is an object array and
+ * the other one a primitive array.</li>
+ * <li>{@link #arraycopyExactStubCallSnippet}: this snippet is used for array copies that do not
+ * require a store check. This is the case if the array copy is either
+ * {@linkplain ArrayCopy#isExact() exact}, i.e., we can prove that the source array type is
+ * assignable to the destination array types, or if one of the objects is a primitive array (and the
+ * other is unknown). In the latter case, it is sufficient to dynamically check that the array types
+ * are the same. No store check is needed.</li>
+ * <li>{@link #exactArraycopyWithSlowPathWork}: if we can do an
+ * {@linkplain #arraycopyExactStubCallSnippet array copy without store check}, it might be better to
+ * inline the copy loop to allow further compiler phases to optimize the code, instead of doing a
+ * stub call. This is only done if {@code mayExpandThisArraycopy} is {@code true}. Lowering is
+ * delayed until {@linkplain GuardsStage#FIXED_DEOPTS deopts are fixed} using
+ * {@link #delayedExactArraycopyWithSlowPathWork}.</li>
+ * <li>{@link #checkcastArraycopySnippet}: this snippet is used if at least one of the objects is an
+ * object array, but the compatibility of source and destination cannot be proven statically. We
+ * need to perform a store check on every element. Lowering is delayed {@link GuardsStage#AFTER_FSA
+ * after framestate assignment} via {@link #delayedCheckcastArraycopySnippet})</li>
+ * <li>{@link #genericArraycopySnippet}: this snippet is used if we have no information about the
+ * types of the objects. The snippet needs to perform all required type and store checks. Lowering
+ * is delayed {@link GuardsStage#AFTER_FSA after framestate assignment} via
+ * {@link #delayedGenericArraycopySnippet}.</li>
+ * </ul>
+ *
+ * See {@link Templates#lower(ArrayCopyNode, boolean, LoweringTool)} for the implementation details
+ * of the lowering strategies.
+ *
+ * @see Templates#lower(ArrayCopyNode, boolean, LoweringTool)
  */
 public abstract class ArrayCopySnippets implements Snippets {
 
@@ -453,10 +484,13 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
 
         /**
-         * Lowers an {@link ArrayCopyNode}.
+         * Lowers an {@link ArrayCopyNode}. See the documentation of {@link ArrayCopySnippets} for
+         * an overview of the lowering strategies.
          *
          * @param mayExpandThisArraycopy {@code true} if the array copy might be expanded to a copy
          *            loop.
+         *
+         * @see ArrayCopySnippets
          */
         public void lower(ArrayCopyNode arraycopy, boolean mayExpandThisArraycopy, LoweringTool tool) {
             JavaKind elementKind = ArrayCopy.selectComponentKind(arraycopy);
