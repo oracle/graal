@@ -83,7 +83,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private boolean generateIntrospection;
     private boolean generateStatistics;
     private boolean generateAOT;
-    private boolean generateExecuteTracing;
+
+    private boolean generateTraceOnEnter;
+    private boolean generateTraceOnReturn;
+    private boolean generateTraceOnException;
 
     private boolean reportPolymorphism;
     private boolean isUncachable;
@@ -184,12 +187,22 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.generateAOT = generateAOT;
     }
 
-    public boolean isGenerateExecuteTracing() {
-        return generateExecuteTracing;
+    public boolean isGenerateTraceOnEnter() {
+        return generateTraceOnEnter;
     }
 
-    public void setGenerateExecuteTracing(boolean generateExecuteTracing) {
-        this.generateExecuteTracing = generateExecuteTracing;
+    public boolean isGenerateTraceOnReturn() {
+        return generateTraceOnReturn;
+    }
+
+    public boolean isGenerateTraceOnException() {
+        return generateTraceOnException;
+    }
+
+    public void setGenerateExecuteTracing(boolean generateTraceOnEnter, boolean generateTraceOnReturn, boolean generateTraceOnException) {
+        this.generateTraceOnEnter = generateTraceOnEnter;
+        this.generateTraceOnReturn = generateTraceOnReturn;
+        this.generateTraceOnException = generateTraceOnException;
     }
 
     public boolean isFallbackReachable() {

@@ -1388,7 +1388,7 @@ public class FlatNodeGenFactory {
     private static final String ARGUMENT_NAMES_NAME = "ARGUMENT_NAMES";
 
     private void generateExecuteTracingFields(CodeTypeElement clazz) {
-        if (node.isGenerateExecuteTracing()) {
+        if (node.isGenerateTraceOnEnter()) {
             ArrayType stringArray = new ArrayCodeTypeMirror(context.getType(String.class));
             CodeTreeBuilder b = clazz.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), stringArray, "ARGUMENT_NAMES")).createInitBuilder();
             b.startNewArray(stringArray, null);
@@ -5372,7 +5372,7 @@ public class FlatNodeGenFactory {
     }
 
     private void generateTraceOnEnterCall(CodeTreeBuilder builder, FrameState frameState) {
-        if (node.isGenerateExecuteTracing()) {
+        if (node.isGenerateTraceOnEnter()) {
             builder.startIf().startCall("isTracingEnabled").end(2);
             builder.startBlock().startStatement().startCall("traceOnEnter");
             builder.startGroup().string(ARGUMENT_NAMES_NAME).end();
