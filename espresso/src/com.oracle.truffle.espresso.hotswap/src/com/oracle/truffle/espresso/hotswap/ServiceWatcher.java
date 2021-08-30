@@ -381,10 +381,10 @@ final class ServiceWatcher {
                     path.getParent().register(watchService, WATCH_KINDS);
                     // watch for deletion
                     path.getParent().getParent().register(watchService, WATCH_KINDS);
-                    if (Files.exists(path) && Files.isReadable(path)) {
+                    if (Files.exists(path.getParent()) && Files.isReadable(path.getParent())) {
                         // watch in place
                         folderExist = true;
-                        scanDir(path);
+                        scanDir(path.getParent());
                     }
                 } catch (IOException e) {
                     // parent folder also deleted, continue search
