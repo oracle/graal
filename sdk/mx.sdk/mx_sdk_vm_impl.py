@@ -797,7 +797,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             output = self.get_output()
             if exists(output):
                 ts = mx.TimeStampFile(output)
-                if ts.isOlderThan(newestInput):
+                if newestInput and ts.isOlderThan(newestInput):
                     return "{} is older than {}".format(ts, newestInput)
                 else:
                     return None
