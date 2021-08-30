@@ -90,6 +90,12 @@ final class TrustStoreManagerFeature implements Feature {
          * lib/security/blacklisted.certs file
          */
         RuntimeClassInitialization.initializeAtBuildTime(sun.security.util.UntrustedCertificates.class);
+        /*
+         * All security providers must be registered (and initialized) at buildtime (see
+         * SecuritySubstitutions.java). XMLDSigRI is used for validating XML Signatures from
+         * certificate files while generating X509Certificates.
+         */
+        RuntimeClassInitialization.initializeAtBuildTime(org.jcp.xml.dsig.internal.dom.XMLDSigRI.class);
     }
 }
 
