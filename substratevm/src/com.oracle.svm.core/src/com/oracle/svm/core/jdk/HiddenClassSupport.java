@@ -28,12 +28,9 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Abstracts the information about hidden classes, which are not available in Java 11 and Java 8.
