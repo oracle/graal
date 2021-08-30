@@ -243,7 +243,7 @@ public final class NativeImageHeap implements ImageHeap {
          * fields manually.
          */
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isInImageHeap()) {
                 assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addObject(readObjectField(field, null), false, field);
             }
@@ -449,11 +449,11 @@ public final class NativeImageHeap implements ImageHeap {
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = object instanceof String;
                 for (HostedField field : clazz.getInstanceFields(true)) {
+                    boolean fieldRelocatable = false;
                     if (field.isInImageHeap() &&
                                     !field.equals(hybridArrayField) &&
                                     !field.equals(hybridBitsetField) &&
                                     !field.equals(hybridTypeIDSlotsField)) {
-                        boolean fieldRelocatable = false;
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
                             JavaConstant fieldValueConstant = field.readValue(con);
@@ -472,9 +472,8 @@ public final class NativeImageHeap implements ImageHeap {
                          * be inlined. Relocatable pointers are read-only for our purposes, however.
                          */
                         relocatable = relocatable || fieldRelocatable;
-                        written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
                     }
-
+                    written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
                 }
                 if (hybridArray instanceof Object[]) {
                     relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);
