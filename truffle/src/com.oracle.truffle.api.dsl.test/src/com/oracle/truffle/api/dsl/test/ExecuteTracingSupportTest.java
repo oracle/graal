@@ -84,7 +84,7 @@ public class ExecuteTracingSupportTest {
         }
 
         @Override
-        public void traceOnEnter(String[] argumentNames, Object... arguments) {
+        public void traceOnEnter(Object... arguments) {
             traceOnEnterCalled++;
             capturedArgs = arguments;
         }

@@ -319,7 +319,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             TypeMirror throwable = context.getType(Throwable.class);
             ArrayType stringArray = new ArrayCodeTypeMirror(context.getType(String.class));
             ArrayType objectArray = new ArrayCodeTypeMirror(object);
-            boolean traceOnEnter = ElementUtils.isDefaultMethodOverridden(templateType, "traceOnEnter", stringArray, objectArray);
+            boolean traceOnEnter = ElementUtils.isDefaultMethodOverridden(templateType, "traceOnEnter", objectArray);
             boolean traceOnReturn = ElementUtils.isDefaultMethodOverridden(templateType, "traceOnReturn", object);
             boolean traceOnException = ElementUtils.isDefaultMethodOverridden(templateType, "traceOnException", throwable);
             node.setGenerateExecuteTracing(traceOnEnter, traceOnReturn, traceOnException);

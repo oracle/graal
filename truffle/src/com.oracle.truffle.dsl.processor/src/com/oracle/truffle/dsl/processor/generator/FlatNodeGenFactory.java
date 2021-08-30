@@ -1363,7 +1363,6 @@ public class FlatNodeGenFactory {
         }
 
         generateStatisticsFields(clazz);
-        generateExecuteTracingFields(clazz);
     }
 
     private void generateStatisticsFields(CodeTypeElement clazz) {
@@ -1382,20 +1381,6 @@ public class FlatNodeGenFactory {
 
             b = clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), types.SpecializationStatistics_NodeStatistics, "statistics_")).createInitBuilder();
             b.startStaticCall(types.SpecializationStatistics_NodeStatistics, "create").string("this").string("SPECIALIZATION_NAMES").end();
-        }
-    }
-
-    private static final String ARGUMENT_NAMES_NAME = "ARGUMENT_NAMES";
-
-    private void generateExecuteTracingFields(CodeTypeElement clazz) {
-        if (node.isGenerateTraceOnEnter()) {
-            ArrayType stringArray = new ArrayCodeTypeMirror(context.getType(String.class));
-            CodeTreeBuilder b = clazz.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), stringArray, "ARGUMENT_NAMES")).createInitBuilder();
-            b.startNewArray(stringArray, null);
-            for (VariableElement parameter : node.getExecutableTypes().get(0).getMethod().getParameters()) {
-                b.doubleQuote(parameter.getSimpleName().toString());
-            }
-            b.end();
         }
     }
 
@@ -5379,7 +5364,6 @@ public class FlatNodeGenFactory {
         if (node.isGenerateTraceOnEnter()) {
             builder.startIf().startCall("isTracingEnabled").end(2);
             builder.startBlock().startStatement().startCall("traceOnEnter");
-            builder.startGroup().string(ARGUMENT_NAMES_NAME).end();
             frameState.addReferencesTo(builder);
             builder.end(3);  // call traceOnEnter, statement, block
         }

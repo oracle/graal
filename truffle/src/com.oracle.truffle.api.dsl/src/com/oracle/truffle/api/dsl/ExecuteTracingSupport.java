@@ -58,7 +58,7 @@ public interface ExecuteTracingSupport {
 
     boolean isTracingEnabled();
 
-    default void traceOnEnter(String[] argumentNames, Object... arguments) {
+    default void traceOnEnter(Object... arguments) {
     }
 
     default void traceOnReturn(Object returnValue) {
@@ -82,7 +82,7 @@ class ExecuteTracingSupportSnippets {
         }
 
         @Override
-        public void traceOnEnter(String[] argumentNames, Object... arguments) {
+        public void traceOnEnter(Object... arguments) {
             // TODO format a nice string
         }
 
