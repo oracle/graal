@@ -15,7 +15,8 @@
     run+: [
       ["mx", "build"]
     ],
-     notify_groups:: ["compiler_stubs"],
+    timelimit : "10:00",
+    notify_groups:: ["compiler_stubs"],
   },
 
   builds: [
