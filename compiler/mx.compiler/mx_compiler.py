@@ -463,8 +463,8 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # misuses the API. The same harness is used by Scala DaCapo.
     dacapo_esa = ['-esa', '-da:java.util.logging...']
 
-    # a few iterations to get the chance to catch miscompilations in the gate
-    default_iterations = 1
+    # A few iterations to increase the chance of catching compilation errors
+    default_iterations = 2
 
     dacapo_suite = mx_graal_benchmark.DaCapoBenchmarkSuite()
     dacapo_gate_iterations = {
