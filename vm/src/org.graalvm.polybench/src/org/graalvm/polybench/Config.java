@@ -63,7 +63,7 @@ class Config {
     public void parseBenchSpecificDefaults(Value benchmark) {
         if (warmupIterations == DEFAULT) {
             if (benchmark.hasMember("warmupIterations")) {
-            	Value warmupIterationsMember = benchmark.getMember("warmupIterations");
+                Value warmupIterationsMember = benchmark.getMember("warmupIterations");
                 warmupIterations = warmupIterationsMember.canExecute() ? warmupIterationsMember.execute().asInt() : warmupIterationsMember.asInt();
             } else {
                 warmupIterations = DEFAULT_WARMUP;
@@ -71,7 +71,7 @@ class Config {
         }
         if (iterations == DEFAULT) {
             if (benchmark.hasMember("iterations")) {
-            	Value iterationsMember = benchmark.getMember("iterations");
+                Value iterationsMember = benchmark.getMember("iterations");
                 iterations = iterationsMember.canExecute() ? iterationsMember.execute().asInt() : iterationsMember.asInt();
             } else {
                 iterations = DEFAULT_ITERATIONS;

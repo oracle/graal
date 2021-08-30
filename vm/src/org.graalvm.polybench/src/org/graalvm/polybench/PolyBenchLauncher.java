@@ -46,6 +46,29 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.logging.Handler;
 
+/**
+ * This launcher allows for multi-context benchmarking, which is enabled by the
+ * <code>--multi-context-runs</code> option. The value of this option determines the number of
+ * benchmark runs and can be <code>0</code> or greater. When zero runs is specified, a new context
+ * is created and closed right after the source file is parsed without running the benchmark,
+ * though. (N.B. This is especially useful for storing auxiliary engine cache containing ASTs
+ * created during the parsing of the source file.) On the other hand, if the number of runs is
+ * greater than 1, then a new engine is created and used for each context created for each run. If
+ * the number of runs is 1 (the default) then no engine is explicitly created.
+ * <p/>
+ * It is possible to specify different arguments for each iteration (N.B. currently for the first
+ * two iterations only). The pattern of an iteration specific argument is:
+ * 
+ * <pre>
+ * &lt;arg_name&gt;.&lt;iteration&gt;=&lt;value&gt;
+ * </pre>
+ * <p/>
+ * In order to facilitate debugging of benchmarks using auxiliary engine cache, the
+ * <code>--use-debug-cache</code> option can be used. Using this option should be accompanied by
+ * <code>--multi-context-runs=2</code>. In the first iteration the source is parsed and the
+ * in-memory auxiliary engine cache is stored without running the benchmark, while the second
+ * iteration will load the in-memory cache and run the benchmark.
+ */
 public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     static class ArgumentConsumer {
         private final String prefix;
@@ -183,42 +206,57 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
 
         if (this.config.runCount > 1) {
-            List<String> engineArgs = new ArrayList<>();
-            List<List<String>> perIterationArgs = new ArrayList<>();
-            perIterationArgs.add(new ArrayList<>()); // iteration 0 args
-            perIterationArgs.add(new ArrayList<>()); // iteration 1 args
+            processMultiContextArguments();
+        }
+        return this.config.unrecognizedArguments;
+    }
 
-            Iterator<String> iterator = this.config.unrecognizedArguments.iterator();
-            while (iterator.hasNext()) {
-                String option = iterator.next();
+    private void processMultiContextArguments() {
+        List<String> engineArgs = new ArrayList<>();
+        // The storage for the iteration-specific arguments
+        List<List<String>> perIterationArgs = new ArrayList<>();
+        // Iteration-specific arguments can be specified for the two first iterations only atm.
+        perIterationArgs.add(new ArrayList<>()); // iteration 0 args
+        perIterationArgs.add(new ArrayList<>()); // iteration 1 args
 
-                if (option.contains("=")) {
-                    String[] nameValue = option.split("=", 2);
-                    if (nameValue[0].endsWith(".0")) {
+        Iterator<String> iterator = this.config.unrecognizedArguments.iterator();
+        while (iterator.hasNext()) {
+            String option = iterator.next();
+
+            // Extract iteration-specific arguments. The pattern of an iteration specific arguments
+            // is: <arg_name>.<iteration>=<arg_value>
+            if (option.contains("=")) {
+                String[] nameValue = option.split("=", 2);
+                String indexedArgName = nameValue[0];
+                if (indexedArgName.length() >= 3) {
+                    String argName = indexedArgName.substring(0, indexedArgName.length() - 2);
+                    String argValue = nameValue[1];
+                    if (indexedArgName.endsWith(".0")) {
                         iterator.remove();
-                        perIterationArgs.get(0).add(nameValue[0].substring(0, nameValue[0].length() - 2) + "=" + nameValue[1]);
-                    } else if (nameValue[0].endsWith(".1")) {
+                        perIterationArgs.get(0).add(argName + "=" + argValue);
+                        continue;
+                    } else if (indexedArgName.endsWith(".1")) {
                         iterator.remove();
-                        perIterationArgs.get(1).add(nameValue[0].substring(0, nameValue[0].length() - 2) + "=" + nameValue[1]);
+                        perIterationArgs.get(1).add(argName + "=" + argValue);
+                        continue;
                     }
-                }
-
-                // The engine options must be separated and used later when building a context
-                if (option.startsWith("--engine.")) {
-                    iterator.remove();
-                    engineArgs.add(option);
-                } else if ("--experimental-options".equals(option)) {
-                    engineArgs.add(option);
-                    perIterationArgs.get(0).add(option);
-                    perIterationArgs.get(1).add(option);
                 }
             }
 
-            parseUnrecognizedOptions(getLanguageId(config.path), config.multiContextEngineOptions, engineArgs);
-            parseUnrecognizedOptions(getLanguageId(config.path), config.perIterationContextOptions.get(0), perIterationArgs.get(0));
-            parseUnrecognizedOptions(getLanguageId(config.path), config.perIterationContextOptions.get(1), perIterationArgs.get(1));
+            // The engine options must be separated and used later when building a context
+            if (option.startsWith("--engine.")) {
+                iterator.remove();
+                engineArgs.add(option);
+            } else if ("--experimental-options".equals(option)) {
+                engineArgs.add(option);
+                perIterationArgs.get(0).add(option);
+                perIterationArgs.get(1).add(option);
+            }
         }
-        return this.config.unrecognizedArguments;
+
+        parseUnrecognizedOptions(getLanguageId(config.path), config.multiContextEngineOptions, engineArgs);
+        parseUnrecognizedOptions(getLanguageId(config.path), config.perIterationContextOptions.get(0), perIterationArgs.get(0));
+        parseUnrecognizedOptions(getLanguageId(config.path), config.perIterationContextOptions.get(1), perIterationArgs.get(1));
     }
 
     @Override
@@ -254,16 +292,17 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
 
         for (int i = 0; i < config.runCount; i++) {
-            if (!config.useDebugCache) {
-                runHarness(contextBuilder);
-            } else {
+            Map<String, String> perIterationOptions = config.perIterationContextOptions.get(i);
+            if (perIterationOptions != null) {
+                contextBuilder.options(perIterationOptions);
+            }
+            if (config.useDebugCache) {
+                // The debug engine cache facilitation
                 if (i == 0) {
-                    contextBuilder.option("engine.DebugCachePreinitializeContext", "false").//
-                            option("engine.DebugCacheCompile", "aot").//
-                            option("engine.DebugCacheStore", "true").//
-                            option("engine.MultiTier", "false").//
-                            option("engine.CompileAOTOnCreate", "false");
-                    contextBuilder.options(config.perIterationContextOptions.get(0));
+                    contextBuilder.option("engine.DebugCacheCompile", "aot").//
+                                    option("engine.DebugCacheStore", "true").//
+                                    option("engine.MultiTier", "false").//
+                                    option("engine.CompileAOTOnCreate", "false");
                     try (Context context = contextBuilder.build()) {
                         context.eval(Source.newBuilder(getLanguageId(config.path), Paths.get(config.path).toFile()).build());
                     } catch (IOException e) {
@@ -271,10 +310,11 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     }
                 } else {
                     contextBuilder.option("engine.DebugCacheStore", "false").//
-                            option("engine.DebugCacheLoad", "true");
-                    contextBuilder.options(config.perIterationContextOptions.get(1));
+                                    option("engine.DebugCacheLoad", "true");
                     runHarness(contextBuilder);
                 }
+            } else {
+                runHarness(contextBuilder);
             }
         }
     }

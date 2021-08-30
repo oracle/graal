@@ -113,6 +113,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                     # so that all executed commands are visible.
                     cmdline += ["MX_VERBOSE=y"]
                 mx.run(cmdline, env=env)
+                mx.log("Making " + out)
                 self.bench_to_exec[bench] = out
             finally:
                 # reset current Directory
@@ -151,7 +152,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
             return self.polybenchRules(out, benchmarks, bmSuiteArgs)
         else:
             return self.legacyRules(out, benchmarks, bmSuiteArgs)
-        
+
     def legacyRules(self, out, benchmarks, bmSuiteArgs):
         return [
             SulongBenchmarkRule(
@@ -223,18 +224,12 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         ]
 
     def polybenchRules(self, output, benchmarks, bmSuiteArgs):
+        warmupIterCountRule = mx_benchmark.StdOutRule(r"warmup-iterations: (?P<value>.*)", {
+            "result": ("<value>", int),
+        }),
+        warmupIterCount = warmupIterCountRule[0].parse(output)[0]['result']
         metric_name = self._get_metric_name(bmSuiteArgs)
-        return [
-            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after warmup: (?P<value>.*) (?P<unit>.*)", {
-                "benchmark": ("<name>", str),
-                "metric.better": "lower",
-                "metric.name": "warmup",
-                "metric.unit": ("<unit>", str),
-                "metric.value": ("<value>", float),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.iteration": 0,
-            }),
+        rules = [
             mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
                 "benchmark": ("<name>", str),
                 "metric.better": "lower",
@@ -245,8 +240,21 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.score-function": "id",
                 "metric.iteration": 0,
             })
-
         ]
+        if warmupIterCount > 0:
+            rules += [
+            	mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after warmup: (?P<value>.*) (?P<unit>.*)", {
+                    "benchmark": ("<name>", str),
+                    "metric.better": "lower",
+                    "metric.name": "warmup",
+                    "metric.unit": ("<unit>", str),
+                    "metric.value": ("<value>", float),
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.iteration": 0,
+                })
+        	]
+        return rules
 
     def _get_metric_name(self, bmSuiteArgs):
         metric = None
@@ -508,7 +516,7 @@ class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
         return "native"
 
     def name(self):
-        return "polybench"
+        return "sulong-polybench"
 
     def launcherClass(self):
         return "org.graalvm.polybench.PolyBenchLauncher"
