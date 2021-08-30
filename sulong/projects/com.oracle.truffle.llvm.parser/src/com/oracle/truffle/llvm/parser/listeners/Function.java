@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertValueInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.OperandBundle;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReadModifyWriteInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
@@ -151,6 +152,8 @@ public final class Function implements ParserListener {
 
     private boolean isLastBlockTerminated = true;
 
+    private OperandBundle operandBundle = null;
+
     private MDLocation lastLocation = null;
 
     private final List<Integer> implicitIndices = new ArrayList<>();
@@ -202,6 +205,9 @@ public final class Function implements ParserListener {
             if (md instanceof MDSubprogram) {
                 ((MDSubprogram) md).setFunction(MDValue.create(function));
             }
+        }
+        if (operandBundle != null) {
+            throw new LLVMParserException("Operand bundle found with no consumer");
         }
         scope.exitLocalScope();
     }
@@ -372,6 +378,14 @@ public final class Function implements ParserListener {
                 createVaArg(buffer);
                 break;
 
+            case INSTRUCTION_OPERAND_BUNDLE:
+                /*
+                 * Ignore for now, but record it's presence. Currently we only support operand
+                 * bundles for llvm.assume, and we don't actually do anything for them.
+                 */
+                operandBundle = OperandBundle.PRESENT;
+                break;
+
             default:
                 // differentiate between unknown and unsupported instructions
                 switch (opCode) {
@@ -383,11 +397,14 @@ public final class Function implements ParserListener {
                     case INSTRUCTION_CATCHPAD:
                     case INSTRUCTION_CLEANUPPAD:
                     case INSTRUCTION_CATCHSWITCH:
-                    case INSTRUCTION_OPERAND_BUNDLE:
                         throw new LLVMParserException("Unsupported opCode in function block: " + opCode);
                     default:
                         throw new LLVMParserException("Unknown opCode in function block: " + opCode);
                 }
+        }
+
+        if (operandBundle != null && opCode != INSTRUCTION_OPERAND_BUNDLE) {
+            throw new LLVMParserException("Operand bundle found with no consumer");
         }
     }
 
@@ -445,10 +462,11 @@ public final class Function implements ParserListener {
 
         final Type returnType = functionType.getReturnType();
         if (returnType == VoidType.INSTANCE) {
-            emit(VoidInvokeInstruction.fromSymbols(scope, target, args, normalSuccessor, unwindSuccessor, paramAttr));
+            emit(VoidInvokeInstruction.fromSymbols(scope, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle));
         } else {
-            emit(InvokeInstruction.fromSymbols(scope, returnType, target, args, normalSuccessor, unwindSuccessor, paramAttr));
+            emit(InvokeInstruction.fromSymbols(scope, returnType, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle));
         }
+        operandBundle = null;
         isLastBlockTerminated = true;
     }
 
@@ -528,10 +546,11 @@ public final class Function implements ParserListener {
         final Type returnType = functionType.getReturnType();
 
         if (returnType == VoidType.INSTANCE) {
-            emit(VoidCallInstruction.fromSymbols(scope, callee, args, paramAttr));
+            emit(VoidCallInstruction.fromSymbols(scope, callee, args, paramAttr, operandBundle));
         } else {
-            emit(CallInstruction.fromSymbols(scope, returnType, callee, args, paramAttr));
+            emit(CallInstruction.fromSymbols(scope, returnType, callee, args, paramAttr, operandBundle));
         }
+        operandBundle = null;
     }
 
     private static final long SWITCH_CASERANGE_SHIFT = 16;

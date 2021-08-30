@@ -112,6 +112,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAssume;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -420,6 +421,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount);
+        if (call.getOperandBundle() != null && !(result instanceof LLVMAssume)) {
+            throw new LLVMParserException("Unsupported operand bundle on call of " + target.toString());
+        }
+
         SourceInstrumentationStrategy intent = SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION;
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
@@ -603,6 +608,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount);
+        if (call.getOperandBundle() != null && !(result instanceof LLVMAssume)) {
+            throw new LLVMParserException("Unsupported operand bundle on call of " + target.toString());
+        }
+
         SourceInstrumentationStrategy intent = SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION;
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
@@ -635,6 +644,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
         final SymbolImpl target = call.getCallTarget();
+
+        if (call.getOperandBundle() != null) {
+            throw new LLVMParserException("Unsupported operand bundle on invoke of " + target.toString());
+        }
+
         if (targetType instanceof StructureType) {
             argTypes.set(argIndex, new PointerType(targetType));
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion, frame);
@@ -684,6 +698,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(VoidInvokeInstruction call) {
         final SymbolImpl target = call.getCallTarget();
+
+        if (call.getOperandBundle() != null) {
+            throw new LLVMParserException("Unsupported operand bundle on invoke of " + target.toString());
+        }
 
         final int argumentCount = call.getArgumentCount() + 1; // stackpointer
         final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];
