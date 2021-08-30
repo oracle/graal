@@ -5389,31 +5389,29 @@ public class FlatNodeGenFactory {
     private void wrapWithTraceOnReturn(CodeExecutableElement method) {
         if (node.isGenerateTraceOnReturn()) {
             CodeTypeElement enclosingClass = (CodeTypeElement) method.getEnclosingElement();
-
-            CodeExecutableElement traceMethod = CodeExecutableElement.clone(method);
-            traceMethod.getAnnotationMirrors().clear();
+            CodeExecutableElement traceMethod = CodeExecutableElement.cloneNoAnnotations(method);
 
             method.setSimpleName(CodeNames.of(method.getSimpleName().toString() + "Traced"));
             method.setVisibility(PRIVATE);
 
-            CodeTreeBuilder builder = traceMethod.createBuilder();
-
-            CodeTreeBuilder builder2 = builder.create();
-            builder2.startCall(method.getSimpleName().toString());
+            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+            builder.startCall(method.getSimpleName().toString());
             for (VariableElement param : traceMethod.getParameters()) {
-                builder2.string(param.getSimpleName().toString());
+                builder.string(param.getSimpleName().toString());
             }
-            builder2.end();
+            builder.end();
+            CodeTree initExpression = builder.build();
 
-            if (!isVoid(method.getReturnType())) {
-                builder.declaration(context.getType(Object.class), "traceValue", builder2);
+            builder = traceMethod.createBuilder();
+            if (isVoid(method.getReturnType())) {
+                builder.startStatement().tree(initExpression).end();
+                builder.startIf().startCall("isTracingEnabled").end(2);
+                builder.startBlock().startStatement().startCall("traceOnReturn").string("null").end(3);
+            } else {
+                builder.declaration(context.getType(Object.class), "traceValue", initExpression);
                 builder.startIf().startCall("isTracingEnabled").end(2);
                 builder.startBlock().startStatement().startCall("traceOnReturn").string("traceValue").end(3);
                 builder.startReturn().string("traceValue").end();
-            } else {
-                builder.startStatement().tree(builder2.build()).end();
-                builder.startIf().startCall("isTracingEnabled").end(2);
-                builder.startBlock().startStatement().startCall("traceOnReturn").string("null").end(3);
             }
             enclosingClass.add(traceMethod);
         }
