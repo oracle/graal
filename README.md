@@ -33,7 +33,7 @@ images or shared objects.
 
 * [VM](vm/README.md) includes the components to build a modular GraalVM image.
 
-* [VS Code](/vscode/README.md) provides extensions to Visual Studio Code that support development of polyglot applications using GraalVM.
+* [VS Code](https://github.com/graalvm/vscode-extensions/README.md) provides extensions to Visual Studio Code that support development of polyglot applications using GraalVM.
 
 ## Get Support
 
