@@ -127,7 +127,10 @@ public final class GCImpl implements GC {
     private void collect(GCCause cause, boolean forceFullGC) {
         if (!hasNeverCollectPolicy()) {
             UnsignedWord requestingEpoch = possibleCollectionPrologue();
-            collectWithoutAllocating(cause, forceFullGC);
+            boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
+            if (outOfMemory) {
+                throw HeapPolicy.OUT_OF_MEMORY_ERROR;
+            }
             possibleCollectionEpilogue(requestingEpoch);
         }
     }
