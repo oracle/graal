@@ -87,38 +87,19 @@ public final class Types {
     }
 
     public static ByteSequence hiddenClassName(Symbol<Type> type, int id) {
-        int idSize = integerStringSize(id);
         assert type.byteAt(0) == 'L';
         assert type.byteAt(type.length() - 1) == ';';
+        int idSize = ByteSequence.positiveIntegerStringSize(id);
         int length = type.length() - 2 + 1 + idSize;
         byte[] newBytes = new byte[length];
         ByteSequence name = type.substring(1, type.length() - 1);
         name.writeTo(newBytes, 0);
-        int idx = name.length();
-        newBytes[idx++] = '+';
-        int i = id;
-        int digit = idSize;
-        while (i >= 10) {
-            int q = i / 10;
-            int r = i - (10 * q);
-            newBytes[idx + --digit] = (byte) ('0' + r);
-            i = q;
-        }
-        newBytes[idx] = (byte) ('0' + i);
+        int sepIndex = name.length();
+        newBytes[sepIndex] = '+';
+        ByteSequence.writePositiveIntegerString(id, newBytes, sepIndex + 1, idSize);
         ByteSequence result = wrap(newBytes, 0, length);
         assert Validation.validModifiedUTF8(result) : String.format("Not valid anymore: %s + %d -> %s", type.toHexString(), id, result.toHexString());
         return result;
-    }
-
-    static int integerStringSize(int x) {
-        assert x >= 0;
-        int p = 10;
-        for (int i = 1; i < 10; i++) {
-            if (x < p)
-                return i;
-            p = 10 * p;
-        }
-        return 10;
     }
 
     @TruffleBoundary
