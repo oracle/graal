@@ -77,7 +77,7 @@ final class ServiceWatcher {
 
     private static final String PREFIX = "META-INF/services/";
 
-    private static final WatchEvent.Kind<?>[] WATCH_KINDS = new WatchEvent.Kind[]{
+    private static final WatchEvent.Kind<?>[] WATCH_KINDS = new WatchEvent.Kind<?>[]{
                     StandardWatchEventKinds.ENTRY_CREATE,
                     StandardWatchEventKinds.ENTRY_DELETE,
                     StandardWatchEventKinds.ENTRY_MODIFY,
