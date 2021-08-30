@@ -70,36 +70,36 @@ suite = {
            },
         },
         "LLVM_WRAPPER_SHADOWED": {
-            "sha1" : "f2d365a8d432d6b2127acda19c5d3418126db9b0",
-            "sourceSha1" : "0801daf22b189bbd9d515614a2b79c92af225d56",
+            "sha1" : "55eb45a7ae133f98df8d61e821af0d373ae027e8",
+            "sourceSha1" : "f4841e1e2426333094df5c43751e6148a550e506",
             "dependencies" : ["JAVACPP_SHADOWED"],
-            "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-            "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2.jar"],
-            "sourceUrls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-sources.jar"],
+            "urlbase": "http://mos.bplaced.net/llvm",
+            "urls": ["{urlbase}/llvm-shadowed-12.0.1-1.5.6.jar"],
+            "sourceUrls": ["{urlbase}/llvm-shadowed-12.0.1-1.5.6-sources.jar"],
             "license" : "GPLv2-CPE",
             "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm"
         },
         "JAVACPP_SHADOWED": {
-            "sha1" : "212aaddcd73448c7b6da781fb6cde934c667dc2c",
-            "sourceSha1" : "3e9cfc02750ba8ea3babc1b8546a50ec36b849a2",
-            "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
-            "urls": ["{urlbase}/javacpp-shadowed-1.5.2.jar"],
-            "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.2-sources.jar"],
+            "sha1" : "761db712863a8ac533ef4e28ddcfdd49bc71955c",
+            "sourceSha1" : "da52e2a8b39415f279e388a0e68d77817d471ae3",
+            "urlbase": "http://mos.bplaced.net/llvm",
+            "urls": ["{urlbase}/javacpp-shadowed-1.5.6.jar"],
+            "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.6-sources.jar"],
             "license" : "GPLv2-CPE",
             "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp"
         },
         "LLVM_PLATFORM_SPECIFIC_SHADOWED": {
-            "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
+            "urlbase": "http://mos.bplaced.net/llvm",
             "os_arch": {
                 "linux": {
                     "amd64": {
-                        "sha1": "53acc3692e0f67f3b4a4e5fa5b4a5a1de1aa7947",
-                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-x86_64.jar"],
+                        "sha1": "45b8746a30bc774e912eb6c5aa83740608107012",
+                        "urls": ["{urlbase}/llvm-shadowed-12.0.1-1.5.6-linux-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.x86_64"
                     },
                     "aarch64": {
-                        "sha1": "49b2bff3ab0ecea436bd0f8ed64af28e5bdbd03a",
-                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-arm64.jar"],
+                        "sha1": "b7d973cf254ee2226296ed39025391b9aae41dd6",
+                        "urls": ["{urlbase}/llvm-shadowed-12.0.1-1.5.6-linux-arm64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.arm64"
                     },
                     "<others>": {
@@ -108,8 +108,8 @@ suite = {
                 },
                 "darwin": {
                     "amd64": {
-                        "sha1": "d1082bfd227b8f084682a2cd3b06e36f5d046e5e",
-                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-macosx-x86_64.jar"],
+                        "sha1": "98f3c9b047eff0890b638a6f81c1f9697db658f2",
+                        "urls": ["{urlbase}/llvm-shadowed-12.0.1-1.5.6-macosx-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
                     },
                 },
