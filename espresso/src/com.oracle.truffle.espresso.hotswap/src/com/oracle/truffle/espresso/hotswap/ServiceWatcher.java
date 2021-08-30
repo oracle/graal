@@ -378,7 +378,7 @@ final class ServiceWatcher {
             Path path = resourcePath;
             boolean folderExist = false;
 
-            while (!folderExist && path != null ) {
+            while (!folderExist && path != null) {
                 Path parent = path.getParent();
                 // stop at the root
                 if (parent != null) {
