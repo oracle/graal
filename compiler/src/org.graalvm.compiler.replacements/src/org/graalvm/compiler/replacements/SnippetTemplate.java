@@ -81,8 +81,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.Position;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -144,6 +142,8 @@ import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.MemoryEdgeProxy;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -1086,6 +1086,7 @@ public class SnippetTemplate {
                 merge.setNext(this.returnNode);
             }
             debug.dump(DebugContext.INFO_LEVEL, snippet, "After fixing returns");
+            canonicalizer.apply(snippet, providers);
 
             boolean needsMergeStateMap = !guardsStage.areFrameStatesAtDeopts() && (containsMerge || containsLoopExit);
 
@@ -1099,6 +1100,8 @@ public class SnippetTemplate {
 
             assert verifyIntrinsicsProcessed(snippetCopy);
 
+            curDeoptNodes.removeIf(x -> x.asNode().isDeleted());
+            curSideEffectNodes.removeIf(x -> x.asNode().isDeleted());
             this.sideEffectNodes = curSideEffectNodes;
             this.deoptNodes = curDeoptNodes;
             this.placeholderStampedNodes = curPlaceholderStampedNodes;
@@ -1114,6 +1117,7 @@ public class SnippetTemplate {
                 DebugContext.counter("SnippetTemplateNodeCount[%#s]", args).add(debug, nodes.size());
             }
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate final state");
+            assert snippet.verify();
             this.snippet.freeze();
 
         } catch (Throwable ex) {
