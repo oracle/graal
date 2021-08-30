@@ -1919,12 +1919,14 @@ public class FlatNodeGenFactory {
                             "Use an execute method that takes all arguments as parameters."));
         } else {
             generateTraceOnEnterCall(builder, frameState);
+            generateTraceOnExceptionStart(builder);
             SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
             FrameState originalFrameState = frameState.copy();
             builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
             if (group.hasFallthrough()) {
                 builder.tree(createThrowUnsupported(builder, originalFrameState));
             }
+            generateTraceOnExceptionEnd(builder);
         }
 
         return method;
@@ -2472,6 +2474,7 @@ public class FlatNodeGenFactory {
         }
 
         generateTraceOnEnterCall(builder, frameState);
+        generateTraceOnExceptionStart(builder);
 
         if (needsAOTReset() && node.needsRewrites(context)) {
             builder.startIf();
@@ -2489,6 +2492,7 @@ public class FlatNodeGenFactory {
             builder.tree(createTransferToInterpreterAndInvalidate());
             builder.tree(createCallExecuteAndSpecialize(currentType, originalFrameState));
         }
+        generateTraceOnExceptionEnd(builder);
         return builder.build();
     }
 
@@ -5378,6 +5382,23 @@ public class FlatNodeGenFactory {
             builder.startGroup().string(ARGUMENT_NAMES_NAME).end();
             frameState.addReferencesTo(builder);
             builder.end(3);  // call traceOnEnter, statement, block
+        }
+    }
+
+    private void generateTraceOnExceptionStart(CodeTreeBuilder builder) {
+        if (node.isGenerateTraceOnException()) {
+            builder.startTryBlock();
+        }
+    }
+
+    private void generateTraceOnExceptionEnd(CodeTreeBuilder builder) {
+        if (node.isGenerateTraceOnException()) {
+            builder.end();  // tryBlock
+            builder.startCatchBlock(context.getType(Throwable.class), "traceThrowable");
+            builder.startIf().startCall("isTracingEnabled").end(2);
+            builder.startBlock().startStatement().startCall("traceOnException").startGroup().string("traceThrowable").end(4);
+            builder.startThrow().string("traceThrowable").end();
+            builder.end();  // catchBlock
         }
     }
 

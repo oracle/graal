@@ -43,6 +43,8 @@ package com.oracle.truffle.api.dsl.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -51,8 +53,8 @@ import com.oracle.truffle.api.dsl.ExecuteTracingSupport;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.AddNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.ConstNodeGen;
+import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.DivNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.OverloadedExecuteNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.TraceDisabledNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -60,13 +62,17 @@ import com.oracle.truffle.api.nodes.Node;
 
 public class ExecuteTracingSupportTest {
 
-    private static int traceCalled;
+    private static int traceOnEnterCalled;
+    private static int traceOnExceptionCalled;
     private static Object[] capturedArgs;
+    private static Throwable capturedThrowable;
 
     @Before
     public final void setup() {
-        traceCalled = 0;
+        traceOnEnterCalled = 0;
+        traceOnExceptionCalled = 0;
         capturedArgs = null;
+        capturedThrowable = null;
     }
 
     abstract static class TracingBaseNode extends Node implements ExecuteTracingSupport {
@@ -77,8 +83,14 @@ public class ExecuteTracingSupportTest {
 
         @Override
         public void traceOnEnter(String[] argumentNames, Object... arguments) {
-            traceCalled++;
+            traceOnEnterCalled++;
             capturedArgs = arguments;
+        }
+
+        @Override
+        public void traceOnException(Throwable t) {
+            traceOnExceptionCalled++;
+            capturedThrowable = t;
         }
     }
 
@@ -88,10 +100,10 @@ public class ExecuteTracingSupportTest {
 
     @NodeChild("left")
     @NodeChild("right")
-    abstract static class AddNode extends BaseNode {
+    abstract static class DivNode extends BaseNode {
         @Specialization
         int doIt(int left, int right) {
-            return left + right;
+            return left / right;
         }
     }
 
@@ -118,7 +130,7 @@ public class ExecuteTracingSupportTest {
 
         @Specialization
         int doIt(int a0, int a1) {
-            return a0 + a1;
+            return a0 / a1;
         }
 
         @Specialization
@@ -142,50 +154,93 @@ public class ExecuteTracingSupportTest {
 
         @Specialization
         Object doIt(int x) {
-            return x * x;
+            return 24 / x;
         }
     }
 
     @Test
-    public void testChildren() {
-        assertEquals(57, AddNodeGen.create(ConstNodeGen.create(42), ConstNodeGen.create(15)).execute(null));
-        assertEquals(3, traceCalled);
-        assertArrayEquals(new Object[]{42, 15}, capturedArgs);
+    public void testOnEnterChildren() {
+        assertEquals(14, DivNodeGen.create(ConstNodeGen.create(42), ConstNodeGen.create(3)).execute(null));
+        assertEquals(3, traceOnEnterCalled);
+        assertArrayEquals(new Object[]{42, 3}, capturedArgs);
     }
 
     @Test
-    public void testOverloaded1() {
-        assertEquals(42, OverloadedExecuteNodeGen.create().execute(14, 28));
-        assertEquals(1, traceCalled);
-        assertArrayEquals(new Object[]{14, 28}, capturedArgs);
+    public void testOnEnterOverloaded1() {
+        assertEquals(2, OverloadedExecuteNodeGen.create().execute(14, 7));
+        assertEquals(1, traceOnEnterCalled);
+        assertArrayEquals(new Object[]{14, 7}, capturedArgs);
     }
 
     @Test
-    public void testOverloaded2() {
+    public void testOnEnterOverloaded2() {
         assertEquals("14abc", OverloadedExecuteNodeGen.create().execute(14, "abc"));
-        assertEquals(1, traceCalled);
+        assertEquals(1, traceOnEnterCalled);
         assertArrayEquals(new Object[]{14, "abc"}, capturedArgs);
     }
 
     @Test
-    public void testOverloaded3() {
+    public void testOnEnterOverloaded3() {
         assertEquals(17.14, OverloadedExecuteNodeGen.create().executeX(14, 3.14));
-        assertEquals(1, traceCalled);
+        assertEquals(1, traceOnEnterCalled);
         assertArrayEquals(new Object[]{14L, 3.14}, capturedArgs);
     }
 
     @Test
-    public void testUncached() {
-        assertEquals(29, OverloadedExecuteNodeGen.getUncached().execute(14, 15));
-        assertEquals(1, traceCalled);
-        assertArrayEquals(new Object[]{14, 15}, capturedArgs);
+    public void testOnEnterUncached() {
+        assertEquals(7, OverloadedExecuteNodeGen.getUncached().execute(14, 2));
+        assertEquals(1, traceOnEnterCalled);
+        assertArrayEquals(new Object[]{14, 2}, capturedArgs);
     }
 
     @Test
-    public void testDisabled() {
-        assertEquals(25, TraceDisabledNodeGen.create().execute(5));
-        assertEquals(0, traceCalled);
+    public void testOnEnterDisabled() {
+        assertEquals(6, TraceDisabledNodeGen.create().execute(4));
+        assertEquals(0, traceOnEnterCalled);
         assertNull(capturedArgs);
     }
 
+    @Test
+    public void testOnExceptionChildren() {
+        try {
+            DivNodeGen.create(ConstNodeGen.create(42), ConstNodeGen.create(0)).execute(null);
+            fail();
+        } catch (ArithmeticException e) {
+            assertEquals(1, traceOnExceptionCalled);
+            assertSame(e, capturedThrowable);
+        }
+    }
+
+    @Test
+    public void testOnExceptionOverloaded() {
+        try {
+            OverloadedExecuteNodeGen.create().execute(14, 0);
+            fail();
+        } catch (ArithmeticException e) {
+            assertEquals(1, traceOnExceptionCalled);
+            assertSame(e, capturedThrowable);
+        }
+    }
+
+    @Test
+    public void testOnExceptionUncached() {
+        try {
+            OverloadedExecuteNodeGen.getUncached().execute(14, 0);
+            fail();
+        } catch (ArithmeticException e) {
+            assertEquals(1, traceOnExceptionCalled);
+            assertSame(e, capturedThrowable);
+        }
+    }
+
+    @Test
+    public void testOnExceptionDisabled() {
+        try {
+            TraceDisabledNodeGen.create().execute(0);
+            fail();
+        } catch (ArithmeticException e) {
+            assertEquals(0, traceOnExceptionCalled);
+            assertNull(capturedThrowable);
+        }
+    }
 }
