@@ -174,7 +174,7 @@ public class LLVMIRBuilder implements AutoCloseable {
             String value = "true";
             attr = LLVM.LLVMCreateStringAttribute(context, attribute.name, attribute.name.length(), value, value.length());
         }
-        LLVM.LLVMAddAttributeAtIndex(func, (int) LLVM.LLVMAttributeFunctionIndex, attr);
+        LLVM.LLVMAddAttributeAtIndex(func, LLVM.LLVMAttributeFunctionIndex, attr);
     }
 
     public enum Attribute {
@@ -723,7 +723,7 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public void setCallSiteAttribute(LLVMValueRef call, Attribute attribute, String value) {
         LLVMAttributeRef attr = LLVM.LLVMCreateStringAttribute(context, attribute.name, attribute.name.length(), value, value.length());
-        LLVM.LLVMAddCallSiteAttribute(call, (int) LLVM.LLVMAttributeFunctionIndex, attr);
+        LLVM.LLVMAddCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, attr);
     }
 
     public void setCallSiteAttribute(LLVMValueRef call, Attribute attribute) {
@@ -731,7 +731,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVMAttributeRef attr;
         if (kind != 0) {
             attr = LLVM.LLVMCreateEnumAttribute(context, kind, ENUM_ATTRIBUTE_VALUE);
-            LLVM.LLVMAddCallSiteAttribute(call, (int) LLVM.LLVMAttributeFunctionIndex, attr);
+            LLVM.LLVMAddCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, attr);
         } else {
             setCallSiteAttribute(call, attribute, "true");
         }
