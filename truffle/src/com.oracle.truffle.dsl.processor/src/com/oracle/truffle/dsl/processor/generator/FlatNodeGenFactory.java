@@ -5408,7 +5408,7 @@ public class FlatNodeGenFactory {
                 builder.startIf().startCall("isTracingEnabled").end(2);
                 builder.startBlock().startStatement().startCall("traceOnReturn").string("null").end(3);
             } else {
-                builder.declaration(context.getType(Object.class), "traceValue", initExpression);
+                builder.declaration(method.getReturnType(), "traceValue", initExpression);
                 builder.startIf().startCall("isTracingEnabled").end(2);
                 builder.startBlock().startStatement().startCall("traceOnReturn").string("traceValue").end(3);
                 builder.startReturn().string("traceValue").end();

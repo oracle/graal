@@ -57,6 +57,7 @@ import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.ConstNod
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.DivNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.OverloadedExecuteNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.TraceDisabledNodeGen;
+import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.VoidExecuteWithNonVoidSpecializationNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.VoidNoArgsNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -71,6 +72,7 @@ public class ExecuteTracingSupportTest {
     private static Object capturedReturnValue;
 
     @Before
+    @SuppressWarnings("static-method")
     public final void setup() {
         traceOnEnterCalled = 0;
         traceOnExceptionCalled = 0;
@@ -124,7 +126,7 @@ public class ExecuteTracingSupportTest {
         }
 
         @Specialization
-        int doIt(VirtualFrame frame) {
+        int doIt(@SuppressWarnings("unused") VirtualFrame frame) {
             return value;
         }
     }
@@ -171,6 +173,22 @@ public class ExecuteTracingSupportTest {
 
         @Specialization
         void doIt() {
+        }
+    }
+
+    abstract static class VoidExecuteWithNonVoidSpecializationNode extends TracingBaseNode {
+        abstract void execute(int a);
+
+        abstract long execute(long a);
+
+        @Specialization
+        long doInt(int a) {
+            return a;
+        }
+
+        @Specialization
+        long doLong(long a) {
+            return a;
         }
     }
 
@@ -231,6 +249,17 @@ public class ExecuteTracingSupportTest {
         VoidNoArgsNodeGen.create().execute();
         assertEquals(1, traceOnEnterCalled);
         assertArrayEquals(new Object[]{}, capturedArgs);
+        assertEquals(1, traceOnReturnCalled);
+        assertNull(capturedReturnValue);
+    }
+
+    @Test
+    public void testVoidExecuteWithNonVoidSpecialization() {
+        // A void execute() overload is being invoked here, so traceOnReturn should be called with
+        // null even though a @Specialization actually returns a value.
+        VoidExecuteWithNonVoidSpecializationNodeGen.create().execute(14);
+        assertEquals(1, traceOnEnterCalled);
+        assertArrayEquals(new Object[]{14}, capturedArgs);
         assertEquals(1, traceOnReturnCalled);
         assertNull(capturedReturnValue);
     }
