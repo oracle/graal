@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -342,6 +343,7 @@ public final class ClassRedefinition {
 
         ArrayList<Field> oldFieldsList = new ArrayList<>(Arrays.asList(oldFields));
         ArrayList<ParserField> newFieldsList = new ArrayList<>(Arrays.asList(newFields));
+        Map<ParserField, Field> compatibleFields = new HashMap<>();
 
         Iterator<Field> oldFieldsIt = oldFieldsList.iterator();
         Iterator<ParserField> newFieldsIt;
@@ -353,7 +355,7 @@ public final class ClassRedefinition {
             while (newFieldsIt.hasNext()) {
                 ParserField newField = newFieldsIt.next();
                 // first look for a perfect match
-                if (isUnchangedField(oldField, newField)) {
+                if (isUnchangedField(oldField, newField, compatibleFields)) {
                     // A nested anonymous inner class may contain a field reference to the outer
                     // class instance. Since we match against the patched (inner class rename rules
                     // applied) if the current class was patched (renamed) the resulting outer
@@ -392,6 +394,7 @@ public final class ClassRedefinition {
             collectedChanges.addRemovedFields(oldFieldsList);
             result = ClassChange.SCHEMA_CHANGE;
         }
+        collectedChanges.addCompatibleFields(compatibleFields);
         return result;
     }
 
@@ -561,31 +564,65 @@ public final class ClassRedefinition {
                         oldMethod.getFlags() == newMethod.getFlags();
     }
 
-    private static boolean isUnchangedField(Field oldField, ParserField newField) {
-        boolean same = oldField.getName() == newField.getName() && oldField.getType() == newField.getType() && oldField.getModifiers() == newField.getFlags();
+    private static boolean isUnchangedField(Field oldField, ParserField newField, Map<ParserField, Field> compatibleFields) {
+        boolean sameName = oldField.getName() == newField.getName();
+        boolean sameType = oldField.getType() == newField.getType();
+        boolean sameFlags = oldField.getModifiers() == newField.getFlags();
 
-        if (same) {
-            // check field attributes
-            Attribute[] oldAttributes = oldField.getAttributes();
-            Attribute[] newAttributes = newField.getAttributes();
+        if (sameName) {
+            if (sameType) {
+                if (sameFlags) {
+                    // same name + type + flags
 
-            if (oldAttributes.length != newAttributes.length) {
-                return false;
-            }
+                    // check field attributes
+                    Attribute[] oldAttributes = oldField.getAttributes();
+                    Attribute[] newAttributes = newField.getAttributes();
 
-            for (Attribute oldAttribute : oldAttributes) {
-                boolean found = false;
-                for (Attribute newAttribute : newAttributes) {
-                    if (oldAttribute.getName() == newAttribute.getName() && Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
-                        found = true;
-                        break;
+                    if (oldAttributes.length != newAttributes.length) {
+                        return false;
                     }
-                }
-                if (!found) {
+
+                    for (Attribute oldAttribute : oldAttributes) {
+                        boolean found = false;
+                        for (Attribute newAttribute : newAttributes) {
+                            if (oldAttribute.getName() == newAttribute.getName() && Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            return false;
+                        }
+                    }
+                    // identical field found
+                    return true;
+                } else {
+                    // same name + type
+                    if (Modifier.isStatic(oldField.getModifiers()) != Modifier.isStatic(newField.getFlags())) {
+                        // a change from static -> non-static or vice versa is not compatible
+                    } else {
+                        System.out.println("Compatible modifiers change for " + oldField.getName() + " : " + oldField.getType());
+                        compatibleFields.put(newField, oldField);
+                    }
                     return false;
                 }
+            } else {
+                // same name
+                if (Modifier.isStatic(oldField.getModifiers()) != Modifier.isStatic(newField.getFlags())) {
+                    // a change from static -> non-static or vice versa is not compatible
+                } else {
+                    // check basic type compatibility
+                    if (oldField.getKind().isPrimitive()) {
+                      if (newField.getKind().isPrimitive()) {
+                          // TODO - check for compatible primitive types
+                          System.out.println("possible compatible primitive field change: " + oldField.getKind() + " -> " + newField.getKind());
+                      }
+                    } else if (oldField.getKind().isObject() && newField.getKind().isObject()) {
+                        System.out.println("Compatible object type change for " + oldField.getName() + " : " + oldField.getType() + " -> " + newField.getType());
+                        compatibleFields.put(newField, oldField);
+                    }
+                }
             }
-            return true;
         }
         return false;
     }

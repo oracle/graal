@@ -44,6 +44,7 @@ public final class DetectedChange {
     private final List<ParserMethod> addedMethods = new ArrayList<>();
     private final Set<Method> removedMethods = new HashSet<>();
     private boolean classInitializerChanged;
+    private Map<ParserField, Field> mappedCompatibleFields = new HashMap<>();
 
     public void addNewField(ParserField parserField) {
         if (parserField.isStatic()) {
@@ -57,6 +58,14 @@ public final class DetectedChange {
         for (ParserField newField : newFields) {
             addNewField(newField);
         }
+    }
+
+    public void addCompatibleFields(Map<ParserField, Field> compatibleFields) {
+        mappedCompatibleFields = compatibleFields;
+    }
+
+    public Map<ParserField, Field> getMappedCompatibleFields() {
+        return Collections.unmodifiableMap(mappedCompatibleFields);
     }
 
     public List<ParserField> getAddedStaticFields() {
@@ -113,5 +122,4 @@ public final class DetectedChange {
     public boolean clinitChanged() {
         return classInitializerChanged;
     }
-
 }

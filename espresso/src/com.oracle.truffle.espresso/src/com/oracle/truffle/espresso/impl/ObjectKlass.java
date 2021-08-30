@@ -1217,19 +1217,20 @@ public final class ObjectKlass extends Klass {
 
         // fields
         if (!packet.detectedChange.getAddedStaticFields().isEmpty() || !packet.detectedChange.getAddedInstanceFields().isEmpty()) {
+            Map<ParserField, Field> compatibleFields = packet.detectedChange.getMappedCompatibleFields();
             Field extensionField = staticFieldTable[staticFieldTable.length - 1];
             Object object = extensionField.getHiddenObject(getStatics());
             ExtensionFieldObject extensionFieldObject;
             if (object == StaticObject.NULL) {
                 // make sure the extension field is initialized
-                extensionFieldObject = new ExtensionFieldObject(this, packet.detectedChange.getAddedStaticFields(), pool);
+                extensionFieldObject = new ExtensionFieldObject(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
                 extensionField.setHiddenObject(getStatics(), extensionFieldObject);
             } else {
                 // add new fields to the extension object
                 extensionFieldObject = (ExtensionFieldObject) object;
-                extensionFieldObject.addStaticNewFields(this, packet.detectedChange.getAddedStaticFields(), pool);
+                extensionFieldObject.addStaticNewFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
             }
-            extensionFieldObject.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool);
+            extensionFieldObject.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
             noAddedFields.invalidate();
         }
 

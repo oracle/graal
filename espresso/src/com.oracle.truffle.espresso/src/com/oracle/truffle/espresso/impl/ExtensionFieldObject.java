@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -53,21 +54,33 @@ public final class ExtensionFieldObject extends StaticObject {
         this.fieldStorage = new FieldsHolderObject(Shape.newBuilder().layout(FieldsHolderObject.class).build());
     }
 
-    public ExtensionFieldObject(ObjectKlass holder, List<ParserField> initialFields, RuntimeConstantPool pool) {
+    public ExtensionFieldObject(ObjectKlass holder, List<ParserField> initialFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
         this();
 
         for (ParserField initialField : initialFields) {
             LinkedField linkedField = new LinkedField(initialField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
             Field field = new Field(holder, linkedField, pool, true);
             LIBRARY.put(fieldStorage, field.getSlot(), new FieldAndValueObject(field));
+
+            // check if there's a compatible field where state could potentially copied from
+            Field compatibleField = compatibleFields.get(initialField);
+            if (compatibleField != null) {
+                // TODO - handle
+            }
         }
     }
 
-    public void addStaticNewFields(ObjectKlass holder, List<ParserField> newFields, RuntimeConstantPool pool) {
+    public void addStaticNewFields(ObjectKlass holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
         for (ParserField newField : newFields) {
             LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
             Field field = new Field(holder, linkedField, pool, true);
             LIBRARY.put(fieldStorage, field.getSlot(), new FieldAndValueObject(field));
+
+            // check if there's a compatible field where state could potentially copied from
+            Field compatibleField = compatibleFields.get(newField);
+            if (compatibleField != null) {
+                // TODO - handle
+            }
         }
     }
 
@@ -103,7 +116,7 @@ public final class ExtensionFieldObject extends StaticObject {
         return result;
     }
 
-    public void addNewInstanceFields(ObjectKlass holder, List<ParserField> instanceFields, RuntimeConstantPool pool) {
+    public void addNewInstanceFields(ObjectKlass holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
         CompilerAsserts.neverPartOfCompilation();
         if (instanceFields.isEmpty()) {
             return;
@@ -113,6 +126,13 @@ public final class ExtensionFieldObject extends StaticObject {
             LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
             Field field = new Field(holder, linkedField, pool, true);
             toAdd.add(field);
+
+            // check if there's a compatible field where state could potentially be copied from
+            Field compatibleField = compatibleFields.get(newField);
+            if (compatibleField != null) {
+                // TODO - handle
+
+            }
         }
         int nextIndex = addedInstanceFields.length;
         addedInstanceFields = Arrays.copyOf(addedInstanceFields, addedInstanceFields.length + toAdd.size());
