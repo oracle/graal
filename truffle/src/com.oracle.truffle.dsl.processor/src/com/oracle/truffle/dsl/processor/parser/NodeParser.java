@@ -459,7 +459,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 if (cache.isMergedLibrary()) {
-                    cache.addError("Merged librares are not supported in combination with AOT preparation. " + //
+                    cache.addError("Merged libraries are not supported in combination with AOT preparation. " + //
                                     "Resolve this problem by either: %n" + //
                                     " - Setting @%s(..., useForAOT=false) to disable AOT preparation for this export. %n" + //
                                     " - Using a dispatched library without receiver expression. %n" + //
@@ -747,7 +747,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     if (requireNodeUnbound) {
                         cache.addError("@%s annotated nodes must only refer to static cache initializer methods or fields. " +
                                         "Add a static modifier to the bound cache initializer method or field or " +
-                                        "use the keyword 'this' to refer to the receiver type explicitely.",
+                                        "use the keyword 'this' to refer to the receiver type explicitly.",
                                         types.ExportMessage.asElement().getSimpleName().toString());
                     }
                     break;
@@ -758,7 +758,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 if (requireNodeUnbound) {
                     specialization.addError("@%s annotated nodes must only refer to static limit initializer methods or fields. " +
                                     "Add a static modifier to the bound cache initializer method or field or " +
-                                    "use the keyword 'this' to refer to the receiver type explicitely.",
+                                    "use the keyword 'this' to refer to the receiver type explicitly.",
                                     types.ExportMessage.asElement().getSimpleName().toString());
                 }
                 break;
@@ -1473,7 +1473,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 nodeChildren.add(nodeChild);
 
                 if (nodeChild.getNodeType() == null) {
-                    nodeChild.addError("No valid node type could be resoleved.");
+                    nodeChild.addError("No valid node type could be resolved.");
                 }
                 if (nodeChild.hasErrors()) {
                     continue;
@@ -1706,7 +1706,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (!requireNodeChildDeclarations.isEmpty()) {
-            node.addError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. " +
+            node.addError("Not enough child node declarations found. Please annotate the node class with additional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. " +
                             "The following execute methods do not provide all evaluated values for the expected signature size %s: %s.", executions.size(), requireNodeChildDeclarations);
         }
 

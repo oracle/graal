@@ -883,7 +883,7 @@ public class FlatNodeGenFactory {
                         b.startStaticCall(context.getType(String.class), "format");
                         b.doubleQuote(String.format("Specialization '%s' in node class '%s' is enabled for AOT generation. " +
                                         "The specialization declares a @%s for language class %s but was prepared for AOT with language class '%%s'. " +
-                                        "Match the language used in the language refercence or exclude the specialization from AOT generation with @%s.%s to resolve this problem.",
+                                        "Match the language used in the language reference or exclude the specialization from AOT generation with @%s.%s to resolve this problem.",
                                         getReadableSignature(specialization.getMethod()),
                                         getQualifiedName(specialization.getNode().getTemplateType()),
                                         getSimpleName(types.CachedLanguage),
