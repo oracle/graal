@@ -44,6 +44,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateSegfaultHandler;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticLevel;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -573,18 +575,22 @@ public abstract class VMThreads {
         return THREAD_MUTEX.isOwner();
     }
 
-    public static boolean printLocationInfo(Log log, UnsignedWord value) {
+    public static boolean printLocationInfo(Log log, UnsignedWord value, int diagnosticLevel) {
         for (IsolateThread thread = firstThreadUnsafe(); thread.isNonNull(); thread = nextThread(thread)) {
             if (thread.equal(value)) {
                 log.string("is a thread");
                 return true;
             }
 
-            UnsignedWord stackBase = StackBase.get(thread);
-            UnsignedWord stackEnd = StackEnd.get(thread);
-            if (value.belowOrEqual(stackBase) && value.aboveOrEqual(stackEnd)) {
-                log.string("points into the stack for thread ").zhex(thread);
-                return true;
+            if (DiagnosticLevel.isUnsafeAccessAllowed(diagnosticLevel) || VMOperation.isInProgressAtSafepoint()) {
+                // If we are not at a safepoint, then it is unsafe to access thread locals of
+                // another thread is unsafe as the IsolateThread could be freed at any time.
+                UnsignedWord stackBase = StackBase.get(thread);
+                UnsignedWord stackEnd = StackEnd.get(thread);
+                if (value.belowThan(stackBase) && value.aboveOrEqual(stackEnd)) {
+                    log.string("points into the stack for thread ").zhex(thread);
+                    return true;
+                }
             }
 
             if (SubstrateOptions.MultiThreaded.getValue()) {

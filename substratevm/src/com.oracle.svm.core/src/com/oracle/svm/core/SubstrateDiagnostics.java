@@ -40,6 +40,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticLevel;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -98,29 +99,39 @@ public class SubstrateDiagnostics {
         int result = 0;
         DiagnosticThunkRegister thunks = DiagnosticThunkRegister.getSingleton();
         for (int i = 0; i < thunks.size(); i++) {
-            result += thunks.getThunk(i).maxInvocations();
+            result += thunks.getThunk(i).baseInvocations();
         }
         return result;
     }
 
-    public static void printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
-        if (value.notEqual(0) && !RuntimeCodeInfoMemory.singleton().printLocationInfo(log, value, allowJavaHeapAccess) && !VMThreads.printLocationInfo(log, value) &&
-                        !Heap.getHeap().printLocationInfo(log, value, allowJavaHeapAccess)) {
+    public static void printLocationInfo(Log log, UnsignedWord value, int diagnosticLevel) {
+        if (value.notEqual(0) &&
+                        !RuntimeCodeInfoMemory.singleton().printLocationInfo(log, value, diagnosticLevel) &&
+                        !VMThreads.printLocationInfo(log, value, diagnosticLevel) &&
+                        !Heap.getHeap().printLocationInfo(log, value, diagnosticLevel)) {
             log.string("is an unknown value");
         }
     }
 
-    /** Prints extensive diagnostic information to the given Log. */
-    public static boolean print(Log log, Pointer sp, CodePointer ip) {
-        return print(log, sp, ip, WordFactory.nullPointer(), false);
+    /**
+     * See
+     * {@link #printForFatalError(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context, boolean frameHasCalleeSavedRegisters)}.
+     */
+    public static boolean printForFatalError(Log log, Pointer sp, CodePointer ip) {
+        return printForFatalError(log, sp, ip, WordFactory.nullPointer(), false);
     }
 
     /**
-     * Print diagnostics for the various subsystems. If a fatal error occurs while printing
-     * diagnostics, it can happen that the same thread enters this method multiple times.
+     * Called for fatal errors to print extensive diagnostic information to the given log. If a
+     * fatal error occurs while printing diagnostics, this method may get called recursively
+     * multiple times.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-    public static boolean print(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context, boolean frameHasCalleeSavedRegisters) {
+    public static boolean printForFatalError(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context, boolean frameHasCalleeSavedRegisters) {
+        return printDiagnostics(log, sp, ip, context, frameHasCalleeSavedRegisters);
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+    private static boolean printDiagnostics(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context, boolean frameHasCalleeSavedRegisters) {
         log.newline();
         // Save the state of the initial error so that this state is consistently used, even if
         // further errors occur while printing diagnostics.
@@ -130,12 +141,13 @@ public class SubstrateDiagnostics {
             return false;
         }
 
-        printDiagnosticsForCurrentState();
+        int diagnosticLevel = SubstrateOptions.PrintDiagnosticDetails.getValue();
+        printDiagnosticsForCurrentState(diagnosticLevel);
         return true;
     }
 
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "This method is single threaded. The fields 'diagnosticThunkIndex' and 'invocationCount' are only volatile to ensure that the updated field values are written right away.")
-    private static void printDiagnosticsForCurrentState() {
+    private static void printDiagnosticsForCurrentState(int diagnosticLevel) {
         assert isInProgressByCurrentThread();
 
         Log log = state.log;
@@ -150,9 +162,9 @@ public class SubstrateDiagnostics {
         int numDiagnosticThunks = DiagnosticThunkRegister.getSingleton().size();
         while (state.diagnosticThunkIndex < numDiagnosticThunks) {
             DiagnosticThunk thunk = DiagnosticThunkRegister.getSingleton().getThunk(state.diagnosticThunkIndex);
-            while (++state.invocationCount <= thunk.maxInvocations()) {
+            while (++state.invocationCount <= thunk.baseInvocations()) {
                 try {
-                    thunk.printDiagnostics(log, state.invocationCount);
+                    thunk.printDiagnostics(log, diagnosticLevel, state.invocationCount);
                     break;
                 } catch (Throwable e) {
                     dumpException(log, thunk, e);
@@ -177,7 +189,7 @@ public class SubstrateDiagnostics {
 
         log.newline();
         try {
-            RuntimeCodeInfoMemory.singleton().printTable(log, true);
+            RuntimeCodeInfoMemory.singleton().printTable(log, DiagnosticLevel.MAX);
         } catch (Exception e) {
             dumpException(log, "DumpRuntimeCodeInfoMemory", e);
         }
@@ -277,39 +289,50 @@ public class SubstrateDiagnostics {
 
     private static class DumpRegisters extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
-            return 3;
+        protected int baseInvocations() {
+            return 2;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             RegisterDumper.Context context = state.context;
+            boolean printLocationInfo = invocationCount < maxInvocations(diagnosticLevel);
+            int adjustedDiagnosticLevel = adjustDiagnosticLevel(diagnosticLevel, invocationCount);
             if (context.isNonNull()) {
                 log.string("General purpose register values:").indent(true);
-                RegisterDumper.singleton().dumpRegisters(log, context, invocationCount <= 2, invocationCount == 1);
+                RegisterDumper.singleton().dumpRegisters(log, context, printLocationInfo, adjustedDiagnosticLevel);
                 log.indent(false);
             } else if (CalleeSavedRegisters.supportedByPlatform() && state.frameHasCalleeSavedRegisters) {
-                CalleeSavedRegisters.singleton().dumpRegisters(log, state.sp, invocationCount <= 2, invocationCount == 1);
-
+                CalleeSavedRegisters.singleton().dumpRegisters(log, state.sp, printLocationInfo, adjustedDiagnosticLevel);
             }
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.JAVA_HEAP_ACCESS | DiagnosticLevel.UNSAFE_ACCESS;
         }
     }
 
     private static class DumpInstructions extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 3;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             if (invocationCount < 3) {
                 printBytesBeforeAndAfterIp(log, invocationCount);
             } else if (invocationCount == 3) {
                 printWord(log);
             }
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
         }
 
         private static void printBytesBeforeAndAfterIp(Log log, int invocationCount) {
@@ -332,13 +355,13 @@ public class SubstrateDiagnostics {
 
     private static class DumpTopOfCurrentThreadStack extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             Pointer sp = state.sp;
             log.string("Top of stack (sp=").zhex(sp).string("):").indent(true);
 
@@ -360,32 +383,42 @@ public class SubstrateDiagnostics {
             }
             log.indent(false).newline();
         }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
+        }
     }
 
     private static class DumpDeoptStubPointer extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             if (DeoptimizationSupport.enabled()) {
                 log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer()).newline().newline();
             }
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
         }
     }
 
     private static class DumpTopFrame extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             // We already dump all safe values first, so there is nothing we could retry if an error
             // occurs.
             Pointer sp = state.sp;
@@ -421,52 +454,61 @@ public class SubstrateDiagnostics {
             }
             log.indent(false);
         }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
+        }
     }
 
     private static class DumpThreads extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
-            return 2;
+        public int baseInvocations() {
+            return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
-            dumpThreads(log, invocationCount == 1);
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
+            int adjustedDiagnosticLevel = adjustDiagnosticLevel(diagnosticLevel, invocationCount);
+            if (DiagnosticLevel.isUnsafeAccessAllowed(adjustedDiagnosticLevel) || VMOperation.isInProgressAtSafepoint()) {
+                // If we are not at a safepoint, then it is unsafe to access thread locals of
+                // another thread as the IsolateThread could be freed at any time.
+                log.string("Threads:").indent(true);
+                for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+                    log.zhex(thread).spaces(1).string(VMThreads.StatusSupport.getStatusString(thread));
+                    if (DiagnosticLevel.isJavaHeapAccessAllowed(adjustedDiagnosticLevel)) {
+                        Thread threadObj = JavaThreads.fromVMThread(thread);
+                        log.string(" \"").string(threadObj.getName()).string("\" - ").object(threadObj);
+                        if (threadObj.isDaemon()) {
+                            log.string(", daemon");
+                        }
+                    }
+                    log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
+                    log.newline();
+                }
+                log.indent(false);
+            }
         }
 
-        private static void dumpThreads(Log log, boolean accessThreadObject) {
-            log.string("Threads:").indent(true);
-            // Only used for diagnostics - iterate all threads without locking the thread mutex.
-            for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-                log.zhex(thread).spaces(1).string(VMThreads.StatusSupport.getStatusString(thread));
-                if (accessThreadObject) {
-                    Thread threadObj = JavaThreads.fromVMThread(thread);
-                    log.string(" \"").string(threadObj.getName()).string("\" - ").object(threadObj);
-                    if (threadObj.isDaemon()) {
-                        log.string(", daemon");
-                    }
-                }
-                log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
-                log.newline();
+        @Override
+        protected int usedFeatures() {
+            if (VMOperation.isInProgressAtSafepoint()) {
+                return DiagnosticLevel.JAVA_HEAP_ACCESS;
             }
-            log.indent(false);
+            return DiagnosticLevel.UNSAFE_ACCESS | DiagnosticLevel.JAVA_HEAP_ACCESS;
         }
     }
 
     private static class DumpCurrentThreadLocals extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
-            return 2;
+        public int baseInvocations() {
+            return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
-            printThreadLocals(log, invocationCount);
-        }
-
-        private static void printThreadLocals(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             IsolateThread currentThread = CurrentIsolate.getCurrentThread();
             if (isThreadOnlyAttachedForCrashHandler(currentThread)) {
                 if (invocationCount == 1) {
@@ -474,113 +516,167 @@ public class SubstrateDiagnostics {
                     log.newline();
                 }
             } else {
+                int adjustedDiagnosticLevel = adjustDiagnosticLevel(diagnosticLevel, invocationCount);
                 log.string("VM thread locals for the failing thread ").zhex(currentThread).string(":").indent(true);
-                VMThreadLocalInfos.dumpToLog(log, currentThread, invocationCount == 1);
+                VMThreadLocalInfos.dumpToLog(log, currentThread, adjustedDiagnosticLevel);
                 log.indent(false);
             }
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.JAVA_HEAP_ACCESS;
         }
     }
 
     private static class DumpCurrentVMOperation extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
-            return 2;
+        public int baseInvocations() {
+            return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
-            VMOperationControl.printCurrentVMOperation(log, invocationCount == 1);
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
+            int adjustedDiagnosticLevel = adjustDiagnosticLevel(diagnosticLevel, invocationCount);
+            boolean isJavaHeapAccessAllowed = DiagnosticLevel.isJavaHeapAccessAllowed(adjustedDiagnosticLevel);
+            VMOperationControl.printCurrentVMOperation(log, isJavaHeapAccessAllowed);
             log.newline();
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.JAVA_HEAP_ACCESS;
         }
     }
 
     private static class DumpVMOperationHistory extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
-            return 2;
+        public int baseInvocations() {
+            return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
-            VMOperationControl.printRecentEvents(log, invocationCount == 1);
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
+            int adjustedDiagnosticLevel = adjustDiagnosticLevel(diagnosticLevel, invocationCount);
+            boolean isJavaHeapAccessAllowed = DiagnosticLevel.isJavaHeapAccessAllowed(adjustedDiagnosticLevel);
+            VMOperationControl.printRecentEvents(log, isJavaHeapAccessAllowed);
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.JAVA_HEAP_ACCESS;
         }
     }
 
     private static class DumpCodeCacheHistory extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
-            return 2;
+        public int baseInvocations() {
+            return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             if (DeoptimizationSupport.enabled()) {
-                RuntimeCodeInfoHistory.singleton().printRecentOperations(log, invocationCount == 1);
+                int adjustedDiagnosticLevel = adjustDiagnosticLevel(diagnosticLevel, invocationCount);
+                boolean isJavaHeapAccessAllowed = DiagnosticLevel.isJavaHeapAccessAllowed(adjustedDiagnosticLevel);
+                RuntimeCodeInfoHistory.singleton().printRecentOperations(log, isJavaHeapAccessAllowed);
             }
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.JAVA_HEAP_ACCESS;
         }
     }
 
     private static class DumpRuntimeCodeInfoMemory extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
-            return 2;
+        public int baseInvocations() {
+            return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             if (DeoptimizationSupport.enabled()) {
-                RuntimeCodeInfoMemory.singleton().printTable(log, invocationCount == 1);
+                int adjustedDiagnosticLevel = adjustDiagnosticLevel(diagnosticLevel, invocationCount);
+                boolean isJavaHeapAccessAllowed = DiagnosticLevel.isJavaHeapAccessAllowed(adjustedDiagnosticLevel);
+                boolean isUnsafeAccessAllowed = DiagnosticLevel.isUnsafeAccessAllowed(adjustedDiagnosticLevel);
+                RuntimeCodeInfoMemory.singleton().printTable(log, isJavaHeapAccessAllowed, isUnsafeAccessAllowed);
             }
+        }
+
+        @Override
+        protected int usedFeatures() {
+            // TEMP (chaeubl): completely decoupled from the use -> will get outdated soon!
+            if (VMOperation.isInProgressAtSafepoint()) {
+                return DiagnosticLevel.JAVA_HEAP_ACCESS;
+            }
+            return DiagnosticLevel.UNSAFE_ACCESS | DiagnosticLevel.JAVA_HEAP_ACCESS;
         }
     }
 
     private static class DumpRecentDeoptimizations extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             if (DeoptimizationSupport.enabled()) {
                 Deoptimizer.logRecentDeoptimizationEvents(log);
             }
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
         }
     }
 
     private static class DumpCounters extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             log.string("Counters:").indent(true);
             Counter.logValues();
             log.indent(false);
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
         }
     }
 
     private static class DumpCurrentThreadFrameAnchors extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             IsolateThread currentThread = CurrentIsolate.getCurrentThread();
             log.string("Java frame anchors for the failing thread ").zhex(currentThread).string(":").indent(true);
             logFrameAnchors(log, currentThread);
             log.indent(false);
+        }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
         }
     }
 
@@ -589,30 +685,35 @@ public class SubstrateDiagnostics {
                         Stage0StackFramePrintVisitor.SINGLETON};
 
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 3;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             Pointer sp = state.sp;
             CodePointer ip = state.ip;
             log.string("Stacktrace for the failing thread ").zhex(CurrentIsolate.getCurrentThread()).string(":").indent(true);
             ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[invocationCount - 1], log);
             log.indent(false);
         }
+
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
+        }
     }
 
     private static class DumpOtherStackTraces extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, int diagnosticLevel, int invocationCount) {
             if (VMOperation.isInProgressAtSafepoint()) {
                 // Iterate all threads without checking if the thread mutex is locked (it should
                 // be locked by this thread though because we are at a safepoint).
@@ -632,6 +733,11 @@ public class SubstrateDiagnostics {
             }
         }
 
+        @Override
+        protected int usedFeatures() {
+            return DiagnosticLevel.ZERO;
+        }
+
         private static void printFrameAnchors(Log log, IsolateThread vmThread) {
             log.string("Frame anchors:").indent(true);
             logFrameAnchors(log, vmThread);
@@ -649,14 +755,29 @@ public class SubstrateDiagnostics {
         /**
          * Prints diagnostic information. This method may be invoked multiple times if an error
          * (e.g., exception or segfault) occurred during execution. However, the method will only be
-         * invoked at most {@link #maxInvocations()} times. When the method is invoked for the first
-         * time, the argument invocationCount is 1.
+         * invoked at most {@link #baseInvocations()} times. When the method is invoked for the
+         * first time, the argument invocationCount is 1.
          */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        public abstract void printDiagnostics(Log log, int invocationCount);
+        public abstract void printDiagnostics(Log log, int diagnosticLevel, int invocationCount);
 
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public abstract int maxInvocations();
+        public int maxInvocations(int diagnosticLevel) {
+            int relevantDiagnostics = diagnosticLevel & usedFeatures();
+            return Integer.bitCount(relevantDiagnostics) + baseInvocations();
+        }
+
+        protected abstract int baseInvocations();
+
+        protected abstract int usedFeatures();
+
+        protected int adjustDiagnosticLevel(int diagnosticLevel, int invocationCount) {
+            int result = diagnosticLevel & usedFeatures();
+            for (int i = 1; i < invocationCount; i++) {
+                result ^= Integer.highestOneBit(result);
+            }
+            return result;
+        }
     }
 
     public static class DiagnosticThunkRegister {
@@ -702,6 +823,21 @@ public class SubstrateDiagnostics {
 
         DiagnosticThunk getThunk(int index) {
             return diagnosticThunks[index];
+        }
+    }
+
+    public static class DiagnosticLevel {
+        public static final int ZERO = 0;
+        public static final int JAVA_HEAP_ACCESS = 0b01;
+        public static final int UNSAFE_ACCESS = 0b10;
+        public static final int MAX = (UNSAFE_ACCESS << 1) - 1;
+
+        public static boolean isJavaHeapAccessAllowed(int level) {
+            return level >= 1;
+        }
+
+        public static boolean isUnsafeAccessAllowed(int level) {
+            return level >= 2;
         }
     }
 }

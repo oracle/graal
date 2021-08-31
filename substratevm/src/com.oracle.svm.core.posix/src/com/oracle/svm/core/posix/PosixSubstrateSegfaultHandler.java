@@ -95,7 +95,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
                     "dispatch", int.class, siginfo_t.class, ucontext_t.class);
 
     @Override
-    protected void install() {
+    protected void installInternal() {
         int structSigActionSize = SizeOf.get(sigaction.class);
         sigaction structSigAction = StackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));

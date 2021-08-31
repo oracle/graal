@@ -132,7 +132,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
         }
 
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 

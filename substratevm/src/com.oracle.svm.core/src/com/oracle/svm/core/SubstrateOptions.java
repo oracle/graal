@@ -605,4 +605,7 @@ public class SubstrateOptions {
             return 4096;
         }
     }
+
+    @Option(help = "Determines how much diagnostic information is printed. Supported values range from 0 to 2, where 2 prints the largest amount of information.", type = Expert)//
+    public static final RuntimeOptionKey<Integer> PrintDiagnosticDetails = new RuntimeOptionKey<>(2);
 }

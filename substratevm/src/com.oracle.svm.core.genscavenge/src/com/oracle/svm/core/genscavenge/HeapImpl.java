@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -42,6 +43,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticLevel;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -610,7 +612,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
+    public boolean printLocationInfo(Log log, UnsignedWord value, int diagnosticLevel) {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             Pointer heapBase = KnownIntrinsics.heapBase();
             if (value.equal(heapBase)) {
@@ -623,8 +625,8 @@ public final class HeapImpl extends Heap {
         }
 
         Pointer ptr = (Pointer) value;
-        if (printLocationInfo(log, ptr)) {
-            if (allowJavaHeapAccess && objectHeaderImpl.pointsToObjectHeader(ptr)) {
+        if (printLocationInfo(log, ptr, diagnosticLevel)) {
+            if (DiagnosticLevel.isJavaHeapAccessAllowed(diagnosticLevel) && objectHeaderImpl.pointsToObjectHeader(ptr)) {
                 DynamicHub hub = objectHeaderImpl.readDynamicHubFromPointer(ptr);
                 log.indent(true);
                 log.string("hub=").string(hub.getName());
@@ -645,7 +647,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private boolean printLocationInfo(Log log, Pointer ptr) {
+    private boolean printLocationInfo(Log log, Pointer ptr, int diagnosticLevel) {
         if (imageHeapInfo.isInReadOnlyPrimitivePartition(ptr)) {
             log.string("points into the image heap (read-only primitives)");
             return true;
@@ -670,21 +672,34 @@ public final class HeapImpl extends Heap {
         } else if (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(ptr)) {
             log.string("points into the auxiliary image heap");
             return true;
-        } else if (isInYoungGen(ptr)) {
-            log.string("points into the young generation");
+        } else if (printTlabInfo(log, ptr, CurrentIsolate.getCurrentThread())) {
             return true;
-        } else if (isInOldGen(ptr)) {
-            log.string("points into the old generation");
-            return true;
-        } else {
+        }
+
+        if (DiagnosticLevel.isJavaHeapAccessAllowed(diagnosticLevel)) {
+            // Accessing spaces and chunks is safe if we prevent a GC.
+            if (isInYoungGen(ptr)) {
+                log.string("points into the young generation");
+                return true;
+            } else if (isInOldGen(ptr)) {
+                log.string("points into the old generation");
+                return true;
+            }
+        }
+
+        if (DiagnosticLevel.isUnsafeAccessAllowed(diagnosticLevel) || VMOperation.isInProgressAtSafepoint()) {
+            // If we are not at a safepoint, then it is unsafe to access thread locals of another
+            // thread as the IsolateThread could be freed at any time.
             return printTlabInfo(log, ptr);
         }
+        return false;
     }
 
     boolean isInHeap(Pointer ptr) {
         return isInImageHeap(ptr) || isInYoungGen(ptr) || isInOldGen(ptr);
     }
 
+    @Uninterruptible(reason = "Prevent that chunks are freed.")
     private boolean isInYoungGen(Pointer ptr) {
         if (findPointerInSpace(youngGeneration.getEden(), ptr)) {
             return true;
@@ -701,10 +716,12 @@ public final class HeapImpl extends Heap {
         return false;
     }
 
+    @Uninterruptible(reason = "Prevent that chunks are freed.")
     private boolean isInOldGen(Pointer ptr) {
         return findPointerInSpace(oldGeneration.getFromSpace(), ptr) || findPointerInSpace(oldGeneration.getToSpace(), ptr);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean findPointerInSpace(Space space, Pointer p) {
         AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
@@ -726,37 +743,39 @@ public final class HeapImpl extends Heap {
         return false;
     }
 
-    /**
-     * Accessing the TLAB of other threads is a highly unsafe operation and can cause crashes. So,
-     * this only makes sense for printing diagnostics as it is very likely that register values
-     * point to TLABs.
-     */
     private static boolean printTlabInfo(Log log, Pointer ptr) {
-        assert SubstrateDiagnostics.isInProgressByCurrentThread() : "can cause crashes, so it may only be used while printing diagnostics";
         for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-            ThreadLocalAllocation.Descriptor tlab = getTlabUnsafe(thread);
-            AlignedHeader aChunk = tlab.getAlignedChunk();
-            while (aChunk.isNonNull()) {
-                Pointer dataStart = AlignedHeapChunk.getObjectsStart(aChunk);
-                Pointer dataEnd = AlignedHeapChunk.getObjectsEnd(aChunk);
-                if (ptr.aboveOrEqual(dataStart) && ptr.belowThan(dataEnd)) {
-                    log.string("points into an aligned TLAB chunk of thread ").zhex(thread);
-                    return true;
-                }
-                aChunk = HeapChunk.getNext(aChunk);
-            }
-
-            UnalignedHeader uChunk = tlab.getUnalignedChunk();
-            while (uChunk.isNonNull()) {
-                Pointer dataStart = UnalignedHeapChunk.getObjectStart(uChunk);
-                Pointer dataEnd = UnalignedHeapChunk.getObjectEnd(uChunk);
-                if (ptr.aboveOrEqual(dataStart) && ptr.belowThan(dataEnd)) {
-                    log.string("points into an unaligned TLAB chunk of thread ").zhex(thread);
-                    return true;
-                }
-                uChunk = HeapChunk.getNext(uChunk);
+            if (printTlabInfo(log, ptr, thread)) {
+                return true;
             }
         }
+        return false;
+    }
+
+    private static boolean printTlabInfo(Log log, Pointer ptr, IsolateThread thread) {
+        ThreadLocalAllocation.Descriptor tlab = getTlabUnsafe(thread);
+        AlignedHeader aChunk = tlab.getAlignedChunk();
+        while (aChunk.isNonNull()) {
+            Pointer dataStart = AlignedHeapChunk.getObjectsStart(aChunk);
+            Pointer dataEnd = AlignedHeapChunk.getObjectsEnd(aChunk);
+            if (ptr.aboveOrEqual(dataStart) && ptr.belowThan(dataEnd)) {
+                log.string("points into an aligned TLAB chunk of thread ").zhex(thread);
+                return true;
+            }
+            aChunk = HeapChunk.getNext(aChunk);
+        }
+
+        UnalignedHeader uChunk = tlab.getUnalignedChunk();
+        while (uChunk.isNonNull()) {
+            Pointer dataStart = UnalignedHeapChunk.getObjectStart(uChunk);
+            Pointer dataEnd = UnalignedHeapChunk.getObjectEnd(uChunk);
+            if (ptr.aboveOrEqual(dataStart) && ptr.belowThan(dataEnd)) {
+                log.string("points into an unaligned TLAB chunk of thread ").zhex(thread);
+                return true;
+            }
+            uChunk = HeapChunk.getNext(uChunk);
+        }
+
         return false;
     }
 
@@ -768,7 +787,7 @@ public final class HeapImpl extends Heap {
 
     private static class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 
@@ -794,7 +813,7 @@ public final class HeapImpl extends Heap {
 
     private static class DumpChunkInformation extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 

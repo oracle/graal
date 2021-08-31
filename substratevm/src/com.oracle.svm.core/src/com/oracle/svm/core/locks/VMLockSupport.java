@@ -46,7 +46,7 @@ public abstract class VMLockSupport {
 
     public static class DumpVMMutexes extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int baseInvocations() {
             return 1;
         }
 

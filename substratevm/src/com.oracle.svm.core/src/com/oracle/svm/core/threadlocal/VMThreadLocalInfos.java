@@ -39,6 +39,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticLevel;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -60,7 +61,7 @@ public class VMThreadLocalInfos {
         }
     }
 
-    public static void dumpToLog(Log log, IsolateThread thread, boolean allowJavaHeapAccess) {
+    public static void dumpToLog(Log log, IsolateThread thread, int diagnosticLevel) {
         for (VMThreadLocalInfo info : ImageSingletons.lookup(VMThreadLocalInfos.class).infos) {
             log.signed(info.offset).string(" (").signed(info.sizeInBytes).string(" bytes): ").string(info.name).string(" = ");
             if (info.threadLocalClass == FastThreadLocalInt.class) {
@@ -73,7 +74,7 @@ public class VMThreadLocalInfos {
                 WordBase value = primitiveData(thread).readWord(WordFactory.signed(info.offset));
                 log.string("(Word) ").signed(value).string(" (").zhex(value.rawValue()).string(")");
             } else if (info.threadLocalClass == FastThreadLocalObject.class) {
-                if (allowJavaHeapAccess) {
+                if (DiagnosticLevel.isJavaHeapAccessAllowed(diagnosticLevel)) {
                     Object value = ObjectAccess.readObject(objectData(thread), WordFactory.signed(info.offset));
                     log.string("(Object) ");
                     if (value == null) {
