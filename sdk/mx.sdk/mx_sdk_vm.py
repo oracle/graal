@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -210,7 +210,10 @@ class GraalVmComponent(object):
                  installable=None,
                  post_install_msg=None,
                  installable_id=None,
-                 dependencies=None):
+                 dependencies=None,
+                 supported=None,
+                 early_adopter=False,
+                 stability=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -241,6 +244,7 @@ class GraalVmComponent(object):
         :type installable: bool
         :type installable_id: str
         :type post_install_msg: str
+        :type stability: str | None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -273,6 +277,25 @@ class GraalVmComponent(object):
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
 
+        if supported is not None or early_adopter:
+            if stability is not None:
+                raise mx.abort("{}: Cannot use `stability` attribute in combination with deprecated `supported` and `early_adopter` attributes".format(name))
+            else:
+                mx.warn("{}: `supported` and `early_adopter` attributes are deprecated, please use `stability`".format(name))
+
+        if stability is None:
+            if supported:
+                if early_adopter:
+                    stability = "earlyadopter"
+                else:
+                    stability = "supported"
+            else:
+                if early_adopter:
+                    stability = "experimental-earlyadopter"
+                else:
+                    stability = "experimental"
+        self.stability = stability
+
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
         assert isinstance(self.support_distributions, list)
@@ -288,6 +311,7 @@ class GraalVmComponent(object):
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
+
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)

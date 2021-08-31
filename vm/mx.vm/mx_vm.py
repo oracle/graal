@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -64,6 +64,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
             custom_launcher_script="mx.vm/gu.cmd" if mx.is_windows() else None,
         ),
     ],
+    stability="supported",
 ))
 
 
@@ -76,6 +77,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
     third_party_license_files=['THIRD_PARTY_LICENSE.txt'],
     dependencies=[],
     support_distributions=['vm:VM_GRAALVM_SUPPORT'],
+    stability="supported",
 ))
 
 # pylint: disable=line-too-long

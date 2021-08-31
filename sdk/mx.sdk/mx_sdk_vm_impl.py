@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -749,19 +749,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             # Register pre-installed components
             components_dir = _get_component_type_base(installer) + installer.dir_name + '/components/'
             for installable_components in installables.values():
+                manifest_str = _gen_gu_manifest(installable_components, _format_properties, bundled=True)
                 main_component = _get_main_component(installable_components)
-                _add(layout, components_dir + main_component.installable_id + '.component', """string:Bundle-Name={name}
-Bundle-Symbolic-Name={id}
-Bundle-Version={version}
-
-x-GraalVM-Polyglot-Part={polyglot}
-x-GraalVM-Component-Distribution=bundled
-""".format(
-                    name=main_component.name,
-                    id=main_component.installable_id,
-                    version=_suite.release_version(),
-                    polyglot=isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
-                             and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)))
+                _add(layout, components_dir + main_component.installable_id + '.component', "string:" + manifest_str)
 
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
@@ -1142,13 +1132,13 @@ class GraalVmNativeProperties(GraalVmProject):
         return NativePropertiesBuildTask(self, args)
 
 
-def _java_properties_escape(s, split_long=None, key_length=0):
+def java_properties_escape(s, split_long=None, key_length=0):
     parts = []
     first = True
     if split_long and len(s) <= 80:
         split_long = False
     for c in s:
-        if c == ' :=' and first:
+        if c == ' ' and first:
             parts.append('\\')
             parts.append(c)
         elif c == '\t':
@@ -1159,7 +1149,7 @@ def _java_properties_escape(s, split_long=None, key_length=0):
             parts.append('\\r')
         elif c == '\f':
             parts.append('\\f')
-        elif c in '\\#!':
+        elif c in '\\#!:=':
             parts.append('\\')
             parts.append(c)
         elif split_long and c == split_long:
@@ -1309,14 +1299,14 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if myself.endswith('.pyc'):
                 myself = myself[:-1]
             _write_ln(u"# Generated with \u2764 by " + myself)
-            _write_ln(u'ImageName=' + _java_properties_escape(name))
-            _write_ln(u'ImagePath=' + _java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
+            _write_ln(u'ImageName=' + java_properties_escape(name))
+            _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
             if requires:
-                _write_ln(u'Requires=' + _java_properties_escape(' '.join(requires), ' ', len('Requires')))
+                _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
             if isinstance(image_config, mx_sdk.LauncherConfig):
-                _write_ln(u'ImageClass=' + _java_properties_escape(image_config.main_class))
-            _write_ln(u'ImageClasspath=' + _java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
-            _write_ln(u'Args=' + _java_properties_escape(' '.join(build_args), ' ', len('Args')))
+                _write_ln(u'ImageClass=' + java_properties_escape(image_config.main_class))
+            _write_ln(u'ImageClasspath=' + java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
+            _write_ln(u'Args=' + java_properties_escape(' '.join(build_args), ' ', len('Args')))
         return self._contents
 
     def build(self):
@@ -1923,6 +1913,77 @@ class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
     pass
 
 
+def _format_manifest(data):
+    manifest_lines = []
+    for k, v in data.items():
+        _first = True
+        manifest_line = "{}: {}".format(k, v)
+        while len(manifest_line) > 72:
+            manifest_lines += [("" if _first else " ") + manifest_line[:72]]
+            manifest_line = manifest_line[72:]
+            _first = False
+        if len(manifest_line) > 0:
+            manifest_lines += [("" if _first else " ") + manifest_line]
+
+    # GR-10249: the manifest file must end with a newline
+    return '\n'.join(manifest_lines) + "\n"
+
+
+def _format_properties(data):
+    return '\n'.join(
+        "{}={}".format(k, java_properties_escape(v))
+        for k, v in data.items()
+    ) + "\n"
+
+
+def _gen_gu_manifest(components, formatter, bundled=False):
+    main_component = _get_main_component(components)
+    version = _suite.release_version()
+    manifest = OrderedDict()
+    manifest["Bundle-Name"] = main_component.name
+    manifest["Bundle-Symbolic-Name"] = "org.graalvm." + main_component.installable_id
+    manifest["Bundle-Version"] = version
+    capability_fmt = 'org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch})(java_version={java_version}))"'
+    manifest["Bundle-RequireCapability"] = capability_fmt.format(os=get_graalvm_os(),
+                                                                 arch=mx.get_arch(),
+                                                                 java_version=_src_jdk_version,
+                                                                 version=version)
+    manifest["x-GraalVM-Polyglot-Part"] = str(isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
+                                              and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
+
+    if main_component.stability is not None:
+        manifest["x-GraalVM-Stability-Level"] = main_component.stability
+        if main_component.stability in ("experimental", "earlyadopter", "supported"):
+            # set x-GraalVM-Stability for backward compatibility when possible
+            manifest["x-GraalVM-Stability"] = main_component.stability
+
+    dependencies = set()
+    for comp in components:
+        for c in comp.direct_dependencies():
+            if c.installable and c not in components:
+                dependencies.add(c.installable_id)
+    dependencies = sorted(dependencies)
+    if dependencies:
+        manifest["Require-Bundle"] = ','.join(("org.graalvm." + d for d in dependencies))
+    if isinstance(main_component, mx_sdk.GraalVmLanguage):
+        _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
+        manifest["x-GraalVM-Working-Directories"] = join(_wd_base, main_component.dir_name)
+
+    post_install_msg = None
+    for component in components:
+        if getattr(component, 'post_install_msg', None):
+            if post_install_msg:
+                post_install_msg = post_install_msg + '\n' + component.post_install_msg
+            else:
+                post_install_msg = component.post_install_msg
+    if post_install_msg:
+        manifest["x-GraalVM-Message-PostInst"] = post_install_msg.replace("\\", "\\\\").replace("\n", "\\n")
+    if bundled:
+        manifest["x-GraalVM-Component-Distribution"] = "bundled"
+
+    return formatter(manifest)
+
+
 class InstallableComponentArchiver(mx.Archiver):
     def __init__(self, path, components, **kw_args):
         """
@@ -1971,57 +2032,8 @@ class InstallableComponentArchiver(mx.Archiver):
         # do not add symlinks, use the metadata to create them
 
     def __exit__(self, exc_type, exc_value, traceback):
-        main_component = self.components[0]
-        _manifest_str = """Bundle-Name: {name}
-Bundle-Symbolic-Name: org.graalvm.{id}
-Bundle-Version: {version}
-Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch})(java_version={java_version}))"
-x-GraalVM-Polyglot-Part: {polyglot}
-""".format(  # GR-10249: the manifest file must end with a newline
-            name=main_component.name,
-            id=main_component.installable_id,
-            version=_suite.release_version(),
-            os=get_graalvm_os(),
-            arch=mx.get_arch(),
-            java_version=_src_jdk_version,
-            polyglot=isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
-                     and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)
-        )
-        dependencies = set()
-        for comp in self.components:
-            for c in comp.direct_dependencies():
-                if c.installable and c not in self.components:
-                    dependencies.add(c.installable_id)
-        dependencies = sorted(dependencies)
-        if dependencies:
-            _manifest_str += "Require-Bundle: {}\n".format(','.join(("org.graalvm." + d for d in dependencies)))
-        if isinstance(main_component, mx_sdk.GraalVmLanguage):
-            _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
-            _manifest_str += """x-GraalVM-Working-Directories: {workdir}
-""".format(workdir=join(_wd_base, main_component.dir_name))
-
-        post_install_msg = None
-        for component in self.components:
-            if getattr(component, 'post_install_msg', None):
-                if post_install_msg:
-                    post_install_msg = post_install_msg + '\n' + component.post_install_msg
-                else:
-                    post_install_msg = component.post_install_msg
-        if post_install_msg:
-            _manifest_str += """x-GraalVM-Message-PostInst: {msg}
-""".format(msg=post_install_msg.replace("\\", "\\\\").replace("\n", "\\n"))
-
-        _manifest_lines = []
-        for l in _manifest_str.split('\n'):
-            _first = True
-            while len(l) > 72:
-                _manifest_lines += [("" if _first else " ") + l[:72]]
-                l = l[72:]
-                _first = False
-            if len(l) > 0:
-                _manifest_lines += [("" if _first else " ") + l]
-
-        _manifest_str_wrapped = '\n'.join(_manifest_lines) + "\n"
+        assert self.components[0] == _get_main_component(self.components)
+        _manifest_str_wrapped = _gen_gu_manifest(self.components, _format_manifest)
         _manifest_arc_name = 'META-INF/MANIFEST.MF'
 
         _permissions_str = '\n'.join(self.permissions)
