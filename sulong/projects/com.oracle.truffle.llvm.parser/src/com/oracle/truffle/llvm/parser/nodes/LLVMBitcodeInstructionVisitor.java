@@ -58,6 +58,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchange
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgNoaliasScopeDeclInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
@@ -573,6 +574,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     public void visit(DbgValueInstruction inst) {
         handleDebugIntrinsic(inst.getValue(), inst.getVariable(), inst.getExpression(), inst.getIndex(), false);
         handleNullerInfo();
+    }
+
+    @Override
+    public void visit(DbgNoaliasScopeDeclInstruction inst) {
+        // ignore
     }
 
     @Override
