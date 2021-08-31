@@ -32,7 +32,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -72,6 +71,7 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     static final int TENURED_GENERATION_SIZE_SUPPLEMENT_DECAY = 2;
     static final int YOUNG_GENERATION_SIZE_SUPPLEMENT_DECAY = 8;
     static final int MIN_SURVIVOR_RATIO = 3;
+    static final int PAUSE_PADDING = 1;
     /**
      * Ratio of mutator wall-clock time to GC wall-clock time. HotSpot's default is 99, i.e.
      * spending 1% of time in GC. We set it to 19, i.e. 5%, to prefer a small footprint.
@@ -105,6 +105,8 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_THROUGHPUT_TRADEOFF = 0.8;
     /** The effective number of most recent data points used by estimator (exponential decay). */
     static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = ADAPTIVE_TIME_WEIGHT;
+    /** Threshold for triggering a complete collection after repeated minor collections. */
+    static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 2;
 
     /* Constants derived from other constants. */
     static final double THROUGHPUT_GOAL = 1.0 - 1.0 / (1.0 + GC_TIME_RATIO);
@@ -120,6 +122,7 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
 
     private final Timer minorTimer = new Timer("minor/between minor");
     private final AdaptiveWeightedAverage avgMinorGcCost = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
+    private final AdaptivePaddedAverage avgMinorPause = new AdaptivePaddedAverage(ADAPTIVE_TIME_WEIGHT, PAUSE_PADDING);
     private final AdaptivePaddedAverage avgSurvived = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, SURVIVOR_PADDING);
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
     private final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
@@ -132,9 +135,11 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     private UnsignedWord survivorSize;
     private UnsignedWord edenSize;
     private long youngGenChangeForMinorThroughput;
+    private int minorCountSinceMajorCollection;
 
     private final Timer majorTimer = new Timer("major/between major");
     private final AdaptiveWeightedAverage avgMajorGcCost = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
+    private final AdaptivePaddedAverage avgMajorPause = new AdaptivePaddedAverage(ADAPTIVE_TIME_WEIGHT, PAUSE_PADDING);
     private final AdaptiveWeightedAverage avgMajorIntervalSeconds = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
     private final AdaptiveWeightedAverage avgOldLive = new AdaptiveWeightedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT);
     private final ReciprocalLeastSquareFit majorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
@@ -228,12 +233,21 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_{attempt_scavenge,full_GC}
         guaranteeSizeParametersInitialized();
 
-        if (followingIncrementalCollection && oldSizeExceededInPreviousCollection) {
+        if (followingIncrementalCollection) {
+            if (oldSizeExceededInPreviousCollection) {
+                /*
+                 * We promoted objects to the old generation beyond its current capacity to avoid a
+                 * promotion failure, but due to the chunked nature of our heap, we should still be
+                 * within the maximum heap size. Follow up with a full collection during which we
+                 * either reclaim enough space or expand the old generation.
+                 */
+                return true;
+            }
+        } else if (minorCountSinceMajorCollection * avgMinorPause.getAverage() >= CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO * avgMajorPause.getPaddedAverage()) {
             /*
-             * We promoted objects to the old generation beyond its current capacity to avoid a
-             * promotion failure, but due to the chunked nature of our heap, we should still be
-             * within the maximum heap size. Follow up with a full collection during which we either
-             * reclaim enough space or expand the old generation.
+             * When we do many incremental collections in a row because they reclaim sufficient
+             * space, still trigger a complete collection when reaching a cumulative pause time
+             * threshold so that garbage in the old generation can also be reclaimed.
              */
             return true;
         }
@@ -496,14 +510,16 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
         timer.close();
 
         if (completeCollection) {
-            updateCollectionEndAverages(avgMajorGcCost, majorCostEstimator, avgMajorIntervalSeconds,
+            updateCollectionEndAverages(avgMajorGcCost, avgMajorPause, majorCostEstimator, avgMajorIntervalSeconds,
                             cause, latestMajorMutatorIntervalSeconds, timer.getMeasuredNanos(), promoSize);
             majorCount++;
+            minorCountSinceMajorCollection = 0;
 
         } else {
-            updateCollectionEndAverages(avgMinorGcCost, minorCostEstimator, null,
+            updateCollectionEndAverages(avgMinorGcCost, avgMinorPause, minorCostEstimator, null,
                             cause, latestMinorMutatorIntervalSeconds, timer.getMeasuredNanos(), edenSize);
             minorCount++;
+            minorCountSinceMajorCollection++;
 
             if (minorCount >= ADAPTIVE_SIZE_POLICY_READY_THRESHOLD) {
                 youngGenPolicyIsReady = true;
@@ -628,12 +644,13 @@ final class AdaptiveCollectionPolicy implements CollectionPolicy {
         }
     }
 
-    private static void updateCollectionEndAverages(AdaptiveWeightedAverage costAverage, ReciprocalLeastSquareFit costEstimator,
+    private static void updateCollectionEndAverages(AdaptiveWeightedAverage costAverage, AdaptivePaddedAverage pauseAverage, ReciprocalLeastSquareFit costEstimator,
                     AdaptiveWeightedAverage intervalSeconds, GCCause cause, long mutatorNanos, long pauseNanos, UnsignedWord sizeBytes) {
         if (cause == GenScavengeGCCause.OnAllocation || USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC) {
             double cost = 0;
             double mutatorInSeconds = TimeUtils.nanosToSecondsDouble(mutatorNanos);
             double pauseInSeconds = TimeUtils.nanosToSecondsDouble(pauseNanos);
+            pauseAverage.sample((float) pauseInSeconds);
             if (mutatorInSeconds > 0 && pauseInSeconds > 0) {
                 double intervalInSeconds = mutatorInSeconds + pauseInSeconds;
                 cost = pauseInSeconds / intervalInSeconds;

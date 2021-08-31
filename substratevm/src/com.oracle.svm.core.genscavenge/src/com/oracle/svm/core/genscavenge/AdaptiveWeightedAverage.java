@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * A weighted average maintains a running, weighted average of some float value.
@@ -127,11 +126,6 @@ class AdaptivePaddedAverage extends AdaptiveWeightedAverage {
             deviation = computeAdaptiveAverage(Math.abs(value - average), deviation);
         }
         paddedAverage = average + padding * deviation;
-    }
-
-    @Override
-    public float getAverage() {
-        throw VMError.shouldNotReachHere("Use getPaddedAverage");
     }
 
     public float getPaddedAverage() {
