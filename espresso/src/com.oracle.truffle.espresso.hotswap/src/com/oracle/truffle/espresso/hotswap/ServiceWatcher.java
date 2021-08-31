@@ -374,45 +374,45 @@ final class ServiceWatcher {
             }
         }
 
-        private void handleDeletedFolderEvent(Path resourcePath) {
-            Path path = resourcePath;
-            boolean folderExist = false;
-
-            while (!folderExist && path != null) {
-                Path parent = path.getParent();
-                // stop at the root
-                if (parent != null) {
-                    Set<Path> leaves = watchedFolders.remove(path);
-                    if (leaves == null) {
-                        // the folder was recreated in the mean time
-                        // so nothing further to do here
-                        break;
-                    }
-                    // register parent and watch for re-creation for all leaves
-                    for (Path leaf : leaves) {
-                        addWatchedFolder(path, leaf);
-                        addWatchedFolder(parent, leaf);
-                    }
-                    try {
-                        // watch parent folder for creation
-                        parent.register(watchService, WATCH_KINDS);
-                        // watch parents parent for deletion
-                        Path grandParent = parent.getParent();
-                        if (grandParent != null) {
-                            grandParent.register(watchService, WATCH_KINDS);
-                        }
-
-                        if (Files.exists(parent) && Files.isReadable(parent)) {
-                            // watch in place
-                            folderExist = true;
-                            scanDir(parent);
-                        }
-                    } catch (IOException e) {
-                        // parent folder also deleted, continue search
-                    }
-                    path = parent;
-                }
+        private void handleDeletedFolderEvent(Path path) {
+            Path parent = path.getParent();
+            // stop at the root
+            if (parent == null) {
+                return;
             }
+
+            Set<Path> leaves = watchedFolders.remove(path);
+            if (leaves == null) {
+                // must have been recreated and handled already
+                // so no further actions required here
+                return;
+            }
+
+            for (Path leaf : leaves) {
+                // watch for deletion of parent folder
+                addWatchedFolder(parent, leaf);
+            }
+
+            try {
+                Path grandParent = parent.getParent();
+                if (grandParent != null) {
+                    grandParent.register(watchService, WATCH_KINDS);
+                }
+                if (Files.exists(parent) && Files.isReadable(parent)) {
+                    // OK, parent exists, so re-register watch on path
+                    // to look for folder recreation
+                    for (Path leaf : leaves) {
+                        // watch for creation of current folder
+                        addWatchedFolder(path, leaf);
+                    }
+                    parent.register(watchService, WATCH_KINDS);
+                    scanDir(parent);
+                    return;
+                }
+            } catch (IOException e) {
+                // didn't exist, carry on to parent then
+            }
+            handleDeletedFolderEvent(parent);
         }
 
         private void detectChange(Path path) {
