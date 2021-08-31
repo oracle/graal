@@ -449,7 +449,10 @@ public final class Meta implements ContextAccess {
         java_lang_invoke_MethodHandles = knownKlass(Type.java_lang_invoke_MethodHandles);
         java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.requireDeclaredMethod(Name.lookup, Signature.MethodHandles$Lookup);
 
-        java_lang_invoke_VarHandles = knownKlass(Type.java_lang_invoke_VarHandles);
+        // j.l.i.VarHandles is there in JDK9+, but we only need it to be known for 14+
+        java_lang_invoke_VarHandles = diff() //
+                        .klass(higher(14), Type.java_lang_invoke_VarHandles) //
+                        .notRequiredKlass();
         java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset = diff() //
                         .method(higher(14), Name.getStaticFieldFromBaseAndOffset, Signature.Field_Object_long_Class) //
                         .notRequiredMethod(java_lang_invoke_VarHandles);
