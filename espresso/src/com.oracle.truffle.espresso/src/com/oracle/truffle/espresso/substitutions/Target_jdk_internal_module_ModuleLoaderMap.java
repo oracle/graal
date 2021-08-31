@@ -25,12 +25,10 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -44,14 +42,14 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
     public static final String POLYGLOT_MODULE_NAME = "espresso.polyglot";
 
     @Substitution
-    abstract static class BootModules extends Node {
+    abstract static class BootModules extends SubstitutionNode {
 
         abstract @JavaType(Set.class) StaticObject execute();
 
         @Specialization
         @JavaType(Set.class)
         StaticObject executeImpl(
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_bootModules.getCallTargetNoSubstitution())") DirectCallNode original) {
 
             Meta meta = context.getMeta();

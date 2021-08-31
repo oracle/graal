@@ -1,11 +1,4 @@
----
-layout: docs
-toc_group: reference-manual
-link_title: Enterprise Sandbox Resource Limits
-permalink: /reference-manual/embed-languages/sandbox/
----
-
-# Enterprise Sandbox Resource Limits
+## Enterprise Sandbox Resource Limits
 
 The 20.3 release of GraalVM introduced the experimental Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
 These resource limits are not available in the community edition of GraalVM.
@@ -69,7 +62,7 @@ It is not allowed specify negative values or no time unit with CPU time limit op
 
 ```
 try (Context context = Context.newBuilder("js")
-                           .experimentalOptions(true)
+                           .allowExperimentalOptions(true)
                            .option("sandbox.MaxCPUTime", "500ms")
                            .option("sandbox.MaxCPUTimeCheckInterval", "5ms")
                        .build();) {
@@ -110,7 +103,7 @@ The statement count limit is therefore not suitable to perform time boxing and m
 
 ```
 try (Context context = Context.newBuilder("js")
-                           .experimentalOptions(true)
+                           .allowExperimentalOptions(true)
                            .option("sandbox.MaxStatements", "2")
                            .option("sandbox.MaxStatementsIncludeInternal", "false")
                        .build();) {
@@ -166,7 +159,7 @@ The efficacy of this option (also) depends on the garbage collector used.
 
 ```
 try (Context context = Context.newBuilder("js")
-                           .experimentalOptions(true)
+                           .allowExperimentalOptions(true)
                            .option("sandbox.MaxHeapMemory", "100MB")
                        .build()) {
     try {
@@ -243,7 +236,7 @@ This can be useful if a known and trusted initialization script should be exclud
 
 ```
 try (Context context = Context.newBuilder("js")
-                           .experimentalOptions(true)
+                           .allowExperimentalOptions(true)
                            .option("sandbox.MaxCPUTime", "500ms")
                        .build();) {
     try {

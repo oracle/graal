@@ -325,7 +325,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                     throw new SyntaxError(request.getSource().createSection(0, 5));
                 }
 
-                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
                     private final com.oracle.truffle.api.source.Source source = request.getSource();
 
                     @Override
@@ -905,7 +905,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(ParsingRequest request) throws Exception {
-                                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         try {
@@ -917,7 +917,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
                                     @TruffleBoundary
                                     private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
-                                        Object o = InteropLibrary.getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                                        Object o = InteropLibrary.getUncached().readMember(com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).env.getPolyglotBindings(),
+                                                        "test");
                                         return InteropLibrary.getUncached().execute(o);
                                     }
                                 });
@@ -969,7 +970,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         try (Context c = builder.build()) {
             c.initialize(ProxyLanguage.ID);
             c.enter();
-            TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
+            TruffleLanguage.Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv();
             assertTrue("all access implies host access allowed", env.isHostLookupAllowed());
             assertTrue("all access implies native access allowed", env.isNativeAccessAllowed());
             assertTrue("all access implies create thread allowed", env.isCreateThreadAllowed());
@@ -979,7 +980,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         try (Context c = builder.build()) {
             c.initialize(ProxyLanguage.ID);
             c.enter();
-            TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
+            TruffleLanguage.Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv();
             assertFalse("host access is disallowed by default", env.isHostLookupAllowed());
             assertFalse("native access is disallowed by default", env.isNativeAccessAllowed());
             assertFalse("thread creation is disallowed by default", env.isCreateThreadAllowed());
@@ -993,7 +994,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         Context c = Context.newBuilder().timeZone(zone).build();
         c.initialize(ProxyLanguage.ID);
         c.enter();
-        assertEquals(zone, ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        assertEquals(zone, com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv().getTimeZone());
         c.leave();
         c.close();
     }
@@ -1003,7 +1004,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         Context c = Context.create();
         c.initialize(ProxyLanguage.ID);
         c.enter();
-        assertEquals(ZoneId.systemDefault(), ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        assertEquals(ZoneId.systemDefault(), com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv().getTimeZone());
         c.leave();
         c.close();
     }
@@ -1244,30 +1245,25 @@ public class ContextAPITest extends AbstractPolyglotTest {
     @Test
     public void testGetCurrentContextNotEnteredRaceCondition() throws ExecutionException, InterruptedException {
         for (int i = 0; i < 10000; i++) {
-            Object prev = EngineAPITest.resetSingleContextState(false);
-            try {
-                AtomicBoolean checkCompleted = new AtomicBoolean();
-                ExecutorService executorService = Executors.newFixedThreadPool(1);
-                try (Context ctx = Context.create()) {
-                    ctx.enter();
-                    try {
-                        Future<?> future = executorService.submit(() -> {
-                            Context.create().close();
-                            checkCompleted.set(true);
-                        });
-                        while (!checkCompleted.get()) {
-                            Context.getCurrent();
-                        }
-                        future.get();
-                    } finally {
-                        ctx.leave();
+            AtomicBoolean checkCompleted = new AtomicBoolean();
+            ExecutorService executorService = Executors.newFixedThreadPool(1);
+            try (Context ctx = Context.create()) {
+                ctx.enter();
+                try {
+                    Future<?> future = executorService.submit(() -> {
+                        Context.create().close();
+                        checkCompleted.set(true);
+                    });
+                    while (!checkCompleted.get()) {
+                        Context.getCurrent();
                     }
+                    future.get();
                 } finally {
-                    executorService.shutdownNow();
-                    executorService.awaitTermination(100, TimeUnit.SECONDS);
+                    ctx.leave();
                 }
             } finally {
-                EngineAPITest.restoreSingleContextState(prev);
+                executorService.shutdownNow();
+                executorService.awaitTermination(100, TimeUnit.SECONDS);
             }
         }
     }
@@ -1275,33 +1271,28 @@ public class ContextAPITest extends AbstractPolyglotTest {
     @Test
     public void testGetCurrentContextEnteredRaceCondition() throws ExecutionException, InterruptedException {
         for (int i = 0; i < 10000; i++) {
-            Object prev = EngineAPITest.resetSingleContextState(false);
-            try {
-                AtomicBoolean checkCompleted = new AtomicBoolean();
-                ExecutorService executorService = Executors.newFixedThreadPool(1);
+            AtomicBoolean checkCompleted = new AtomicBoolean();
+            ExecutorService executorService = Executors.newFixedThreadPool(1);
 
-                try (Context ctx = Context.create()) {
-                    ctx.initialize(VALID_EXCLUSIVE_LANGUAGE);
-                    ctx.enter();
-                    try {
-                        ValidExclusiveLanguage lang = ValidExclusiveLanguage.getCurrentLanguage();
-                        Future<?> future = executorService.submit(() -> {
-                            Context.create().close();
-                            checkCompleted.set(true);
-                        });
-                        while (!checkCompleted.get()) {
-                            lang.contextLocal.get();
-                        }
-                        future.get();
-                    } finally {
-                        ctx.leave();
+            try (Context ctx = Context.create()) {
+                ctx.initialize(VALID_EXCLUSIVE_LANGUAGE);
+                ctx.enter();
+                try {
+                    ValidExclusiveLanguage lang = ValidExclusiveLanguage.REFERENCE.get(null);
+                    Future<?> future = executorService.submit(() -> {
+                        Context.create().close();
+                        checkCompleted.set(true);
+                    });
+                    while (!checkCompleted.get()) {
+                        lang.contextLocal.get();
                     }
+                    future.get();
                 } finally {
-                    executorService.shutdownNow();
-                    executorService.awaitTermination(100, TimeUnit.SECONDS);
+                    ctx.leave();
                 }
             } finally {
-                EngineAPITest.restoreSingleContextState(prev);
+                executorService.shutdownNow();
+                executorService.awaitTermination(100, TimeUnit.SECONDS);
             }
         }
     }
@@ -1323,9 +1314,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
             return true;
         }
 
-        static ValidExclusiveLanguage getCurrentLanguage() {
-            return getCurrentLanguage(ValidExclusiveLanguage.class);
-        }
+        static final LanguageReference<ValidExclusiveLanguage> REFERENCE = LanguageReference.create(ValidExclusiveLanguage.class);
 
     }
 

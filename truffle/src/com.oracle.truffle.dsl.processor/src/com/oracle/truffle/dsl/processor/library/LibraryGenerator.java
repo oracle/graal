@@ -52,7 +52,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,6 +72,7 @@ import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
@@ -92,7 +92,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
     private ProcessorContext context;
     private LibraryData model;
 
-    private final Map<String, CodeVariableElement> libraryConstants = new LinkedHashMap<>();
+    private final StaticConstants constants = new StaticConstants();
 
     class MessageObjects {
         final LibraryMessage model;
@@ -108,7 +108,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
     @Override
     public List<CodeTypeElement> create(ProcessorContext context1, AnnotationProcessor<?> processor, LibraryData model1) {
-        libraryConstants.clear();
+        constants.clear();
         this.context = context1;
         this.model = model1;
         CodeTreeBuilder builder;
@@ -761,7 +761,9 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.end(); // superCall
         builder.end(); // statement
 
-        genClass.addAll(libraryConstants.values());
+        genClass.addAll(constants.libraries.values());
+        genClass.addAll(constants.contextReferences.values());
+        genClass.addAll(constants.languageReferences.values());
         return Arrays.asList(genClass);
     }
 
@@ -771,7 +773,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             return null;
         }
 
-        ExportsGenerator exportGenerator = new ExportsGenerator(libraryConstants);
+        ExportsGenerator exportGenerator = new ExportsGenerator(constants);
         Map<String, ExportMessageData> messages = defaultExportsLibrary.getExportedMessages();
         CodeTypeElement uncachedClass = exportGenerator.createUncached(defaultExportsLibrary, messages);
         CodeTypeElement cacheClass = exportGenerator.createCached(defaultExportsLibrary, messages);

@@ -108,13 +108,13 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     private final boolean loopbackInitialState;
     private final InnerLiteral innerLiteral;
     @CompilationFinal(dimensions = 1) private final TRegexExecutorNode[] lookAroundExecutors;
-    @Children private CharMatcher[] matchers;
+    @CompilationFinal(dimensions = 1) private CharMatcher[] matchers;
     private final int[] zeroWidthTermEnclosedCGLow;
     private final int[] zeroWidthQuantifierCGOffsets;
 
     @Child InputRegionMatchesNode regionMatchesNode;
     @Child InputIndexOfStringNode indexOfNode;
-    @Child CharMatcher loopbackInitialStateMatcher;
+    private final CharMatcher loopbackInitialStateMatcher;
 
     public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, CompilationBuffer compilationBuffer) {
         RegexASTSubtreeRootNode subtree = nfaMap.getASTSubtree(nfa);
@@ -152,6 +152,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         if (loopbackInitialState && innerLiteral == null) {
             CodePointSet initialCharSet = nfaMap.getMergedInitialStateCharSet(compilationBuffer);
             loopbackInitialStateMatcher = initialCharSet == null ? null : CharMatchers.createMatcher(initialCharSet, compilationBuffer);
+        } else {
+            loopbackInitialStateMatcher = null;
         }
         nfa.materializeGroupBoundaries();
         matchers = new CharMatcher[nfa.getNumberOfStates()];
@@ -159,7 +161,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         for (int i = 0; i < matchers.length; i++) {
             PureNFAState s = nfa.getState(i);
             if (s.isCharacterClass()) {
-                matchers[i] = insert(CharMatchers.createMatcher(s.getCharSet(), compilationBuffer));
+                matchers[i] = CharMatchers.createMatcher(s.getCharSet(), compilationBuffer);
             }
             maxTransitions = Math.max(maxTransitions, s.getSuccessors(forward).length);
             s.initIsDeterministic(forward, compilationBuffer);
@@ -274,7 +276,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                             // successors.
                             assert isForward();
                             while (inputHasNext(locals)) {
-                                if (loopbackInitialStateMatcher.execute(inputReadAndDecode(locals))) {
+                                if (loopbackInitialStateMatcher.match(inputReadAndDecode(locals))) {
                                     break;
                                 }
                                 inputAdvance(locals);
@@ -641,7 +643,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                 assert !target.isInitialState(isForward());
                 return target.isAnchoredFinalState(isForward()) ? atEnd : true;
             case PureNFAState.KIND_CHARACTER_CLASS:
-                return !atEnd && matchers[target.getId()].execute(c);
+                return !atEnd && matchers[target.getId()].match(c);
             case PureNFAState.KIND_LOOK_AROUND:
                 if (canInlineLookAroundIntoTransition(target)) {
                     return checkSubMatcherInline(locals, compactString, transition, target);
@@ -750,7 +752,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                 }
                 break;
             case PureNFAState.KIND_CHARACTER_CLASS:
-                if (atEnd || !matchers[target.getId()].execute(c)) {
+                if (atEnd || !matchers[target.getId()].match(c)) {
                     return false;
                 }
                 break;

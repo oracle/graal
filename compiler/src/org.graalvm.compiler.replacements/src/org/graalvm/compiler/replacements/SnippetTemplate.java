@@ -1608,7 +1608,7 @@ public class SnippetTemplate {
             StructuredGraph replaceeGraph = replacee.graph();
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
-            UnmodifiableEconomicMap<Node, Node> duplicates = inlineSnippet(replacee, debug, replaceeGraph, replacements);
+            EconomicMap<Node, Node> duplicates = inlineSnippet(replacee, debug, replaceeGraph, replacements);
 
             // Re-wire the control flow graph around the replacee
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
@@ -1712,6 +1712,8 @@ public class SnippetTemplate {
                 InvokeWithExceptionNode invoke = macroNode.createInvoke(returnValue);
                 // replace placeholder
                 replaceeGraph.replaceWithExceptionSplit(fallbackInvokeNode, invoke);
+                // register the invoke as the replacement for the fallback invoke
+                duplicates.put(fallbackInvoke, invoke);
             }
 
             if (killReplacee) {
@@ -1724,7 +1726,7 @@ public class SnippetTemplate {
         }
     }
 
-    private UnmodifiableEconomicMap<Node, Node> inlineSnippet(Node replacee, DebugContext debug, StructuredGraph replaceeGraph, EconomicMap<Node, Node> replacements) {
+    private EconomicMap<Node, Node> inlineSnippet(Node replacee, DebugContext debug, StructuredGraph replaceeGraph, EconomicMap<Node, Node> replacements) {
         Mark mark = replaceeGraph.getMark();
         try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
             InliningLog log = replaceeGraph.getInliningLog();
@@ -1732,7 +1734,7 @@ public class SnippetTemplate {
                 log.trackNewCallsite(newNode);
             }
         })) {
-            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+            EconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             if (scope != null) {
                 replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
             }

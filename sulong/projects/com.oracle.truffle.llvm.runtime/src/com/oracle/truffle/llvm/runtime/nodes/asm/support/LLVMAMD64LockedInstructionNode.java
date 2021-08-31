@@ -29,12 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -50,9 +47,8 @@ public abstract class LLVMAMD64LockedInstructionNode extends LLVMStatementNode {
 
     @Specialization
     public void doNative(VirtualFrame frame,
-                    @SuppressWarnings("unused") LLVMNativePointer address,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        synchronized (context.atomicInstructionsLock) {
+                    @SuppressWarnings("unused") LLVMNativePointer address) {
+        synchronized (getContext().atomicInstructionsLock) {
             statement.execute(frame);
         }
     }

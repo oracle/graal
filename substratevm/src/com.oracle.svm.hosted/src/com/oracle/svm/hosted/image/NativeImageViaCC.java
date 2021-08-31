@@ -174,6 +174,9 @@ public abstract class NativeImageViaCC extends NativeImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         DarwinCCLinkerInvocation() {
+            // Workaround building images with older Xcode with new libraries
+            additionalPreOptions.add("-Wl,-U,___darwin_check_fd_set_overflow");
+
             if (!SubstrateOptions.useLLVMBackend()) {
                 additionalPreOptions.add("-Wl,-no_compact_unwind");
             }

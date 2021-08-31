@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,17 +43,17 @@ package org.graalvm.wasm;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 
 public class ReferenceTypes {
     public static final byte FUNCREF = 0x70;
 
     public static String asString(int valueType) {
+        CompilerAsserts.neverPartOfCompilation();
         switch (valueType) {
             case FUNCREF:
                 return "funcref";
             default:
-                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }
     }

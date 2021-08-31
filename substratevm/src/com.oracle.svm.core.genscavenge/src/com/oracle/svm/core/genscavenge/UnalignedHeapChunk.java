@@ -102,6 +102,10 @@ public final class UnalignedHeapChunk {
         return HeapChunk.asPointer(that).add(getObjectStartOffset());
     }
 
+    public static Pointer getObjectEnd(UnalignedHeader that) {
+        return HeapChunk.getEndPointer(that);
+    }
+
     public static UnsignedWord getOverhead() {
         return getObjectStartOffset();
     }

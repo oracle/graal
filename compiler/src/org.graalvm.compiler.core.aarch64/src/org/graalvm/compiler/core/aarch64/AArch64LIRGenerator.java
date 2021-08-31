@@ -50,8 +50,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayCompareToOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayEqualsOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
-import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddLSEOp;
-import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddOp;
+import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
@@ -65,7 +64,6 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64LIRFlags;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
@@ -161,20 +159,20 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
-        emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, memoryOrder);
+        emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, memoryOrder);
         assert trueValue.getValueKind().equals(falseValue.getValueKind());
         assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0);
-        Variable result = newVariable(trueValue.getValueKind());
+        Variable result = newVariable(LIRKind.combine(trueValue, falseValue));
         append(new CondSetOp(result, ConditionFlag.EQ));
         return result;
     }
 
     @Override
     public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
-        return emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, memoryOrder);
+        return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, memoryOrder);
     }
 
-    private Variable emitCompareAndSwap(boolean isValue, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
+    private Variable emitCompareAndSwap(boolean isLogicVariant, LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
         /*
          * Atomic instructions only operate on the general (CPU) registers. Hence, float and double
          * values must temporarily use general registers of the equivalent size.
@@ -182,46 +180,42 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         LIRKind integerAccessKind = accessKind;
         Value reinterpretedExpectedValue = expectedValue;
         Value reinterpretedNewValue = newValue;
-        boolean reinterpretFP = ((AArch64Kind) integerAccessKind.getPlatformKind()).isSIMD();
-        if (reinterpretFP) {
+        boolean isFPKind = ((AArch64Kind) integerAccessKind.getPlatformKind()).isSIMD();
+        if (isFPKind) {
             if (accessKind.getPlatformKind().equals(AArch64Kind.SINGLE)) {
-                integerAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
+                integerAccessKind = LIRKind.value(AArch64Kind.DWORD);
             } else {
                 assert accessKind.getPlatformKind().equals(AArch64Kind.DOUBLE);
-                integerAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Long);
+                integerAccessKind = LIRKind.value(AArch64Kind.QWORD);
             }
             reinterpretedExpectedValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, expectedValue);
             reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integerAccessKind, newValue);
         }
         AArch64Kind memKind = (AArch64Kind) integerAccessKind.getPlatformKind();
-        Variable result = newVariable(reinterpretedExpectedValue.getValueKind());
-        Variable scratch = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        AllocatableValue allocatableExpectedValue = loadReg(reinterpretedExpectedValue);
-        AllocatableValue allocatableNewValue = loadReg(reinterpretedNewValue);
-        append(new CompareAndSwapOp(memKind, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address), scratch, memoryOrder));
-        if (isValue && reinterpretFP) {
-            return asVariable(arithmeticLIRGen.emitReinterpret(accessKind, result));
+        Variable result = newVariable(integerAccessKind);
+        AllocatableValue allocatableExpectedValue = asAllocatable(reinterpretedExpectedValue);
+        AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue);
+        append(new CompareAndSwapOp(memKind, memoryOrder, isLogicVariant, result, allocatableExpectedValue, allocatableNewValue, asAllocatable(address)));
+        if (isLogicVariant) {
+            // the returned value is unused
+            return null;
         } else {
-            return result;
+            // original result is an integer kind, so must convert to FP if necessary
+            return isFPKind ? asVariable(arithmeticLIRGen.emitReinterpret(accessKind, result)) : result;
         }
     }
 
     @Override
     public Value emitAtomicReadAndWrite(Value address, ValueKind<?> kind, Value newValue) {
         Variable result = newVariable(kind);
-        Variable scratch = newVariable(kind);
-        append(new AtomicReadAndWriteOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), asAllocatable(newValue), asAllocatable(scratch)));
+        append(new AtomicReadAndWriteOp((AArch64Kind) kind.getPlatformKind(), result, asAllocatable(address), asAllocatable(newValue)));
         return result;
     }
 
     @Override
     public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
         Variable result = newVariable(kind);
-        if (AArch64LIRFlags.useLSE(target().arch)) {
-            append(new AtomicReadAndAddLSEOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), asAllocatable(delta)));
-        } else {
-            append(new AtomicReadAndAddOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), delta));
-        }
+        append(AArch64AtomicMove.createAtomicReadAndAdd(this, (AArch64Kind) kind.getPlatformKind(), result, asAllocatable(address), delta));
         return result;
     }
 
@@ -468,14 +462,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      *
      * @param left Integer kind. Non null.
      * @param right Integer kind. Non null.
-     * @param trueValue Integer kind. Non null.
-     * @param falseValue Integer kind. Non null.
+     * @param trueValue Arbitrary value, same type as falseValue. Non null.
+     * @param falseValue Arbitrary value, same type as trueValue. Non null.
      * @return virtual register containing trueValue if (left & right) == 0, else falseValue.
      */
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
-        assert ((AArch64Kind) left.getPlatformKind()).isInteger() && ((AArch64Kind) right.getPlatformKind()).isInteger();
-        assert ((AArch64Kind) trueValue.getPlatformKind()).isInteger() && ((AArch64Kind) falseValue.getPlatformKind()).isInteger();
+        assert left.getPlatformKind() == right.getPlatformKind() && ((AArch64Kind) left.getPlatformKind()).isInteger();
+        assert trueValue.getPlatformKind() == falseValue.getPlatformKind();
         ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
         Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
 

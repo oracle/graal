@@ -72,7 +72,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomSimplificatio
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
@@ -109,7 +109,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
-    public StrengthenGraphs(BigBang bb, Universe converter) {
+    public StrengthenGraphs(PointsToAnalysis bb, Universe converter) {
         super(bb, converter);
     }
 

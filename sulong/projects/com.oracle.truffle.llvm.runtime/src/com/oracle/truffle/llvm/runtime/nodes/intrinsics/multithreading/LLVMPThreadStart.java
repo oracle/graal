@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -105,8 +102,6 @@ public final class LLVMPThreadStart {
         private final FrameSlot functionSlot;
         private final FrameSlot argSlot;
 
-        @CompilationFinal private ContextReference<LLVMContext> ctxRef;
-
         private LLVMPThreadFunctionRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor, FrameSlot functionSlot, FrameSlot argSlot, NodeFactory nodeFactory) {
             super(language, frameDescriptor, nodeFactory.createStackAccess(frameDescriptor));
             this.functionSlot = functionSlot;
@@ -135,12 +130,7 @@ public final class LLVMPThreadStart {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (ctxRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                ctxRef = lookupContextReference(LLVMLanguage.class);
-            }
-
-            stackAccess.executeEnter(frame, ctxRef.get().getThreadingStack().getStack());
+            stackAccess.executeEnter(frame, getContext().getThreadingStack().getStack());
             try {
 
                 // copy arguments to frame

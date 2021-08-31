@@ -73,6 +73,7 @@ public class VMThreadLocalInfo {
     public final JavaKind storageKind;
     public final Class<?> valueClass;
     public final int maxOffset;
+    public final boolean allowFloatingReads;
 
     @UnknownObjectField(types = {String.class}) public String name;
     @UnknownPrimitiveField public int offset;
@@ -83,6 +84,7 @@ public class VMThreadLocalInfo {
         this.threadLocalClass = threadLocal.getClass();
         this.locationIdentity = threadLocal.getLocationIdentity();
         this.maxOffset = threadLocal.getMaxOffset();
+        this.allowFloatingReads = threadLocal.getAllowFloatingReads();
 
         if (threadLocalClass == FastThreadLocalBytes.class) {
             sizeSupplier = ((FastThreadLocalBytes<?>) threadLocal).getSizeSupplier();

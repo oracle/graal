@@ -944,6 +944,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testParseInlineDefault() throws IOException {
+        context.initialize(InstrumentationTestLanguage.ID);
         Source source = Source.create(TestLanguageNoParseInline.ID, "STATEMENT");
         instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
             @Override
@@ -1877,7 +1878,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testAccessInstrumentFromLanguage() {
         context.initialize(InstrumentationTestLanguage.ID);
-        TruffleLanguage.Env env = InstrumentationTestLanguage.currentEnv();
+        TruffleLanguage.Env env = InstrumentContext.get(null).env;
         LanguageInfo langInfo = env.getInternalLanguages().get(InstrumentationTestLanguage.ID);
         assertNotNull(langInfo);
         assertEquals(InstrumentationTestLanguage.ID, langInfo.getId());

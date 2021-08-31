@@ -506,23 +506,6 @@ public class GenerateUncachedTest {
 
     }
 
-    @GenerateUncached
-    abstract static class ErrorNode4 extends Node {
-
-        abstract Object execute(Object arg);
-
-        @ExpectError("Failed to generate code for @GenerateUncached: One of the guards bind non-static methods or fields . Add a static modifier to the bound guard method or field to resolve this.")
-        @Specialization(guards = "g0(v)")
-        static int f0(int v) {
-            return v;
-        }
-
-        boolean g0(int v) {
-            return v == 42;
-        }
-
-    }
-
     @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable ErrorNode5.guard. Remove instance variable to resolve this.")
     @GenerateUncached
     abstract static class ErrorNode5 extends Node {
@@ -531,8 +514,7 @@ public class GenerateUncachedTest {
 
         boolean guard;
 
-        @ExpectError("Failed to generate code for @GenerateUncached: One of the guards bind non-static methods or fields . Add a static modifier to the bound guard method or field to resolve this.")
-        @Specialization(guards = "guard")
+        @Specialization
         static int f0(int v) {
             return v;
         }

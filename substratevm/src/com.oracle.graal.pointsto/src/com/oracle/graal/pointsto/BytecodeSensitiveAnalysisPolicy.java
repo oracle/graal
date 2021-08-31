@@ -92,29 +92,29 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public void noteMerge(BigBang bb, TypeState t) {
+    public void noteMerge(PointsToAnalysis bb, TypeState t) {
         t.noteMerge(bb);
     }
 
     @Override
-    public void noteMerge(BigBang bb, AnalysisObject... a) {
+    public void noteMerge(PointsToAnalysis bb, AnalysisObject... a) {
         for (AnalysisObject o : a) {
             o.noteMerge(bb);
         }
     }
 
     @Override
-    public void noteMerge(BigBang bb, AnalysisObject o) {
+    public void noteMerge(PointsToAnalysis bb, AnalysisObject o) {
         o.noteMerge(bb);
     }
 
     @Override
-    public boolean isContextSensitiveAllocation(BigBang bb, AnalysisType type, AnalysisContext allocationContext) {
+    public boolean isContextSensitiveAllocation(PointsToAnalysis bb, AnalysisType type, AnalysisContext allocationContext) {
         return bb.trackConcreteAnalysisObjects(type);
     }
 
     @Override
-    public AnalysisObject createHeapObject(BigBang bb, AnalysisType type, BytecodeLocation allocationSite, AnalysisContext allocationContext) {
+    public AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisType type, BytecodeLocation allocationSite, AnalysisContext allocationContext) {
         assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
         if (isContextSensitiveAllocation(bb, type, allocationContext)) {
             return new AllocationContextSensitiveObject(bb, type, allocationSite, allocationContext);
@@ -124,7 +124,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public AnalysisObject createConstantObject(BigBang bb, JavaConstant constant, AnalysisType exactType) {
+    public AnalysisObject createConstantObject(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
         /* Get the analysis object wrapping the JavaConstant. */
         if (bb.trackConcreteAnalysisObjects(exactType)) {
             return exactType.getCachedConstantObject(bb, constant);
@@ -134,7 +134,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public BytecodeLocation createAllocationSite(BigBang bb, int bci, AnalysisMethod method) {
+    public BytecodeLocation createAllocationSite(PointsToAnalysis bb, int bci, AnalysisMethod method) {
         return BytecodeLocation.create(bci, method);
     }
 
@@ -210,19 +210,19 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             callerContext = null;
         }
 
-        protected BytecodeSensitiveVirtualInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, BytecodeSensitiveVirtualInvokeTypeFlow original) {
+        protected BytecodeSensitiveVirtualInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveVirtualInvokeTypeFlow original) {
             super(bb, methodFlows, original);
             calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
             callerContext = methodFlows.context();
         }
 
         @Override
-        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new BytecodeSensitiveVirtualInvokeTypeFlow(bb, methodFlows, this);
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             assert this.isClone();
 
             /*
@@ -272,7 +272,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         }
 
         @Override
-        public Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb) {
+        public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
             return new ArrayList<>(calleesFlows.keySet());
         }
     }
@@ -289,18 +289,18 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         }
 
-        private BytecodeSensitiveSpecialInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, BytecodeSensitiveSpecialInvokeTypeFlow original) {
+        private BytecodeSensitiveSpecialInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveSpecialInvokeTypeFlow original) {
             super(bb, methodFlows, original);
             calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
         }
 
         @Override
-        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new BytecodeSensitiveSpecialInvokeTypeFlow(bb, methodFlows, this);
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             assert this.isClone();
             /* The receiver state has changed. Process the invoke. */
 
@@ -320,7 +320,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         }
 
         @Override
-        public Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb) {
+        public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
             return new ArrayList<>(calleesFlows.keySet());
         }
     }

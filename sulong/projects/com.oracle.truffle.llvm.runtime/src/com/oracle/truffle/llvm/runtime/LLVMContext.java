@@ -29,6 +29,22 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -38,8 +54,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
@@ -60,21 +79,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import org.graalvm.collections.EconomicMap;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public final class LLVMContext {
 
@@ -454,6 +458,12 @@ public final class LLVMContext {
         return LLVMManagedPointer.create(value);
     }
 
+    private static final ContextReference<LLVMContext> REFERENCE = ContextReference.create(LLVMLanguage.class);
+
+    public static LLVMContext get(Node node) {
+        return REFERENCE.get(node);
+    }
+
     void finalizeContext(LLVMFunction sulongDisposeContext) {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
@@ -467,7 +477,7 @@ public final class LLVMContext {
                 if (sulongDisposeContext == null) {
                     throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " was not found");
                 }
-                LLVMPointer pointer = getSymbol(sulongDisposeContext);
+                LLVMPointer pointer = getSymbolUncached(sulongDisposeContext);
                 if (LLVMManagedPointer.isInstance(pointer)) {
                     LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
                     RootCallTarget disposeContext = functionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
@@ -669,11 +679,16 @@ public final class LLVMContext {
         localScopes.add(scope);
     }
 
-    public LLVMPointer getSymbol(LLVMSymbol symbol) {
+    public LLVMPointer getSymbolUncached(LLVMSymbol symbol) throws LLVMIllegalSymbolIndexException {
+        CompilerAsserts.neverPartOfCompilation();
+        return getSymbol(symbol, BranchProfile.getUncached());
+    }
+
+    public LLVMPointer getSymbol(LLVMSymbol symbol, BranchProfile exception) throws LLVMIllegalSymbolIndexException {
         assert !symbol.isAlias();
-        BitcodeID bitcodeID = symbol.getBitcodeID(false);
+        BitcodeID bitcodeID = symbol.getBitcodeID(exception);
         int id = bitcodeID.getId();
-        int index = symbol.getSymbolIndex(false);
+        int index = symbol.getSymbolIndex(exception);
         if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this) && CompilerDirectives.isPartialEvaluationConstant(symbol)) {
             if (!symbolAssumptions[id][index].isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -681,14 +696,14 @@ public final class LLVMContext {
             try {
                 return symbolFinalStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+                exception.enter();
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         } else {
             try {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+                exception.enter();
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         }
@@ -700,13 +715,13 @@ public final class LLVMContext {
     @TruffleBoundary
     public void initializeSymbol(LLVMSymbol symbol, LLVMPointer value) {
         assert !symbol.isAlias();
-        BitcodeID bitcodeID = symbol.getBitcodeID(false);
+        BitcodeID bitcodeID = symbol.getBitcodeIDUncached();
         int id = bitcodeID.getId();
         LLVMPointer[] symbols = symbolDynamicStorage[id];
         Assumption[] assumptions = symbolAssumptions[id];
         synchronized (symbols) {
             try {
-                int index = symbol.getSymbolIndex(false);
+                int index = symbol.getSymbolIndexUncached();
                 symbols[index] = value;
                 assumptions[index] = Truffle.getRuntime().createAssumption();
                 if (symbol instanceof LLVMFunction) {
@@ -725,11 +740,11 @@ public final class LLVMContext {
     public boolean checkSymbol(LLVMSymbol symbol) {
         assert !symbol.isAlias();
         if (symbol.hasValidIndexAndID()) {
-            BitcodeID bitcodeID = symbol.getBitcodeID(false);
+            BitcodeID bitcodeID = symbol.getBitcodeIDUncached();
             int id = bitcodeID.getId();
             if (id < symbolDynamicStorage.length && symbolDynamicStorage[id] != null) {
                 LLVMPointer[] symbols = symbolDynamicStorage[id];
-                int index = symbol.getSymbolIndex(false);
+                int index = symbol.getSymbolIndexUncached();
                 return symbols[index] != null;
             }
         }
@@ -739,13 +754,13 @@ public final class LLVMContext {
     public void setSymbol(LLVMSymbol symbol, LLVMPointer value) {
         CompilerAsserts.neverPartOfCompilation();
         LLVMSymbol target = LLVMAlias.resolveAlias(symbol);
-        BitcodeID bitcodeID = symbol.getBitcodeID(false);
+        BitcodeID bitcodeID = symbol.getBitcodeIDUncached();
         int id = bitcodeID.getId();
         LLVMPointer[] symbols = symbolDynamicStorage[id];
         Assumption[] assumptions = symbolAssumptions[id];
         synchronized (symbols) {
             try {
-                int index = target.getSymbolIndex(false);
+                int index = target.getSymbolIndexUncached();
                 symbols[index] = value;
                 assumptions[index].invalidate();
                 assumptions[index] = Truffle.getRuntime().createAssumption();

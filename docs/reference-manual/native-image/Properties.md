@@ -30,10 +30,10 @@ In other words:
 Native image can also access environment variables at runtime.
 Consider the following example.
 
-1. Save this Java code into _EnvMap.java_ file:
+1. Save this Java code into the _EnvMap.java_ file:
+
   ```java
   import java.util.Map;
-
   public class EnvMap {
       public static void main (String[] args) {
           var filter = args.length > 0 ? args[0] : "";
@@ -47,14 +47,18 @@ Consider the following example.
       }
   }
   ```
+
   This code iterates over the environment variables and prints out the ones passing through the filter, passed as the command line argument.
 
 2. Compile and build a native image:
+
   ```shell
   javac EnvMap.java
   native-image EnvMap
   ```
+
 3. Run the resulting native image and pass some argument. It will correctly print out the values of the environment variables. For example:
+
   ```shell
   ./envmap HELLO
   HELLOWORLD=hello world

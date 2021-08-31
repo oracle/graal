@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.dead;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.RegexResult;
 
 /**
@@ -58,7 +57,7 @@ public final class DeadRegexExecNode extends RegexExecNode {
 
     @Override
     protected RegexResult execute(Object input, int fromIndex) {
-        return NoMatchResult.getInstance();
+        return RegexResult.getNoMatchInstance();
     }
 
     @Override

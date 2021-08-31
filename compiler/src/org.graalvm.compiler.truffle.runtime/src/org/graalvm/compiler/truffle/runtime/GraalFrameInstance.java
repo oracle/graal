@@ -79,6 +79,11 @@ public final class GraalFrameInstance implements FrameInstance {
     public Frame getFrame(FrameAccess access) {
         if (access == FrameAccess.READ_WRITE || access == FrameAccess.MATERIALIZE) {
             if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
+                final OptimizedCallTarget callTarget = (OptimizedCallTarget) getCallTarget();
+                if (callTarget.engine.traceDeoptimizeFrame) {
+                    GraalTruffleRuntime.StackTraceHelper.logHostAndGuestStacktrace("FrameInstance#getFrame(MATERIALIZE)", callTarget);
+                }
+
                 callTargetFrame.materializeVirtualObjects(false);
             }
         }

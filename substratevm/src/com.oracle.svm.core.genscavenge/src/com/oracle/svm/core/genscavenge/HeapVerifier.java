@@ -77,8 +77,8 @@ public final class HeapVerifier {
     private static boolean verifyChunkedImageHeap() {
         boolean success = true;
         ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-        success &= verifyAlignedChunks(null, info.getFirstAlignedImageHeapChunk());
-        success &= verifyUnalignedChunks(null, info.getFirstUnalignedImageHeapChunk());
+        success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
+        success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk());
         return success;
     }
 
@@ -94,8 +94,8 @@ public final class HeapVerifier {
         if (occasion == HeapVerifier.Occasion.AFTER_COLLECTION) {
             Space eden = youngGeneration.getEden();
             if (!eden.isEmpty()) {
-                Log.log().string("Eden contains chunks after a collection: firstAlignedChunk: ").hex(eden.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
-                                .hex(eden.getFirstUnalignedHeapChunk()).newline();
+                Log.log().string("Eden contains chunks after a collection: firstAlignedChunk: ").zhex(eden.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
+                                .zhex(eden.getFirstUnalignedHeapChunk()).newline();
                 success = false;
             }
         }
@@ -107,8 +107,8 @@ public final class HeapVerifier {
             Space toSpace = youngGeneration.getSurvivorToSpaceAt(i);
 
             if (!toSpace.isEmpty()) {
-                Log.log().string("Survivor to-space ").signed(i).string(" contains chunks: firstAlignedChunk: ").hex(toSpace.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
-                                .hex(toSpace.getFirstUnalignedHeapChunk()).newline();
+                Log.log().string("Survivor to-space ").signed(i).string(" contains chunks: firstAlignedChunk: ").zhex(toSpace.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
+                                .zhex(toSpace.getFirstUnalignedHeapChunk()).newline();
                 success = false;
             }
 
@@ -126,8 +126,8 @@ public final class HeapVerifier {
         Space toSpace = oldGeneration.getToSpace();
 
         if (!toSpace.isEmpty()) {
-            Log.log().string("Old generation to-space contains chunks: firstAlignedChunk: ").hex(toSpace.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
-                            .hex(toSpace.getFirstUnalignedHeapChunk()).newline();
+            Log.log().string("Old generation to-space contains chunks: firstAlignedChunk: ").zhex(toSpace.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
+                            .zhex(toSpace.getFirstUnalignedHeapChunk()).newline();
             success = false;
         }
 
@@ -161,8 +161,8 @@ public final class HeapVerifier {
              * GC itself may result in dirty cards.
              */
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            success &= rememberedSet.verify(info.getFirstAlignedImageHeapChunk());
-            success &= rememberedSet.verify(info.getFirstUnalignedImageHeapChunk());
+            success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
+            success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk());
         }
 
         OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
@@ -192,8 +192,8 @@ public final class HeapVerifier {
         while (current.isNonNull()) {
             HeapChunk.Header<?> previousOfCurrent = HeapChunk.getPrevious(current);
             if (previousOfCurrent.notEqual(previous)) {
-                Log.log().string("Verification failed for the doubly-linked list that holds ").string(kind).string(" chunks: space: ").string(space.getName()).string(", current: ").hex(current)
-                                .string(", current.previous: ").hex(previousOfCurrent).string(", previous: ").hex(previous).newline();
+                Log.log().string("Verification failed for the doubly-linked list that holds ").string(kind).string(" chunks: space: ").string(space.getName()).string(", current: ").zhex(current)
+                                .string(", current.previous: ").zhex(previousOfCurrent).string(", previous: ").zhex(previous).newline();
                 result = false;
             }
             previous = current;
@@ -201,8 +201,8 @@ public final class HeapVerifier {
         }
 
         if (previous.notEqual(lastChunk)) {
-            Log.log().string("Verification failed for the doubly-linked list that holds ").string(kind).string(" chunks: space: ").string(space.getName()).string(", previous: ").hex(previous)
-                            .string(", lastChunk: ").hex(lastChunk).newline();
+            Log.log().string("Verification failed for the doubly-linked list that holds ").string(kind).string(" chunks: space: ").string(space.getName()).string(", previous: ").zhex(previous)
+                            .string(", lastChunk: ").zhex(lastChunk).newline();
             result = false;
         }
         return result;
@@ -213,8 +213,8 @@ public final class HeapVerifier {
         AlignedHeader aChunk = firstAlignedHeapChunk;
         while (aChunk.isNonNull()) {
             if (space != aChunk.getSpace()) {
-                Log.log().string("Space ").string(space.getName()).string(" contains aligned chunk ").hex(aChunk).string(" but the chunk does not reference the correct space: ")
-                                .hex(Word.objectToUntrackedPointer(aChunk.getSpace())).newline();
+                Log.log().string("Space ").string(space.getName()).string(" contains aligned chunk ").zhex(aChunk).string(" but the chunk does not reference the correct space: ")
+                                .zhex(Word.objectToUntrackedPointer(aChunk.getSpace())).newline();
                 success = false;
             }
 
@@ -231,8 +231,8 @@ public final class HeapVerifier {
         UnalignedHeader uChunk = firstUnalignedHeapChunk;
         while (uChunk.isNonNull()) {
             if (space != uChunk.getSpace()) {
-                Log.log().string("Space ").string(space.getName()).string(" contains unaligned chunk ").hex(uChunk).string(" but the chunk does not reference the correct space: ")
-                                .hex(Word.objectToUntrackedPointer(uChunk.getSpace())).newline();
+                Log.log().string("Space ").string(space.getName()).string(" contains unaligned chunk ").zhex(uChunk).string(" but the chunk does not reference the correct space: ")
+                                .zhex(Word.objectToUntrackedPointer(uChunk.getSpace())).newline();
                 success = false;
             }
 
@@ -254,18 +254,18 @@ public final class HeapVerifier {
 
         int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
         if (ptr.unsignedRemainder(objectAlignment).notEqual(0)) {
-            Log.log().string("Object ").hex(ptr).string(" is not properly aligned to ").signed(objectAlignment).string(" bytes.").newline();
+            Log.log().string("Object ").zhex(ptr).string(" is not properly aligned to ").signed(objectAlignment).string(" bytes.").newline();
             return false;
         }
 
         UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(ptr);
         if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
-            Log.log().string("Object ").hex(ptr).string(" has a zapped header: ").hex(header).newline();
+            Log.log().string("Object ").zhex(ptr).string(" has a zapped header: ").zhex(header).newline();
             return false;
         }
 
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
-            Log.log().string("Object ").hex(ptr).string(" has a forwarded header: ").hex(header).newline();
+            Log.log().string("Object ").zhex(ptr).string(" has a forwarded header: ").zhex(header).newline();
             return false;
         }
 
@@ -274,26 +274,26 @@ public final class HeapVerifier {
             HeapChunk.Header<?> expectedChunk = aChunk.isNonNull() ? aChunk : uChunk;
             HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
             if (chunk.notEqual(expectedChunk)) {
-                Log.log().string("Object ").hex(ptr).string(" should have ").hex(expectedChunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").hex(chunk).newline();
+                Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(expectedChunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(chunk).newline();
                 return false;
             }
 
             Pointer chunkStart = HeapChunk.asPointer(chunk);
             Pointer chunkTop = HeapChunk.getTopPointer(chunk);
             if (chunkStart.aboveOrEqual(ptr) || chunkTop.belowOrEqual(ptr)) {
-                Log.log().string("Object ").hex(ptr).string(" is not within the allocated part of the chunk: ").hex(chunkStart).string(" - ").hex(chunkTop).string("").newline();
+                Log.log().string("Object ").zhex(ptr).string(" is not within the allocated part of the chunk: ").zhex(chunkStart).string(" - ").zhex(chunkTop).string("").newline();
                 return false;
             }
 
             if (aChunk.isNonNull()) {
                 if (!ObjectHeaderImpl.isAlignedHeader(header)) {
-                    Log.log().string("Header of object ").hex(ptr).string(" is not marked as aligned: ").hex(header).newline();
+                    Log.log().string("Header of object ").zhex(ptr).string(" is not marked as aligned: ").zhex(header).newline();
                     return false;
                 }
             } else {
                 assert uChunk.isNonNull();
                 if (!ObjectHeaderImpl.isUnalignedHeader(header)) {
-                    Log.log().string("Header of object ").hex(ptr).string(" is not marked as unaligned: ").hex(header).newline();
+                    Log.log().string("Header of object ").zhex(ptr).string(" is not marked as unaligned: ").zhex(header).newline();
                     return false;
                 }
             }
@@ -301,7 +301,7 @@ public final class HeapVerifier {
             Space space = chunk.getSpace();
             if (space == null) {
                 if (!HeapImpl.getHeapImpl().isInImageHeap(obj)) {
-                    Log.log().string("Object ").hex(ptr).string(" is not an image heap object even though the space of the parent chunk ").hex(chunk).string(" is null.").newline();
+                    Log.log().string("Object ").zhex(ptr).string(" is not an image heap object even though the space of the parent chunk ").zhex(chunk).string(" is null.").newline();
                     return false;
                 }
                 // Not all objects in the image heap have the remembered set bit in the header, so
@@ -309,7 +309,7 @@ public final class HeapVerifier {
 
             } else if (space.isOldSpace()) {
                 if (SubstrateOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
-                    Log.log().string("Object ").hex(ptr).string(" is in old generation chunk ").hex(chunk).string(" but does not have a remembered set.").newline();
+                    Log.log().string("Object ").zhex(ptr).string(" is in old generation chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
                     return false;
                 }
             }
@@ -317,7 +317,7 @@ public final class HeapVerifier {
 
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         if (!HeapImpl.getHeapImpl().isInImageHeap(hub)) {
-            Log.log().string("Object ").hex(ptr).string(" references a hub that is not in the image heap: ").hex(Word.objectToUntrackedPointer(hub)).newline();
+            Log.log().string("Object ").zhex(ptr).string(" references a hub that is not in the image heap: ").zhex(Word.objectToUntrackedPointer(hub)).newline();
             return false;
         }
 
@@ -359,8 +359,8 @@ public final class HeapVerifier {
             return true;
         }
 
-        if (!isInHeap(referencedObject)) {
-            Log.log().string("Object reference at ").hex(reference).string(" points outside the Java heap: ").hex(referencedObject).string(". ");
+        if (!HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
+            Log.log().string("Object reference at ").zhex(reference).string(" points outside the Java heap: ").zhex(referencedObject).string(". ");
             if (parentObject != null) {
                 Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
             } else {
@@ -370,54 +370,6 @@ public final class HeapVerifier {
         }
 
         return true;
-    }
-
-    private static boolean isInHeap(Pointer ptr) {
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        return heap.isInImageHeap(ptr) || isInYoungGen(ptr) || isInOldGen(ptr);
-    }
-
-    private static boolean isInYoungGen(Pointer ptr) {
-        YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
-        if (findPointerInSpace(youngGen.getEden(), ptr)) {
-            return true;
-        }
-
-        for (int i = 0; i < youngGen.getMaxSurvivorSpaces(); i++) {
-            if (findPointerInSpace(youngGen.getSurvivorFromSpaceAt(i), ptr)) {
-                return true;
-            }
-            if (findPointerInSpace(youngGen.getSurvivorToSpaceAt(i), ptr)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isInOldGen(Pointer ptr) {
-        OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-        return findPointerInSpace(oldGen.getFromSpace(), ptr) || findPointerInSpace(oldGen.getToSpace(), ptr);
-    }
-
-    private static boolean findPointerInSpace(Space space, Pointer p) {
-        AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
-        while (aChunk.isNonNull()) {
-            Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
-            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(aChunk))) {
-                return true;
-            }
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-
-        UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
-        while (uChunk.isNonNull()) {
-            Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
-            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(uChunk))) {
-                return true;
-            }
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-        return false;
     }
 
     private static class ImageHeapRegionVerifier implements MemoryWalker.ImageHeapRegionVisitor {
@@ -475,7 +427,7 @@ public final class HeapVerifier {
         public boolean visitObject(Object object) {
             Word pointer = Word.objectToUntrackedPointer(object);
             if (!HeapImpl.getHeapImpl().isInImageHeap(object)) {
-                Log.log().string("Image heap object ").hex(pointer).string(" is not considered as part of the image heap.").newline();
+                Log.log().string("Image heap object ").zhex(pointer).string(" is not considered as part of the image heap.").newline();
                 result = false;
             }
 

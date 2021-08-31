@@ -167,6 +167,9 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
         primary_suite_dir = config.primary_suite_dir
     else:
         config_args = []
+        dynamic_imports = [x for x, _ in mx.get_dynamic_imports()]
+        if dynamic_imports:
+            config_args += ['--dynamicimports', ','.join(dynamic_imports)]
         primary_suite_dir = None
 
     args = config_args + cmd_args
@@ -357,8 +360,15 @@ def svm_gate_body(args, tasks):
                 # ContextPreInitializationNativeImageTest can only run with its own image.
                 # See class javadoc for details.
                 native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args)
-                native_unittest(['com.oracle.truffle.api.test.TruffleSafepointTest'] + truffle_args)
-                native_unittest(['com.oracle.truffle.api.staticobject.test'] + truffle_args)
+
+                # Regular Truffle tests that can run with isolated compilation
+                native_unittest(['com.oracle.truffle.api.test.TruffleSafepointTest',
+                                 'com.oracle.truffle.api.staticobject.test',
+                                 'com.oracle.truffle.api.test.polyglot.ContextPolicyTest'] + truffle_args)
+
+                # White Box Truffle compilation tests that need access to compiler graphs.
+                compiler_args = truffle_args + ['-H:-SupportCompileInIsolates']
+                native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + compiler_args)
 
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
@@ -418,8 +428,7 @@ def native_unittests_task():
 
     additional_build_args = [
         '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
-        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService',
-        '-H:+AllowVMInspection'
+        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
     ]
 
     native_unittest(['--build-args', _native_unittest_features] + additional_build_args)
@@ -432,7 +441,6 @@ def javac_image_command(javac_path):
 
 def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False):
     build_args = build_args or []
-
     javaProperties = {}
     for dist in suite.dists:
         if isinstance(dist, mx.ClasspathDependency):

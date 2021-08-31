@@ -23,13 +23,13 @@
 
 package com.oracle.truffle.espresso.nodes.helper;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -50,10 +50,14 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 @SuppressWarnings("unused")
 @GenerateUncached
-public abstract class TypeCheckNode extends Node {
+public abstract class TypeCheckNode extends Node implements ContextAccess {
     protected static final int LIMIT = 4;
 
     public abstract boolean executeTypeCheck(Klass typeToCheck, Klass k);
+
+    public final EspressoContext getContext() {
+        return EspressoContext.get(this);
+    }
 
     @Specialization(guards = "typeToCheck == k")
     protected boolean typeCheckEquals(Klass typeToCheck, Klass k) {
@@ -62,7 +66,7 @@ public abstract class TypeCheckNode extends Node {
 
     @Specialization(guards = "isJLObject(context, typeToCheck)")
     protected boolean typeCheckJLObject(Klass typeToCheck, Klass k,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                    @Bind("getContext()") EspressoContext context) {
         return !k.isPrimitive();
     }
 
@@ -86,7 +90,7 @@ public abstract class TypeCheckNode extends Node {
 
     @Specialization(replaces = "typeCheckCached", guards = "arrayBiggerDim(k, typeToCheck)")
     protected boolean typeCheckArrayLowerDim(ArrayKlass typeToCheck, ArrayKlass k,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                    @Bind("getContext()") EspressoContext context) {
         Klass elem = typeToCheck.getElementalType();
         return elem == context.getMeta().java_lang_Object ||
                         elem == context.getMeta().java_io_Serializable ||

@@ -25,13 +25,11 @@ package com.oracle.truffle.espresso.substitutions;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.FinalizationSupport;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -48,7 +46,7 @@ public final class Target_java_lang_ref_Reference {
     @Substitution(hasReceiver = true, methodName = "<init>")
     public static void init(@JavaType(java.lang.ref.Reference.class) StaticObject self,
                     @JavaType(Object.class) StaticObject referent, @JavaType(ReferenceQueue.class) StaticObject queue,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         // Guest referent field is ignored for weak/soft/final/phantom references.
         EspressoReference<StaticObject> ref = null;
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference)) {
@@ -79,7 +77,7 @@ public final class Target_java_lang_ref_Reference {
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     public static @JavaType(Object.class) StaticObject get(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         assert !InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
@@ -100,7 +98,7 @@ public final class Target_java_lang_ref_Reference {
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     public static void clear(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
@@ -119,12 +117,12 @@ public final class Target_java_lang_ref_Reference {
 
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
-    abstract static class Enqueue extends Node {
+    abstract static class Enqueue extends SubstitutionNode {
         abstract boolean execute(@JavaType(java.lang.ref.Reference.class) StaticObject self);
 
         @Specialization
         boolean doCached(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_ref_Reference_enqueue.getCallTargetNoSubstitution())") DirectCallNode originalEnqueue) {
             if (context.getJavaVersion().java9OrLater()) {
                 /*

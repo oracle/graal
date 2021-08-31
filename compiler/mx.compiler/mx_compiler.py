@@ -58,7 +58,8 @@ from mx_renamegraalpackages import renamegraalpackages
 from mx_sdk_vm import jlink_new_jdk
 import mx_sdk_vm_impl
 
-import mx_graal_benchmark # pylint: disable=unused-import
+import mx_benchmark
+import mx_graal_benchmark
 import mx_graal_tools #pylint: disable=unused-import
 
 import argparse
@@ -361,29 +362,6 @@ def _remove_empty_entries(a):
         return []
     return [x for x in a if x]
 
-def _gate_java_benchmark(args, successRe, cwd=None):
-    """
-    Runs a Java benchmark and aborts if the benchmark process exits with a non-zero
-    exit code or the `successRe` pattern is not in the output of the benchmark process.
-
-    :param list args: the arguments to pass to the VM
-    :param str successRe: a regular expression
-    """
-    out = mx.OutputCapture()
-    try:
-        run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT, cwd=cwd)
-    finally:
-        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\\]hs_err_pid[0-9]+\.log)', out.data)
-        if jvmErrorFile:
-            jvmErrorFile = jvmErrorFile.group()
-            mx.log('Dumping ' + jvmErrorFile)
-            with open(jvmErrorFile) as fp:
-                mx.log(fp.read())
-            os.unlink(jvmErrorFile)
-
-    if not re.search(successRe, out.data, re.MULTILINE):
-        mx.abort('Could not find benchmark success pattern: ' + successRe)
-
 def _is_batik_supported(jdk):
     """
     Determines if Batik runs on the given jdk. Batik's JPEGRegistryEntry contains a reference
@@ -397,68 +375,29 @@ def _is_batik_supported(jdk):
         mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
         return False
 
-class DaCapoWrapper(object):
-    """
-    A context manager that dumps the stdout and stderr logs of DaCapo and ScalaDacapo
-    executions return with a non-zero exit code.
-    """
-
-    def __init__(self, scratch_dir):
-        """
-        :param str scratch_dir: the directory in which the [Scala]DaCapo logs will be written
-        """
-        self.scratch_dir = scratch_dir
-
-    def __enter__(self):
-        self._logs = self._gather_logs()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_value is not None:
-            for before, after in zip(self._logs, self._gather_logs()):
-                if after.isNewerThan(before):
-                    mx.log('Dumping ' + after.path)
-                    mx.log('```')
-                    with open(after.path) as fp:
-                        mx.log(fp.read())
-                    mx.log('```')
-
-    def _gather_logs(self):
-        return [mx.TimeStampFile(join(self.scratch_dir, name + '.log')) for name in ('stdout', 'stderr')]
-
 def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, set_start_heap_size=True, threads=None):
+    if iterations == -1:
+        return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
     if set_start_heap_size:
         vmargs += ['-Xms2g']
     vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
-    dacapoJar = mx.library('DACAPO').get_path(True)
-    if name == 'batik' and not _is_batik_supported(jdk):
-        return
-    scratch_dir = join(os.getcwd(), 'scratch')
-    args = ['-n', str(iterations), '--preserve', '--scratch-directory', scratch_dir]
+    args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
-    with DaCapoWrapper(scratch_dir):
-        _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name] + args, r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
+    return mx_benchmark.gate_mx_benchmark(["dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
     return jdk.javaCompliance < '11'
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
+    if iterations == -1:
+        return
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
-    if name == 'actors' and jdk.javaCompliance >= '9' and jdk_includes_corba(jdk):
-        vmargs += ['--add-modules', 'java.corba']
-    scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
-    scratch_dir = join(os.getcwd(), 'scratch')
-    with DaCapoWrapper(scratch_dir):
-        args = ['-jar', scalaDacapoJar, name, '-n', str(iterations), '--preserve', '--scratch-directory', scratch_dir]
-        cwd = None
-        if name == 'scaladoc':
-            # GR-32428: scaladoc scans $PWD for package.class files which can cause problems
-            # so run it in a directory most likely not containing extraneous package.class files.
-            cwd = dirname(scalaDacapoJar)
-        _gate_java_benchmark(vmargs + args, r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====', cwd=cwd)
+
+    args = ['-n', str(iterations), '--preserve']
+    return mx_benchmark.gate_mx_benchmark(["scala-dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':
@@ -516,63 +455,48 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
 
 def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
-    # run selected DaCapo benchmarks
+    # run DaCapo benchmarks #
+    #########################
 
     # DaCapo benchmarks that can run with system assertions enabled but
     # java.util.Logging assertions disabled because the the DaCapo harness
-    # misuses the API.
-    dacapos = {
-        'avrora':     1,
-        'h2':         1,
-        'jython':     2,
-        'luindex':    1,
-        'lusearch':   4,
-        'xalan':      1,
-        'batik':      1,
-        'fop':        8,
-        'pmd':        1,
-        'sunflow':    2,
+    # misuses the API. The same harness is used by Scala DaCapo.
+    dacapo_esa = ['-esa', '-da:java.util.logging...']
+
+    # a few iterations to get the chance to catch miscompilations in the gate
+    default_iterations = 1
+
+    dacapo_suite = mx_graal_benchmark.DaCapoBenchmarkSuite()
+    dacapo_gate_iterations = {
+        k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
-    for name, iterations in sorted(dacapos.items()):
+    dacapo_gate_iterations.update({'fop': 8})
+    mx.warn("Disabling gate for dacapo:tradebeans and dacapo:tradesoap because of AssertionError (GR-33115)")
+    dacapo_gate_iterations.update({'tradebeans': -1, 'tradesoap': -1})
+    for name, iterations in sorted(dacapo_gate_iterations.items()):
+        if name == "batik" and not _is_batik_supported(jdk):
+            continue
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
-                               ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
+                               ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
-    # run selected Scala DaCapo benchmarks
-    # Scala DaCapo benchmarks that can run with system assertions enabled but
-    # java.util.Logging assertions disabled because the the DaCapo harness
-    # misuses the API.
-    scala_dacapos = {
-        'apparat':    1,
-        'factorie':   1,
-        'kiama':      4,
-        'scalac':     1,
-        'scaladoc':   1,
-        'scalap':     1,
-        'scalariform':1,
-        'scalatest':  1,
-        'scalaxb':    1,
-        'specs':      1,
-        'tmt':        1,
-        'actors':     1,
+    # run Scala DaCapo benchmarks #
+    ###############################
+    scala_dacapo_suite = mx_graal_benchmark.ScalaDaCapoBenchmarkSuite()
+    scala_dacapo_gate_iterations = {
+        k: default_iterations for k, v in scala_dacapo_suite.daCapoIterations().items() if v > 0
     }
-    if not jdk_includes_corba(jdk):
-        mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
-        del scala_dacapos['actors']
 
-    if jdk.javaCompliance >= "16":
-        # See GR-29222 for details.
-        mx.warn('Removing scaladacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
-        del scala_dacapos['specs']
-
-    for name, iterations in sorted(scala_dacapos.items()):
+    for name, iterations in sorted(scala_dacapo_gate_iterations.items()):
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
-                                     ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
+                                     ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
+    # run benchmark with non default setup #
+    ########################################
     # ensure -Xbatch still works
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
+        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-Xbatch'])
 
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
@@ -581,12 +505,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
                 try:
-                    _gate_dacapo('pmd', 3, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
                     with open(logFile) as fp:
                         haystack = fp.read()
                         needle = 'MoveOperations (dynamic counters)'
                         if needle not in haystack:
-                            mx.abort('Expected to see "' + needle + '" in output of length ' + len(haystack) + ':\n' + haystack)
+                            mx.abort('Expected to see "' + needle + '" in output of length ' + str(len(haystack)) + ':\n' + haystack)
                 finally:
                     os.remove(logFile)
 
@@ -596,24 +520,24 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
 
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
     if isJDK8:
         # temporarily isolate those test (GR-10990)
         cms = ['cms']
         # ensure CMS still works
         with Task(prefix + 'DaCapo_pmd:CMS', tasks, tags=cms) as t:
-            if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+            if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
         # ensure CMSIncrementalMode still works
         with Task(prefix + 'DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
-            if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+            if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
         if prefix != '':
             # ensure G1 still works with libgraal
             with Task(prefix + 'DaCapo_pmd:G1', tasks, tags=cms) as t:
-                if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+                if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
 

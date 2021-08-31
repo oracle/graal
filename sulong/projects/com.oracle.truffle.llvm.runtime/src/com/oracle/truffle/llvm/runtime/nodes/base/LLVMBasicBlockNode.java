@@ -277,8 +277,7 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
         @Override
         public void execute(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Lazy block should have been materialized");
+            throw CompilerDirectives.shouldNotReachHere("Lazy block should have been materialized");
         }
 
         @Override
@@ -288,14 +287,12 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
 
         @Override
         public double getBranchProbability(int successorIndex) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Lazy block should have been materialized");
+            throw CompilerDirectives.shouldNotReachHere("Lazy block should have been materialized");
         }
 
         @Override
         public void enterSuccessor(int successorIndex) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Lazy block should have been materialized");
+            throw CompilerDirectives.shouldNotReachHere("Lazy block should have been materialized");
         }
 
         @Override

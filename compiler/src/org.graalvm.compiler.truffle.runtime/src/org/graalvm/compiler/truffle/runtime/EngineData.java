@@ -57,6 +57,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Split
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceDeoptimizeFrame;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
@@ -82,6 +83,7 @@ import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -134,6 +136,7 @@ public final class EngineData {
     @CompilationFinal public boolean callTargetStatisticDetails;
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
+    @CompilationFinal public boolean traceDeoptimizeFrame;
     @CompilationFinal public boolean compileAOTOnCreate;
     @CompilationFinal public boolean firstTierOnly;
 
@@ -283,6 +286,7 @@ public final class EngineData {
         this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
         this.profilingEnabled = options.get(Profiling);
         this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
+        this.traceDeoptimizeFrame = options.get(TraceDeoptimizeFrame);
         this.compilationFailureAction = computeCompilationFailureAction(options);
         validateOptions();
         parsedCompileOnly = null;
@@ -434,6 +438,22 @@ public final class EngineData {
     @SuppressWarnings("static-method")
     public void mergeLoadedSources(Source[] sources) {
         GraalRuntimeAccessor.SOURCE.mergeLoadedSources(sources);
+    }
+
+    @SuppressWarnings("static-method")
+    public Object enterLanguage(TruffleLanguage<?> language) {
+        return GraalRuntimeAccessor.ENGINE.enterLanguageFromRuntime(language);
+    }
+
+    @SuppressWarnings("static-method")
+    public void leaveLanguage(TruffleLanguage<?> language, Object prev) {
+        GraalRuntimeAccessor.ENGINE.leaveLanguageFromRuntime(language, prev);
+    }
+
+    @SuppressWarnings("static-method")
+    public TruffleLanguage<?> getLanguage(OptimizedCallTarget target) {
+        RootNode root = target.getRootNode();
+        return GraalRuntimeAccessor.NODES.getLanguage(root);
     }
 
 }

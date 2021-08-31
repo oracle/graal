@@ -27,7 +27,6 @@ package com.oracle.svm.jvmtiagentbase;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
-import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -192,7 +191,7 @@ public abstract class JNIHandleSet {
         globalRefsLock.lock();
         try {
             if (globalRefCount == globalRefs.length) {
-                globalRefs = Arrays.copyOf(globalRefs, globalRefs.length * 2);
+                globalRefs = copyOf(globalRefs, globalRefs.length * 2);
             }
             globalRefs[globalRefCount] = global;
             globalRefCount++;
@@ -200,6 +199,18 @@ public abstract class JNIHandleSet {
             globalRefsLock.unlock();
         }
         return global;
+    }
+
+    /**
+     * This is an inlined version of {@link java.util.Arrays#copyOf} to work around issues with Word
+     * arrays (GR-32808).
+     *
+     * FIXME: replace with {@link java.util.Arrays#copyOf} once GR-32808 is fixed.
+     */
+    private static JNIObjectHandle[] copyOf(JNIObjectHandle[] original, int newLength) {
+        JNIObjectHandle[] copy = new JNIObjectHandle[newLength];
+        System.arraycopy(original, 0, copy, 0, Math.min(original.length, newLength));
+        return copy;
     }
 
     /**

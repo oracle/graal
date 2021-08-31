@@ -167,20 +167,6 @@ public abstract class RootNode extends ExecutableNode {
         this.frameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
     }
 
-    /**
-     * @see TruffleLanguage#getContextReference()
-     * @since 0.27
-     * @deprecated use {@link #lookupContextReference(Class)} instead.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public final <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
-        if (getLanguage() == null) {
-            return null;
-        }
-        return getLanguage(languageClass).getContextReference().get();
-    }
-
     /** @since 0.8 or earlier */
     @Override
     public Node copy() {
@@ -439,7 +425,7 @@ public abstract class RootNode extends ExecutableNode {
      * <p>
      * The intention of this method is to provide a guest language object for other languages that
      * they can inspect using interop. An implementation of this method is expected to not fail with
-     * a guest error. Implementations are allowed to do {@link ContextReference#get() context
+     * a guest error. Implementations are allowed to do {@link ContextReference#get(Node) context
      * reference lookups} in the implementation of the method. This may be useful to access the
      * function objects needed to resolve the stack trace element.
      *

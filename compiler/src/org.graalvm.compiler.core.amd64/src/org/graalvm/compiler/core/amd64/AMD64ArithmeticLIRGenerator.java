@@ -698,6 +698,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
     }
 
+    @Override
+    public Value emitXorFP(Value a, Value b) {
+        return emitXor(a, b);
+    }
+
     private Variable emitShift(AMD64Shift op, OperandSize size, Value a, Value b) {
         if (isJavaConstant(b)) {
             return emitShiftConst(op, size, a, asJavaConstant(b));

@@ -56,8 +56,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
-import com.oracle.truffle.espresso.substitutions.InjectMeta;
-import com.oracle.truffle.espresso.substitutions.InjectProfile;
+import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
@@ -259,7 +258,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public int GetThreadInfo(@JavaType(long[].class) StaticObject ids, int maxDepth, @JavaType(Object[].class) StaticObject infoArray, @InjectProfile SubstitutionProfiler profiler) {
+    public int GetThreadInfo(@JavaType(long[].class) StaticObject ids, int maxDepth, @JavaType(Object[].class) StaticObject infoArray, @Inject SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         if (StaticObject.isNull(ids) || StaticObject.isNull(infoArray)) {
             profiler.profile(0);
@@ -512,7 +511,7 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     public int GetVMGlobals(@JavaType(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         if (getUncached().isNull(globalsPtr)) {
             profiler.profile(0);
@@ -539,7 +538,7 @@ public final class Management extends NativeEnv {
     @ManagementImpl
     @SuppressWarnings("unused")
     public @JavaType(ThreadInfo[].class) StaticObject DumpThreads(@JavaType(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject SubstitutionProfiler profiler) {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {
             StaticObject[] activeThreads = getContext().getActiveThreads();
@@ -580,8 +579,8 @@ public final class Management extends NativeEnv {
     public void GetThreadAllocatedMemory(
                     @JavaType(long[].class) StaticObject ids,
                     @JavaType(long[].class) StaticObject sizeArray,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(ids) || StaticObject.isNull(sizeArray)) {
             profiler.profile(0);
             throw meta.throwException(meta.java_lang_NullPointerException);

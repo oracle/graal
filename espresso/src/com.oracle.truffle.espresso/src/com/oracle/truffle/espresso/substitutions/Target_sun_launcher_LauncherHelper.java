@@ -23,12 +23,10 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -58,12 +56,12 @@ public final class Target_sun_launcher_LauncherHelper {
                     "                  Print internal options for debugging language implementations and tools.";
 
     @Substitution
-    abstract static class PrintHelpMessage extends Node {
+    abstract static class PrintHelpMessage extends SubstitutionNode {
         abstract void execute(boolean printToStderr);
 
         @Specialization
         void doCached(boolean printToStderr,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().sun_launcher_LauncherHelper_printHelpMessage.getCallTargetNoSubstitution())") DirectCallNode originalPrintHelpMessage,
                         @Cached("create(context.getMeta().java_io_PrintStream_println.getCallTarget())") DirectCallNode println) {
             Meta meta = context.getMeta();

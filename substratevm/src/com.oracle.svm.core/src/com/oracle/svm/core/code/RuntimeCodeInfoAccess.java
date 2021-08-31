@@ -26,6 +26,7 @@ package com.oracle.svm.core.code;
 
 import java.util.EnumSet;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -191,7 +192,7 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static CodeInfo allocateMethodInfo(NonmovableObjectArray<Object> objectData) {
-        CodeInfoImpl info = UnmanagedMemory.calloc(SizeOf.unsigned(CodeInfoImpl.class));
+        CodeInfoImpl info = UnmanagedMemory.calloc(getSizeOfCodeInfo());
 
         assert objectData.isNonNull() && NonmovableArrays.lengthOf(objectData) == CodeInfoImpl.OBJFIELDS_COUNT;
         info.setObjectFields(objectData);
@@ -199,6 +200,11 @@ public final class RuntimeCodeInfoAccess {
         // Make the object visible to the GC (before writing any heap data into the object).
         RuntimeCodeInfoMemory.singleton().add(info);
         return info;
+    }
+
+    @Fold
+    public static UnsignedWord getSizeOfCodeInfo() {
+        return SizeOf.unsigned(CodeInfoImpl.class);
     }
 
     static void partialReleaseAfterInvalidate(CodeInfo info, boolean notifyGC) {

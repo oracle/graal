@@ -84,8 +84,8 @@ public class ContextPreInitializationNativeImageTest {
             context.initialize(LANGUAGE);
 
             context.enter();
-            assertTrue(Language.getContext().patched);
-            assertTrue(String.valueOf(Language.getContext().threadLocalActions), Language.getContext().threadLocalActions > 0);
+            assertTrue(Language.CONTEXT_REF.get(null).patched);
+            assertTrue(String.valueOf(Language.CONTEXT_REF.get(null).threadLocalActions), Language.CONTEXT_REF.get(null).threadLocalActions > 0);
         }
 
     }
@@ -107,6 +107,8 @@ public class ContextPreInitializationNativeImageTest {
 
         final ContextThreadLocal<Integer> threadLocal = createContextThreadLocal((c, t) -> 42);
         final ContextLocal<Integer> contextLocal = createContextLocal((c) -> 42);
+        private static final ContextReference<TestContext> CONTEXT_REF = ContextReference.create(Language.class);
+        private static final LanguageReference<Language> LANGUAGE_REF = LanguageReference.create(Language.class);
 
         @Override
         protected TestContext createContext(Env env) {
@@ -147,6 +149,14 @@ public class ContextPreInitializationNativeImageTest {
                         CompilerDirectives.shouldNotReachHere("invalid context local");
                     }
 
+                    if (CONTEXT_REF.get(null) != context) {
+                        CompilerDirectives.shouldNotReachHere("invalid context reference");
+                    }
+
+                    if (LANGUAGE_REF.get(null) != Language.this) {
+                        CompilerDirectives.shouldNotReachHere("invalid language reference");
+                    }
+
                     return null;
                 }
 
@@ -158,11 +168,15 @@ public class ContextPreInitializationNativeImageTest {
         protected boolean patchContext(TestContext context, Env newEnv) {
             assertFalse(context.patched);
             context.patched = true;
-            return true;
-        }
 
-        static TestContext getContext() {
-            return getCurrentContext(Language.class);
+            if (CONTEXT_REF.get(null) != context) {
+                CompilerDirectives.shouldNotReachHere("invalid context reference");
+            }
+
+            if (LANGUAGE_REF.get(null) != this) {
+                CompilerDirectives.shouldNotReachHere("invalid language reference");
+            }
+            return true;
         }
 
     }

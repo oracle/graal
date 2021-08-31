@@ -340,6 +340,7 @@ public class RubyTests extends RegexTestBase {
         test("\\A[^]]\\z", "", "a", 0, true, 0, 1);
     }
 
+    @Test
     public void ignoreAtomicGroups() {
         test("(?>foo)", "", "foo", 0, true, 0, 3);
     }
@@ -349,5 +350,32 @@ public class RubyTests extends RegexTestBase {
         Assert.assertFalse(compileRegex("(?:foo)+", "").getMember("isBacktracking").asBoolean());
         Assert.assertTrue(compileRegex("(?:foo){64}", "").getMember("isBacktracking").asBoolean());
         Assert.assertTrue(compileRegex("(x+)\\1", "").getMember("isBacktracking").asBoolean());
+    }
+
+    @Test
+    public void lineBreakEscape() {
+        test("\\R", "", "\r", 0, true, 0, 1);
+        test("\\R", "", "\n", 0, true, 0, 1);
+        test("\\R", "", "\r\n", 0, true, 0, 2);
+
+        test("\\A\\R\\R\\z", "", "\r\r", 0, true, 0, 2);
+        test("\\A\\R\\R\\z", "", "\n\n", 0, true, 0, 2);
+        test("\\A\\R\\R\\z", "", "\r\n", 0, false);
+    }
+
+    @Test
+    public void github2412() {
+        // Checkstyle: stop line length
+        // 1 root capture group and 16 named capture groups
+        Assert.assertEquals(1 + 16, compileRegex("           % (?<type>%)\n" +
+                        "          | % (?<flags>(?-mix:[ #0+-]|(?-mix:(\\d+)\\$))*)\n" +
+                        "            (?:\n" +
+                        "              (?: (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:<(?<name>\\w+)>)?\n" +
+                        "                | (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:<(?<name>\\w+)>) (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))?\n" +
+                        "                | (?-mix:<(?<name>\\w+)>) (?<more_flags>(?-mix:[ #0+-]|(?-mix:(\\d+)\\$))*) (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))?\n" +
+                        "              ) (?-mix:(?<type>[bBdiouxXeEfgGaAcps]))\n" +
+                        "              | (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\{(?<name>\\w+)\\})\n" +
+                        "            )", "x").getMember("groupCount").asInt());
+        // Checkstyle: resume line length
     }
 }

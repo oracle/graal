@@ -81,7 +81,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
@@ -1338,7 +1337,7 @@ public class NativeImage {
 
         String[] parts = targetPlatform.split("-");
         if (parts.length != 2) {
-            throw UserError.abort("--target argument must be in format <OS>-<architecture>");
+            throw NativeImage.showError("--target argument must be in format <OS>-<architecture>");
         }
 
         targetOS = parts[0];

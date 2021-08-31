@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.Method;
 import java.net.JarURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -69,6 +70,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
@@ -81,8 +83,10 @@ import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
+    private static final Set<String> languagesOverridingPatchContext = TruffleOptions.AOT ? new HashSet<>() : null;
     private static final Map<Collection<AbstractClassLoaderSupplier>, Map<String, LanguageCache>> runtimeCaches = new HashMap<>();
     private static volatile Map<String, LanguageCache> runtimeMimes;
+    @CompilationFinal private static volatile int maxStaticIndex;
     private final String className;
     private final Set<String> mimeTypes;
     private final Set<String> characterMimeTypes;
@@ -99,6 +103,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final TruffleLanguage.Provider provider;
     private volatile List<FileTypeDetector> fileTypeDetectors;
     private volatile Set<Class<? extends Tag>> providedTags;
+
+    private int staticIndex;
 
     /*
      * When building a native image, this field is reset to null so that directories from the image
@@ -130,9 +136,25 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.provider = provider;
     }
 
+    /**
+     * Returns an index that allows to identify this language for the entire host process. This
+     * index can be used and cached statically.
+     */
+    int getStaticIndex() {
+        return staticIndex;
+    }
+
+    /**
+     * Returns the maximum index used by any loaded language. This index updates when new languages
+     * are loaded. Make sure you only read this index when all languages are already loaded.
+     */
+    static int getMaxStaticIndex() {
+        return maxStaticIndex;
+    }
+
     static LanguageCache createHostLanguageCache(TruffleLanguage<Object> languageInstance, String... services) {
         HostLanguageProvider hostLanguageProvider = new HostLanguageProvider(languageInstance, services);
-        return new LanguageCache(
+        LanguageCache cache = new LanguageCache(
                         PolyglotEngineImpl.HOST_LANGUAGE_ID,
                         "Host",
                         "Host",
@@ -145,6 +167,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         Collections.emptySet(),
                         false, false, hostLanguageProvider.getServicesClassNames(),
                         ContextPolicy.SHARED, hostLanguageProvider);
+        cache.staticIndex = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
+        return cache;
     }
 
     static Map<String, LanguageCache> languageMimes() {
@@ -177,7 +201,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
     }
 
-    private static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
+    static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
         }
@@ -191,7 +215,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    private static Map<String, LanguageCache> createLanguages(List<AbstractClassLoaderSupplier> suppliers) {
+    private static synchronized Map<String, LanguageCache> createLanguages(List<AbstractClassLoaderSupplier> suppliers) {
         List<LanguageCache> caches = new ArrayList<>();
         for (Supplier<ClassLoader> supplier : suppliers) {
             ClassLoader loader = supplier.get();
@@ -210,7 +234,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 loadLanguageImpl(provider, caches);
             }
         }
-        Map<String, LanguageCache> cacheToId = new HashMap<>();
+        Map<String, LanguageCache> cacheToId = new LinkedHashMap<>();
         for (LanguageCache languageCache : caches) {
             LanguageCache prev = cacheToId.put(languageCache.getId(), languageCache);
             if (prev != null && (!prev.getClassName().equals(languageCache.getClassName()) || !hasSameCodeSource(prev, languageCache))) {
@@ -221,6 +245,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 throw new IllegalStateException(message);
             }
         }
+        int languageId = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
+        for (LanguageCache cache : cacheToId.values()) {
+            cache.staticIndex = ++languageId;
+        }
+        /*
+         * maxLanguagesCount only needs to grow, otherwise we might access the fast thread local
+         * array out of bounds.
+         */
+        maxStaticIndex = Math.max(maxStaticIndex, languageId);
         return cacheToId;
     }
 
@@ -362,10 +395,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return characterMimeTypes.contains(mimeType);
     }
 
-    boolean isByteMimeType(String mimeType) {
-        return characterMimeTypes.contains(mimeType);
-    }
-
     String getName() {
         return name;
     }
@@ -457,6 +486,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + ", services=" + services + "]";
     }
 
+    static boolean overridesPathContext(String languageId) {
+        assert TruffleOptions.AOT : "Only supported in native image";
+        return languagesOverridingPatchContext.contains(languageId);
+    }
+
     static void resetNativeImageCacheLanguageHomes() {
         synchronized (LanguageCache.class) {
             if (nativeImageCache != null) {
@@ -486,6 +520,20 @@ final class LanguageCache implements Comparable<LanguageCache> {
         assert TruffleOptions.AOT : "Only supported during image generation";
         nativeImageCache.putAll(createLanguages(Arrays.asList(new StrongClassLoaderSupplier(imageClassLoader))));
         nativeImageMimes.putAll(createMimes());
+        for (LanguageCache languageCache : nativeImageCache.values()) {
+            try {
+                Class<?> clz = Class.forName(languageCache.className, false, imageClassLoader);
+                for (Method m : clz.getDeclaredMethods()) {
+                    if (m.getName().equals("patchContext")) {
+                        languagesOverridingPatchContext.add(languageCache.id);
+                        break;
+                    }
+                }
+            } catch (ReflectiveOperationException roe) {
+                PrintStream out = System.err;
+                out.println("Failed to lookup patchContext method. " + roe);
+            }
+        }
     }
 
     /**

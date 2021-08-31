@@ -135,7 +135,7 @@ final class Util_jdk_internal_misc_Signal {
      * This implementation does not complain (by returning -1) about registering signal handlers for
      * signals that the VM itself uses.
      */
-    protected static long handle0(int sig, long nativeH) {
+    static long handle0(int sig, long nativeH) {
         ensureInitialized();
         final Signal.SignalDispatcher newDispatcher = nativeHToDispatcher(nativeH);
         /* If the dispatcher is the CSunMiscSignal handler, then check if the signal is in range. */
@@ -143,12 +143,11 @@ final class Util_jdk_internal_misc_Signal {
             return sunMiscSignalErrorHandler;
         }
         updateDispatcher(sig, newDispatcher);
-        final Signal.SignalDispatcher oldDispatcher = Signal.signal(sig, newDispatcher);
+        final Signal.SignalDispatcher oldDispatcher = PosixUtils.installSignalHandler(sig, newDispatcher);
         CIntPointer sigset = StackValue.get(CIntPointer.class);
         sigset.write(1 << (sig - 1));
         Signal.sigprocmask(Signal.SIG_UNBLOCK(), (Signal.sigset_tPointer) sigset, WordFactory.nullPointer());
-        final long result = dispatcherToNativeH(oldDispatcher);
-        return result;
+        return dispatcherToNativeH(oldDispatcher);
     }
 
     /** Runtime initialization. */
@@ -409,7 +408,7 @@ final class IgnoreSIGPIPEStartupHook implements Runnable {
      */
     @Override
     public void run() {
-        final SignalDispatcher signalResult = Signal.signal(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
+        final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
         VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
     }
 }

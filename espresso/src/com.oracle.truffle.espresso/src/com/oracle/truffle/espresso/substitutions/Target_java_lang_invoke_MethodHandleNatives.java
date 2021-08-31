@@ -51,13 +51,12 @@ import java.util.List;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -79,13 +78,13 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Target_java_lang_invoke_MethodHandleNatives {
     /**
      * Plants an already resolved target into a memberName.
-     * 
+     *
      * @param self the memberName
      * @param ref the target. Can be either a mathod or a field.
      */
     @Substitution
     public static void init(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self, @JavaType(Object.class) StaticObject ref,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass targetKlass = ref.getKlass();
 
         if (targetKlass.getType() == Type.java_lang_reflect_Method) {
@@ -112,8 +111,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static void expand(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(self)) {
             profiler.profile(0);
             throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "MemberName is null");
@@ -187,7 +186,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @SuppressWarnings("unused")
     @Substitution
     public static int getNamedCon(int which, @JavaType(Object[].class) StaticObject name,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         if (name.getKlass() == meta.java_lang_Object_array && name.length() > 0) {
             if (which < CONSTANTS.size()) {
                 if (which >= CONSTANTS_BEFORE_16 && !meta.getJavaVersion().java16OrLater()) {
@@ -203,13 +202,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static void setCallSiteTargetNormal(@JavaType(CallSite.class) StaticObject site, @JavaType(MethodHandle.class) StaticObject target,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         meta.java_lang_invoke_CallSite_target.setObject(site, target);
     }
 
     @Substitution
     public static void setCallSiteTargetVolatile(@JavaType(CallSite.class) StaticObject site, @JavaType(MethodHandle.class) StaticObject target,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         meta.java_lang_invoke_CallSite_target.setObject(site, target, true);
     }
 
@@ -224,7 +223,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @JavaType(Class.class) StaticObject originalCaller,
                     int skip,
                     @JavaType(internalName = "[Ljava/lang/invoke/MemberName;") StaticObject resultsArr,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         if (StaticObject.isNull(defc) || StaticObject.isNull(resultsArr)) {
             return -1;
         }
@@ -276,25 +275,25 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static long objectFieldOffset(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         return (long) meta.HIDDEN_VMINDEX.getHiddenObject(self);
     }
 
     @Substitution
     public static long staticFieldOffset(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         return (long) meta.HIDDEN_VMINDEX.getHiddenObject(self);
     }
 
     @Substitution
     public static @JavaType(Object.class) StaticObject staticFieldBase(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         return meta.java_lang_invoke_MemberName_clazz.getObject(self).getMirrorKlass().getStatics();
     }
 
     @Substitution
     public static @JavaType(Object.class) StaticObject getMemberVMInfo(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Object vmtarget = meta.HIDDEN_VMTARGET.getHiddenObject(self);
         Object vmindex = meta.HIDDEN_VMINDEX.getHiddenObject(self);
         StaticObject[] result = new StaticObject[2];
@@ -360,7 +359,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Substitution(methodName = "resolve")
-    abstract static class ResolveOverload17 extends Node {
+    abstract static class ResolveOverload17 extends SubstitutionNode {
 
         abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
@@ -375,7 +374,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(value = Class.class) StaticObject caller,
                         int lookupMode,
                         boolean speculativeResolve,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached ResolveNode resolve) {
             StaticObject result = StaticObject.NULL;
             EspressoException error = null;
@@ -398,7 +397,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
     }
 
-    abstract static class ResolveNode extends Node {
+    abstract static class ResolveNode extends SubstitutionNode {
 
         /**
          * Complete resolution of a memberName, full with method lookup, flags overwriting and
@@ -419,7 +418,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
                         @JavaType(value = Class.class) StaticObject caller,
                         @SuppressWarnings("unused") int lookupMode,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
                         @Cached BranchProfile isMethodProfile,
                         @Cached BranchProfile isFieldProfile,

@@ -59,6 +59,7 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
@@ -288,6 +289,12 @@ final class HostContext {
                         || receiver instanceof Boolean || receiver instanceof Character //
                         || receiver instanceof Byte || receiver instanceof Short //
                         || receiver instanceof String;
+    }
+
+    private static final ContextReference<HostContext> REFERENCE = ContextReference.create(HostLanguage.class);
+
+    static HostContext get(Node node) {
+        return REFERENCE.get(node);
     }
 
     @GenerateUncached

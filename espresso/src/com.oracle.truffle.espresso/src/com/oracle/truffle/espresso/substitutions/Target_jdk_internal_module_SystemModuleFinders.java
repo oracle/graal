@@ -27,17 +27,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import org.graalvm.home.HomeFinder;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
@@ -48,7 +47,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
                     new ModuleExtension("polyglot.jar", (meta) -> meta.getContext().Polyglot)};
 
     @Substitution
-    abstract static class Of extends Node {
+    abstract static class Of extends SubstitutionNode {
 
         abstract @JavaType(internalName = "Ljava/lang/module/ModuleFinder;") StaticObject execute(
                         @JavaType(internalName = "Ljdk/internal/module/SystemModules;") StaticObject systemModules);
@@ -57,7 +56,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
         @JavaType(internalName = "Ljava/lang/module/ModuleFinder;")
         StaticObject executeImpl(
                         @JavaType(internalName = "Ljdk/internal/module/SystemModules;") StaticObject systemModules,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_SystemModuleFinders_of.getCallTargetNoSubstitution())") DirectCallNode original) {
             // construct a ModuleFinder that can locate our Espresso-specific platform modules
             // and compose it with the resulting module finder from the original call
@@ -72,14 +71,14 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     }
 
     @Substitution
-    abstract static class OfSystem extends Node {
+    abstract static class OfSystem extends SubstitutionNode {
 
         abstract @JavaType(internalName = "Ljava/lang/module/ModuleFinder;") StaticObject execute();
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/module/ModuleFinder;")
         StaticObject executeImpl(
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_SystemModuleFinders_ofSystem.getCallTargetNoSubstitution())") DirectCallNode original) {
             // construct ModuleFinders that can locate our Espresso-specific platform modules
             // and compose it with the resulting module finder from the original call

@@ -148,25 +148,25 @@ public final class Space {
 
     /** Report some statistics about this Space. */
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[").string(getName()).string(":").indent(true);
+        log.string(getName()).string(":").indent(true);
         accounting.report(log);
         if (traceHeapChunks) {
             if (getFirstAlignedHeapChunk().isNonNull()) {
                 log.newline().string("aligned chunks:").redent(true);
                 for (AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk(); aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {
-                    log.newline().hex(aChunk).string(" (").hex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").hex(HeapChunk.getTopPointer(aChunk)).string(")");
+                    log.newline().zhex(aChunk).string(" (").zhex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").zhex(HeapChunk.getTopPointer(aChunk)).string(")");
                 }
                 log.redent(false);
             }
             if (getFirstUnalignedHeapChunk().isNonNull()) {
                 log.newline().string("unaligned chunks:").redent(true);
                 for (UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk(); uChunk.isNonNull(); uChunk = HeapChunk.getNext(uChunk)) {
-                    log.newline().hex(uChunk).string(" (").hex(UnalignedHeapChunk.getObjectStart(uChunk)).string("-").hex(HeapChunk.getTopPointer(uChunk)).string(")");
+                    log.newline().zhex(uChunk).string(" (").zhex(UnalignedHeapChunk.getObjectStart(uChunk)).string("-").zhex(HeapChunk.getTopPointer(uChunk)).string(")");
                 }
                 log.redent(false);
             }
         }
-        log.redent(false).string("]");
+        log.redent(false);
         return log;
     }
 
@@ -176,30 +176,20 @@ public final class Space {
      * This is "slow-path" memory allocation.
      */
     private Pointer allocateMemory(UnsignedWord objectSize) {
-        Log trace = Log.noopLog().string("[Space.allocateMemory:").string("  space: ").string(getName()).string("  size: ").unsigned(objectSize).newline();
         Pointer result = WordFactory.nullPointer();
         /* First try allocating in the last chunk. */
         AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();
-        trace.string("  oldChunk: ").hex(oldChunk);
         if (oldChunk.isNonNull()) {
             result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
-            trace.string("  oldChunk provides: ").hex(result);
         }
         /* If oldChunk did not provide, try allocating a new chunk for the requested memory. */
         if (result.isNull()) {
             AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
-            trace.string("  newChunk: ").hex(newChunk);
             if (newChunk.isNonNull()) {
                 /* Allocate the Object within the new chunk. */
                 result = AlignedHeapChunk.allocateMemory(newChunk, objectSize);
-                if (isSurvivorSpace()) {
-                    trace.string("  newSurvivorChunk provides: ").hex(result);
-                } else {
-                    trace.string("  newChunk provides: ").hex(result);
-                }
             }
         }
-        trace.string("  returns: ").hex(result).string("]").newline();
         return result;
     }
 

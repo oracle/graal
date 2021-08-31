@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNode.AllocExistingLocalSymbolsNode.AllocExistingGlobalSymbolsNode;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNode.AllocExistingLocalSymbolsNode.AllocExistingGlobalSymbolsNode.AllocExternalFunctionNode;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNode.AllocExistingLocalSymbolsNode.AllocExistingGlobalSymbolsNode.AllocExternalGlobalNode;
@@ -162,9 +163,10 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
             LLVMPointer allocateFromLocalScope(@SuppressWarnings("unused") LLVMScope scope,
                             LLVMSymbol symbol,
                             LLVMContext context,
-                            @Bind("scope.get(symbol.getName())") LLVMSymbol resultSymbol) {
+                            @Bind("scope.get(symbol.getName())") LLVMSymbol resultSymbol,
+                            @Cached BranchProfile exception) {
                 LLVMSymbol function = LLVMAlias.resolveAlias(resultSymbol);
-                LLVMPointer pointer = context.getSymbol(function);
+                LLVMPointer pointer = context.getSymbol(function, exception);
                 context.registerSymbol(symbol, pointer);
                 return pointer;
             }

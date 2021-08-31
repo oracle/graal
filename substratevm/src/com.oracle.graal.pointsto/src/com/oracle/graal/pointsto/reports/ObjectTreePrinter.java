@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,18 +59,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class ObjectTreePrinter extends ObjectScanner {
 
-    public static void print(BigBang bigbang, String reportsPath, String reportName) {
+    public static void print(BigBang bb, String reportsPath, String reportName) {
         ReportUtils.report("object tree", reportsPath, "object_tree_" + reportName, "txt",
-                        writer -> ObjectTreePrinter.doPrint(writer, bigbang));
+                        writer -> ObjectTreePrinter.doPrint(writer, bb));
     }
 
-    private static void doPrint(PrintWriter out, BigBang bigbang) {
-        if (!PointstoOptions.ExhaustiveHeapScan.getValue(bigbang.getOptions())) {
-            String types = Arrays.stream(bigbang.skippedHeapTypes()).map(t -> t.toJavaName()).collect(Collectors.joining(", "));
+    private static void doPrint(PrintWriter out, BigBang bb) {
+        if (!PointstoOptions.ExhaustiveHeapScan.getValue(bb.getOptions())) {
+            String types = Arrays.stream(bb.skippedHeapTypes()).map(t -> t.toJavaName()).collect(Collectors.joining(", "));
             System.out.println("Exhaustive heap scanning is disabled. The object tree will not contain all instances of types: " + types);
             System.out.println("Exhaustive heap scanning can be turned on using -H:+ExhaustiveHeapScan.");
         }
-        ObjectTreePrinter printer = new ObjectTreePrinter(bigbang);
+        ObjectTreePrinter printer = new ObjectTreePrinter(bb);
         printer.scanBootImageHeapRoots(fieldComparator, positionComparator);
         printer.printTypeHierarchy(out);
     }
@@ -293,13 +293,13 @@ public final class ObjectTreePrinter extends ObjectScanner {
     private final SimpleMatcher expandRootMatcher;
     private final SimpleMatcher defaultSuppressRootMatcher;
 
-    private ObjectTreePrinter(BigBang bigbang) {
-        super(bigbang, null, new ReusableSet());
+    private ObjectTreePrinter(BigBang bb) {
+        super(bb, null, new ReusableSet());
 
         /* Use linked hash map for predictable iteration order. */
         this.constantToNode = new LinkedHashMap<>();
 
-        OptionValues options = bigbang.getOptions();
+        OptionValues options = bb.getOptions();
 
         this.suppressTypeMatcher = new SimpleMatcher(AnalysisReportsOptions.ImageObjectTreeSuppressTypes.getValue(options).trim().split(","));
         this.expandTypeMatcher = new SimpleMatcher(AnalysisReportsOptions.ImageObjectTreeExpandTypes.getValue(options).trim().split(","));

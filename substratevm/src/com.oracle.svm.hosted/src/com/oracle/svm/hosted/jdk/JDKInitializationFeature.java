@@ -77,6 +77,14 @@ public class JDKInitializationFeature implements Feature {
             rci.rerunInitialization("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap");
         }
 
+        rci.rerunInitialization("sun.net.PortConfig", "Calls PortConfig.getLower0() and PortConfig.getUpper0()");
+
+        rci.rerunInitialization("sun.nio.ch.DevPollArrayWrapper", "Calls IOUtil.fdLimit()");
+        rci.rerunInitialization("sun.nio.ch.EPoll", "Calls EPoll.eventSize(), EPoll.eventsOffset() and EPoll.dataOffset()");
+        rci.rerunInitialization("sun.nio.ch.EPollSelectorImpl", "Calls IOUtil.fdLimit()");
+        rci.rerunInitialization("sun.nio.ch.EventPortSelectorImpl", "Calls IOUtil.fdLimit()");
+        rci.rerunInitialization("sun.nio.fs.LinuxWatchService$Poller", "LinuxWatchService.eventSize() and LinuxWatchService.eventOffsets()");
+
         rci.initializeAtBuildTime("sun.reflect", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.mscapi", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.text", "Core JDK classes are initialized at build time");

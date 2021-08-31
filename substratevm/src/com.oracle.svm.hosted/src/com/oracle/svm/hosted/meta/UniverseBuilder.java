@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -60,9 +61,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
+import com.oracle.svm.core.InvalidVTableEntryHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
@@ -80,6 +83,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -651,6 +655,12 @@ public class UniverseBuilder {
          */
         buildVTable(objectClass, vtablesMap, usedSlotsMap, vtablesSlots);
 
+        /*
+         * To avoid segfaults when jumping to address 0, all unused vtable entries are filled with a
+         * stub that reports a fatal error.
+         */
+        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidVTableEntryHandler.HANDLER_METHOD);
+
         for (HostedType type : hUniverse.getTypes()) {
             if (type.isArray()) {
                 type.vtable = objectClass.vtable;
@@ -659,13 +669,20 @@ public class UniverseBuilder {
                 assert type.isInterface() || type.isPrimitive();
                 type.vtable = new HostedMethod[0];
             }
+
+            HostedMethod[] vtableArray = type.vtable;
+            for (int i = 0; i < vtableArray.length; i++) {
+                if (vtableArray[i] == null) {
+                    vtableArray[i] = invalidVTableEntryHandler;
+                }
+            }
         }
 
         if (SubstrateUtil.assertionsEnabled()) {
             /* Check that all vtable entries are the correctly resolved methods. */
             for (HostedType type : hUniverse.getTypes()) {
                 for (HostedMethod m : type.vtable) {
-                    assert m == null || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
+                    assert m == null || m.equals(invalidVTableEntryHandler) || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
                 }
             }
         }
@@ -958,5 +975,15 @@ public class UniverseBuilder {
                 hField.setUnmaterializedStaticConstant();
             }
         }
+    }
+}
+
+@AutomaticFeature
+final class InvalidVTableEntryFeature implements Feature {
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
+        access.registerAsCompiled(InvalidVTableEntryHandler.HANDLER_METHOD);
     }
 }

@@ -56,8 +56,6 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.AOTSupport;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
@@ -104,6 +102,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 /**
  * Note that this test is also used in AOTSupportCompilationTest.
  */
+@SuppressWarnings("deprecation")
 public class AOTSupportTest extends AbstractPolyglotTest {
 
     public static final String LANGUAGE_ID = "AOTSupportTest_TestLanguage";
@@ -319,13 +318,13 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
         @Specialization(guards = "arg == 4")
         int languageReferenceLookup1(int arg,
-                        @CachedLanguage TestLanguage lang1) {
+                        @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang1) {
             return arg;
         }
 
         @Specialization(guards = "arg == 5", limit = "1")
         int languageReferenceLookup2(int arg,
-                        @CachedLanguage TestLanguage lang1,
+                        @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang1,
                         @CachedLibrary("lang1.getValue()") InteropLibrary lib) {
             return arg;
         }
@@ -519,13 +518,13 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
             @Specialization(guards = "arg == 4")
             static int languageReferenceLookup1(AOTInitializable receiver, int arg,
-                            @CachedLanguage TestLanguage lang1) {
+                            @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang1) {
                 return arg;
             }
 
             @Specialization(guards = "arg == 5", limit = "1")
             static int languageReferenceLookup2(AOTInitializable receiver, int arg,
-                            @CachedLanguage TestLanguage lang1,
+                            @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang1,
                             @CachedLibrary("lang1.getValue()") InteropLibrary lib) {
                 return arg;
             }
@@ -614,8 +613,8 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
             @Specialization(guards = {"arg == 10"})
             static int nop2(AOTInitializable receiver, int arg,
-                            @CachedContext(ProxyLanguage.class) ProxyLanguage.LanguageContext context,
-                            @CachedLanguage ProxyLanguage language) {
+                            @com.oracle.truffle.api.dsl.CachedContext(ProxyLanguage.class) ProxyLanguage.LanguageContext context,
+                            @com.oracle.truffle.api.dsl.CachedLanguage ProxyLanguage language) {
                 return arg;
             }
 

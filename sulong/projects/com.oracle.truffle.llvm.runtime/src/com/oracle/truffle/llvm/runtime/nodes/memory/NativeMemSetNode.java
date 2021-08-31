@@ -31,11 +31,9 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Struct;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
@@ -136,9 +134,8 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
 
     @Specialization(guards = "length <= MAX_JAVA_LEN")
     protected void nativeInJavaMemset(LLVMNativePointer object, byte value, long length,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                    @CachedLanguage LLVMLanguage language) {
-        LLVMMemory memory = language.getLLVMMemory();
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
+        LLVMMemory memory = getLanguage().getLLVMMemory();
 
         long current = globalAccess.executeWithTarget(object).asNative();
         long i64ValuesToWrite = length >> 3;
@@ -163,9 +160,8 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     @Specialization(replaces = "nativeInJavaMemset")
     @SuppressWarnings("deprecation")
     protected void nativeMemset(LLVMNativePointer object, byte value, long length,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                    @CachedLanguage LLVMLanguage language) {
-        LLVMMemory memory = language.getLLVMMemory();
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
+        LLVMMemory memory = getLanguage().getLLVMMemory();
         memory.memset(this, globalAccess.executeWithTarget(object), length, value);
     }
 }

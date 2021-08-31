@@ -91,7 +91,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     }
 
     /** A ring buffer of visited objects for diagnostics. */
-    static final class DiagnosticReporter implements DiagnosticThunk {
+    static final class DiagnosticReporter extends DiagnosticThunk {
 
         static class Options {
             @Option(help = "Length of GreyToBlackObjectVisitor history for diagnostics. 0 implies no history is kept.") //
@@ -132,8 +132,13 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
         }
 
         @Override
+        public int maxInvocations() {
+            return 1;
+        }
+
+        @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        public void invokeWithoutAllocation(Log log) {
+        public void printDiagnostics(Log log, int invocationCount) {
             if (historyCount > 0) {
                 log.string("[GreyToBlackObjectVisitor.RealDiagnosticReporter.invoke:")
                                 .string("  history / count:  ")
@@ -149,11 +154,11 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
                     int index = countToIndex(historyCount + count);
                     log.string("  index: ").unsigned(index, 3, Log.RIGHT_ALIGN);
                     Word objectEntry = objectHistory[index];
-                    log.string("  objectEntry: ").hex(objectEntry);
+                    log.string("  objectEntry: ").zhex(objectEntry);
                     UnsignedWord headerEntry = headerHistory[index];
                     Pointer headerHub = (Pointer) ObjectHeaderImpl.clearBits(headerEntry);
                     UnsignedWord headerHeaderBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(headerEntry);
-                    log.string("  headerEntry: ").hex(headerEntry).string(" = ").hex(headerHub).string(" | ").hex(headerHeaderBits).string(" / ");
+                    log.string("  headerEntry: ").zhex(headerEntry).string(" = ").zhex(headerHub).string(" | ").zhex(headerHeaderBits).string(" / ");
                     boolean headerInImageHeap = imageHeapInfo.isInReadOnlyReferencePartition(headerHub) ||
                                     imageHeapInfo.isInReadOnlyRelocatablePartition(headerHub);
                     if (headerInImageHeap) {

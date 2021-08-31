@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,10 +43,11 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.AllSynchronizedTypeFlow;
@@ -99,7 +100,7 @@ public class PointsToStats {
 
     static boolean reportStatistics;
 
-    public static void init(BigBang bb) {
+    public static void init(PointsToAnalysis bb) {
         registerTypeState(bb, EmptyTypeState.SINGLETON);
         registerTypeState(bb, NullTypeState.SINGLETON);
         reportStatistics = bb.reportAnalysisStatistics();
@@ -140,7 +141,7 @@ public class PointsToStats {
 
     private static List<TypeFlowBuilder<?>> typeFlowBuilders = new CopyOnWriteArrayList<>();
 
-    public static void registerTypeFlowBuilder(BigBang bb, TypeFlowBuilder<?> builder) {
+    public static void registerTypeFlowBuilder(PointsToAnalysis bb, TypeFlowBuilder<?> builder) {
         if (!bb.reportAnalysisStatistics()) {
             return;
         }
@@ -255,7 +256,7 @@ public class PointsToStats {
     private static ConcurrentHashMap<TypeFlow<?>, TypeFlowStats> typeFlowStats = new ConcurrentHashMap<>();
     private static ConcurrentHashMap<TypeFlow<?>, String> retainReson = new ConcurrentHashMap<>();
 
-    public static void registerTypeFlowRetainReason(BigBang bb, TypeFlow<?> flow, String reason) {
+    public static void registerTypeFlowRetainReason(PointsToAnalysis bb, TypeFlow<?> flow, String reason) {
         if (!bb.reportAnalysisStatistics()) {
             return;
         }
@@ -272,7 +273,7 @@ public class PointsToStats {
         retainReson.put(flow, originalFlowReason);
     }
 
-    public static void registerTypeFlowUpdate(BigBang bb, TypeFlow<?> flow, TypeState state) {
+    public static void registerTypeFlowUpdate(PointsToAnalysis bb, TypeFlow<?> flow, TypeState state) {
         if (!bb.reportAnalysisStatistics()) {
             return;
         }
@@ -285,7 +286,7 @@ public class PointsToStats {
         stats.registerUpdate(state);
     }
 
-    public static void registerTypeFlowSuccessfulUpdate(BigBang bb, TypeFlow<?> flow, TypeState state) {
+    public static void registerTypeFlowSuccessfulUpdate(PointsToAnalysis bb, TypeFlow<?> flow, TypeState state) {
         if (!bb.reportAnalysisStatistics()) {
             return;
         }
@@ -298,7 +299,7 @@ public class PointsToStats {
         stats.registerSuccessfulUpdate(state);
     }
 
-    public static void registerTypeFlowQueuedUpdate(BigBang bb, TypeFlow<?> flow) {
+    public static void registerTypeFlowQueuedUpdate(PointsToAnalysis bb, TypeFlow<?> flow) {
         if (!bb.reportAnalysisStatistics()) {
             return;
         }
@@ -339,7 +340,7 @@ public class PointsToStats {
     private static final AtomicInteger nextStateId = new AtomicInteger();
     private static ConcurrentHashMap<TypeState, AtomicInteger> typeStateStats = new ConcurrentHashMap<>();
 
-    static void registerTypeState(BigBang bb, TypeState state) {
+    static void registerTypeState(PointsToAnalysis bb, TypeState state) {
 
         if (!bb.reportAnalysisStatistics()) {
             return;
@@ -378,7 +379,7 @@ public class PointsToStats {
 
     private static ConcurrentHashMap<UnionOperation, AtomicInteger> unionStats = new ConcurrentHashMap<>();
 
-    static void registerUnionOperation(BigBang bb, TypeState s1, TypeState s2, TypeState result) {
+    static void registerUnionOperation(PointsToAnalysis bb, TypeState s1, TypeState s2, TypeState result) {
 
         if (!bb.reportAnalysisStatistics()) {
             return;

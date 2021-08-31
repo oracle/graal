@@ -91,14 +91,32 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
+    @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("serial")
-    private static class TestGuestError extends AbstractTruffleException {
+    static class TestGuestError extends AbstractTruffleException {
+
+        String exceptionMessage;
 
         TestGuestError() {
             super("MyError");
+        }
+
+        @ExportMessage
+        boolean hasExceptionMessage() {
+            return exceptionMessage != null;
+        }
+
+        @ExportMessage
+        Object getExceptionMessage() throws UnsupportedMessageException {
+            if (exceptionMessage != null) {
+                return exceptionMessage;
+            } else {
+                throw UnsupportedMessageException.create();
+            }
         }
     }
 
@@ -336,7 +354,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -386,7 +404,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
 
                     @Override
                     @TruffleBoundary
@@ -520,7 +538,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -587,6 +605,33 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
+    @Test
+    public void testExceptionMessage() {
+        try (Context ctx = Context.create()) {
+            TestGuestError guestError = new TestGuestError();
+            guestError.exceptionMessage = "interop exception message";
+            CauseErrorTruffleObject causeError = new CauseErrorTruffleObject();
+            causeError.thrownError = guestError;
+            Value throwError = ctx.asValue(causeError);
+            try {
+                throwError.execute();
+                Assert.fail();
+            } catch (PolyglotException e) {
+                Assert.assertEquals("interop exception message", e.getMessage());
+                Assert.assertTrue(e.isGuestException());
+            }
+
+            guestError.exceptionMessage = null;
+            try {
+                throwError.execute();
+                Assert.fail();
+            } catch (PolyglotException e) {
+                Assert.assertEquals("MyError", e.getMessage());
+                Assert.assertTrue(e.isGuestException());
+            }
+        }
+    }
+
     abstract static class BaseNode extends Node {
         abstract Object execute(VirtualFrame frame);
     }
@@ -596,7 +641,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         @Specialization
         Object doGeneric(@CachedLibrary(limit = "1") InteropLibrary interop) {
             try {
-                Object bindings = lookupContextReference(ProxyLanguage.class).get().getEnv().getPolyglotBindings();
+                Object bindings = LanguageContext.get(this).getEnv().getPolyglotBindings();
                 return interop.readMember(bindings, "receiver");
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 throw CompilerDirectives.shouldNotReachHere();

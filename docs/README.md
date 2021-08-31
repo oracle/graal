@@ -19,10 +19,15 @@ To update the documentation:
 
 1. Create a GitHub account or sign in to your existing account
 2. Navigate to the source file you are intended to update
-3. Click the "edit" button at the top of the section
+3. Click the "edit" button at the top of the section.
+   > Note: GitHub introduced a new feature: online web editor, which allows to edit multiple files from a browser. To enable it, press `.` on any GitHub repo. For example, go to [https://github.com/oracle/graal](https://github.com/oracle/graal) and hit `.`. You will be immediately redirected to [https://github.dev/oracle/graal](https://github.dev/oracle/graal).
+   ![](/img/github-web-editor.png)
+ 
 4. Create a Pull Request (PR)
 5. Sign the [Oracle Contributor Agreement](https://oca.opensource.oracle.com/)
 6. Watch your PR for pipeline results
+
+
 
 A member from the GraalVM project team will review your PR and merge as appropriate.
 There is a CI pipeline which will pick up your change once merged to the master branch, and publish on the website.

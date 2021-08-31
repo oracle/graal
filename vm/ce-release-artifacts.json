@@ -38,9 +38,9 @@
 		]
 	},
 	{
-		"name": "graalvm-ce-java16",
+		"name": "graalvm-ce-java17",
 		"core": true,
-		"jdk": "jdk_16",
+		"jdk": "jdk_17",
 		"artifacts": [
 			{
 				"os": "linux",
@@ -136,9 +136,9 @@
 		]
 	},
 	{
-		"name": "llvm-toolchain-installable-java16",
+		"name": "llvm-toolchain-installable-java17",
 		"core": false,
-		"jdk": "jdk_16",
+		"jdk": "jdk_17",
 		"artifacts": [
 			{
 				"os": "linux",
@@ -193,9 +193,9 @@
 		]
 	},
 	{
-		"name": "native-image-installable-svm-java16",
+		"name": "native-image-installable-svm-java17",
 		"core": false,
-		"jdk": "jdk_16",
+		"jdk": "jdk_17",
 		"artifacts": [
 			{
 				"os": "linux",
@@ -242,9 +242,9 @@
 		]
 	},
 	{
-		"name": "python-installable-svm-java16",
+		"name": "python-installable-svm-java17",
 		"core": false,
-		"jdk": "jdk_16",
+		"jdk": "jdk_17",
 		"artifacts": [
 			{
 				"os": "linux",
@@ -287,9 +287,9 @@
 		]
 	},
 	{
-		"name": "r-installable-java16",
+		"name": "r-installable-java17",
 		"core": false,
-		"jdk": "jdk_16",
+		"jdk": "jdk_17",
 		"artifacts": [
 			{
 				"os": "linux",
@@ -332,9 +332,9 @@
 		]
 	},
 	{
-		"name": "ruby-installable-svm-java16",
+		"name": "ruby-installable-svm-java17",
 		"core": false,
-		"jdk": "jdk_16",
+		"jdk": "jdk_17",
 		"artifacts": [
 			{
 				"os": "linux",
@@ -389,9 +389,9 @@
 		]
 	},
 	{
-		"name": "wasm-installable-svm-java16",
+		"name": "wasm-installable-svm-java17",
 		"core": false,
-		"jdk": "jdk_16",
+		"jdk": "jdk_17",
 		"artifacts": [
 			{
 				"os": "linux",
@@ -488,9 +488,9 @@
                 ]
         },
         {
-                "name": "nodejs-installable-svm-java16",
+                "name": "nodejs-installable-svm-java17",
                 "core": false,
-                "jdk": "jdk_16",
+                "jdk": "jdk_17",
                 "artifacts": [
                         {
                                 "os": "linux",

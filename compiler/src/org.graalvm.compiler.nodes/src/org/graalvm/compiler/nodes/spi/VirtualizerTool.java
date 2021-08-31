@@ -29,6 +29,7 @@ import java.util.List;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -61,9 +62,10 @@ public interface VirtualizerTool extends CoreProviders {
      * @param virtualObject the new virtual object.
      * @param entryState the initial state of the virtual object's fields.
      * @param locks the initial locking depths.
+     * @param sourcePosition a source position for the new node or null if none is available
      * @param ensureVirtualized true if this object needs to stay virtual
      */
-    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks, boolean ensureVirtualized);
+    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks, NodeSourcePosition sourcePosition, boolean ensureVirtualized);
 
     /**
      * Returns a VirtualObjectNode if the given value is aliased with a virtual object that is still

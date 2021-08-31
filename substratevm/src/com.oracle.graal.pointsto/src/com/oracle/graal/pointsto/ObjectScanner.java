@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Provides functionality for scanning constant objects.
  *
- * The scanning is done in parallel. The set of visited elements is a special datastructure whose
+ * The scanning is done in parallel. The set of visited elements is a special data structure whose
  * structure can be reused over multiple scanning iterations to save CPU resources. (For details
  * {@link ReusableSet}).
  */
@@ -61,8 +61,8 @@ public abstract class ObjectScanner {
     private final CompletionExecutor executor;
     private final Deque<WorklistEntry> worklist;
 
-    public ObjectScanner(BigBang bigbang, CompletionExecutor executor, ReusableSet scannedObjects) {
-        this.bb = bigbang;
+    public ObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects) {
+        this.bb = bb;
         if (executor != null) {
             this.executor = executor;
             this.worklist = null;
@@ -246,6 +246,7 @@ public abstract class ObjectScanner {
             return;
         }
         if (!bb.scanningPolicy().scanConstant(bb, value)) {
+            analysisType(bb, valueObj).registerAsInHeap();
             return;
         }
         if (scannedObjects.putAndAcquire(valueObj) == null) {

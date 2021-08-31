@@ -44,8 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLLanguage;
@@ -74,35 +72,13 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
      */
     @CompilationFinal private SLFunction cachedFunction;
 
-    /**
-     * The stored context reference. Caching the context reference in a field like this always
-     * ensures the most efficient context lookup. The {@link SLContext} must not be stored in the
-     * AST in the multi-context case.
-     */
-    @CompilationFinal private ContextReference<SLContext> contextRef;
-
-    /**
-     * It is always safe to store the language in the AST if the language supports
-     * {@link ContextPolicy#SHARED shared}.
-     */
-    @CompilationFinal private SLLanguage language;
-
     public SLFunctionLiteralNode(String functionName) {
         this.functionName = functionName;
     }
 
     @Override
     public SLFunction executeGeneric(VirtualFrame frame) {
-        ContextReference<SLContext> contextReference = contextRef;
-        if (contextReference == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            contextReference = contextRef = lookupContextReference(SLLanguage.class);
-        }
-        SLLanguage l = language;
-        if (l == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            l = language = lookupLanguageReference(SLLanguage.class).get();
-        }
+        SLLanguage l = SLLanguage.get(this);
         CompilerAsserts.partialEvaluationConstant(l);
 
         SLFunction function;
@@ -112,7 +88,7 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
                 /* We are about to change a @CompilationFinal field. */
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 /* First execution of the node: lookup the function in the function registry. */
-                this.cachedFunction = function = contextReference.get().getFunctionRegistry().lookup(functionName, true);
+                this.cachedFunction = function = SLContext.get(this).getFunctionRegistry().lookup(functionName, true);
             }
         } else {
             /*
@@ -124,7 +100,7 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
             }
             // in the multi-context case we are not allowed to store
             // SLFunction objects in the AST. Instead we always perform the lookup in the hash map.
-            function = contextReference.get().getFunctionRegistry().lookup(functionName, true);
+            function = SLContext.get(this).getFunctionRegistry().lookup(functionName, true);
         }
         return function;
     }

@@ -34,13 +34,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;
@@ -78,9 +76,9 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             eventType.initialize();
             SecuritySupport.registerEvent(newEventClass);
             JfrJavaEvents.registerEventClass(newEventClass);
+            // the reflection registration for the event handler field is delayed to the JfrFeature
+            // duringAnalysis callback so it does not not race/interfere with other retransforms
             JVM.getJVM().retransformClasses(new Class<?>[]{newEventClass});
-            Field field = ReflectionUtil.lookupField(newEventClass, "eventHandler");   // EventInstrumentation.FIELD_EVENT_HANDLER
-            RuntimeReflection.register(field);
             return Boolean.TRUE;
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);

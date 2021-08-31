@@ -33,7 +33,6 @@ import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * Base node for all implementations of Java methods.
@@ -107,11 +106,6 @@ public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
 
     public final Source getSource() {
         return getMethod().getSource();
-    }
-
-    @Override
-    public final EspressoContext getContext() {
-        return getMethod().getContext();
     }
 
     @Override

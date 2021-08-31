@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -40,6 +39,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
@@ -72,7 +72,8 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
     @Specialization
     @ExplodeLoop
     protected Object doNew(VirtualFrame frame, LLVMManagedPointer value,
-                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM) {
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM,
+                    @Cached BranchProfile exception) {
         Object foreign = asForeign.execute(value);
 
         Object[] evaluatedArgs = new Object[args.length];
@@ -85,13 +86,13 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
             rawValue = foreignNewInstance.instantiate(foreign, evaluatedArgs);
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMPolyglotException(this, "Polyglot value cannot be instantiated.");
         } catch (UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMPolyglotException(this, "Wrong argument type passed to polyglot_new_instance.");
         } catch (ArityException e) {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMPolyglotException(this, "Wrong number of arguments passed to polyglot_new_instance, expected %d but got %d.", e.getExpectedMinArity(), e.getActualArity());
         }
     }
@@ -102,7 +103,6 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
      */
     @Fallback
     public Object fallback(Object value) {
-        CompilerDirectives.transferToInterpreter();
         throw new LLVMPolyglotException(this, "Non-polyglot value passed to polyglot_new_instance.");
     }
 

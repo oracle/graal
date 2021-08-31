@@ -177,6 +177,11 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     }
 
     @Override
+    public boolean hasCodeOffsetInImage() {
+        throw unimplemented();
+    }
+
+    @Override
     public int getCodeOffsetInImage() {
         throw unimplemented();
     }

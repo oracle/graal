@@ -36,7 +36,9 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction.INITIA
 import static org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction.LOAD_COUNTERS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction.RESOLVE;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -76,7 +78,6 @@ import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
-import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CCall;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
@@ -330,7 +331,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
      * operand of this instruction.
      */
     private Value transformBenchmarkCounterIncrement(Value increment) {
-        if (AArch64ArithmeticLIRGenerator.isValidBinaryConstant(AArch64ArithmeticOp.ADDS, increment)) {
+        if (isJavaConstant(increment) && AArch64ArithmeticLIRGenerator.isAddSubtractConstant(asJavaConstant(increment))) {
             return increment;
         } else {
             return asAllocatable(increment);

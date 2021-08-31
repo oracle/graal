@@ -159,14 +159,8 @@ public final class TruffleLogger {
         return loggerCache.getOrCreateLogger(id, loggerName);
     }
 
-    static LoggerCache createLoggerCache(Object loggerCache, Map<String, Level> logLevels) {
-        LoggerCache cache = new LoggerCache(loggerCache);
-        if (!logLevels.isEmpty()) {
-            Object vmObject = LanguageAccessor.engineAccess().getLoggerOwner(loggerCache);
-            assert vmObject != null;
-            cache.addLogLevelsForContext(vmObject, logLevels);
-        }
-        return cache;
+    LoggerCache getLoggerCache() {
+        return this.loggerCache;
     }
 
     /**
@@ -964,7 +958,7 @@ public final class TruffleLogger {
         private Map<String, Level> effectiveLevels;
         private volatile Set<String> knownIds;
 
-        private LoggerCache(Object loggerCacheSpi) {
+        LoggerCache(Object loggerCacheSpi) {
             Objects.requireNonNull(loggerCacheSpi);
             this.loggerCache = loggerCacheSpi;
             this.polyglotRootLogger = new TruffleLogger(this);
@@ -975,14 +969,14 @@ public final class TruffleLogger {
             this.effectiveLevels = Collections.emptyMap();
         }
 
-        synchronized void addLogLevelsForContext(final Object spi, final Map<String, Level> addedLevels) {
-            activeContexts.add(new ContextWeakReference(spi, contextsRefQueue, addedLevels));
+        synchronized void addLogLevelsForVMObject(final Object vmObject, final Map<String, Level> addedLevels) {
+            activeContexts.add(new ContextWeakReference(vmObject, contextsRefQueue, addedLevels));
             final Set<String> toRemove = collectRemovedLevels();
             reconfigure(addedLevels, toRemove);
         }
 
-        synchronized void removeLogLevelsForContext(final Object context) {
-            Set<String> toRemove = removeContext(context);
+        synchronized void removeLogLevelsForVMObject(final Object vmObject) {
+            Set<String> toRemove = removeContext(vmObject);
             reconfigure(Collections.emptyMap(), toRemove);
         }
 

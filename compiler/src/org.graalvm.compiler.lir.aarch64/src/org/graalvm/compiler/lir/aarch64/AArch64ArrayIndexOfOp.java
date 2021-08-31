@@ -136,7 +136,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          * 4 UTF-16 or 8 Latin1 chars) else search chunk-by-chunk.
          */
         masm.sub(64, curIndex, arrayLength, fromIndex);
-        masm.cmp(64, curIndex, chunkSize / charSize);
+        masm.compare(64, curIndex, chunkSize / charSize);
         masm.branchConditionally(ConditionFlag.GE, searchByChunk);
 
         /*
@@ -237,7 +237,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
              * is not a correctness problem and will not result in more than one iteration of
              * chunkedReadLoop being executed.
              */
-            masm.cmp(32, curIndex, chunkSize);
+            masm.compare(32, curIndex, chunkSize);
             masm.branchConditionally(ConditionFlag.EQ, end);
             masm.mov(curIndex, 0);
             masm.jmp(chunkedReadLoop);

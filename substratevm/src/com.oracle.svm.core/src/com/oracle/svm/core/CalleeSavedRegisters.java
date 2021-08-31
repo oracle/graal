@@ -31,9 +31,11 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Register;
@@ -106,5 +108,14 @@ public class CalleeSavedRegisters {
         int result = saveAreaOffsetInFrame + offsetsInSaveArea.get(register);
         assert result < 0 : "Note that the offset of a callee save register is negative, because it is located in the callee frame";
         return result;
+    }
+
+    /**
+     * Optional method for subclasses to implement. It is called during diagnostic printing to print
+     * the values of saved registers of the provided stack frame. The caller must ensure that the
+     * provided frame really has callee saved registers, since that cannot be checked automatically.
+     */
+    @SuppressWarnings("unused")
+    public void dumpRegisters(Log log, Pointer callerSP, boolean printLocationInfo, boolean allowJavaHeapAccess) {
     }
 }

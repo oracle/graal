@@ -77,7 +77,7 @@ import java.util.Objects;
  * StaticShape cannot be subclassed by custom implementations and, when required, it allows
  * {@linkplain StaticProperty static properties} to check that the receiver object matches the
  * expected shape.
- * 
+ *
  * @see StaticShape#newBuilder(TruffleLanguage)
  * @see StaticShape.Builder
  * @see StaticProperty
@@ -121,7 +121,7 @@ public abstract class StaticShape<T> {
      * @param language an instance of the {@link TruffleLanguage} that uses the Static Object Model
      * @return a new static shape builder
      * @throws NullPointerException if language is null
-     * 
+     *
      * @see StaticShape
      * @see StaticProperty
      * @see DefaultStaticProperty
@@ -158,12 +158,12 @@ public abstract class StaticShape<T> {
 
     abstract Object getStorage(Object obj, boolean primitive);
 
-    final <U> U cast(Object obj, Class<U> type) {
+    final <U> U cast(Object obj, Class<U> type, boolean checkCondition) {
         if (safetyChecks) {
             return checkedCast(obj, type);
         } else {
             assert checkedCast(obj, type) != null;
-            return SomAccessor.RUNTIME.unsafeCast(obj, type, true, false, false);
+            return SomAccessor.RUNTIME.unsafeCast(obj, type, !checkCondition || type.isInstance(obj), false, false);
         }
     }
 

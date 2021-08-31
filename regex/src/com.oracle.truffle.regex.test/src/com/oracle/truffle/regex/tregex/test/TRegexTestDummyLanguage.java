@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
 
@@ -55,7 +56,7 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        return getCurrentContext(TRegexTestDummyLanguage.class).getEnv().parseInternal(
+        return DummyLanguageContext.get(null).getEnv().parseInternal(
                         Source.newBuilder(RegexLanguage.ID, parsingRequest.getSource().getCharacters(), parsingRequest.getSource().getName()).internal(true).build());
     }
 
@@ -89,6 +90,12 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
 
         public Env getEnv() {
             return env;
+        }
+
+        private static final ContextReference<DummyLanguageContext> REFERENCE = ContextReference.create(TRegexTestDummyLanguage.class);
+
+        public static DummyLanguageContext get(Node node) {
+            return REFERENCE.get(node);
         }
     }
 }

@@ -1159,7 +1159,7 @@ public class GraphUtil {
         }
         /* Perform the replacement. */
         VirtualArrayNode newVirtualArray = virtualArrayProvider.apply(newComponentType, newLengthInt);
-        tool.createVirtualObject(newVirtualArray, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
+        tool.createVirtualObject(newVirtualArray, newEntryState, Collections.<MonitorIdNode> emptyList(), source.getNodeSourcePosition(), false);
         tool.replaceWithVirtual(newVirtualArray);
     }
 

@@ -43,10 +43,9 @@ package com.oracle.truffle.nfi.backend.libffi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -121,13 +120,10 @@ final class LibFFINFIBackend implements NFIBackend {
         private final String name;
         private final int flags;
 
-        private final ContextReference<LibFFIContext> ctxRef;
-
         LoadLibraryNode(LibFFILanguage language, String name, int flags) {
             super(language);
             this.name = name;
             this.flags = flags;
-            this.ctxRef = lookupContextReference(LibFFILanguage.class);
         }
 
         @Override
@@ -137,21 +133,19 @@ final class LibFFINFIBackend implements NFIBackend {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (!ctxRef.get().env.isNativeAccessAllowed()) {
+            LibFFIContext context = LibFFIContext.get(this);
+            if (!context.env.isNativeAccessAllowed()) {
                 CompilerDirectives.transferToInterpreter();
                 throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", this);
             }
-            return ctxRef.get().loadLibrary(name, flags);
+            return context.loadLibrary(name, flags);
         }
     }
 
     private static class GetDefaultLibraryNode extends RootNode {
 
-        private final ContextReference<LibFFIContext> ctxRef;
-
         GetDefaultLibraryNode(LibFFILanguage language) {
             super(language);
-            this.ctxRef = lookupContextReference(LibFFILanguage.class);
         }
 
         @Override
@@ -161,7 +155,7 @@ final class LibFFINFIBackend implements NFIBackend {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (!ctxRef.get().env.isNativeAccessAllowed()) {
+            if (!LibFFIContext.get(this).env.isNativeAccessAllowed()) {
                 CompilerDirectives.transferToInterpreter();
                 throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", this);
             }
@@ -171,27 +165,26 @@ final class LibFFINFIBackend implements NFIBackend {
 
     @ExportMessage
     Object getSimpleType(NativeSimpleType type,
-                    @CachedContext(LibFFILanguage.class) LibFFIContext ctx) {
-        return ctx.lookupSimpleType(type);
+                    @CachedLibrary("this") InteropLibrary self) {
+        return LibFFIContext.get(self).lookupSimpleType(type);
     }
 
     @ExportMessage
     Object getArrayType(NativeSimpleType type,
-                    @CachedContext(LibFFILanguage.class) LibFFIContext ctx) {
-        return ctx.lookupArrayType(type);
+                    @CachedLibrary("this") InteropLibrary self) {
+        return LibFFIContext.get(self).lookupArrayType(type);
     }
 
     @ExportMessage
-    Object getEnvType(@CachedContext(LibFFILanguage.class) LibFFIContext ctx) {
-        return ctx.lookupEnvType();
+    Object getEnvType(@CachedLibrary("this") InteropLibrary self) {
+        return LibFFIContext.get(self).lookupEnvType();
     }
 
     @ExportMessage
     Object createSignatureBuilder(
                     @CachedLibrary("this") NFIBackendLibrary self,
-                    @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
                     @Cached ArrayBuilderFactory builderFactory) {
-        if (!ctx.env.isNativeAccessAllowed()) {
+        if (!LibFFIContext.get(self).env.isNativeAccessAllowed()) {
             CompilerDirectives.transferToInterpreter();
             throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", self);
         }

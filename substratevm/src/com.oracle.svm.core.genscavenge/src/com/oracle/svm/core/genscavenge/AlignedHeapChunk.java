@@ -97,6 +97,10 @@ public final class AlignedHeapChunk {
         return HeapChunk.asPointer(that).add(getObjectsStartOffset());
     }
 
+    public static Pointer getObjectsEnd(AlignedHeader that) {
+        return HeapChunk.getEndPointer(that);
+    }
+
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
     static Pointer allocateMemory(AlignedHeader that, UnsignedWord size) {
         Pointer result = WordFactory.nullPointer();

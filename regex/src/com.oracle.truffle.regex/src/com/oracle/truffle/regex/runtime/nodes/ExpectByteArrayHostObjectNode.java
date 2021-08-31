@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.regex.runtime.nodes;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 
 @GenerateUncached
@@ -58,8 +56,7 @@ public abstract class ExpectByteArrayHostObjectNode extends Node {
     }
 
     @Specialization
-    static byte[] doBoxed(Object input,
-                    @CachedContext(RegexLanguage.class) RegexContext context) {
-        return (byte[]) context.getEnv().asHostObject(input);
+    byte[] doBoxed(Object input) {
+        return (byte[]) RegexContext.get(this).getEnv().asHostObject(input);
     }
 }

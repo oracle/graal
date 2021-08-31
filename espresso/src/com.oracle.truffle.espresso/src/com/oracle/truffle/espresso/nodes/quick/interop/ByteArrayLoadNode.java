@@ -24,8 +24,8 @@
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -36,7 +36,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -89,7 +88,7 @@ public abstract class ByteArrayLoadNode extends QuickNode {
     })
     byte doBufferLike(StaticObject array, int index,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile outOfBoundsProfile) {
         try {
             return interop.readBufferByte(array.rawForeignObject(), index);
@@ -111,7 +110,7 @@ public abstract class ByteArrayLoadNode extends QuickNode {
     byte doArrayLike(StaticObject array, int index,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile exceptionProfile,
                     @Cached ConditionProfile isByteArrayProfile) {
         Meta meta = context.getMeta();
