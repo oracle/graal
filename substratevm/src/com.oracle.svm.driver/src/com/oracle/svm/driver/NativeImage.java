@@ -1223,9 +1223,11 @@ public class NativeImage {
 
         List<Path> imageProvidedJars;
         if (USE_NI_JPMS) {
-            finalImageModulePath.addAll(imageProvidedJars = config.getImageProvidedModulePath());
+            imageProvidedJars = config.getImageProvidedModulePath();
+            finalImageModulePath.addAll(imageProvidedJars);
         } else {
-            finalImageClasspath.addAll(imageProvidedJars = config.getImageProvidedClasspath());
+            imageProvidedJars = config.getImageProvidedClasspath();
+            finalImageClasspath.addAll(imageProvidedJars);
         }
         imageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
 
