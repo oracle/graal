@@ -52,7 +52,8 @@ public class InsightContextTest {
         int executingCounter;
         TruffleContext lastContext;
         String lastFunctionName;
-        final List<ParsingNode.OnEnterCallback> callbacks = new ArrayList<>();
+        final List<ParsingNode.OnEnterCallback> onEventCallbacks = new ArrayList<>();
+        final List<ParsingNode.OnSourceCallback> onSourceCallbacks = new ArrayList<>();
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -84,6 +85,7 @@ public class InsightContextTest {
                 TruffleContext expectedContext = ref.get(this).getEnv().getContext();
                 final InsightAPI.OnEventHandler callback = new OnEnterCallback(expectedContext);
                 api.on("enter", callback, InsightObjectFactory.createConfig(false, false, true, null, null));
+                api.on("source", new OnSourceCallback(expectedContext));
 
                 return insightObject;
             }
@@ -93,7 +95,7 @@ public class InsightContextTest {
 
                 OnEnterCallback(TruffleContext expectedContext) {
                     this.expectedContext = expectedContext;
-                    callbacks.add(this);
+                    onEventCallbacks.add(this);
                 }
 
                 @Override
@@ -107,6 +109,30 @@ public class InsightContextTest {
                 @Override
                 public String toString() {
                     return "[OnEnterCallback: " + expectedContext + "]";
+                }
+            }
+
+            final class OnSourceCallback implements InsightAPI.OnSourceLoadedHandler {
+                private final TruffleContext expectedContext;
+                int sourceLoadedCounter;
+                String name;
+
+                OnSourceCallback(TruffleContext expectedContext) {
+                    this.expectedContext = expectedContext;
+                    onSourceCallbacks.add(this);
+                }
+
+                @Override
+                public void sourceLoaded(InsightAPI.SourceInfo info) {
+                    sourceLoadedCounter++;
+                    name = info.name();
+                    TruffleContext currentContext = ref.get(ParsingNode.this).getEnv().getContext();
+                    assertEquals("OnEnterCallback is called with expected context", expectedContext, currentContext);
+                }
+
+                @Override
+                public String toString() {
+                    return "[OnSourceCallback: " + expectedContext + "]";
                 }
             }
         }
@@ -151,14 +177,34 @@ public class InsightContextTest {
 
             try (Context c2 = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine))) {
                 c2.eval(sampleScript);
+
+                // @formatter:off
+                Source anotherScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                    "ROOT(\n" +
+                    "  DEFINE(bar,\n" +
+                    "    LOOP(5, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                    "  ),\n" +
+                    "  CALL(bar)\n" +
+                    ")",
+                    "another.px"
+                ).build();
+                // @formatter:on
+                c2.eval(anotherScript);
+
                 TruffleContext c2LanguageInfo = itl.lastContext;
                 assertNotEquals(cLanguageInfo, c2LanguageInfo);
 
                 assertEquals("Executed second time for second context", 2, itl.executingCounter);
                 assertEquals("Parsed once as the source is cached - but it is not yet", 2, itl.parsingCounter);
             }
-            
-            assertEquals("Two callbacks: " + itl.callbacks, 2, itl.callbacks.size());
+
+            assertEquals("Two on enter callbacks: " + itl.onEventCallbacks, 2, itl.onEventCallbacks.size());
+            assertEquals("Two source callbacks: " + itl.onSourceCallbacks, 2, itl.onSourceCallbacks.size());
+            for (InsightTestLanguage.ParsingNode.OnSourceCallback callback : itl.onSourceCallbacks) {
+                assertEquals("One loaded source", 1, callback.sourceLoadedCounter);
+            }
+            assertEquals("First context on source sees only first context load", "sample.px", itl.onSourceCallbacks.get(0).name);
+            assertEquals("Second context on source sees only first context load", "another.px", itl.onSourceCallbacks.get(1).name);
         }
     }
 

@@ -111,27 +111,32 @@ final class AgentObject implements TruffleObject {
                 AgentType type = AgentType.find(convertToString(interop, args[0]));
                 switch (type) {
                     case SOURCE: {
+                        final ContextLocal<TruffleContext> provider = obj.contextProvider;
+                        TruffleContext fixed = provider.get();
                         SourceFilter filter = SourceFilter.newBuilder().sourceIs(obj.excludeSources).includeInternal(false).build();
                         EventBinding<LoadSourceListener> handle = instrumenter.attachLoadSourceListener(filter, new LoadSourceListener() {
                             @Override
                             public void onLoad(LoadSourceEvent event) {
-                                final Source source = event.getSource();
-                                try {
-                                    interop.execute(args[1], new SourceEventObject(source));
-                                } catch (RuntimeException ex) {
-                                    if (interop.isException(ex)) {
+                                if (fixed == provider.get()) {
+                                    final Source source = event.getSource();
+                                    try {
+                                        interop.execute(args[1], new SourceEventObject(source));
+                                    } catch (RuntimeException ex) {
+                                        if (interop.isException(ex)) {
+                                            InsightException.throwWhenExecuted(instrumenter, source, ex);
+                                        } else {
+                                            throw ex;
+                                        }
+                                    } catch (InteropException ex) {
                                         InsightException.throwWhenExecuted(instrumenter, source, ex);
-                                    } else {
-                                        throw ex;
                                     }
-                                } catch (InteropException ex) {
-                                    InsightException.throwWhenExecuted(instrumenter, source, ex);
                                 }
                             }
                         }, false);
                         obj.data.registerHandle(type, handle, args[1]);
                         break;
                     }
+
                     case ENTER: {
                         CompilerDirectives.transferToInterpreter();
                         SourceSectionFilter filter = createFilter(obj, args);
