@@ -47,7 +47,7 @@ then
     exit 1
 fi
 
-UNICODE_VERSION=13.0.0
+UNICODE_VERSION=14.0.0
 
 mkdir -p ./dat
 
