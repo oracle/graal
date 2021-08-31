@@ -532,6 +532,9 @@ public class WebAssembly extends Dictionary {
         typeInfo.append('(');
         int argumentCount = f.numArguments();
         for (int i = 0; i < argumentCount; i++) {
+            if (i != 0) {
+                typeInfo.append(' ');
+            }
             typeInfo.append(ValueType.fromByteValue(f.argumentTypeAt(i)));
         }
         typeInfo.append(')');
