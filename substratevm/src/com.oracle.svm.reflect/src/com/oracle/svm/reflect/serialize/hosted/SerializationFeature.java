@@ -151,7 +151,7 @@ final class SerializationTypeResolver {
 
     private void handleError(String message) {
         if (allowIncompleteClasspath) {
-            println("WARNING: " + message);
+            println("Warning: " + message);
         } else {
             throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath");
         }
@@ -190,7 +190,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
         boolean denied = deniedClasses.containsKey(clazz);
         if (denied && deniedClasses.get(clazz)) {
             deniedClasses.put(clazz, false); /* Warn only once */
-            println("WARNING: Serialization deny list contains " + clazz.getName() + ". Image will not support serialization/deserialization of this class.");
+            println("Warning: Serialization deny list contains " + clazz.getName() + ". Image will not support serialization/deserialization of this class.");
         }
         return !denied;
     }
@@ -276,7 +276,7 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
     public void registerWithTargetConstructorClass(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
         if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
-            println("WARNING: Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
+            println("Warning: Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
         } else if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
                 UserError.guarantee(customTargetConstructorClass.isAssignableFrom(serializationTargetClass),
