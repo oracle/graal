@@ -39,6 +39,7 @@ import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.word.Pointer;
 
 /**
  * Dynamically registers a {@link HotSpotGraalRuntimeMBean}s created in libgraal heap with an
@@ -64,8 +65,8 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
     /**
      * Creates a {@link HotSpotGraalRuntimeMBean} for given {@code runtime}. It first defines the
      * required classes in the HotSpot heap and starts the factory thread. Then it creates a
-     * {@link HotSpotGraalRuntimeMBean} for given {@code runtime} and notifies the factory thread
-     * about a new pending registration.
+     * {@link HotSpotGraalRuntimeMBean} for {@code runtime} and notifies the factory thread about a
+     * new pending registration.
      *
      * @param runtime the runtime to create {@link HotSpotGraalRuntimeMBean} for
      * @param config the configuration used to obtain the {@code _jni_environment} offset
@@ -75,7 +76,13 @@ public final class LibGraalHotSpotGraalManagement extends MBeanProxy<HotSpotGraa
         int delay = Options.LibGraalManagementDelay.getValue(runtime.getOptions());
         if (delay < 0) {
             return;
-        } else if (delay == 0) {
+        }
+        Pointer defineClassesStatePointer = getDefineClassesStatePointer();
+        long defineClassesState = defineClassesStatePointer.readLong(0);
+        if (delay == 0 || defineClassesState == HS_CLASSES_DEFINED) {
+            // No delay or this is not the first Graal runtime to be initialized
+            // in the process. As such there's no need to use a separate thread
+            // to create the HotSpotGraalRuntimeMBean.
             initialize0(runtime, config);
         } else {
             Thread t = new GraalServiceThread(LibGraalHotSpotGraalManagement.class.getSimpleName() + "-init", new Runnable() {
