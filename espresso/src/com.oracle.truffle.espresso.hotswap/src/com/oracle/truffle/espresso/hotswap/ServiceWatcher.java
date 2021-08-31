@@ -345,12 +345,13 @@ final class ServiceWatcher {
                 } else {
                     boolean folderExist = false;
                     Path current = leaf;
-                    Path currentParent = current.getParent();
-                    if (currentParent == null) {
-                        // stop at the root
-                        continue;
-                    }
+
                     while (!current.equals(resourcePath) && !folderExist) {
+                        Path currentParent = current.getParent();
+                        if (currentParent == null) {
+                            // stop at the root
+                            continue;
+                        }
                         // track creation of leaf parent folders
                         // up until the created resource path for the event
                         if (Files.exists(currentParent)) {
