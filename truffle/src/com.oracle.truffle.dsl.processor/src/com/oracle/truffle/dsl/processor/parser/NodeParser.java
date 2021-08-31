@@ -315,6 +315,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (isAssignable(templateType.asType(), types.ExecuteTracingSupport)) {
+            if (mode == ParseMode.EXPORTED_MESSAGE) {
+                node.addError("@%s annotated nodes do not support execute tracing. " +
+                                "Remove the %s interface to resolve this.",
+                                types.ExportMessage.asElement().getSimpleName().toString(),
+                                types.ExecuteTracingSupport.asElement().getSimpleName().toString());
+            }
             TypeMirror object = context.getType(Object.class);
             TypeMirror throwable = context.getType(Throwable.class);
             ArrayType objectArray = new ArrayCodeTypeMirror(object);

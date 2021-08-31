@@ -46,6 +46,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -325,5 +329,27 @@ public class ExecuteTracingSupportTest {
         assertArrayEquals(new Object[]{arg}, capturedArgs);
         assertEquals(1, traceOnReturnCalled);
         assertSame(arg, capturedReturnValue);
+    }
+
+    @GenerateLibrary
+    public abstract static class ALibrary extends Library {
+        public abstract Object aMessage(Object receiver, Object arg);
+    }
+
+    @ExportLibrary(ALibrary.class)
+    public static final class ALibraryImpl {
+        @ExportMessage
+        @ExpectError("@ExportMessage annotated nodes do not support execute tracing. Remove the ExecuteTracingSupport interface to resolve this.")
+        public static class AMessage implements ExecuteTracingSupport {
+            @Specialization
+            static int doIt(@SuppressWarnings("unused") ALibraryImpl receiver, int arg) {
+                return arg;
+            }
+
+            @Override
+            public boolean isTracingEnabled() {
+                return true;
+            }
+        }
     }
 }
