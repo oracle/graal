@@ -77,7 +77,7 @@ public interface ExecuteTracingSupport {
      * @param arguments the arguments of the specialization except the frame, if any
      * @since 21.3
      */
-    default void traceOnEnter(@SuppressWarnings("unused") Object... arguments) {
+    default void traceOnEnter(@SuppressWarnings("unused") Object[] arguments) {
     }
 
     /**
@@ -117,7 +117,7 @@ class ExecuteTracingSupportSnippets {
         }
 
         @Override
-        public void traceOnEnter(Object... arguments) {
+        public void traceOnEnter(Object[] arguments) {
             // called before any execute method
         }
 

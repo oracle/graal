@@ -55,6 +55,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.ConstNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.DivNodeGen;
+import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.ObjectArrayArgNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.OverloadedExecuteNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.TraceDisabledNodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteTracingSupportTestFactory.VoidExecuteWithNonVoidSpecializationNodeGen;
@@ -86,7 +87,7 @@ public class ExecuteTracingSupportTest {
         }
 
         @Override
-        public void traceOnEnter(Object... arguments) {
+        public void traceOnEnter(Object[] arguments) {
             traceOnEnterCalled++;
             capturedArgs = arguments;
         }
@@ -189,6 +190,15 @@ public class ExecuteTracingSupportTest {
         @Specialization
         long doLong(long a) {
             return a;
+        }
+    }
+
+    abstract static class ObjectArrayArgNode extends TracingBaseNode {
+        abstract Object execute(Object[] arg);
+
+        @Specialization
+        Object doInt(Object[] arg) {
+            return arg;
         }
     }
 
@@ -305,5 +315,15 @@ public class ExecuteTracingSupportTest {
         } catch (ArithmeticException e) {
             assertEquals(0, traceOnExceptionCalled);
         }
+    }
+
+    @Test
+    public void testObjectArrayArg() {
+        Object[] arg = {42, "abc"};
+        assertSame(arg, ObjectArrayArgNodeGen.create().execute(arg));
+        assertEquals(1, traceOnEnterCalled);
+        assertArrayEquals(new Object[]{arg}, capturedArgs);
+        assertEquals(1, traceOnReturnCalled);
+        assertSame(arg, capturedReturnValue);
     }
 }

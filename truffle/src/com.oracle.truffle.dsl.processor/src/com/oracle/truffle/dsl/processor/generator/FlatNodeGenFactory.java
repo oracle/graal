@@ -5362,10 +5362,11 @@ public class FlatNodeGenFactory {
 
     private void generateTraceOnEnterCall(CodeTreeBuilder builder, FrameState frameState) {
         if (node.isGenerateTraceOnEnter()) {
+            ArrayType objectArray = new ArrayCodeTypeMirror(context.getType(Object.class));
             builder.startIf().startCall("isTracingEnabled").end(2);
-            builder.startBlock().startStatement().startCall("traceOnEnter");
+            builder.startBlock().startStatement().startCall("traceOnEnter").startNewArray(objectArray, null);
             frameState.addReferencesTo(builder);
-            builder.end(3);  // call traceOnEnter, statement, block
+            builder.end(4);  // new array, call traceOnEnter, statement, block
         }
     }
 
