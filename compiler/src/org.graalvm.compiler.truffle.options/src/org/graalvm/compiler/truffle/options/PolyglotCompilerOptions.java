@@ -509,8 +509,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(false);
 
-    @Option(help = "By default the traversing queue gives first tier compilations a multiplication bonus of 2 * (LastTierCompilationThreshold / FirstTierCompilationThreshold). Setting this option will override the value.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Double > TraversingQueueFirstTierBonus = new OptionKey<>(0.0);
+    @Option(help = "Controls how much of a priority should be given to first tier compilations.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Double > TraversingQueueFirstTierBonus = new OptionKey<>(15.0);
 
     @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
