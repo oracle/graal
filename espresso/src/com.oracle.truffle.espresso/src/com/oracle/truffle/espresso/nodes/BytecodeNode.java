@@ -420,6 +420,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = LivenessAnalysis.analyze(method);
+        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().TrivialMethodSize ? (byte) -1 : 0;
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -2823,9 +2824,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             return false;
         }
         byte[] originalCode = getMethodVersion().getOriginalCode();
-        if (originalCode.length > 18) {
-            return false;
-        }
+        // Must check originalCode.length < TrivialMethodSize, but this method is called from a
+        // compiler thread where the context is not accessible.
         BytecodeStream stream = new BytecodeStream(originalCode);
         for (int bci = 0; bci < stream.endBCI(); bci = stream.nextBCI(bci)) {
             int bc = stream.currentBC(bci);
