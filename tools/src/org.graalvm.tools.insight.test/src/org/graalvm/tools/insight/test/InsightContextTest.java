@@ -155,8 +155,10 @@ public class InsightContextTest {
                 assertNotEquals(cLanguageInfo, c2LanguageInfo);
 
                 assertEquals("Executed second time for second context", 2, itl.executingCounter);
-                assertEquals("Parsed once as the source is cached", 1, itl.parsingCounter);
+                assertEquals("Parsed once as the source is cached - but it is not yet", 2, itl.parsingCounter);
             }
+            
+            assertEquals("Two callbacks: " + itl.callbacks, 2, itl.callbacks.size());
         }
     }
 
