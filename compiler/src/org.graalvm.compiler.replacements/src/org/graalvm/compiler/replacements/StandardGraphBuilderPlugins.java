@@ -265,8 +265,6 @@ public class StandardGraphBuilderPlugins {
                 r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
             }
 
-            r.register7("indexOf", char[].class, int.class, int.class, char[].class, int.class, int.class, int.class, new StringIndexOfConstantPlugin());
-
             Registration sr = new Registration(plugins, StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
                 @Override
@@ -283,11 +281,7 @@ public class StandardGraphBuilderPlugins {
                 r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
             }
 
-            final Registration latin1r = new Registration(plugins, "java.lang.StringLatin1", replacements);
-            latin1r.register5("indexOf", byte[].class, int.class, byte[].class, int.class, int.class, new StringLatin1IndexOfConstantPlugin());
-
             final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", replacements);
-            utf16r.register5("indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class, new StringUTF16IndexOfConstantPlugin());
             utf16r.setAllowOverwrite(true);
 
             utf16r.register2("getChar", byte[].class, int.class, new InvocationPlugin() {
@@ -818,57 +812,6 @@ public class StandardGraphBuilderPlugins {
     private static void registerStrictMathPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, StrictMath.class);
         r.register1("sqrt", Double.TYPE, new MathSqrtPlugin());
-    }
-
-    public static final class StringIndexOfConstantPlugin implements InvocationPlugin {
-        @Override
-        public boolean inlineOnly() {
-            return true;
-        }
-
-        @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode source, ValueNode sourceOffset, ValueNode sourceCount,
-                        ValueNode target, ValueNode targetOffset, ValueNode targetCount, ValueNode origFromIndex) {
-            if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringIndexOfNode(MacroParams.of(b, targetMethod, source, sourceOffset, sourceCount, target, targetOffset, targetCount, origFromIndex)));
-                return true;
-            }
-            return false;
-        }
-    }
-
-    public static final class StringLatin1IndexOfConstantPlugin implements InvocationPlugin {
-        @Override
-        public boolean inlineOnly() {
-            return true;
-        }
-
-        @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
-                        ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
-            if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringLatin1IndexOfNode(MacroParams.of(b, targetMethod, source, sourceCount, target, targetCount, origFromIndex)));
-                return true;
-            }
-            return false;
-        }
-    }
-
-    public static final class StringUTF16IndexOfConstantPlugin implements InvocationPlugin {
-        @Override
-        public boolean inlineOnly() {
-            return true;
-        }
-
-        @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
-                        ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
-            if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(MacroParams.of(b, targetMethod, source, sourceCount, target, targetCount, origFromIndex)));
-                return true;
-            }
-            return false;
-        }
     }
 
     public static class UnsignedMathPlugin implements InvocationPlugin {
