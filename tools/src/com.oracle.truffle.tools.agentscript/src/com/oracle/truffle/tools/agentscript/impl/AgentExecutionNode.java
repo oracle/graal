@@ -25,6 +25,8 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -45,8 +47,12 @@ final class AgentExecutionNode extends ExecutionEventNode {
     private final Object exit;
     private final EventContextObject ctx;
     private final Node instrumentedNode;
+    private final TruffleContext context;
+    private final ContextLocal<TruffleContext> contextProvider;
 
-    AgentExecutionNode(Object enter, Object exit, EventContextObject ctx) {
+    AgentExecutionNode(TruffleContext initial, ContextLocal<TruffleContext> contextProvider, Object enter, Object exit, EventContextObject ctx) {
+        this.context = initial;
+        this.contextProvider = contextProvider;
         this.enter = enter;
         if (enter != null) {
             this.enterDispatch = InteropLibrary.getFactory().create(enter);
@@ -66,7 +72,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        if (enter != null) {
+        if (context == contextProvider.get() && enter != null) {
             try {
                 enterDispatch.execute(enter, ctx, getVariables(frame, true, null));
             } catch (InteropException ex) {
@@ -79,7 +85,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
 
     @Override
     protected void onReturnValue(VirtualFrame frame, Object returnValue) {
-        if (exit != null) {
+        if (context == contextProvider.get() && exit != null) {
             try {
                 exitDispatch.execute(exit, ctx, getVariables(frame, false, returnValue));
             } catch (InteropException ex) {
@@ -92,7 +98,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
 
     @Override
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-        if (exit != null) {
+        if (context == contextProvider.get() && exit != null) {
             try {
                 exitDispatch.execute(exit, ctx, getVariables(frame, false, null));
             } catch (InteropException ex) {
@@ -140,12 +146,12 @@ final class AgentExecutionNode extends ExecutionEventNode {
         }
     }
 
-    static ExecutionEventNodeFactory factory(final Object enter, final Object exit) {
+    static ExecutionEventNodeFactory factory(TruffleContext current, ContextLocal<TruffleContext> contextProvider, final Object enter, final Object exit) {
         return new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
                 final EventContextObject ctx = new EventContextObject(context);
-                return new AgentExecutionNode(enter, exit, ctx);
+                return new AgentExecutionNode(current, contextProvider, enter, exit, ctx);
             }
         };
     }

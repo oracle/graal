@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
@@ -50,6 +51,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -76,6 +78,13 @@ public class InsightInstrument extends TruffleInstrument {
 
     private Env env;
     private final IgnoreSources ignoreSources = new IgnoreSources();
+    private final ContextLocal<TruffleContext> currentContext;
+
+    public InsightInstrument() {
+        this.currentContext = createContextLocal((context) -> {
+            return context;
+        });
+    }
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -125,26 +134,26 @@ public class InsightInstrument extends TruffleInstrument {
     final AutoCloseable registerAgentScript(final Supplier<Source> src) {
         final Instrumenter instrumenter = env.getInstrumenter();
         class InitializeAgent implements ContextsListener, AutoCloseable {
+            private final Map<TruffleContext, InitializeAgent> activeContexts = new WeakHashMap<>();
             private AgentObject insight;
             private AgentObject agent;
             private EventBinding<?> agentBinding;
 
             @CompilerDirectives.TruffleBoundary
-            synchronized boolean initializeAgentObject() {
+            synchronized boolean initializeAgentObject(TruffleContext ctx) {
                 if (insight == null) {
                     AgentObject.Data sharedData = new AgentObject.Data();
-                    insight = new AgentObject(null, env, ignoreSources, sharedData);
+                    insight = new AgentObject(null, env, currentContext, ignoreSources, sharedData);
                     if (!onlyInsight()) {
-                        agent = new AgentObject("Warning: 'agent' is deprecated. Use 'insight'.\n", env, ignoreSources, sharedData);
+                        agent = new AgentObject("Warning: 'agent' is deprecated. Use 'insight'.\n", env, currentContext, ignoreSources, sharedData);
                     }
-                    return true;
                 }
-                return false;
+                return activeContexts.put(ctx, this) == null;
             }
 
             @CompilerDirectives.TruffleBoundary
-            void initializeAgent() {
-                if (initializeAgentObject()) {
+            void initializeAgent(TruffleContext ctx) {
+                if (initializeAgentObject(ctx)) {
                     Source script = src.get();
                     ignoreSources.ignoreSource(script);
                     List<String> argNames = new ArrayList<>();
@@ -192,7 +201,7 @@ public class InsightInstrument extends TruffleInstrument {
                     return;
                 }
                 if (context.isEntered()) {
-                    initializeAgent();
+                    initializeAgent(context);
                 } else {
                     class InitializeLater implements ExecutionEventListener {
 
@@ -200,7 +209,7 @@ public class InsightInstrument extends TruffleInstrument {
                         public void onEnter(EventContext ctx, VirtualFrame frame) {
                             CompilerDirectives.transferToInterpreter();
                             agentBinding.dispose();
-                            initializeAgent();
+                            initializeAgent(context);
                         }
 
                         @Override

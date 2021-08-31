@@ -25,6 +25,8 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -58,13 +60,15 @@ import org.graalvm.tools.insight.Insight;
 @ExportLibrary(InteropLibrary.class)
 final class AgentObject implements TruffleObject {
     private final TruffleInstrument.Env env;
+    private final ContextLocal<TruffleContext> contextProvider;
     private final IgnoreSources excludeSources;
     private final Data data;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private byte[] msg;
 
-    AgentObject(String msg, TruffleInstrument.Env env, IgnoreSources excludeSources, Data data) {
+    AgentObject(String msg, TruffleInstrument.Env env, ContextLocal<TruffleContext> contextProvider, IgnoreSources excludeSources, Data data) {
         this.msg = msg == null ? null : msg.getBytes();
         this.env = env;
+        this.contextProvider = contextProvider;
         this.excludeSources = excludeSources;
         this.data = data;
     }
@@ -131,14 +135,16 @@ final class AgentObject implements TruffleObject {
                     case ENTER: {
                         CompilerDirectives.transferToInterpreter();
                         SourceSectionFilter filter = createFilter(obj, args);
-                        EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(args[1], null));
+                        EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter,
+                                        AgentExecutionNode.factory(obj.contextProvider.get(), obj.contextProvider, args[1], null));
                         obj.data.registerHandle(type, handle, args[1]);
                         break;
                     }
                     case RETURN: {
                         CompilerDirectives.transferToInterpreter();
                         SourceSectionFilter filter = createFilter(obj, args);
-                        EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(null, args[1]));
+                        EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter,
+                                        AgentExecutionNode.factory(obj.contextProvider.get(), obj.contextProvider, null, args[1]));
                         obj.data.registerHandle(type, handle, args[1]);
                         break;
                     }
