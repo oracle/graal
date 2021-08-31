@@ -85,24 +85,13 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             CompilerAsserts.neverPartOfCompilation();
-            // Resolve global parts
             BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
             BootstrapMethodsAttribute.Entry bsEntry = bms.at(getBootstrapMethodAttrIndex());
 
             Meta meta = accessingKlass.getMeta();
-
-            try {
-                StaticObject bootstrapmethodMethodHandle = bsEntry.getMethodHandle(accessingKlass, pool);
-                StaticObject[] args = bsEntry.getStaticArguments(accessingKlass, pool);
-
-                StaticObject name = meta.toGuestString(getName(pool));
-                Symbol<Signature> invokeSignature = getSignature(pool);
-                Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
-                StaticObject methodType = MethodTypeConstant.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
-                return new Resolved(bootstrapmethodMethodHandle, args, name, parsedInvokeSignature, methodType);
-            } catch (EspressoException e) {
-                return new Fail(e);
-            }
+            Symbol<Signature> invokeSignature = getSignature(pool);
+            Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
+            return new Resolved(bsEntry, parsedInvokeSignature, getName(pool));
         }
 
         @Override
@@ -117,18 +106,14 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
     }
 
     final class Resolved implements InvokeDynamicConstant, Resolvable.ResolvedConstant {
-        private final StaticObject bootstrapmethodMethodHandle;
-        private final StaticObject[] args;
-        private final StaticObject name;
+        private final BootstrapMethodsAttribute.Entry bootstrapMethod;
         private final Symbol<Type>[] parsedInvokeSignature;
-        private final StaticObject methodType;
+        private final Symbol<Name> nameSymbol;
 
-        public Resolved(StaticObject bootstrapmethodMethodHandle, StaticObject[] args, StaticObject name, Symbol<Type>[] parsedInvokeSignature, StaticObject methodType) {
-            this.bootstrapmethodMethodHandle = bootstrapmethodMethodHandle;
-            this.args = args;
-            this.name = name;
+        public Resolved(BootstrapMethodsAttribute.Entry bootstrapMethod, Symbol<Type>[] parsedInvokeSignature, Symbol<Name> name) {
+            this.bootstrapMethod = bootstrapMethod;
             this.parsedInvokeSignature = parsedInvokeSignature;
-            this.methodType = methodType;
+            this.nameSymbol = name;
         }
 
         @Override
@@ -169,6 +154,17 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
             CompilerAsserts.neverPartOfCompilation();
             Meta meta = accessingKlass.getMeta();
             try {
+                StaticObject bootstrapmethodMethodHandle = bootstrapMethod.getMethodHandle(accessingKlass, pool);
+                StaticObject[] args = bootstrapMethod.getStaticArguments(accessingKlass, pool);
+
+                StaticObject name = meta.toGuestString(nameSymbol);
+                StaticObject methodType = MethodTypeConstant.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
+                /*
+                 * the 4 objects resolved above are not actually call-site specific. We don't cache
+                 * them to minimize footprint since most indy constant are only used by one
+                 * call-site
+                 */
+
                 StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
                 StaticObject memberName;
                 if (meta.getJavaVersion().varHandlesEnabled()) {
