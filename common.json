@@ -2,20 +2,20 @@
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
   "jdks": {
-    "openjdk8":           {"name": "openjdk",   "version": "8u302+06-jvmci-21.3-b02", "platformspecific": true },
-    "oraclejdk8":         {"name": "oraclejdk", "version": "8u311+06-jvmci-21.3-b02", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u311+06-jvmci-21.3-b02-fastdebug", "platformspecific": true },
+    "openjdk8":           {"name": "openjdk",   "version": "8u302+06-jvmci-21.3-b03", "platformspecific": true },
+    "oraclejdk8":         {"name": "oraclejdk", "version": "8u311+09-jvmci-21.3-b03", "platformspecific": true },
+    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u311+09-jvmci-21.3-b03-fastdebug", "platformspecific": true },
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.12+5-jvmci-21.3-b02", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.13+6-jvmci-21.3-b02", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.12+5-jvmci-21.3-b03", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.13+9-jvmci-21.3-b03", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+2", "platformspecific": true },
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17+35-jvmci-21.3-b02", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17+35-jvmci-21.3-b02-debug", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.1+7-jvmci-21.3-b02", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.1+7-jvmci-21.3-b02-debug", "platformspecific": true }
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17+35-jvmci-21.3-b03", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17+35-jvmci-21.3-b03-debug", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.1+9-jvmci-21.3-b03", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.1+9-jvmci-21.3-b03-debug", "platformspecific": true }
   },
 
   "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
