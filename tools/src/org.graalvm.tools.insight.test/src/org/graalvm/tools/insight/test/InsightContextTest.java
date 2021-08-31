@@ -54,6 +54,7 @@ public class InsightContextTest {
         String lastFunctionName;
         final List<ParsingNode.OnEnterCallback> onEventCallbacks = new ArrayList<>();
         final List<ParsingNode.OnSourceCallback> onSourceCallbacks = new ArrayList<>();
+        final List<ParsingNode.OnCloseCallback> onCloseCallbacks = new ArrayList<>();
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -86,6 +87,7 @@ public class InsightContextTest {
                 final InsightAPI.OnEventHandler callback = new OnEnterCallback(expectedContext);
                 api.on("enter", callback, InsightObjectFactory.createConfig(false, false, true, null, null));
                 api.on("source", new OnSourceCallback(expectedContext));
+                api.on("close", new OnCloseCallback(expectedContext));
 
                 return insightObject;
             }
@@ -126,6 +128,28 @@ public class InsightContextTest {
                 public void sourceLoaded(InsightAPI.SourceInfo info) {
                     sourceLoadedCounter++;
                     name = info.name();
+                    TruffleContext currentContext = ref.get(ParsingNode.this).getEnv().getContext();
+                    assertEquals("OnEnterCallback is called with expected context", expectedContext, currentContext);
+                }
+
+                @Override
+                public String toString() {
+                    return "[OnSourceCallback: " + expectedContext + "]";
+                }
+            }
+
+            final class OnCloseCallback implements InsightAPI.OnCloseHandler {
+                private final TruffleContext expectedContext;
+                int closeCounter;
+
+                OnCloseCallback(TruffleContext expectedContext) {
+                    this.expectedContext = expectedContext;
+                    onCloseCallbacks.add(this);
+                }
+
+                @Override
+                public void closed() {
+                    closeCounter++;
                     TruffleContext currentContext = ref.get(ParsingNode.this).getEnv().getContext();
                     assertEquals("OnEnterCallback is called with expected context", expectedContext, currentContext);
                 }
@@ -197,14 +221,18 @@ public class InsightContextTest {
                 assertEquals("Executed second time for second context", 2, itl.executingCounter);
                 assertEquals("Parsed once as the source is cached - but it is not yet", 2, itl.parsingCounter);
             }
+        }
 
-            assertEquals("Two on enter callbacks: " + itl.onEventCallbacks, 2, itl.onEventCallbacks.size());
-            assertEquals("Two source callbacks: " + itl.onSourceCallbacks, 2, itl.onSourceCallbacks.size());
-            for (InsightTestLanguage.ParsingNode.OnSourceCallback callback : itl.onSourceCallbacks) {
-                assertEquals("One loaded source", 1, callback.sourceLoadedCounter);
-            }
-            assertEquals("First context on source sees only first context load", "sample.px", itl.onSourceCallbacks.get(0).name);
-            assertEquals("Second context on source sees only first context load", "another.px", itl.onSourceCallbacks.get(1).name);
+        assertEquals("Two on enter callbacks: " + itl.onEventCallbacks, 2, itl.onEventCallbacks.size());
+        assertEquals("Two source callbacks: " + itl.onSourceCallbacks, 2, itl.onSourceCallbacks.size());
+        for (InsightTestLanguage.ParsingNode.OnSourceCallback callback : itl.onSourceCallbacks) {
+            assertEquals("One loaded source", 1, callback.sourceLoadedCounter);
+        }
+        assertEquals("First context on source sees only first context load", "sample.px", itl.onSourceCallbacks.get(0).name);
+        assertEquals("Second context on source sees only first context load", "another.px", itl.onSourceCallbacks.get(1).name);
+        assertEquals("Two close callbacks: " + itl.onCloseCallbacks, 2, itl.onCloseCallbacks.size());
+        for (InsightTestLanguage.ParsingNode.OnCloseCallback callback : itl.onCloseCallbacks) {
+            assertEquals("Each is closed once", 1, callback.closeCounter);
         }
     }
 

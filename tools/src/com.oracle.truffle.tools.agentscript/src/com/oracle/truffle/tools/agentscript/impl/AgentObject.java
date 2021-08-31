@@ -54,6 +54,7 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import org.graalvm.tools.insight.Insight;
 
 @SuppressWarnings({"unused", "static-method"})
@@ -154,7 +155,7 @@ final class AgentObject implements TruffleObject {
                         break;
                     }
                     case CLOSE: {
-                        obj.data.registerOnClose(args[1]);
+                        obj.data.registerOnClose(obj.contextProvider.get(), args[1]);
                         break;
                     }
 
@@ -313,14 +314,13 @@ final class AgentObject implements TruffleObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    void onClosed() {
-        data.onClosed();
+    void onClosed(TruffleContext c) {
+        data.onClosed(c);
     }
 
     static class Data {
-
         final Map<AgentType, Map<Object, EventBinding<?>>> listeners = new EnumMap<>(AgentType.class);
-        Object closeFn;
+        final Map<TruffleContext, Object> closeFunctions = new WeakHashMap<>();
 
         synchronized void registerHandle(AgentType at, EventBinding<?> handle, Object arg) {
             Map<Object, EventBinding<?>> listenersForType = listeners.get(at);
@@ -343,7 +343,7 @@ final class AgentObject implements TruffleObject {
         }
 
         @CompilerDirectives.TruffleBoundary
-        void onClosed() {
+        void onClosed(TruffleContext c) {
             synchronized (this) {
                 for (Map.Entry<AgentType, Map<Object, EventBinding<?>>> entry : listeners.entrySet()) {
                     Map<Object, EventBinding<?>> val = entry.getValue();
@@ -352,6 +352,7 @@ final class AgentObject implements TruffleObject {
                     }
                 }
             }
+            Object closeFn = closeFunctions.remove(c);
             if (closeFn == null) {
                 return;
             }
@@ -360,13 +361,11 @@ final class AgentObject implements TruffleObject {
                 iop.execute(closeFn);
             } catch (InteropException ex) {
                 throw InsightException.raise(ex);
-            } finally {
-                closeFn = null;
             }
         }
 
-        void registerOnClose(Object fn) {
-            closeFn = fn;
+        void registerOnClose(TruffleContext context, Object fn) {
+            closeFunctions.put(context, fn);
         }
     }
 }

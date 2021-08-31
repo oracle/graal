@@ -228,10 +228,10 @@ public class InsightInstrument extends TruffleInstrument {
             @Override
             public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
                 if (agent != null) {
-                    agent.onClosed();
+                    agent.onClosed(context);
                 }
                 if (insight != null) {
-                    insight.onClosed();
+                    insight.onClosed(context);
                 }
             }
 
@@ -245,11 +245,13 @@ public class InsightInstrument extends TruffleInstrument {
 
             @Override
             public void close() {
-                if (agent != null) {
-                    agent.onClosed();
-                }
-                if (insight != null) {
-                    insight.onClosed();
+                for (TruffleContext c : activeContexts.keySet()) {
+                    if (agent != null) {
+                        agent.onClosed(c);
+                    }
+                    if (insight != null) {
+                        insight.onClosed(c);
+                    }
                 }
                 if (agentBinding != null) {
                     agentBinding.dispose();
