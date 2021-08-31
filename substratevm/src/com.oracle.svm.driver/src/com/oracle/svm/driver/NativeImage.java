@@ -1166,7 +1166,7 @@ public class NativeImage {
                 }
             }
 
-            if (!jarOptionMode && !moduleOptionMode) {
+            if (!jarOptionMode) {
                 /* Main-class from customImageBuilderArgs counts as explicitMainClass */
                 boolean explicitMainClass = getHostedOptionFinalArgumentValue(customImageBuilderArgs, oHClass) != null;
                 String mainClassModule = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHModule);
@@ -1178,7 +1178,7 @@ public class NativeImage {
                         String moduleMsg = USE_NI_JPMS ? " (or <module>/<mainclass>)" : "";
                         showError("Please specify class" + moduleMsg + " containing the main entry point method. (see --help)");
                     }
-                } else {
+                } else if (!moduleOptionMode) {
                     /* extraImageArgs main-class overrules previous main-class specification */
                     explicitMainClass = true;
                     mainClass = extraImageArgs.remove(0);
