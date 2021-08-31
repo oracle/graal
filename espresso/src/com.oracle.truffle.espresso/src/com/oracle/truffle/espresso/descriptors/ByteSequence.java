@@ -213,8 +213,9 @@ public abstract class ByteSequence {
         assert x >= 0;
         int p = 10;
         for (int i = 1; i < 10; i++) {
-            if (x < p)
+            if (x < p) {
                 return i;
+            }
             p = 10 * p;
         }
         return 10;
