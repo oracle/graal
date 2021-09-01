@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, Arm Limited. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,10 @@ import static org.junit.Assume.assumeTrue;
 
 import java.nio.ByteBuffer;
 
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,6 +96,14 @@ public class AArch64InstructionEncodingTest extends GraalTest {
         }
     }
 
+    private class Ld1MultipleVTestEncoding extends AArch64InstructionEncodingTestCase {
+        Ld1MultipleVTestEncoding(int expected, ASIMDSize size, ElementSize eSize, Register dst, AArch64Address addr) {
+            super(expected);
+            assembler.neon.ld1MultipleV(size, eSize, dst, addr);
+            closeAssembler();
+        }
+    }
+
     private static final int invalidInstructionCode = 0x00000000;
 
     private void assertWrapper(AArch64InstructionEncodingTestCase testCase) {
@@ -146,5 +156,21 @@ public class AArch64InstructionEncodingTest extends GraalTest {
     @SuppressWarnings("unused")
     public void testUmovInvalidSrcIdx() {
         new UmovEncodingTestCase(invalidInstructionCode, ElementSize.DoubleWord, AArch64.r0, 2, AArch64.v0);
+    }
+
+    @Test
+    public void testLd1MultipleV() {
+        AArch64Address addr = AArch64Address.createStructureNoOffsetAddress(AArch64.r0);
+        assertWrapper(new Ld1MultipleVTestEncoding(0x0070404c, ASIMDSize.FullReg, ElementSize.Byte, AArch64.v0, addr));
+        addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_1R, ASIMDSize.FullReg, ElementSize.Byte, AArch64.r0, 16);
+        assertWrapper(new Ld1MultipleVTestEncoding(0x0070df4c, ASIMDSize.FullReg, ElementSize.Byte, AArch64.v0, addr));
+        addr = AArch64Address.createStructureNoOffsetAddress(AArch64.r0);
+        assertWrapper(new Ld1MultipleVTestEncoding(0x0070400c, ASIMDSize.HalfReg, ElementSize.Byte, AArch64.v0, addr));
+        addr = AArch64Address.createStructureImmediatePostIndexAddress(AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_1R, ASIMDSize.HalfReg, ElementSize.Byte, AArch64.r0, 8);
+        assertWrapper(new Ld1MultipleVTestEncoding(0x0070df0c, ASIMDSize.HalfReg, ElementSize.Byte, AArch64.v0, addr));
+        addr = AArch64Address.createStructureRegisterPostIndexAddress(AArch64.r0, AArch64.r1);
+        assertWrapper(new Ld1MultipleVTestEncoding(0x0070c14c, ASIMDSize.FullReg, ElementSize.Byte, AArch64.v0, addr));
+        addr = AArch64Address.createStructureRegisterPostIndexAddress(AArch64.r0, AArch64.r1);
+        assertWrapper(new Ld1MultipleVTestEncoding(0x0070c10c, ASIMDSize.HalfReg, ElementSize.Byte, AArch64.v0, addr));
     }
 }
