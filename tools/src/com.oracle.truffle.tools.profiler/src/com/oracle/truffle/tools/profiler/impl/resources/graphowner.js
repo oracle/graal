@@ -258,3 +258,8 @@ function substring_width(t, txt, x, lengths) {
     }
     return w;
 }
+
+function owner_resize(new_width) {
+    document.firstElementChild.width.baseVal.value = new_width;
+    document.firstElementChild.viewBox.baseVal.width = new_width;
+}

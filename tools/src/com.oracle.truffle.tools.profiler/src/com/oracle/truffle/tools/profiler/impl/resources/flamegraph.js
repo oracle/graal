@@ -316,3 +316,21 @@ function fg_color_for_sample(color_type, sample) {
         return color_for_compilation(sample.i, sample.c);
     }
 }
+
+function fg_resize(new_width) {
+    fg_width = new_width
+    let fg_svg = flamegraph.parentElement;
+    fg_svg.width.baseVal.value = new_width;
+    let viewbox = fg_svg.viewBox.baseVal;
+    viewbox.width = new_width
+    let fg_canvas = document.getElementById("fg_canvas");
+    fg_canvas.width.baseVal.value = new_width;
+    if (fg_zoomed_sample == profileData) {
+        unzoom();
+    } else {
+        zoom(fg_element_for_sample(fg_zoomed_sample));
+    }
+    document.getElementById("fg_title").setAttribute("x", new_width / 2);
+    document.getElementById("search").setAttribute("x", new_width - xpad);
+
+}

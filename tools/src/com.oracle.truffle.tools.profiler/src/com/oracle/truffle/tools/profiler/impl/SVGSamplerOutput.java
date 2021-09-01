@@ -177,6 +177,7 @@ class SVGSamplerOutput {
         String css();
         String script();
         String initFunction(String argName);
+        String resizeFunction();
         String searchFunction(String argName);
         String resetSearchFunction();
 
@@ -268,6 +269,7 @@ class SVGSamplerOutput {
             result.append(String.format("var fontSize = %s;\n", fontSize()));
             result.append(String.format("var fontWidth = %s;\n", fontWidth()));
             result.append(samples());
+            result.append(resizeFunction());
             result.append(initFunction("evt"));
             result.append(searchFunction("term"));
             result.append(resetSearchFunction());
@@ -432,7 +434,20 @@ class SVGSamplerOutput {
             for (SVGComponent component: components) {
                 result.append(component.initFunction(argName));
             }
+            result.append("resize();\n");
             result.append("}\n");
+            return result.toString();
+        }
+
+        public String resizeFunction() {
+            StringBuilder result = new StringBuilder();
+            result.append("function resize() {\n");
+            result.append("owner_resize(window.innerWidth);\n");
+            for (SVGComponent component: components) {
+                result.append(component.resizeFunction());
+            }
+            result.append("}\n");
+            result.append("window.onresize = resize;\n");
             return result.toString();
         }
 
@@ -715,11 +730,11 @@ class SVGSamplerOutput {
             // changes the max height of the graph.
 
             output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2,
-                                              "Flamegraph", "middle", null));
+                                              "Flamegraph", "middle", "id=\"fg_title\""));
             output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), XPAD, owner.fontSize() * 2,
                                               "Reset zoom", "", "id=\"unzoom\" onclick=\"unzoom()\" style=\"opacity:0.1;cursor:pointer\""));
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), width() - XPAD - 100, owner.fontSize() * 2,
-                                              "Search", "", "id=\"search\"  onclick=\"search_prompt()\" onmouseover=\"fg_searchover()\" onmouseout=\"fg_searchout()\""));
+            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), width() - XPAD, owner.fontSize() * 2,
+                                              "Search", "end", "id=\"search\"  onclick=\"search_prompt()\" onmouseover=\"fg_searchover()\" onmouseout=\"fg_searchout()\""));
             return output.toString();
         }
 
@@ -779,6 +794,10 @@ class SVGSamplerOutput {
 
         public double height() {
             return FRAMEHEIGHT * maxDepth + topPadding + bottomPadding;
+        }
+
+        public String resizeFunction() {
+            return "fg_resize(window.innerWidth);\n";
         }
 
         public String initFunction(String argName) {
@@ -886,7 +905,7 @@ class SVGSamplerOutput {
             canvasAttr.put("id", "h_canvas");
             output.append(owner.svg.startGroup(attr));
             output.append(owner.svg.fillRectangle(0, 0, width(), height(), "url(#background)", "", canvasAttr));
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2, "Histogram", "middle", null));
+            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2, "Histogram", "middle", "id=\"h_title\""));
 
             for (int position = 0; position < histogram.size(); position++) {
                 output.append(drawElement(histogram.get(position), position));
@@ -952,6 +971,10 @@ class SVGSamplerOutput {
 
         public double height() {
             return histogram.size() * FRAMEHEIGHT + titlePadding + bottomPadding;
+        }
+
+        public String resizeFunction() {
+            return "h_resize(window.innerWidth);\n";
         }
 
         public String initFunction(String argName) {

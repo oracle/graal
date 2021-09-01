@@ -231,3 +231,15 @@ function h_update_color(color_type) {
         }
     }
 }
+
+function h_resize(new_width) {
+    h_width = new_width
+    let h_svg = histogram.parentElement;
+    h_svg.width.baseVal.value = new_width;
+    let viewbox = h_svg.viewBox.baseVal;
+    viewbox.width = new_width
+    let h_canvas = document.getElementById("h_canvas");
+    h_canvas.width.baseVal.value = new_width;
+    rebuild_histogram(fg_zoomed_sample);
+    document.getElementById("h_title").setAttribute("x", new_width / 2);
+}
