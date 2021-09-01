@@ -280,7 +280,7 @@ suite = {
                 "tools:TRUFFLE_PROFILER",
             ],
             "exclude": [
-                "truffle:TRUFFLE_ASM_7.2",
+                "truffle:TRUFFLE_ASM_9.1",
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
