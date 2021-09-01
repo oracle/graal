@@ -1033,7 +1033,7 @@ public class CommonNodeFactory {
         }
     }
 
-    public static LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, @SuppressWarnings("unused") Type fromType) {
+    public static LLVMExpressionNode createBitcast(LLVMExpressionNode fromNode, Type targetType, Type fromType) {
         // does a reinterpreting cast between pretty much anything as long as source and target have
         // the same bit width.
         assert targetType != null;
@@ -1064,6 +1064,15 @@ public class CommonNodeFactory {
                         return LLVMBitcastToFloatVectorNodeGen.create(fromNode, vectorLength);
                     case DOUBLE:
                         return LLVMBitcastToDoubleVectorNodeGen.create(fromNode, vectorLength);
+                }
+            } else if (elemType instanceof PointerType) {
+                if (fromType instanceof VectorType) {
+                    VectorType fromVector = (VectorType) fromType;
+                    if (fromVector.getNumberOfElements() == vectorType.getNumberOfElements() && fromVector.getElementType() instanceof PointerType) {
+                        // cast from vector-of-pointers to vector-of-pointers
+                        // nothing to do, only the pointee type is different
+                        return fromNode;
+                    }
                 }
             }
         }
