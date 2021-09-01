@@ -600,7 +600,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                         return false;
                     }
                     if (method.getAnnotation(Fold.class) != null) {
-                        throw new GraalError("Fold invokes should no longer exist: " + method + " in " + stateSplit.asNode().graph());
+                        /*
+                         * In SVM, @Fold methods cannot be handled eagerly, e.g.,
+                         * because @ConstantParameter arguments are not yet constant. Thus, the
+                         * handling of these invokes is deferred (see
+                         * SubstrateReplacements.SnippetInlineInvokePlugin).
+                         */
+                        return true;
                     }
                     Node.NodeIntrinsic annotation = method.getAnnotation(Node.NodeIntrinsic.class);
                     if (annotation != null && !annotation.hasSideEffect()) {
