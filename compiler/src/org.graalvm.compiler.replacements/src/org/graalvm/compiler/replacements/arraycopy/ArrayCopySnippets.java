@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -137,7 +138,8 @@ public abstract class ArrayCopySnippets implements Snippets {
         elementKindCounter.inc();
         elementKindCopiedCounter.add(length);
 
-        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.exactArraycopyWithSlowPathWork, elementKind);
+        // Don't lower until floating guards are fixed.
+        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.exactArraycopyWithSlowPathWork, GuardsStage.FIXED_DEOPTS, elementKind);
     }
 
     /**
@@ -176,7 +178,8 @@ public abstract class ArrayCopySnippets implements Snippets {
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, counters);
         incrementLengthCounter(length, counters);
 
-        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.checkcastArraycopyWithSlowPathWork, elementKind);
+        // Don't lower until frame states are assigned to deoptimization points.
+        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.checkcastArraycopyWithSlowPathWork, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -192,7 +195,8 @@ public abstract class ArrayCopySnippets implements Snippets {
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, counters);
         incrementLengthCounter(length, counters);
 
-        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.genericArraycopyWithSlowPathWork, elementKind);
+        // Don't lower until frame states are assigned to deoptimization points.
+        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.genericArraycopyWithSlowPathWork, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -551,26 +555,11 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
 
         public void lower(ArrayCopyWithDelayedLoweringNode arraycopy, LoweringTool tool) {
-            lower(arraycopy, false, tool);
-        }
-
-        public void lower(ArrayCopyWithDelayedLoweringNode arraycopy, boolean mayExpandArraycopyLoops, LoweringTool tool) {
-            StructuredGraph graph = arraycopy.graph();
-
-            SnippetInfo snippetInfo = getSnippet(arraycopy.getSnippet());
-            if (snippetInfo == exactArraycopyWithSlowPathWork && mayExpandArraycopyLoops) {
-                if (!graph.getGuardsStage().areDeoptsFixed()) {
-                    // Don't lower until floating guards are fixed.
-                    return;
-                }
-            } else {
-                if (!graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                    // Don't lower until frame states are assigned to deoptimization points.
-                    return;
-                }
+            if (!arraycopy.reachedLoweringStage()) {
+                return;
             }
 
-            Arguments args = new Arguments(snippetInfo, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(getSnippet(arraycopy.getSnippet()), arraycopy.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("src", arraycopy.getSource());
             args.add("srcPos", arraycopy.getSourcePosition());
             args.add("dest", arraycopy.getDestination());

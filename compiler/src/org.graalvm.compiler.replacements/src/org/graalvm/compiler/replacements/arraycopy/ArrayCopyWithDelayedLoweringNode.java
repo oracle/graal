@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements.arraycopy;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
@@ -41,15 +42,8 @@ import jdk.vm.ci.meta.JavaKind;
  * is delayed to avoid unfavorable interaction with other phases (floating guards, frame state
  * assignment, etc.).
  *
- * Depending on the {@link #snippet}, lowering is delayed until either
- * {@linkplain org.graalvm.compiler.nodes.StructuredGraph.GuardsStage#areDeoptsFixed() floating
- * guards are fixed} or
- * {@linkplain org.graalvm.compiler.nodes.StructuredGraph.GuardsStage#areFrameStatesAtDeopts() frame
- * states are assigned to deoptimization points}. See
- * {@link ArrayCopySnippets.Templates#lower(ArrayCopyWithDelayedLoweringNode, boolean, org.graalvm.compiler.nodes.spi.LoweringTool)}
- * for more details.
- *
  * @see ArrayCopyNode
+ * @see ArrayCopySnippets
  */
 @NodeInfo(allowedUsageTypes = InputType.Memory)
 public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode {
@@ -57,16 +51,19 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode {
     public static final NodeClass<ArrayCopyWithDelayedLoweringNode> TYPE = NodeClass.create(ArrayCopyWithDelayedLoweringNode.class);
 
     private final ArrayCopySnippets.WorkSnippetID snippet;
+    private final StructuredGraph.GuardsStage delayUntil;
 
-    public ArrayCopyWithDelayedLoweringNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ArrayCopySnippets.WorkSnippetID snippet, JavaKind elementKind) {
+    public ArrayCopyWithDelayedLoweringNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ArrayCopySnippets.WorkSnippetID snippet,
+                    StructuredGraph.GuardsStage delayUntil, JavaKind elementKind) {
         super(TYPE, src, srcPos, dest, destPos, length, elementKind, BytecodeFrame.INVALID_FRAMESTATE_BCI);
         assert StampTool.isPointerNonNull(src) && StampTool.isPointerNonNull(dest) : "must have been null checked";
         this.snippet = snippet;
+        this.delayUntil = delayUntil;
     }
 
     @NodeIntrinsic
     public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter ArrayCopySnippets.WorkSnippetID snippet,
-                    @ConstantNodeParameter JavaKind elementKind);
+                    @ConstantNodeParameter StructuredGraph.GuardsStage delayUntil, @ConstantNodeParameter JavaKind elementKind);
 
     public ArrayCopySnippets.WorkSnippetID getSnippet() {
         return snippet;
@@ -74,5 +71,9 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode {
 
     public void setBci(int bci) {
         this.bci = bci;
+    }
+
+    public boolean reachedLoweringStage() {
+        return graph().getGuardsStage().reachedStage(delayUntil);
     }
 }
