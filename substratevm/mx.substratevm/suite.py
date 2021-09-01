@@ -322,6 +322,43 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.core.jfr": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "11+",
+            "requires": [
+                "jdk.jfr",
+                "jdk.management",
+                "jdk.unsupported"
+            ],
+            "requiresConcealed": {
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
+                    "jdk.jfr.internal.consumer",
+                    "jdk.jfr.internal.jfc",
+                    "jdk.jfr.internal.handlers",
+                    "jdk.jfr.events"
+                ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.hotspot"
+                ],
+                "java.base": [
+                    "jdk.internal.event",
+                    "jdk.internal.misc",
+                    "jdk.internal.util.xml",
+                    "jdk.internal.util.xml.impl",
+                    "jdk.internal.org.xml.sax.helpers"
+                ]
+            },
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.core.posix": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -544,46 +581,6 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
-        },
-
-        "com.oracle.svm.jfr": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "checkstyle": "com.oracle.svm.core",
-            "javaCompliance": "11+",
-            "requires": [
-                "jdk.jfr",
-                "jdk.management",
-                "jdk.unsupported"
-            ],
-            "requiresConcealed": {
-                "jdk.jfr": [
-                    "jdk.jfr.internal",
-                    "jdk.jfr.internal.consumer",
-                    "jdk.jfr.internal.jfc",
-                    "jdk.jfr.internal.handlers",
-                    "jdk.jfr.events"
-                ],
-                "jdk.internal.vm.ci": [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.hotspot"
-                ],
-                "java.base": [
-                    "jdk.internal.event",
-                    "jdk.internal.misc",
-                    "jdk.internal.util.xml",
-                    "jdk.internal.util.xml.impl",
-                    "jdk.internal.org.xml.sax.helpers"
-                ]
-            },
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "workingSets": "SVM",
         },
 
         "com.oracle.svm.driver": {
@@ -1057,7 +1054,6 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.containers",
                 "com.oracle.svm.jni",
-                "com.oracle.svm.jfr",
                 "com.oracle.svm.reflect",
                 "com.oracle.svm.methodhandles"
             ],
