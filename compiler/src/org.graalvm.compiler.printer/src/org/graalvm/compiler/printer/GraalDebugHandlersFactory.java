@@ -101,8 +101,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
             // Also provide a schedule when an error occurs
             if (DebugOptions.PrintGraphWithSchedule.getValue(graph.getOptions()) || debug.contextLookup(Throwable.class) != null) {
                 try (DebugCloseable noIntercept = debug.disableIntercept()) {
-                    SchedulePhase schedule = new SchedulePhase(graph.getOptions());
-                    schedule.apply(graph);
+                    SchedulePhase.runWithoutContextOptimizations(graph);
                     scheduleResult = graph.getLastSchedule();
                 } catch (Throwable t) {
                 }

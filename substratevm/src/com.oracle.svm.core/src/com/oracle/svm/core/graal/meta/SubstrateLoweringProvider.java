@@ -61,4 +61,8 @@ public interface SubstrateLoweringProvider extends LoweringProvider {
 
     }
 
+    @Override
+    default boolean supportsImplicitNullChecks() {
+        return false;
+    }
 }

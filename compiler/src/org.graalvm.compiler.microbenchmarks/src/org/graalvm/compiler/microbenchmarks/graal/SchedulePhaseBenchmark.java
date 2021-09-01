@@ -39,7 +39,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void stringEquals(StringEquals s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph);
     }
 
     @Benchmark
@@ -95,7 +95,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void intersection_LATEST_OPTIMAL(IntersectionState_LATEST_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhaseBenchmark.class, name = "intersectionSnippet")
@@ -107,7 +107,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void intersection_LATEST_OUT_OF_LOOPS_OPTIMAL(IntersectionState_LATEST_OUT_OF_LOOPS_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhaseBenchmark.class, name = "intersectionSnippet")
@@ -119,7 +119,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void intersection_EARLIEST_OPTIMAL(IntersectionState_EARLIEST_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhaseBenchmark.class, name = "intersectionSnippet")
@@ -131,7 +131,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void intersection_EARLIEST_WITH_GUARD_ORDER_OPTIMAL(IntersectionState_EARLIEST_WITH_GUARD_ORDER_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
     // Checkstyle: resume method name check
 
@@ -145,7 +145,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void scheduleEarliestIterative_LATEST_OPTIMAL(ScheduleEarliestIterative_LATEST_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
@@ -157,7 +157,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void scheduleEarliestIterative_LATEST_OUT_OF_LOOPS_OPTIMAL(ScheduleEarliestIterative_LATEST_OUT_OF_LOOPS_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
@@ -169,7 +169,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void scheduleEarliestIterative_EARLIEST_OPTIMAL(ScheduleEarliestIterative_EARLIEST_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
@@ -181,7 +181,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void scheduleEarliestIterative_EARLIEST_WITH_GUARD_ORDER_OPTIMAL(ScheduleEarliestIterative_EARLIEST_WITH_GUARD_ORDER_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
     // Checkstyle: resume method name check
 }

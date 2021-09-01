@@ -208,6 +208,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, factories, providers, snippetReflection, target));
     }
 
+    @Override
+    public boolean supportsImplicitNullChecks() {
+        return target.implicitNullCheckLimit > 0;
+    }
+
     public final TargetDescription getTarget() {
         return target;
     }

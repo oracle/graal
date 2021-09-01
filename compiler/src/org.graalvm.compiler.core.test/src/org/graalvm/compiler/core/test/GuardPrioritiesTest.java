@@ -111,7 +111,7 @@ public class GuardPrioritiesTest extends GraphScheduleTest {
         assumeTrue("GuardPriorities must be turned one", GraalOptions.GuardPriorities.getValue(getInitialOptions()));
         StructuredGraph graph = prepareGraph("unknownCondition");
 
-        new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER).apply(graph);
+        new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER).apply(graph, getDefaultHighTierContext());
         for (GuardNode g1 : graph.getNodes(GuardNode.TYPE)) {
             for (GuardNode g2 : graph.getNodes(GuardNode.TYPE)) {
                 if (g1.getSpeculation().equals(SpeculationLog.NO_SPECULATION) ^ g2.getSpeculation().equals(SpeculationLog.NO_SPECULATION)) {

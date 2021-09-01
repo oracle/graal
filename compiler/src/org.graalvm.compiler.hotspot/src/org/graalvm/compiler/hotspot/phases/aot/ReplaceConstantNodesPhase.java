@@ -523,7 +523,7 @@ public class ReplaceConstantNodesPhase extends BasePhase<CoreProviders> {
      * @param context
      */
     private static void replaceLoadMethodCounters(StructuredGraph graph, FrameStateMapperClosure stateMapper, CoreProviders context) {
-        new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, true).apply(graph, false);
+        new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, true).apply(graph, context, false);
 
         for (LoadMethodCountersNode node : getLoadMethodCountersNodes(graph)) {
             if (anyUsagesNeedReplacement(node)) {
@@ -538,9 +538,10 @@ public class ReplaceConstantNodesPhase extends BasePhase<CoreProviders> {
      * @param graph
      * @param stateMapper
      * @param classInfo
+     * @param context
      */
-    private void replaceKlassesAndObjects(StructuredGraph graph, FrameStateMapperClosure stateMapper, ClassInfo classInfo) {
-        new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, true).apply(graph, false);
+    private void replaceKlassesAndObjects(StructuredGraph graph, FrameStateMapperClosure stateMapper, ClassInfo classInfo, CoreProviders context) {
+        new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, true).apply(graph, context, false);
 
         for (ConstantNode node : getConstantNodes(graph)) {
             Constant constant = node.asConstant();
@@ -580,7 +581,7 @@ public class ReplaceConstantNodesPhase extends BasePhase<CoreProviders> {
 
             // Replace object and klass constants (including the ones added in the previous pass)
             // with resolution nodes.
-            replaceKlassesAndObjects(graph, stateMapper, new ClassInfo(context.getMetaAccess()));
+            replaceKlassesAndObjects(graph, stateMapper, new ClassInfo(context.getMetaAccess()), context);
         } else {
             replaceKlassesWithoutResolution(graph, new ClassInfo(context.getMetaAccess()));
         }

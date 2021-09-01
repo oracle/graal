@@ -64,7 +64,7 @@ public class SchedulingTest extends GraphScheduleTest {
         }
         graph.clearAllStateAfter();
         SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST);
-        schedulePhase.apply(graph);
+        schedulePhase.apply(graph, getDefaultHighTierContext());
         ScheduleResult schedule = graph.getLastSchedule();
         NodeMap<Block> nodeToBlock = schedule.getCFG().getNodeToBlock();
         assertTrue(graph.getNodes().filter(LoopExitNode.class).count() == 1);
