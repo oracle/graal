@@ -263,20 +263,24 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         double weight = rate(count, elapsed) * count;
         lastTime = currentTime;
         lastCount = count;
-        // @formatter:off
-        // We multiply first tier compilations with this bonus to bring first and last tier
-        // compilation weights to roughly the same order of magnitude and give first tier compilations some priority.
-        // The bonus is calculated as TraversingQueueFirstTierBonus * LastTierCompilationThreshold / FirstTierCompilationThreshold
-        //                                    ^                        \________________________________________________________/
-        //  This controls for the fact that second tier                             |
-        //  compilations are already compiled in the first                          |
-        //  tier and are thus faster and for the fact that                          |
-        //  we wish to prioritize first tier compilations.                          |
-        //                                                                          |
-        //                                   This controls for the fact that weight is a multiple of the callAndLoopCount and this
-        //                                   count is on the order of the thresholds which is much smaller for first tier compilations
-        // @formatter:on
-        lastWeight = weight * (isFirstTier() ? engineData.traversingFirstTierBonus : 1);
+        if (engineData.traversingFirstTierPriority) {
+            lastWeight = weight;
+        } else {
+            // @formatter:off
+            // We multiply first tier compilations with this bonus to bring first and last tier
+            // compilation weights to roughly the same order of magnitude and give first tier compilations some priority.
+            // The bonus is calculated as TraversingQueueFirstTierBonus * LastTierCompilationThreshold / FirstTierCompilationThreshold
+            //                                    ^                        \________________________________________________________/
+            //  This controls for the fact that second tier                             |
+            //  compilations are already compiled in the first                          |
+            //  tier and are thus faster and for the fact that                          |
+            //  we wish to prioritize first tier compilations.                          |
+            //                                                                          |
+            //                                   This controls for the fact that weight is a multiple of the callAndLoopCount and this
+            //                                   count is on the order of the thresholds which is much smaller for first tier compilations
+            // @formatter:on
+            lastWeight = weight * (isFirstTier() ? engineData.traversingFirstTierBonus : 1);
+        }
         assert weight >= 0.0 : "weight must be positive";
         return true;
     }
