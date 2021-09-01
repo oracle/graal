@@ -49,7 +49,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class HotSpotArraycopySnippets extends ArrayCopySnippets {
 
@@ -91,10 +90,9 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     }
 
     @Override
-    protected void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
-                    MetaAccessProvider metaAccess) {
-        int scale = ReplacementsUtil.arrayIndexScale(metaAccess, elementKind);
-        int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(metaAccess, elementKind);
+    protected void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
+        int scale = ReplacementsUtil.arrayIndexScale(INJECTED_META_ACCESS, elementKind);
+        int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(INJECTED_META_ACCESS, elementKind);
         long sourceOffset = arrayBaseOffset + (long) srcPos * scale;
         long destOffset = arrayBaseOffset + (long) destPos * scale;
 

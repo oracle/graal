@@ -123,7 +123,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */
-    static final MetaAccessProvider INJECTED_META_ACCESS = null;
+    protected static final MetaAccessProvider INJECTED_META_ACCESS = null;
 
     /**
      * Checks whether the hubs for the given objects are equal. The objects must be non-null.
@@ -258,14 +258,13 @@ public abstract class ArrayCopySnippets implements Snippets {
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void exactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity arrayLocation,
                     @ConstantParameter Counters counters) {
-        doExactArraycopyWithSlowPathWork(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters, INJECTED_META_ACCESS);
+        doExactArraycopyWithSlowPathWork(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
     }
 
     /**
      * @see #exactArraycopyWithSlowPathWork
      */
-    protected abstract void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
-                    MetaAccessProvider metaAccess);
+    protected abstract void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
 
     /**
      * Performs an array copy via fast checkcast stub.
