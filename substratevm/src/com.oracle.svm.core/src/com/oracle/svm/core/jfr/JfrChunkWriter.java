@@ -62,7 +62,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private static final long METADATA_TYPE_ID = 0;
     private static final long CONSTANT_POOL_TYPE_ID = 1;
 
-    private final JfrGlobalMemory globalMemory;
+    // Declare as protected to avoid creating accessor
+    protected final JfrGlobalMemory globalMemory;
     private final ReentrantLock lock;
     private final boolean compressedInts;
     private long notificationThreshold;
