@@ -69,7 +69,7 @@ public class Hello {
     public static void main(String[] args) {
         Greeter greeter = Greeter.greeter(args);
         greeter.greet();
-        /*
+        /*-
          * Perform the following call chains
          *
          * main --no-inline--> noInlineFoo --inline--> inlineMee --inline--> inlineMoo
@@ -168,6 +168,6 @@ public class Hello {
             System.out.println("Recursive inline calls!");
             return;
         }
-        inlineTailRecursion(n-1);
+        inlineTailRecursion(n - 1);
     }
 }
