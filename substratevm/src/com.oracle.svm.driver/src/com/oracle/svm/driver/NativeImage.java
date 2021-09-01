@@ -253,6 +253,7 @@ public class NativeImage {
     private boolean diagnostics = false;
     String diagnosticsDir;
     private boolean jarOptionMode = false;
+    private boolean moduleOptionMode = false;
     private boolean dryRun = false;
     private String printFlagsOptionQuery = null;
     private String printFlagsWithExtraHelpOptionQuery = null;
@@ -1176,7 +1177,7 @@ public class NativeImage {
                         String moduleMsg = USE_NI_JPMS ? " (or <module>/<mainclass>)" : "";
                         showError("Please specify class" + moduleMsg + " containing the main entry point method. (see --help)");
                     }
-                } else {
+                } else if (!moduleOptionMode) {
                     /* extraImageArgs main-class overrules previous main-class specification */
                     explicitMainClass = true;
                     mainClass = extraImageArgs.remove(0);
@@ -1780,6 +1781,10 @@ public class NativeImage {
 
     void setJarOptionMode(boolean val) {
         jarOptionMode = val;
+    }
+
+    void setModuleOptionMode(boolean val) {
+        moduleOptionMode = val;
     }
 
     boolean isVerbose() {
