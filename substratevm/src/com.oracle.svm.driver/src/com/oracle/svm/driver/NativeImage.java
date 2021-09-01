@@ -253,6 +253,7 @@ public class NativeImage {
     private boolean diagnostics = false;
     String diagnosticsDir;
     private boolean jarOptionMode = false;
+    private Path jarFilePath;
     private boolean moduleOptionMode = false;
     private boolean dryRun = false;
     private String printFlagsOptionQuery = null;
@@ -689,9 +690,18 @@ public class NativeImage {
 
         @Override
         public boolean isExcluded(Path resourcePath, Path classpathEntry) {
+            showVerboseMessage(String.format("Attempt to check if resource %s in classpath entry %s should be excluded", resourcePath, classpathEntry));
             return excludedConfigs.stream()
-                            .filter(e -> e.jarPattern.matcher(classpathEntry.toString()).find())
-                            .anyMatch(e -> e.resourcePattern.matcher(resourcePath.toString()).find());
+                            .filter(e -> regexMatch(classpathEntry, e.jarPattern, "Classpath entry"))
+                            .anyMatch(e -> regexMatch(resourcePath, e.resourcePattern, "Resource path"));
+        }
+
+        private boolean regexMatch(Path path, Pattern pattern, String prefix) {
+            final boolean matches = pattern.matcher(path.toString()).find();
+            if (verbose) {
+                showVerboseMessage(String.format("%s %s %s match pattern %s", prefix, path, matches ? "does" : "doesn't", pattern));
+            }
+            return matches;
         }
     }
 
@@ -1056,14 +1066,14 @@ public class NativeImage {
         }
     }
 
-    void handleMainClassAttribute(Path jarFilePath, Attributes mainAttributes) {
+    void handleMainClassAttribute(Path filePath, Attributes mainAttributes) {
         String mainClassValue = mainAttributes.getValue("Main-Class");
         if (mainClassValue == null) {
-            NativeImage.showError("No main manifest attribute, in " + jarFilePath);
+            NativeImage.showError("No main manifest attribute, in " + filePath);
         }
-        String origin = "manifest from " + jarFilePath.toUri();
+        String origin = "manifest from " + filePath.toUri();
         addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(oHClass + mainClassValue, origin));
-        String jarFileName = jarFilePath.getFileName().toString();
+        String jarFileName = filePath.getFileName().toString();
         String jarSuffix = ".jar";
         String jarFileNameBase;
         if (jarFileName.endsWith(jarSuffix)) {
@@ -1076,7 +1086,7 @@ public class NativeImage {
         }
     }
 
-    void handleClassPathAttribute(Path jarFilePath, Attributes mainAttributes) {
+    void handleClassPathAttribute(Path filePath, Attributes mainAttributes) {
         String classPathValue = mainAttributes.getValue("Class-Path");
         /* Missing Class-Path Attribute is tolerable */
         if (classPathValue != null) {
@@ -1084,7 +1094,7 @@ public class NativeImage {
                 Path manifestClassPath = ClasspathUtils.stringToClasspath(cp);
                 if (!manifestClassPath.isAbsolute()) {
                     /* Resolve relative manifestClassPath against directory containing jar */
-                    manifestClassPath = jarFilePath.getParent().resolve(manifestClassPath);
+                    manifestClassPath = filePath.getParent().resolve(manifestClassPath);
                 }
                 /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
                 addImageClasspathEntry(imageClasspath, manifestClassPath, false);
@@ -1110,6 +1120,10 @@ public class NativeImage {
         } else if (printFlagsWithExtraHelpOptionQuery != null) {
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlagsWithExtraHelp + "=" + printFlagsWithExtraHelpOptionQuery);
             addPlainImageBuilderArg(NativeImage.oR + enablePrintFlagsWithExtraHelp + "=" + printFlagsWithExtraHelpOptionQuery);
+        }
+
+        if (jarOptionMode) {
+            addCustomImageClasspath(jarFilePath);
         }
 
         if (shouldAddCWDToCP()) {
@@ -1777,6 +1791,10 @@ public class NativeImage {
         if (val) {
             verbose = true;
         }
+    }
+
+    void setJarFilePath(Path jarFilePath) {
+        this.jarFilePath = jarFilePath;
     }
 
     void setJarOptionMode(boolean val) {

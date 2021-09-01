@@ -154,7 +154,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (jarFilePathStr == null) {
                     NativeImage.showError(requireValidJarFileMessage);
                 }
-                handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)));
+                final Path filePath = nativeImage.canonicalize(Paths.get(jarFilePathStr));
+                nativeImage.setJarFilePath(filePath);
+                handleJarFileArg(filePath);
                 nativeImage.setJarOptionMode(true);
                 return true;
             case verboseOption:
@@ -320,7 +322,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (!NativeImage.processJarManifestMainAttributes(filePath, nativeImage::handleMainClassAttribute)) {
             NativeImage.showError("No manifest in " + filePath);
         }
-        nativeImage.addCustomImageClasspath(filePath);
     }
 
     @Override
