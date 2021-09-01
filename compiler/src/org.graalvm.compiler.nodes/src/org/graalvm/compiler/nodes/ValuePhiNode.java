@@ -26,11 +26,15 @@ package org.graalvm.compiler.nodes;
 
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.util.CollectionsUtil;
 
@@ -116,5 +120,52 @@ public class ValuePhiNode extends PhiNode {
     @Override
     public ProxyNode createProxyFor(LoopExitNode lex) {
         return graph().addWithoutUnique(new ValueProxyNode(this, lex));
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        ValueNode canonical = super.canonical(tool);
+
+        if (canonical == this && isLoopPhi() && stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+            ValueNode[] canonicalInputs = new ValueNode[valueCount()];
+            canonicalInputs[0] = valueAt(0);
+            boolean changedInput = false;
+            for (int i = 1; i < valueCount(); i++) {
+                ValueNode inputValue = valueAt(i);
+                ValueNode value = inputValue;
+                if (value instanceof AddNode && ((AddNode) value).isAssociative()) {
+                    // Find repeated additions to simplify to phi = n * a + phi.
+                    int count = 0;
+                    AddNode add = (AddNode) value;
+                    ValueNode addend = null;
+                    if (add.getY() instanceof AddNode && ((AddNode) add.getY()).getX() == add.getX()) {
+                        addend = ((AddNode) value).getX();
+                        while (value instanceof AddNode && ((AddNode) value).getX() == addend) {
+                            // phi = a + (a + ... + (a + phi))
+                            count++;
+                            value = ((AddNode) value).getY();
+                        }
+                    } else if (add.getX() instanceof AddNode && ((AddNode) add.getX()).getY() == add.getY()) {
+                        addend = ((AddNode) value).getY();
+                        while (value instanceof AddNode && ((AddNode) value).getY() == addend) {
+                            // phi = ((phi + a) + ... + a)
+                            count++;
+                            value = ((AddNode) value).getX();
+                        }
+                    }
+                    if (addend != null && count > 1 && value == this) {
+                        ConstantNode n = ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), count);
+                        inputValue = BinaryArithmeticNode.add(BinaryArithmeticNode.mul(n, addend), this);
+                        changedInput = true;
+                    }
+                }
+                canonicalInputs[i] = inputValue;
+            }
+            if (changedInput) {
+                canonical = new ValuePhiNode(stamp(NodeView.DEFAULT), merge(), canonicalInputs);
+            }
+        }
+
+        return canonical;
     }
 }
