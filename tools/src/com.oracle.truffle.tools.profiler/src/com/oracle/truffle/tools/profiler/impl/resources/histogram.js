@@ -63,7 +63,10 @@ function h_highlight(e) {
         let bar = histogram_entry_for_id(e.getAttribute("id").substring(2));
         reset_search();
         hilight_element = e;
-        search(name_for_sample(bar));
+        let name = name_for_sample(bar);
+        // Ensure we escape anything that might cause a problem with the regexp.
+        name = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+        search(name);
     }
 }
 
