@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.lang.reflect.Executable;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -40,7 +41,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -48,12 +48,14 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
@@ -69,6 +71,7 @@ import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -217,6 +220,27 @@ public abstract class NativeImageCodeCache {
             final HostedMethod method = entry.getKey();
             final CompilationResult compilation = entry.getValue();
             codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset());
+        }
+
+        for (HostedType type : imageHeap.getUniverse().getTypes()) {
+            if (type.getWrapped().isReachable()) {
+                codeInfoEncoder.prepareMetadataForClass(type.getJavaClass());
+            }
+        }
+
+        if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
+            for (Executable queriedMethod : ImageSingletons.lookup(RuntimeReflectionSupport.class).getQueriedOnlyMethods()) {
+                HostedMethod method = imageHeap.getMetaAccess().optionalLookupJavaMethod(queriedMethod);
+                if (method != null) {
+                    codeInfoEncoder.prepareMetadataForMethod(method, queriedMethod);
+                }
+            }
+        } else {
+            for (HostedMethod method : imageHeap.getUniverse().getMethods()) {
+                if (method.getWrapped().isReachable() && method.hasJavaMethod()) {
+                    codeInfoEncoder.prepareMetadataForMethod(method, method.getJavaMethod());
+                }
+            }
         }
 
         if (NativeImageOptions.PrintMethodHistogram.getValue()) {

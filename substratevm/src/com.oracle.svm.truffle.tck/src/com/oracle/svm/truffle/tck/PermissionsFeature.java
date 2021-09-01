@@ -292,30 +292,32 @@ public class PermissionsFeature implements Feature {
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
             for (InvokeTypeFlow invoke : m.getTypeFlow().getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
-                    Set<AnalysisMethod> parents = visited.get(callee);
-                    String calleeName = getMethodName(callee);
-                    debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
-                    if (parents == null) {
-                        parents = new HashSet<>();
-                        visited.put(callee, parents);
-                        if (targets.contains(callee)) {
+                    if (callee.isInvoked()) {
+                        Set<AnalysisMethod> parents = visited.get(callee);
+                        String calleeName = getMethodName(callee);
+                        debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
+                        if (parents == null) {
+                            parents = new HashSet<>();
+                            visited.put(callee, parents);
+                            if (targets.contains(callee)) {
+                                parents.add(m);
+                                callPathContainsTarget = true;
+                                continue;
+                            }
+                            boolean add = callGraphImpl(callee, targets, visited, path, debugContext);
+                            if (add) {
+                                parents.add(m);
+                                debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
+                            }
+                            callPathContainsTarget |= add;
+                        } else if (!isBacktrace(callee, path) || isBackTraceOverLanguageMethod(callee, path)) {
                             parents.add(m);
+                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
                             callPathContainsTarget = true;
-                            continue;
-                        }
-                        boolean add = callGraphImpl(callee, targets, visited, path, debugContext);
-                        if (add) {
-                            parents.add(m);
-                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
-                        }
-                        callPathContainsTarget |= add;
-                    } else if (!isBacktrace(callee, path) || isBackTraceOverLanguageMethod(callee, path)) {
-                        parents.add(m);
-                        debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
-                        callPathContainsTarget = true;
-                    } else {
-                        if (debugContext.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
-                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName, mName);
+                        } else {
+                            if (debugContext.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
+                                debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName, mName);
+                            }
                         }
                     }
                 }

@@ -278,6 +278,7 @@ class CodeInfoFeature implements Feature {
         ImageSingletons.add(RuntimeCodeInfoHistory.class, new RuntimeCodeInfoHistory());
         ImageSingletons.add(RuntimeCodeCache.class, new RuntimeCodeCache());
         ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
+        ImageSingletons.add(MethodMetadataEncoding.class, new MethodMetadataEncoding());
     }
 
     @Override

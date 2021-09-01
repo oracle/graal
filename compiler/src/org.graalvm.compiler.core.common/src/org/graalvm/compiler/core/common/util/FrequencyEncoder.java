@@ -90,6 +90,17 @@ public class FrequencyEncoder<T> {
     }
 
     /**
+     * Returns whether the given object has been previously added to the array.
+     */
+    public boolean contains(T object) {
+        if (object == null && containsNull) {
+            return true;
+        }
+        Entry<T> entry = map.get(object);
+        return entry != null;
+    }
+
+    /**
      * Returns the index of an object in the array. The object must have been
      * {@link #addObject(Object) added} before.
      */
