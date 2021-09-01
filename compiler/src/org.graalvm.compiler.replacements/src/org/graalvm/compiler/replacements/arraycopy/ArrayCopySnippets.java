@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements.arraycopy;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.EnumMap;
@@ -185,11 +184,14 @@ public abstract class ArrayCopySnippets implements Snippets {
 
     /**
      * Performs an array copy using a generic stub. Used when we do not know anything about the
-     * object types. Lowering is delayed using an {@link ArrayCopyWithDelayedLoweringNode}.
+     * object types. Lowering is delayed using an {@link ArrayCopyWithDelayedLoweringNode} which
+     * will dispatch to {@link #genericArraycopySnippet}.
+     *
+     * @see #genericArraycopySnippet
      */
     @Snippet
-    public void arraycopyGenericSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck, @ConstantParameter Counters counters,
-                    @ConstantParameter JavaKind elementKind) {
+    public void delayedGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
+                    @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
@@ -197,7 +199,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         incrementLengthCounter(length, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.genericArraycopyWithSlowPathWork, GuardsStage.AFTER_FSA, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.genericArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -247,30 +249,23 @@ public abstract class ArrayCopySnippets implements Snippets {
     protected abstract void doCheckcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
 
     /**
-     * Performs an array copy via {@link GenericArrayCopyCallNode}.
+     * Performs a generic array copy with all required type and store checks.
      *
-     * @see GenericArrayCopyCallNode
-     * @see #arraycopyGenericSnippet
+     * @see #delayedGenericArraycopySnippet
+     * @see #doGenericArraycopySnippet
      */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
-    public void genericArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
+    public void genericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation,
                     @ConstantParameter Counters counters) {
-        // The length > 0 check should not be placed here because generic array copy stub should
-        // enforce type check. This is fine performance-wise because this snippet is rarely used.
-        counters.genericArraycopyDifferentTypeCounter.inc();
-        counters.genericArraycopyDifferentTypeCopiedCounter.add(length);
-        int copiedElements = GenericArrayCopyCallNode.genericArraycopy(src, srcPos, dest, destPos, length);
-        if (probability(SLOW_PATH_PROBABILITY, copiedElements != 0)) {
-            /*
-             * the stub doesn't throw the ArrayStoreException, but returns the number of copied
-             * elements (xor'd with -1).
-             */
-            copiedElements ^= -1;
-            System.arraycopy(src, srcPos + copiedElements, dest, destPos + copiedElements, length - copiedElements);
-        }
+        doGenericArraycopySnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
     }
+
+    /**
+     * @see #genericArraycopySnippet
+     */
+    protected abstract void doGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
 
     private static void incrementLengthCounter(int length, Counters counters) {
         if (!IS_BUILDING_NATIVE_IMAGE) {
@@ -398,19 +393,19 @@ public abstract class ArrayCopySnippets implements Snippets {
          */
         checkcastArraycopySnippet,
         /**
-         * @see ArrayCopySnippets#genericArraycopyWithSlowPathWork
+         * @see ArrayCopySnippets#genericArraycopySnippet
          */
-        genericArraycopyWithSlowPathWork;
+        genericArraycopySnippet;
     }
 
     public static class Templates extends SnippetTemplate.AbstractTemplates {
-        private final SnippetInfo arraycopyGenericSnippet;
+        private final SnippetInfo delayedGenericArraycopySnippet;
         private final SnippetInfo delayedExactArraycopyWithSlowPathWork;
         private final SnippetInfo arraycopyExactStubCallSnippet;
         private final SnippetInfo delayedCheckcastArraycopySnippet;
         private final SnippetInfo arraycopyNativeSnippet;
         private final SnippetInfo checkcastArraycopySnippet;
-        private final SnippetInfo genericArraycopyWithSlowPathWork;
+        private final SnippetInfo genericArraycopySnippet;
         private final SnippetInfo exactArraycopyWithSlowPathWork;
 
         private final boolean useOriginalArraycopy;
@@ -423,13 +418,13 @@ public abstract class ArrayCopySnippets implements Snippets {
             this.counters = new Counters(factory);
 
             useOriginalArraycopy = receiver.useOriginalArraycopy();
-            arraycopyGenericSnippet = snippet(receiver, "arraycopyGenericSnippet");
+            delayedGenericArraycopySnippet = snippet(receiver, "delayedGenericArraycopySnippet");
             delayedExactArraycopyWithSlowPathWork = snippet(receiver, "delayedExactArraycopyWithSlowPathWork");
             arraycopyExactStubCallSnippet = snippet(receiver, "arraycopyExactStubCallSnippet");
             delayedCheckcastArraycopySnippet = snippet(receiver, "delayedCheckcastArraycopySnippet");
             arraycopyNativeSnippet = snippet(null, "arraycopyNativeSnippet");
             checkcastArraycopySnippet = snippet(receiver, "checkcastArraycopySnippet");
-            genericArraycopyWithSlowPathWork = snippet(receiver, "genericArraycopyWithSlowPathWork");
+            genericArraycopySnippet = snippet(receiver, "genericArraycopySnippet");
             exactArraycopyWithSlowPathWork = snippet(receiver, "exactArraycopyWithSlowPathWork");
         }
 
@@ -439,8 +434,8 @@ public abstract class ArrayCopySnippets implements Snippets {
                     return exactArraycopyWithSlowPathWork;
                 case checkcastArraycopySnippet:
                     return checkcastArraycopySnippet;
-                case genericArraycopyWithSlowPathWork:
-                    return genericArraycopyWithSlowPathWork;
+                case genericArraycopySnippet:
+                    return genericArraycopySnippet;
             }
             throw GraalError.shouldNotReachHere(workSnippetID.toString());
         }
@@ -482,12 +477,12 @@ public abstract class ArrayCopySnippets implements Snippets {
                     arrayTypeCheck = ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK;
                 } else if (srcComponentType == null && destComponentType == null) {
                     // we don't know anything about the types - use the generic copying
-                    snippetInfo = arraycopyGenericSnippet;
+                    snippetInfo = delayedGenericArraycopySnippet;
                     // no need for additional type check to avoid duplicated work
                     arrayTypeCheck = ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK;
                 } else if (GeneratePIC.getValue(options)) {
                     // use generic copying for AOT compilation
-                    snippetInfo = arraycopyGenericSnippet;
+                    snippetInfo = delayedGenericArraycopySnippet;
                     arrayTypeCheck = ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK;
                 } else if (srcComponentType != null && destComponentType != null) {
                     if (!srcComponentType.isPrimitive() && !destComponentType.isPrimitive()) {
@@ -546,7 +541,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             if (snippetInfo == delayedCheckcastArraycopySnippet) {
                 args.addConst("elementKind", JavaKind.Illegal);
             }
-            if (snippetInfo == arraycopyGenericSnippet) {
+            if (snippetInfo == delayedGenericArraycopySnippet) {
                 args.addConst("elementKind", JavaKind.Illegal);
             }
 
