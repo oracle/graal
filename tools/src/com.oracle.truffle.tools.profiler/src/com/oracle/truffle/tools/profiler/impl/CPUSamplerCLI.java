@@ -182,7 +182,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                     printSamplingJson(out, options, data);
                     break;
                 case FLAMEGRAPH:
-                    SVGSamplerOutput.printSamplingFlameGraph(out, sampler);
+                    SVGSamplerOutput.printSamplingFlameGraph(out, data);
             }
         }
     }

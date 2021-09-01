@@ -24,7 +24,11 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
@@ -43,8 +47,8 @@ import java.util.Scanner;
 
 class SVGSamplerOutput {
 
-    public static void printSamplingFlameGraph(PrintStream out, CPUSampler sampler) {
-        GraphOwner graph = new GraphOwner(new StringBuilder(), sampler);
+    public static void printSamplingFlameGraph(PrintStream out, Map<TruffleContext, CPUSamplerData> data) {
+        GraphOwner graph = new GraphOwner(new StringBuilder(), data);
 
         graph.addComponent(new SVGFlameGraph(graph));
         graph.addComponent(new SVGHistogram(graph));
@@ -197,7 +201,7 @@ class SVGSamplerOutput {
     private static class GraphOwner implements SVGComponent {
 
         private final SVGSamplerOutput svg;
-        private final CPUSampler sampler;
+        private final Map<TruffleContext, CPUSamplerData> data;
         private ArrayList<SVGComponent> components;
         private Random random = new Random();
         private Map<GraphColorMap, String> languageColors;
@@ -208,9 +212,9 @@ class SVGSamplerOutput {
         public final JSONArray sampleNames = new JSONArray();
         public final JSONObject sampleData = new JSONObject();
 
-        GraphOwner(StringBuilder output, CPUSampler sampler) {
+        GraphOwner(StringBuilder output, Map<TruffleContext,CPUSamplerData> data) {
             svg = new SVGSamplerOutput(output);
-            this.sampler = sampler;
+            this.data = data;
             components = new ArrayList<>();
             languageColors = new HashMap<>();
             buildSampleData();
@@ -285,10 +289,10 @@ class SVGSamplerOutput {
             sampleData.put("c", 0);
             sampleData.put("x", 0);
             sampleData.put("l", GraphColorMap.GRAY.ordinal());
-            Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
             long totalSamples = 0;
             JSONArray children = new JSONArray();
-            for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : threadToNodesMap.entrySet()) {
+            for (CPUSamplerData value : data.values()) {
+                for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : value.getThreadData().entrySet()) {
                 Thread thread = node.getKey();
                 // Output the thread node itself...
                 // Optput the samples under that node...
@@ -297,6 +301,7 @@ class SVGSamplerOutput {
                 for (ProfilerNode<CPUSampler.Payload> sample : samples) {
                     totalSamples += sample.getPayload().getHitCount();
                 }
+            }
             }
             sampleData.put("h", totalSamples);
             sampleData.put("s", children);
@@ -364,8 +369,12 @@ class SVGSamplerOutput {
                 });
             result.put("n", nameId);
             result.put("id", sampleId++);
-            result.put("i", sample.getPayload().getSelfInterpretedHitCount());
-            result.put("c", sample.getPayload().getSelfCompiledHitCount());
+            result.put("i", sample.getPayload().getTierSelfCount(0));
+            int compiledSelfHits = 0;
+            for (int i = 0; i < sample.getPayload().getNumberOfTiers(); i++) {
+                compiledSelfHits += sample.getPayload().getTierSelfCount(i);
+            }
+            result.put("c", compiledSelfHits);
             result.put("h", sample.getPayload().getHitCount());
             result.put("l", colorMapForLanguage(sample).ordinal());
             result.put("x", x);
@@ -546,7 +555,14 @@ class SVGSamplerOutput {
         }
 
         public GraphColorMap colorMapForLanguage(ProfilerNode<CPUSampler.Payload> sample) {
-            String language = sample.getSourceSection().getSource().getLanguage();
+            String language = "<none>";
+            SourceSection section = sample.getSourceSection();
+            if (section != null) {
+                Source source = section.getSource();
+                if (source != null) {
+                    language = source.getLanguage();
+                }
+            }
             GraphColorMap color = GraphColorMap.GRAY;
             if (languageColors.containsValue(language)) {
                 for (Map.Entry<GraphColorMap, String> entry : languageColors.entrySet()) {
