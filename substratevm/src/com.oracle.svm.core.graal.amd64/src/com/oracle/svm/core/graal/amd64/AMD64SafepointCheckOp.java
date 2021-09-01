@@ -46,7 +46,7 @@ public class AMD64SafepointCheckOp extends AMD64LIRInstruction {
 
     public static final LIRInstructionClass<AMD64SafepointCheckOp> TYPE = LIRInstructionClass.create(AMD64SafepointCheckOp.class);
 
-    protected AMD64SafepointCheckOp() {
+    public AMD64SafepointCheckOp() {
         super(TYPE);
     }
 
