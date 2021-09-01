@@ -25,197 +25,156 @@
 package com.oracle.svm.graal.meta;
 
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
+/**
+ * Provides memory access during runtime compilation, so all displacements must be runtime field
+ * offset of based on the runtime array base/scale.
+ * 
+ * Note that the implementation must not assume that the base and displacement constants are valid
+ * matching pairs. The compiler performs constant folding as soon as the input nodes are constants.
+ * When the folded memory access is in dead code, then the displacement often points outside of the
+ * base object or to a field with the wrong type. Careful checking of the arguments is necessary,
+ * otherwise the compiler can crash.
+ */
 public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryAccessProvider {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     public static final SubstrateMemoryAccessProviderImpl SINGLETON = new SubstrateMemoryAccessProviderImpl();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private SubstrateMemoryAccessProviderImpl() {
     }
 
-    static JavaConstant readUnsafeConstant(JavaKind kind, JavaConstant base, long displacement, boolean isVolatile) {
-        if (kind == JavaKind.Object) {
-            return readObjectConstant(base, displacement, null, isVolatile);
-        }
-        return readPrimitiveConstant(kind, base, displacement, kind.getByteCount() * Byte.SIZE, isVolatile);
-    }
-
     @Override
     public JavaConstant readObjectConstant(Constant baseConstant, long displacement) {
-        return readObjectConstant(baseConstant, displacement, null, false);
+        return readObjectChecked(baseConstant, displacement, null);
     }
 
     @Override
     public JavaConstant readNarrowObjectConstant(Constant baseConstant, long displacement, CompressEncoding encoding) {
-        return readObjectConstant(baseConstant, displacement, encoding, false);
+        return readObjectChecked(baseConstant, displacement, encoding);
     }
 
-    private static JavaConstant readObjectConstant(Constant baseConstant, long displacement, CompressEncoding compressedEncoding, boolean isVolatile) {
-        SignedWord offset = WordFactory.signed(displacement);
-
-        if (baseConstant instanceof SubstrateObjectConstant) { // always compressed (if enabled)
-            if (compressedEncoding != null) {
-                assert ReferenceAccess.singleton().haveCompressedReferences();
-                if (!compressedEncoding.equals(ReferenceAccess.singleton().getCompressEncoding())) {
-                    return null; // read with non-default compression not implemented
-                }
-            }
-            Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
-            assert baseObject != null : "SubstrateObjectConstant does not wrap null value";
-            SubstrateMetaAccess metaAccess = SubstrateMetaAccess.singleton();
-            ResolvedJavaType baseObjectType = metaAccess.lookupJavaType(baseObject.getClass());
-            checkRead(JavaKind.Object, displacement, baseObjectType, baseObject);
-            Object rawValue = BarrieredAccess.readObject(baseObject, offset);
-            if (isVolatile) {
-                UNSAFE.loadFence();
-            }
-            return SubstrateObjectConstant.forObject(rawValue, (compressedEncoding != null));
-        }
-        if (baseConstant instanceof PrimitiveConstant) { // never compressed
-            assert compressedEncoding == null;
-
-            PrimitiveConstant prim = (PrimitiveConstant) baseConstant;
-            if (!prim.getJavaKind().isNumericInteger()) {
+    /**
+     * Object constants can only be returned when we are 100% sure that the loaded value is really a
+     * valid object. Otherwise the GC will segfault. So we allow the read only when we find an
+     * instance field with the matching offset and type; or when accessing an Object[] array at an
+     * in-range and correctly aligned position.
+     */
+    private static JavaConstant readObjectChecked(Constant baseConstant, long displacement, CompressEncoding compressedEncoding) {
+        if (compressedEncoding != null) {
+            assert ReferenceAccess.singleton().haveCompressedReferences();
+            if (!compressedEncoding.equals(ReferenceAccess.singleton().getCompressEncoding())) {
+                /* Read with non-default compression not implemented. */
                 return null;
             }
-            Word baseAddress = WordFactory.unsigned(prim.asLong());
-            if (baseAddress.equal(0)) {
+        }
+
+        if (!(baseConstant instanceof SubstrateObjectConstant)) {
+            return null;
+        }
+        Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
+        if (baseObject == null) {
+            /* SubstrateObjectConstant does not wrap null. But we are defensive. */
+            return null;
+        } else if (displacement <= 0) {
+            /* Trying to read before the object, or the hub. No need to look into the object. */
+            return null;
+        }
+
+        SubstrateType baseObjectType = SubstrateMetaAccess.singleton().lookupJavaType(baseObject.getClass());
+        if (baseObjectType.isInstanceClass()) {
+            SubstrateField field = baseObjectType.findInstanceFieldWithOffset(displacement, JavaKind.Object);
+            if (field == null || field.getStorageKind() != JavaKind.Object) {
+                /* Not a valid instance field that has an Object type. */
                 return null;
             }
-            Word address = baseAddress.add(offset);
-            Object rawValue = ReferenceAccess.singleton().readObjectAt(address, false);
-            if (isVolatile) {
-                UNSAFE.loadFence();
-            }
-            return SubstrateObjectConstant.forObject(rawValue, false);
-        }
-        return null;
-    }
-
-    private static void checkRead(JavaKind kind, long displacement, ResolvedJavaType type, Object object) {
-        if (kind != JavaKind.Object) {
-            throw VMError.unimplemented();
-        }
-
-        if (type.isArray()) {
-            int length = ArrayLengthNode.arrayLength(object);
-            if (length < 1) {
-                throw new IllegalArgumentException("Unsafe array access: reading element of kind " + kind +
-                                " at offset " + displacement + " from zero-sized array " +
-                                type.toJavaName());
-            }
-            int encoding = KnownIntrinsics.readHub(object).getLayoutEncoding();
-            UnsignedWord unsignedDisplacement = WordFactory.unsigned(displacement);
-            UnsignedWord maxDisplacement = LayoutEncoding.getArrayElementOffset(encoding, length - 1);
-            if (displacement < 0 || maxDisplacement.belowThan(unsignedDisplacement)) {
-                int elementSize = LayoutEncoding.getArrayIndexScale(encoding);
-                UnsignedWord index = unsignedDisplacement.subtract(LayoutEncoding.getArrayBaseOffset(encoding)).unsignedDivide(elementSize);
-                throw new IllegalArgumentException("Unsafe array access: reading element of kind " + kind +
-                                " at offset " + displacement + " (index ~ " + index.rawValue() + ") in " +
-                                type.toJavaName() + " object of length " + length);
+        } else if (baseObject instanceof Object[]) {
+            int layoutEncoding = baseObjectType.getHub().getLayoutEncoding();
+            assert LayoutEncoding.isObjectArray(layoutEncoding);
+            if (displacement < LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding)) {
+                /* Trying to read before the first array element. */
+                return null;
+            } else if (WordFactory.unsigned(displacement).aboveOrEqual(LayoutEncoding.getArrayElementOffset(layoutEncoding, ((Object[]) baseObject).length))) {
+                /* Trying to read after the last array element. */
+                return null;
+            } else if ((displacement & (LayoutEncoding.getArrayIndexScale(layoutEncoding) - 1)) != 0) {
+                /* Not aligned at the start of an array element. */
+                return null;
             }
         } else {
-            ResolvedJavaField field = type.findInstanceFieldWithOffset(displacement, JavaKind.Object);
-            if (field == null) {
-                throw new IllegalArgumentException("Unsafe object access: field not found for read of kind Object" +
-                                " at offset " + displacement + " in " + type.toJavaName() + " object");
-            }
-            if (field.getJavaKind() != JavaKind.Object) {
-                throw new IllegalArgumentException("Unsafe object access: field " + field.format("%H.%n:%T") + " not of expected kind Object" +
-                                " at offset " + displacement + " in " + type.toJavaName() + " object");
-            }
+            /* Some other kind of object, for example a primitive array. */
+            return null;
         }
+        return readObjectUnchecked(baseObject, displacement, compressedEncoding != null);
+    }
+
+    static JavaConstant readObjectUnchecked(Object baseObject, long displacement, boolean createCompressedConstant) {
+        Object rawValue = BarrieredAccess.readObject(baseObject, WordFactory.signed(displacement));
+        return SubstrateObjectConstant.forObject(rawValue, createCompressedConstant);
     }
 
     @Override
     public JavaConstant readPrimitiveConstant(JavaKind kind, Constant baseConstant, long displacement, int bits) {
-        return readPrimitiveConstant(kind, baseConstant, displacement, bits, false);
+        return readPrimitiveChecked(kind, baseConstant, displacement, bits);
     }
 
-    private static JavaConstant readPrimitiveConstant(JavaKind kind, Constant baseConstant, long displacement, int bits, boolean isVolatile) {
-        SignedWord offset = WordFactory.signed(displacement);
-        long rawValue;
-
-        if (baseConstant instanceof SubstrateObjectConstant) {
-            Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
-            assert baseObject != null : "SubstrateObjectConstant does not wrap null value";
-
-            switch (bits) {
-                case Byte.SIZE:
-                    rawValue = BarrieredAccess.readByte(baseObject, offset);
-                    break;
-                case Short.SIZE:
-                    rawValue = BarrieredAccess.readShort(baseObject, offset);
-                    break;
-                case Integer.SIZE:
-                    rawValue = BarrieredAccess.readInt(baseObject, offset);
-                    break;
-                case Long.SIZE:
-                    rawValue = BarrieredAccess.readLong(baseObject, offset);
-                    break;
-                default:
-                    throw VMError.shouldNotReachHere();
-            }
-
-        } else if (baseConstant instanceof PrimitiveConstant) {
-            PrimitiveConstant prim = (PrimitiveConstant) baseConstant;
-            if (!prim.getJavaKind().isNumericInteger()) {
-                return null;
-            }
-            Pointer basePointer = WordFactory.unsigned(prim.asLong());
-            if (basePointer.equal(0)) {
-                return null;
-            }
-
-            switch (bits) {
-                case Byte.SIZE:
-                    rawValue = basePointer.readByte(offset);
-                    break;
-                case Short.SIZE:
-                    rawValue = basePointer.readShort(offset);
-                    break;
-                case Integer.SIZE:
-                    rawValue = basePointer.readInt(offset);
-                    break;
-                case Long.SIZE:
-                    rawValue = basePointer.readLong(offset);
-                    break;
-                default:
-                    throw VMError.shouldNotReachHere();
-            }
-
-        } else {
+    /**
+     * For primitive constants, we do not need to do a precise type check of the loaded value. The
+     * returned constant might be from an unintended field or array element, but that cannot crash
+     * the compiler. We need to ensure though that we are only reading within the proper bounds of
+     * the object, because a read before/after the object could be in unmapped memory and segfault.
+     */
+    private static JavaConstant readPrimitiveChecked(JavaKind kind, Constant baseConstant, long displacement, int bits) {
+        if (!(baseConstant instanceof SubstrateObjectConstant)) {
             return null;
         }
-        if (isVolatile) {
-            UNSAFE.loadFence();
+        Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
+        if (baseObject == null) {
+            /* SubstrateObjectConstant does not wrap null. But we are defensive. */
+            return null;
+        } else if (displacement <= 0) {
+            /* Trying to read before the object, or the hub. No need to look into the object. */
+            return null;
+        } else if (WordFactory.unsigned(displacement + bits / 8).aboveThan(LayoutEncoding.getSizeFromObject(baseObject))) {
+            /* Trying to read after the end of the object. */
+            return null;
+        }
+        return readPrimitiveUnchecked(kind, baseObject, displacement, bits);
+    }
+
+    static JavaConstant readPrimitiveUnchecked(JavaKind kind, Object baseObject, long displacement, int bits) {
+        SignedWord offset = WordFactory.signed(displacement);
+        long rawValue;
+        switch (bits) {
+            case Byte.SIZE:
+                rawValue = BarrieredAccess.readByte(baseObject, offset);
+                break;
+            case Short.SIZE:
+                rawValue = BarrieredAccess.readShort(baseObject, offset);
+                break;
+            case Integer.SIZE:
+                rawValue = BarrieredAccess.readInt(baseObject, offset);
+                break;
+            case Long.SIZE:
+                rawValue = BarrieredAccess.readLong(baseObject, offset);
+                break;
+            default:
+                throw VMError.shouldNotReachHere();
         }
         return toConstant(kind, rawValue);
     }

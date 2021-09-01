@@ -70,7 +70,7 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
 
         Object a = SubstrateObjectConstant.asObject(array);
 
-        if (index < 0 || index >= Array.getLength(a)) {
+        if (!a.getClass().isArray() || index < 0 || index >= Array.getLength(a)) {
             return null;
         }
 
