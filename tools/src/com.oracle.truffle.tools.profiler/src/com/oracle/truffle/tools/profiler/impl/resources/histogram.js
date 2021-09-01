@@ -65,7 +65,7 @@ function h_highlight(e) {
         hilight_element = e;
         let name = name_for_sample(bar);
         // Ensure we escape anything that might cause a problem with the regexp.
-        name = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+        name = "^" + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "$"; // $& means the whole matched string
         search(name);
     }
 }
