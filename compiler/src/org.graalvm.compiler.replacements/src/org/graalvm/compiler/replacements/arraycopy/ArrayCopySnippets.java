@@ -165,11 +165,14 @@ public abstract class ArrayCopySnippets implements Snippets {
     /**
      * Performs an array copy with a type check for every store. At least one of the involved
      * objects is known to be an object array. Lowering is delayed using an
-     * {@link ArrayCopyWithDelayedLoweringNode}.
+     * {@link ArrayCopyWithDelayedLoweringNode} which will dispatch to
+     * {@link #checkcastArraycopySnippet}.
+     *
+     * @see #checkcastArraycopySnippet
      */
     @Snippet
-    public void arraycopyCheckcastSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck, @ConstantParameter Counters counters,
-                    @ConstantParameter JavaKind elementKind) {
+    public void delayedCheckcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
+                    @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
@@ -177,7 +180,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         incrementLengthCounter(length, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.checkcastArraycopyWithSlowPathWork, GuardsStage.AFTER_FSA, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.checkcastArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -229,21 +232,19 @@ public abstract class ArrayCopySnippets implements Snippets {
                     MetaAccessProvider metaAccess);
 
     /**
-     * @see #doCheckcastArraycopyWithSlowPathWork
+     * Performs an array copy via fast checkcast stub.
      */
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
-    public void checkcastArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
+    public void checkcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation,
                     @ConstantParameter Counters counters) {
-        doCheckcastArraycopyWithSlowPathWork(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
+        doCheckcastArraycopySnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
     }
 
     /**
-     * Performs an array copy via {@link CheckcastArrayCopyCallNode}.
-     *
-     * @see CheckcastArrayCopyCallNode
+     * @see #checkcastArraycopySnippet
      */
-    protected abstract void doCheckcastArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
+    protected abstract void doCheckcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters);
 
     /**
      * Performs an array copy via {@link GenericArrayCopyCallNode}.
@@ -393,9 +394,9 @@ public abstract class ArrayCopySnippets implements Snippets {
          */
         exactArraycopyWithSlowPathWork,
         /**
-         * @see ArrayCopySnippets#checkcastArraycopyWithSlowPathWork
+         * @see ArrayCopySnippets#checkcastArraycopySnippet
          */
-        checkcastArraycopyWithSlowPathWork,
+        checkcastArraycopySnippet,
         /**
          * @see ArrayCopySnippets#genericArraycopyWithSlowPathWork
          */
@@ -406,9 +407,9 @@ public abstract class ArrayCopySnippets implements Snippets {
         private final SnippetInfo arraycopyGenericSnippet;
         private final SnippetInfo delayedExactArraycopyWithSlowPathWork;
         private final SnippetInfo arraycopyExactStubCallSnippet;
-        private final SnippetInfo arraycopyCheckcastSnippet;
+        private final SnippetInfo delayedCheckcastArraycopySnippet;
         private final SnippetInfo arraycopyNativeSnippet;
-        private final SnippetInfo checkcastArraycopyWithSlowPathWork;
+        private final SnippetInfo checkcastArraycopySnippet;
         private final SnippetInfo genericArraycopyWithSlowPathWork;
         private final SnippetInfo exactArraycopyWithSlowPathWork;
 
@@ -425,9 +426,9 @@ public abstract class ArrayCopySnippets implements Snippets {
             arraycopyGenericSnippet = snippet(receiver, "arraycopyGenericSnippet");
             delayedExactArraycopyWithSlowPathWork = snippet(receiver, "delayedExactArraycopyWithSlowPathWork");
             arraycopyExactStubCallSnippet = snippet(receiver, "arraycopyExactStubCallSnippet");
-            arraycopyCheckcastSnippet = snippet(receiver, "arraycopyCheckcastSnippet");
+            delayedCheckcastArraycopySnippet = snippet(receiver, "delayedCheckcastArraycopySnippet");
             arraycopyNativeSnippet = snippet(null, "arraycopyNativeSnippet");
-            checkcastArraycopyWithSlowPathWork = snippet(receiver, "checkcastArraycopyWithSlowPathWork");
+            checkcastArraycopySnippet = snippet(receiver, "checkcastArraycopySnippet");
             genericArraycopyWithSlowPathWork = snippet(receiver, "genericArraycopyWithSlowPathWork");
             exactArraycopyWithSlowPathWork = snippet(receiver, "exactArraycopyWithSlowPathWork");
         }
@@ -436,8 +437,8 @@ public abstract class ArrayCopySnippets implements Snippets {
             switch (workSnippetID) {
                 case exactArraycopyWithSlowPathWork:
                     return exactArraycopyWithSlowPathWork;
-                case checkcastArraycopyWithSlowPathWork:
-                    return checkcastArraycopyWithSlowPathWork;
+                case checkcastArraycopySnippet:
+                    return checkcastArraycopySnippet;
                 case genericArraycopyWithSlowPathWork:
                     return genericArraycopyWithSlowPathWork;
             }
@@ -492,7 +493,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                     if (!srcComponentType.isPrimitive() && !destComponentType.isPrimitive()) {
                         // it depends on the array content if the copy succeeds - we need
                         // a type check for every store
-                        snippetInfo = arraycopyCheckcastSnippet;
+                        snippetInfo = delayedCheckcastArraycopySnippet;
                         arrayTypeCheck = ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK;
                     } else {
                         // one object is an object array, the other one is a primitive array.
@@ -512,7 +513,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                     } else {
                         // one involved object is an object array - the other array's element type
                         // may be primitive or object, hence we compare the layout helper.
-                        snippetInfo = arraycopyCheckcastSnippet;
+                        snippetInfo = delayedCheckcastArraycopySnippet;
                         arrayTypeCheck = ArrayCopyTypeCheck.LAYOUT_HELPER_BASED_ARRAY_TYPE_CHECK;
                     }
                 }
@@ -542,7 +543,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 args.addConst("elementKindCopiedCounter", counters.arraycopyCallCopiedCounters.get(elementKind));
             }
             args.addConst("counters", counters);
-            if (snippetInfo == arraycopyCheckcastSnippet) {
+            if (snippetInfo == delayedCheckcastArraycopySnippet) {
                 args.addConst("elementKind", JavaKind.Illegal);
             }
             if (snippetInfo == arraycopyGenericSnippet) {

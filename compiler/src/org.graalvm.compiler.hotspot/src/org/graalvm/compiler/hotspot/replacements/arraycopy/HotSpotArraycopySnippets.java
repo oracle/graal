@@ -116,7 +116,7 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
 
     @Override
     @SuppressWarnings("unused")
-    protected void doCheckcastArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
+    protected void doCheckcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
         if (probability(FREQUENT_PROBABILITY, length > 0)) {
             Object nonNullSrc = PiNode.asNonNullObject(src);
             Object nonNullDest = PiNode.asNonNullObject(dest);
