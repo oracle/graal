@@ -320,7 +320,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     // TODO(peterssen): Fix deprecation, GR-26729
     @SuppressWarnings("deprecation")
     @Substitution
-    public static @JavaType(Object.class) StaticObject eval(@JavaType(String.class) StaticObject language, @JavaType(String.class) StaticObject code, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject eval(@JavaType(String.class) StaticObject language, @JavaType(String.class) StaticObject code, @Inject Meta meta) {
         String languageId = meta.toHostString(language);
         validateLanguage(languageId, meta);
 
@@ -349,7 +349,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static @JavaType(Object.class) StaticObject importObject(@JavaType(String.class) StaticObject name, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject importObject(@JavaType(String.class) StaticObject name, @Inject Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
@@ -365,7 +365,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");

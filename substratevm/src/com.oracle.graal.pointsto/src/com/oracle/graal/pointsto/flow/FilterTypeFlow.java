@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -67,12 +67,12 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new FilterTypeFlow(methodFlows, this);
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState update) {
+    public TypeState filter(PointsToAnalysis bb, TypeState update) {
         TypeState result;
         if (isExact) {
             /*
@@ -91,41 +91,45 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
              * instantiated sub-types).
              */
             if (isAssignable) {
-                result = TypeState.forIntersection(bb, update, declaredType.getTypeFlow(bb, includeNull).getState());
+                result = TypeState.forIntersection(bb, update, declaredType.getAssignableTypes(includeNull));
             } else {
-                result = TypeState.forSubtraction(bb, update, declaredType.getTypeFlow(bb, !includeNull).getState());
+                result = TypeState.forSubtraction(bb, update, declaredType.getAssignableTypes(!includeNull));
             }
         }
         return result;
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         if (isAssignable) {
-            TypeFlow<?> sourceFlow = declaredType.getTypeFlow(bb, includeNull);
-
-            /*
-             * First mark this flow as saturated, then swap it out at its uses/observers with its
-             * declared type flow. Marking this flow as saturated first is important: if there are
-             * any uses or observers *in-flight*, i.e., not yet registered at this point, trying to
-             * swap-out will have no effect on those. However, if this flow is already marked as
-             * saturated when the use or observer *lands*, even if that happens while/after
-             * swapping-out, then the corresponding use or observer will be notified of its input
-             * saturation. Otherwise it may neighter get the saturation signal OR get swapped-out.
-             * 
-             * The downside in the later case is that the input/observer will lose the more precise
-             * type information that swapping-out would have provided and will just use the more
-             * conservative approximation, e.g., the target method declared type for invokes.
-             */
+            /* Swap this flow out at its uses/observers with its declared type flow. */
             setSaturated();
-            swapOut(bb, sourceFlow);
+            swapOut(bb, declaredType.getTypeFlow(bb, includeNull));
         } else {
             super.onInputSaturated(bb, input);
         }
     }
 
     @Override
-    public boolean addState(BigBang bb, TypeState add) {
+    protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
+        if (isAssignable) {
+            swapAtUse(bb, declaredType.getTypeFlow(bb, includeNull), use);
+        } else {
+            super.notifyUseOfSaturation(bb, use);
+        }
+    }
+
+    @Override
+    protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
+        if (isAssignable) {
+            swapAtObserver(bb, declaredType.getTypeFlow(bb, includeNull), observer);
+        } else {
+            super.notifyObserverOfSaturation(bb, observer);
+        }
+    }
+
+    @Override
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
         assert this.isClone();
         return super.addState(bb, add);
     }

@@ -24,25 +24,40 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 public class CPUSamplerTest extends AbstractProfilerTest {
 
-    private static CPUSampler sampler;
+    private CPUSampler sampler;
+    public static final int FIRST_TIER_THRESHOLD = 10;
 
     final int executionCount = 10;
 
@@ -50,8 +65,81 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void setupSampler() {
         sampler = CPUSampler.find(context.getEngine());
         Assert.assertNotNull(sampler);
-        synchronized (sampler) {
-            sampler.setGatherSelfHitTimes(true);
+        sampler.setGatherSelfHitTimes(true);
+    }
+
+    @Test
+    public void testInitializeContext() {
+        RootNode dummy = RootNode.createConstantNode(42);
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeContext(LanguageContext c) throws Exception {
+                for (int i = 0; i < 50; i++) {
+                    Thread.sleep(1);
+                    TruffleSafepoint.pollHere(dummy);
+                }
+            }
+        });
+
+        sampler.setPeriod(1);
+        sampler.clearData();
+        sampler.setCollecting(true);
+        context.initialize(ProxyLanguage.ID);
+        sampler.setCollecting(false);
+
+        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        assertEquals(1, data.size());
+
+        assertEquals(1, searchInitializeContext(data).size());
+    }
+
+    @Test
+    public void testSampleContextInitialization() {
+        RootNode dummy = RootNode.createConstantNode(42);
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected void initializeContext(LanguageContext c) throws Exception {
+                for (int i = 0; i < 50; i++) {
+                    Thread.sleep(1);
+                    TruffleSafepoint.pollHere(dummy);
+                }
+            }
+        });
+
+        sampler.setPeriod(1);
+        sampler.setSampleContextInitialization(true);
+        sampler.setCollecting(true);
+        context.initialize(ProxyLanguage.ID);
+        sampler.setCollecting(false);
+
+        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        assertEquals(1, data.size());
+
+        assertEquals(0, searchInitializeContext(data).size());
+    }
+
+    private static List<ProfilerNode<Payload>> searchInitializeContext(Map<TruffleContext, CPUSamplerData> data) {
+        List<ProfilerNode<Payload>> found = new ArrayList<>();
+        for (CPUSamplerData d : data.values()) {
+            Map<Thread, Collection<ProfilerNode<Payload>>> threadData = d.getThreadData();
+            assertEquals(threadData.toString(), 1, threadData.size());
+
+            searchNodes(found, threadData.values().iterator().next(), (node) -> {
+                return node.getRootName().equals("<<" + ProxyLanguage.ID + ":initializeContext>>");
+            });
+
+        }
+        return found;
+    }
+
+    private static void searchNodes(List<ProfilerNode<CPUSampler.Payload>> results, Collection<ProfilerNode<CPUSampler.Payload>> data, Predicate<ProfilerNode<CPUSampler.Payload>> predicate) {
+        for (ProfilerNode<CPUSampler.Payload> node : data) {
+            if (predicate.test(node)) {
+                results.add(node);
+            }
+            searchNodes(results, node.getChildren(), predicate);
         }
     }
 
@@ -398,4 +486,32 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         }, () -> sampler.setCollecting(true));
     }
 
+    @Test
+    public void testTiers() {
+        Assume.assumeFalse(Truffle.getRuntime().getClass().toString().contains("Default"));
+        Context.Builder builder = Context.newBuilder().option("engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD)).option("engine.LastTierCompilationThreshold",
+                        Integer.toString(2 * FIRST_TIER_THRESHOLD)).option("engine.BackgroundCompilation", "false");
+        Map<TruffleContext, CPUSamplerData> data;
+        try (Context c = builder.build()) {
+            CPUSampler cpuSampler = CPUSampler.find(c.getEngine());
+            cpuSampler.setCollecting(true);
+            for (int i = 0; i < 3 * FIRST_TIER_THRESHOLD; i++) {
+                c.eval(defaultSourceForSampling);
+            }
+            data = cpuSampler.getData();
+        }
+        CPUSamplerData samplerData = data.values().iterator().next();
+        Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = samplerData.getThreadData().values().iterator().next();
+        ProfilerNode<CPUSampler.Payload> root = profilerNodes.iterator().next();
+        for (ProfilerNode<CPUSampler.Payload> child : root.getChildren()) {
+            CPUSampler.Payload payload = child.getPayload();
+            int numberOfTiers = payload.getNumberOfTiers();
+            Assert.assertEquals(3, numberOfTiers);
+            for (int i = 0; i < numberOfTiers; i++) {
+                Assert.assertTrue(payload.getTierTotalCount(i) >= 0);
+                Assert.assertTrue(payload.getTierSelfCount(i) >= 0);
+            }
+
+        }
+    }
 }

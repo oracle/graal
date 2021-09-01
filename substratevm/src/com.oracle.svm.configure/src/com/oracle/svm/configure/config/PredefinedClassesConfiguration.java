@@ -72,11 +72,17 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
         }
         if (classDestinationDirs != null) {
             ensureDestinationDirsExist();
-            for (Path dir : classDestinationDirs) {
-                if (!dir.equals(directory)) {
+            for (Path destDir : classDestinationDirs) {
+                if (!destDir.equals(directory)) {
                     try {
                         String fileName = getFileName(hash);
-                        Files.copy(directory.resolve(fileName), dir.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+                        Path target = destDir.resolve(fileName);
+                        if (directory != null) {
+                            Files.copy(directory.resolve(fileName), target, StandardCopyOption.REPLACE_EXISTING);
+                        } else if (!Files.exists(target)) {
+                            throw new RuntimeException("Cannot copy class data file for predefined class " + nameInfo + " with hash " + hash + ": " +
+                                            "source directory is unknown and file does not already exist in target directory.");
+                        }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }

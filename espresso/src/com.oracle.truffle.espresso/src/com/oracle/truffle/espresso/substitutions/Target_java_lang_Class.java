@@ -106,7 +106,7 @@ public final class Target_java_lang_Class {
 
     @TruffleBoundary
     @Substitution
-    public static boolean desiredAssertionStatus0(@JavaType(Class.class) StaticObject clazz, @InjectMeta Meta meta) {
+    public static boolean desiredAssertionStatus0(@JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
         if (StaticObject.isNull(clazz.getMirrorKlass().getDefiningClassLoader())) {
             return EspressoOptions.EnableSystemAssertions.getValue(meta.getContext().getEnv().getOptions());
         }
@@ -120,7 +120,7 @@ public final class Target_java_lang_Class {
                     boolean initialize,
                     @JavaType(ClassLoader.class) StaticObject loader,
                     @JavaType(Class.class) StaticObject caller,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
 
         assert loader != null;
         if (StaticObject.isNull(name)) {
@@ -172,7 +172,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject getName0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass klass = self.getMirrorKlass();
         // Conversion from internal form.
         String externalName = klass.getExternalName();
@@ -183,7 +183,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject getSimpleBinaryName0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass k = self.getMirrorKlass();
         if (k.isPrimitive() || k.isArray()) {
             return StaticObject.NULL;
@@ -211,7 +211,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject initClassName(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         return getName0(self, meta);
     }
 
@@ -227,7 +227,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(java.lang.reflect.Field[].class) StaticObject getDeclaredFields0(@JavaType(Class.class) StaticObject self, boolean publicOnly,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
 
         // TODO(peterssen): From Hostpot: 4496456 We need to filter out
         // java.lang.Throwable.backtrace.
@@ -324,7 +324,7 @@ public final class Target_java_lang_Class {
     // TODO(tg): inject constructor calltarget.
     @Substitution(hasReceiver = true)
     public static @JavaType(Constructor[].class) StaticObject getDeclaredConstructors0(@JavaType(Class.class) StaticObject self, boolean publicOnly,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
         /*
@@ -427,7 +427,7 @@ public final class Target_java_lang_Class {
     // TODO(tg): inject constructor calltarget.
     @Substitution(hasReceiver = true)
     public static @JavaType(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@JavaType(Class.class) StaticObject self, boolean publicOnly,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
         /*
@@ -456,7 +456,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(Class[].class) StaticObject getInterfaces0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         final Klass[] superInterfaces = self.getMirrorKlass().getInterfaces();
 
         StaticObject instance = meta.java_lang_Class.allocateReferenceArray(superInterfaces.length, new IntFunction<StaticObject>() {
@@ -522,7 +522,7 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     @TruffleBoundary
     public static @JavaType(internalName = "[Ljava/lang/reflect/RecordComponent;") StaticObject getRecordComponents0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass k = self.getMirrorKlass();
         if (!(k instanceof ObjectKlass)) {
             return StaticObject.NULL;
@@ -539,7 +539,7 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     @TruffleBoundary
     public static @JavaType(Class[].class) StaticObject getPermittedSubclasses0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass k = self.getMirrorKlass();
         if (!(k instanceof ObjectKlass)) {
             return StaticObject.NULL;
@@ -580,7 +580,7 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(Object[].class) StaticObject getEnclosingMethod0(@JavaType(Class.class) StaticObject self, @InjectMeta Meta meta) {
+    public static @JavaType(Object[].class) StaticObject getEnclosingMethod0(@JavaType(Class.class) StaticObject self, @Inject Meta meta) {
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (self.getMirrorKlass() instanceof ObjectKlass) {
             ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
@@ -698,7 +698,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(ProtectionDomain.class) StaticObject getProtectionDomain0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(self);
         // The protection domain is not always set e.g. bootstrap (classloader) classes.
         return pd == null ? StaticObject.NULL : pd;
@@ -711,7 +711,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(Class[].class) StaticObject getNestMembers0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         return meta.getVM().JVM_GetNestMembers(self);
     }
 
@@ -743,7 +743,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(internalName = "Lsun/reflect/ConstantPool;") StaticObject getConstantPool(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass klass = self.getMirrorKlass();
         if (klass.isArray() || klass.isPrimitive()) {
             // No constant pool for arrays and primitives.
@@ -756,13 +756,13 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true, methodName = "getConstantPool")
     public static @JavaType(internalName = "Ljdk/internal/reflect/ConstantPool;") StaticObject getConstantPool11(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         return getConstantPool(self, meta);
     }
 
     @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject getGenericSignature0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         if (self.getMirrorKlass() instanceof ObjectKlass) {
             ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
             SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Name.Signature);
@@ -776,7 +776,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(Class[].class) StaticObject getDeclaredClasses0(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass klass = self.getMirrorKlass();
         if (klass.isPrimitive() || klass.isArray()) {
             return meta.java_lang_Class.allocateReferenceArray(0);
@@ -823,7 +823,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @JavaType(Object[].class) StaticObject getSigners(@JavaType(Class.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass klass = self.getMirrorKlass();
         if (klass.isPrimitive()) {
             return StaticObject.NULL;
@@ -837,7 +837,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static void setSigners(@JavaType(Class.class) StaticObject self, @JavaType(Object[].class) StaticObject signers,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         Klass klass = self.getMirrorKlass();
         if (!klass.isPrimitive() && !klass.isArray()) {
             meta.HIDDEN_SIGNERS.setHiddenObject(self, signers);

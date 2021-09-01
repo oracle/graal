@@ -56,6 +56,21 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Implements {@link System#arraycopy} via a {@linkplain ForeignCallNode stub call} that performs a
+ * fast {@code CHECKCAST} check.
+ *
+ * The target of the call is queried via {@link ArrayCopyLookup#lookupCheckcastArraycopyDescriptor}.
+ *
+ * Instead of throwing an {@link ArrayStoreException}, the stub is expected to return the number of
+ * copied elements xor'd with {@code -1}. Users of this node are responsible for converting that
+ * into the expected exception. A return value of {@code 0} indicates that the operation was
+ * successful.
+ *
+ * @see GenericArrayCopyCallNode A generic {@link System#arraycopy} stub call node.
+ * @see ArrayCopyCallNode A {@link System#arraycopy} stub call node that calls specialzied stubs
+ *      based element type and memory properties.
+ */
 @NodeInfo(allowedUsageTypes = {InputType.Memory, InputType.Value}, cycles = CYCLES_UNKNOWN, sizeRationale = "depends on length", size = SIZE_UNKNOWN, cyclesRationale = "depends on length")
 public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill {
 

@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
@@ -49,7 +49,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class SubstrateStrengthenGraphs extends StrengthenGraphs {
 
-    public SubstrateStrengthenGraphs(BigBang bb, Universe converter) {
+    public SubstrateStrengthenGraphs(PointsToAnalysis bb, Universe converter) {
         super(bb, converter);
     }
 

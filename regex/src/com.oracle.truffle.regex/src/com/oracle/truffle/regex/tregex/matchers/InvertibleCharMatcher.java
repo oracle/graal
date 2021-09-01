@@ -46,18 +46,22 @@ package com.oracle.truffle.regex.tregex.matchers;
  */
 public abstract class InvertibleCharMatcher extends CharMatcher {
 
-    private final boolean invert;
+    final boolean invert;
 
     /**
      * Construct a new {@link InvertibleCharMatcher}.
      *
-     * @param invert if this is set to true, the result of {@link #execute(int)} is always inverted.
+     * @param invert if this is set to true, the result of {@link #match(int)} is always inverted.
      */
     protected InvertibleCharMatcher(boolean invert) {
         this.invert = invert;
     }
 
     protected boolean result(boolean result) {
+        return result(invert, result);
+    }
+
+    public static boolean result(boolean invert, boolean result) {
         return result != invert;
     }
 

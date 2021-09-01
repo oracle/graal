@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -73,14 +73,15 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
     protected Object doEval(Object idPointer, Object srcPointer,
                     @Cached("createReadString()") LLVMReadStringNode readId,
                     @Cached("createReadString()") LLVMReadStringNode readSrc,
-                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM) {
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM,
+                    @Cached BranchProfile exception) {
         try {
             CallTarget callTarget = getSource.execute(readId.executeWithTarget(idPointer), readSrc.executeWithTarget(srcPointer));
             Object foreign = callTarget.call();
             return toLLVM.executeWithTarget(foreign);
         } catch (IllegalStateException e) {
             // language id not found
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMPolyglotException(this, e.getMessage());
         }
     }

@@ -58,7 +58,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
 
-    private final String resourcePath = "file:/resources";
+    private final String resourcePath = "/resources";
+    private final String resourceUri = JavaNetSubstitutions.FILE_PROTOCOL + ":" + resourcePath;
     private NativeImageResourceFileSystem fileSystem;
     private final Lock writeLock;
     private final Lock readLock;
@@ -70,8 +71,8 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
         }
 
         try {
-            // Syntax for URI resource is resource:file:resources!/{entry}
-            return Paths.get(new URI(resourcePath));
+            // Syntax for URI resource is resource:file:/resources/{entry}
+            return Paths.get(new URI(resourceUri));
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e.getMessage(), e);
         }
@@ -93,6 +94,12 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
         return (NativeImageResourcePath) path;
     }
 
+    private void checkIfResourcePath(Path path) {
+        if (!path.startsWith(resourcePath)) {
+            throw new UnsupportedOperationException("Path " + path + " is not part of resource system!");
+        }
+    }
+
     @Override
     public String getScheme() {
         return JavaNetSubstitutions.RESOURCE_PROTOCOL;
@@ -103,6 +110,7 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
         try {
             writeLock.lock();
             Path path = uriToPath(uri);
+            checkIfResourcePath(path);
             if (fileSystem != null) {
                 throw new FileSystemAlreadyExistsException();
             }
@@ -117,6 +125,7 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
     public FileSystem newFileSystem(Path path, Map<String, ?> env) {
         try {
             writeLock.lock();
+            checkIfResourcePath(path);
             if (fileSystem != null) {
                 throw new FileSystemAlreadyExistsException();
             }

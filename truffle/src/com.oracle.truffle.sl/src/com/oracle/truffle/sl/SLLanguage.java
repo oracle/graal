@@ -221,6 +221,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
+    @Override
+    protected boolean patchContext(SLContext context, Env newEnv) {
+        context.patchContext(newEnv);
+        return true;
+    }
+
     public RootCallTarget getOrCreateUndefinedFunction(String name) {
         RootCallTarget target = undefinedFunctions.get(name);
         if (target == null) {

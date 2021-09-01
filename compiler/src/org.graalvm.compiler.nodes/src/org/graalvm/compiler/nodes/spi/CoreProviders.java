@@ -53,4 +53,6 @@ public interface CoreProviders {
 
     LoopsDataProvider getLoopsDataProvider();
 
+    WordVerification getWordVerification();
+
 }

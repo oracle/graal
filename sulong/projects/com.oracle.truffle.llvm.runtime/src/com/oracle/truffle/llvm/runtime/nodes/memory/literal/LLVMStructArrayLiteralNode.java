@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -63,8 +63,7 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
                 memMove.executeWithTarget(LLVMNativePointer.create(currentPtr), currentValue, stride);
                 currentPtr += stride;
             } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
         return addr;

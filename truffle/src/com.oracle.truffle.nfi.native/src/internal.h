@@ -102,6 +102,9 @@ struct __TruffleContextInternal {
     jfieldID RetPatches_patches;
     jfieldID RetPatches_objects;
 
+    jclass NativeArgumentBuffer_Pointer;
+    jfieldID NativeArgumentBuffer_Pointer_pointer;
+
     jclass Object;
     jclass String;
     jclass UnsatisfiedLinkError;

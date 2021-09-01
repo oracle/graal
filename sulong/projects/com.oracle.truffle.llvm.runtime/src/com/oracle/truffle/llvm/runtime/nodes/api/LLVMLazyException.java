@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.except.LLVMException;
@@ -73,7 +72,6 @@ public abstract class LLVMLazyException {
         }
 
         LLVMException doThrow(Node node) {
-            CompilerDirectives.transferToInterpreter();
             throw factory.create(node, cause);
         }
     }

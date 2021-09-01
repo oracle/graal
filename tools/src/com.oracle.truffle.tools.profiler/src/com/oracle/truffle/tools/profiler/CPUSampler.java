@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.profiler;
 
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,13 +41,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
@@ -82,10 +83,18 @@ public final class CPUSampler implements Closeable {
     private static final BiConsumer<Payload, Payload> MERGE_PAYLOAD = new BiConsumer<Payload, Payload>() {
         @Override
         public void accept(Payload sourcePayload, Payload destinationPayload) {
-            destinationPayload.selfCompiledHitCount += sourcePayload.selfCompiledHitCount;
-            destinationPayload.selfInterpretedHitCount += sourcePayload.selfInterpretedHitCount;
-            destinationPayload.compiledHitCount += sourcePayload.compiledHitCount;
-            destinationPayload.interpretedHitCount += sourcePayload.interpretedHitCount;
+            if (destinationPayload.selfTierCount.length < sourcePayload.selfTierCount.length) {
+                destinationPayload.selfTierCount = Arrays.copyOf(destinationPayload.selfTierCount, sourcePayload.selfTierCount.length);
+            }
+            for (int i = 0; i < sourcePayload.selfTierCount.length; i++) {
+                destinationPayload.selfTierCount[i] += sourcePayload.selfTierCount[i];
+            }
+            if (destinationPayload.tierCount.length < sourcePayload.tierCount.length) {
+                destinationPayload.tierCount = Arrays.copyOf(destinationPayload.tierCount, sourcePayload.tierCount.length);
+            }
+            for (int i = 0; i < sourcePayload.tierCount.length; i++) {
+                destinationPayload.tierCount[i] += sourcePayload.tierCount[i];
+            }
             for (Long timestamp : sourcePayload.getSelfHitTimes()) {
                 destinationPayload.addSelfHitTime(timestamp);
             }
@@ -95,10 +104,8 @@ public final class CPUSampler implements Closeable {
         @Override
         public Payload apply(Payload sourcePayload) {
             Payload destinationPayload = new Payload();
-            destinationPayload.selfCompiledHitCount = sourcePayload.selfCompiledHitCount;
-            destinationPayload.selfInterpretedHitCount = sourcePayload.selfInterpretedHitCount;
-            destinationPayload.compiledHitCount = sourcePayload.compiledHitCount;
-            destinationPayload.interpretedHitCount = sourcePayload.interpretedHitCount;
+            destinationPayload.selfTierCount = Arrays.copyOf(sourcePayload.selfTierCount, sourcePayload.selfTierCount.length);
+            destinationPayload.tierCount = Arrays.copyOf(sourcePayload.tierCount, sourcePayload.tierCount.length);
             for (Long timestamp : sourcePayload.getSelfHitTimes()) {
                 destinationPayload.addSelfHitTime(timestamp);
             }
@@ -122,6 +129,7 @@ public final class CPUSampler implements Closeable {
     private long period = 10;
     private long delay = 0;
     private int stackLimit = 10000;
+    private boolean sampleContextInitialization = false;
     private SourceSectionFilter filter = DEFAULT_FILTER;
     private Timer samplerThread;
     private SamplingTimerTask samplerTask;
@@ -140,40 +148,42 @@ public final class CPUSampler implements Closeable {
                 }
             }
 
+            @Override
             public void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push and sample synthetic frame
+                // no code is allowed to run during context creation
             }
 
             @Override
             public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                // no code is allowed to run during context creation
             }
 
+            @Override
             public void onLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                // no code is allowed to run during context creation
             }
 
+            @Override
             public void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.pushSyntheticFrame(language, "initializeContext");
             }
 
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.popSyntheticFrame();
             }
 
+            @Override
             public void onLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
+                safepointStackSampler.popSyntheticFrame();
             }
 
             @Override
             public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
             }
 
             @Override
             public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-                // TODO GR-32022 push/pop and sample synthetic frame
             }
 
             @Override
@@ -300,6 +310,21 @@ public final class CPUSampler implements Closeable {
     @SuppressWarnings("unused")
     public synchronized void setDelaySamplingUntilNonInternalLangInit(boolean delaySamplingUntilNonInternalLangInit) {
         // Deprecated, a noop.
+    }
+
+    /**
+     * Enables or disables the sampling of the time spent during context initialization. If
+     * <code>true</code> code executed during context initialization is included in the general
+     * profile instead of grouping it into a single entry by default. If <code>false</code> a single
+     * entry will be created that contains all time spent in initialization. This can be useful to
+     * avoid polluting the general application profile with sampled stack frames that only run
+     * during initialization.
+     *
+     * @since 21.3
+     */
+    public synchronized void setSampleContextInitialization(boolean enabled) {
+        enterChangeConfig();
+        this.sampleContextInitialization = enabled;
     }
 
     /**
@@ -491,7 +516,7 @@ public final class CPUSampler implements Closeable {
             }
             TruffleContext context = activeContexts.keySet().iterator().next();
             Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context));
+            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
             for (StackSample stackSample : sample) {
                 stacks.put(stackSample.thread, stackSample.stack);
             }
@@ -581,49 +606,102 @@ public final class CPUSampler implements Closeable {
     public static final class Payload {
 
         final List<Long> selfHitTimes = new ArrayList<>();
-        int compiledHitCount;
-        int interpretedHitCount;
-
-        int selfCompiledHitCount;
-        int selfInterpretedHitCount;
+        int[] tierCount = new int[0];
+        int[] selfTierCount = new int[0];
 
         Payload() {
+        }
+
+        /**
+         * @return The number of compilation tiers this element was recorded in. Tier 0 is the
+         *         interpreter.
+         * @since 21.3.0
+         */
+        public int getNumberOfTiers() {
+            return Math.max(selfTierCount.length, tierCount.length);
+        }
+
+        /**
+         * @return The number of times this element was recorded on top of the stack, executing in
+         *         the given compilation tier.
+         * @since 21.3.0
+         */
+        public int getTierSelfCount(int tier) {
+            if (tier >= selfTierCount.length) {
+                return 0;
+            }
+            return selfTierCount[tier];
+        }
+
+        /**
+         * @return The number of times this element was recorded anywhere on the stack, executing in
+         *         the given compilation tier.
+         * @since 21.3.0
+         */
+        public int getTierTotalCount(int tier) {
+            if (tier >= tierCount.length) {
+                return 0;
+            }
+            return tierCount[tier];
         }
 
         /**
          * @return The number of times the element was found below the top of the stack as compiled
          *         code
          * @since 0.30
+         * @deprecated Use {@link Payload#getTierTotalCount(int)}
          */
+        @Deprecated
         public int getCompiledHitCount() {
-            return compiledHitCount;
+            return sumWithoutFirst(tierCount);
         }
 
         /**
          * @return The number of times the element was found bellow the top of the stack as
          *         interpreted code
+         * @deprecated Use {@link Payload#getTierTotalCount(int)}
          * @since 0.30
          */
+        @Deprecated
         public int getInterpretedHitCount() {
-            return interpretedHitCount;
+            return firstOrZero(tierCount);
         }
 
         /**
          * @return The number of times the element was found on the top of the stack as compiled
          *         code
+         * @deprecated Use {@link Payload#getTierSelfCount(int)}
          * @since 0.30
          */
+        @Deprecated
         public int getSelfCompiledHitCount() {
-            return selfCompiledHitCount;
+            return sumWithoutFirst(selfTierCount);
+        }
+
+        private static int sumWithoutFirst(int[] tierCounts) {
+            if (tierCounts.length <= 1) {
+                return 0;
+            }
+            int sum = 0;
+            for (int i = 1; i < tierCounts.length; i++) {
+                sum += tierCounts[i];
+            }
+            return sum;
         }
 
         /**
          * @return The number of times the element was found on the top of the stack as interpreted
          *         code
+         * @deprecated Use {@link Payload#getTierSelfCount(int)}
          * @since 0.30
          */
+        @Deprecated
         public int getSelfInterpretedHitCount() {
-            return selfInterpretedHitCount;
+            return firstOrZero(selfTierCount);
+        }
+
+        private static int firstOrZero(int[] selfTierCount) {
+            return selfTierCount.length == 0 ? 0 : selfTierCount[0];
         }
 
         /**
@@ -631,7 +709,11 @@ public final class CPUSampler implements Closeable {
          * @since 0.30
          */
         public int getSelfHitCount() {
-            return selfCompiledHitCount + selfInterpretedHitCount;
+            int sum = 0;
+            for (int count : selfTierCount) {
+                sum += count;
+            }
+            return sum;
         }
 
         /**
@@ -639,7 +721,11 @@ public final class CPUSampler implements Closeable {
          * @since 0.30
          */
         public int getHitCount() {
-            return compiledHitCount + interpretedHitCount;
+            int sum = 0;
+            for (int count : tierCount) {
+                sum += count;
+            }
+            return sum;
         }
 
         /**
@@ -665,7 +751,7 @@ public final class CPUSampler implements Closeable {
                 if (context.isClosed()) {
                     continue;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context));
+                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
                 synchronized (CPUSampler.this) {
                     if (!collecting) {
                         return;
@@ -699,25 +785,27 @@ public final class CPUSampler implements Closeable {
                 StackTraceEntry location = sample.stack.get(i);
                 treeNode = addOrUpdateChild(treeNode, location);
                 Payload payload = treeNode.getPayload();
-                boolean isCompiled = location.isCompiled();
-                if (i == 0) {
-                    if (isCompiled) {
-                        payload.selfCompiledHitCount++;
-                    } else {
-                        payload.selfInterpretedHitCount++;
-                    }
-                    if (gatherSelfHitTimes) {
-                        payload.selfHitTimes.add(timestamp);
-                        assert payload.selfHitTimes.size() == payload.getSelfHitCount();
-                    }
-                }
-                if (isCompiled) {
-                    payload.compiledHitCount++;
-                } else {
-                    payload.interpretedHitCount++;
-                }
+                recordCompilationInfo(location, payload, i == 0, timestamp);
             }
             mutableSamplerData.samplesTaken.incrementAndGet();
+        }
+
+        private void recordCompilationInfo(StackTraceEntry location, Payload payload, boolean topOfStack, long timestamp) {
+            int tier = location.getTier();
+            if (topOfStack) {
+                if (payload.selfTierCount.length < tier + 1) {
+                    payload.selfTierCount = Arrays.copyOf(payload.selfTierCount, tier + 1);
+                }
+                payload.selfTierCount[tier]++;
+                if (gatherSelfHitTimes) {
+                    payload.selfHitTimes.add(timestamp);
+                    assert payload.selfHitTimes.size() == payload.getSelfHitCount();
+                }
+            }
+            if (payload.tierCount.length < tier + 1) {
+                payload.tierCount = Arrays.copyOf(payload.tierCount, tier + 1);
+            }
+            payload.tierCount[tier]++;
         }
 
         private ProfilerNode<Payload> addOrUpdateChild(ProfilerNode<Payload> treeNode, StackTraceEntry location) {

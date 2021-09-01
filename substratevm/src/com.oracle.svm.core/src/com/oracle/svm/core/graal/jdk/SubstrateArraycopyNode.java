@@ -32,6 +32,15 @@ import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Substrate specific intrinisfication for {@link System#arraycopy}.
+ *
+ * Lowering is implemented in the platform/VM specific
+ * {@link org.graalvm.compiler.nodes.spi.LoweringProvider LoweringProvider}. Most of them eventually
+ * go through {@link SubstrateArraycopySnippets}.
+ *
+ * @see SubstrateArraycopyWithExceptionNode Variant with exception edge.
+ */
 @NodeInfo
 public final class SubstrateArraycopyNode extends BasicArrayCopyNode {
     public static final NodeClass<SubstrateArraycopyNode> TYPE = NodeClass.create(SubstrateArraycopyNode.class);

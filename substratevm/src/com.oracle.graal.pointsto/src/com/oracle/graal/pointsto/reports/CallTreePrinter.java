@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,8 +53,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class CallTreePrinter {
 
-    public static void print(BigBang bigbang, String reportsPath, String reportName) {
-        CallTreePrinter printer = new CallTreePrinter(bigbang);
+    public static void print(BigBang bb, String reportsPath, String reportName) {
+        CallTreePrinter printer = new CallTreePrinter(bb);
         printer.buildCallTree();
 
         ReportUtils.report("call tree", reportsPath, "call_tree_" + reportName, "txt",
@@ -139,11 +139,11 @@ public final class CallTreePrinter {
         }
     }
 
-    private final BigBang bigbang;
+    private final BigBang bb;
     private final Map<AnalysisMethod, MethodNode> methodToNode;
 
-    public CallTreePrinter(BigBang bigbang) {
-        this.bigbang = bigbang;
+    public CallTreePrinter(BigBang bb) {
+        this.bb = bb;
         /* Use linked hash map for predictable iteration order. */
         this.methodToNode = new LinkedHashMap<>();
     }
@@ -151,7 +151,7 @@ public final class CallTreePrinter {
     public void buildCallTree() {
 
         /* Add all the roots to the tree. */
-        bigbang.getUniverse().getMethods().stream()
+        bb.getUniverse().getMethods().stream()
                         .filter(m -> m.isRootMethod() && !methodToNode.containsKey(m))
                         .sorted(methodComparator)
                         .forEach(method -> methodToNode.put(method, new MethodNode(method, true)));

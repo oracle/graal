@@ -41,15 +41,6 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
 public final class LLVMNativeCallUtils {
 
-    static Object bindNativeSymbol(InteropLibrary interop, Object symbol, String signature) {
-        try {
-            return interop.invokeMember(symbol, "bind", signature);
-        } catch (InteropException ex) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Could not bind " + symbol + " " + signature, ex);
-        }
-    }
-
     static Object callNativeFunction(boolean enabled, InteropLibrary nativeCall, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.partialEvaluationConstant(enabled);
         if (enabled) {
@@ -60,8 +51,8 @@ public final class LLVMNativeCallUtils {
         try {
             return nativeCall.execute(function, nativeArgs);
         } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
         }
     }
 
@@ -76,8 +67,8 @@ public final class LLVMNativeCallUtils {
         try {
             return nativeSymbolExecutorNode.execute(function, nativeArgs);
         } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
         }
     }
 

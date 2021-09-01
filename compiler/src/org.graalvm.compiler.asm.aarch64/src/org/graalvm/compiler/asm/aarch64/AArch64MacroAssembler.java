@@ -1292,7 +1292,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void lsl(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
-        if (clampedShift != 0) {
+        if (clampedShift != 0 || !dst.equals(src)) {
             int remainingBits = size - clampedShift;
             super.ubfm(size, dst, src, remainingBits, remainingBits - 1);
         }
@@ -1308,7 +1308,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void lsr(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
-        if (clampedShift != 0) {
+        if (clampedShift != 0 || !dst.equals(src)) {
             super.ubfm(size, dst, src, clampedShift, size - 1);
         }
     }
@@ -1323,7 +1323,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void asr(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
-        if (clampedShift != 0) {
+        if (clampedShift != 0 || !dst.equals(src)) {
             super.sbfm(size, dst, src, clampedShift, size - 1);
         }
     }
@@ -1416,6 +1416,18 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void bic(int size, Register dst, Register src1, Register src2) {
         super.bic(size, dst, src1, src2, ShiftType.LSL, 0);
+    }
+
+    /**
+     * dst = src & (~imm).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src general purpose register. May not be null or stackpointer.
+     * @param imm immediate to encode.
+     */
+    public void bic(int size, Register dst, Register src, long imm) {
+        super.and(size, dst, src, ~(imm));
     }
 
     /**

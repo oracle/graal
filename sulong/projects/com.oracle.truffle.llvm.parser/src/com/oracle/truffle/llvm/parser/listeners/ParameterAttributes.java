@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -257,6 +257,9 @@ public class ParameterAttributes implements ParserListener {
                     if (attr == Attribute.Kind.BYVAL) {
                         final Type valueType = types.get(buffer.read());
                         group.addAttribute(new Attribute.KnownTypedAttribute(Attribute.Kind.BYVAL, valueType));
+                    } else if (attr == Attribute.Kind.SRET) {
+                        final Type retType = types.get(buffer.read());
+                        group.addAttribute(new Attribute.KnownTypedAttribute(Attribute.Kind.SRET, retType));
                     }
                     break;
                 }

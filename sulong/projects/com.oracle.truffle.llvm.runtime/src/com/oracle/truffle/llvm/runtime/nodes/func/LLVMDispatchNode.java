@@ -42,6 +42,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
@@ -128,8 +129,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             try {
                 this.signatureSource = getNativeCtxExt().getNativeSignatureSourceSkipStackArg(type);
             } catch (UnsupportedNativeTypeException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(ex);
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
         return signatureSource;
@@ -331,11 +331,12 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     @Specialization(guards = "haveNativeCtxExt()")
     @GenerateAOT.Exclude
     protected static Object doNativeFunction(LLVMNativePointer pointer, Object[] arguments,
-                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode) {
+                    @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode,
+                    @Cached BranchProfile exception) {
         try {
             return dispatchNode.executeDispatch(pointer, arguments);
         } catch (IllegalStateException e) {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMNativePointerException(dispatchNode, "Invalid native function pointer", e);
         }
     }
@@ -370,8 +371,9 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                         @Cached("functionType") LLVMInteropType.Function cachedType,
                         @CachedLibrary("function") InteropLibrary crossLanguageCall,
                         @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
-                        @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode) {
-            return doGeneric(function, cachedType, arguments, crossLanguageCall, dataEscapeNodes, toLLVMNode);
+                        @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode,
+                        @Cached BranchProfile exception) {
+            return doGeneric(function, cachedType, arguments, crossLanguageCall, dataEscapeNodes, toLLVMNode, exception);
         }
 
         @Specialization(replaces = "doCachedType", limit = "0")
@@ -379,9 +381,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         protected Object doGeneric(Object function, LLVMInteropType.Function functionType, Object[] arguments,
                         @CachedLibrary("function") InteropLibrary crossLanguageCall,
                         @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
-                        @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode) {
+                        @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode,
+                        @Cached BranchProfile exception) {
             try {
-                Object[] args = getForeignArguments(dataEscapeNodes, arguments, functionType);
+                Object[] args = getForeignArguments(dataEscapeNodes, arguments, functionType, exception);
                 Object ret;
                 ret = crossLanguageCall.execute(function, args);
                 if (!isVoidReturn && functionType != null) {
@@ -389,7 +392,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     if (retType instanceof LLVMInteropType.Value) {
                         return toLLVMNode.executeWithType(ret, ((LLVMInteropType.Value) retType).baseType);
                     } else {
-                        CompilerDirectives.transferToInterpreter();
+                        exception.enter();
                         throw new LLVMPolyglotException(this, "Cannot call polyglot function with structured return type.");
                     }
                 } else {
@@ -409,12 +412,13 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         protected Object doUnknownType(Object function, @SuppressWarnings("unused") Object functionType, Object[] arguments,
                         @CachedLibrary("function") InteropLibrary crossLanguageCall,
                         @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
-                        @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode) {
-            return doGeneric(function, null, arguments, crossLanguageCall, dataEscapeNodes, toLLVMNode);
+                        @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode,
+                        @Cached BranchProfile exception) {
+            return doGeneric(function, null, arguments, crossLanguageCall, dataEscapeNodes, toLLVMNode, exception);
         }
 
         @ExplodeLoop
-        private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMInteropType.Function functionType) {
+        private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMInteropType.Function functionType, BranchProfile exception) {
             assert arguments.length == argumentCount;
             Object[] args = new Object[dataEscapeNodes.length];
             int i = 0;
@@ -426,7 +430,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                         LLVMInteropType.Structured baseType = ((LLVMInteropType.Value) argType).baseType;
                         args[i] = dataEscapeNodes[i].executeWithType(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET], baseType);
                     } else {
-                        CompilerDirectives.transferToInterpreter();
+                        exception.enter();
                         throw new LLVMPolyglotException(this, "Cannot call polyglot function with structured argument type.");
                     }
                 }

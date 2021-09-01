@@ -52,6 +52,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("unused")
 class NativePointer implements TruffleObject {
 
+    static final NativePointer NULL = new NativePointer(0);
+
     final long nativePointer;
 
     static Object create(LibFFILanguage language, long nativePointer) {

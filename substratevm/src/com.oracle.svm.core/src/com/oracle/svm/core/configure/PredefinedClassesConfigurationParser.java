@@ -42,7 +42,8 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
 
     private final PredefinedClassesRegistry registry;
 
-    public PredefinedClassesConfigurationParser(PredefinedClassesRegistry registry) {
+    public PredefinedClassesConfigurationParser(PredefinedClassesRegistry registry, boolean strictConfiguration) {
+        super(strictConfiguration);
         this.registry = registry;
     }
 

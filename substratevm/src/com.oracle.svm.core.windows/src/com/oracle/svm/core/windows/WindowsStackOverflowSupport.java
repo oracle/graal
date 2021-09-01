@@ -29,9 +29,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -41,19 +43,65 @@ import com.oracle.svm.core.windows.headers.MemoryAPI;
 @Platforms({Platform.WINDOWS.class})
 class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
 
-    @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void getStackInformation(WordPointer stackEndPtr, WordPointer stackSizePtr) {
+        int sizeOfMInfo = SizeOf.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);
+        MemoryAPI.MEMORY_BASIC_INFORMATION minfo = StackValue.get(sizeOfMInfo);
+        MemoryAPI.VirtualQuery(minfo, minfo, WordFactory.unsigned(sizeOfMInfo));
+        Pointer stackBottom = (Pointer) minfo.AllocationBase();
+        stackEndPtr.write(stackBottom);
+        UnsignedWord stackSize = minfo.RegionSize();
+
+        // Add up the sizes of all the regions with the same AllocationBase.
+        while (true) {
+            MemoryAPI.VirtualQuery(stackBottom.add(stackSize), minfo, WordFactory.unsigned(sizeOfMInfo));
+            if (stackBottom.equal(minfo.AllocationBase())) {
+                stackSize = stackSize.add(minfo.RegionSize());
+            } else {
+                break;
+            }
+        }
+        stackSizePtr.write(stackSize);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public UnsignedWord lookupStackBase() {
+        WordPointer stackEndPtr = StackValue.get(WordPointer.class);
+        WordPointer stackSizePtr = StackValue.get(WordPointer.class);
+        getStackInformation(stackEndPtr, stackSizePtr);
+        UnsignedWord stackEnd = stackEndPtr.read();
+        UnsignedWord stackSize = stackSizePtr.read();
+        return stackEnd.add(stackSize);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackEnd() {
-        MemoryAPI.MEMORY_BASIC_INFORMATION minfo = StackValue.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);
+        return lookupStackEnd(WordFactory.zero());
+    }
 
-        /*
-         * We find the boundary of the stack by looking at the base of the memory block that
-         * contains a (random known) address of the current stack. The stack-allocated memory where
-         * the function result is placed in is just the easiest way to get such an address.
-         */
-        MemoryAPI.VirtualQuery(minfo, minfo, SizeOf.unsigned(MemoryAPI.MEMORY_BASIC_INFORMATION.class));
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public UnsignedWord lookupStackEnd(UnsignedWord requestedStackSize) {
+        WordPointer stackEndPtr = StackValue.get(WordPointer.class);
+        WordPointer stackSizePtr = StackValue.get(WordPointer.class);
+        getStackInformation(stackEndPtr, stackSizePtr);
+        UnsignedWord stackEnd = stackEndPtr.read();
 
-        return (Pointer) minfo.AllocationBase();
+        if (requestedStackSize.notEqual(WordFactory.zero())) {
+            /*
+             * if stackSize > requestedStackSize, then artificially limit stack end to match
+             * requested stack size.
+             */
+            UnsignedWord stackSize = stackSizePtr.read();
+            if (stackSize.aboveThan(requestedStackSize)) {
+                UnsignedWord stackAdjustment = stackSize.subtract(requestedStackSize);
+                return stackEnd.add(stackAdjustment);
+            }
+        }
+
+        return stackEnd;
     }
 }
 

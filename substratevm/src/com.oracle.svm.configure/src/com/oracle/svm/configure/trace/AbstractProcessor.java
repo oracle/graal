@@ -39,7 +39,7 @@ public abstract class AbstractProcessor {
     }
 
     static void logWarning(String warning) {
-        System.err.println("WARNING: " + warning);
+        System.err.println("Warning: " + warning);
     }
 
     @SuppressWarnings("unchecked")

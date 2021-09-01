@@ -51,7 +51,7 @@ public class JfrRecorderThread extends Thread {
         super("JFR Recorder Thread");
         this.globalMemory = globalMemory;
         this.unlockedChunkWriter = unlockedChunkWriter;
-        this.mutex = new VMMutex();
+        this.mutex = new VMMutex("jfrRecorder");
         this.condition = new VMCondition(mutex);
         setDaemon(true);
     }

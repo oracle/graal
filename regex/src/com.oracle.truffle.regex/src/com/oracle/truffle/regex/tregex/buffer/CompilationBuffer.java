@@ -42,10 +42,13 @@ package com.oracle.truffle.regex.tregex.buffer;
 
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
+import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * This class is instantiated once per compilation of a regular expression in
@@ -74,6 +77,7 @@ public class CompilationBuffer {
     private CodePointSetAccumulator codePointSetAccumulator1;
     private CodePointSetAccumulator codePointSetAccumulator2;
     private TBitSet byteSizeBitSet;
+    private EconomicMap<CodePointSet, CharMatcher> matcherDeduplicationMap;
 
     public CompilationBuffer(Encoding encoding) {
         this.encoding = encoding;
@@ -171,5 +175,12 @@ public class CompilationBuffer {
         }
         byteSizeBitSet.clear();
         return byteSizeBitSet;
+    }
+
+    public EconomicMap<CodePointSet, CharMatcher> getMatcherDeduplicationMap() {
+        if (matcherDeduplicationMap == null) {
+            matcherDeduplicationMap = EconomicMap.create();
+        }
+        return matcherDeduplicationMap;
     }
 }

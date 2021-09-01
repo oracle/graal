@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.initialization;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
@@ -47,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
@@ -79,6 +81,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
     @Child private LLVMAllocateNode allocRoSection;
     @Child private LLVMAllocateNode allocRwSection;
 
+    private final BranchProfile exception;
+
     /**
      * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type (
      * {@link LLVMGlobalContainer}).
@@ -103,6 +107,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
         this.globalLength = result.getSymbolTableSize();
         this.bitcodeID = result.getRuntime().getBitcodeID();
         this.moduleName = moduleName;
+
+        this.exception = BranchProfile.create();
 
         // allocate all non-pointer types as two structs
         // one for read-only and one for read-write
@@ -194,8 +200,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
             LLVMSymbol allocGlobal = globals[i];
             LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.getName());
             if (descriptor == null) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(String.format("Global variable %s not found", allocGlobal.getName()));
+                exception.enter();
+                throw new LLVMLinkerException(this, "Global variable %s not found", allocGlobal.getName());
             }
             if (!context.checkSymbol(allocGlobal)) {
                 // because of our symbol overriding support, it can happen that the global was

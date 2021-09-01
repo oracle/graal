@@ -34,7 +34,7 @@ import java.nio.file.Paths;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -115,10 +116,11 @@ public final class SulongLibrary implements TruffleObject {
      *         the function cannot be found.
      */
     private LLVMFunctionDescriptor lookupFunctionDescriptor(String symbolName) {
+        CompilerAsserts.neverPartOfCompilation();
         try {
             LLVMFunction function = scope.getFunction(symbolName);
             if (function != null) {
-                Object value = context.getSymbol(function);
+                Object value = context.getSymbolUncached(function);
                 if (value != null) {
                     return (LLVMFunctionDescriptor) LLVMManagedPointer.cast(value).getObject();
                 }
@@ -158,16 +160,18 @@ public final class SulongLibrary implements TruffleObject {
         }
 
         protected static LLVMFunctionDescriptor lookupFunctionDescriptor(SulongLibrary library, String name) {
+            CompilerAsserts.neverPartOfCompilation();
             return library.lookupFunctionDescriptor(name);
         }
     }
 
     @ExportMessage
     Object readMember(String member,
-                    @Shared("lookup") @Cached LookupNode lookup) throws UnknownIdentifierException {
+                    @Shared("lookup") @Cached LookupNode lookup,
+                    @Cached @Shared("notFound") BranchProfile notFound) throws UnknownIdentifierException {
         Object ret = lookup.execute(this, member);
         if (ret == null) {
-            CompilerDirectives.transferToInterpreter();
+            notFound.enter();
             throw UnknownIdentifierException.create(member);
         }
         return ret;
@@ -176,10 +180,11 @@ public final class SulongLibrary implements TruffleObject {
     @ExportMessage
     Object invokeMember(String member, Object[] arguments,
                     @Shared("lookup") @Cached LookupNode lookup,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                    @CachedLibrary(limit = "1") InteropLibrary interop,
+                    @Cached @Shared("notFound") BranchProfile notFound) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         LLVMFunctionDescriptor fn = lookup.execute(this, member);
         if (fn == null) {
-            CompilerDirectives.transferToInterpreter();
+            notFound.enter();
             throw UnknownIdentifierException.create(member);
         }
 

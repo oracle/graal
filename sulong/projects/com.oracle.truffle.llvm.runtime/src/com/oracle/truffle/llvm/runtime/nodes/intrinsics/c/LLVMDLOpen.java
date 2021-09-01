@@ -44,6 +44,10 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
@@ -75,7 +79,8 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
     }
 
     @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 1)
-    protected static final class LLVMDLHandler {
+    @ExportLibrary(InteropLibrary.class)
+    protected static final class LLVMDLHandler implements TruffleObject {
         final Object library;
 
         private LLVMDLHandler(Object library) {
@@ -95,6 +100,21 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
 
         public Object getLibrary() {
             return library;
+        }
+
+        @ExportMessage
+        boolean isPointer(@CachedLibrary("this.library") InteropLibrary interop) {
+            return interop.isPointer(library);
+        }
+
+        @ExportMessage
+        long asPointer(@CachedLibrary("this.library") InteropLibrary interop) throws UnsupportedMessageException {
+            return interop.asPointer(library);
+        }
+
+        @ExportMessage
+        void toNative(@CachedLibrary("this.library") InteropLibrary interop) {
+            interop.toNative(library);
         }
     }
 

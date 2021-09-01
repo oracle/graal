@@ -77,6 +77,7 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
         }
         configs.put("testReenterArgsAndVals.c", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testFunctionPointer.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testGlobalVars.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testLongDouble.cpp", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testBitFields.cpp", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testScopes.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});

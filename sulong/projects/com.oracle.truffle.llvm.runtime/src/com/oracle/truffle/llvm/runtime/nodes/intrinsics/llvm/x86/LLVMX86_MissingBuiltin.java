@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 
 public abstract class LLVMX86_MissingBuiltin extends LLVMBuiltin {
@@ -46,7 +47,6 @@ public abstract class LLVMX86_MissingBuiltin extends LLVMBuiltin {
 
     @Specialization
     Object doMissing() {
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("Missing LLVM builtin: " + name);
+        throw new LLVMUnsupportedException(this, UnsupportedReason.MISSING_BUILTIN, name);
     }
 }

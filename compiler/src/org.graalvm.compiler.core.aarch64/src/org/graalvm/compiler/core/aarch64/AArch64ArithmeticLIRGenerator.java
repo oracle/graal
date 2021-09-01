@@ -40,6 +40,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.CastValue;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.Variable;
@@ -211,6 +212,31 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     public Value emitXor(Value a, Value b) {
         assert isNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.XOR, true, a, b);
+    }
+
+    @Override
+    public Value emitXorFP(Value a, Value b) {
+        assert (a.getPlatformKind() == AArch64Kind.SINGLE || a.getPlatformKind() == AArch64Kind.DOUBLE) &&
+                        a.getPlatformKind() == b.getPlatformKind();
+
+        /*
+         * Use the ASIMD XOR instruction to perform this operation. This requires casting the
+         * operands to SIMD kinds of the equivalent size.
+         */
+        LIRKind simdKind;
+        if (a.getPlatformKind() == AArch64Kind.SINGLE) {
+            simdKind = LIRKind.value(AArch64Kind.V32_BYTE);
+        } else {
+            simdKind = LIRKind.value(AArch64Kind.V64_BYTE);
+        }
+        Variable result = getLIRGen().newVariable(simdKind);
+
+        CastValue castA = new CastValue(simdKind, asAllocatable(a));
+        CastValue castB = new CastValue(simdKind, asAllocatable(b));
+        getLIRGen().append(AArch64ArithmeticOp.generateASIMDBinaryInstruction(AArch64ArithmeticOp.XOR, result, castA, castB));
+
+        // Must cast SIMD result back to appropriate FP type
+        return new CastValue(LIRKind.combine(a, b), result);
     }
 
     @Override

@@ -29,11 +29,11 @@ import java.util.Collection;
 
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
@@ -41,6 +41,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.log.Log;
 
 public class VMThreadLocalInfos {
@@ -59,30 +60,35 @@ public class VMThreadLocalInfos {
         }
     }
 
-    public static void dumpToLog(Log log, IsolateThread thread) {
+    public static void dumpToLog(Log log, IsolateThread thread, boolean allowJavaHeapAccess) {
         for (VMThreadLocalInfo info : ImageSingletons.lookup(VMThreadLocalInfos.class).infos) {
             log.signed(info.offset).string(" (").signed(info.sizeInBytes).string(" bytes): ").string(info.name).string(" = ");
             if (info.threadLocalClass == FastThreadLocalInt.class) {
                 int value = primitiveData(thread).readInt(WordFactory.signed(info.offset));
-                log.string("(int) ").signed(value).string("  ").zhex(value);
+                log.string("(int) ").signed(value).string(" (").zhex(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalLong.class) {
                 long value = primitiveData(thread).readLong(WordFactory.signed(info.offset));
-                log.string("(long) ").signed(value).string("  ").zhex(value);
+                log.string("(long) ").signed(value).string(" (").zhex(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalWord.class) {
                 WordBase value = primitiveData(thread).readWord(WordFactory.signed(info.offset));
-                log.string("(Word) ").signed(value).string("  ").zhex(value.rawValue());
+                log.string("(Word) ").signed(value).string(" (").zhex(value.rawValue()).string(")");
             } else if (info.threadLocalClass == FastThreadLocalObject.class) {
-                Object value = ObjectAccess.readObject(objectData(thread), WordFactory.signed(info.offset));
-                log.string("(Object) ");
-                if (value == null) {
-                    log.string("null");
+                if (allowJavaHeapAccess) {
+                    Object value = ObjectAccess.readObject(objectData(thread), WordFactory.signed(info.offset));
+                    log.string("(Object) ");
+                    if (value == null) {
+                        log.string("null");
+                    } else {
+                        log.string(value.getClass().getName()).string(" (").zhex(Word.objectToUntrackedPointer(value).rawValue()).string(")");
+                    }
                 } else {
-                    log.string(value.getClass().getName()).string("  ").zhex(Word.objectToUntrackedPointer(value).rawValue());
+                    Word value = ReferenceAccess.singleton().readObjectAsUntrackedPointer(Word.objectToUntrackedPointer(objectData(thread)).add(info.offset), true);
+                    log.string("(Object) ").zhex(value);
                 }
             } else if (info.threadLocalClass == FastThreadLocalBytes.class) {
                 log.string("(bytes) ").indent(true);
                 log.hexdump(primitiveData(thread).add(WordFactory.signed(info.offset)), 8, info.sizeInBytes / 8);
-                log.indent(false);
+                log.redent(false);
             } else {
                 log.string("unknown class ").string(info.threadLocalClass.getName());
             }

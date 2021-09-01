@@ -93,11 +93,11 @@ public final class YoungGeneration extends Generation {
 
     @Override
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Young generation: ").indent(true);
-        log.string("[Eden: ").indent(true);
+        log.string("Young generation: ").indent(true);
+        log.string("Eden: ").indent(true);
         getEden().report(log, traceHeapChunks);
-        log.redent(false).string("]").newline();
-        log.string("[Survivors: ").indent(true);
+        log.redent(false).newline();
+        log.string("Survivors: ").indent(true);
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             this.survivorFromSpaces[i].report(log, traceHeapChunks).newline();
             this.survivorToSpaces[i].report(log, traceHeapChunks);
@@ -105,7 +105,7 @@ public final class YoungGeneration extends Generation {
                 log.newline();
             }
         }
-        log.redent(false).string("]").redent(false).string("]");
+        log.redent(false).redent(false);
         return log;
     }
 

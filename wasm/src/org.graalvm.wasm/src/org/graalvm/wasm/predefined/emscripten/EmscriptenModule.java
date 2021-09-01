@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,9 +54,11 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiFdWriteNode;
 
 public class EmscriptenModule extends BuiltinModule {
+    private static final int NUMBER_OF_FUNCTIONS = 19;
+
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null));
+        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null), NUMBER_OF_FUNCTIONS);
 
         final WasmInstance testutil = context.moduleInstances().get("testutil");
         if (testutil != null) {

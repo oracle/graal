@@ -192,6 +192,8 @@ public class DebugOptions {
     @Option(help = "Do not compile anything on bootstrap but just initialize the compiler.", type = OptionType.Debug)
     public static final OptionKey<Boolean> BootstrapInitializeOnly = new OptionKey<>(false);
 
+    // @formatter:on
+
     /**
      * Gets the directory in which {@link DebugDumpHandler}s can generate output. This will be the
      * directory specified by {@link #DumpPath} if it has been set otherwise it will be derived from
@@ -204,15 +206,7 @@ public class DebugOptions {
      * @throws IOException if there was an error in {@link Files#createDirectories}
      */
     public static Path getDumpDirectory(OptionValues options) throws IOException {
-        Path dumpDir;
-        if (DumpPath.hasBeenSet(options)) {
-            dumpDir = Paths.get(DumpPath.getValue(options));
-        } else {
-            Date date = new Date(GraalServices.getGlobalTimeStamp());
-            SimpleDateFormat formatter = new SimpleDateFormat( "YYYY.MM.dd.HH.mm.ss.SSS" );
-            dumpDir = Paths.get(DumpPath.getValue(options), formatter.format(date));
-        }
-        dumpDir = dumpDir.toAbsolutePath();
+        Path dumpDir = getDumpDirectoryName(options);
         if (!Files.exists(dumpDir)) {
             synchronized (DebugConfigImpl.class) {
                 if (!Files.exists(dumpDir)) {
@@ -223,6 +217,22 @@ public class DebugOptions {
                 }
             }
         }
+        return dumpDir;
+    }
+
+    /**
+     * Returns the {@link #getDumpDirectory} without attempting to create it.
+     */
+    public static Path getDumpDirectoryName(OptionValues options) {
+        Path dumpDir;
+        if (DumpPath.hasBeenSet(options)) {
+            dumpDir = Paths.get(DumpPath.getValue(options));
+        } else {
+            Date date = new Date(GraalServices.getGlobalTimeStamp());
+            SimpleDateFormat formatter = new SimpleDateFormat("YYYY.MM.dd.HH.mm.ss.SSS");
+            dumpDir = Paths.get(DumpPath.getValue(options), formatter.format(date));
+        }
+        dumpDir = dumpDir.toAbsolutePath();
         return dumpDir;
     }
 }

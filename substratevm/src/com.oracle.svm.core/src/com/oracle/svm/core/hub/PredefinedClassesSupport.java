@@ -63,10 +63,17 @@ public final class PredefinedClassesSupport {
         return Options.SupportPredefinedClasses.getValue();
     }
 
-    public static RuntimeException throwBytecodeSupportDisabled() {
-        assert !supportsBytecodes();
-        throw VMError.unsupportedFeature("Loading classes from bytecodes at runtime is not supported. " +
-                        "Consider predefining classes and enable class predefinition during the image build using option: " + ENABLE_BYTECODES_OPTION);
+    @Fold
+    public static boolean hasBytecodeClasses() {
+        return supportsBytecodes() && !singleton().predefinedClassesByHash.isEmpty();
+    }
+
+    public static RuntimeException throwNoBytecodeClasses() {
+        if (!supportsBytecodes()) {
+            throw VMError.unsupportedFeature("Loading classes from bytecodes at runtime has been disabled. Enable with option: " + ENABLE_BYTECODES_OPTION);
+        }
+        assert !hasBytecodeClasses();
+        throw VMError.unsupportedFeature("No classes have been predefined during the image build to load from bytecodes at runtime.");
     }
 
     @Fold
@@ -119,8 +126,8 @@ public final class PredefinedClassesSupport {
     }
 
     public static Class<?> loadClass(ClassLoader classLoader, String expectedName, byte[] data, int offset, int length, ProtectionDomain protectionDomain) {
-        if (!supportsBytecodes()) {
-            throw throwBytecodeSupportDisabled();
+        if (!hasBytecodeClasses()) {
+            throw throwNoBytecodeClasses();
         }
         String hash = hash(data, offset, length);
         Class<?> clazz = singleton().predefinedClassesByHash.get(hash);

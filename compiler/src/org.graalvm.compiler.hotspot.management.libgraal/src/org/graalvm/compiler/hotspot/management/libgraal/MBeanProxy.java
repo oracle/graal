@@ -92,6 +92,12 @@ class MBeanProxy<T extends DynamicMBean> {
     private static final ClassData HS_ENTRYPOINTS_CLASS = ClassData.create(JMXFromLibGraalEntryPoints.class);
     private static final ClassData HS_AGGREGATED_MEMORY_POOL_BEAN_CLASS = ClassData.create(AggregatedMemoryPoolBean.class);
 
+    // Values for the global word used to synchronize definition
+    // of the above classes in the HotSpot heap
+    static final long HS_CLASSES_UNDEFINED = 0L;
+    static final long HS_CLASSES_DEFINING = 1L;
+    static final long HS_CLASSES_DEFINED = 2L;
+
     /**
      * Pending MBeans registrations on HotSpot side.
      *
@@ -341,23 +347,20 @@ class MBeanProxy<T extends DynamicMBean> {
         if (barrier.isNull()) {
             throw new IllegalStateException("Missing substitution for MBeanProxy.defineClassesInHotSpot");
         }
-        final long undefined = 0L;
-        final long defining = 1L;
-        final long defined = 2L;
         long defineClassState = barrier.readLong(0);
-        if (defineClassState == defined) {
+        if (defineClassState == HS_CLASSES_DEFINED) {
             loadAction.run();
         } else {
             while (true) {
                 defineClassState = barrier.readLong(0);
-                if (defineClassState == undefined) {
-                    if (barrier.compareAndSwapLong(0, undefined, defining, ANY_LOCATION) == undefined) {
+                if (defineClassState == HS_CLASSES_UNDEFINED) {
+                    if (barrier.compareAndSwapLong(0, HS_CLASSES_UNDEFINED, HS_CLASSES_DEFINING, ANY_LOCATION) == HS_CLASSES_UNDEFINED) {
                         defineAction.run();
-                        barrier.writeLong(0, defined);
+                        barrier.writeLong(0, HS_CLASSES_DEFINED);
                         break;
                     }
                 } else {
-                    if (defineClassState == defined) {
+                    if (defineClassState == HS_CLASSES_DEFINED) {
                         loadAction.run();
                         break;
                     }
@@ -429,7 +432,7 @@ class MBeanProxy<T extends DynamicMBean> {
     /**
      * Gets a pointer to a global word used as spin lock for safely defining classes in HotSpot.
      */
-    private static Pointer getDefineClassesStatePointer() {
+    static Pointer getDefineClassesStatePointer() {
         // Substituted by Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy
         return WordFactory.nullPointer();
     }

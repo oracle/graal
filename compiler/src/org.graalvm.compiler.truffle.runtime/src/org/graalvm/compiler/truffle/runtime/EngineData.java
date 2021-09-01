@@ -83,6 +83,7 @@ import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -437,6 +438,22 @@ public final class EngineData {
     @SuppressWarnings("static-method")
     public void mergeLoadedSources(Source[] sources) {
         GraalRuntimeAccessor.SOURCE.mergeLoadedSources(sources);
+    }
+
+    @SuppressWarnings("static-method")
+    public Object enterLanguage(TruffleLanguage<?> language) {
+        return GraalRuntimeAccessor.ENGINE.enterLanguageFromRuntime(language);
+    }
+
+    @SuppressWarnings("static-method")
+    public void leaveLanguage(TruffleLanguage<?> language, Object prev) {
+        GraalRuntimeAccessor.ENGINE.leaveLanguageFromRuntime(language, prev);
+    }
+
+    @SuppressWarnings("static-method")
+    public TruffleLanguage<?> getLanguage(OptimizedCallTarget target) {
+        RootNode root = target.getRootNode();
+        return GraalRuntimeAccessor.NODES.getLanguage(root);
     }
 
 }

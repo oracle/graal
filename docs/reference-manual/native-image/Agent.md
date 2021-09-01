@@ -146,7 +146,7 @@ existing configuration files instead of overwriting them. After re-building the
 native image, the `StringCapitalizer` class and the `capitalize` method will be
 accessible too.
 
-![](https://www.graalvm.org/docs/reference-manual/native-image/reflect_config_file_merged.png)
+![](/img/reflect_config_file_merged.png)
 
 ## Agent Advanced Usage
 

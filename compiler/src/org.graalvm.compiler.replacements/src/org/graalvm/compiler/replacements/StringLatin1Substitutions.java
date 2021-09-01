@@ -78,20 +78,11 @@ public class StringLatin1Substitutions {
     }
 
     @MethodSubstitution
-    public static int indexOf(byte[] source, int sourceCount, byte[] target, int targetCount, int origFromIndex) {
-        int fromIndex = origFromIndex;
-        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex >= sourceCount)) {
-            return (targetCount == 0 ? sourceCount : -1);
-        }
-        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex < 0)) {
-            fromIndex = 0;
-        }
-        if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 0)) {
-            // The empty string is in every string.
-            return fromIndex;
-        }
+    public static int indexOf(byte[] source, int sourceCount, byte[] target, int targetCount, int fromIndex) {
+        ReplacementsUtil.dynamicAssert(fromIndex >= 0, "StringLatin1.indexOf invalid args: fromIndex negative");
+        ReplacementsUtil.dynamicAssert(targetCount > 0, "StringLatin1.indexOf invalid args: targetCount <= 0");
         if (injectBranchProbability(UNLIKELY_PROBABILITY, sourceCount - fromIndex < targetCount)) {
-            // The empty string contains nothing except the empty string.
+            // too few characters to be searched to possibly match target
             return -1;
         }
         if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {

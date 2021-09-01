@@ -54,8 +54,9 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.nfi.CallSignatureNode.CachedCallSignatureNode;
 import com.oracle.truffle.nfi.NFILibrary.Keys;
-import com.oracle.truffle.nfi.api.SignatureLibrary;
+import static com.oracle.truffle.nfi.NFISignature.NO_SIGNATURE;
 
 @ExportLibrary(InteropLibrary.class)
 final class NFISymbol implements TruffleObject {
@@ -64,17 +65,15 @@ final class NFISymbol implements TruffleObject {
         return new NFISymbol(backend, nativeSymbol, NO_SIGNATURE);
     }
 
-    static Object createBound(String backend, Object nativeSymbol, Object signature) {
+    static Object createBound(String backend, Object nativeSymbol, NFISignature signature) {
         return new NFISymbol(backend, nativeSymbol, signature);
     }
 
     final String backend;
     final Object nativeSymbol;
-    final Object signature;
+    final NFISignature signature;
 
-    private static final Object NO_SIGNATURE = new Object();
-
-    private NFISymbol(String backend, Object nativeSymbol, Object signature) {
+    private NFISymbol(String backend, Object nativeSymbol, NFISignature signature) {
         assert signature != null;
         this.backend = backend;
         this.nativeSymbol = nativeSymbol;
@@ -93,8 +92,8 @@ final class NFISymbol implements TruffleObject {
 
         @Specialization(guards = "symbol.isExecutable()")
         static Object doGeneric(NFISymbol symbol, Object[] args,
-                        @CachedLibrary("symbol.signature") SignatureLibrary library) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-            return library.call(symbol.signature, symbol.nativeSymbol, args);
+                        @Cached CachedCallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+            return call.execute(symbol.signature, symbol.nativeSymbol, args);
         }
 
         @Specialization(guards = "!symbol.isExecutable()")

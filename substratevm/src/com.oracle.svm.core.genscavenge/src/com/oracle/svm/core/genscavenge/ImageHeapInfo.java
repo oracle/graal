@@ -34,6 +34,8 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 /**
@@ -129,49 +131,49 @@ public final class ImageHeapInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInReadOnlyPrimitivePartition(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyPrimitiveObject));
+        return Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastReadOnlyPrimitiveObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInReadOnlyReferencePartition(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstReadOnlyReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyReferenceObject));
+        return Word.objectToUntrackedPointer(firstReadOnlyReferenceObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastReadOnlyReferenceObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInReadOnlyRelocatablePartition(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstReadOnlyRelocatableObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyRelocatableObject));
+        return Word.objectToUntrackedPointer(firstReadOnlyRelocatableObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastReadOnlyRelocatableObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInWritablePrimitivePartition(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstWritablePrimitiveObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritablePrimitiveObject));
+        return Word.objectToUntrackedPointer(firstWritablePrimitiveObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastWritablePrimitiveObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInWritableReferencePartition(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstWritableReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
+        return Word.objectToUntrackedPointer(firstWritableReferenceObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastWritableReferenceObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInWritableHugePartition(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstWritableHugeObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableHugeObject));
+        return Word.objectToUntrackedPointer(firstWritableHugeObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastWritableHugeObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInReadOnlyHugePartition(Pointer ptr) {
         assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstReadOnlyHugeObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyHugeObject));
+        return Word.objectToUntrackedPointer(firstReadOnlyHugeObject).belowOrEqual(ptr) && ptr.belowThan(getObjectEnd(lastReadOnlyHugeObject));
     }
 
     /**
      * This method only returns the correct result for pointers that point to the the start of an
      * object. This is sufficient for all our current use cases. This code must be as fast as
-     * possible at the GC uses it for every visited reference.
+     * possible as the GC uses it for every visited reference.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer objectPointer) {
@@ -192,6 +194,14 @@ public final class ImageHeapInfo {
         return asImageHeapChunk(offsetOfFirstWritableUnalignedChunk);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static Word getObjectEnd(Object obj) {
+        if (obj == null) {
+            return WordFactory.nullPointer();
+        }
+        return Word.objectToUntrackedPointer(obj).add(LayoutEncoding.getSizeFromObject(obj));
+    }
+
     @SuppressWarnings("unchecked")
     private static <T extends HeapChunk.Header<T>> T asImageHeapChunk(long offsetInImageHeap) {
         if (offsetInImageHeap < 0) {
@@ -199,5 +209,15 @@ public final class ImageHeapInfo {
         }
         UnsignedWord offset = WordFactory.unsigned(offsetInImageHeap);
         return (T) KnownIntrinsics.heapBase().add(offset);
+    }
+
+    public void print(Log log) {
+        log.string("ReadOnly Primitives: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyPrimitiveObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyPrimitiveObject)).newline();
+        log.string("ReadOnly References: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyReferenceObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyReferenceObject)).newline();
+        log.string("ReadOnly Relocatables: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyRelocatableObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyRelocatableObject)).newline();
+        log.string("Writable Primitives: ").zhex(Word.objectToUntrackedPointer(firstWritablePrimitiveObject)).string(" - ").zhex(getObjectEnd(lastWritablePrimitiveObject)).newline();
+        log.string("Writable References: ").zhex(Word.objectToUntrackedPointer(firstWritableReferenceObject)).string(" - ").zhex(getObjectEnd(lastWritableReferenceObject)).newline();
+        log.string("Writable Huge: ").zhex(Word.objectToUntrackedPointer(firstWritableHugeObject)).string(" - ").zhex(getObjectEnd(lastWritableHugeObject)).newline();
+        log.string("ReadOnly Huge: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyHugeObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyHugeObject));
     }
 }

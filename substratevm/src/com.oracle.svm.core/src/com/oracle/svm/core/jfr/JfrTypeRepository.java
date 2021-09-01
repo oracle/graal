@@ -82,7 +82,7 @@ public class JfrTypeRepository implements JfrConstantPool {
     }
 
     private void visitPackage(TypeInfo typeInfo, Package pkg, Module module) {
-        if (pkg != null && !"".equals(pkg.getName()) && typeInfo.addPackage(pkg, module)) {
+        if (pkg != null && typeInfo.addPackage(pkg, module)) {
             visitModule(typeInfo, module);
         }
     }
@@ -95,7 +95,7 @@ public class JfrTypeRepository implements JfrConstantPool {
 
     private void visitClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
         // The null class-loader is serialized as the "bootstrap" class-loader.
-        if (typeInfo.addClassLoader(classLoader) && classLoader != null) {
+        if (classLoader != null && typeInfo.addClassLoader(classLoader)) {
             visitClass(typeInfo, classLoader.getClass());
         }
     }
@@ -222,7 +222,9 @@ public class JfrTypeRepository implements JfrConstantPool {
 
         boolean addPackage(Package pkg, Module module) {
             if (!packages.containsKey(pkg.getName())) {
-                packages.put(pkg.getName(), new PackageInfo(++currentPackageId, module));
+                // The empty package represented by "" is always traced with id 0
+                long id = pkg.getName().isEmpty() ? 0 : ++currentPackageId;
+                packages.put(pkg.getName(), new PackageInfo(id, module));
                 return true;
             } else {
                 assert module == packages.get(pkg.getName()).module;

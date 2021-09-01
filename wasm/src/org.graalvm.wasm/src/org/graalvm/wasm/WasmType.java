@@ -43,7 +43,7 @@ package org.graalvm.wasm;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -68,6 +68,7 @@ public class WasmType implements TruffleObject {
     public static final WasmType VOID = new WasmType("void");
 
     public static String toString(int valueType) {
+        CompilerAsserts.neverPartOfCompilation();
         switch (valueType) {
             case I32_TYPE:
                 return "i32";
@@ -80,7 +81,6 @@ public class WasmType implements TruffleObject {
             case VOID_TYPE:
                 return "void";
             default:
-                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }
     }

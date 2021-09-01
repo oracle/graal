@@ -316,7 +316,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         String messages = errors.stream().map(e -> e.getClass().getTypeName() + ": " + e.getMessage())
                         .distinct().collect(Collectors.joining(", "));
         // Checkstyle: stop
-        System.out.println("WARNING: Could not register complete reflection metadata for " + clazz.getTypeName() + ". Reason(s): " + messages);
+        System.out.println("Warning: Could not register complete reflection metadata for " + clazz.getTypeName() + ". Reason(s): " + messages);
         // Checkstyle: resume
     }
 

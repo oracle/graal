@@ -89,8 +89,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                 return landingPadValue;
             }
         } catch (FrameSlotTypeException | UnexpectedResultException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 
@@ -208,8 +207,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                 }
                 return false;
             } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }

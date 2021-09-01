@@ -428,6 +428,9 @@ public class CountedLoopInfo {
         if (!isLimitIncluded && getBodyIV().isConstantStride() && abs(getBodyIV().constantStride()) == 1) {
             return true;
         }
+        if (loop.loopBegin().isProtectedNonOverflowingUnsigned()) {
+            return true;
+        }
         // @formatter:off
         /*
          * Following comment reasons about the simplest possible loop form:

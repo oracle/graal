@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -49,14 +49,14 @@ public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
 
     @Child LLVMExpressionNode malloc;
 
-    public static LLVMForeignConstructorCallNode create(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
+    public static LLVMForeignConstructorCallNode create(LLVMLanguage language, LLVMFunctionCode function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
                     LLVMInteropType.Structured structuredType) {
         Type escapeType = function.getLLVMFunction().getType().getArgumentType(0);
         return new LLVMForeignConstructorCallNode(language, function, interopType, sourceType, structuredType, escapeType);
 
     }
 
-    protected LLVMForeignConstructorCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
+    protected LLVMForeignConstructorCallNode(LLVMLanguage language, LLVMFunctionCode function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
                     LLVMInteropType.Structured structuredType, Type escapeType) {
         super(language, function, interopType, sourceType, structuredType, escapeType);
 

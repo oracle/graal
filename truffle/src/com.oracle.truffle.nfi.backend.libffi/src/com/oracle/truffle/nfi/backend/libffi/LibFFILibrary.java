@@ -75,6 +75,16 @@ final class LibFFILibrary implements TruffleObject {
     }
 
     @ExportMessage
+    static boolean isPointer(@SuppressWarnings("unused") LibFFILibrary self) {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return handle;
+    }
+
+    @ExportMessage
     @SuppressWarnings("static-method")
     boolean hasMembers() {
         return true;

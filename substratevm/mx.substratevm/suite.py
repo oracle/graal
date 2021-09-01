@@ -198,7 +198,8 @@ suite = {
             "dependencies": ["com.oracle.svm.core"],
             "requires" : [
                 "java.logging",
-                "jdk.unsupported"
+                "jdk.unsupported",
+                "java.compiler",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -235,7 +236,10 @@ suite = {
         "com.oracle.svm.core.jdk15": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
+            "dependencies": [
+                "com.oracle.svm.core",
+                "com.oracle.svm.core.jdk11"
+            ],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
@@ -440,6 +444,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.core.jdk11"
             ],
             "requires" : ["java.instrument"],
             "requiresConcealed" : {
@@ -1404,7 +1409,6 @@ suite = {
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
-            "com.oracle.svm.test.jdk11",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
           ],
@@ -1415,6 +1419,20 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
+        },
+
+        "SVM_TESTS_JDK11" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.svm.test.jdk11",
+            ],
+            "distDependencies": [
+                "mx:JUNIT_TOOL",
+                "SVM",
+            ],
+            "javaCompliance": "11+",
+            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {

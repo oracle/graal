@@ -40,6 +40,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Structured;
@@ -132,17 +133,6 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         throw new IllegalStateException("invalid struct access");
     }
 
-    static StructMember findMember(LLVMInteropType.Struct struct, String name) {
-        for (StructMember m : struct.members) {
-            if (m.name.contentEquals(name)) {
-                return m;
-            }
-        }
-
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException("invalid struct access");
-    }
-
     @GenerateUncached
     abstract static class MakeAccessLocation extends LLVMNode {
 
@@ -161,15 +151,16 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         @GenerateAOT.Exclude
         AccessLocation doRecursiveObject(Object foreign, String identifier, LLVMInteropType.Structured type, long restOffset,
                         @CachedLibrary("foreign") InteropLibrary interop,
-                        @Cached("create()") LLVMInteropAccessNode recursive) {
+                        @Cached("create()") LLVMInteropAccessNode recursive,
+                        @Cached BranchProfile notFound) {
             Object inner;
             try {
                 inner = interop.readMember(foreign, identifier);
             } catch (UnknownIdentifierException ex) {
-                CompilerDirectives.transferToInterpreter();
+                notFound.enter();
                 throw new LLVMPolyglotException(this, "Member '%s' not found", identifier);
             } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreter();
+                notFound.enter();
                 throw new LLVMPolyglotException(this, "Cannot read member '%s'", identifier);
             }
 
@@ -180,15 +171,16 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         @GenerateAOT.Exclude
         AccessLocation doRecursiveArray(Object foreign, long index, LLVMInteropType.Structured type, long restOffset,
                         @CachedLibrary("foreign") InteropLibrary interop,
-                        @Cached("create()") LLVMInteropAccessNode recursive) {
+                        @Cached("create()") LLVMInteropAccessNode recursive,
+                        @Cached BranchProfile notFound) {
             Object inner;
             try {
                 inner = interop.readArrayElement(foreign, index);
             } catch (InvalidArrayIndexException ex) {
-                CompilerDirectives.transferToInterpreter();
+                notFound.enter();
                 throw new LLVMPolyglotException(this, "Invalid array index %d", index);
             } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreter();
+                notFound.enter();
                 throw new LLVMPolyglotException(this, "Cannot acess array element %d", index);
             }
 

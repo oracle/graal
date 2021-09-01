@@ -615,6 +615,10 @@ public abstract class Accessor {
 
         public abstract Object getHostContext(Object valueContext);
 
+        public abstract Object enterLanguageFromRuntime(TruffleLanguage<?> language);
+
+        public abstract void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev);
+
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -715,13 +719,15 @@ public abstract class Accessor {
 
         public abstract Object getDefaultLoggers();
 
-        public abstract Object createEngineLoggers(Object spi, Map<String, Level> logLevels);
+        public abstract Object createEngineLoggers(Object spi);
 
         public abstract Object getLoggersSPI(Object loggerCache);
 
         public abstract void closeEngineLoggers(Object loggers);
 
         public abstract TruffleLogger getLogger(String id, String loggerName, Object loggers);
+
+        public abstract Object getLoggerCache(TruffleLogger logger);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
@@ -763,7 +769,10 @@ public abstract class Accessor {
 
         public abstract boolean isSideEffectingTLAction(ThreadLocalAction action);
 
+        public abstract boolean isRecurringTLAction(ThreadLocalAction action);
+
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
+
     }
 
     public abstract static class InstrumentSupport extends Support {

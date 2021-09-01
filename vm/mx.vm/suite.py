@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
     "version" : "21.3.0",
-    "mxversion" : "5.305.4",
+    "mxversion" : "5.309.2",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "a14d5cd8ab06d4c4857014eee4cb29074ce386c0",
+                "version": "65ea07f0f5fc0042c10931ddb4c2d1749dfbefdb",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "a14d5cd8ab06d4c4857014eee4cb29074ce386c0",
+                "version": "65ea07f0f5fc0042c10931ddb4c2d1749dfbefdb",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "76e9c941d2e3ba0295d6ebf8b0d22b06918785f0",
+                "version": "3de3817e05a4207d4e5567ec1a0ed346b2ea98b3",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "b3262b52b5456d76063732b61ce900ae9f923a0c",
+                "version": "22466837f3e7f5af43311088fd43a692b9aa6002",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "afa50aa6925f16fd671e1077c322220e38c4cb90",
+                "version": "6e89e72e4d318987c8ddb9daaaceeb738d3377ed",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -117,6 +117,32 @@ suite = {
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
             ],
+        },
+        "org.graalvm.polybench.micro" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "1.8+",
+            "license" : "GPLv2-CPE",
+            "checkstyle": "org.graalvm.component.installer",
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+        },
+        "nfi-native" : {
+            "subDir" : "benchmarks",
+            "native" : "shared_lib",
+            "deliverable" : "microbench",
+            "buildDependencies" : [
+                "truffle:TRUFFLE_NFI_GRAALVM_SUPPORT",
+            ],
+            "cflags" : [
+                "-I<path:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT>/include",
+            ],
+            "testProject" : True,
+            "defaultBuild": False,
         },
     },
 
@@ -186,6 +212,23 @@ suite = {
             ],
             "maven" : False,
         },
+        "PMH": {
+            "subDir": "src",
+            "dependencies": [
+                "org.graalvm.polybench.micro",
+            ],
+            "distDependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : False,
+        },
+        "PMH_SUPPORT": {
+            "native": True,
+            "layout": {
+                "native-image.properties": "file:mx.vm/language-pmh.properties",
+            },
+            "maven": False,
+        },
         "POLYBENCH_BENCHMARKS": {
             "native": True,
             "description": "Distribution for polybench benchmarks",
@@ -209,7 +252,13 @@ suite = {
                     # "file:benchmarks/warmup/*.rb",
                     # "file:benchmarks/warmup/*.py",
                     "extracted-dependency:WARMUP_BENCHMARKS/*"
-                ]
+                ],
+                "./nfi/": [
+                    "file:benchmarks/nfi/*.pmh",
+                ],
+                "./nfi-native/": [
+                    "dependency:nfi-native",
+                ],
             },
             "defaultBuild": False,
         },

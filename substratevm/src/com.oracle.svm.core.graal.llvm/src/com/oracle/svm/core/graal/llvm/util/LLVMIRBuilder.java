@@ -307,6 +307,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMGetTypeKind(type) == LLVM.LLVMIntegerTypeKind;
     }
 
+    public static boolean isVectorType(LLVMTypeRef type) {
+        return LLVM.LLVMGetTypeKind(type) == LLVM.LLVMVectorTypeKind;
+    }
+
     public static int integerTypeWidth(LLVMTypeRef intType) {
         return LLVM.LLVMGetIntTypeWidth(intType);
     }
