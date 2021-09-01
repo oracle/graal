@@ -1235,7 +1235,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
             ]
             if _debug_images():
-                build_args += ['-ea', '-H:-AOTInline', '-H:+PreserveFramePointer']
+                build_args += ['-ea', '-H:-AOTInline', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
             if _get_svm_support().is_debug_supported():
                 build_args += ['-g']
 

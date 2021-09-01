@@ -29,9 +29,9 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
@@ -156,7 +156,7 @@ public final class ClassfileParser {
 
     private final ClasspathFile classfile;
 
-    private final String requestedClassType;
+    private final Symbol<Type> requestedClassType;
 
     private final EspressoContext context;
 
@@ -177,7 +177,7 @@ public final class ClassfileParser {
 
     private ConstantPool pool;
 
-    private ClassfileParser(ClassfileStream stream, StaticObject loader, String requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+    private ClassfileParser(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;
         this.context = context;
         this.classfile = null;
@@ -188,7 +188,7 @@ public final class ClassfileParser {
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassfileStream stream, EspressoContext context) {
-        this(stream, null, "", context, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        this(stream, null, null, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -220,12 +220,12 @@ public final class ClassfileParser {
         }
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context) {
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName, EspressoContext context) {
         return parse(stream, loader, requestedClassName, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
-        return new ClassfileParser(stream, loader, requestedClassName, context, info).parseClass();
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+        return new ClassfileParser(stream, loader, requestedClassType, context, info).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -405,7 +405,7 @@ public final class ClassfileParser {
         classType = thisKlassType;
 
         // Checks if name in class file matches requested name
-        if (requestedClassType != null && !requestedClassType.equals(classType.toString())) {
+        if (requestedClassType != null && !classDefinitionInfo.isHidden() && !requestedClassType.equals(classType)) {
             throw ConstantPool.noClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
         }
 
@@ -438,6 +438,15 @@ public final class ClassfileParser {
 
         // Ensure there are no trailing bytes
         stream.checkEndOfFile();
+
+        if (classDefinitionInfo.isHidden()) {
+            assert requestedClassType != null;
+            int futureKlassID = context.getNewKlassId();
+            classDefinitionInfo.initKlassID(futureKlassID);
+            thisKlassName = context.getNames().getOrCreate(Types.hiddenClassName(requestedClassType, futureKlassID));
+            thisKlassType = context.getTypes().fromName(thisKlassName);
+            pool = pool.patchForHiddenClass(thisKlassIndex, thisKlassName);
+        }
 
         return new ParserKlass(pool, classDefinitionInfo.patchFlags(classFlags), thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
     }
@@ -810,8 +819,9 @@ public final class ClassfileParser {
                         Symbol<Type> annotType = constant.value();
                         if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
                             methodFlags |= ACC_LAMBDA_FORM_COMPILED;
-                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType)) {
-                            methodFlags |= ACC_LAMBDA_FORM_HIDDEN;
+                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
+                                        Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
+                            methodFlags |= ACC_HIDDEN;
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
                                         Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
@@ -849,6 +859,10 @@ public final class ClassfileParser {
             if (codeAttribute == null) {
                 throw ConstantPool.classFormatError("Missing Code attribute");
             }
+        }
+
+        if (classDefinitionInfo.isHidden()) {
+            methodFlags |= ACC_HIDDEN;
         }
 
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);

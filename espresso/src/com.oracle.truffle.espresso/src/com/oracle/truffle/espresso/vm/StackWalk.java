@@ -23,9 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -184,7 +181,7 @@ public final class StackWalk {
         private int depth = 0;
         private int decoded = 0;
 
-        private static final int LOCATE_CALLSTACKWALk = 0;
+        private static final int LOCATE_CALLSTACKWALK = 0;
         private static final int LOCATE_STACK_BEGIN = 1;
         private static final int LOCATE_FROM = 2;
         private static final int PROCESS = 3;
@@ -209,7 +206,7 @@ public final class StackWalk {
         }
 
         public void clear() {
-            state = LOCATE_CALLSTACKWALk;
+            state = LOCATE_CALLSTACKWALK;
             depth = 0;
             decoded = 0;
         }
@@ -271,7 +268,7 @@ public final class StackWalk {
             Method m = root == null ? null : root.getMethod();
             if (m != null) {
                 switch (state) {
-                    case LOCATE_CALLSTACKWALk:
+                    case LOCATE_CALLSTACKWALK:
                         if (!isCallStackWalk(m)) {
                             break;
                         }
@@ -325,12 +322,13 @@ public final class StackWalk {
 
         private void tryProcessFrame(FrameInstance frameInstance, Method m, int index) {
             if (getCallerClass(mode) || skipHiddenFrames(mode)) {
-                if ((m.getModifiers() & ACC_LAMBDA_FORM_HIDDEN) != 0) {
+                if (m.isHidden()) {
+                    // Skip hidden frames.
                     return;
                 }
             }
-            if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && ((m.getModifiers() & ACC_CALLER_SENSITIVE) != 0)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
+            if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && m.isCallerSensitive()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive " + m.getNameAsString() + " method");
             }
             processFrame(frameInstance, m, index);
             decoded++;

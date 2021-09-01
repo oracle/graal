@@ -352,6 +352,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> linkToInterface = StaticSymbols.putName("linkToInterface");
         public static final Symbol<Name> linkToSpecial = StaticSymbols.putName("linkToSpecial");
 
+        // VarHandles
+        public static final Symbol<Name> getStaticFieldFromBaseAndOffset = StaticSymbols.putName("getStaticFieldFromBaseAndOffset");
+
         // MethodHandleNatives
         public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
         public static final Symbol<Name> linkMethod = StaticSymbols.putName("linkMethod");
@@ -498,11 +501,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_EXCEPTION_WRAPPER = StaticSymbols.putName("0HIDDEN_EXCEPTION_WRAPPER");
 
         // Thread
+        public static final Symbol<Name> interrupted = StaticSymbols.putName("interrupted");
+        public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> HIDDEN_DEATH = StaticSymbols.putName("0HIDDEN_DEATH");
         public static final Symbol<Name> HIDDEN_DEATH_THROWABLE = StaticSymbols.putName("0HIDDEN_DEATH_THROWABLE");
         public static final Symbol<Name> HIDDEN_HOST_THREAD = StaticSymbols.putName("0HIDDEN_HOST_THREAD");
         public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
-        public static final Symbol<Name> HIDDEN_IS_ALIVE = StaticSymbols.putName("0HIDDEN_IS_ALIVE");
         public static final Symbol<Name> HIDDEN_SUSPEND_LOCK = StaticSymbols.putName("0HIDDEN_SUSPEND_LOCK");
         public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
         public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
@@ -756,6 +760,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> java_lang_invoke_MethodHandles = StaticSymbols.putType("Ljava/lang/invoke/MethodHandles;");
         public static final Symbol<Type> java_lang_invoke_VarHandle = StaticSymbols.putType("Ljava/lang/invoke/VarHandle;");
+        public static final Symbol<Type> java_lang_invoke_VarHandles = StaticSymbols.putType("Ljava/lang/invoke/VarHandles;");
         public static final Symbol<Type> java_lang_invoke_MethodHandles$Lookup = StaticSymbols.putType("Ljava/lang/invoke/MethodHandles$Lookup;");
         public static final Symbol<Type> java_lang_invoke_CallSite = StaticSymbols.putType("Ljava/lang/invoke/CallSite;");
         public static final Symbol<Type> java_lang_invoke_DirectMethodHandle = StaticSymbols.putType("Ljava/lang/invoke/DirectMethodHandle;");
@@ -767,6 +772,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_invoke_LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Compiled = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Compiled;");
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Hidden = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Hidden;");
+        public static final Symbol<Type> jdk_internal_vm_annotation_Hidden = StaticSymbols.putType("Ljdk/internal/vm/annotation/Hidden;");
         public static final Symbol<Type> sun_reflect_CallerSensitive = StaticSymbols.putType("Lsun/reflect/CallerSensitive;");
         public static final Symbol<Type> jdk_internal_reflect_CallerSensitive = StaticSymbols.putType("Ljdk/internal/reflect/CallerSensitive;");
 
@@ -978,6 +984,8 @@ public final class Symbol<T> extends ByteSequence {
                         Type.java_lang_Object,
                         Type.java_lang_Object);
         public static final Symbol<Signature> MethodHandles$Lookup = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
+
+        public static final Symbol<Signature> Field_Object_long_Class = StaticSymbols.putSignature(Type.java_lang_reflect_Field, Type.java_lang_Object, Type._long, Type.java_lang_Class);
 
         public static final Symbol<Signature> Thread$State_int = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
         public static final Symbol<Signature> _void_ThreadGroup = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup);

@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -53,7 +54,6 @@ import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefineListener;
@@ -154,7 +154,7 @@ public final class ClassRedefinition {
     public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
         for (HotSwapClassInfo hotSwapInfo : classInfos) {
-            KlassRef klass = hotSwapInfo.getKlass();
+            ObjectKlass klass = hotSwapInfo.getKlass();
             if (klass == null) {
                 // New anonymous inner class
                 result.add(new ChangePacket(hotSwapInfo, ClassChange.NEW_CLASS));
@@ -165,20 +165,16 @@ public final class ClassRedefinition {
             ParserKlass newParserKlass = null;
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
-            if (klass instanceof ObjectKlass) {
-                StaticObject loader = ((ObjectKlass) klass).getDefiningClassLoader();
-                parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), loader, "L" + hotSwapInfo.getName() + ";", context);
-                if (hotSwapInfo.isPatched()) {
-                    byte[] patched = hotSwapInfo.getPatchedBytes();
-                    newParserKlass = parserKlass;
-                    // we detect changes against the patched bytecode
-                    parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), loader, "L" + hotSwapInfo.getNewName() + ";", context);
-                }
-                classChange = detectClassChanges(parserKlass, (ObjectKlass) klass, detectedChange, newParserKlass);
-            } else {
-                // array or primitive klass, should never happen
-                classChange = ClassChange.INVALID;
+            StaticObject loader = klass.getDefiningClassLoader();
+            Types types = klass.getContext().getTypes();
+            parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), loader, types.fromName(hotSwapInfo.getName()), context);
+            if (hotSwapInfo.isPatched()) {
+                byte[] patched = hotSwapInfo.getPatchedBytes();
+                newParserKlass = parserKlass;
+                // we detect changes against the patched bytecode
+                parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), loader, types.fromName(hotSwapInfo.getNewName()), context);
             }
+            classChange = detectClassChanges(parserKlass, klass, detectedChange, newParserKlass);
             result.add(new ChangePacket(hotSwapInfo, newParserKlass != null ? newParserKlass : parserKlass, classChange, detectedChange));
         }
         return result;

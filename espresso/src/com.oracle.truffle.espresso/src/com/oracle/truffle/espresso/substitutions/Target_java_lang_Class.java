@@ -182,6 +182,14 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
+    public static @JavaType(String.class) StaticObject initClassName(@JavaType(Class.class) StaticObject self,
+                    @Inject Meta meta) {
+        StaticObject name = getName0(self, meta);
+        meta.java_lang_Class_name.set(self, name);
+        return name;
+    }
+
+    @Substitution(hasReceiver = true)
     public static @JavaType(String.class) StaticObject getSimpleBinaryName0(@JavaType(Class.class) StaticObject self,
                     @Inject Meta meta) {
         Klass k = self.getMirrorKlass();
@@ -209,12 +217,6 @@ public final class Target_java_lang_Class {
         return StaticObject.NULL;
     }
 
-    @Substitution(hasReceiver = true)
-    public static @JavaType(String.class) StaticObject initClassName(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return getName0(self, meta);
-    }
-
     @TruffleBoundary
     private static StaticObject internString(Meta meta, StaticObject guestString) {
         return meta.getStrings().intern(guestString);
@@ -234,12 +236,7 @@ public final class Target_java_lang_Class {
 
         ArrayList<Field> collectedMethods = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
-        /*
-         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
-         * doing verification, which, at this point, is the only thing left from linking we need to
-         * do.
-         */
-        klass.verify();
+        klass.ensureLinked();
         for (Field f : klass.getDeclaredFields()) {
             if (!publicOnly || f.isPublic()) {
                 collectedMethods.add(f);
@@ -327,12 +324,7 @@ public final class Target_java_lang_Class {
                     @Inject Meta meta) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
-        /*
-         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
-         * doing verification, which, at this point, is the only thing left from linking we need to
-         * do.
-         */
-        klass.verify();
+        klass.ensureLinked();
         for (Method m : klass.getDeclaredConstructors()) {
             if (Name._init_.equals(m.getName()) && (!publicOnly || m.isPublic())) {
                 collectedMethods.add(m);
@@ -430,12 +422,7 @@ public final class Target_java_lang_Class {
                     @Inject Meta meta) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
         Klass klass = self.getMirrorKlass();
-        /*
-         * Hotspot does class linking at this point, and JCK tests for it (out of specs). Comply by
-         * doing verification, which, at this point, is the only thing left from linking we need to
-         * do.
-         */
-        klass.verify();
+        klass.ensureLinked();
         for (Method m : klass.getDeclaredMethods()) {
             if ((!publicOnly || m.isPublic()) &&
                             // Filter out <init> and <clinit> from reflection.

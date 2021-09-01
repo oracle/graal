@@ -489,7 +489,7 @@ public final class JniEnv extends NativeEnv {
                 Klass klass = clazz.getMirrorKlass();
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                field = klass.lookupField(fieldName, fieldType, true);
+                field = klass.lookupField(fieldName, fieldType, Klass.LookupMode.STATIC_ONLY);
                 assert field == null || field.getType().equals(fieldType);
             }
         }
