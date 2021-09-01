@@ -50,6 +50,8 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.WIG;
 import static org.graalvm.compiler.core.common.NumUtil.isByte;
 
+import java.util.EnumSet;
+
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
@@ -69,7 +71,10 @@ import jdk.vm.ci.meta.PlatformKind;
  */
 public abstract class AMD64BaseAssembler extends Assembler {
 
-    private final SIMDEncoder simdEncoder;
+    private final SIMDEncoder vexEncoder;
+    private final SIMDEncoder sseEncoder;
+    private final EnumSet<CPUFeature> features;
+
     /**
      * If {@code true}, always encode non-zero address displacements in 4 bytes, even if they would
      * fit in one byte. The encoding of zero displacements should not be changed because we don't
@@ -82,12 +87,9 @@ public abstract class AMD64BaseAssembler extends Assembler {
      */
     public AMD64BaseAssembler(TargetDescription target) {
         super(target);
-
-        if (supports(CPUFeature.AVX)) {
-            simdEncoder = new VEXEncoderImpl();
-        } else {
-            simdEncoder = new SSEEncoderImpl();
-        }
+        vexEncoder = new VEXEncoderImpl();
+        sseEncoder = new SSEEncoderImpl();
+        features = ((AMD64) target.arch).getFeatures().clone();
     }
 
     /**
@@ -274,8 +276,21 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
     }
 
+    public final EnumSet<CPUFeature> getFeatures() {
+        return features;
+    }
+
+    public final void addFeature(CPUFeature feature) {
+        getFeatures().add(feature);
+    }
+
+    public final void removeFeature(CPUFeature feature) {
+        boolean removed = getFeatures().remove(feature);
+        GraalError.guarantee(removed, "trying to remove CPU feature that was not present: %s", feature);
+    }
+
     public final boolean supports(CPUFeature feature) {
-        return ((AMD64) target.arch).getFeatures().contains(feature);
+        return getFeatures().contains(feature);
     }
 
     /**
@@ -770,6 +785,14 @@ public abstract class AMD64BaseAssembler extends Assembler {
         emitInt(disp);
     }
 
+    private SIMDEncoder getSimdEncoder() {
+        if (supports(CPUFeature.AVX)) {
+            return vexEncoder;
+        } else {
+            return sseEncoder;
+        }
+    }
+
     private interface SIMDEncoder {
 
         void simdPrefix(Register xreg, Register nds, AMD64Address adr, int sizePrefix, int opcodeEscapePrefix, boolean isRexW);
@@ -885,19 +908,19 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     protected final void simdPrefix(Register xreg, Register nds, AMD64Address adr, OperandSize size, int overriddenSizePrefix, int opcodeEscapePrefix, boolean isRexW) {
-        simdEncoder.simdPrefix(xreg, nds, adr, overriddenSizePrefix != 0 ? overriddenSizePrefix : size.sizePrefix, opcodeEscapePrefix, isRexW);
+        getSimdEncoder().simdPrefix(xreg, nds, adr, overriddenSizePrefix != 0 ? overriddenSizePrefix : size.sizePrefix, opcodeEscapePrefix, isRexW);
     }
 
     protected final void simdPrefix(Register xreg, Register nds, AMD64Address adr, OperandSize size, int opcodeEscapePrefix, boolean isRexW) {
-        simdEncoder.simdPrefix(xreg, nds, adr, size.sizePrefix, opcodeEscapePrefix, isRexW);
+        getSimdEncoder().simdPrefix(xreg, nds, adr, size.sizePrefix, opcodeEscapePrefix, isRexW);
     }
 
     protected final void simdPrefix(Register dst, Register nds, Register src, OperandSize size, int overriddenSizePrefix, int opcodeEscapePrefix, boolean isRexW) {
-        simdEncoder.simdPrefix(dst, nds, src, overriddenSizePrefix != 0 ? overriddenSizePrefix : size.sizePrefix, opcodeEscapePrefix, isRexW);
+        getSimdEncoder().simdPrefix(dst, nds, src, overriddenSizePrefix != 0 ? overriddenSizePrefix : size.sizePrefix, opcodeEscapePrefix, isRexW);
     }
 
     protected final void simdPrefix(Register dst, Register nds, Register src, OperandSize size, int opcodeEscapePrefix, boolean isRexW) {
-        simdEncoder.simdPrefix(dst, nds, src, size.sizePrefix, opcodeEscapePrefix, isRexW);
+        getSimdEncoder().simdPrefix(dst, nds, src, size.sizePrefix, opcodeEscapePrefix, isRexW);
     }
 
  // @formatter:off
@@ -965,7 +988,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * m-mmmm field.
      */
     protected final void emitVEX(int l, int pp, int mmmmm, int w, int rxb, int vvvv, boolean checkAVX) {
-        assert !checkAVX || ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX) : "emitting VEX prefix on a CPU without AVX support";
+        assert !checkAVX || getFeatures().contains(CPUFeature.AVX) : "emitting VEX prefix on a CPU without AVX support";
 
         assert l == L128 || l == L256 : "invalid value for VEX.L";
         assert pp == P_ || pp == P_66 || pp == P_F3 || pp == P_F2 : "invalid value for VEX.pp";
@@ -1278,7 +1301,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * The aaa field encodes the operand mask register.
      */
     private void emitEVEX(int l, int pp, int mm, int w, int rxb, int reg, int vvvvv, int z, int b, int aaa) {
-        assert ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX512F) : "emitting EVEX prefix on a CPU without AVX512 support";
+        assert getFeatures().contains(CPUFeature.AVX512F) : "emitting EVEX prefix on a CPU without AVX512 support";
 
         assert l == L128 || l == L256 || l == L512 : "invalid value for EVEX.L'L";
         assert pp == P_ || pp == P_66 || pp == P_F3 || pp == P_F2 : "invalid value for EVEX.pp";

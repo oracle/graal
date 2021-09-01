@@ -1015,7 +1015,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 Register resultReg = getResultRegister();
                 int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
                 Constant inputConstant = asConstantValue(getInput()).getConstant();
-                if (masm.target.inlineObjects) {
+                if (masm.inlineObjects()) {
                     crb.recordInlineDataInCode(inputConstant);
                     if (referenceSize == 4) {
                         masm.movl(resultReg, 0xDEADDEAD, true);
