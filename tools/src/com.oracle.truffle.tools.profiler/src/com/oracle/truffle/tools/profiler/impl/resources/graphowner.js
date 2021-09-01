@@ -170,7 +170,13 @@ function sample_and_children_depth_first(sample) {
 }
 
 function title(e) {
-    return name_for_sample(sample_for_id(e.getAttribute("id").substring(2)));
+    if (e.getAttribute("class") == "func_g") {
+        return name_for_sample(sample_for_id(e.getAttribute("id").substring(2)));
+    } else if (e.getAttribute("class") == "func_h") {
+        return name_for_sample(histogram_entry_for_id(e.getAttribute("id").substring(2)));
+    } else {
+        return "";
+    }
 }
 
 function name_for_sample(sample) {
