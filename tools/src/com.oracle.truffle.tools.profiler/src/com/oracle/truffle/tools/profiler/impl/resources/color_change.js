@@ -67,9 +67,9 @@ function color_for_compilation(interpreted, compiled) {
     return "rgb(" + r.toFixed() + ", " + g.toFixed() + ", " + b.toFixed() + ")";
 }
 
-// ctrl-F for search
+// C for color cycle.
 window.addEventListener("keydown",function (e) {
-    if (e.key == "c") {
+    if (e.key == "c" && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         color_cycle();
     }
