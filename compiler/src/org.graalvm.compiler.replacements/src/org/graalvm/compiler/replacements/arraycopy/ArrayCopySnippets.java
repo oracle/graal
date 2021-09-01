@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -207,13 +208,15 @@ public abstract class ArrayCopySnippets implements Snippets {
      * only used in cases where we already know that the operation will fail.
      */
     @Snippet
-    public static void arraycopyNativeSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Counters counters) {
+    public static void arraycopyNativeExceptionSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Counters counters) {
         // all checks are done in the native method, so no need to emit additional checks here
         incrementLengthCounter(length, counters);
         counters.systemArraycopyCounter.inc();
         counters.systemArraycopyCopiedCounter.add(length);
 
         System.arraycopy(src, srcPos, dest, destPos, length);
+        // the call will never return
+        UnreachableNode.unreachable();
     }
 
     /**
@@ -403,7 +406,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         private final SnippetInfo delayedExactArraycopyWithSlowPathWork;
         private final SnippetInfo arraycopyExactStubCallSnippet;
         private final SnippetInfo delayedCheckcastArraycopySnippet;
-        private final SnippetInfo arraycopyNativeSnippet;
+        private final SnippetInfo arraycopyNativeExceptionSnippet;
         private final SnippetInfo checkcastArraycopySnippet;
         private final SnippetInfo genericArraycopySnippet;
         private final SnippetInfo exactArraycopyWithSlowPathWork;
@@ -422,7 +425,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             delayedExactArraycopyWithSlowPathWork = snippet(receiver, "delayedExactArraycopyWithSlowPathWork");
             arraycopyExactStubCallSnippet = snippet(receiver, "arraycopyExactStubCallSnippet");
             delayedCheckcastArraycopySnippet = snippet(receiver, "delayedCheckcastArraycopySnippet");
-            arraycopyNativeSnippet = snippet(null, "arraycopyNativeSnippet");
+            arraycopyNativeExceptionSnippet = snippet(null, "arraycopyNativeExceptionSnippet");
             checkcastArraycopySnippet = snippet(receiver, "checkcastArraycopySnippet");
             genericArraycopySnippet = snippet(receiver, "genericArraycopySnippet");
             exactArraycopyWithSlowPathWork = snippet(receiver, "exactArraycopyWithSlowPathWork");
@@ -465,7 +468,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             if (!canBeArray(srcType) || !canBeArray(destType)) {
                 // at least one of the objects is definitely not an array - use the native call
                 // right away as the copying will fail anyways
-                snippetInfo = arraycopyNativeSnippet;
+                snippetInfo = arraycopyNativeExceptionSnippet;
                 arrayTypeCheck = ArrayCopyTypeCheck.UNDEFINED_ARRAY_TYPE_CHECK;
             } else {
                 ResolvedJavaType srcComponentType = srcType == null ? null : srcType.getComponentType();
@@ -494,7 +497,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                         // one object is an object array, the other one is a primitive array.
                         // this copy will always fail - use the native call right away
                         assert !srcComponentType.equals(destComponentType) : "must be handled by arraycopy.isExact()";
-                        snippetInfo = arraycopyNativeSnippet;
+                        snippetInfo = arraycopyNativeExceptionSnippet;
                         arrayTypeCheck = ArrayCopyTypeCheck.UNDEFINED_ARRAY_TYPE_CHECK;
                     }
                 } else {
@@ -525,7 +528,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             args.add("dest", arraycopy.getDestination());
             args.add("destPos", arraycopy.getDestinationPosition());
             args.add("length", arraycopy.getLength());
-            if (snippetInfo != arraycopyNativeSnippet) {
+            if (snippetInfo != arraycopyNativeExceptionSnippet) {
                 assert arrayTypeCheck != ArrayCopyTypeCheck.UNDEFINED_ARRAY_TYPE_CHECK;
                 args.addConst("arrayTypeCheck", arrayTypeCheck);
             }
