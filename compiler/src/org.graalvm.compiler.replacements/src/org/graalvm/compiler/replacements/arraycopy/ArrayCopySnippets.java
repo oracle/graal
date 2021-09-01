@@ -118,7 +118,8 @@ public abstract class ArrayCopySnippets implements Snippets {
     /**
      * Snippet that performs an {@linkplain ArrayCopy#isExact() exact} array copy. Used when the
      * array copy might be {@linkplain Templates#lower(ArrayCopyNode, boolean, LoweringTool)
-     * expanded}.
+     * expanded}. Lowering is delayed using an {@link ArrayCopyWithDelayedLoweringNode} which will
+     * dispatch to {@link #exactArraycopyWithSlowPathWork}.
      *
      * @see Templates#lower(ArrayCopyNode, boolean, LoweringTool)
      * @see #exactArraycopyWithSlowPathWork
@@ -126,7 +127,7 @@ public abstract class ArrayCopySnippets implements Snippets {
      */
     @SuppressWarnings("unused")
     @Snippet
-    public void arraycopyExactSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
+    public void delayedExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
@@ -144,9 +145,6 @@ public abstract class ArrayCopySnippets implements Snippets {
 
     /**
      * Snippet that performs a stub call for an {@linkplain ArrayCopy#isExact() exact} array copy.
-     *
-     * @see #exactArraycopyWithSlowPathWork
-     * @see #doExactArraycopyWithSlowPathWork
      */
     @Snippet
     public void arraycopyExactStubCallSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
@@ -214,7 +212,8 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * @see #doExactArraycopyWithSlowPathWork
+     * Inlines a loop that performs an {@linkplain ArrayCopy#isExact() exact} element-by-element
+     * array copy. The explict loop allows subsequent phases to optimize the code.
      */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
@@ -224,8 +223,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * Inlines a loop that performs an {@linkplain ArrayCopy#isExact() exact} element-by-element
-     * array copy. The explict loop allows subsequent phases to optimize the code.
+     * @see #exactArraycopyWithSlowPathWork
      */
     protected abstract void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
                     MetaAccessProvider metaAccess);
@@ -406,7 +404,7 @@ public abstract class ArrayCopySnippets implements Snippets {
 
     public static class Templates extends SnippetTemplate.AbstractTemplates {
         private final SnippetInfo arraycopyGenericSnippet;
-        private final SnippetInfo arraycopyExactSnippet;
+        private final SnippetInfo delayedExactArraycopyWithSlowPathWork;
         private final SnippetInfo arraycopyExactStubCallSnippet;
         private final SnippetInfo arraycopyCheckcastSnippet;
         private final SnippetInfo arraycopyNativeSnippet;
@@ -425,7 +423,7 @@ public abstract class ArrayCopySnippets implements Snippets {
 
             useOriginalArraycopy = receiver.useOriginalArraycopy();
             arraycopyGenericSnippet = snippet(receiver, "arraycopyGenericSnippet");
-            arraycopyExactSnippet = snippet(receiver, "arraycopyExactSnippet");
+            delayedExactArraycopyWithSlowPathWork = snippet(receiver, "delayedExactArraycopyWithSlowPathWork");
             arraycopyExactStubCallSnippet = snippet(receiver, "arraycopyExactStubCallSnippet");
             arraycopyCheckcastSnippet = snippet(receiver, "arraycopyCheckcastSnippet");
             arraycopyNativeSnippet = snippet(null, "arraycopyNativeSnippet");
@@ -521,7 +519,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             }
 
             if (mayExpandThisArraycopy && snippetInfo == arraycopyExactStubCallSnippet) {
-                snippetInfo = arraycopyExactSnippet;
+                snippetInfo = delayedExactArraycopyWithSlowPathWork;
             }
 
             // create the snippet
@@ -536,7 +534,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 args.addConst("arrayTypeCheck", arrayTypeCheck);
             }
             Object locationIdentity = arraycopy.killsAnyLocation() ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(elementKind);
-            if (snippetInfo == arraycopyExactStubCallSnippet || snippetInfo == arraycopyExactSnippet) {
+            if (snippetInfo == arraycopyExactStubCallSnippet || snippetInfo == delayedExactArraycopyWithSlowPathWork) {
                 assert elementKind != null;
                 args.addConst("elementKind", elementKind);
                 args.addConst("locationIdentity", locationIdentity);
