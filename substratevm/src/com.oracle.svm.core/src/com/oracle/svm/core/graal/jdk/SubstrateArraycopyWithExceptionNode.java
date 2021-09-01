@@ -33,14 +33,11 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 import org.graalvm.word.LocationIdentity;
 
@@ -52,8 +49,6 @@ import jdk.vm.ci.meta.JavaKind;
  * Lowering is implemented in the platform/VM specific
  * {@link org.graalvm.compiler.nodes.spi.LoweringProvider LoweringProvider}. Most of them eventually
  * go through {@link SubstrateArraycopySnippets}.
- *
- * @see SubstrateArraycopyNode Variant without exception edge.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "may be replaced with non-throwing counterpart", size = SIZE_64)
 public class SubstrateArraycopyWithExceptionNode extends WithExceptionNode implements ArrayCopy {
@@ -138,16 +133,5 @@ public class SubstrateArraycopyWithExceptionNode extends WithExceptionNode imple
     @Override
     public JavaKind getElementKind() {
         return elementKind;
-    }
-
-    @Override
-    public FixedNode replaceWithNonThrowing() {
-        SubstrateArraycopyNode plainArrayCopy = this.asNode().graph()
-                        .add(new SubstrateArraycopyNode(getSource(), getSourcePosition(), getDestination(), getDestinationPosition(), getLength(), getElementKind(), getBci()));
-        plainArrayCopy.setStateAfter(stateAfter);
-        AbstractBeginNode oldException = this.exceptionEdge;
-        graph().replaceSplitWithFixed(this, plainArrayCopy, this.next());
-        GraphUtil.killCFG(oldException);
-        return plainArrayCopy;
     }
 }
