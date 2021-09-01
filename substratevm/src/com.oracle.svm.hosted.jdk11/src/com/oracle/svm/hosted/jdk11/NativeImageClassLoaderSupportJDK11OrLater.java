@@ -134,6 +134,8 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
          * automatic module is not possible because we have to support non-modularized tests as
          * well. Thus, we have to explicitly allow org.graalvm.nativeimage.librarysupport to read
          * ALL-UNNAMED so that junit from classpath is accessible to it.
+         *
+         * This workaround can be replaced with --add-reads use once GR-33504 is implemented.
          */
         Optional<Module> librarySupportModule = findModule("org.graalvm.nativeimage.librarysupport");
         if (!librarySupportModule.isEmpty()) {
