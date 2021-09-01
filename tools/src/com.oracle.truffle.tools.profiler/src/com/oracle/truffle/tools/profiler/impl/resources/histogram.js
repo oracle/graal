@@ -189,6 +189,7 @@ function h_canvas_resize() {
     let h_svg = histogram.parentElement;
     let old_height = h_svg.height.baseVal.value;
     h_svg.height.baseVal.value = height;
+    h_svg.viewBox.baseVal.height = height;
     let h_canvas = document.getElementById("h_canvas");
     h_canvas.height.baseVal.value = height;
     svg.height.baseVal.value = svg.height.baseVal.value - old_height + height;

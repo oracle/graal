@@ -898,6 +898,7 @@ class SVGSamplerOutput {
             svgattr.put("y", Double.toString(y));
             svgattr.put("wdith", Double.toString(width()));
             svgattr.put("height", Double.toString(height()));
+            svgattr.put("viewBox", String.format("0.0 0.0 %f %f", width(), height()));
             output.append(owner.svg.startSubDrawing(svgattr));
             Map<String, String> attr = new HashMap<>();
             Map<String, String> canvasAttr = new HashMap<>();
