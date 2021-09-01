@@ -72,6 +72,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstru
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.FreezeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
@@ -301,6 +302,10 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
     }
 
     default void visit(FenceInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(FreezeInstruction inst) {
         defaultAction(inst);
     }
 

@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBran
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.FreezeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
@@ -141,6 +142,8 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_CATCHSWITCH = 52;
     private static final int INSTRUCTION_OPERAND_BUNDLE = 55;
     private static final int INSTRUCTION_UNOP = 56;
+    private static final int INSTRUCTION_CALLBR = 57;
+    private static final int INSTRUCTION_FREEZE = 58;
 
     private final FunctionDefinition function;
 
@@ -386,6 +389,10 @@ public final class Function implements ParserListener {
                 operandBundle = OperandBundle.PRESENT;
                 break;
 
+            case INSTRUCTION_FREEZE:
+                createFreeze(buffer);
+                break;
+
             default:
                 // differentiate between unknown and unsupported instructions
                 switch (opCode) {
@@ -397,6 +404,7 @@ public final class Function implements ParserListener {
                     case INSTRUCTION_CATCHPAD:
                     case INSTRUCTION_CLEANUPPAD:
                     case INSTRUCTION_CATCHSWITCH:
+                    case INSTRUCTION_CALLBR:
                         throw new LLVMParserException("Unsupported opCode in function block: " + opCode);
                     default:
                         throw new LLVMParserException("Unknown opCode in function block: " + opCode);
@@ -742,6 +750,12 @@ public final class Function implements ParserListener {
         long synchronizationScope = buffer.read();
 
         emit(FenceInstruction.generate(atomicOrdering, synchronizationScope));
+    }
+
+    private void createFreeze(RecordBuffer buffer) {
+        int value = readIndex(buffer);
+        Type type = readValueType(buffer, value);
+        emit(FreezeInstruction.fromSymbols(scope.getSymbols(), type, value));
     }
 
     private void createVaArg(RecordBuffer buffer) {

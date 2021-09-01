@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstru
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.FreezeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
@@ -1004,6 +1005,12 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(FenceInstruction fence) {
         addStatement(nodeFactory.createFence(), fence);
+    }
+
+    @Override
+    public void visit(FreezeInstruction freeze) {
+        LLVMExpressionNode fromNode = resolveOptimized(freeze.getValue());
+        createFrameWrite(fromNode, freeze);
     }
 
     @Override
