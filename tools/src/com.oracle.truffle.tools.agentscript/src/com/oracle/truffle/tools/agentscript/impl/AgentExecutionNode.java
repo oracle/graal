@@ -25,8 +25,6 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.ContextLocal;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -37,74 +35,80 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.tools.agentscript.impl.InsightPerSource.Key;
 
 final class AgentExecutionNode extends ExecutionEventNode {
     @Node.Child private InteropLibrary enterDispatch;
     @Node.Child private InteropLibrary exitDispatch;
     @Node.Child private NodeLibrary nodeDispatch;
     @Node.Child private InteropLibrary exceptionDispatch;
-    private final Object enter;
-    private final Object exit;
-    private final EventContextObject ctx;
+    private final Key key;
+    private final EventContext ctx;
     private final Node instrumentedNode;
-    private final TruffleContext context;
-    private final ContextLocal<TruffleContext> contextProvider;
+    private final InsightInstrument insight;
 
-    AgentExecutionNode(TruffleContext initial, ContextLocal<TruffleContext> contextProvider, Object enter, Object exit, EventContextObject ctx) {
-        this.context = initial;
-        this.contextProvider = contextProvider;
-        this.enter = enter;
-        if (enter != null) {
-            this.enterDispatch = InteropLibrary.getFactory().create(enter);
-        }
-        this.exit = exit;
-        if (exit != null) {
-            this.exitDispatch = InteropLibrary.getFactory().create(exit);
-        }
+    private AgentExecutionNode(Key key, InsightInstrument insight, EventContext ctx) {
+        this.key = key;
+        this.insight = insight;
+        this.enterDispatch = InteropLibrary.getFactory().createDispatched(3);
+        this.exitDispatch = InteropLibrary.getFactory().createDispatched(3);
+        this.exceptionDispatch = InteropLibrary.getFactory().createDispatched(3);
         Node node = ctx.getInstrumentedNode();
         this.nodeDispatch = NodeLibrary.getFactory().create(node);
-        if (enter != null || exit != null) {
-            this.exceptionDispatch = InteropLibrary.getFactory().createDispatched(3);
-        }
         this.ctx = ctx;
         this.instrumentedNode = node;
     }
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        if (context == contextProvider.get() && enter != null) {
+        for (Object raw : insight.findCtx().functionsFor(key)) {
+            InsightFilter.Data data = (InsightFilter.Data) raw;
+            if (data.type != AgentType.ENTER) {
+                continue;
+            }
+            final EventContextObject eco = eventCtxObj();
             try {
-                enterDispatch.execute(enter, ctx, getVariables(frame, true, null));
+                enterDispatch.execute(data.fn, eco, getVariables(frame, true, null));
             } catch (InteropException ex) {
-                throw ctx.wrap(enter, 2, ex);
+                throw eco.wrap(data.fn, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex, exceptionDispatch);
+                throw eco.rethrow(ex, exceptionDispatch);
             }
         }
     }
 
     @Override
     protected void onReturnValue(VirtualFrame frame, Object returnValue) {
-        if (context == contextProvider.get() && exit != null) {
+        for (Object raw : insight.findCtx().functionsFor(key)) {
+            InsightFilter.Data data = (InsightFilter.Data) raw;
+            if (data.type != AgentType.RETURN) {
+                continue;
+            }
+            final EventContextObject eco = eventCtxObj();
             try {
-                exitDispatch.execute(exit, ctx, getVariables(frame, false, returnValue));
+                exitDispatch.execute(data.fn, eco, getVariables(frame, false, returnValue));
             } catch (InteropException ex) {
-                throw ctx.wrap(exit, 2, ex);
+                throw eco.wrap(data.fn, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex, exceptionDispatch);
+                throw eco.rethrow(ex, exceptionDispatch);
             }
         }
     }
 
     @Override
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-        if (context == contextProvider.get() && exit != null) {
+        for (Object raw : insight.findCtx().functionsFor(key)) {
+            InsightFilter.Data data = (InsightFilter.Data) raw;
+            if (data.type != AgentType.RETURN) {
+                continue;
+            }
+            final EventContextObject eco = eventCtxObj();
             try {
-                exitDispatch.execute(exit, ctx, getVariables(frame, false, null));
+                exitDispatch.execute(data.fn, eco, getVariables(frame, false, null));
             } catch (InteropException ex) {
-                throw ctx.wrap(exit, 2, ex);
+                throw eco.wrap(data.fn, 2, ex);
             } catch (RuntimeException ex) {
-                throw ctx.rethrow(ex, exceptionDispatch);
+                throw eco.rethrow(ex, exceptionDispatch);
             }
         }
     }
@@ -146,12 +150,20 @@ final class AgentExecutionNode extends ExecutionEventNode {
         }
     }
 
-    static ExecutionEventNodeFactory factory(TruffleContext current, ContextLocal<TruffleContext> contextProvider, final Object enter, final Object exit) {
+    private EventContextObject eventCtxObj() {
+        return new EventContextObject(ctx);
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + " at " + ctx.getInstrumentedNode().getSourceSection();
+    }
+
+    static ExecutionEventNodeFactory factory(InsightInstrument insight, Key key) {
         return new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
-                final EventContextObject ctx = new EventContextObject(context);
-                return new AgentExecutionNode(current, contextProvider, enter, exit, ctx);
+                return new AgentExecutionNode(key, insight, context);
             }
         };
     }

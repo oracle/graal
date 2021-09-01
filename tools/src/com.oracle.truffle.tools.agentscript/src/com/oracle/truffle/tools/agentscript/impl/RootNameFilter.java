@@ -29,18 +29,21 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.tools.agentscript.impl.InsightPerSource.Key;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
 final class RootNameFilter implements Predicate<String> {
-    private final Object fn;
+    private final InsightInstrument instrument;
+    private final Key key;
     private final ThreadLocal<Boolean> querying;
     private final Map<String, Boolean> cache;
 
-    RootNameFilter(Object fn) {
-        this.fn = fn;
+    RootNameFilter(InsightInstrument instrument, Key key) {
+        this.instrument = instrument;
+        this.key = key;
         this.querying = new ThreadLocal<>();
         this.cache = Collections.synchronizedMap(new HashMap<>());
     }
@@ -62,8 +65,15 @@ final class RootNameFilter implements Predicate<String> {
             } else {
                 this.querying.set(true);
                 final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-                Object res = iop.execute(fn, rootName);
-                computed = (Boolean) res;
+                computed = false;
+                for (Object raw : instrument.findCtx().functionsFor(key)) {
+                    InsightFilter.Data data = (InsightFilter.Data) raw;
+                    Object res = iop.execute(data.rootNameFn, rootName);
+                    if (Boolean.TRUE.equals(res)) {
+                        computed = true;
+                        break;
+                    }
+                }
             }
         } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
             computed = false;

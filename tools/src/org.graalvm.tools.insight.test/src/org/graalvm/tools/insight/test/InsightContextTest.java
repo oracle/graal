@@ -29,6 +29,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.util.ArrayList;
@@ -43,6 +45,7 @@ import org.graalvm.tools.insight.Insight;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -52,6 +55,7 @@ public class InsightContextTest {
         int executingCounter;
         TruffleContext lastContext;
         String lastFunctionName;
+        Node lastNode;
         final List<ParsingNode.OnEnterCallback> onEventCallbacks = new ArrayList<>();
         final List<ParsingNode.OnSourceCallback> onSourceCallbacks = new ArrayList<>();
         final List<ParsingNode.OnCloseCallback> onCloseCallbacks = new ArrayList<>();
@@ -106,6 +110,11 @@ public class InsightContextTest {
                     TruffleContext currentContext = ref.get(ParsingNode.this).getEnv().getContext();
                     assertEquals("OnEnterCallback is called with expected context", expectedContext, currentContext);
                     lastContext = currentContext;
+
+                    Truffle.getRuntime().iterateFrames((frameInstance) -> {
+                        lastNode = frameInstance.getCallNode();
+                        return null;
+                    });
                 }
 
                 @Override
@@ -199,9 +208,11 @@ public class InsightContextTest {
             TruffleContext cLanguageInfo = itl.lastContext;
             assertEquals("Function foo has been called", "foo", itl.lastFunctionName);
 
+            Node sampleNode = itl.lastNode;
+            assertAgentNodes(sampleNode, 1);
+
             try (Context c2 = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine))) {
                 c2.eval(sampleScript);
-
                 // @formatter:off
                 Source anotherScript = Source.newBuilder(InstrumentationTestLanguage.ID,
                     "ROOT(\n" +
@@ -215,11 +226,15 @@ public class InsightContextTest {
                 // @formatter:on
                 c2.eval(anotherScript);
 
+                Node anotherNode = itl.lastNode;
                 TruffleContext c2LanguageInfo = itl.lastContext;
                 assertNotEquals(cLanguageInfo, c2LanguageInfo);
 
                 assertEquals("Executed second time for second context", 2, itl.executingCounter);
                 assertEquals("Parsed once as the source is cached - but it is not yet", 2, itl.parsingCounter);
+
+                assertAgentNodes(sampleNode, 1);
+                assertAgentNodes(anotherNode, 1);
             }
         }
 
@@ -234,6 +249,23 @@ public class InsightContextTest {
         for (InsightTestLanguage.ParsingNode.OnCloseCallback callback : itl.onCloseCallbacks) {
             assertEquals("Each is closed once", 1, callback.closeCounter);
         }
+    }
+
+    private static List<? extends Node> assertAgentNodes(Node rootNode, final int nodeCount) throws ClassNotFoundException {
+        assertNotNull("Root node must be specified", rootNode);
+
+        Class<? extends Node> aenClass = Class.forName("com.oracle.truffle.tools.agentscript.impl.AgentExecutionNode").asSubclass(Node.class);
+        List<? extends Node> aenList = NodeUtil.findAllNodeInstances(rootNode.getRootNode(), aenClass);
+        if (aenList.size() == nodeCount) {
+            return aenList;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("Expecting ").append(nodeCount).append(" nodes but got ").append(aenList.size()).append(":\n");
+        for (Node n : aenList) {
+            sb.append("  ").append(n).append("\n");
+        }
+        fail(sb.toString());
+        return null;
     }
 
     @SuppressWarnings("unchecked")

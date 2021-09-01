@@ -30,14 +30,17 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tools.agentscript.impl.InsightPerSource.Key;
 import java.util.function.Predicate;
 
 final class AgentSourceFilter implements Predicate<Source> {
-    private final Object fn;
+    private final InsightInstrument insight;
     private final ThreadLocal<Boolean> querying;
+    private final Key key;
 
-    AgentSourceFilter(Object fn) {
-        this.fn = fn;
+    AgentSourceFilter(InsightInstrument insight, Key key) {
+        this.insight = insight;
+        this.key = key;
         this.querying = new ThreadLocal<>();
     }
 
@@ -54,8 +57,16 @@ final class AgentSourceFilter implements Predicate<Source> {
             }
             this.querying.set(true);
             final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-            Object res = iop.execute(fn, new SourceEventObject(src));
-            return (Boolean) res;
+            final SourceEventObject srcObj = new SourceEventObject(src);
+            InsightPerContext ctx = insight.findCtx();
+            for (Object raw : ctx.functionsFor(key)) {
+                InsightFilter.Data data = (InsightFilter.Data) raw;
+                Object res = iop.execute(data.sourceFilterFn, srcObj);
+                if (Boolean.TRUE.equals(res)) {
+                    return true;
+                }
+            }
+            return false;
         } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
             return false;
         } finally {
