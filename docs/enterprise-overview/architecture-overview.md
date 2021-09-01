@@ -69,12 +69,11 @@ The following are the certified platforms for GraalVM Enterprise 21:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux on OCI 	| 7, 8 	| x64 (64-bit) 	| [GraalVM Enterprise Installation Guide on OCI](/getting-started/oci/compute-instances/) 	|
-| Oracle Linux 	| 7, 8 	| x64 (64-bit), ARM 64-bit	| [GraalVM Enterprise Installation Guide for Linux](/getting-started/installation-linux/) 	|
-| Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x64 (64-bit) 	| [GraalVM Enterprise Installation Guide for Linux](/getting-started/installation-linux/) 	|
-| macOS 	| 10.13 (High Sierra), 10.14 (Mojave), 10.15 (Catalina), 11.2 (Big Sur)	| x64 (64-bit) 	| [GraalVM Enterprise Installation Guide for macOS](/getting-started/installation-macos/) 	|
-| Microsoft Windows 	| 2016, 2019	| x64 (64-bit) 	| [GraalVM Enterprise Installation Guide for Windows](/getting-started/installation-windows/) 	|
-
+| Oracle Linux on OCI 	| 7, 8 	| x86 64-bit 	| [Installation Guide on OCI](/getting-started/oci/compute-instances/) 	|
+| Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](/getting-started/installation-linux/) 	|
+| Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](/getting-started/installation-linux/) 	|
+| macOS 	| 10.13 (High Sierra), 10.14 (Mojave)	| x86 64-bit 	| [Installation Guide for macOS](/getting-started/installation-macos/) 	|
+| Microsoft Windows 	| Server 2016, 2019	| x64 (64-bit) 	| [Installation Guide for Windows](/getting-started/installation-windows/) 	|
 
 ## Distribution Components List
 
