@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -86,6 +87,7 @@ final class InsightPerContext {
         return false;
     }
 
+    @CompilerDirectives.TruffleBoundary
     synchronized Object[] functionsFor(Key key) {
         List<Object> arr = functionsForBinding.get(key);
         return arr == null ? new Object[0] : arr.toArray();
