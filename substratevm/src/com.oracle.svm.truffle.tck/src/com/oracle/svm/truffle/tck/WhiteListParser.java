@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +58,7 @@ final class WhiteListParser extends ConfigurationParser {
     private Set<AnalysisMethod> whiteList;
 
     WhiteListParser(ImageClassLoader imageClassLoader, BigBang bigBang) {
+        super(true);
         this.imageClassLoader = Objects.requireNonNull(imageClassLoader, "ImageClassLoader must be non null");
         this.bigBang = Objects.requireNonNull(bigBang, "BigBang must be non null");
     }
@@ -85,10 +87,8 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     private void parseClass(Map<String, Object> data) {
+        checkAttributes(data, "class descriptor object", Collections.singleton("name"), Arrays.asList("justification", "allDeclaredConstructors", "allDeclaredMethods", "methods"));
         Object classObject = data.get("name");
-        if (classObject == null) {
-            throw new JSONParserException("Missing attribute 'name' in class descriptor object");
-        }
         String className = castProperty(classObject, String.class, "name");
 
         try {
@@ -96,27 +96,23 @@ final class WhiteListParser extends ConfigurationParser {
             if (clazz == null) {
                 throw new JSONParserException("Class " + className + " not found");
             }
-
             for (Map.Entry<String, Object> entry : data.entrySet()) {
                 String name = entry.getKey();
                 Object value = entry.getValue();
-                if (name.equals("name")) {
-                    /* Already handled. */
-                } else if (name.equals("justification")) {
-                    /* Used only to document the whitelist file. */
-                } else if (name.equals("allDeclaredConstructors")) {
-                    if (castProperty(value, Boolean.class, "allDeclaredConstructors")) {
-                        registerDeclaredConstructors(clazz);
-                    }
-                } else if (name.equals("allDeclaredMethods")) {
-                    if (castProperty(value, Boolean.class, "allDeclaredMethods")) {
-                        registerDeclaredMethods(clazz);
-                    }
-                } else if (name.equals("methods")) {
-                    parseMethods(castList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
-                } else {
-                    throw new JSONParserException("Unknown attribute '" + name +
-                                    "' (supported attributes: allDeclaredConstructors, allDeclaredMethods, methods, justification) in defintion of class " + className);
+                switch (name) {
+                    case "allDeclaredConstructors":
+                        if (castProperty(value, Boolean.class, "allDeclaredConstructors")) {
+                            registerDeclaredConstructors(clazz);
+                        }
+                        break;
+                    case "allDeclaredMethods":
+                        if (castProperty(value, Boolean.class, "allDeclaredMethods")) {
+                            registerDeclaredMethods(clazz);
+                        }
+                        break;
+                    case "methods":
+                        parseMethods(castList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                        break;
                 }
             }
         } catch (UnsupportedPlatformException unsupportedPlatform) {
@@ -131,25 +127,13 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     private void parseMethod(Map<String, Object> data, AnalysisType clazz) {
-        String methodName = null;
+        checkAttributes(data, "method descriptor object", Collections.singleton("name"), Arrays.asList("justification", "parameterTypes"));
+        String methodName = castProperty(data.get("name"), String.class, "name");
         List<AnalysisType> methodParameterTypes = null;
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            String propertyName = entry.getKey();
-            if (propertyName.equals("name")) {
-                methodName = castProperty(entry.getValue(), String.class, "name");
-            } else if (propertyName.equals("justification")) {
-                /* Used only to document the whitelist file. */
-            } else if (propertyName.equals("parameterTypes")) {
-                methodParameterTypes = parseTypes(castList(entry.getValue(), "Attribute 'parameterTypes' must be a list of type names"));
-            } else {
-                throw new JSONParserException(
-                                "Unknown attribute '" + propertyName + "' (supported attributes: 'name', 'parameterTypes', 'justification') in definition of method for class '" + clazz.toJavaName() +
-                                                "'");
-            }
-        }
 
-        if (methodName == null) {
-            throw new JSONParserException("Missing attribute 'name' in definition of method for class '" + clazz.toJavaName() + "'");
+        Object parameterTypes = data.get("parameterTypes");
+        if (parameterTypes != null) {
+            methodParameterTypes = parseTypes(castList(parameterTypes, "Attribute 'parameterTypes' must be a list of type names"));
         }
 
         boolean isConstructor = CONSTRUCTOR_NAME.equals(methodName);
