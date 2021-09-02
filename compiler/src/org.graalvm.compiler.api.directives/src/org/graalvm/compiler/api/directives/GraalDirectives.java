@@ -536,4 +536,47 @@ public final class GraalDirectives {
     public static boolean isCompilationConstant(double value) {
         return false;
     }
+
+    /**
+     * Prints a string to the log stream.
+     */
+    @SuppressWarnings("unused")
+    public static void log(String value) {
+    }
+
+    /**
+     * Prints a formatted string to the log stream.
+     *
+     * @param format a C style printf format value that can contain at most one conversion specifier
+     *            (i.e., a sequence of characters starting with '%').
+     * @param value the value associated with the conversion specifier
+     */
+    @SuppressWarnings("unused")
+    public static void log(String format, long value) {
+    }
+
+    /**
+     * Prints a formatted string to the log stream.
+     *
+     * @param format a C style printf format value that can contain at most two conversion specifiers
+     *            (i.e., a sequence of characters starting with '%').
+     * @param l1 the value associated with the first conversion specifier
+     * @param l2 the value associated with the second conversion specifier
+     */
+    @SuppressWarnings("unused")
+    public static void log(String format, long v1, long v2) {
+    }
+
+    /**
+     * Prints a formatted string to the log stream.
+     *
+     * @param format a C style printf format value that can contain at most three conversion specifiers
+     *            (i.e., a sequence of characters starting with '%').
+     * @param l1 the value associated with the first conversion specifier
+     * @param l2 the value associated with the second conversion specifier
+     * @param l3 the value associated with the third conversion specifier
+     */
+    @SuppressWarnings("unused")
+    public static void log(String format, long v1, long v2, long v3) {
+    }
 }

@@ -1720,6 +1720,35 @@ public class StandardGraphBuilderPlugins {
                 });
             }
         }
+        InvocationPlugin logPlugin = new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                return apply(b, targetMethod, receiver, value, null, null, null);
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode format, ValueNode l1) {
+                return apply(b, targetMethod, receiver, format, l1, null, null);
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode format, ValueNode l1, ValueNode l2) {
+                return apply(b, targetMethod, receiver, format, l1, l2, null);
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode format, ValueNode l1, ValueNode l2, ValueNode l3) {
+                String formatConst = snippetReflection.asObject(String.class, format.asJavaConstant());
+                if (formatConst != null) {
+                    b.add(new LogNode(formatConst, l1, l2, l3));
+                }
+                return true;
+            }
+        };
+        r.register1("log", String.class, logPlugin);
+        r.register2("log", String.class, long.class, logPlugin);
+        r.register3("log", String.class, long.class, long.class, logPlugin);
+        r.register4("log", String.class, long.class, long.class, long.class, logPlugin);
     }
 
     private static void registerJMHBlackholePlugins(InvocationPlugins plugins, Replacements replacements) {
