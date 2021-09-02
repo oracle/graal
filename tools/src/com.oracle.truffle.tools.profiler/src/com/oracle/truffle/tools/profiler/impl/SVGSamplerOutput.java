@@ -218,6 +218,7 @@ class SVGSamplerOutput {
             this.data = data;
             components = new ArrayList<>();
             languageColors = new HashMap<>();
+            languageColors.put(GraphColorMap.GRAY, "<none>");
             buildSampleData();
         }
 
