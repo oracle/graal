@@ -80,12 +80,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * <ul>
  * <li>{@link #arraycopyNativeExceptionSnippet}: this snippet is used when the array copy is know to
- * fail, either because at least on of the objects is not an array, or one is an object array and
- * the other one a primitive array.</li>
+ * throw an exception, either because at least one of the objects is not an array, or one is an
+ * object array and the other one a primitive array.</li>
  * <li>{@link #arraycopyExactStubCallSnippet}: this snippet is used for array copies that do not
  * require a store check. This is the case if the array copy is either
  * {@linkplain ArrayCopy#isExact() exact}, i.e., we can prove that the source array type is
- * assignable to the destination array types, or if one of the objects is a primitive array (and the
+ * assignable to the destination array type, or if one of the objects is a primitive array (and the
  * other is unknown). In the latter case, it is sufficient to dynamically check that the array types
  * are the same. No store check is needed.</li>
  * <li>{@link #exactArraycopyWithSlowPathWork}: if we can do an
@@ -236,7 +236,7 @@ public abstract class ArrayCopySnippets implements Snippets {
 
     /**
      * Performs an array copy using the original {@link System#arraycopy} call. Currently, this is
-     * only used in cases where we already know that the operation will fail.
+     * only used in cases where we already know that the operation will throw an exception.
      */
     @Snippet
     public static void arraycopyNativeExceptionSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Counters counters) {
