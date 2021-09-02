@@ -348,13 +348,15 @@ public final class EventContext {
      * suppressed} exception. The notification order relates to the order the bindings were
      * installed.
      * <p>
-     * Example usage: {@link PropagateErrorSnippets#onCreate}
      *
      * @param e the exception to propagate.
+     * @deprecated No substitute. Runtime exceptions can now be thrown directly and will be
+     *             observable by the guest language application.
      * @since 20.0
      */
+    @Deprecated
     public RuntimeException createError(RuntimeException e) {
-        return new InstrumentException(this, e);
+        return e;
     }
 
     /** @since 0.12 */
@@ -486,32 +488,6 @@ public final class EventContext {
         }
     }
 
-}
-
-class PropagateErrorSnippets extends TruffleInstrument {
-
-    // Checkstyle: stop
-    // @formatter:off
-    @Override
-    // BEGIN: PropagateErrorSnippets#onCreate
-    protected void onCreate(TruffleInstrument.Env env) {
-        env.getInstrumenter().attachExecutionEventListener(
-            SourceSectionFilter.newBuilder().
-                                tagIs(StandardTags.CallTag.class).build(),
-            new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame f) {
-                    throw context.createError(
-                          new RuntimeException("propagated to the guest"));
-                }
-                public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {
-                }
-                public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
-            });
-    }
-    // END: PropagateErrorSnippets#onCreate
-    // @formatter:on
 }
 
 class UnwindInstrumentationReturnSnippets extends TruffleInstrument {

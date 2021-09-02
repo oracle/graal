@@ -627,15 +627,6 @@ public final class ProbeNode extends Node {
                 throw new IllegalStateException(String.format("Returned EventNode %s was already adopted by another AST.", eventNode));
             }
         } catch (Throwable t) {
-            if (t instanceof InstrumentException) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalStateException(
-                                String.format("Error propagation is not supported in %s.create(%s). "//
-                                                + "Errors propagated in this method may result in an AST that never stabilizes. "//
-                                                + "Propagate the error in one of the execution event node events like onEnter, onInputValue, onReturn or onReturnExceptional to resolve this problem.",
-                                                ExecutionEventNodeFactory.class.getSimpleName(),
-                                                EventContext.class.getSimpleName()));
-            }
             exceptionEventForClientInstrument(binding, "ProbeNodeFactory.create", t);
             return null;
         }
@@ -899,18 +890,6 @@ public final class ProbeNode extends Node {
                 }
                 return (RuntimeException) newError;
             } else {
-                if (newError instanceof InstrumentException) {
-                    profileBranch(SEEN_EXCEPTION_INSTRUMENT);
-                    if (((InstrumentException) newError).context == context) {
-                        RuntimeException unwrapped = ((InstrumentException) newError).delegate;
-                        if (previousError != null) {
-                            profileBranch(SEEN_EXCEPTION_HAS_NEXT);
-                            addSuppressedException(previousError, unwrapped);
-                            return previousError;
-                        }
-                        return unwrapped;
-                    }
-                }
                 profileBranch(SEEN_EXCEPTION_OTHER);
                 exceptionEventForClientInstrument(binding, eventName, newError);
             }
