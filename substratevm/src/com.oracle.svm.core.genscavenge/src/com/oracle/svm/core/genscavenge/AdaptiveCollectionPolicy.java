@@ -140,17 +140,24 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_{attempt_scavenge,full_GC}
         guaranteeSizeParametersInitialized();
 
-        if (followingIncrementalCollection) {
-            if (oldSizeExceededInPreviousCollection) {
-                /*
-                 * We promoted objects to the old generation beyond its current capacity to avoid a
-                 * promotion failure, but due to the chunked nature of our heap, we should still be
-                 * within the maximum heap size. Follow up with a full collection during which we
-                 * either reclaim enough space or expand the old generation.
-                 */
-                return true;
-            }
-        } else if (minorCountSinceMajorCollection * avgMinorPause.getAverage() >= CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO * avgMajorPause.getPaddedAverage()) {
+        if (!followingIncrementalCollection) {
+            /*
+             * Always do an incremental collection first because we expect most of the objects in
+             * the young generation to be garbage, and we can reuse their leftover chunks for
+             * copying the live objects in the old generation with fewer allocations.
+             */
+            return false;
+        }
+        if (oldSizeExceededInPreviousCollection) {
+            /*
+             * In the preceding incremental collection, we promoted objects to the old generation
+             * beyond its current capacity to avoid a promotion failure, but due to the chunked
+             * nature of our heap, we should still be within the maximum heap size. Follow up with a
+             * full collection during which we reclaim enough space or expand the old generation.
+             */
+            return true;
+        }
+        if (minorCountSinceMajorCollection * avgMinorPause.getAverage() >= CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO * avgMajorPause.getPaddedAverage()) {
             /*
              * When we do many incremental collections in a row because they reclaim sufficient
              * space, still trigger a complete collection when reaching a cumulative pause time

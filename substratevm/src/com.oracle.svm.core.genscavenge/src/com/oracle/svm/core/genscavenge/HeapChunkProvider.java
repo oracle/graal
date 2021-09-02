@@ -45,6 +45,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
  * Allocates and frees the memory for aligned and unaligned heap chunks. The methods are
@@ -128,38 +129,45 @@ final class HeapChunkProvider {
         return result;
     }
 
+    void freeExcessAlignedChunks() {
+        consumeAlignedChunks(WordFactory.nullPointer(), false);
+    }
+
     /**
      * Releases a list of AlignedHeapChunks, either to the free list or back to the operating
      * system. This method may only be called after the chunks were already removed from the spaces.
      */
-    void consumeAlignedChunks(AlignedHeader firstChunk) {
-        assert HeapChunk.getPrevious(firstChunk).isNull() : "prev must be null";
+    void consumeAlignedChunks(AlignedHeader firstChunk, boolean keepAll) {
+        assert firstChunk.isNull() || HeapChunk.getPrevious(firstChunk).isNull() : "prev must be null";
 
-        UnsignedWord freeListBytes = getBytesInUnusedChunks();
-        UnsignedWord reserveBytes = GCImpl.getPolicy().getMaximumFreeAlignedChunksSize();
-
-        AlignedHeader cur = firstChunk;
-        if (freeListBytes.belowThan(reserveBytes)) {
-            // Retain some of the chunks in the free list for quicker allocation
-            UnsignedWord chunksToKeep = reserveBytes.subtract(freeListBytes)
-                            .unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
-            while (cur.isNonNull() && chunksToKeep.aboveThan(0)) {
-                AlignedHeader next = HeapChunk.getNext(cur);
-                cleanAlignedChunk(cur);
-                pushUnusedAlignedChunk(cur);
-
-                chunksToKeep = chunksToKeep.subtract(1);
-                cur = next;
+        UnsignedWord maxChunksToKeep = WordFactory.zero();
+        UnsignedWord unusedChunksToFree = WordFactory.zero();
+        if (keepAll) {
+            maxChunksToKeep = UnsignedUtils.MAX_VALUE;
+        } else {
+            UnsignedWord freeListBytes = getBytesInUnusedChunks();
+            UnsignedWord reserveBytes = GCImpl.getPolicy().getMaximumFreeAlignedChunksSize();
+            if (freeListBytes.belowThan(reserveBytes)) {
+                maxChunksToKeep = reserveBytes.subtract(freeListBytes).unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
+            } else {
+                unusedChunksToFree = freeListBytes.subtract(reserveBytes).unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
             }
+        }
+
+        // Potentially keep some chunks in the free list for quicker allocation, free the rest
+        AlignedHeader cur = firstChunk;
+        while (cur.isNonNull() && maxChunksToKeep.aboveThan(0)) {
+            AlignedHeader next = HeapChunk.getNext(cur);
+            cleanAlignedChunk(cur);
+            pushUnusedAlignedChunk(cur);
+
+            maxChunksToKeep = maxChunksToKeep.subtract(1);
+            cur = next;
         }
         freeAlignedChunkList(cur);
 
-        if (freeListBytes.aboveThan(reserveBytes)) {
-            // Release chunks from the free list to the operating system when spaces shrink
-            UnsignedWord unusedChunksToFree = freeListBytes.subtract(reserveBytes)
-                            .unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
-            freeUnusedAlignedChunksAtSafepoint(unusedChunksToFree);
-        }
+        // Release chunks from the free list to the operating system when spaces shrink
+        freeUnusedAlignedChunksAtSafepoint(unusedChunksToFree);
     }
 
     private static void cleanAlignedChunk(AlignedHeader alignedChunk) {
@@ -234,6 +242,9 @@ final class HeapChunkProvider {
 
     private void freeUnusedAlignedChunksAtSafepoint(UnsignedWord count) {
         VMOperation.guaranteeInProgressAtSafepoint("Removing non-atomically from the unused chunk list.");
+        if (count.equal(0)) {
+            return;
+        }
 
         AlignedHeader chunk = unusedAlignedChunks.get();
         UnsignedWord released = WordFactory.zero();

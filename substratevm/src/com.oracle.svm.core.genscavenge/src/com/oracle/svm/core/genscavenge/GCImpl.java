@@ -241,9 +241,13 @@ public final class GCImpl implements GC {
             outOfMemory = doCollectOnce(cause, false, false);
         }
         if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(true)) {
+            if (incremental) { // uncommit unaligned chunks
+                CommittedMemoryProvider.get().afterGarbageCollection();
+            }
             outOfMemory = doCollectOnce(cause, true, incremental);
         }
 
+        HeapImpl.getChunkProvider().freeExcessAlignedChunks();
         CommittedMemoryProvider.get().afterGarbageCollection();
         return outOfMemory;
     }
@@ -530,7 +534,9 @@ public final class GCImpl implements GC {
             try {
                 assert chunkReleaser.isEmpty();
                 releaseSpaces();
-                chunkReleaser.release();
+
+                boolean keepAllAlignedChunks = incremental; // in case we follow up with a full GC
+                chunkReleaser.release(keepAllAlignedChunks);
             } finally {
                 releaseSpacesTimer.close();
             }
@@ -1245,9 +1251,9 @@ public final class GCImpl implements GC {
             }
         }
 
-        void release() {
+        void release(boolean keepAllAlignedChunks) {
             if (firstAligned.isNonNull()) {
-                HeapImpl.getChunkProvider().consumeAlignedChunks(firstAligned);
+                HeapImpl.getChunkProvider().consumeAlignedChunks(firstAligned, keepAllAlignedChunks);
                 firstAligned = WordFactory.nullPointer();
             }
             if (firstUnaligned.isNonNull()) {
