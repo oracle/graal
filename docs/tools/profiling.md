@@ -200,7 +200,7 @@ program roots, for example, `Math.*`. The default is &lowast;.
     - `exclude_inlined_roots`: samples roots excluding inlined functions (enabled by default)
     - `roots`: samples roots including inlined functions
     - `statements`: samples all statements
-- `--cpusampler.Output=<Output>`: prints a `histogram` or `calltree` as output.
+- `--cpusampler.Output=<Output>`: prints a `histogram`, `calltree`, `json`, or `flamegraph` as output.
 The default is `histogram`.
 - `--cpusampler.Period=<Long>`: specifies the period, in milliseconds, to
 sample the stack.

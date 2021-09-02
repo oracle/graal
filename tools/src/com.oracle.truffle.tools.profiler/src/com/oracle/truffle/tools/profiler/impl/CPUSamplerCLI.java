@@ -128,7 +128,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "Output", help = "Print a 'histogram', 'calltree' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "Output", help = "Print a 'histogram', 'calltree', 'json', or `flamegraph` as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
     @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
