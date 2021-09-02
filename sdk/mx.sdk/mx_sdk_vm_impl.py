@@ -1183,6 +1183,9 @@ class GraalVmNativeProperties(GraalVmProject):
 
 
 class NativePropertiesBuildTask(mx.ProjectBuildTask):
+
+    implicit_excludes = ['substratevm:LIBRARY_SUPPORT']
+
     def __init__(self, subject, args):
         """
         :type subject: GraalVmNativeProperties
@@ -1204,12 +1207,14 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             graalvm_dist = get_final_graalvm_distribution()
             image_config = self.subject.image_config
             graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:' + self.subject.name))
-            self._location_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_location, image_config, self.subject.component)
+            self._location_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_location, image_config, self.subject.component, exclude_implicit=True)
         return self._location_classpath
 
     @staticmethod
-    def get_launcher_classpath(graalvm_dist, start, image_config, component):
-        location_cp = graalvm_home_relative_classpath(image_config.jar_distributions, start, graal_vm=graalvm_dist)
+    def get_launcher_classpath(graalvm_dist, start, image_config, component, exclude_implicit=False):
+        with_substratevm = 'substratevm' in [s.name for s in mx.suites()]
+        exclude_names = NativePropertiesBuildTask.implicit_excludes if with_substratevm and exclude_implicit else None
+        location_cp = graalvm_home_relative_classpath(image_config.jar_distributions, start, graal_vm=graalvm_dist, exclude_names=exclude_names)
         location_classpath = location_cp.split(os.pathsep) if location_cp else []
         if image_config.dir_jars:
             if not component:
@@ -1268,7 +1273,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             if isinstance(image_config, mx_sdk.LauncherConfig):
                 if image_config.is_sdk_launcher:
-                    launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_home, image_config, self.subject.component)
+                    launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
                     build_args += [
                         '-H:-ParseRuntimeOptions',
                         '-Dorg.graalvm.launcher.classpath=' + os.pathsep.join(launcher_classpath),
@@ -1825,7 +1830,7 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
             assert self.with_polyglot_config()
             graalvm_dist = self.subject.get_containing_graalvm()
             graalvm_location = dirname(graalvm_dist.find_single_source_location('dependency:{}/polyglot.config'.format(self.subject.name)))
-            classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_location, image_config, self.subject.component)
+            classpath = NativePropertiesBuildTask.get_launcher_classpath(graalvm_dist, graalvm_location, image_config, self.subject.component, exclude_implicit=True)
             main_class = image_config.main_class
             return u"|".join((u":".join(classpath), main_class))
         return self._polyglot_config_contents
@@ -1978,8 +1983,7 @@ _known_missing_jars = {
     'JDK_TOOLS',
 }
 
-
-def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=False, graal_vm=None):
+def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=False, graal_vm=None, exclude_names=None):
     if graal_vm is None:
         graal_vm = get_final_graalvm_distribution()
     start = start or _get_graalvm_archive_path('', graal_vm=graal_vm)
@@ -1993,7 +1997,14 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
     jimage = mx.project('graalvm-jimage', fatalIfMissing=False)
     jimage_deps = jimage.deps if jimage else None
     mx.logv("Composing classpath for " + str(dependencies) + ". Entries:\n" + '\n'.join(('- {}:{}'.format(d.suite, d.name) for d in mx.classpath_entries(dependencies))))
-    for _cp_entry in mx.classpath_entries(dependencies):
+    cp_entries = mx.classpath_entries(dependencies)
+
+    if exclude_names:
+        for exclude_entry in mx.classpath_entries(names=exclude_names):
+            if exclude_entry in cp_entries:
+                cp_entries.remove(exclude_entry)
+
+    for _cp_entry in cp_entries:
         if jimage_deps and _jlink_libraries() and _cp_entry in jimage_deps:
             continue
         if _cp_entry.isJdkLibrary() or _cp_entry.isJreLibrary():
