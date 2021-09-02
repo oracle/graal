@@ -164,7 +164,7 @@ class SVGSamplerOutput {
         return output.toString();
     }
 
-    public String escape(String text) {
+    public static String escape(String text) {
         return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
     }
 
@@ -663,12 +663,13 @@ class SVGSamplerOutput {
         private final double minWidth;
         private final int maxDepth;
         private final double widthPerTime;
+        private final long sampleCount;
 
         SVGFlameGraph(GraphOwner owner) {
             this.owner = owner;
             this.bottomPadding = 2 * owner.fontSize() + 10;
             this.topPadding = 3 * owner.fontSize();
-            long sampleCount = owner.sampleData.getInt("h");
+            this.sampleCount = owner.sampleData.getInt("h");
             minWidth = 0.1;
             widthPerTime = (width() - 2 * XPAD) / sampleCount;
             int depth = 0;
@@ -764,18 +765,28 @@ class SVGSamplerOutput {
             }
             HashMap<String, String> groupAttrs = new HashMap<>();
             int id = sample.getInt("id");
+            String fullText = owner.sampleNames.getString(sample.getInt("n"));
+
             groupAttrs.put("class", "func_g");
             groupAttrs.put("onclick", id == 0 ? "unzoom()" : "zoom(this)");
             groupAttrs.put("onmouseover", "s(this)");
             groupAttrs.put("onmouseout", "c(this)");
             groupAttrs.put("id", "f_" + Integer.toString(id));
+            StringBuilder title = new StringBuilder();
+            title.append("Function: ");
+            title.append(fullText);
+            title.append("\n");
+            int interpreted = sample.getInt("i");
+            int compiled = sample.getInt("c");
+            title.append(String.format("%d samples (%d interpreted, %d compiled).\n", interpreted + compiled, interpreted, compiled));
+            double percent = 100.0 * (compiled + interpreted) / sampleCount;
+            title.append(String.format("%.2f%% of displayed samples.\n", percent));
+            groupAttrs.put("title", escape(title.toString()));
             output.append(owner.svg.startGroup(groupAttrs));
 
             HashMap<String, String> rectAttrs = new HashMap<>();
 
             output.append(owner.svg.fillRectangle(x, y, width, FRAMEHEIGHT, owner.colorForName(sample.getInt("n"), GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
-
-            String fullText = owner.sampleNames.getString(sample.getInt("n"));
 
             output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), x + 3, y - 5 + FRAMEHEIGHT, owner.abbreviate(fullText, width), null, ""));
             output.append(owner.svg.endGroup(groupAttrs));
@@ -824,6 +835,7 @@ class SVGSamplerOutput {
         private final double timeMax;
         private final double widthPerTime;
         private final List<JSONObject> histogram;
+        private final long sampleCount;
 
         private static double MINWIDTH = 1;
         private static double IMAGEWIDTH = 1200.0;
@@ -837,6 +849,11 @@ class SVGSamplerOutput {
             timeMax = histogram.get(0).getInt("i") + histogram.get(0).getInt("c");
             widthPerTime = (width() - 2 * XPAD) / timeMax;
             double minTime = MINWIDTH / widthPerTime;
+            long count = 0;
+            for (JSONObject bar : histogram) {
+                count += bar.getInt("i") + bar.getInt("c");
+            }
+            sampleCount = count;
             histogram.removeIf(x -> (x.getInt("i") + x.getInt("c")) < minTime);
         }
 
@@ -935,6 +952,16 @@ class SVGSamplerOutput {
             groupAttrs.put("onclick", "h_highlight(this)");
             groupAttrs.put("onmouseover", "s(this)");
             groupAttrs.put("onmouseout", "c(this)");
+            StringBuilder title = new StringBuilder();
+            title.append("Function: ");
+            title.append(name);
+            title.append("\n");
+            int interpreted = bar.getInt("i");
+            int compiled = bar.getInt("c");
+            title.append(String.format("%d samples (%d interpreted, %d compiled).\n", interpreted + compiled, interpreted, compiled));
+            double percent = 100.0 * (compiled + interpreted) / sampleCount;
+            title.append(String.format("%.2f%% of displayed samples.\n", percent));
+            groupAttrs.put("title", escape(title.toString()));
             output.append(owner.svg.startGroup(groupAttrs));
 
             HashMap<String, String> rectAttrs = new HashMap<>();

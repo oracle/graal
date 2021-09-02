@@ -32,6 +32,9 @@ function fg_create_element_for_sample(sample, width, x) {
     e.onclick = function(e) {zoom(this)};
     e.id =  "f_" + sample.id;
 
+    let title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    title.textContent = "Blah";
+
     let r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     r.x.baseVal.value = x;
     r.y.baseVal.value = y;
@@ -53,6 +56,7 @@ function fg_create_element_for_sample(sample, width, x) {
     t.style.fontFamily = "Verdana";
     t.style.fill = "rgb(0, 0, 0)";
 
+    e.appendChild(title);
     e.appendChild(r);
     e.appendChild(t);
     flamegraph.appendChild(e);
@@ -84,15 +88,20 @@ function zoom_child(sample) {
         e.style["opacity"] = "1";
     }
 
-    let r = e.firstElementChild;
+    let title = e.firstElementChild;
+    let r = e.children[1];
     let t = e.lastElementChild;
+    let name = name_for_sample(sample);
+
+    title.textContent = "Function: " + name + "\n" +
+        sample.h + " samples (" + sample.i + " interpreted, " + sample.c + " compiled).\n" +
+        (100 * (sample.c + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "% of displayed samples.\n";
 
     r.x.baseVal.value = x;
     t.x.baseVal[0].value = x + 3;
 
     r.width.baseVal.value = width;
-
-    update_text_parts(e, r, t, width - 3, name_for_sample(sample));
+    update_text_parts(e, r, t, width - 3, name);
 }
 
 function zoom_parent(sample) {
@@ -102,8 +111,14 @@ function zoom_parent(sample) {
     if (e != null) {
         e.style["display"] = "block";
         e.style["opacity"] = "0.5";
-        let r = e.firstElementChild;
+
+        let title = e.firstElementChild;
+        let r = e.children[1];
         let t = e.lastElementChild;
+
+        title.textContent = "Function: " + name + "\n" +
+            sample.h + " samples (" + sample.i + " interpreted, " + sample.c + " compiled).\n" +
+            " Parent of displayed sample range.\n";
 
         r.x.baseVal.value = x;
         t.x.baseVal[0].value = x + 3;
@@ -200,7 +215,7 @@ function fg_search(term) {
             search_matches.push(sample);
             let e = fg_element_for_sample(sample);
             if (e != null) {
-                let r = e.firstElementChild;
+                let r = e.children[1];
                 r.style.fill = searchColor;
             }
         }
@@ -278,7 +293,7 @@ function fg_reset_search() {
         match.searchMatch = false;
         let e = fg_element_for_sample(match);
         if (e != null) {
-            let r = e.firstElementChild;
+            let r = e.children[1];
             let color = match.currentColor;
             if (color == undefined) {
                 color = fg_color_for_sample("fg", match);
@@ -299,7 +314,7 @@ function fg_update_color(color_type) {
         if (sample.searchMatch != true) {
             let e = fg_element_for_sample(sample);
             if (e != null) {
-                let r = e.firstElementChild;
+                let r = e.children[1];
                 r.style.fill = color;
             }
         }

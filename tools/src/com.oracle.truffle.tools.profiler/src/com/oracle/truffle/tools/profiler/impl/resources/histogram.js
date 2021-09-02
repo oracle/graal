@@ -27,7 +27,7 @@ function h_update_search() {
             bar.searchMatch = true;
             let e = h_element_for_id(i);
             if (e != null) {
-                let r = e.firstElementChild;
+                let r = e.children[1];
                 r.style.fill = searchColor;
             }
         }
@@ -47,7 +47,7 @@ function h_reset_search() {
                 if (color == undefined) {
                     color = fg_color_for_sample(color_type, bar);
                 }
-                let r = e.firstElementChild;
+                let r = e.children[1];
                 r.style.fill = color;
             }
         }
@@ -92,6 +92,9 @@ function h_create_element_for_id(id, bar, width) {
     e.onclick = function(e) {h_highlight(this)};
     e.id =  "h_" + id;
 
+    let title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    title.textContent = "Blah";
+
     let r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     r.x.baseVal.value = xpad;
     r.y.baseVal.value = y;
@@ -110,6 +113,7 @@ function h_create_element_for_id(id, bar, width) {
     t.style.fontFamily = "Verdana";
     t.style.fill = "rgb(0, 0, 0)";
 
+    e.appendChild(title);
     e.appendChild(r);
     e.appendChild(t);
     histogram.appendChild(e);
@@ -128,11 +132,19 @@ function h_update_bar(id, bar) {
             e = h_create_element_for_id(id, bar, width);
         }
         e.style.display = "block";
-        let r = e.firstElementChild;
+        let title = e.firstElementChild;
+        let r = e.children[1];
         let t = e.lastElementChild;
+
+        let name = name_for_sample(bar);
+
+        title.textContent = "Function: " + name + "\n" +
+            (bar.c + bar.i) + " samples (" + bar.i + " interpreted, " + bar.c + " compiled).\n" +
+            (100 * (bar.c + bar.i) / (fg_xmax - fg_xmin)).toFixed(2) + "% of displayed samples.\n";
+
         r.width.baseVal.value = width;
         r.style.fill = fg_color_for_sample(color_type, bar);
-        t.textContent = name_for_sample(bar);
+        t.textContent = name;
         let t_width = t.textLength.baseVal.value;
         if (t_width < width - 6) {
             // If the text fits in the bar, put it there.
@@ -229,7 +241,7 @@ function h_update_color(color_type) {
         if (bar.searchMatch != true) {
             let e = h_element_for_id(i);
             if (e != null) {
-                let r = e.firstElementChild;
+                let r = e.children[1];
                 r.style.fill = color;
             }
         }
