@@ -32,12 +32,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
+import com.oracle.svm.hosted.c.GraalAccess;
+
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -204,9 +207,16 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--list-cpu-features":
                 args.poll();
-                nativeImage.showMessage("Available AMD64 CPUFeatures: " + Arrays.toString(AMD64.CPUFeature.values()));
-                nativeImage.showNewline();
-                nativeImage.showMessage("Available AArch64 CPUFeatures: " + Arrays.toString(AArch64.CPUFeature.values()));
+                Architecture arch = GraalAccess.getOriginalTarget().arch;
+                if (arch instanceof AMD64) {
+                    nativeImage.showMessage("All AMD64 CPUFeatures: " + Arrays.toString(AMD64.CPUFeature.values()));
+                    nativeImage.showNewline();
+                    nativeImage.showMessage("Host machine AMD64 CPUFeatures: " + ((AMD64) arch).getFeatures().toString());
+                } else {
+                    nativeImage.showMessage("All AArch64 CPUFeatures: " + Arrays.toString(AArch64.CPUFeature.values()));
+                    nativeImage.showNewline();
+                    nativeImage.showMessage("Host machine AArch64 CPUFeatures: " + ((AArch64) arch).getFeatures().toString());
+                }
                 nativeImage.showNewline();
                 System.exit(0);
                 return true;
