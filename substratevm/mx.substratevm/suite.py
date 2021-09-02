@@ -1174,6 +1174,11 @@ suite = {
                     "com.oracle.svm.jvmtiagentbase",
                     "com.oracle.svm.jvmtiagentbase.jvmti",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
             },
         },
 
@@ -1323,6 +1328,11 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.agent",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
                 "requiresConcealed" : {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
@@ -1347,6 +1357,11 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.diagnosticsagent",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
             },
         },
 
@@ -1366,6 +1381,11 @@ suite = {
                 "exports" : [
                     "* to org.graalvm.nativeimage.agent.tracing",
                     "com.oracle.svm.configure",
+                ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
                 ],
             },
         },
