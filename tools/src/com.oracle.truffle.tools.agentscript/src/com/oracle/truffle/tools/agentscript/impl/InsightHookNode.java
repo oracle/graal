@@ -35,19 +35,18 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.tools.agentscript.impl.InsightPerSource.Key;
 
-final class AgentExecutionNode extends ExecutionEventNode {
+final class InsightHookNode extends ExecutionEventNode {
     @Node.Child private InteropLibrary enterDispatch;
     @Node.Child private InteropLibrary exitDispatch;
     @Node.Child private NodeLibrary nodeDispatch;
     @Node.Child private InteropLibrary exceptionDispatch;
-    private final Key key;
+    private final InsightInstrument.Key key;
     private final EventContext ctx;
     private final Node instrumentedNode;
     private final InsightInstrument insight;
 
-    private AgentExecutionNode(Key key, InsightInstrument insight, EventContext ctx) {
+    private InsightHookNode(InsightInstrument.Key key, InsightInstrument insight, EventContext ctx) {
         this.key = key;
         this.insight = insight;
         this.enterDispatch = InteropLibrary.getFactory().createDispatched(3);
@@ -63,7 +62,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
     protected void onEnter(VirtualFrame frame) {
         for (Object raw : insight.findCtx().functionsFor(key)) {
             InsightFilter.Data data = (InsightFilter.Data) raw;
-            if (data.type != AgentType.ENTER) {
+            if (data == null || data.type != AgentType.ENTER) {
                 continue;
             }
             final EventContextObject eco = eventCtxObj();
@@ -81,7 +80,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
     protected void onReturnValue(VirtualFrame frame, Object returnValue) {
         for (Object raw : insight.findCtx().functionsFor(key)) {
             InsightFilter.Data data = (InsightFilter.Data) raw;
-            if (data.type != AgentType.RETURN) {
+            if (data == null || data.type != AgentType.RETURN) {
                 continue;
             }
             final EventContextObject eco = eventCtxObj();
@@ -99,7 +98,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
         for (Object raw : insight.findCtx().functionsFor(key)) {
             InsightFilter.Data data = (InsightFilter.Data) raw;
-            if (data.type != AgentType.RETURN) {
+            if (data == null || data.type != AgentType.RETURN) {
                 continue;
             }
             final EventContextObject eco = eventCtxObj();
@@ -159,11 +158,11 @@ final class AgentExecutionNode extends ExecutionEventNode {
         return super.toString() + " at " + ctx.getInstrumentedNode().getSourceSection();
     }
 
-    static ExecutionEventNodeFactory factory(InsightInstrument insight, Key key) {
+    static ExecutionEventNodeFactory factory(InsightInstrument insight, InsightInstrument.Key key) {
         return new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
-                return new AgentExecutionNode(key, insight, context);
+                return new InsightHookNode(key, insight, context);
             }
         };
     }

@@ -29,7 +29,6 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.tools.agentscript.impl.InsightPerSource.Key;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,11 +36,11 @@ import java.util.function.Predicate;
 
 final class RootNameFilter implements Predicate<String> {
     private final InsightInstrument instrument;
-    private final Key key;
+    private final InsightInstrument.Key key;
     private final ThreadLocal<Boolean> querying;
     private final Map<String, Boolean> cache;
 
-    RootNameFilter(InsightInstrument instrument, Key key) {
+    RootNameFilter(InsightInstrument instrument, InsightInstrument.Key key) {
         this.instrument = instrument;
         this.key = key;
         this.querying = new ThreadLocal<>();

@@ -30,15 +30,14 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.agentscript.impl.InsightPerSource.Key;
 import java.util.function.Predicate;
 
-final class AgentSourceFilter implements Predicate<Source> {
+final class InsightSourceFilter implements Predicate<Source> {
     private final InsightInstrument insight;
     private final ThreadLocal<Boolean> querying;
-    private final Key key;
+    private final InsightInstrument.Key key;
 
-    AgentSourceFilter(InsightInstrument insight, Key key) {
+    InsightSourceFilter(InsightInstrument insight, InsightInstrument.Key key) {
         this.insight = insight;
         this.key = key;
         this.querying = new ThreadLocal<>();

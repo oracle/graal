@@ -59,9 +59,9 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     private final AgentObject insight;
     private final IgnoreSources ignoredSources;
     private EventBinding<?> agentBinding;
-    private Key sourceBinding;
-    private final Key closeBinding;
-    private final Map<InsightFilter, Key> bindings = new HashMap<>();
+    private InsightInstrument.Key sourceBinding;
+    private final InsightInstrument.Key closeBinding;
+    private final Map<InsightFilter, InsightInstrument.Key> bindings = new HashMap<>();
     // XXX: synchronize
     private final Collection<EventBinding<?>> pendingBindings = new ArrayList<>();
 
@@ -70,7 +70,7 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
         this.ignoredSources = ignoredSources;
         this.src = src;
         this.insight = instrument.createInsightObject(this);
-        this.closeBinding = new Key(AgentType.CLOSE);
+        this.closeBinding = instrument.newKey(AgentType.CLOSE);
     }
 
     void collectSymbols(List<String> argNames, List<Object> args) {
@@ -144,11 +144,11 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
         }
     }
 
-    synchronized void binding(InsightFilter.Data data, Function<Key, ExecutionEventNodeFactory> needFactory, Consumer<Key> hasFactory) {
+    synchronized void binding(InsightFilter.Data data, Function<InsightInstrument.Key, ExecutionEventNodeFactory> needFactory, Consumer<InsightInstrument.Key> hasFactory) {
         InsightFilter filter = data.filter;
-        Key key = bindings.get(filter);
+        InsightInstrument.Key key = bindings.get(filter);
         if (key == null) {
-            key = new Key(null);
+            key = instrument.newKey(null);
             // @formatter:off
             SourceSectionFilter.Builder ssfb = SourceSectionFilter.newBuilder()
                 .sourceIs(ignoredSources)
@@ -156,7 +156,7 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
                 .tagIs(filter.getTags());
 
             if (data.sourceFilterFn != null) {
-                AgentSourceFilter predicate = new AgentSourceFilter(instrument, key);
+                InsightSourceFilter predicate = new InsightSourceFilter(instrument, key);
                 SourceFilter sf = SourceFilter.newBuilder().sourceIs(predicate).build();
                 ssfb.sourceFilter(sf);
             }
@@ -177,11 +177,11 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
         }
     }
 
-    Key closeBinding() {
+    InsightInstrument.Key closeBinding() {
         return closeBinding;
     }
 
-    synchronized Key sourceBinding() {
+    synchronized InsightInstrument.Key sourceBinding() {
         if (sourceBinding == null) {
             // @formatter:off
             final SourceFilter filter = SourceFilter.newBuilder().
@@ -190,7 +190,7 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
                 build();
             // @formatter:on
             Instrumenter instrumenter = instrument.env().getInstrumenter();
-            sourceBinding = new Key(AgentType.SOURCE).assign(instrumenter.attachLoadSourceListener(filter, this, false));
+            sourceBinding = instrument.newKey(AgentType.SOURCE).assign(instrumenter.attachLoadSourceListener(filter, this, false));
         }
         return sourceBinding;
     }
@@ -236,32 +236,6 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
         @Override
         public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
-        }
-    }
-
-    static final class Key implements AutoCloseable {
-        private final AgentType type;
-        private EventBinding<?> binding;
-
-        Key(AgentType type) {
-            this.type = type;
-        }
-
-        Key assign(EventBinding<?> b) {
-            this.binding = b;
-            return this;
-        }
-
-        @Override
-        public String toString() {
-            return "Key[" + type + "]";
-        }
-
-        public void close() {
-            EventBinding<?> b = binding;
-            if (b != null) {
-                b.dispose();
-            }
         }
     }
 }

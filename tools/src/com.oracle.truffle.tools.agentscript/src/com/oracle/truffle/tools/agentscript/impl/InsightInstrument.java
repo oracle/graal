@@ -24,12 +24,16 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -39,6 +43,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -66,11 +71,16 @@ public class InsightInstrument extends TruffleInstrument {
     final IgnoreSources ignoreSources = new IgnoreSources();
     final ContextLocal<InsightPerContext> perContextData;
     private Env env;
+    /** @GuardedBy("keys" */
+    private final BitSet keys = new BitSet();
+    /** @GuardedBy("keys" */
+    @CompilerDirectives.CompilationFinal private Assumption keysUnchanged;
 
     public InsightInstrument() {
         this.perContextData = createContextLocal((context) -> {
             return new InsightPerContext(this, context);
         });
+        this.keysUnchanged = Truffle.getRuntime().createAssumption();
     }
 
     @Override
@@ -199,5 +209,67 @@ public class InsightInstrument extends TruffleInstrument {
 
     final InsightPerContext findCtx() {
         return this.perContextData.get();
+    }
+
+    final Key newKey(AgentType type) {
+        synchronized (keys) {
+            int index = keys.nextClearBit(0);
+            invalidateKeys(index, -1);
+            return new Key(type, index);
+        }
+    }
+
+    private void invalidateKeys(int set, int clear) {
+        assert Thread.holdsLock(keys);
+
+        if (set != -1) {
+            keys.set(set);
+        }
+        if (clear != -1) {
+            keys.clear(clear);
+        }
+        keysUnchanged.invalidate();
+        keysUnchanged = Truffle.getRuntime().createAssumption("Keys[" + keys + "]");
+    }
+
+    final Assumption keysUnchanged() {
+        return keysUnchanged;
+    }
+
+    final int keysLength() {
+        synchronized (keys) {
+            return keys.length();
+        }
+    }
+
+    final class Key implements AutoCloseable {
+        final int index;
+        private final AgentType type;
+        private EventBinding<?> binding;
+
+        private Key(AgentType type, int index) {
+            this.type = type;
+            this.index = index;
+        }
+
+        Key assign(EventBinding<?> b) {
+            this.binding = b;
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            return "Key[" + index + "@" + type + "]";
+        }
+
+        public void close() {
+            EventBinding<?> b = binding;
+            if (b != null) {
+                b.dispose();
+            }
+            synchronized (keys) {
+                invalidateKeys(-1, index);
+            }
+        }
     }
 }

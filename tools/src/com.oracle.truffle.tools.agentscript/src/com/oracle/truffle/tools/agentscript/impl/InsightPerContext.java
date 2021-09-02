@@ -29,7 +29,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.tools.agentscript.impl.InsightFilter.Data;
-import com.oracle.truffle.tools.agentscript.impl.InsightPerSource.Key;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -40,7 +39,8 @@ final class InsightPerContext {
     final InsightInstrument insight;
     final TruffleContext context;
     private boolean initialized;
-    private final Map<Key, List<Object>> functionsForBinding = new HashMap<>();
+    private final Map<InsightInstrument.Key, List<Object>> functionsForBinding = new HashMap<>();
+    @CompilerDirectives.CompilationFinal(dimensions = 2) private Object[][] functionsArray;
 
     InsightPerContext(InsightInstrument insight, TruffleContext context) {
         this.insight = insight;
@@ -56,7 +56,7 @@ final class InsightPerContext {
         }
     }
 
-    synchronized void register(Key key, Object function) {
+    synchronized void register(InsightInstrument.Key key, Object function) {
         List<Object> arr = functionsForBinding.get(key);
         if (arr == null) {
             arr = new ArrayList<>();
@@ -65,7 +65,7 @@ final class InsightPerContext {
         arr.add(function);
     }
 
-    synchronized boolean unregister(Key key, Object function) {
+    synchronized boolean unregister(InsightInstrument.Key key, Object function) {
         if (key == null) {
             boolean r = false;
             for (List<Object> arr : functionsForBinding.values()) {
@@ -87,13 +87,23 @@ final class InsightPerContext {
         return false;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    synchronized Object[] functionsFor(Key key) {
-        List<Object> arr = functionsForBinding.get(key);
-        return arr == null ? new Object[0] : arr.toArray();
+    Object[] functionsFor(InsightInstrument.Key key) {
+        if (functionsArray == null || !insight.keysUnchanged().isValid()) {
+            updateFunctionsArraySlow();
+        }
+        return functionsArray[key.index];
     }
 
-    void onClosed(Key closedKey) {
+    @CompilerDirectives.TruffleBoundary
+    private synchronized void updateFunctionsArraySlow() {
+        Object[][] fn = new Object[insight.keysLength()][];
+        for (Map.Entry<InsightInstrument.Key, List<Object>> entry : functionsForBinding.entrySet()) {
+            fn[entry.getKey().index] = entry.getValue().toArray();
+        }
+        functionsArray = fn;
+    }
+
+    void onClosed(InsightInstrument.Key closedKey) {
         final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
         for (Object closeFn : functionsFor(closedKey)) {
             try {

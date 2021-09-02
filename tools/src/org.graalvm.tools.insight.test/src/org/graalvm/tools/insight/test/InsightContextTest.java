@@ -254,7 +254,7 @@ public class InsightContextTest {
     private static List<? extends Node> assertAgentNodes(Node rootNode, final int nodeCount) throws ClassNotFoundException {
         assertNotNull("Root node must be specified", rootNode);
 
-        Class<? extends Node> aenClass = Class.forName("com.oracle.truffle.tools.agentscript.impl.AgentExecutionNode").asSubclass(Node.class);
+        Class<? extends Node> aenClass = Class.forName("com.oracle.truffle.tools.agentscript.impl.InsightHookNode").asSubclass(Node.class);
         List<? extends Node> aenList = NodeUtil.findAllNodeInstances(rootNode.getRootNode(), aenClass);
         if (aenList.size() == nodeCount) {
             return aenList;

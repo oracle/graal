@@ -32,7 +32,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.tools.agentscript.impl.InsightPerSource.Key;
 import java.io.IOException;
 import org.graalvm.tools.insight.Insight;
 
@@ -87,7 +86,7 @@ final class AgentObject implements TruffleObject {
                 AgentType type = AgentType.find(convertToString(interop, args[0]));
                 switch (type) {
                     case SOURCE: {
-                        Key b = obj.source.sourceBinding();
+                        InsightInstrument.Key b = obj.source.sourceBinding();
                         perContext.register(b, args[1]);
                         break;
                     }
@@ -96,14 +95,14 @@ final class AgentObject implements TruffleObject {
                         InsightFilter.Data data = InsightFilter.create(type, args);
                         obj.source.binding(data, (key) -> {
                             perContext.register(key, data);
-                            return AgentExecutionNode.factory(obj.insight, key);
+                            return InsightHookNode.factory(obj.insight, key);
                         }, (key) -> {
                             perContext.register(key, data);
                         });
                         break;
                     }
                     case CLOSE: {
-                        Key b = obj.source.closeBinding();
+                        InsightInstrument.Key b = obj.source.closeBinding();
                         perContext.register(b, args[1]);
                         break;
                     }
@@ -116,12 +115,12 @@ final class AgentObject implements TruffleObject {
                 AgentType type = AgentType.find(convertToString(interop, args[0]));
                 switch (type) {
                     case SOURCE: {
-                        Key b = obj.source.sourceBinding();
+                        InsightInstrument.Key b = obj.source.sourceBinding();
                         perContext.unregister(b, args[1]);
                         break;
                     }
                     case CLOSE: {
-                        Key b = obj.source.closeBinding();
+                        InsightInstrument.Key b = obj.source.closeBinding();
                         perContext.unregister(b, args[1]);
                         break;
                     }
