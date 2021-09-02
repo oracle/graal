@@ -77,10 +77,23 @@ final class ServiceWatcher {
 
     private static final String PREFIX = "META-INF/services/";
 
-    private static final WatchEvent.Kind<?>[] WATCH_KINDS = new WatchEvent.Kind<?>[]{
+    private static final WatchEvent.Kind<?>[] ALL_WATCH_KINDS = new WatchEvent.Kind<?>[]{
                     StandardWatchEventKinds.ENTRY_CREATE,
                     StandardWatchEventKinds.ENTRY_DELETE,
                     StandardWatchEventKinds.ENTRY_MODIFY,
+                    StandardWatchEventKinds.OVERFLOW};
+
+    private static final WatchEvent.Kind<?>[] CREATE_KINDS = new WatchEvent.Kind<?>[]{
+                    StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.OVERFLOW};
+
+    private static final WatchEvent.Kind<?>[] DELETE_KINDS = new WatchEvent.Kind<?>[]{
+                    StandardWatchEventKinds.ENTRY_DELETE,
+                    StandardWatchEventKinds.OVERFLOW};
+
+    private static final WatchEvent.Kind<?>[] CREATE_DELETE_KINDS = new WatchEvent.Kind<?>[]{
+                    StandardWatchEventKinds.ENTRY_CREATE,
+                    StandardWatchEventKinds.ENTRY_DELETE,
                     StandardWatchEventKinds.OVERFLOW};
 
     private final Map<String, Set<String>> services = new HashMap<>(4);
@@ -226,8 +239,29 @@ final class ServiceWatcher {
     private final class WatcherThread extends Thread {
 
         private final WatchService watchService;
+
+        // The direct watched resources is mapped to the current known resource state.
+        // The state is managed by means of a file checksum.
         private final Map<Path, ServiceWatcher.State> watchActions = Collections.synchronizedMap(new HashMap<>());
-        private final Map<Path, Set<Path>> watchedFolders = Collections.synchronizedMap(new HashMap<>());
+
+        // Track existing folders for which we need notification upon deletion.
+        // This is relevant when parent folders of a watched resource are deleted.
+        private final Map<Path, Set<Path>> watchedForDeletion = Collections.synchronizedMap(new HashMap<>());
+
+        // Track non-existing folders for which we need notification upon creation.
+        // This is relevant when parent folders of a watched resource was previously deleted,
+        // and then recreated again.
+        private final Map<Path, Set<Path>> watchedForCreation = Collections.synchronizedMap(new HashMap<>());
+
+        // Map of registered file-system watches to allow us to cancel of watched path
+        // in case it's no longer needed for detecting changes to leaf resources.
+        private final Map<Path, WatchKey> registeredWatches = Collections.synchronizedMap(new HashMap<>());
+
+        // Map all active file watches with the set of paths for which the watch was
+        // registered to enable us to cancel watches when deleted folders are recreated.
+        // A counter on each path reason is kept for managing when we should cancel the
+        // file system watch on the registered path.
+        private final Map<Path, Map<Path, Integer>> activeFileWatches = Collections.synchronizedMap(new HashMap<>());
 
         private WatcherThread() throws IOException {
             super("hotswap-watcher-1");
@@ -242,14 +276,23 @@ final class ServiceWatcher {
             if (dir == null) {
                 throw new IOException("parent directory doesn't exist for: " + resourcePath);
             }
-            dir.register(watchService, WATCH_KINDS);
+            registerFileSystemWatch(dir, resourcePath, ALL_WATCH_KINDS);
         }
 
-        private void addWatchedFolder(Path path, Path leaf) {
-            Set<Path> set = watchedFolders.get(path);
+        private void addWatchedDeletedFolder(Path path, Path leaf) {
+            Set<Path> set = watchedForDeletion.get(path);
             if (set == null) {
                 set = new HashSet<>();
-                watchedFolders.put(path, set);
+                watchedForDeletion.put(path, set);
+            }
+            set.add(leaf);
+        }
+
+        private void addWatchedCreatedFolder(Path path, Path leaf) {
+            Set<Path> set = watchedForCreation.get(path);
+            if (set == null) {
+                set = new HashSet<>();
+                watchedForCreation.put(path, set);
             }
             set.add(leaf);
         }
@@ -261,7 +304,7 @@ final class ServiceWatcher {
                 while ((key = watchService.take()) != null) {
                     for (WatchEvent<?> event : key.pollEvents()) {
                         if (event.kind() == StandardWatchEventKinds.OVERFLOW) {
-                            // OK, let's do a directory scan for watch files
+                            // OK, let's do a directory scan for watched files
                             for (Path path : watchActions.keySet()) {
                                 scanDir(path.getParent());
                             }
@@ -273,116 +316,202 @@ final class ServiceWatcher {
                         if (watchable instanceof Path) {
                             watchPath = (Path) watchable;
                         }
+
                         if (watchPath == null) {
                             continue;
                         }
-                        // object used for comparison with cache
+
                         Path resourcePath = watchPath.resolve(fileName);
 
                         if (event.kind() == StandardWatchEventKinds.ENTRY_DELETE) {
                             if (watchActions.containsKey(resourcePath)) {
-                                // the parent folder could also be deleted without us noticing that,
-                                // so register a watch on the parent
-                                addWatchedFolder(watchPath, resourcePath);
-                                try {
-                                    Path parent = watchPath.getParent();
-                                    if (parent != null) {
-                                        parent.register(watchService, WATCH_KINDS);
-                                    }
-                                } catch (IOException e) {
-                                    // folder could be already deleted, we check
-                                    // for that below and take action if so
-                                }
-                                if (!Files.exists(watchPath)) {
-                                    handleDeletedFolderEvent(watchPath);
-                                } else {
-                                    // we could have lost the file watch on the parent,
-                                    // so handle as if it was potentially recreated
-                                    handleCreatedFolderEvent(watchPath);
-                                }
-                                continue;
-                            } else if (watchedFolders.containsKey(resourcePath)) {
+                                handleDeletedResource(watchPath, resourcePath);
+                            } else if (watchedForDeletion.containsKey(resourcePath)) {
                                 handleDeletedFolderEvent(resourcePath);
                             }
-                            continue;
-                        }
-                        if (watchActions.containsKey(resourcePath)) {
-                            detectChange(resourcePath);
-                            continue;
-                        }
-                        if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
-                            // check for parent folder recreation
-                            if (watchedFolders.containsKey(resourcePath)) {
+                        } else if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+                            if (watchActions.containsKey(resourcePath)) {
+                                handleCreatedResource(watchPath, resourcePath);
+                            } else if (watchedForCreation.containsKey(resourcePath)) {
                                 handleCreatedFolderEvent(resourcePath);
                             }
+                        } else if (watchActions.containsKey(resourcePath)) {
+                            detectChange(resourcePath);
                         }
                     }
                     key.reset();
                 }
             } catch (InterruptedException e) {
-                throw new RuntimeException("Espresso HotSwap service watcher thread was interupted!");
+                throw new RuntimeException("Espresso HotSwap service watcher thread was interrupted!");
             }
         }
 
-        private void handleCreatedFolderEvent(Path resourcePath) {
-            // remove tracking of recreated folder
-            Set<Path> leaves = watchedFolders.remove(resourcePath);
-            // remove delete tracking of leaves of the parent folder
-            watchedFolders.getOrDefault(resourcePath.getParent(), Collections.emptySet()).removeAll(leaves);
+        private void handleDeletedResource(Path watchPath, Path resourcePath) {
+            // the parent folder could also be deleted,
+            // so register a delete watch on the parent
+            addWatchedDeletedFolder(watchPath, resourcePath);
+            removeFilesystemWatchReason(watchPath, resourcePath);
+            Path parent = watchPath.getParent();
+
+            if (parent == null) {
+                return;
+            }
+            try {
+                registerFileSystemWatch(parent, watchPath, DELETE_KINDS);
+            } catch (IOException e) {
+                handleDeletedFolderEvent(watchPath);
+                return;
+            }
+
+            if (!Files.exists(watchPath)) {
+                handleDeletedFolderEvent(watchPath);
+            } else {
+                // We could have lost the file system watch on watchPath,
+                // so re-establish the file system watch and do a fresh scan
+                try {
+                    registerFileSystemWatch(watchPath, resourcePath, ALL_WATCH_KINDS);
+                } catch (IOException e) {
+                    // OK, now watchPath has been deleted,
+                    // so handle as deleted
+                    handleDeletedFolderEvent(watchPath);
+                }
+                scanDir(watchPath);
+            }
+        }
+
+        private void handleCreatedResource(Path watchPath, Path resourcePath) {
+            removeFilesystemWatchReason(watchPath.getParent(), watchPath);
+            Set<Path> set = watchedForDeletion.getOrDefault(watchPath, Collections.emptySet());
+            set.remove(resourcePath);
+            if (set.isEmpty()) {
+                watchedForDeletion.remove(watchPath);
+            }
+            detectChange(resourcePath);
+        }
+
+        private void registerFileSystemWatch(Path path, Path reason, WatchEvent.Kind<?>[] kinds) throws IOException {
+            // register the watch and store the watch key
+            WatchKey watchKey = path.register(watchService, kinds);
+            registeredWatches.put(path, watchKey);
+
+            // keep track of the file watch
+            Map<Path, Integer> reasons = activeFileWatches.get(path);
+            if (reasons == null) {
+                reasons = new HashMap<>(1);
+                activeFileWatches.put(path, reasons);
+            }
+            // increment the counter for the reason
+            reasons.put(reason, reasons.getOrDefault(reason, 0) + 1);
+        }
+
+        private void handleCreatedFolderEvent(Path path) {
+            Path parent = path.getParent();
+            if (parent == null) { // find bugs complains about potential NPE
+                // this should never happen
+                return;
+            }
+
+            // get leaves and update state
+            Set<Path> leaves = watchedForCreation.remove(path);
+
+            // transfer delete watch from parent to path
+            Set<Path> deleteLeaves = watchedForDeletion.getOrDefault(parent, Collections.emptySet());
+            deleteLeaves.removeAll(leaves);
+            if (deleteLeaves.isEmpty()) {
+                // remove from internal state
+                watchedForDeletion.remove(parent);
+            }
+
+            Set<Path> directResources = new HashSet<>();
+            Set<Path> childrenToWatch = new HashSet<>();
+
             for (Path leaf : leaves) {
-                Path parent = leaf.getParent();
-                if (resourcePath.equals(parent)) {
-                    try {
-                        addWatchedFolder(parent, leaf);
-                        // re-register for this leaf
-                        parent.register(watchService, WATCH_KINDS);
-                    } catch (IOException e) {
-                        // continue search for other leaves
+                addWatchedDeletedFolder(path, leaf);
+                removeFilesystemWatchReason(parent.getParent(), parent);
+                removeFilesystemWatchReason(parent, path);
+
+                // mark direct resources found
+                if (path.equals(leaf.getParent())) {
+                    directResources.add(leaf);
+                    // remove the reason for the file watches
+                    continue;
+                }
+
+                // we need to find the direct child of the input path
+                // towards the leaf and add creation watches on those children
+                Path current = leaf;
+                while (current != null && !current.equals(path)) {
+                    Path currentParent = current.getParent();
+                    if (path.equals(currentParent)) {
+                        addWatchedCreatedFolder(current, leaf);
+                        childrenToWatch.add(current);
                     }
-                    // scan dir to make sure we haven't missed
-                    // recreation event
-                    scanDir(resourcePath);
+                    current = currentParent;
+                }
+            }
+
+            // done updating internal state, ready to register the new file watches now
+            try {
+                for (Path directResource : directResources) {
+                    registerFileSystemWatch(path, directResource, ALL_WATCH_KINDS);
+                }
+                for (Path toWatch : childrenToWatch) {
+                    registerFileSystemWatch(path, toWatch, CREATE_KINDS);
+                }
+                // we could have missed file creation within the path so do a scan
+                scanDir(path);
+            } catch (IOException e) {
+                // couldn't register all file watches
+                // check if path has been removed
+                if (!Files.exists(path)) {
+                    handleDeletedFolderEvent(path);
                 } else {
-                    boolean folderExist = false;
-                    Path current = leaf;
-
-                    while (!current.equals(resourcePath) && !folderExist) {
-                        Path currentParent = current.getParent();
-                        if (currentParent == null) {
-                            // stop at the root
-                            continue;
-                        }
-                        // track creation of leaf parent folders
-                        // up until the created resource path for the event
-                        if (Files.exists(currentParent)) {
-                            folderExist = true;
-                            addWatchedFolder(currentParent, leaf);
-                            addWatchedFolder(current, leaf);
-                            try {
-                                currentParent.register(watchService, WATCH_KINDS);
-                                Path currentGrandParent = currentParent.getParent();
-                                if (currentGrandParent != null) {
-                                    currentGrandParent.register(watchService, WATCH_KINDS);
-                                }
-                            } catch (IOException e) {
-
-                            }
-                            scanDir(currentParent);
-                        }
-                        current = currentParent;
-                    }
+                    // Checkstyle: stop warning message from guest code
+                    System.err.println("[HotSwap API]: Unexpected exception while handling creation of path: " + path);
+                    // Checkstyle: resume warning message from guest code
+                    e.printStackTrace();
                 }
             }
         }
 
+        private void removeFilesystemWatchReason(Path path, Path reason) {
+            // remove the reason from file watch state
+            Map<Path, Integer> reasons = activeFileWatches.getOrDefault(path, Collections.emptyMap());
+            int count = reasons.getOrDefault(reason, 0);
+            if (count <= 1) {
+                reasons.remove(reason);
+            } else {
+                // decrement the reason count
+                reasons.put(reason, reasons.get(reason) - 1);
+            }
+
+            // only cancel the file system watch if the last reason
+            // to have it was removed
+            if (reasons.isEmpty()) {
+                activeFileWatches.remove(path);
+                // cancel the file watch and remove from state
+                WatchKey watchKey = registeredWatches.remove(path);
+                if (watchKey != null) {
+                    watchKey.cancel();
+                }
+            }
+        }
+
+        // The main idea is that we need to transfer the leaf paths
+        // to the parent directory, since this will be the new parent
+        // folder we keep track of.
+        //
+        // Furthermore, we need to transfer the created folder watches,
+        // to the input path or create new ones.
         private void handleDeletedFolderEvent(Path path) {
             Path parent = path.getParent();
-            // stop at the root
+            // stop at the root, but this should never happen
             if (parent == null) {
                 return;
             }
 
-            Set<Path> leaves = watchedFolders.remove(path);
+            // update state
+            Set<Path> leaves = watchedForDeletion.remove(path);
             if (leaves == null) {
                 // must have been recreated and handled already
                 // so no further actions required here
@@ -390,30 +519,74 @@ final class ServiceWatcher {
             }
 
             for (Path leaf : leaves) {
-                // watch for deletion of parent folder
-                addWatchedFolder(parent, leaf);
+                // transfer leaves to parent for deletion
+                addWatchedDeletedFolder(parent, leaf);
+                transferCreationWatch(path, leaf);
             }
+            removeFilesystemWatchReason(parent, path);
 
+            // done updating internal state
+
+            // update file-system watches to new state
             try {
                 Path grandParent = parent.getParent();
                 if (grandParent != null) {
-                    grandParent.register(watchService, WATCH_KINDS);
+                    registerDeleteFileSystemWatch(grandParent, parent);
                 }
                 if (Files.exists(parent) && Files.isReadable(parent)) {
-                    // OK, parent exists, so re-register watch on path
-                    // to look for folder recreation
-                    for (Path leaf : leaves) {
-                        // watch for creation of current folder
-                        addWatchedFolder(path, leaf);
-                    }
-                    parent.register(watchService, WATCH_KINDS);
+                    // OK, parent exists, so register create watch on path
+                    registerCreateFileSystemWatch(parent, path);
+                    // make a scan to make sure we didn't miss any events
+                    // just prior to registering the file system watch
                     scanDir(parent);
-                    return;
+                } else {
+                    handleDeletedFolderEvent(parent);
                 }
             } catch (IOException e) {
-                // didn't exist, carry on to parent then
+                // didn't exist, move on to parent then
+                handleDeletedFolderEvent(parent);
             }
-            handleDeletedFolderEvent(parent);
+        }
+
+        private void transferCreationWatch(Path path, Path leaf) {
+            // we know path was deleted, so we need to find the direct
+            // child of the path to the leaf if any and transfer the
+            // create watch to the input path
+            Path current = leaf;
+            while (current != path) {
+                Path parent = current.getParent();
+                if (parent != null && parent.equals(path)) {
+                    // found the direct child path!
+                    // transfer creation watch from the
+                    // found child to the input path
+                    watchedForCreation.remove(current);
+                    addWatchedCreatedFolder(path, leaf);
+                    // remove the reason for the file system watch
+                    removeFilesystemWatchReason(path, current);
+                    break;
+                }
+                current = parent;
+            }
+        }
+
+        private void registerDeleteFileSystemWatch(Path path, Path reason) throws IOException {
+            // check if there's a create watch also registered
+            if (!watchedForCreation.getOrDefault(path, Collections.emptySet()).isEmpty()) {
+                // OK, then register both for creation and deletion
+                registerFileSystemWatch(path, reason, CREATE_DELETE_KINDS);
+            } else {
+                registerFileSystemWatch(path, reason, DELETE_KINDS);
+            }
+        }
+
+        private void registerCreateFileSystemWatch(Path path, Path reason) throws IOException {
+            // check if there's a create watch also registered
+            if (!watchedForDeletion.getOrDefault(path, Collections.emptySet()).isEmpty()) {
+                // OK, then register both for creation and deletion
+                registerFileSystemWatch(path, reason, CREATE_DELETE_KINDS);
+            } else {
+                registerFileSystemWatch(path, reason, CREATE_KINDS);
+            }
         }
 
         private void detectChange(Path path) {
@@ -436,8 +609,8 @@ final class ServiceWatcher {
             try (Stream<Path> list = Files.list(dir)) {
                 list.forEach((path) -> {
                     if (watchActions.containsKey(path)) {
-                        detectChange(path);
-                    } else if (watchedFolders.containsKey(path)) {
+                        handleCreatedResource(dir, path);
+                    } else if (watchedForCreation.containsKey(path)) {
                         handleCreatedFolderEvent(path);
                     }
                 });
