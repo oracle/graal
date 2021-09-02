@@ -768,13 +768,13 @@ public class WebAssembly extends Dictionary {
         }
     }
 
-    private static Object embedderDataSet(Object[] args) {
+    public static Object embedderDataSet(Object[] args) {
         checkArgumentCount(args, 2);
         getEmbedderDataHolder(args).setEmbedderData(args[1]);
         return WasmVoidResult.getInstance();
     }
 
-    private static Object embedderDataGet(Object[] args) {
+    public static Object embedderDataGet(Object[] args) {
         checkArgumentCount(args, 1);
         return getEmbedderDataHolder(args).getEmbedderData();
     }

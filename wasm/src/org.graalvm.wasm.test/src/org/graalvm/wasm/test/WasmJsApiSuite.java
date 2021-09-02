@@ -57,8 +57,8 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
@@ -71,6 +71,7 @@ import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
@@ -1086,6 +1087,71 @@ public class WasmJsApiSuite {
                 Assert.fail("Should have failed - try to grow table beyond max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            }
+        });
+    }
+
+    private static void checkEmbedderData(Object wasmEntity) {
+        Object defaultEmbedderData = WebAssembly.embedderDataGet(new Object[]{wasmEntity});
+        Assert.assertEquals("Unexpected default embedder data", WasmVoidResult.getInstance(), defaultEmbedderData);
+
+        Object newEmbedderData = new Object();
+        WebAssembly.embedderDataSet(new Object[]{wasmEntity, newEmbedderData});
+        Object embedderData = WebAssembly.embedderDataGet(new Object[]{wasmEntity});
+        Assert.assertEquals("Unexpected embedder data", newEmbedderData, embedderData);
+    }
+
+    @Test
+    public void testFunctionEmbedderData() throws IOException {
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmInstance instance = moduleInstantiate(wasm, binaryWithExports, null);
+            Object fn = WebAssembly.instanceExport(instance, "main");
+            checkEmbedderData(fn);
+        });
+    }
+
+    @Test
+    public void testGlobalEmbedderData() throws IOException {
+        runTest(context -> {
+            WasmGlobal global = WebAssembly.globalAlloc(ValueType.i32, false, 0);
+            checkEmbedderData(global);
+        });
+    }
+
+    @Test
+    public void testMemoryEmbedderData() throws IOException {
+        runTest(context -> {
+            WasmMemory memory = WebAssembly.memAlloc(1, 1);
+            checkEmbedderData(memory);
+        });
+    }
+
+    @Test
+    public void testTableEmbedderData() throws IOException {
+        runTest(context -> {
+            WasmTable table = WebAssembly.tableAlloc(1, 1);
+            checkEmbedderData(table);
+        });
+    }
+
+    @Test
+    public void testInvalidEmbedderData() throws IOException {
+        runTest(context -> {
+            Object notEmbedderDataHolder = new Object();
+
+            try {
+                WebAssembly.embedderDataGet(new Object[]{notEmbedderDataHolder});
+                Assert.fail("embedderDataGet failed to throw");
+            } catch (WasmJsApiException ex) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, ex.kind());
+            }
+
+            try {
+                WebAssembly.embedderDataSet(new Object[]{notEmbedderDataHolder, 42});
+                Assert.fail("embedderDataSet failed to throw");
+            } catch (WasmJsApiException ex) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, ex.kind());
             }
         });
     }
