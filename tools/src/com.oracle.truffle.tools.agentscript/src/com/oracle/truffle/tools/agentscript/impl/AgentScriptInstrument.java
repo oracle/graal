@@ -61,7 +61,7 @@ public final class AgentScriptInstrument extends InsightInstrument implements co
     }
 
     @Override
-    protected synchronized void collectGlobalSymbolsImpl(InsightPerSource src, List<String> argNames, List<Object> args) {
+    synchronized void collectGlobalSymbolsImpl(InsightPerSource src, List<String> argNames, List<Object> args) {
         if (agent == null) {
             agent = new AgentObject("Warning: 'agent' is deprecated. Use 'insight'.\n", this, src);
         }

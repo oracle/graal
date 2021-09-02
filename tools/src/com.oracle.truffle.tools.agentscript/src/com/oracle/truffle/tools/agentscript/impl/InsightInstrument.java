@@ -129,12 +129,12 @@ public class InsightInstrument extends TruffleInstrument {
     protected void onDispose(Env tmp) {
     }
 
-    protected AgentObject createInsightObject(InsightPerSource source) {
+    AgentObject createInsightObject(InsightPerSource source) {
         return new AgentObject(null, this, source);
     }
 
     @SuppressWarnings("unused")
-    protected void collectGlobalSymbolsImpl(InsightPerSource source, List<String> argNames, List<Object> args) {
+    void collectGlobalSymbolsImpl(InsightPerSource source, List<String> argNames, List<Object> args) {
         for (InstrumentInfo item : env.getInstruments().values()) {
             if (NAME.equals(item.getName())) {
                 continue;
