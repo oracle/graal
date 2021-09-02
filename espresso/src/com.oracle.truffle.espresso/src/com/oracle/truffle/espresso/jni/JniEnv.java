@@ -2561,7 +2561,8 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     public static @JavaType(Class.class) StaticObject GetSuperclass(@JavaType(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
-        if (klass.isInterface() || klass.isJavaLangObject()) {
+        if (klass.isInterface() || klass.getSuperClass() == null) {
+            /* also handles primitive classes */
             return StaticObject.NULL;
         }
         return klass.getSuperKlass().mirror();

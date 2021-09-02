@@ -41,6 +41,7 @@ import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_
 import java.io.File;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
@@ -83,7 +84,13 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -121,6 +128,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
+import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -522,8 +530,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
-    @TruffleBoundary
-    // TODO(peterssen): @Type annotaion only for readability purposes.
     public @JavaType(String.class) StaticObject JVM_InternString(@JavaType(String.class) StaticObject self) {
         return getInterpreterToVM().intern(self);
     }
@@ -793,6 +799,562 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
+    public @JavaType(String.class) StaticObject JVM_InitClassName(@JavaType(Class.class) StaticObject self) {
+        StaticObject name = Target_java_lang_Class.getName0(self, getMeta());
+        getMeta().java_lang_Class_name.set(self, name);
+        return name;
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(Class[].class) StaticObject JVM_GetClassInterfaces(@JavaType(Class.class) StaticObject self) {
+        final Klass[] superInterfaces = self.getMirrorKlass().getInterfaces();
+
+        StaticObject instance = getMeta().java_lang_Class.allocateReferenceArray(superInterfaces.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                return superInterfaces[i].mirror();
+            }
+        });
+
+        return instance;
+    }
+
+    @VmImpl(isJni = true)
+    public static boolean JVM_IsInterface(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass().isInterface();
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(Object[].class) StaticObject JVM_GetClassSigners(@JavaType(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass.isPrimitive()) {
+            return StaticObject.NULL;
+        }
+        StaticObject signersArray = (StaticObject) getMeta().HIDDEN_SIGNERS.getHiddenObject(self);
+        if (signersArray == null || StaticObject.isNull(signersArray)) {
+            return StaticObject.NULL;
+        }
+        return signersArray.copy();
+    }
+
+    @VmImpl(isJni = true)
+    public void JVM_SetClassSigners(@JavaType(Class.class) StaticObject self, @JavaType(Object[].class) StaticObject signers) {
+        Klass klass = self.getMirrorKlass();
+        if (!klass.isPrimitive() && !klass.isArray()) {
+            getMeta().HIDDEN_SIGNERS.setHiddenObject(self, signers);
+        }
+    }
+
+    @VmImpl(isJni = true)
+    public static boolean JVM_IsArrayClass(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass().isArray();
+    }
+
+    @VmImpl(isJni = true)
+    public static boolean JVM_IsHiddenClass(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass().isHidden();
+    }
+
+    @VmImpl(isJni = true)
+    public static boolean JVM_IsPrimitiveClass(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass().isPrimitive();
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(java.lang.reflect.Field[].class) StaticObject JVM_GetClassDeclaredFields(@JavaType(Class.class) StaticObject self, boolean publicOnly) {
+
+        // TODO(peterssen): From Hostpot: 4496456 We need to filter out
+        // java.lang.Throwable.backtrace.
+        Meta meta = getMeta();
+        ArrayList<Field> collectedMethods = new ArrayList<>();
+        Klass klass = self.getMirrorKlass();
+        klass.ensureLinked();
+        for (Field f : klass.getDeclaredFields()) {
+            if (!publicOnly || f.isPublic()) {
+                collectedMethods.add(f);
+            }
+        }
+        final Field[] fields = collectedMethods.toArray(Field.EMPTY_ARRAY);
+
+        EspressoContext context = meta.getContext();
+
+        // TODO(peterssen): Cache guest j.l.reflect.Field constructor.
+        // Calling the constructor is just for validation, manually setting the fields would be
+        // faster.
+        Method fieldInit;
+        if (meta.getJavaVersion().java15OrLater()) {
+            fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
+                            /* declaringClass */ Type.java_lang_Class,
+                            /* name */ Type.java_lang_String,
+                            /* type */ Type.java_lang_Class,
+                            /* modifiers */ Type._int,
+                            /* trustedFinal */ Type._boolean,
+                            /* slot */ Type._int,
+                            /* signature */ Type.java_lang_String,
+                            /* annotations */ Type._byte_array));
+        } else {
+            fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
+                            /* declaringClass */ Type.java_lang_Class,
+                            /* name */ Type.java_lang_String,
+                            /* type */ Type.java_lang_Class,
+                            /* modifiers */ Type._int,
+                            /* slot */ Type._int,
+                            /* signature */ Type.java_lang_String,
+                            /* annotations */ Type._byte_array));
+        }
+        StaticObject fieldsArray = meta.java_lang_reflect_Field.allocateReferenceArray(fields.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                final Field f = fields[i];
+                StaticObject instance = meta.java_lang_reflect_Field.allocateInstance();
+
+                Attribute rawRuntimeVisibleAnnotations = f.getAttribute(Name.RuntimeVisibleAnnotations);
+                StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
+                                : StaticObject.NULL;
+
+                Attribute rawRuntimeVisibleTypeAnnotations = f.getAttribute(Name.RuntimeVisibleTypeAnnotations);
+                StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
+                                : StaticObject.NULL;
+                if (meta.getJavaVersion().java15OrLater()) {
+                    fieldInit.invokeDirect(
+                                    /* this */ instance,
+                                    /* declaringKlass */ f.getDeclaringKlass().mirror(),
+                                    /* name */ context.getStrings().intern(f.getName()),
+                                    /* type */ f.resolveTypeKlass().mirror(),
+                                    /* modifiers */ f.getModifiers(),
+                                    /* trustedFinal */ f.isTrustedFinal(),
+                                    /* slot */ f.getSlot(),
+                                    /* signature */ meta.toGuestString(f.getGenericSignature()),
+                                    // FIXME(peterssen): Fill annotations bytes.
+                                    /* annotations */ runtimeVisibleAnnotations);
+                } else {
+                    fieldInit.invokeDirect(
+                                    /* this */ instance,
+                                    /* declaringKlass */ f.getDeclaringKlass().mirror(),
+                                    /* name */ context.getStrings().intern(f.getName()),
+                                    /* type */ f.resolveTypeKlass().mirror(),
+                                    /* modifiers */ f.getModifiers(),
+                                    /* slot */ f.getSlot(),
+                                    /* signature */ meta.toGuestString(f.getGenericSignature()),
+                                    // FIXME(peterssen): Fill annotations bytes.
+                                    /* annotations */ runtimeVisibleAnnotations);
+                }
+                meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, f);
+                meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+                return instance;
+            }
+        });
+
+        return fieldsArray;
+    }
+
+    // TODO(tg): inject constructor calltarget.
+    @VmImpl(isJni = true)
+    public @JavaType(Constructor[].class) StaticObject JVM_GetClassDeclaredConstructors(@JavaType(Class.class) StaticObject self, boolean publicOnly) {
+        Meta meta = getMeta();
+        ArrayList<Method> collectedMethods = new ArrayList<>();
+        Klass klass = self.getMirrorKlass();
+        klass.ensureLinked();
+        for (Method m : klass.getDeclaredConstructors()) {
+            if (Name._init_.equals(m.getName()) && (!publicOnly || m.isPublic())) {
+                collectedMethods.add(m);
+            }
+        }
+        final Method[] constructors = collectedMethods.toArray(Method.EMPTY_ARRAY);
+
+        EspressoContext context = meta.getContext();
+
+        // TODO(peterssen): Cache guest j.l.reflect.Constructor constructor.
+        // Calling the constructor is just for validation, manually setting the fields would be
+        // faster.
+        Method constructorInit = meta.java_lang_reflect_Constructor.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* parameterTypes */ Type.java_lang_Class_array,
+                        /* checkedExceptions */ Type.java_lang_Class_array,
+                        /* modifiers */ Type._int,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array,
+                        /* parameterAnnotations */ Type._byte_array));
+
+        StaticObject arr = meta.java_lang_reflect_Constructor.allocateReferenceArray(constructors.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                final Method m = constructors[i];
+
+                Attribute rawRuntimeVisibleAnnotations = m.getAttribute(Name.RuntimeVisibleAnnotations);
+                StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
+                                : StaticObject.NULL;
+
+                Attribute rawRuntimeVisibleParameterAnnotations = m.getAttribute(Name.RuntimeVisibleParameterAnnotations);
+                StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
+                                ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
+                                : StaticObject.NULL;
+
+                Attribute rawRuntimeVisibleTypeAnnotations = m.getAttribute(Name.RuntimeVisibleTypeAnnotations);
+                StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
+                                : StaticObject.NULL;
+
+                final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
+                StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
+                                m.getParameterCount(),
+                                new IntFunction<StaticObject>() {
+                                    @Override
+                                    public StaticObject apply(int j) {
+                                        return rawParameterKlasses[j].mirror();
+                                    }
+                                });
+
+                final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
+                StaticObject checkedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                    @Override
+                    public StaticObject apply(int j) {
+                        return rawCheckedExceptions[j].mirror();
+                    }
+                });
+
+                SignatureAttribute signatureAttribute = (SignatureAttribute) m.getAttribute(Name.Signature);
+                StaticObject genericSignature = StaticObject.NULL;
+                if (signatureAttribute != null) {
+                    String sig = m.getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
+                    genericSignature = meta.toGuestString(sig);
+                }
+
+                StaticObject instance = meta.java_lang_reflect_Constructor.allocateInstance();
+                constructorInit.invokeDirect(
+                                /* this */ instance,
+                                /* declaringKlass */ m.getDeclaringKlass().mirror(),
+                                /* parameterTypes */ parameterTypes,
+                                /* checkedExceptions */ checkedExceptions,
+                                /* modifiers */ m.getMethodModifiers(),
+                                /* slot */ i, // TODO(peterssen): Fill method slot.
+                                /* signature */ genericSignature,
+
+                                // FIXME(peterssen): Fill annotations bytes.
+                                /* annotations */ runtimeVisibleAnnotations,
+                                /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
+
+                meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(instance, m);
+                meta.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+
+                return instance;
+            }
+        });
+
+        return arr;
+    }
+
+    // TODO(tg): inject constructor calltarget.
+    @VmImpl(isJni = true)
+    public @JavaType(java.lang.reflect.Method[].class) StaticObject JVM_GetClassDeclaredMethods(@JavaType(Class.class) StaticObject self, boolean publicOnly) {
+        Meta meta = getMeta();
+        ArrayList<Method> collectedMethods = new ArrayList<>();
+        Klass klass = self.getMirrorKlass();
+        klass.ensureLinked();
+        for (Method m : klass.getDeclaredMethods()) {
+            if ((!publicOnly || m.isPublic()) &&
+                            // Filter out <init> and <clinit> from reflection.
+                            !Name._init_.equals(m.getName()) && !Name._clinit_.equals(m.getName())) {
+                collectedMethods.add(m);
+            }
+        }
+        final Method[] methods = collectedMethods.toArray(Method.EMPTY_ARRAY);
+
+        return meta.java_lang_reflect_Method.allocateReferenceArray(methods.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                return methods[i].makeMirror();
+            }
+        });
+
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(Class[].class) StaticObject JVM_GetDeclaredClasses(@JavaType(Class.class) StaticObject self) {
+        Meta meta = getMeta();
+        Klass klass = self.getMirrorKlass();
+        if (klass.isPrimitive() || klass.isArray()) {
+            return meta.java_lang_Class.allocateReferenceArray(0);
+        }
+        ObjectKlass instanceKlass = (ObjectKlass) klass;
+        InnerClassesAttribute innerClasses = (InnerClassesAttribute) instanceKlass.getAttribute(InnerClassesAttribute.NAME);
+
+        if (innerClasses == null || innerClasses.entries().length == 0) {
+            return meta.java_lang_Class.allocateReferenceArray(0);
+        }
+
+        RuntimeConstantPool pool = instanceKlass.getConstantPool();
+        List<Klass> innerKlasses = new ArrayList<>();
+
+        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+            if (entry.innerClassIndex != 0 && entry.outerClassIndex != 0) {
+                // Check to see if the name matches the class we're looking for
+                // before attempting to find the class.
+                Symbol<Name> outerDescriptor = pool.classAt(entry.outerClassIndex).getName(pool);
+
+                // Check decriptors/names before resolving.
+                if (outerDescriptor.equals(instanceKlass.getName())) {
+                    Klass outerKlass = pool.resolvedKlassAt(instanceKlass, entry.outerClassIndex);
+                    if (outerKlass == instanceKlass) {
+                        Klass innerKlass = pool.resolvedKlassAt(instanceKlass, entry.innerClassIndex);
+                        // HotSpot:
+                        // Throws an exception if outer klass has not declared k as
+                        // an inner klass
+                        // Reflection::check_for_inner_class(k, inner_klass, true, CHECK_NULL);
+                        // TODO(peterssen): The check in HotSpot is redundant.
+                        innerKlasses.add(innerKlass);
+                    }
+                }
+            }
+        }
+
+        return meta.java_lang_Class.allocateReferenceArray(innerKlasses.size(), new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int index) {
+                return innerKlasses.get(index).mirror();
+            }
+        });
+    }
+
+    /**
+     * Return the enclosing class; or null for: primitives, arrays, anonymous classes (declared
+     * inside methods).
+     */
+    private static Klass computeEnclosingClass(ObjectKlass klass) {
+        InnerClassesAttribute innerClasses = (InnerClassesAttribute) klass.getAttribute(InnerClassesAttribute.NAME);
+        if (innerClasses == null) {
+            return null;
+        }
+
+        RuntimeConstantPool pool = klass.getConstantPool();
+
+        boolean found = false;
+        Klass outerKlass = null;
+
+        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+            if (entry.innerClassIndex != 0) {
+                Symbol<Name> innerDescriptor = pool.classAt(entry.innerClassIndex).getName(pool);
+
+                // Check decriptors/names before resolving.
+                if (innerDescriptor.equals(klass.getName())) {
+                    Klass innerKlass = pool.resolvedKlassAt(klass, entry.innerClassIndex);
+                    found = (innerKlass == klass);
+                    if (found && entry.outerClassIndex != 0) {
+                        outerKlass = pool.resolvedKlassAt(klass, entry.outerClassIndex);
+                    }
+                }
+            }
+            if (found) {
+                break;
+            }
+        }
+
+        // TODO(peterssen): Follow HotSpot implementation described below.
+        // Throws an exception if outer klass has not declared k as an inner klass
+        // We need evidence that each klass knows about the other, or else
+        // the system could allow a spoof of an inner class to gain access rights.
+        return outerKlass;
+    }
+
+    @VmImpl(isJni = true)
+    public static @JavaType(Class.class) StaticObject JVM_GetDeclaringClass(@JavaType(Class.class) StaticObject self) {
+        // Primitives and arrays are not "enclosed".
+        if (!(self.getMirrorKlass() instanceof ObjectKlass)) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass k = (ObjectKlass) self.getMirrorKlass();
+        Klass outerKlass = computeEnclosingClass(k);
+        if (outerKlass == null) {
+            return StaticObject.NULL;
+        }
+        return outerKlass.mirror();
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(String.class) StaticObject JVM_GetSimpleBinaryName(@JavaType(Class.class) StaticObject self) {
+        Klass k = self.getMirrorKlass();
+        if (k.isPrimitive() || k.isArray()) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass klass = (ObjectKlass) k;
+        RuntimeConstantPool pool = klass.getConstantPool();
+        InnerClassesAttribute inner = klass.getInnerClasses();
+        for (InnerClassesAttribute.Entry entry : inner.entries()) {
+            int innerClassIndex = entry.innerClassIndex;
+            if (innerClassIndex != 0) {
+                if (pool.classAt(innerClassIndex).getName(pool) == klass.getName()) {
+                    if (pool.resolvedKlassAt(k, innerClassIndex) == k) {
+                        if (entry.innerNameIndex != 0) {
+                            Symbol<Name> innerName = pool.symbolAt(entry.innerNameIndex);
+                            return getMeta().toGuestString(innerName);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return StaticObject.NULL;
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(String.class) StaticObject JVM_GetClassSignature(@JavaType(Class.class) StaticObject self) {
+        if (self.getMirrorKlass() instanceof ObjectKlass) {
+            ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
+            SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Name.Signature);
+            if (signature != null) {
+                String sig = klass.getConstantPool().symbolAt(signature.getSignatureIndex(), "signature").toString();
+                return getMeta().toGuestString(sig);
+            }
+        }
+        return StaticObject.NULL;
+    }
+
+    @VmImpl(isJni = true)
+    public static @JavaType(byte[].class) StaticObject JVM_GetClassAnnotations(@JavaType(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass instanceof ObjectKlass) {
+            Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleAnnotations);
+            if (annotations != null) {
+                Meta meta = klass.getMeta();
+                return StaticObject.wrap(annotations.getData(), meta);
+            }
+        }
+        return StaticObject.NULL;
+    }
+
+    @VmImpl(isJni = true)
+    public static @JavaType(byte[].class) StaticObject JVM_GetClassTypeAnnotations(@JavaType(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass instanceof ObjectKlass) {
+            Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleTypeAnnotations);
+            if (annotations != null) {
+                Meta meta = klass.getMeta();
+                return StaticObject.wrap(annotations.getData(), meta);
+            }
+        }
+        return StaticObject.NULL;
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(internalName = "Lsun/reflect/ConstantPool;") StaticObject JVM_GetClassConstantPool(@JavaType(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass.isArray() || klass.isPrimitive()) {
+            // No constant pool for arrays and primitives.
+            return StaticObject.NULL;
+        }
+        StaticObject cp = InterpreterToVM.newObject(getMeta().sun_reflect_ConstantPool, false);
+        getMeta().sun_reflect_ConstantPool_constantPoolOop.setObject(cp, self);
+        return cp;
+    }
+
+    @TruffleBoundary
+    @VmImpl(isJni = true)
+    public boolean JVM_DesiredAssertionStatus(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @JavaType(Class.class) StaticObject clazz) {
+        if (StaticObject.isNull(clazz.getMirrorKlass().getDefiningClassLoader())) {
+            return EspressoOptions.EnableSystemAssertions.getValue(getMeta().getContext().getEnv().getOptions());
+        }
+        return EspressoOptions.EnableAssertions.getValue(getMeta().getContext().getEnv().getOptions());
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(Object[].class) StaticObject JVM_GetEnclosingMethodInfo(@JavaType(Class.class) StaticObject self) {
+        Meta meta = getMeta();
+        InterpreterToVM vm = meta.getInterpreterToVM();
+        if (self.getMirrorKlass() instanceof ObjectKlass) {
+            ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
+            EnclosingMethodAttribute enclosingMethodAttr = klass.getEnclosingMethod();
+            if (enclosingMethodAttr == null) {
+                return StaticObject.NULL;
+            }
+            int classIndex = enclosingMethodAttr.getClassIndex();
+            if (classIndex == 0) {
+                return StaticObject.NULL;
+            }
+            StaticObject arr = meta.java_lang_Object.allocateReferenceArray(3);
+            RuntimeConstantPool pool = klass.getConstantPool();
+            Klass enclosingKlass = pool.resolvedKlassAt(klass, classIndex);
+
+            vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
+
+            int methodIndex = enclosingMethodAttr.getMethodIndex();
+            if (methodIndex != 0) {
+                NameAndTypeConstant nmt = pool.nameAndTypeAt(methodIndex);
+                StaticObject name = meta.toGuestString(nmt.getName(pool));
+                StaticObject desc = meta.toGuestString(nmt.getDescriptor(pool));
+
+                vm.setArrayObject(name, 1, arr);
+                vm.setArrayObject(desc, 2, arr);
+            }
+
+            return arr;
+        }
+        return StaticObject.NULL;
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    public @JavaType(internalName = "[Ljava/lang/reflect/RecordComponent;") StaticObject JVM_GetRecordComponents(@JavaType(Class.class) StaticObject self) {
+        Klass k = self.getMirrorKlass();
+        if (!(k instanceof ObjectKlass)) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass klass = (ObjectKlass) k;
+        RecordAttribute record = (RecordAttribute) klass.getAttribute(RecordAttribute.NAME);
+        if (record == null) {
+            return StaticObject.NULL;
+        }
+        RecordAttribute.RecordComponentInfo[] components = record.getComponents();
+        return getMeta().java_lang_reflect_RecordComponent.allocateReferenceArray(components.length, (i) -> components[i].toGuestComponent(getMeta(), klass));
+    }
+
+    @VmImpl(isJni = true)
+    public static boolean JVM_IsRecord(@JavaType(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass instanceof ObjectKlass) {
+            return ((ObjectKlass) klass).isRecord();
+        }
+        return false;
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    public @JavaType(Class[].class) StaticObject JVM_GetPermittedSubclasses(@JavaType(Class.class) StaticObject self) {
+        Klass k = self.getMirrorKlass();
+        if (!(k instanceof ObjectKlass)) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass klass = (ObjectKlass) k;
+        if (!klass.isSealed()) {
+            return StaticObject.NULL;
+        }
+        char[] classes = ((PermittedSubclassesAttribute) klass.getAttribute(PermittedSubclassesAttribute.NAME)).getClasses();
+        StaticObject[] permittedSubclasses = new StaticObject[classes.length];
+        RuntimeConstantPool pool = klass.getConstantPool();
+        int nClasses = 0;
+        for (int index : classes) {
+            Klass permitted;
+            try {
+                permitted = pool.resolvedKlassAt(klass, index);
+            } catch (EspressoException e) {
+                /* Suppress and continue */
+                continue;
+            }
+            if (permitted instanceof ObjectKlass) {
+                permittedSubclasses[nClasses++] = permitted.mirror();
+            }
+        }
+        if (nClasses == permittedSubclasses.length) {
+            return StaticObject.createArray(getMeta().java_lang_Class_array, permittedSubclasses);
+        }
+        return getMeta().java_lang_Class.allocateReferenceArray(nClasses, (i) -> permittedSubclasses[i]);
+    }
+
+    @VmImpl(isJni = true)
     public static int JVM_GetClassAccessFlags(@JavaType(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
         if (klass.isPrimitive()) {
@@ -826,7 +1388,11 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl(isJni = true)
     public @JavaType(ProtectionDomain.class) StaticObject JVM_GetProtectionDomain(@JavaType(Class.class) StaticObject current) {
-        return (StaticObject) getMeta().HIDDEN_PROTECTION_DOMAIN.getHiddenObject(current);
+        if (StaticObject.isNull(current)) {
+            return StaticObject.NULL;
+        }
+        StaticObject pd = (StaticObject) getMeta().HIDDEN_PROTECTION_DOMAIN.getHiddenObject(current);
+        return pd == null ? StaticObject.NULL : pd;
     }
 
     // endregion class
@@ -1330,6 +1896,60 @@ public final class VM extends NativeEnv implements ContextAccess {
         return klass.mirror();
     }
 
+    @VmImpl(isJni = true)
+    public @JavaType(Class.class) StaticObject JVM_FindClassFromCaller(@Pointer TruffleObject namePtr,
+                    boolean init, @JavaType(ClassLoader.class) StaticObject loader,
+                    @JavaType(Class.class) StaticObject caller) {
+        Meta meta = getMeta();
+        Symbol<Type> type = namePtrToInternal(namePtr);
+        Klass result;
+        if (Types.isPrimitive(type)) {
+            result = null;
+        } else {
+            result = meta.resolveSymbolOrNull(type, loader, JVM_GetProtectionDomain(caller));
+        }
+        if (result == null) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, NativeUtils.interopPointerToString(namePtr));
+        }
+        if (init) {
+            result.safeInitialize();
+        }
+        return result.mirror();
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(Class.class) StaticObject JVM_FindPrimitiveClass(@Pointer TruffleObject namePtr) {
+        Meta meta = getMeta();
+        String hostName = NativeUtils.interopPointerToString(namePtr);
+        return findPrimitiveClass(meta, hostName);
+    }
+
+    @JavaType(Class.class)
+    public static StaticObject findPrimitiveClass(Meta meta, String hostName) {
+        switch (hostName) {
+            case "boolean":
+                return meta._boolean.mirror();
+            case "byte":
+                return meta._byte.mirror();
+            case "char":
+                return meta._char.mirror();
+            case "short":
+                return meta._short.mirror();
+            case "int":
+                return meta._int.mirror();
+            case "float":
+                return meta._float.mirror();
+            case "double":
+                return meta._double.mirror();
+            case "long":
+                return meta._long.mirror();
+            case "void":
+                return meta._void.mirror();
+            default:
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, hostName);
+        }
+    }
+
     // endregion class loading
 
     // region Library support
@@ -1628,13 +2248,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     // endregion array
 
     // region assertion
-
-    @SuppressWarnings("unused")
-    @VmImpl(isJni = true)
-    public static boolean JVM_DesiredAssertionStatus(@JavaType(Class.class) StaticObject unused, @JavaType(Class.class) StaticObject cls) {
-        // TODO(peterssen): Assertions are always disabled, use the VM arguments.
-        return false;
-    }
 
     /**
      * Espresso only supports basic -ea and -esa options. Complex per-class/package filters are
