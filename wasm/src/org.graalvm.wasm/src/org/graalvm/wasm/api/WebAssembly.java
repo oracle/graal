@@ -101,6 +101,7 @@ public class WebAssembly extends Dictionary {
 
         addMember("mem_alloc", new Executable(args -> memAlloc(args)));
         addMember("mem_grow", new Executable(args -> memGrow(args)));
+        addMember("mem_set_grow_callback", new Executable(args -> memSetGrowCallback(args)));
 
         addMember("global_alloc", new Executable(args -> globalAlloc(args)));
         addMember("global_read", new Executable(args -> globalRead(args)));
@@ -584,6 +585,35 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow memory above max limit");
         }
         return pageSize;
+    }
+
+    private static Object memSetGrowCallback(Object[] args) {
+        InteropLibrary lib = InteropLibrary.getUncached();
+        if (!(args[0] instanceof WasmMemory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        if (!lib.isExecutable(args[1])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        }
+        WasmMemory memory = (WasmMemory) args[0];
+        return memSetGrowCallback(memory, args[1]);
+    }
+
+    private static Object memSetGrowCallback(WasmMemory memory, Object callback) {
+        memory.setGrowCallback(callback);
+        return WasmVoidResult.getInstance();
+    }
+
+    public static void invokeMemGrowCallback(WasmMemory memory) {
+        Object callback = memory.getGrowCallback();
+        if (callback != null) {
+            InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                lib.execute(callback, memory);
+            } catch (InteropException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory grow callback", e);
+            }
+        }
     }
 
     private static Object globalAlloc(Object[] args) {
