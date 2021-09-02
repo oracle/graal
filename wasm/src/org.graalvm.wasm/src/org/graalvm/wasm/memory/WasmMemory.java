@@ -43,6 +43,8 @@ package org.graalvm.wasm.memory;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
+import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
@@ -64,10 +66,9 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import org.graalvm.wasm.api.WebAssembly;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class WasmMemory implements TruffleObject {
+public abstract class WasmMemory extends EmbedderDataHolder implements TruffleObject {
 
     private Object growCallback = null;
 
