@@ -60,7 +60,7 @@ import static org.junit.Assert.assertNotEquals;
 import org.junit.Test;
 
 public class ParsingFromInstrumentTest {
-    public static final class InsightTestLanguage extends ProxyLanguage {
+    public static final class ParsingTestLanguage extends ProxyLanguage {
         int parsingCounter;
         int executingCounter;
 
@@ -69,18 +69,14 @@ public class ParsingFromInstrumentTest {
             parsingCounter++;
 
             int idx = request.getArgumentNames().indexOf("emptyList");
-            assertNotEquals("emptyList is an argument", -1, idx);
 
             return Truffle.getRuntime().createCallTarget(new ParsingNode(idx));
         }
 
         class ParsingNode extends RootNode {
-            private final ContextReference<LanguageContext> ref = ContextReference.create(ProxyLanguage.class);
-            private final int idx;
-
             ParsingNode(int idx) {
                 super(languageInstance);
-                this.idx = idx;
+                assertNotEquals("emptyList is an argument", -1, idx);
             }
 
             @Override
@@ -93,15 +89,15 @@ public class ParsingFromInstrumentTest {
 
     @Test
     public void parsingTest() throws Exception {
-        InsightTestLanguage itl = new InsightTestLanguage();
+        ParsingTestLanguage itl = new ParsingTestLanguage();
 
         ProxyLanguage.setDelegate(itl);
         Engine sharedEngine = Engine.create();
 
-        Source insightScript = Source.newBuilder(ProxyLanguage.ID, "\n" + "\n" + "\n",
-                        "insight.script").build();
+        Source script = Source.newBuilder(ProxyLanguage.ID, "\n" + "\n" + "\n",
+                        "extra.script").build();
 
-        registerHook(sharedEngine, insightScript);
+        registerHook(sharedEngine, script);
 
         try (Context c = Context.newBuilder().engine(sharedEngine).build()) {
             // @formatter:off
@@ -142,9 +138,9 @@ public class ParsingFromInstrumentTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static void registerHook(Engine sharedEngine, Source insightScript) {
-        Function<Source, Void> insight = sharedEngine.getInstruments().get("parsingFromInstrument").lookup(Function.class);
-        insight.apply(insightScript);
+    private static void registerHook(Engine sharedEngine, Source script) {
+        Function<Source, Void> registrar = sharedEngine.getInstruments().get("parsingFromInstrument").lookup(Function.class);
+        registrar.apply(script);
     }
 
     @TruffleInstrument.Registration(id = "parsingFromInstrument", services = Function.class)
