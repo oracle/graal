@@ -90,7 +90,7 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     }
 
     @Override
-    protected void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
+    protected void doExactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
         int scale = ReplacementsUtil.arrayIndexScale(INJECTED_META_ACCESS, elementKind);
         int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(INJECTED_META_ACCESS, elementKind);
         long sourceOffset = arrayBaseOffset + (long) srcPos * scale;
