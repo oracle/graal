@@ -547,8 +547,8 @@ JNIEXPORT jclass JNICALL JVM_DefineClassWithSource(JNIEnv *env, const char *name
 }
 
 JNIEXPORT jstring JNICALL JVM_GetClassName(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassName);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassName);
+  return (*getEnv())->JVM_GetClassName(env, cls);;
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetClassInterfaces(JNIEnv *env, jclass cls) {
@@ -587,8 +587,8 @@ JNIEXPORT jboolean JNICALL JVM_IsPrimitiveClass(JNIEnv *env, jclass cls) {
 }
 
 JNIEXPORT jclass JNICALL JVM_GetComponentType(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetComponentType);
-  return NULL;
+  IMPLEMENTED(JVM_GetComponentType);
+  return (*getEnv())->JVM_GetComponentType(env, cls);
 }
 
 JNIEXPORT jint JNICALL JVM_GetClassModifiers(JNIEnv *env, jclass cls) {

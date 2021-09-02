@@ -23,155 +23,21 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.lang.reflect.Constructor;
-import java.security.ProtectionDomain;
-
-import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
+/**
+ * These substitutions are provided for performance concerns.
+ * <p>
+ * Native methods in {@link Class} that are annotated with
+ * {@code jdk.internal.vm.annotation.IntrinsicCandidate} get a substitution here.
+ */
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
-
-    @Substitution
-    public static @JavaType(Class.class) StaticObject getPrimitiveClass(@JavaType(String.class) StaticObject name,
-                    @Inject Meta meta) {
-        String hostName = meta.toHostString(name);
-        return VM.findPrimitiveClass(meta, hostName);
-    }
-
-    @Substitution
-    public static boolean desiredAssertionStatus0(@JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
-        return meta.getVM().JVM_DesiredAssertionStatus(null, clazz);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(String.class) StaticObject getName0(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        Klass klass = self.getMirrorKlass();
-        // Conversion from internal form.
-        String externalName = klass.getExternalName();
-        // Class names must be interned.
-        StaticObject guestString = meta.toGuestString(externalName);
-        return meta.getStrings().intern(guestString);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(String.class) StaticObject initClassName(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_InitClassName(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(String.class) StaticObject getSimpleBinaryName0(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetSimpleBinaryName(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(ClassLoader.class) StaticObject getClassLoader0(@JavaType(Class.class) StaticObject self) {
-        return self.getMirrorKlass().getDefiningClassLoader();
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(java.lang.reflect.Field[].class) StaticObject getDeclaredFields0(@JavaType(Class.class) StaticObject self, boolean publicOnly,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetClassDeclaredFields(self, publicOnly);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(Constructor[].class) StaticObject getDeclaredConstructors0(@JavaType(Class.class) StaticObject self, boolean publicOnly,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetClassDeclaredConstructors(self, publicOnly);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@JavaType(Class.class) StaticObject self, boolean publicOnly,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetClassDeclaredMethods(self, publicOnly);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(Class[].class) StaticObject getInterfaces0(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetClassInterfaces(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean isPrimitive(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsPrimitiveClass(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean isInterface(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsInterface(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static int getModifiers(@JavaType(Class.class) StaticObject self) {
-        return self.getMirrorKlass().getClassModifiers();
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(Class.class) StaticObject getSuperclass(@JavaType(Class.class) StaticObject self) {
-        if (self.getMirrorKlass().isInterface()) {
-            return StaticObject.NULL;
-        }
-        Klass superclass = self.getMirrorKlass().getSuperKlass();
-        if (superclass == null) {
-            return StaticObject.NULL;
-        }
-        return superclass.mirror();
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean isArray(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsArrayClass(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean isHidden(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsHiddenClass(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean isRecord(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsRecord(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(internalName = "[Ljava/lang/reflect/RecordComponent;") StaticObject getRecordComponents0(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetRecordComponents(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(Class[].class) StaticObject getPermittedSubclasses0(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetPermittedSubclasses(self);
-    }
-
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java8OrEarlier.class)
-    public static @JavaType(Class.class) StaticObject getComponentType(@JavaType(Class.class) StaticObject self) {
-        if (self.getMirrorKlass().isArray()) {
-            Klass componentType = ((ArrayKlass) self.getMirrorKlass()).getComponentType();
-            return componentType.mirror();
-        }
-        return StaticObject.NULL;
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(Object[].class) StaticObject getEnclosingMethod0(@JavaType(Class.class) StaticObject self, @Inject Meta meta) {
-        return meta.getVM().JVM_GetEnclosingMethodInfo(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static @JavaType(Class.class) StaticObject getDeclaringClass0(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_GetDeclaringClass(self);
-    }
+    // region perf substitutions
 
     /**
      * Determines if the specified {@code Object} is assignment-compatible with the object
@@ -203,53 +69,50 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(ProtectionDomain.class) StaticObject getProtectionDomain0(@JavaType(Class.class) StaticObject self,
+    public static boolean isAssignableFrom(@JavaType(Class.class) StaticObject self, @JavaType(Class.class) StaticObject cls,
                     @Inject Meta meta) {
-        return meta.getVM().JVM_GetProtectionDomain(self);
+        if (StaticObject.isNull(cls)) {
+            meta.throwNullPointerException();
+        }
+        return self.getMirrorKlass().isAssignableFrom(cls.getMirrorKlass());
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(Class.class) StaticObject getNestHost0(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_GetNestHost(self);
+    public static boolean isInterface(@JavaType(Class.class) StaticObject self) {
+        return VM.JVM_IsInterface(self);
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(Class[].class) StaticObject getNestMembers0(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetNestMembers(self);
+    public static boolean isPrimitive(@JavaType(Class.class) StaticObject self) {
+        return VM.JVM_IsPrimitiveClass(self);
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(byte[].class) StaticObject getRawAnnotations(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_GetClassAnnotations(self);
+    public static boolean isArray(@JavaType(Class.class) StaticObject self) {
+        return VM.JVM_IsArrayClass(self);
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(byte[].class) StaticObject getRawTypeAnnotations(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_GetClassTypeAnnotations(self);
+    public static @JavaType(Class.class) StaticObject getSuperclass(@JavaType(Class.class) StaticObject self) {
+        if (self.getMirrorKlass().isInterface()) {
+            return StaticObject.NULL;
+        }
+        Klass superclass = self.getMirrorKlass().getSuperKlass();
+        if (superclass == null) {
+            return StaticObject.NULL;
+        }
+        return superclass.mirror();
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(String.class) StaticObject getGenericSignature0(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetClassSignature(self);
+    public static int getModifiers(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass().getClassModifiers();
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(Class[].class) StaticObject getDeclaredClasses0(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetDeclaredClasses(self);
+    public static boolean isHidden(@JavaType(Class.class) StaticObject self) {
+        return VM.JVM_IsHiddenClass(self);
     }
 
-    @Substitution(hasReceiver = true)
-    public static @JavaType(Object[].class) StaticObject getSigners(@JavaType(Class.class) StaticObject self,
-                    @Inject Meta meta) {
-        return meta.getVM().JVM_GetClassSigners(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    public static void setSigners(@JavaType(Class.class) StaticObject self, @JavaType(Object[].class) StaticObject signers,
-                    @Inject Meta meta) {
-        meta.getVM().JVM_SetClassSigners(self, signers);
-    }
+    // endregion perf substitutions
 }

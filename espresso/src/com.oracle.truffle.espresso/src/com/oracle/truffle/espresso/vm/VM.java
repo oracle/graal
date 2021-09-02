@@ -800,7 +800,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_InitClassName(@JavaType(Class.class) StaticObject self) {
-        StaticObject name = Target_java_lang_Class.getName0(self, getMeta());
+        StaticObject name = JVM_GetClassName(self);
         getMeta().java_lang_Class_name.set(self, name);
         return name;
     }
@@ -1393,6 +1393,25 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         StaticObject pd = (StaticObject) getMeta().HIDDEN_PROTECTION_DOMAIN.getHiddenObject(current);
         return pd == null ? StaticObject.NULL : pd;
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(String.class) StaticObject JVM_GetClassName(@JavaType(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        // Conversion from internal form.
+        String externalName = klass.getExternalName();
+        // Class names must be interned.
+        StaticObject guestString = getMeta().toGuestString(externalName);
+        return getStrings().intern(guestString);
+    }
+
+    @VmImpl(isJni = true)
+    public static @JavaType(Class.class) StaticObject JVM_GetComponentType(@JavaType(Class.class) StaticObject self) {
+        if (self.getMirrorKlass().isArray()) {
+            Klass componentType = ((ArrayKlass) self.getMirrorKlass()).getComponentType();
+            return componentType.mirror();
+        }
+        return StaticObject.NULL;
     }
 
     // endregion class
