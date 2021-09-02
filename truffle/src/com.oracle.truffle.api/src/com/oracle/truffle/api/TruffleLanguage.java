@@ -245,7 +245,6 @@ public abstract class TruffleLanguage<C> {
 
     // get and isFinal are frequent operations -> cache the engine access call
     @CompilationFinal LanguageInfo languageInfo;
-    @CompilationFinal ContextReference<Object> reference;
     @CompilationFinal Object polyglotLanguageInstance;
 
     List<ContextThreadLocal<?>> contextThreadLocals;
@@ -1478,23 +1477,6 @@ public abstract class TruffleLanguage<C> {
     @Deprecated
     protected SourceSection findSourceLocation(C context, Object value) {
         return null;
-    }
-
-    /**
-     * @deprecated in 19.3 as this method is inefficient in many situations. Use context references
-     *             as described {@link ContextReference here}.
-     *
-     * @since 0.25
-     */
-    @SuppressWarnings("unchecked")
-    @Deprecated
-    public final ContextReference<C> getContextReference() {
-        ContextReference<Object> ref = this.reference;
-        if (ref == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            reference = ref = ContextReference.create(getClass());
-        }
-        return (ContextReference<C>) reference;
     }
 
     CallTarget parse(Source source, String... argumentNames) {
