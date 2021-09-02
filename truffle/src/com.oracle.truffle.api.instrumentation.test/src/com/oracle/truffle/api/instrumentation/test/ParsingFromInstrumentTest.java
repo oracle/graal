@@ -139,12 +139,13 @@ public class ParsingFromInstrumentTest {
 
     @SuppressWarnings("unchecked")
     private static void registerHook(Engine sharedEngine, Source script) {
-        Function<Source, Void> registrar = sharedEngine.getInstruments().get("parsingFromInstrument").lookup(Function.class);
+        Function<Source, Void> registrar = sharedEngine.getInstruments().get(ParsingInstrument.ID).lookup(Function.class);
         registrar.apply(script);
     }
 
-    @TruffleInstrument.Registration(id = "parsingFromInstrument", services = Function.class)
+    @TruffleInstrument.Registration(id = ParsingInstrument.ID, services = Function.class)
     public static final class ParsingInstrument extends TruffleInstrument {
+        public static final String ID = "com-oracle-truffle-api-instrumentation-test-ParsingFromInstrumentTest-ParsingInstrument";
         private final ContextLocal<Object[]> parsedTargets = createContextLocal((c) -> new Object[1]);
 
         @Override
