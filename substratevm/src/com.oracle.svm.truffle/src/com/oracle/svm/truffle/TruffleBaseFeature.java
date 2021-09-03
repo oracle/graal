@@ -223,8 +223,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     @Override
     public void cleanup() {
         /*
-         * Clean the cached call target nodes to prevent them from keeping application
-         * classes alive
+         * Clean the cached call target nodes to prevent them from keeping application classes alive
          */
         TruffleRuntime runtime = Truffle.getRuntime();
         if (!(runtime instanceof DefaultTruffleRuntime) && !(runtime instanceof SubstrateTruffleRuntime)) {
@@ -518,14 +517,12 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         static void duringAnalysis(DuringAnalysisAccess access) {
             boolean requiresIteration = false;
             /*
-             * We need to register as unsafe-accessed the primitive, object, and shape
-             * fields of generated storage classes. However, these classes do not share
-             * a common super type, and their fields are not annotated. Plus, the
-             * invocation plugin does not intercept calls to `StaticShape.Builder.build()`
-             * that happen during the analysis, for example because of context
-             * pre-initialization. Therefore, we inspect the generator cache in
-             * ArrayBasedShapeGenerator, which contains references to all generated
-             * storage classes.
+             * We need to register as unsafe-accessed the primitive, object, and shape fields of
+             * generated storage classes. However, these classes do not share a common super type,
+             * and their fields are not annotated. Plus, the invocation plugin does not intercept
+             * calls to `StaticShape.Builder.build()` that happen during the analysis, for example
+             * because of context pre-initialization. Therefore, we inspect the generator cache in
+             * ArrayBasedShapeGenerator, which contains references to all generated storage classes.
              */
             ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
             for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
@@ -638,8 +635,8 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
 
     public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
         /*
-         * We have to use reflection to access private members instead of aliasing them
-         * in the substitution class since substitutions are present only at runtime
+         * We have to use reflection to access private members instead of aliasing them in the
+         * substitution class since substitutions are present only at runtime
          */
         private static final Method staticPropertyGetInternalKind;
 
@@ -750,11 +747,10 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
 // Checkstyle: stop
 
 /*
- * If allowProcess() is disabled at build time, then we ensure that
- * ProcessBuilder is not reachable.
- * The main purpose of this is to test that ProcessBuilder is not part of the
- * image when building language images with allowProcess() disabled, which
- * we interpret as "forbid shelling out to external processes" (GR-14041).
+ * If allowProcess() is disabled at build time, then we ensure that ProcessBuilder is not reachable.
+ * The main purpose of this is to test that ProcessBuilder is not part of the image when building
+ * language images with allowProcess() disabled, which we interpret as
+ * "forbid shelling out to external processes" (GR-14041).
  */
 @Delete
 @TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleBaseFeature.IsEnabled.class,
@@ -763,8 +759,7 @@ final class Target_java_lang_ProcessBuilder {
 }
 
 /*
- * If allowProcess() is disabled at build time, then we ensure
- * ObjdumpDisassemblerProvider does not
+ * If allowProcess() is disabled at build time, then we ensure ObjdumpDisassemblerProvider does not
  * try to invoke the nonexistent ProcessBuilder.
  */
 @TargetClass(className = "org.graalvm.compiler.code.ObjdumpDisassemblerProvider", onlyWith = {
