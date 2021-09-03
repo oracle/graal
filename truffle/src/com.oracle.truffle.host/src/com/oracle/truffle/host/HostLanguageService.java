@@ -50,6 +50,7 @@ import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
@@ -60,6 +61,8 @@ import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 public class HostLanguageService extends AbstractHostService {
 
     final HostLanguage language;
+
+    @CompilationFinal private boolean methodScopingEnabled;
 
     HostLanguageService(AbstractPolyglotImpl polyglot, HostLanguage language) {
         super(polyglot);
@@ -75,6 +78,7 @@ public class HostLanguageService extends AbstractHostService {
         }
         language.initializeHostAccess(hostAccess, useCl);
         context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed);
+        this.methodScopingEnabled = language.api.isMethodScopingEnabled(hostAccess);
     }
 
     @Override
@@ -213,7 +217,10 @@ public class HostLanguageService extends AbstractHostService {
         return HostProxy.isProxyGuestObject(obj);
     }
 
-    private static Object unwrapIfScoped(Object obj) {
+    private Object unwrapIfScoped(Object obj) {
+        if (!methodScopingEnabled) {
+            return obj;
+        }
         Object o = obj;
         if (o instanceof ScopedObject) {
             o = ((ScopedObject) o).unwrapForGuest();

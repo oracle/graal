@@ -193,6 +193,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean allowsImplementation(HostAccess access, Class<?> type);
 
+        public abstract boolean isMethodScopingEnabled(HostAccess access);
+
         public abstract boolean isMethodScoped(HostAccess access, Executable e);
 
         public abstract boolean isArrayAccessible(HostAccess access);

@@ -182,6 +182,10 @@ public class ValueScopingTest {
             test.invokeMember("storeValueAndPin", test);
             assertTrue(o.value.isHostObject());
 
+            // host object
+            test.invokeMember("storeValueAndPin", ProxyObject.fromMap(new HashMap<>()));
+            assertTrue(o.value.isProxyObject());
+
             test.invokeMember("storeMapAndPin", proxy);
             // maps can be pinned too
             assertEquals("42", o.map.get("cafe"));

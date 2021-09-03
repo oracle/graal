@@ -107,7 +107,6 @@ public final class HostAccess {
     private final boolean methodScopingDefault;
     private final EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations;
     private final EconomicSet<Executable> disableMethodScoping;
-    private Predicate<Executable> methodScopingClosure;
     volatile Object impl;
 
     private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, null, null);
@@ -437,30 +436,27 @@ public final class HostAccess {
         return false;
     }
 
-    Predicate<Executable> getMethodScopingClosure() {
-        if (methodScopingClosure == null) {
-            methodScopingClosure = new Predicate<Executable>() {
-                public boolean test(Executable e) {
-                    if (!methodScopingDefault) {
-                        return false;
-                    }
-                    if (disableMethodScoping != null) {
-                        if (disableMethodScoping.contains(e)) {
-                            return false;
-                        }
-                    }
-                    if (disableMethodScopingAnnotations != null) {
-                        for (Class<? extends Annotation> ann : disableMethodScopingAnnotations) {
-                            if (e.getAnnotation(ann) != null) {
-                                return false;
-                            }
-                        }
-                    }
-                    return true;
-                }
-            };
+    boolean isMethodScoped(Executable e) {
+        if (!isMethodScopingEnabled()) {
+            return false;
         }
-        return methodScopingClosure;
+        if (disableMethodScoping != null) {
+            if (disableMethodScoping.contains(e)) {
+                return false;
+            }
+        }
+        if (disableMethodScopingAnnotations != null) {
+            for (Class<? extends Annotation> ann : disableMethodScopingAnnotations) {
+                if (e.getAnnotation(ann) != null) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    boolean isMethodScopingEnabled() {
+        return methodScopingDefault;
     }
 
     /**

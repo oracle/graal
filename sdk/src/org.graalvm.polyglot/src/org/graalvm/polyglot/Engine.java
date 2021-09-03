@@ -715,8 +715,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isMethodScopingEnabled(HostAccess access) {
+            return access.isMethodScopingEnabled();
+        }
+
+        @Override
         public boolean isMethodScoped(HostAccess access, Executable e) {
-            return access.getMethodScopingClosure().test(e);
+            return access.isMethodScoped(e);
         }
 
         @Override
