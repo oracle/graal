@@ -717,6 +717,8 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
                     return originalValue;
             }
 
+            assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;
+
             /*
              * Reverse the offset computation to find the index
              */
