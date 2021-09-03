@@ -413,8 +413,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         if (!config.logLevels.isEmpty()) {
             EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers());
         }
-
-        notifyContextCreated();
     }
 
     /*
@@ -2283,17 +2281,20 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
         StableLocalLocations locations = engine.contextLocalLocations;
         Object[] locals = new Object[locations.locations.length];
-
-        for (PolyglotInstrument instrument : engine.idToInstrument.values()) {
-            if (instrument.isCreated()) {
-                invokeContextLocalsFactory(locals, instrument.contextLocalLocations);
-            }
-        }
+        initializeInstrumentContextLocals(locals);
         /*
          * Languages will be initialized in PolyglotLanguageContext#ensureCreated().
          */
         assert this.contextLocals == null;
         this.contextLocals = locals;
+    }
+
+    void initializeInstrumentContextLocals(Object[] locals) {
+        for (PolyglotInstrument instrument : engine.idToInstrument.values()) {
+            if (instrument.isCreated()) {
+                invokeContextLocalsFactory(locals, instrument.contextLocalLocations);
+            }
+        }
     }
 
     /**
@@ -2316,7 +2317,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     void resizeContextLocals(StableLocalLocations locations) {
-        Thread.holdsLock(this);
+        assert Thread.holdsLock(this);
         Object[] oldLocals = this.contextLocals;
         if (oldLocals != null) {
             if (oldLocals.length > locations.locations.length) {

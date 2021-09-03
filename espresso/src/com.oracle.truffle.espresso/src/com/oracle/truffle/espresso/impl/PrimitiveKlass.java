@@ -114,7 +114,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode) {
         return null;
     }
 

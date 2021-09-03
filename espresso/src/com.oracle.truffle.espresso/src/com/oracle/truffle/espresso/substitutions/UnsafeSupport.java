@@ -25,6 +25,9 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.meta.EspressoError;
+
 import sun.misc.Unsafe;
 
 /**
@@ -227,6 +230,119 @@ final class UnsafeSupport {
         return Double.longBitsToDouble(compareAndExchangeLong(o, offset,
                         Double.doubleToRawLongBits(expected),
                         Double.doubleToRawLongBits(x)));
+    }
+
+    static void copySwapMemory(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
+        switch ((int) elemSize) {
+            case 2:
+                CSMHelper.do2(src, srcOffset, dst, destOffset, bytes, elemSize);
+                return;
+            case 4:
+                CSMHelper.do4(src, srcOffset, dst, destOffset, bytes, elemSize);
+                return;
+            case 8:
+                CSMHelper.do8(src, srcOffset, dst, destOffset, bytes, elemSize);
+                return;
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private static final class CSMHelper {
+        private enum Direction {
+            Right(1),
+            Left(-1);
+
+            final int dir;
+
+            Direction(int dir) {
+                this.dir = dir;
+            }
+
+            long initPos(long bytes, long elemSize) {
+                return (this == Right) ? 0 : (bytes - elemSize);
+            }
+
+            long inc(long elemSize) {
+                return (dir * elemSize);
+            }
+        }
+
+        private static Direction getDirection(Object src, long srcOffset, Object dst, long destOffset, long bytes) {
+            long srcEnd = srcOffset + bytes;
+            if (src == dst) { // Covers case of both are null
+                return destOffset <= srcOffset || destOffset >= srcEnd ? Direction.Right : Direction.Left;
+            }
+            return Direction.Right;
+        }
+
+        private static char swap(char c) {
+            return Character.reverseBytes(c);
+        }
+
+        private static int swap(int i) {
+            return Integer.reverseBytes(i);
+        }
+
+        private static long swap(long l) {
+            return Long.reverseBytes(l);
+        }
+
+        static void do2(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
+            assert elemSize == 1;
+            Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
+            char tmp;
+
+            long copied = 0;
+            long pos = d.initPos(bytes, elemSize);
+
+            while (copied < bytes) {
+
+                tmp = UNSAFE.getChar(src, srcOffset + pos);
+                tmp = swap(tmp);
+                UNSAFE.putChar(dst, destOffset + pos, tmp);
+
+                pos += d.inc(elemSize);
+                copied += elemSize;
+            }
+        }
+
+        static void do4(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
+            assert elemSize == 1;
+            Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
+            int tmp;
+
+            long copied = 0;
+            long pos = d.initPos(bytes, elemSize);
+
+            while (copied < bytes) {
+
+                tmp = swap(UNSAFE.getInt(src, srcOffset + pos));
+                UNSAFE.putInt(dst, destOffset + pos, tmp);
+
+                pos += d.inc(elemSize);
+                copied += elemSize;
+            }
+        }
+
+        static void do8(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
+            assert elemSize == 1;
+            Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
+            long tmp;
+
+            long copied = 0;
+            long pos = d.initPos(bytes, elemSize);
+
+            while (copied < bytes) {
+
+                tmp = swap(UNSAFE.getLong(src, srcOffset + pos));
+                UNSAFE.putLong(dst, destOffset + pos, tmp);
+
+                pos += d.inc(elemSize);
+                copied += elemSize;
+            }
+        }
     }
 
     // For 11:

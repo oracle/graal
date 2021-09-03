@@ -183,7 +183,6 @@ public class LoopEx {
 
     public void resetCounted() {
         assert countedLoopChecked;
-        assert counted != null;
         ivs = null;
         counted = null;
         countedLoopChecked = false;

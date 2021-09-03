@@ -301,7 +301,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                     Files.delete(configFilePath);
                     configFilePath = null;
                 } catch (IOException e) {
-                    System.out.printf("WARNING: Cound not delete %s: %s%n", configFilePath, e);
+                    System.out.printf("Warning: Cound not delete %s: %s%n", configFilePath, e);
                 }
             }
         }

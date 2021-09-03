@@ -385,12 +385,11 @@ public final class Target_java_lang_Thread {
     }
 
     public static void setInterrupt(StaticObject self, boolean value) {
-        self.getKlass().getMeta().HIDDEN_INTERRUPTED.setHiddenObject(self, value);
+        self.getKlass().getMeta().HIDDEN_INTERRUPTED.setBoolean(self, value, true);
     }
 
     static boolean checkInterrupt(StaticObject self) {
-        Boolean interrupt = (Boolean) self.getKlass().getMeta().HIDDEN_INTERRUPTED.getHiddenObject(self);
-        return interrupt != null && interrupt;
+        return self.getKlass().getMeta().HIDDEN_INTERRUPTED.getBoolean(self, true);
     }
 
     @TruffleBoundary
@@ -400,12 +399,20 @@ public final class Target_java_lang_Thread {
         if (hostThread == null) {
             return;
         }
-        setInterrupt(self, true);
+        if (self.getKlass().getMeta().getJavaVersion().java13OrEarlier()) {
+            // Starting from JDK 14, the interrupted status is set in java code.
+            setInterrupt(self, true);
+        }
         hostThread.interrupt();
     }
 
+    @Substitution
+    public static void clearInterruptEvent() {
+        Thread.interrupted(); // Clear host interruption
+    }
+
     @TruffleBoundary
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java13OrEarlier.class)
     public static boolean isInterrupted(@JavaType(Thread.class) StaticObject self, boolean clear) {
         boolean result = checkInterrupt(self);
         if (clear) {
@@ -614,7 +621,7 @@ public final class Target_java_lang_Thread {
             }
         }
         if (wasInterrupted) {
-            interrupt0(meta.getContext().getCurrentThread());
+            meta.getContext().interruptThread(meta.getContext().getCurrentThread());
         }
     }
 }

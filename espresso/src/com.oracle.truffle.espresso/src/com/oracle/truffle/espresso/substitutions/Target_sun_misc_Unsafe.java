@@ -957,6 +957,16 @@ public final class Target_sun_misc_Unsafe {
         UnsafeAccess.getIfAllowed(meta).copyMemory(MetaUtil.unwrapArrayOrNull(srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(destBase), destOffset, bytes);
     }
 
+    @Substitution(hasReceiver = true)
+    public static void copySwapMemory0(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, long elemSize, @Inject Meta meta) {
+        if (bytes == 0) {
+            return;
+        }
+        UnsafeAccess.checkAllowed(meta);
+        UnsafeSupport.copySwapMemory(MetaUtil.unwrapArrayOrNull(srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(destBase), destOffset, bytes, elemSize);
+    }
+
     // region put*(long offset, * value)
 
     /**

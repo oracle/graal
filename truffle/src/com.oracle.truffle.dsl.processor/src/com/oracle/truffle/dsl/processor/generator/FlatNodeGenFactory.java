@@ -611,18 +611,18 @@ public class FlatNodeGenFactory {
         }
 
         for (ExecutableTypeData type : genericExecutableTypes) {
-            createExecute(clazz, type, Collections.<ExecutableTypeData> emptyList());
+            wrapWithTraceOnReturn(createExecute(clazz, type, Collections.<ExecutableTypeData> emptyList()));
         }
 
         for (ExecutableTypeData type : specializedExecutableTypes) {
-            createExecute(clazz, type, genericExecutableTypes);
+            wrapWithTraceOnReturn(createExecute(clazz, type, genericExecutableTypes));
         }
 
         for (ExecutableTypeData type : voidExecutableTypes) {
             List<ExecutableTypeData> genericAndSpecialized = new ArrayList<>();
             genericAndSpecialized.addAll(genericExecutableTypes);
             genericAndSpecialized.addAll(specializedExecutableTypes);
-            createExecute(clazz, type, genericAndSpecialized);
+            wrapWithTraceOnReturn(createExecute(clazz, type, genericAndSpecialized));
         }
 
         clazz.addOptional(createExecuteAndSpecialize());
@@ -701,15 +701,15 @@ public class FlatNodeGenFactory {
             }
 
             for (ExecutableTypeData type : genericExecutableTypes) {
-                uncached.add(createUncachedExecute(type));
+                wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
             for (ExecutableTypeData type : specializedExecutableTypes) {
-                uncached.add(createUncachedExecute(type));
+                wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
             for (ExecutableTypeData type : voidExecutableTypes) {
-                uncached.add(createUncachedExecute(type));
+                wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
             if (cost == null || cost.equals("MONOMORPHIC") /* the default */) {
@@ -883,7 +883,7 @@ public class FlatNodeGenFactory {
                         b.startStaticCall(context.getType(String.class), "format");
                         b.doubleQuote(String.format("Specialization '%s' in node class '%s' is enabled for AOT generation. " +
                                         "The specialization declares a @%s for language class %s but was prepared for AOT with language class '%%s'. " +
-                                        "Match the language used in the language refercence or exclude the specialization from AOT generation with @%s.%s to resolve this problem.",
+                                        "Match the language used in the language reference or exclude the specialization from AOT generation with @%s.%s to resolve this problem.",
                                         getReadableSignature(specialization.getMethod()),
                                         getQualifiedName(specialization.getNode().getTemplateType()),
                                         getSimpleName(types.CachedLanguage),
@@ -1363,7 +1363,6 @@ public class FlatNodeGenFactory {
         }
 
         generateStatisticsFields(clazz);
-
     }
 
     private void generateStatisticsFields(CodeTypeElement clazz) {
@@ -1904,12 +1903,15 @@ public class FlatNodeGenFactory {
             builder.tree(GeneratorUtils.createShouldNotReachHere("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
                             "Use an execute method that takes all arguments as parameters."));
         } else {
+            generateTraceOnEnterCall(builder, frameState);
+            generateTraceOnExceptionStart(builder);
             SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
             FrameState originalFrameState = frameState.copy();
             builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
             if (group.hasFallthrough()) {
                 builder.tree(createThrowUnsupported(builder, originalFrameState));
             }
+            generateTraceOnExceptionEnd(builder);
         }
 
         return method;
@@ -2456,6 +2458,9 @@ public class FlatNodeGenFactory {
             builder.tree(createFastPathExecuteChild(builder, originalFrameState, frameState, currentType, group, execution));
         }
 
+        generateTraceOnEnterCall(builder, frameState);
+        generateTraceOnExceptionStart(builder);
+
         if (needsAOTReset() && node.needsRewrites(context)) {
             builder.startIf();
             builder.startStaticCall(ElementUtils.findMethod(types.CompilerDirectives, "inInterpreter")).end();
@@ -2472,6 +2477,7 @@ public class FlatNodeGenFactory {
             builder.tree(createTransferToInterpreterAndInvalidate());
             builder.tree(createCallExecuteAndSpecialize(currentType, originalFrameState));
         }
+        generateTraceOnExceptionEnd(builder);
         return builder.build();
     }
 
@@ -5352,6 +5358,64 @@ public class FlatNodeGenFactory {
             builder.end();
         }
         return new ChildExecutionResult(builder.build(), throwsUnexpected);
+    }
+
+    private void generateTraceOnEnterCall(CodeTreeBuilder builder, FrameState frameState) {
+        if (node.isGenerateTraceOnEnter()) {
+            ArrayType objectArray = new ArrayCodeTypeMirror(context.getType(Object.class));
+            builder.startIf().startCall("isTracingEnabled").end(2);
+            builder.startBlock().startStatement().startCall("traceOnEnter").startNewArray(objectArray, null);
+            frameState.addReferencesTo(builder);
+            builder.end(4);  // new array, call traceOnEnter, statement, block
+        }
+    }
+
+    private void generateTraceOnExceptionStart(CodeTreeBuilder builder) {
+        if (node.isGenerateTraceOnException()) {
+            builder.startTryBlock();
+        }
+    }
+
+    private void generateTraceOnExceptionEnd(CodeTreeBuilder builder) {
+        if (node.isGenerateTraceOnException()) {
+            builder.end();  // tryBlock
+            builder.startCatchBlock(context.getType(Throwable.class), "traceThrowable");
+            builder.startIf().startCall("isTracingEnabled").end(2);
+            builder.startBlock().startStatement().startCall("traceOnException").startGroup().string("traceThrowable").end(4);
+            builder.startThrow().string("traceThrowable").end();
+            builder.end();  // catchBlock
+        }
+    }
+
+    private void wrapWithTraceOnReturn(CodeExecutableElement method) {
+        if (node.isGenerateTraceOnReturn()) {
+            CodeTypeElement enclosingClass = (CodeTypeElement) method.getEnclosingElement();
+            CodeExecutableElement traceMethod = CodeExecutableElement.cloneNoAnnotations(method);
+
+            method.setSimpleName(CodeNames.of(method.getSimpleName().toString() + "Traced"));
+            method.setVisibility(PRIVATE);
+
+            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+            builder.startCall(method.getSimpleName().toString());
+            for (VariableElement param : traceMethod.getParameters()) {
+                builder.string(param.getSimpleName().toString());
+            }
+            builder.end();
+            CodeTree initExpression = builder.build();
+
+            builder = traceMethod.createBuilder();
+            if (isVoid(method.getReturnType())) {
+                builder.startStatement().tree(initExpression).end();
+                builder.startIf().startCall("isTracingEnabled").end(2);
+                builder.startBlock().startStatement().startCall("traceOnReturn").string("null").end(3);
+            } else {
+                builder.declaration(method.getReturnType(), "traceValue", initExpression);
+                builder.startIf().startCall("isTracingEnabled").end(2);
+                builder.startBlock().startStatement().startCall("traceOnReturn").string("traceValue").end(3);
+                builder.startReturn().string("traceValue").end();
+            }
+            enclosingClass.add(traceMethod);
+        }
     }
 
     private static class ChildExecutionResult {

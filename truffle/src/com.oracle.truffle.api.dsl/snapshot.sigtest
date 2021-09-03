@@ -58,6 +58,12 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.CreateCast
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.String[] value()
 
+CLSS public abstract interface com.oracle.truffle.api.dsl.ExecuteTracingSupport
+meth public abstract boolean isTracingEnabled()
+meth public void traceOnEnter(java.lang.Object[])
+meth public void traceOnException(java.lang.Throwable)
+meth public void traceOnReturn(java.lang.Object)
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Executed
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[FIELD])

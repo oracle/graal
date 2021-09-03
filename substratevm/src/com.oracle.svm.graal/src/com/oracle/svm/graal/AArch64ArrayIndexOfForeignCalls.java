@@ -78,7 +78,9 @@ class AArch64ArrayIndexOfForeignCallsFeature implements GraalFeature {
 class AArch64ArrayIndexOfForeignCalls {
     private static final ForeignCallSignature[] ORIGINAL_FOREIGN_CALLS = {
                     ArrayIndexOf.STUB_INDEX_OF_1_BYTE,
-                    ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT
+                    ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT,
+                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES,
+                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT
     };
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ORIGINAL_FOREIGN_CALLS)
@@ -95,5 +97,17 @@ class AArch64ArrayIndexOfForeignCalls {
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static int indexOf1CharCompact(byte[] array, int arrayLength, int fromIndex, char ch) {
         return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, ch);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOfTwoConsecutiveBytes(byte[] array, int arrayLength, int fromIndex, int searchValue) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, true, array, arrayLength, fromIndex, searchValue);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOfTwoConsecutiveCharsCompact(byte[] array, int arrayLength, int fromIndex, int searchValue) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, true, array, arrayLength, fromIndex, searchValue);
     }
 }

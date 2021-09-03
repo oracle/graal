@@ -2564,12 +2564,44 @@ public class ContextPreInitializationTest {
 
         private Env environment;
         private EventBinding<BaseInstrument> contextsListenerBinding;
+        private EventBinding<?> verifyContextLocalBinding;
+
+        final ContextLocal<TruffleContext> contextLocal = createContextLocal((c) -> c);
 
         @Override
         protected void onCreate(Env env) {
             if (getActions() != null) {
                 environment = env;
                 contextsListenerBinding = env.getInstrumenter().attachContextsListener(this, true);
+                verifyContextLocalBinding = env.getInstrumenter().attachContextsListener(new ContextsListener() {
+
+                    public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+                        assertSame(context, contextLocal.get(context));
+                    }
+
+                    public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+                        assertSame(context, contextLocal.get(context));
+
+                    }
+
+                    public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+                        assertSame(context, contextLocal.get(context));
+
+                    }
+
+                    public void onContextCreated(TruffleContext context) {
+                        assertSame(context, contextLocal.get(context));
+                    }
+
+                    public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+                        assertSame(context, contextLocal.get(context));
+                    }
+
+                    public void onContextClosed(TruffleContext context) {
+                        assertSame(context, contextLocal.get(context));
+
+                    }
+                }, false);
                 performAction(null, null);
             }
         }
@@ -2577,6 +2609,7 @@ public class ContextPreInitializationTest {
         @Override
         protected void onDispose(Env env) {
             if (contextsListenerBinding != null) {
+                verifyContextLocalBinding.dispose();
                 contextsListenerBinding.dispose();
                 contextsListenerBinding = null;
                 environment = null;

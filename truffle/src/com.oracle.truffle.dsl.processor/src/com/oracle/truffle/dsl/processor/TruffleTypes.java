@@ -148,6 +148,7 @@ public class TruffleTypes {
     public static final String CachedLanguage_Name = "com.oracle.truffle.api.dsl.CachedLanguage";
     public static final String CreateCast_Name = "com.oracle.truffle.api.dsl.CreateCast";
     public static final String Executed_Name = "com.oracle.truffle.api.dsl.Executed";
+    public static final String ExecuteTracingSupport_Name = "com.oracle.truffle.api.dsl.ExecuteTracingSupport";
     public static final String Fallback_Name = "com.oracle.truffle.api.dsl.Fallback";
     public static final String GenerateAOT_Name = "com.oracle.truffle.api.dsl.GenerateAOT";
     public static final String GenerateAOT_Exclude_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Exclude";
@@ -186,6 +187,7 @@ public class TruffleTypes {
     public final DeclaredType CachedLanguage = c.getDeclaredType(CachedLanguage_Name);
     public final DeclaredType CreateCast = c.getDeclaredType(CreateCast_Name);
     public final DeclaredType Executed = c.getDeclaredType(Executed_Name);
+    public final DeclaredType ExecuteTracingSupport = c.getDeclaredType(ExecuteTracingSupport_Name);
     public final DeclaredType Fallback = c.getDeclaredType(Fallback_Name);
     public final DeclaredType GenerateAOT = c.getDeclaredType(GenerateAOT_Name);
     public final DeclaredType GenerateAOT_Exclude = c.getDeclaredType(GenerateAOT_Exclude_Name);

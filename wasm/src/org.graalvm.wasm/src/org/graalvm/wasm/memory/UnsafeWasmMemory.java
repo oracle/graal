@@ -159,6 +159,7 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     @TruffleBoundary
     public boolean grow(int extraPageSize) {
         if (extraPageSize == 0) {
+            invokeGrowCallback();
             return true;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
@@ -171,6 +172,7 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
                 unsafe.freeMemory(startAddress);
                 startAddress = updatedStartAddress;
                 size += extraPageSize;
+                invokeGrowCallback();
                 return true;
             } catch (OutOfMemoryError error) {
                 throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);

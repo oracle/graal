@@ -144,6 +144,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     private static final ArgumentParser PARSER = new ArgumentParser();
     private Config config;
+    private Optional<Double> contextEvalTime = Optional.empty();
 
     public PolyBenchLauncher() {
     }
@@ -231,7 +232,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             } catch (IOException e) {
                 throw abort("Error while examining source file '" + file + "': " + e.getMessage());
             }
+            long evalSourceStartTime = System.nanoTime();
             Value result = context.eval(source);
+            contextEvalTime = Optional.of((System.nanoTime() - evalSourceStartTime) / 1_000_000.0);
             return new EvalResult(language, source.getName(), source.hasBytes(), source.getLength(), result);
         }
     }
@@ -287,6 +290,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("::: Initializing :::");
 
             EvalResult evalResult = evalSource(context, config.path);
+
             log("language: " + evalResult.languageId);
             log("type:     " + (evalResult.isBinarySource ? "binary" : "source code"));
             log("length:   " + evalResult.sourceLength + (evalResult.isBinarySource ? " bytes" : " characters"));
@@ -307,6 +311,8 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("::: Running :::");
             config.metric.reset();
             repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, false, config.iterations);
+            // this log message is parsed in mx_vm_benchmark.py, if changed adapt parse rule.
+            contextEvalTime.ifPresent(delta -> log("### Truffle Context eval time (ms): " + round(delta)));
             log("");
         } catch (Throwable t) {
             throw abort(t);

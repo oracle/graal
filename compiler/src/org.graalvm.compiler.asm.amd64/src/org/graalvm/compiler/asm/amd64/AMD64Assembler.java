@@ -1925,6 +1925,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMIOp VSHUFPS      = new VexRVMIOp("VSHUFPS",      P_,   M_0F,   WIG, 0xC6, VEXOpAssertion.AVX1_AVX512F_VL,          EVEXTuple.FVM,      W0);
         public static final VexRVMIOp VSHUFPD      = new VexRVMIOp("VSHUFPD",      P_66, M_0F,   WIG, 0xC6, VEXOpAssertion.AVX1_AVX512F_VL,          EVEXTuple.FVM,      W1);
         public static final VexRVMIOp VPTERNLOGD   = new VexRVMIOp("VPTERNLOGD",   P_66, M_0F3A, W0,  0x25, VEXOpAssertion.AVX512F_VL,               EVEXTuple.FVM,      W0);
+        public static final VexRVMIOp VPTERNLOGQ   = new VexRVMIOp("VPTERNLOGQ",   P_66, M_0F3A, W1,  0x25, VEXOpAssertion.AVX512F_VL,               EVEXTuple.FVM,      W1);
 
         // AVX/AVX2 insert
         public static final VexRVMIOp VINSERTF128  = new VexRVMIOp("VINSERTF128",  P_66, M_0F3A, W0,  0x18, VEXOpAssertion.AVX1_256ONLY);
@@ -4804,5 +4805,4 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x30);
         emitOperandHelper(dst, src, 0, EVEXTuple.HVM.getDisp8ScalingFactor(AVXSize.ZMM));
     }
-
 }

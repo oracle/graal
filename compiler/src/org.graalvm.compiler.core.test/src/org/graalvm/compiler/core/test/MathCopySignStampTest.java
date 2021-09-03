@@ -54,6 +54,8 @@ public class MathCopySignStampTest extends GraalCompilerTest {
     private static final float[] floatValues = {
                     0.0f,
                     -0.0f,
+                    1.0f,
+                    -1.0f,
                     123.4f,
                     -56.7f,
                     Float.POSITIVE_INFINITY,
@@ -91,6 +93,8 @@ public class MathCopySignStampTest extends GraalCompilerTest {
     private static final double[] doubleValues = {
                     0.0d,
                     -0.0d,
+                    1.0d,
+                    -1.0d,
                     123.4d,
                     -56.7d,
                     Double.POSITIVE_INFINITY,

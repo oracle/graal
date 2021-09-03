@@ -339,6 +339,9 @@ public class NativeImageGeneratorRunner {
                                         .orElseThrow(() -> UserError.abort("module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
                     }
                     mainClass = classLoader.forName(className, mainModule);
+                    if (mainClass == null) {
+                        throw UserError.abort("Main entry point class '%s' not found.", className);
+                    }
                 } catch (ClassNotFoundException ex) {
                     throw UserError.abort("Main entry point class '%s' not found.", className);
                 }

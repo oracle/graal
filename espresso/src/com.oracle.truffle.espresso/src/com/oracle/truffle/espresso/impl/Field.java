@@ -155,6 +155,7 @@ public final class Field extends Member<Type> implements FieldRef {
         return target;
     }
 
+    @TruffleBoundary
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }

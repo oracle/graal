@@ -902,7 +902,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
         @SuppressWarnings("static-method")
         @ExportMessage
         int m0(Object arg0,
-                        @ExpectError("Merged librares are not supported in combination with AOT preparation. Resolve this problem by either: %n" +
+                        @ExpectError("Merged libraries are not supported in combination with AOT preparation. Resolve this problem by either: %n" +
                                         " - Setting @ExportLibrary(..., useForAOT=false) to disable AOT preparation for this export. %n" +
                                         " - Using a dispatched library without receiver expression. %n" +
                                         " - Adding the @GenerateAOT.Exclude annotation to the specialization or exported method.")//
@@ -916,7 +916,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             @SuppressWarnings("static-method")
             @Specialization
             static int doDefault(ErrorMergedLibrary receiver,
-                            @ExpectError("Merged librares are not supported in combination with AOT preparation. Resolve this problem by either: %n" +
+                            @ExpectError("Merged libraries are not supported in combination with AOT preparation. Resolve this problem by either: %n" +
                                             " - Setting @ExportLibrary(..., useForAOT=false) to disable AOT preparation for this export. %n" +
                                             " - Using a dispatched library without receiver expression. %n" +
                                             " - Adding the @GenerateAOT.Exclude annotation to the specialization or exported method.")//
