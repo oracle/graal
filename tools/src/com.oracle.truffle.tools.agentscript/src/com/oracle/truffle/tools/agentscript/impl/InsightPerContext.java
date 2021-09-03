@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
@@ -40,7 +41,10 @@ final class InsightPerContext {
     final TruffleContext context;
     private boolean initialized;
     private final Map<InsightInstrument.Key, List<Object>> functionsForBinding = new HashMap<>();
-    @CompilerDirectives.CompilationFinal(dimensions = 2) private Object[][] functionsArray;
+    @CompilerDirectives.CompilationFinal(dimensions = 2) //
+    private Object[][] functionsArray;
+    @CompilerDirectives.CompilationFinal //
+    private Assumption functionsArrayValid;
 
     InsightPerContext(InsightInstrument insight, TruffleContext context) {
         this.insight = insight;
@@ -57,6 +61,7 @@ final class InsightPerContext {
     }
 
     synchronized void register(InsightInstrument.Key key, Object function) {
+        invalidateFunctionsArray();
         List<Object> arr = functionsForBinding.get(key);
         if (arr == null) {
             arr = new ArrayList<>();
@@ -66,6 +71,7 @@ final class InsightPerContext {
     }
 
     synchronized boolean unregister(InsightInstrument.Key key, Object function) {
+        invalidateFunctionsArray();
         if (key == null) {
             boolean r = false;
             for (List<Object> arr : functionsForBinding.values()) {
@@ -88,7 +94,7 @@ final class InsightPerContext {
     }
 
     Object[] functionsFor(InsightInstrument.Key key) {
-        if (functionsArray == null || !insight.keysUnchanged().isValid()) {
+        if (functionsArray == null || !functionsArrayValid.isValid()) {
             updateFunctionsArraySlow();
         }
         Object[] functions = functionsArray[key.index];
@@ -101,7 +107,17 @@ final class InsightPerContext {
         for (Map.Entry<InsightInstrument.Key, List<Object>> entry : functionsForBinding.entrySet()) {
             fn[entry.getKey().index] = entry.getValue().toArray();
         }
+        functionsArrayValid = insight.keysUnchangedAssumption();
         functionsArray = fn;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private void invalidateFunctionsArray() {
+        assert Thread.holdsLock(this);
+        functionsArray = null;
+        if (functionsArrayValid != null) {
+            functionsArrayValid.invalidate();
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -116,7 +132,7 @@ final class InsightPerContext {
         }
         synchronized (this) {
             functionsForBinding.clear();
-            functionsArray = null;
+            invalidateFunctionsArray();
         }
     }
 }

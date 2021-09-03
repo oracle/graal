@@ -797,6 +797,7 @@ public class InsightObjectTest {
 
             @SuppressWarnings("unchecked")
             Object script = insight.lookup(Function.class).apply(insightScript);
+            assertNotNull("Handle returned", script);
 
             try {
                 Value fourtyTwo = c.eval(sampleScript);

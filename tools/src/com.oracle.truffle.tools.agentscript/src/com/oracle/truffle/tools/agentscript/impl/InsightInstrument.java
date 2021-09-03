@@ -229,10 +229,12 @@ public class InsightInstrument extends TruffleInstrument {
             keys.clear(clear);
         }
         keysUnchanged.invalidate();
-        keysUnchanged = Truffle.getRuntime().createAssumption("Keys[" + keys + "]");
     }
 
-    final Assumption keysUnchanged() {
+    synchronized Assumption keysUnchangedAssumption() {
+        if (!keysUnchanged.isValid()) {
+            keysUnchanged = Truffle.getRuntime().createAssumption("Keys[" + keys + "]");
+        }
         return keysUnchanged;
     }
 
