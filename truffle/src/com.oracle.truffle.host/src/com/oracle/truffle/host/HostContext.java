@@ -261,9 +261,10 @@ final class HostContext {
         return HostObject.forClass(receiver, this);
     }
 
-    Object toGuestValue(Object hostValue) {
-        Object result = language.access.toGuestValue(internalContext, hostValue);
-        return language.service.toGuestValue(this, result, false);
+    Object toGuestValue(Node node, Object hostValue) {
+        HostLanguage l = HostLanguage.get(node);
+        Object result = l.access.toGuestValue(internalContext, hostValue);
+        return l.service.toGuestValue(this, result, false);
     }
 
     static boolean isGuestPrimitive(Object receiver) {
@@ -287,18 +288,18 @@ final class HostContext {
 
         @Specialization(guards = "receiver == null")
         Object doNull(HostContext context, @SuppressWarnings("unused") Object receiver) {
-            return context.toGuestValue(receiver);
+            return context.toGuestValue(this, receiver);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
         Object doCached(HostContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
-            return context.toGuestValue(cachedReceiver.cast(receiver));
+            return context.toGuestValue(this, cachedReceiver.cast(receiver));
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         Object doUncached(HostContext context, Object receiver) {
-            return context.toGuestValue(receiver);
+            return context.toGuestValue(this, receiver);
         }
     }
 
