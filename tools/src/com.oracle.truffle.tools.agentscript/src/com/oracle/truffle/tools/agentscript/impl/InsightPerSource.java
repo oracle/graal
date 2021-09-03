@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -63,6 +64,8 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     private InsightInstrument.Key closeBinding;
     /* @GuardedBy("this") */
     private Map<Object, InsightInstrument.Key> bindings = new HashMap<>();
+    /* @GuardedBy("this") */
+    private Map<TruffleContext, Source> registeredSource = new WeakHashMap<>();
 
     InsightPerSource(InsightInstrument instrument, Supplier<Source> src, IgnoreSources ignoredSources) {
         this.instrument = instrument;
@@ -79,23 +82,27 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
     @CompilerDirectives.TruffleBoundary
     void initializeAgent(TruffleContext ctx) {
-        InsightPerContext ctxInight = instrument.find(ctx);
-
-        if (ctxInight.needsInitialization()) {
-            Source script = src.get();
-            instrument.ignoreSources.ignoreSource(script);
-            List<String> argNames = new ArrayList<>();
-            List<Object> args = new ArrayList<>();
-            collectSymbols(argNames, args);
-
-            CallTarget target;
-            try {
-                target = instrument.env().parse(script, argNames.toArray(new String[0]));
-            } catch (Exception ex) {
-                throw InsightException.raise(ex);
+        Source script;
+        synchronized (this) {
+            if (registeredSource.get(ctx) != null) {
+                return;
             }
-            target.call(args.toArray());
+            script = src.get();
+            registeredSource.put(ctx, script);
         }
+
+        instrument.ignoreSources.ignoreSource(script);
+        List<String> argNames = new ArrayList<>();
+        List<Object> args = new ArrayList<>();
+        collectSymbols(argNames, args);
+
+        CallTarget target;
+        try {
+            target = instrument.env().parse(script, argNames.toArray(new String[0]));
+        } catch (Exception ex) {
+            throw InsightException.raise(ex);
+        }
+        target.call(args.toArray());
     }
 
     @Override

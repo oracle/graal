@@ -39,7 +39,6 @@ import java.util.Map;
 final class InsightPerContext {
     final InsightInstrument insight;
     final TruffleContext context;
-    private boolean initialized;
     private final Map<InsightInstrument.Key, List<Object>> functionsForBinding = new HashMap<>();
     @CompilerDirectives.CompilationFinal(dimensions = 2) //
     private Object[][] functionsArray;
@@ -49,15 +48,6 @@ final class InsightPerContext {
     InsightPerContext(InsightInstrument insight, TruffleContext context) {
         this.insight = insight;
         this.context = context;
-    }
-
-    synchronized boolean needsInitialization() {
-        if (initialized) {
-            return false;
-        } else {
-            initialized = true;
-            return true;
-        }
     }
 
     synchronized void register(InsightInstrument.Key key, Object function) {
