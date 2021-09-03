@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 final class JDKIntrinsicsFeature implements GraalFeature {
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         SubstrateArraycopySnippets.registerForeignCalls(foreignCalls);
         SubstrateObjectCloneSnippets.registerForeignCalls(foreignCalls);
     }

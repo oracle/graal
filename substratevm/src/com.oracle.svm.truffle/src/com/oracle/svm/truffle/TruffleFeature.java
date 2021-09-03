@@ -203,7 +203,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(SubstrateThreadLocalHandshake.FOREIGN_POLL);
     }
 

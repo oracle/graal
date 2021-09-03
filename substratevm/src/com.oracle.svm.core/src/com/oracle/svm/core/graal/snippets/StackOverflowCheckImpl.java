@@ -470,7 +470,7 @@ final class StackOverflowCheckFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(StackOverflowCheckImpl.FOREIGN_CALLS);
     }
 

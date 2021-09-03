@@ -105,7 +105,7 @@ public final class DeoptimizationFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(DeoptimizationRuntime.DEOPTIMIZE);
         if (DeoptTester.enabled()) {
             foreignCalls.register(DeoptTester.DEOPTTEST);

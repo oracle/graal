@@ -49,7 +49,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -311,8 +310,7 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
 @Platforms(AARCH64.class)
 final class AArch64ArithmeticForeignCallsFeature implements GraalFeature {
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         AArch64ArithmeticSnippets.registerForeignCalls(foreignCalls);
     }
 }
