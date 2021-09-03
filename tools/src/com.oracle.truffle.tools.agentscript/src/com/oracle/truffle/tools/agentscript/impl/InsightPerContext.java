@@ -91,7 +91,8 @@ final class InsightPerContext {
         if (functionsArray == null || !insight.keysUnchanged().isValid()) {
             updateFunctionsArraySlow();
         }
-        return functionsArray[key.index];
+        Object[] functions = functionsArray[key.index];
+        return functions == null ? new Object[0] : functions;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -103,6 +104,7 @@ final class InsightPerContext {
         functionsArray = fn;
     }
 
+    @CompilerDirectives.TruffleBoundary
     void onClosed(InsightInstrument.Key closedKey) {
         final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
         for (Object closeFn : functionsFor(closedKey)) {
@@ -114,6 +116,7 @@ final class InsightPerContext {
         }
         synchronized (this) {
             functionsForBinding.clear();
+            functionsArray = null;
         }
     }
 }
