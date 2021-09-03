@@ -199,6 +199,9 @@ class SVGSamplerOutput {
         GRAY,
     }
 
+    private static double MINWIDTH = 3;
+    private static double IMAGEWIDTH = 1200.0;
+
     private static class GraphOwner implements SVGComponent {
 
         private final SVGSamplerOutput svg;
@@ -661,7 +664,6 @@ class SVGSamplerOutput {
         private final GraphOwner owner;
         private final double bottomPadding;
         private final double topPadding;
-        private final double minWidth;
         private final int maxDepth;
         private final double widthPerTime;
         private final long sampleCount;
@@ -671,7 +673,6 @@ class SVGSamplerOutput {
             this.bottomPadding = 2 * owner.fontSize() + 10;
             this.topPadding = 3 * owner.fontSize();
             this.sampleCount = owner.sampleData.getInt("h");
-            minWidth = 0.1;
             widthPerTime = (width() - 2 * XPAD) / sampleCount;
             int depth = 0;
             maxDepth = maxDepth(owner.sampleData);
@@ -679,7 +680,7 @@ class SVGSamplerOutput {
 
         private int maxDepth(JSONObject samples) {
             double width = sampleWidth(samples);
-            if (width < minWidth) {
+            if (width < MINWIDTH) {
                 return 0;
             } else {
                 int childDepth = 0;
@@ -698,7 +699,7 @@ class SVGSamplerOutput {
 
         public String script() {
             StringBuilder script = new StringBuilder();
-            script.append(String.format("var xpad = %s;\nvar fg_width = 1200;\nvar fg_bottom_padding = %s;\nvar fg_min_width = %s;\n", XPAD, bottomPadding, minWidth));
+            script.append(String.format("var xpad = %s;\nvar fg_width = 1200;\nvar fg_bottom_padding = %s;\nvar fg_min_width = %s;\n", XPAD, bottomPadding, MINWIDTH));
             script.append(String.format("var fg_frameheight = %s;\nvar fg_top_padding = %s;", FRAMEHEIGHT, topPadding));
             script.append(owner.getResource("flamegraph.js"));
             return script.toString();
@@ -761,7 +762,7 @@ class SVGSamplerOutput {
             StringBuilder output = new StringBuilder();
             double width = sampleWidth(sample);
             double x = sampleX(sample);
-            if (width < minWidth) {
+            if (width < MINWIDTH) {
                 return "";
             }
             HashMap<String, String> groupAttrs = new HashMap<>();
@@ -801,7 +802,7 @@ class SVGSamplerOutput {
         }
 
         public double width() {
-            return 1200.0;
+            return IMAGEWIDTH;
         }
 
         public double height() {
@@ -837,9 +838,6 @@ class SVGSamplerOutput {
         private final double widthPerTime;
         private final List<JSONObject> histogram;
         private final long sampleCount;
-
-        private static double MINWIDTH = 1;
-        private static double IMAGEWIDTH = 1200.0;
 
         SVGHistogram(GraphOwner owner) {
             this.owner = owner;
