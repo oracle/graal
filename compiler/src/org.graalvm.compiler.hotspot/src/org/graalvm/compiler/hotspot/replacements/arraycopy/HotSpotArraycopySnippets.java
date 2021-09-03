@@ -146,8 +146,6 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
 
     @Override
     protected void doGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
-        // The length > 0 check should not be placed here because generic array copy stub should
-        // enforce type check. This is fine performance-wise because this snippet is rarely used.
         counters.genericArraycopyDifferentTypeCounter.inc();
         counters.genericArraycopyDifferentTypeCopiedCounter.add(length);
         int copiedElements = GenericArrayCopyCallNode.genericArraycopy(src, srcPos, dest, destPos, length);
