@@ -2064,7 +2064,7 @@ public final class Value extends AbstractValue {
      * value that has already been released will raise a {@link IllegalStateException}.
      *
      * @throws IllegalStateException if the method scope of the value was finished
-     * @see HostAccess.SCOPED
+     * @see HostAccess#SCOPED
      * @since 21.3
      */
     public void pin() {
