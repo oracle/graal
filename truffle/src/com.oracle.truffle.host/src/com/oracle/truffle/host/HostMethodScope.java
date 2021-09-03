@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.host;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -56,9 +57,12 @@ import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
 
+import sun.misc.Unsafe;
+
 final class HostMethodScope {
 
     private static final ScopedObject[] EMTPY_SCOPE_ARRAY = new ScopedObject[0];
+    private static final Unsafe UNSAFE = getUnsafe();
 
     private ScopedObject[] scope;
     private int nextDynamicIndex;
@@ -196,6 +200,16 @@ final class HostMethodScope {
 
         static final Object OTHER_VALUE = new Object();
         static final ReflectionLibrary OTHER_VALUE_UNCACHED = ReflectionLibrary.getFactory().getUncached(OTHER_VALUE);
+        static final long DELEGATE_OFFSET;
+        static {
+            Field f;
+            try {
+                f = ScopedObject.class.getDeclaredField("delegate");
+            } catch (NoSuchFieldException | SecurityException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+            DELEGATE_OFFSET = UNSAFE.objectFieldOffset(f);
+        }
 
         volatile Object delegate; // null if freed
         volatile HostMethodScope scope; // null if pinned
@@ -252,7 +266,7 @@ final class HostMethodScope {
         void release() {
             Object d = this.delegate;
             assert d != null;
-            if (d instanceof PinnedObject || !DELEGATE.compareAndSet(this, d, null)) {
+            if (d instanceof PinnedObject || !UNSAFE.compareAndSwapObject(this, DELEGATE_OFFSET, d, null)) {
                 // pinned in the meantime
                 // we can assume that as no other thread is releasing other then the current thread
                 // therefore the only thing that could have happened here is a pin
@@ -260,8 +274,6 @@ final class HostMethodScope {
             }
             assert this.delegate == null : "Scoped objects can only be released once.";
         }
-
-        static final AtomicReferenceFieldUpdater<ScopedObject, Object> DELEGATE = AtomicReferenceFieldUpdater.newUpdater(ScopedObject.class, Object.class, "delegate");
 
         void pin() {
             Object expect;
@@ -280,7 +292,7 @@ final class HostMethodScope {
                 // we need to actually change the value for the pin update
                 // otherwise we race with release
                 update = new PinnedObject(expect);
-            } while (!DELEGATE.compareAndSet(this, expect, update));
+            } while (!UNSAFE.compareAndSwapObject(this, DELEGATE_OFFSET, expect, update));
 
             // if the pin was successful we need to clear the reference in the scope array
             // this can be racy as this is not for semantics but for the garbage collector
@@ -317,6 +329,20 @@ final class HostMethodScope {
     @TruffleBoundary
     private static RuntimeException createReleaseException(String message) {
         return HostEngineException.toEngineException(HostLanguage.get(null).access, new IllegalStateException("This scoped object has already been released. " + message));
+    }
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
     }
 
 }
