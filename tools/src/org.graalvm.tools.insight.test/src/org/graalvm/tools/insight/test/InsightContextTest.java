@@ -251,6 +251,53 @@ public class InsightContextTest {
         }
     }
 
+    @Test
+    public void closeHooksSoonerThanContext() throws Exception {
+        InsightTestLanguage itl = new InsightTestLanguage();
+
+        ProxyLanguage.setDelegate(itl);
+        Engine sharedEngine = Engine.create();
+
+        Source insightScript = Source.newBuilder(ProxyLanguage.ID, "\n" + "\n" + "\n",
+                        "insight.script").build();
+
+        AutoCloseable insightHandle = registerInsight(sharedEngine, insightScript);
+
+        try (Context c = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine))) {
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(foo,\n" +
+                "    LOOP(10, STATEMENT(EXPRESSION,EXPRESSION))\n" +
+                "  ),\n" +
+                "  CALL(foo)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+            c.eval(sampleScript);
+
+            assertEquals("Parsed once", 1, itl.parsingCounter);
+            assertEquals("Executed once", 1, itl.executingCounter);
+            assertEquals("Function foo has been called", "foo", itl.lastFunctionName);
+
+            Node sampleNode = itl.lastNode;
+            assertAgentNodes(sampleNode, 1);
+
+            insightHandle.close();
+        }
+
+        assertEquals("One on enter callbacks: " + itl.onEventCallbacks, 1, itl.onEventCallbacks.size());
+        assertEquals("One source callbacks: " + itl.onSourceCallbacks, 1, itl.onSourceCallbacks.size());
+        for (InsightTestLanguage.ParsingNode.OnSourceCallback callback : itl.onSourceCallbacks) {
+            assertEquals("One loaded source", 1, callback.sourceLoadedCounter);
+        }
+        assertEquals("One close callbacks: " + itl.onCloseCallbacks, 1, itl.onCloseCallbacks.size());
+        for (InsightTestLanguage.ParsingNode.OnCloseCallback callback : itl.onCloseCallbacks) {
+            assertEquals("No close callback is made", 0, callback.closeCounter);
+        }
+    }
+
     private static List<? extends Node> assertAgentNodes(Node rootNode, final int nodeCount) throws ClassNotFoundException {
         assertNotNull("Root node must be specified", rootNode);
 
@@ -269,9 +316,9 @@ public class InsightContextTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static void registerInsight(Engine sharedEngine, Source insightScript) {
+    private static AutoCloseable registerInsight(Engine sharedEngine, Source insightScript) {
         Function<Source, AutoCloseable> insight = sharedEngine.getInstruments().get(Insight.ID).lookup(Function.class);
-        insight.apply(insightScript);
+        return insight.apply(insightScript);
     }
 
 }

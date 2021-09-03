@@ -94,10 +94,16 @@ final class InsightPerContext {
     }
 
     Object[] functionsFor(InsightInstrument.Key key) {
-        if (functionsArray == null || !functionsArrayValid.isValid()) {
-            updateFunctionsArraySlow();
+        final int index = key.index();
+        Object[] functions;
+        if (index >= 0) {
+            if (functionsArray == null || !functionsArrayValid.isValid()) {
+                updateFunctionsArraySlow();
+            }
+            functions = functionsArray[index];
+        } else {
+            functions = null;
         }
-        Object[] functions = functionsArray[key.index];
         return functions == null ? new Object[0] : functions;
     }
 
@@ -105,7 +111,10 @@ final class InsightPerContext {
     private synchronized void updateFunctionsArraySlow() {
         Object[][] fn = new Object[insight.keysLength()][];
         for (Map.Entry<InsightInstrument.Key, List<Object>> entry : functionsForBinding.entrySet()) {
-            fn[entry.getKey().index] = entry.getValue().toArray();
+            final int index = entry.getKey().index();
+            if (index != -1) {
+                fn[index] = entry.getValue().toArray();
+            }
         }
         functionsArrayValid = insight.keysUnchangedAssumption();
         functionsArray = fn;

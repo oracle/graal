@@ -244,8 +244,17 @@ public class InsightInstrument extends TruffleInstrument {
         }
     }
 
-    final class Key implements AutoCloseable {
-        final int index;
+    final void closeKeys(Key... noLongerNeededKeys) {
+        synchronized (keys) {
+            for (Key k : noLongerNeededKeys) {
+                k.close();
+            }
+        }
+    }
+
+    final class Key {
+        @CompilerDirectives.CompilationFinal //
+        private int index;
         private final AgentType type;
         private EventBinding<?> binding;
 
@@ -259,18 +268,23 @@ public class InsightInstrument extends TruffleInstrument {
             return this;
         }
 
+        int index() {
+            return index;
+        }
+
         @Override
         public String toString() {
             return "Key[" + index + "@" + type + "]";
         }
 
-        public void close() {
+        private void close() {
             EventBinding<?> b = binding;
             if (b != null) {
                 b.dispose();
             }
             synchronized (keys) {
                 invalidateKeys(-1, index);
+                index = -1;
             }
         }
     }
