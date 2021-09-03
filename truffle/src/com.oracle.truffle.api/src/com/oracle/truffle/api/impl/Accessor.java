@@ -352,7 +352,7 @@ public abstract class Accessor {
 
         public abstract TruffleContext getCurrentCreatorTruffleContext();
 
-        public abstract Object toGuestValue(Object obj, Object languageContext);
+        public abstract Object toGuestValue(Node node, Object obj, Object languageContext);
 
         public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);
 

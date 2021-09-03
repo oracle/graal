@@ -1495,7 +1495,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             } else {
                 targetLanguageContext = languageContext;
             }
-            return targetLanguageContext.asValue(toGuestValue(hostValue, true));
+            return targetLanguageContext.asValue(toGuestValue(null, hostValue, true));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e, true);
         } finally {
@@ -1503,9 +1503,37 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    Object toGuestValue(Object hostValue, boolean asValue) {
-        Object value = PolyglotHostAccess.toGuestValue(this, hostValue);
-        return engine.host.toGuestValue(getHostContextImpl(), value, asValue);
+    static PolyglotEngineImpl getConstantEngine(Node node) {
+        if (!CompilerDirectives.inCompiledCode() ||
+                        !CompilerDirectives.isPartialEvaluationConstant(node)) {
+            return null;
+        }
+        if (node == null) {
+            return null;
+        }
+        RootNode root = node.getRootNode();
+        if (root == null) {
+            return null;
+        }
+        return (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
+    }
+
+    Object toGuestValue(Node node, Object hostValue, boolean asValue) {
+        PolyglotEngineImpl localEngine = getConstantEngine(node);
+        PolyglotContextImpl localContext;
+        if (localEngine == null) {
+            localEngine = this.engine;
+            localContext = this;
+        } else {
+            // lookup context as a constant
+            localContext = localEngine.singleContextValue.getConstant();
+            if (localContext == null) {
+                // not a constant use this
+                localContext = this;
+            }
+        }
+        Object value = PolyglotHostAccess.toGuestValue(localContext, hostValue);
+        return localEngine.host.toGuestValue(localContext.getHostContextImpl(), value, asValue);
     }
 
     boolean waitForThreads(long startMillis, long timeoutMillis) {

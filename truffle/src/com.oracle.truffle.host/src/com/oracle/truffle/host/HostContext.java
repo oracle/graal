@@ -253,8 +253,10 @@ final class HostContext {
         }
     }
 
-    Value asValue(Object value) {
-        return language.access.toValue(internalContext, value);
+    Value asValue(Node node, Object value) {
+        // make language lookup fold if possible
+        HostLanguage l = HostLanguage.get(node);
+        return l.access.toValue(internalContext, value);
     }
 
     Object toGuestValue(Class<?> receiver) {
@@ -263,8 +265,10 @@ final class HostContext {
 
     Object toGuestValue(Node node, Object hostValue) {
         HostLanguage l = HostLanguage.get(node);
-        Object result = l.access.toGuestValue(internalContext, hostValue);
-        return l.service.toGuestValue(this, result, false);
+        HostContext context = HostContext.get(node);
+        assert context == this;
+        Object result = l.access.toGuestValue(context.internalContext, hostValue);
+        return l.service.toGuestValue(context, result, false);
     }
 
     static boolean isGuestPrimitive(Object receiver) {

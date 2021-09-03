@@ -185,7 +185,7 @@ abstract class HostToTypeNode extends Node {
         }
 
         if (targetType == Value.class && context != null) {
-            return value instanceof Value ? value : context.asValue(value);
+            return value instanceof Value ? value : context.asValue(interop, value);
         } else if (interop.isNull(value)) {
             if (targetType.isPrimitive()) {
                 throw HostInteropErrors.nullCoercion(context, value, targetType);

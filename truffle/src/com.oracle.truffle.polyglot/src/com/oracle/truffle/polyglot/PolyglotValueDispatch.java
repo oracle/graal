@@ -4216,7 +4216,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         private abstract static class AbstractExecuteNode extends InteropNode {
 
             @Child private InteropLibrary executables = InteropLibrary.getFactory().createDispatched(CACHE_LIMIT);
-            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
+            @Child private ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
             private final BranchProfile invalidArgument = BranchProfile.create();
             private final BranchProfile arity = BranchProfile.create();
             private final BranchProfile unsupported = BranchProfile.create();
@@ -4347,7 +4347,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         abstract static class NewInstanceNode extends InteropNode {
 
-            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
+            @Child private ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
             private final ToHostValueNode toHostValue;
 
             protected NewInstanceNode(InteropValue interop) {
@@ -4426,7 +4426,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         private static class InvokeNode extends AbstractInvokeNode {
 
-            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
+            @Child private ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
 
             protected InvokeNode(InteropValue interop) {
                 super(interop);

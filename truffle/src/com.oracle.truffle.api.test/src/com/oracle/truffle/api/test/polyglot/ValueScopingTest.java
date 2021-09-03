@@ -97,7 +97,7 @@ public class ValueScopingTest {
 
     @Test
     public void testHostInterop() {
-        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).allowPublicAccess(true).build();
+        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.EXPLICIT).allowPublicAccess(true).build();
         try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
             HostInteropTest o = new HostInteropTest();
             Value test = context.asValue(o);
