@@ -812,7 +812,6 @@ public final class ProbeNode extends Node {
         private static final int SEEN_EXCEPTION_ON_INPUT_VALUE = 0b1000;
         private static final int SEEN_EXCEPTION_ON_UNWIND = 0b10000;
         private static final int SEEN_EXCEPTION_HAS_NEXT = 0b100000;
-        private static final int SEEN_EXCEPTION_INSTRUMENT = 0b1000000;
         private static final int SEEN_EXCEPTION_OTHER = 0b10000000;
 
         private static final int SEEN_UNWIND_ON_ENTER = 0b100000000;
@@ -872,7 +871,7 @@ public final class ProbeNode extends Node {
                     chainNode.innerOnDispose(context, frame);
                 } catch (Throwable t) {
                     // no profiling necessary
-                    prevError = chainNode.handleError(context, "onDispose", prevError, t);
+                    prevError = chainNode.handleError("onDispose", prevError, t);
                 }
                 chainNode = chainNode.next;
             }
@@ -881,7 +880,7 @@ public final class ProbeNode extends Node {
             }
         }
 
-        private RuntimeException handleError(EventContext context, String eventName, RuntimeException previousError, Throwable newError) {
+        private RuntimeException handleError(String eventName, RuntimeException previousError, Throwable newError) {
             if (binding.isLanguageBinding()) {
                 if (previousError != null) {
                     profileBranch(SEEN_EXCEPTION_HAS_NEXT);
@@ -916,7 +915,7 @@ public final class ProbeNode extends Node {
                     unwind = handleUnwind(current, unwind, ex);
                 } catch (Throwable t) {
                     current.profileBranch(SEEN_EXCEPTION_ON_ENTER);
-                    prevError = current.handleError(context, "onEnter", prevError, t);
+                    prevError = current.handleError("onEnter", prevError, t);
                 }
                 current = current.next;
             }
@@ -945,7 +944,7 @@ public final class ProbeNode extends Node {
                     unwind = handleUnwind(current, unwind, ex);
                 } catch (Throwable t) {
                     current.profileBranch(SEEN_EXCEPTION_ON_INPUT_VALUE);
-                    prevError = current.handleError(context, "onInputValue", prevError, t);
+                    prevError = current.handleError("onInputValue", prevError, t);
                 }
                 current = current.previous;
             }
@@ -998,7 +997,7 @@ public final class ProbeNode extends Node {
                     unwind = handleUnwind(current, unwind, ex);
                 } catch (Throwable t) {
                     current.profileBranch(SEEN_EXCEPTION_ON_RETURN);
-                    prevError = current.handleError(context, "onInputValue", prevError, t);
+                    prevError = current.handleError("onInputValue", prevError, t);
                 }
                 current = current.previous;
             }
@@ -1026,7 +1025,7 @@ public final class ProbeNode extends Node {
                     unwind = handleUnwind(current, unwind, ex);
                 } catch (Throwable t) {
                     current.profileBranch(SEEN_EXCEPTION_ON_RETURN_EXCEPTIONAL);
-                    prevError = current.handleError(context, "onInputValue", prevError, t);
+                    prevError = current.handleError("onInputValue", prevError, t);
                 }
                 current = current.previous;
             }
@@ -1103,7 +1102,7 @@ public final class ProbeNode extends Node {
                         nextRet = current.innerOnUnwind(context, frame, current.getInfo(unwind));
                     } catch (Throwable t) {
                         current.profileBranch(SEEN_EXCEPTION_ON_UNWIND);
-                        prevError = current.handleError(context, "onUnwind", prevError, t);
+                        prevError = current.handleError("onUnwind", prevError, t);
                     }
                     if (nextRet != null) {
                         assert checkInteropType(nextRet, current.binding);

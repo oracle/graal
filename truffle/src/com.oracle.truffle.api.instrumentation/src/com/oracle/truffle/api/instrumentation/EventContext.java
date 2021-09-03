@@ -355,6 +355,7 @@ public final class EventContext {
      * @since 20.0
      */
     @Deprecated
+    @SuppressWarnings("static-method")
     public RuntimeException createError(RuntimeException e) {
         return e;
     }

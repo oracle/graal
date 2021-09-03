@@ -121,13 +121,12 @@ final class InsightException extends AbstractTruffleException {
             @TruffleBoundary
             public void onEnter(EventContext context, VirtualFrame frame) {
                 waitForSourceBeingExecuted[0].dispose();
-                EventContextObject obj = new EventContextObject(context);
                 InteropLibrary interopLib = InteropLibrary.getUncached();
                 if (interopLib.isException(ex)) {
-                    throw obj.rethrow((RuntimeException) ex, interopLib);
+                    throw EventContextObject.rethrow((RuntimeException) ex, interopLib);
                 }
                 InsightException wrapper = new InsightException(ex, context.getInstrumentedNode());
-                throw obj.rethrow(wrapper, interopLib);
+                throw EventContextObject.rethrow(wrapper, interopLib);
             }
 
             @Override
