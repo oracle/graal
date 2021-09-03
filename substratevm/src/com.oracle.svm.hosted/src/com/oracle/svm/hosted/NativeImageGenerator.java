@@ -1250,7 +1250,7 @@ public class NativeImageGenerator {
         Providers runtimeCallProviders = runtimeConfig != null ? runtimeConfig.getBackendForNormalMethod().getProviders() : providers;
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) providers.getForeignCalls();
         if (initForeignCalls) {
-            SnippetRuntime.registerForeignCalls(runtimeCallProviders, foreignCallsProvider);
+            SnippetRuntime.registerForeignCalls(foreignCallsProvider);
         }
         featureHandler.forEachGraalFeature(feature -> feature.registerForeignCalls(runtimeConfig, runtimeCallProviders, snippetReflection, foreignCallsProvider, hosted));
         try (DebugContext.Scope s = debug.scope("RegisterLowerings", new DebugDumpScope("RegisterLowerings"))) {

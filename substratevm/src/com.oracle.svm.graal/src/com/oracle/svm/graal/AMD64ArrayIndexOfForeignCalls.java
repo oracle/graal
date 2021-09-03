@@ -69,7 +69,7 @@ class AMD64ArrayIndexOfForeignCallsFeature implements GraalFeature {
 
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, AMD64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
+        foreignCalls.register(AMD64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
     }
 }
 

@@ -70,7 +70,7 @@ class AArch64ArrayIndexOfForeignCallsFeature implements GraalFeature {
 
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, AArch64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
+        foreignCalls.register(AArch64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
     }
 }
 

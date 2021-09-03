@@ -110,8 +110,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
     private static final String RUNTIME_REFLECTION_TYPE_NAME = RuntimeReflection.class.getTypeName();
 
-    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(providers, FOREIGN_CALLS);
+    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(FOREIGN_CALLS);
     }
 
     @Snippet

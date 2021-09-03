@@ -32,7 +32,6 @@ import java.util.Map;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyLookup;
 import org.graalvm.nativeimage.Platform;
@@ -40,7 +39,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.RegisterConfig;
@@ -68,8 +67,8 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
         return foreignCalls;
     }
 
-    public void register(Providers providers, SnippetRuntime.SubstrateForeignCallDescriptor... descriptors) {
-        for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : descriptors) {
+    public void register(SubstrateForeignCallDescriptor... descriptors) {
+        for (SubstrateForeignCallDescriptor descriptor : descriptors) {
             SubstrateForeignCallLinkage linkage = new SubstrateForeignCallLinkage(this, descriptor);
             foreignCalls.put(descriptor.getSignature(), linkage);
         }

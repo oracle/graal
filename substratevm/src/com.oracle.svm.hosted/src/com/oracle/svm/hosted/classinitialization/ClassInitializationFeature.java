@@ -146,7 +146,7 @@ public class ClassInitializationFeature implements GraalFeature {
 
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, EnsureClassInitializedSnippets.FOREIGN_CALLS);
+        foreignCalls.register(EnsureClassInitializedSnippets.FOREIGN_CALLS);
     }
 
     @Override

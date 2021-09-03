@@ -37,6 +37,6 @@ final class SubstrateIdentityHashCodeFeature implements GraalFeature {
 
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, SubstrateIdentityHashCodeSnippets.GENERATE_IDENTITY_HASH_CODE);
+        foreignCalls.register(SubstrateIdentityHashCodeSnippets.GENERATE_IDENTITY_HASH_CODE);
     }
 }

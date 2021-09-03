@@ -67,8 +67,8 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
     private static final SubstrateForeignCallDescriptor FMOD = SnippetRuntime.findForeignCall(AArch64ArithmeticSnippets.class, "fmod", true);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{FMOD};
 
-    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(providers, FOREIGN_CALLS);
+    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(FOREIGN_CALLS);
     }
 
     private static final double ONE = 1.0;
@@ -313,6 +313,6 @@ final class AArch64ArithmeticForeignCallsFeature implements GraalFeature {
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
                     SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        AArch64ArithmeticSnippets.registerForeignCalls(providers, foreignCalls);
+        AArch64ArithmeticSnippets.registerForeignCalls(foreignCalls);
     }
 }

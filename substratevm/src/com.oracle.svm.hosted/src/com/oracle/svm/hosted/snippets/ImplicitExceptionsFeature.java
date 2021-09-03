@@ -54,7 +54,7 @@ final class ImplicitExceptionsFeature implements GraalFeature {
 
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, ImplicitExceptions.FOREIGN_CALLS);
-        foreignCalls.register(providers, ExceptionUnwind.FOREIGN_CALLS);
+        foreignCalls.register(ImplicitExceptions.FOREIGN_CALLS);
+        foreignCalls.register(ExceptionUnwind.FOREIGN_CALLS);
     }
 }

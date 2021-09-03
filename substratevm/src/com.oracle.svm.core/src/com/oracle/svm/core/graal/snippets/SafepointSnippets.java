@@ -102,7 +102,7 @@ class SafepointFeature implements GraalFeature {
 
     @Override
     public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, Safepoint.FOREIGN_CALLS);
+        foreignCalls.register(Safepoint.FOREIGN_CALLS);
     }
 
     @Override
