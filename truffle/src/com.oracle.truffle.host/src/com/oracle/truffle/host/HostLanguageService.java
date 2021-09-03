@@ -50,7 +50,6 @@ import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
@@ -61,8 +60,6 @@ import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 public class HostLanguageService extends AbstractHostService {
 
     final HostLanguage language;
-
-    @CompilationFinal private boolean methodScopingEnabled;
 
     HostLanguageService(AbstractPolyglotImpl polyglot, HostLanguage language) {
         super(polyglot);
@@ -78,7 +75,6 @@ public class HostLanguageService extends AbstractHostService {
         }
         language.initializeHostAccess(hostAccess, useCl);
         context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed);
-        this.methodScopingEnabled = language.api.isMethodScopingEnabled(hostAccess);
     }
 
     @Override
@@ -156,7 +152,7 @@ public class HostLanguageService extends AbstractHostService {
 
     @Override
     public boolean isHostValue(Object value) {
-        Object obj = unwrapIfScoped(value);
+        Object obj = HostLanguage.unwrapIfScoped(language, value);
         return (obj instanceof HostObject) ||
                         (obj instanceof HostFunction) ||
                         (obj instanceof HostException) ||
@@ -165,14 +161,12 @@ public class HostLanguageService extends AbstractHostService {
 
     @Override
     public Object unboxHostObject(Object hostValue) {
-        Object obj = unwrapIfScoped(hostValue);
-        return HostObject.valueOf(obj);
+        return HostObject.valueOf(language, hostValue);
     }
 
     @Override
     public Object unboxProxyObject(Object hostValue) {
-        Object obj = unwrapIfScoped(hostValue);
-        return HostProxy.toProxyHostObject(obj);
+        return HostProxy.toProxyHostObject(language, hostValue);
     }
 
     @Override
@@ -201,37 +195,24 @@ public class HostLanguageService extends AbstractHostService {
 
     @Override
     public boolean isHostFunction(Object value) {
-        Object obj = unwrapIfScoped(value);
-        return HostFunction.isInstance(obj);
+        return HostFunction.isInstance(language, value);
     }
 
     @Override
     public boolean isHostObject(Object value) {
-        Object obj = unwrapIfScoped(value);
-        return HostObject.isInstance(obj);
+        return HostObject.isInstance(language, value);
     }
 
     @Override
     public boolean isHostProxy(Object value) {
-        Object obj = unwrapIfScoped(value);
-        return HostProxy.isProxyGuestObject(obj);
-    }
-
-    private Object unwrapIfScoped(Object obj) {
-        if (!methodScopingEnabled) {
-            return obj;
-        }
-        Object o = obj;
-        if (o instanceof ScopedObject) {
-            o = ((ScopedObject) o).unwrapForGuest();
-        }
-        return o;
+        return HostProxy.isProxyGuestObject(language, value);
     }
 
     @Override
     public boolean isHostSymbol(Object obj) {
-        if (HostObject.isHostObjectInstance(obj)) {
-            return ((HostObject) obj).isStaticClass();
+        Object o = HostLanguage.unwrapIfScoped(language, obj);
+        if (o instanceof HostObject) {
+            return ((HostObject) o).isStaticClass();
         }
         return false;
     }
@@ -257,8 +238,8 @@ public class HostLanguageService extends AbstractHostService {
         assert targetContext != valueContext;
         if (value instanceof TruffleObject) {
             assert value instanceof TruffleObject;
-            if (HostObject.isInstance(value)) {
-                return HostObject.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
+            if (HostObject.isInstance(language, value)) {
+                return HostObject.withContext(language, value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
             } else if (value instanceof HostProxy) {
                 return HostProxy.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
             } else if (valueContext == null) {

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -61,6 +62,7 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
@@ -74,6 +76,42 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.tck.tests.ValueAssert;
 
 public class ValueScopingTest {
+
+    public static class HostInteropTestClass {
+
+    }
+
+    public static class HostInteropTest {
+
+        @HostAccess.Export
+        public HostInteropTestClass valueCast(HostInteropTestClass m) {
+            return m;
+        }
+
+        @HostAccess.Export
+        public Proxy proxyCast(Value v) {
+            assertTrue(v.isProxyObject());
+            return v.asProxyObject();
+        }
+    }
+
+    @Test
+    public void testHostInterop() {
+        HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.SCOPED).allowPublicAccess(true).build();
+        try (Context context = Context.newBuilder().allowHostAccess(accessPolicy).build()) {
+            HostInteropTest o = new HostInteropTest();
+            Value test = context.asValue(o);
+
+            HostInteropTestClass c = new HostInteropTestClass();
+
+            assertSame(c, test.invokeMember("valueCast", c).asHostObject());
+            assertSame(c, test.invokeMember("valueCast", c).asHostObject());
+
+            Proxy p = ProxyObject.fromMap(new HashMap<>());
+            assertSame(p, test.invokeMember("proxyCast", p).asProxyObject());
+            assertSame(p, test.invokeMember("proxyCast", p).asProxyObject());
+        }
+    }
 
     public static class StoreAndPinTest {
         private Value value;

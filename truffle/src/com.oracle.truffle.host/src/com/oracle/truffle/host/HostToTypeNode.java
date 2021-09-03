@@ -165,8 +165,9 @@ abstract class HostToTypeNode extends Node {
                 return convertedValue;
             }
         }
-        if (HostObject.isJavaInstance(targetType, value)) {
-            return HostObject.valueOf(value);
+        HostLanguage language = HostLanguage.get(interop);
+        if (HostObject.isJavaInstance(language, targetType, value)) {
+            return HostObject.valueOf(language, value);
         }
 
         if (useCustomTargetTypes) {
@@ -243,7 +244,8 @@ abstract class HostToTypeNode extends Node {
                 return true;
             }
         }
-        if (HostObject.isJavaInstance(targetType, value)) {
+        HostLanguage language = HostLanguage.get(interop);
+        if (HostObject.isJavaInstance(language, targetType, value)) {
             return true;
         }
 
@@ -291,7 +293,7 @@ abstract class HostToTypeNode extends Node {
         }
 
         if (value instanceof TruffleObject) {
-            if (priority < HOST_PROXY && HostObject.isInstance(value)) {
+            if (priority < HOST_PROXY && HostObject.isInstance(language, value)) {
                 return false;
             } else {
                 if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&
@@ -373,8 +375,8 @@ abstract class HostToTypeNode extends Node {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         assert !interop.isNull(value); // already handled
         Object obj;
-        if (HostObject.isJavaInstance(targetType, value)) {
-            obj = HostObject.valueOf(value);
+        if (HostObject.isJavaInstance(hostContext.language, targetType, value)) {
+            obj = HostObject.valueOf(hostContext.language, value);
         } else if (targetType == Object.class) {
             obj = convertToObject(hostContext, value, interop);
         } else if (targetType == List.class) {

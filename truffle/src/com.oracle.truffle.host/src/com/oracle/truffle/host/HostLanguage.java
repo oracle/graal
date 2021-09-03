@@ -60,6 +60,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.host.HostMethodScope.ScopedObject;
 
 /*
  * Java host language implementation.
@@ -72,6 +73,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
     final AbstractPolyglotImpl polyglot;
     final APIAccess api;
     final HostLanguageService service;
+    @CompilationFinal private boolean methodScopingEnabled;
 
     HostLanguage(AbstractPolyglotImpl polyglot, AbstractHostAccess hostAccess) {
         this.polyglot = polyglot;
@@ -91,6 +93,13 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         return new HostContext(this, env);
     }
 
+    static Object unwrapIfScoped(HostLanguage language, Object o) {
+        if (language == null || !language.methodScopingEnabled) {
+            return o;
+        }
+        return language.unwrapIfScoped(o);
+    }
+
     @Override
     protected Object getScope(HostContext context) {
         return context.topScope;
@@ -108,6 +117,17 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
             guestToHostCache = cache = new GuestToHostCodeCache(this);
         }
         return cache;
+    }
+
+    private Object unwrapIfScoped(Object obj) {
+        if (!methodScopingEnabled) {
+            return obj;
+        }
+        Object o = obj;
+        if (o instanceof ScopedObject) {
+            o = ((ScopedObject) o).unwrapForGuest();
+        }
+        return o;
     }
 
     void initializeHostAccess(HostAccess policy, ClassLoader cl) {
@@ -131,6 +151,8 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         } else {
             this.hostClassCache = cache;
         }
+
+        this.methodScopingEnabled = api.isMethodScopingEnabled(policy);
     }
 
     @Override

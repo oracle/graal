@@ -725,16 +725,18 @@ final class HostProxy implements TruffleObject {
         return System.identityHashCode(receiver.proxy);
     }
 
-    public static boolean isProxyGuestObject(TruffleObject value) {
-        return value instanceof HostProxy;
+    public static boolean isProxyGuestObject(HostLanguage language, TruffleObject value) {
+        return isProxyGuestObject(language, (Object) value);
     }
 
-    public static boolean isProxyGuestObject(Object value) {
-        return value instanceof HostProxy;
+    public static boolean isProxyGuestObject(HostLanguage language, Object value) {
+        Object unwrapped = HostLanguage.unwrapIfScoped(language, value);
+        return unwrapped instanceof HostProxy;
     }
 
-    public static Proxy toProxyHostObject(Object value) {
-        return ((HostProxy) value).proxy;
+    public static Proxy toProxyHostObject(HostLanguage language, Object value) {
+        Object v = HostLanguage.unwrapIfScoped(language, value);
+        return ((HostProxy) v).proxy;
     }
 
     public static TruffleObject toProxyGuestObject(HostContext context, Proxy receiver) {
