@@ -503,7 +503,7 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
             SourceSectionFilter.newBuilder().
                                 tagIs(StandardTags.CallTag.class).build(),
             new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame f) {}
+                public void onEnter(EventContext context, VirtualFrame f) { }
                 public void onReturnValue(EventContext context,
                                           VirtualFrame f, Object result) {
                     if (!Objects.equals(result, 42)) {
@@ -517,7 +517,7 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
                     return info;
                 }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
     }
     // END: UnwindInstrumentationReturnSnippets#onCreate
@@ -543,11 +543,11 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
                     // Reenters on unwind.
                     return ProbeNode.UNWIND_ACTION_REENTER;
                 }
-                public void onEnter(EventContext context, VirtualFrame f) {}
+                public void onEnter(EventContext context, VirtualFrame f) { }
                 public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {}
+                                          VirtualFrame f, Object result) { }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
 
         // Listener that initiates unwind at line 20, attached to statements.
@@ -564,9 +564,9 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
                     }
                 }
                 public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {}
+                                          VirtualFrame f, Object result) { }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
     }
     // END: UnwindInstrumentationReenterSnippets#onCreate
