@@ -749,35 +749,6 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
 
 // Checkstyle: stop
 
-@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
-
-    /**
-     * Truffle code can run during image generation, i.e., one or many contexts can be used during
-     * image generation. Truffle optimizes the case where only one context is ever created, and also
-     * stores additional information regarding which thread or threads used the context. We need to
-     * start with a completely fresh specialization state. To simplify that, all static state that
-     * stores context information is abstracted in the SingleContextState class, and it is enough to
-     * recompute a single static field to a new SingleContextState instance.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", isFinal = true) //
-    static Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState singleContextState;
-}
-
-@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextThreadLocal", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_PolyglotContextThreadLocal {
-
-    /**
-     * Don't store any threads in the image.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Thread activeSingleThread;
-}
-
-@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
-}
-
 /*
  * If allowProcess() is disabled at build time, then we ensure that
  * ProcessBuilder is not reachable.
