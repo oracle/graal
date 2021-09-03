@@ -667,54 +667,14 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
             int baseOffset;
             int indexScale;
             JavaKind javaKind;
-            switch (internalKindName) {
-                case "boolean":
-                    javaKind = JavaKind.Boolean;
-                    baseOffset = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;
-                    break;
-                case "byte":
-                    javaKind = JavaKind.Byte;
-                    baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
-                    break;
-                case "char":
-                    javaKind = JavaKind.Char;
-                    baseOffset = Unsafe.ARRAY_CHAR_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_CHAR_INDEX_SCALE;
-                    break;
-                case "double":
-                    javaKind = JavaKind.Double;
-                    baseOffset = Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_DOUBLE_INDEX_SCALE;
-                    break;
-                case "float":
-                    javaKind = JavaKind.Float;
-                    baseOffset = Unsafe.ARRAY_FLOAT_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_FLOAT_INDEX_SCALE;
-                    break;
-                case "int":
-                    javaKind = JavaKind.Int;
-                    baseOffset = Unsafe.ARRAY_INT_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_INT_INDEX_SCALE;
-                    break;
-                case "long":
-                    javaKind = JavaKind.Long;
-                    baseOffset = Unsafe.ARRAY_LONG_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_LONG_INDEX_SCALE;
-                    break;
-                case "Object":
-                    javaKind = JavaKind.Object;
-                    baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-                    break;
-                case "short":
-                    javaKind = JavaKind.Short;
-                    baseOffset = Unsafe.ARRAY_SHORT_BASE_OFFSET;
-                    indexScale = Unsafe.ARRAY_SHORT_INDEX_SCALE;
-                    break;
-                default:
-                    return originalValue;
+            if (internalKindName.equals("Object")) {
+                javaKind = JavaKind.Object;
+                baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+            } else {
+                javaKind = JavaKind.Byte;
+                baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
             }
 
             assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;
