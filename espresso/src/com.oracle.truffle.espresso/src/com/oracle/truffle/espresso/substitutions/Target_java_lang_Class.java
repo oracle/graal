@@ -23,11 +23,14 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * These substitutions are provided for performance concerns.
@@ -58,46 +61,85 @@ public final class Target_java_lang_Class {
      * returns {@code false} otherwise. If this {@code Class} object represents a primitive type,
      * this method returns {@code false}.
      *
-     * @param obj the object to check
-     * @return true if {@code obj} is an instance of this class
-     *
      * @since JDK1.1
      */
-    @Substitution(hasReceiver = true)
-    public static boolean isInstance(@JavaType(Class.class) StaticObject self, @JavaType(Object.class) StaticObject obj) {
-        return InterpreterToVM.instanceOf(obj, self.getMirrorKlass());
-    }
+    @Substitution(hasReceiver = true, methodName = "isInstance")
+    abstract static class IsInstance extends SubstitutionNode {
+        public abstract boolean execute(@JavaType(Class.class) StaticObject self, @JavaType(Object.class) StaticObject obj);
 
-    @Substitution(hasReceiver = true)
-    public static boolean isAssignableFrom(@JavaType(Class.class) StaticObject self, @JavaType(Class.class) StaticObject cls,
-                    @Inject Meta meta) {
-        if (StaticObject.isNull(cls)) {
-            meta.throwNullPointerException();
+        @Specialization(guards = "isNull(obj)")
+        @SuppressWarnings("unused")
+        public boolean nullCase(@JavaType(Class.class) StaticObject self, @JavaType(Object.class) StaticObject obj) {
+            return false;
         }
-        return self.getMirrorKlass().isAssignableFrom(cls.getMirrorKlass());
+
+        @Specialization(guards = "!isNull(obj)")
+        public boolean doInstanceOf(@JavaType(Class.class) StaticObject self, @JavaType(Object.class) StaticObject obj,
+                        @Cached TypeCheckNode typeCheckNode,
+                        @Bind("getContext()") EspressoContext context) {
+            return typeCheckNode.executeTypeCheck(self.getMirrorKlass(context.getMeta()), obj.getKlass());
+        }
+
+        protected static boolean isNull(StaticObject obj) {
+            return StaticObject.isNull(obj);
+        }
+    }
+
+    @Substitution(hasReceiver = true, methodName = "isAssignableFrom")
+    abstract static class IsAssignableFrom extends SubstitutionNode {
+        public abstract boolean execute(@JavaType(Class.class) StaticObject self, @JavaType(Class.class) StaticObject cls);
+
+        @Specialization(guards = "isNull(cls)")
+        @SuppressWarnings("unused")
+        public boolean nullCase(@JavaType(Class.class) StaticObject self, @JavaType(Object.class) StaticObject cls,
+                        @Bind("getContext()") EspressoContext context) {
+            throw context.getMeta().throwNullPointerException();
+        }
+
+        @Specialization(guards = "!isNull(cls)")
+        public boolean doInstanceOf(@JavaType(Class.class) StaticObject self, @JavaType(Object.class) StaticObject cls,
+                        @Cached TypeCheckNode typeCheckNode,
+                        @Bind("getContext()") EspressoContext context) {
+            return typeCheckNode.executeTypeCheck(self.getMirrorKlass(context.getMeta()), cls.getMirrorKlass(context.getMeta()));
+        }
+
+        protected static boolean isNull(StaticObject obj) {
+            return StaticObject.isNull(obj);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean isInterface(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsInterface(self);
+    public static boolean isInterface(@JavaType(Class.class) StaticObject self,
+                    @Inject Meta meta) {
+        return meta.getVM().JVM_IsInterface(self);
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean isPrimitive(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsPrimitiveClass(self);
+    public static boolean isPrimitive(@JavaType(Class.class) StaticObject self,
+                    @Inject Meta meta) {
+        return meta.getVM().JVM_IsPrimitiveClass(self);
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean isArray(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsArrayClass(self);
+    public static boolean isArray(@JavaType(Class.class) StaticObject self,
+                    @Inject Meta meta) {
+        return meta.getVM().JVM_IsArrayClass(self);
     }
 
     @Substitution(hasReceiver = true)
-    public static @JavaType(Class.class) StaticObject getSuperclass(@JavaType(Class.class) StaticObject self) {
-        if (self.getMirrorKlass().isInterface()) {
+    public static boolean isHidden(@JavaType(Class.class) StaticObject self,
+                    @Inject Meta meta) {
+        return meta.getVM().JVM_IsHiddenClass(self);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @JavaType(Class.class) StaticObject getSuperclass(@JavaType(Class.class) StaticObject self,
+                    @Inject Meta meta) {
+        Klass k = self.getMirrorKlass(meta);
+        if (k.isInterface()) {
             return StaticObject.NULL;
         }
-        Klass superclass = self.getMirrorKlass().getSuperKlass();
+        Klass superclass = k.getSuperKlass();
         if (superclass == null) {
             return StaticObject.NULL;
         }
@@ -105,13 +147,9 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static int getModifiers(@JavaType(Class.class) StaticObject self) {
-        return self.getMirrorKlass().getClassModifiers();
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean isHidden(@JavaType(Class.class) StaticObject self) {
-        return VM.JVM_IsHiddenClass(self);
+    public static int getModifiers(@JavaType(Class.class) StaticObject self,
+                    @Inject Meta meta) {
+        return meta.getVM().JVM_GetClassModifiers(self);
     }
 
     // endregion perf substitutions

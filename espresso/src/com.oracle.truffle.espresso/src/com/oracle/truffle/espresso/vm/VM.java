@@ -142,7 +142,6 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
@@ -788,8 +787,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region class
 
     @VmImpl(isJni = true)
-    public static int JVM_GetClassModifiers(@JavaType(Class.class) StaticObject clazz) {
-        Klass klass = clazz.getMirrorKlass();
+    public int JVM_GetClassModifiers(@JavaType(Class.class) StaticObject clazz) {
+        Klass klass = clazz.getMirrorKlass(getMeta());
         if (klass.isPrimitive()) {
             final int primitiveModifiers = ACC_ABSTRACT | ACC_FINAL | ACC_PUBLIC;
             assert klass.getClassModifiers() == primitiveModifiers;
@@ -820,8 +819,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
-    public static boolean JVM_IsInterface(@JavaType(Class.class) StaticObject self) {
-        return self.getMirrorKlass().isInterface();
+    public boolean JVM_IsInterface(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass(getMeta()).isInterface();
     }
 
     @VmImpl(isJni = true)
@@ -846,18 +845,18 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
-    public static boolean JVM_IsArrayClass(@JavaType(Class.class) StaticObject self) {
-        return self.getMirrorKlass().isArray();
+    public boolean JVM_IsArrayClass(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass(getMeta()).isArray();
     }
 
     @VmImpl(isJni = true)
-    public static boolean JVM_IsHiddenClass(@JavaType(Class.class) StaticObject self) {
-        return self.getMirrorKlass().isHidden();
+    public boolean JVM_IsHiddenClass(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass(getMeta()).isHidden();
     }
 
     @VmImpl(isJni = true)
-    public static boolean JVM_IsPrimitiveClass(@JavaType(Class.class) StaticObject self) {
-        return self.getMirrorKlass().isPrimitive();
+    public boolean JVM_IsPrimitiveClass(@JavaType(Class.class) StaticObject self) {
+        return self.getMirrorKlass(getMeta()).isPrimitive();
     }
 
     @VmImpl(isJni = true)
@@ -2344,7 +2343,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             if ((boolean) getMeta().java_security_AccessControlContext_isAuthorized.get(context)) {
                 return true;
             }
-            StaticObject pd = Target_java_lang_Class.getProtectionDomain0(klass.mirror(), getMeta());
+            StaticObject pd = JVM_GetProtectionDomain(klass.mirror());
             if (pd != StaticObject.NULL) {
                 return (boolean) getMeta().java_security_ProtectionDomain_impliesCreateAccessControlContext.invokeDirect(pd);
             }
@@ -2707,7 +2706,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     } else {
                         domainKlass = m.getDeclaringKlass().mirror();
                     }
-                    domain = Target_java_lang_Class.getProtectionDomain0(domainKlass, getMeta());
+                    domain = JVM_GetProtectionDomain(domainKlass);
                     if (domain != prevDomain && domain != StaticObject.NULL) {
                         domains.add(domain);
                         prevDomain = domain;
@@ -2737,7 +2736,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     if (stack.compare(frameInstance)) {
                         isPrivileged[0] = true;
                     }
-                    StaticObject domain = Target_java_lang_Class.getProtectionDomain0(m.getDeclaringKlass().mirror(), getMeta());
+                    StaticObject domain = JVM_GetProtectionDomain(m.getDeclaringKlass().mirror());
                     if (domain != prevDomain && domain != StaticObject.NULL) {
                         domains.add(domain);
                         prevDomain = domain;
