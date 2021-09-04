@@ -38,36 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm;
 
-package org.graalvm.wasm.globals;
+/**
+ * Superclass for wasm entities that can hold embedder data.
+ */
+public class EmbedderDataHolder {
+    private Object embedderData = WasmVoidResult.getInstance();
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import org.graalvm.wasm.EmbedderDataHolder;
-import org.graalvm.wasm.api.ValueType;
-
-public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleObject {
-
-    private final ValueType valueType;
-    private final boolean mutable;
-
-    protected WasmGlobal(ValueType valueType, boolean mutable) {
-        this.valueType = valueType;
-        this.mutable = mutable;
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 
-    public ValueType getValueType() {
-        return valueType;
+    public Object getEmbedderData() {
+        return embedderData;
     }
 
-    public boolean isMutable() {
-        return mutable;
-    }
-
-    public abstract int loadAsInt();
-
-    public abstract long loadAsLong();
-
-    public abstract void storeInt(int value);
-
-    public abstract void storeLong(long value);
 }

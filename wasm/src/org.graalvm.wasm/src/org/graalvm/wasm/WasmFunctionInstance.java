@@ -51,7 +51,7 @@ import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 @ExportLibrary(InteropLibrary.class)
-public class WasmFunctionInstance implements TruffleObject {
+public class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
     private final WasmContext context;
     private final WasmFunction function;
     private final CallTarget target;
