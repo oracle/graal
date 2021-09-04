@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -60,8 +61,11 @@ final class InsightHookNode extends ExecutionEventNode {
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        for (Object raw : insight.findCtx().functionsFor(key)) {
-            InsightFilter.Data data = (InsightFilter.Data) raw;
+        final int len = key.functionsMaxCount();
+        CompilerAsserts.partialEvaluationConstant(len);
+        final InsightPerContext ipc = insight.findCtx();
+        for (int i = 0; i < len; i++) {
+            InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
             if (data == null || data.type != AgentType.ENTER) {
                 continue;
             }
@@ -78,8 +82,11 @@ final class InsightHookNode extends ExecutionEventNode {
 
     @Override
     protected void onReturnValue(VirtualFrame frame, Object returnValue) {
-        for (Object raw : insight.findCtx().functionsFor(key)) {
-            InsightFilter.Data data = (InsightFilter.Data) raw;
+        final int len = key.functionsMaxCount();
+        CompilerAsserts.partialEvaluationConstant(len);
+        final InsightPerContext ipc = insight.findCtx();
+        for (int i = 0; i < len; i++) {
+            InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
             if (data == null || data.type != AgentType.RETURN) {
                 continue;
             }
@@ -96,8 +103,11 @@ final class InsightHookNode extends ExecutionEventNode {
 
     @Override
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-        for (Object raw : insight.findCtx().functionsFor(key)) {
-            InsightFilter.Data data = (InsightFilter.Data) raw;
+        final int len = key.functionsMaxCount();
+        CompilerAsserts.partialEvaluationConstant(len);
+        final InsightPerContext ipc = insight.findCtx();
+        for (int i = 0; i < len; i++) {
+            InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
             if (data == null || data.type != AgentType.RETURN) {
                 continue;
             }

@@ -65,8 +65,13 @@ final class RootNameFilter implements Predicate<String> {
                 this.querying.set(true);
                 final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
                 computed = false;
-                for (Object raw : instrument.findCtx().functionsFor(key)) {
-                    InsightFilter.Data data = (InsightFilter.Data) raw;
+                InsightPerContext ctx = instrument.findCtx();
+                final int len = key.functionsMaxCount();
+                for (int i = 0; i < len; i++) {
+                    InsightFilter.Data data = (InsightFilter.Data) ctx.functionFor(key, i);
+                    if (data == null || data.rootNameFn == null) {
+                        continue;
+                    }
                     Object res = iop.execute(data.rootNameFn, rootName);
                     if (Boolean.TRUE.equals(res)) {
                         computed = true;

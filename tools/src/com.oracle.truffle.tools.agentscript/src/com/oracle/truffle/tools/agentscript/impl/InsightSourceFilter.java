@@ -57,9 +57,13 @@ final class InsightSourceFilter implements Predicate<Source> {
             this.querying.set(true);
             final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
             final SourceEventObject srcObj = new SourceEventObject(src);
+            final int len = key.functionsMaxCount();
             InsightPerContext ctx = insight.findCtx();
-            for (Object raw : ctx.functionsFor(key)) {
-                InsightFilter.Data data = (InsightFilter.Data) raw;
+            for (int i = 0; i < len; i++) {
+                InsightFilter.Data data = (InsightFilter.Data) ctx.functionFor(key, i);
+                if (data == null || data.sourceFilterFn == null) {
+                    continue;
+                }
                 Object res = iop.execute(data.sourceFilterFn, srcObj);
                 if (Boolean.TRUE.equals(res)) {
                     return true;

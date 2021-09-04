@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.InstrumentInfo;
@@ -255,6 +256,8 @@ public class InsightInstrument extends TruffleInstrument {
     final class Key {
         @CompilerDirectives.CompilationFinal //
         private int index;
+        @CompilerDirectives.CompilationFinal //
+        private int functionsMaxLen;
         private final AgentType type;
         private EventBinding<?> binding;
 
@@ -272,6 +275,10 @@ public class InsightInstrument extends TruffleInstrument {
             return index;
         }
 
+        int functionsMaxCount() {
+            return functionsMaxLen;
+        }
+
         @Override
         public String toString() {
             return "Key[" + index + "@" + type + "]";
@@ -283,8 +290,15 @@ public class InsightInstrument extends TruffleInstrument {
                 b.dispose();
             }
             synchronized (keys) {
-                invalidateKeys(-1, index);
+                CompilerAsserts.neverPartOfCompilation();
                 index = -1;
+            }
+        }
+
+        void adjustSize(int size) {
+            if (size > this.functionsMaxLen) {
+                this.functionsMaxLen = size;
+                keysUnchanged.invalidate();
             }
         }
     }

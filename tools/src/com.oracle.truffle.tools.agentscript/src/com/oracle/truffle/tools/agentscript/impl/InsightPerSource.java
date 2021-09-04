@@ -227,7 +227,12 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     public void onLoad(LoadSourceEvent event) {
         InteropLibrary interop = InteropLibrary.getUncached();
         Instrumenter instrumenter = instrument.env().getInstrumenter();
-        for (Object fn : instrument.findCtx().functionsFor(sourceBinding)) {
+        int len = sourceBinding.functionsMaxCount();
+        for (int i = 0; i < len; i++) {
+            Object fn = instrument.findCtx().functionFor(sourceBinding, i);
+            if (fn == null) {
+                continue;
+            }
             final Source source = event.getSource();
             try {
                 interop.execute(fn, new SourceEventObject(source));

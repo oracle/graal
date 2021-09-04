@@ -40,6 +40,8 @@ final class InsightPerContext {
     final InsightInstrument insight;
     final TruffleContext context;
     private final Map<InsightInstrument.Key, List<Object>> functionsForBinding = new HashMap<>();
+    @CompilerDirectives.CompilationFinal //
+    private int functionsLen;
     @CompilerDirectives.CompilationFinal(dimensions = 2) //
     private Object[][] functionsArray;
     @CompilerDirectives.CompilationFinal //
@@ -58,6 +60,7 @@ final class InsightPerContext {
             functionsForBinding.put(key, arr);
         }
         arr.add(function);
+        key.adjustSize(arr.size());
     }
 
     synchronized boolean unregister(InsightInstrument.Key key, Object function) {
@@ -83,7 +86,7 @@ final class InsightPerContext {
         return false;
     }
 
-    Object[] functionsFor(InsightInstrument.Key key) {
+    Object functionFor(InsightInstrument.Key key, int at) {
         final int index = key.index();
         Object[] functions;
         if (index >= 0) {
@@ -94,7 +97,7 @@ final class InsightPerContext {
         } else {
             functions = null;
         }
-        return functions == null ? new Object[0] : functions;
+        return functions == null || at >= functions.length ? null : functions[at];
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -122,7 +125,12 @@ final class InsightPerContext {
     @CompilerDirectives.TruffleBoundary
     void onClosed(InsightInstrument.Key closedKey) {
         final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-        for (Object closeFn : functionsFor(closedKey)) {
+        final int len = closedKey.functionsMaxCount();
+        for (int i = 0; i < len; i++) {
+            Object closeFn = functionFor(closedKey, i);
+            if (closeFn == null) {
+                continue;
+            }
             try {
                 iop.execute(closeFn);
             } catch (InteropException ex) {
