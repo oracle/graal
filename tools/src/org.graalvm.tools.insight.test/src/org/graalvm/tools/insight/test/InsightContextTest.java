@@ -32,7 +32,10 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +62,13 @@ public class InsightContextTest {
         final List<ParsingNode.OnEnterCallback> onEventCallbacks = new ArrayList<>();
         final List<ParsingNode.OnSourceCallback> onSourceCallbacks = new ArrayList<>();
         final List<ParsingNode.OnCloseCallback> onCloseCallbacks = new ArrayList<>();
+
+        public TruffleContext lastContext() {
+            TruffleContext tc = lastContext;
+            assertNotNull("There is a last context", tc);
+            lastContext = null;
+            return tc;
+        }
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -96,11 +106,22 @@ public class InsightContextTest {
                 return insightObject;
             }
 
-            final class OnEnterCallback implements InsightAPI.OnEventHandler {
-                private final TruffleContext expectedContext;
+            abstract class AssertContext {
+                private final Reference<TruffleContext> expectedContext;
+
+                protected AssertContext(TruffleContext expectedContext) {
+                    this.expectedContext = new WeakReference<>(expectedContext);
+                }
+
+                protected final TruffleContext getExpectedContext() {
+                    return expectedContext.get();
+                }
+            }
+
+            final class OnEnterCallback extends AssertContext implements InsightAPI.OnEventHandler {
 
                 OnEnterCallback(TruffleContext expectedContext) {
-                    this.expectedContext = expectedContext;
+                    super(expectedContext);
                     onEventCallbacks.add(this);
                 }
 
@@ -108,7 +129,7 @@ public class InsightContextTest {
                 public void event(InsightAPI.OnEventHandler.Context ctx, Map<String, Object> frame) {
                     lastFunctionName = ctx.name();
                     TruffleContext currentContext = ref.get(ParsingNode.this).getEnv().getContext();
-                    assertEquals("OnEnterCallback is called with expected context", expectedContext, currentContext);
+                    assertEquals("OnEnterCallback is called with expected context", getExpectedContext(), currentContext);
                     lastContext = currentContext;
 
                     Truffle.getRuntime().iterateFrames((frameInstance) -> {
@@ -119,17 +140,16 @@ public class InsightContextTest {
 
                 @Override
                 public String toString() {
-                    return "[OnEnterCallback: " + expectedContext + "]";
+                    return "[OnEnterCallback: " + getExpectedContext() + "]";
                 }
             }
 
-            final class OnSourceCallback implements InsightAPI.OnSourceLoadedHandler {
-                private final TruffleContext expectedContext;
+            final class OnSourceCallback extends AssertContext implements InsightAPI.OnSourceLoadedHandler {
                 int sourceLoadedCounter;
                 String name;
 
                 OnSourceCallback(TruffleContext expectedContext) {
-                    this.expectedContext = expectedContext;
+                    super(expectedContext);
                     onSourceCallbacks.add(this);
                 }
 
@@ -138,21 +158,20 @@ public class InsightContextTest {
                     sourceLoadedCounter++;
                     name = info.name();
                     TruffleContext currentContext = ref.get(ParsingNode.this).getEnv().getContext();
-                    assertEquals("OnEnterCallback is called with expected context", expectedContext, currentContext);
+                    assertEquals("OnEnterCallback is called with expected context", getExpectedContext(), currentContext);
                 }
 
                 @Override
                 public String toString() {
-                    return "[OnSourceCallback: " + expectedContext + "]";
+                    return "[OnSourceCallback: " + getExpectedContext() + "]";
                 }
             }
 
-            final class OnCloseCallback implements InsightAPI.OnCloseHandler {
-                private final TruffleContext expectedContext;
+            final class OnCloseCallback extends AssertContext implements InsightAPI.OnCloseHandler {
                 int closeCounter;
 
                 OnCloseCallback(TruffleContext expectedContext) {
-                    this.expectedContext = expectedContext;
+                    super(expectedContext);
                     onCloseCallbacks.add(this);
                 }
 
@@ -160,12 +179,12 @@ public class InsightContextTest {
                 public void closed() {
                     closeCounter++;
                     TruffleContext currentContext = ref.get(ParsingNode.this).getEnv().getContext();
-                    assertEquals("OnEnterCallback is called with expected context", expectedContext, currentContext);
+                    assertEquals("OnEnterCallback is called with expected context", getExpectedContext(), currentContext);
                 }
 
                 @Override
                 public String toString() {
-                    return "[OnSourceCallback: " + expectedContext + "]";
+                    return "[OnSourceCallback: " + getExpectedContext() + "]";
                 }
             }
         }
@@ -188,7 +207,9 @@ public class InsightContextTest {
 
         registerInsight(sharedEngine, insightScript);
 
-        try (Context c = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine))) {
+        Reference<?> closedContext1;
+        Context c1 = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine));
+        try {
             // @formatter:off
             Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
                 "ROOT(\n" +
@@ -200,18 +221,20 @@ public class InsightContextTest {
                 "sample.px"
             ).build();
             // @formatter:on
-            c.eval(sampleScript);
+            c1.eval(sampleScript);
 
             assertEquals("Parsed once", 1, itl.parsingCounter);
             assertEquals("Executed once", 1, itl.executingCounter);
 
-            TruffleContext cLanguageInfo = itl.lastContext;
+            TruffleContext c1LanguageInfo = itl.lastContext();
             assertEquals("Function foo has been called", "foo", itl.lastFunctionName);
 
             Node sampleNode = itl.lastNode;
             assertAgentNodes(sampleNode, 1);
 
-            try (Context c2 = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine))) {
+            Reference<?> closedContext2;
+            Context c2 = InsightObjectFactory.newContext(Context.newBuilder().engine(sharedEngine));
+            try {
                 c2.eval(sampleScript);
                 // @formatter:off
                 Source anotherScript = Source.newBuilder(InstrumentationTestLanguage.ID,
@@ -227,16 +250,30 @@ public class InsightContextTest {
                 c2.eval(anotherScript);
 
                 Node anotherNode = itl.lastNode;
-                TruffleContext c2LanguageInfo = itl.lastContext;
-                assertNotEquals(cLanguageInfo, c2LanguageInfo);
+                TruffleContext c2LanguageInfo = itl.lastContext();
+                assertNotEquals(c1LanguageInfo, c2LanguageInfo);
 
                 assertEquals("Executed second time for second context", 2, itl.executingCounter);
                 assertEquals("Parsed once as the source is cached - but it is not yet", 2, itl.parsingCounter);
 
                 assertAgentNodes(sampleNode, 1);
                 assertAgentNodes(anotherNode, 1);
+
+                closedContext1 = new WeakReference<>(c1LanguageInfo);
+                closedContext2 = new WeakReference<>(c2LanguageInfo);
+                c1LanguageInfo = null;
+                c2LanguageInfo = null;
+            } finally {
+                c2.close();
+                c2 = null;
             }
+
+            GCUtils.assertGc("2nd context can disappear when closed", closedContext2);
+        } finally {
+            c1.close();
+            c1 = null;
         }
+        GCUtils.assertGc("Both contexts can disappear when closed", closedContext1);
 
         assertEquals("Two on enter callbacks: " + itl.onEventCallbacks, 2, itl.onEventCallbacks.size());
         assertEquals("Two source callbacks: " + itl.onSourceCallbacks, 2, itl.onSourceCallbacks.size());
