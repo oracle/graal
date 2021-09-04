@@ -412,18 +412,19 @@ public class NativeImageGenerator {
     public static SubstrateTargetDescription createTarget(Platform platform) {
         if (includedIn(platform, Platform.AMD64.class)) {
             Architecture architecture;
+            EnumSet<AMD64.CPUFeature> features = EnumSet.noneOf(AMD64.CPUFeature.class);
             if (NativeImageOptions.NativeArchitecture.getValue()) {
-                architecture = GraalAccess.getOriginalTarget().arch;
+                features.addAll(((AMD64) GraalAccess.getOriginalTarget().arch).getFeatures());
             } else {
-                EnumSet<AMD64.CPUFeature> features = EnumSet.noneOf(AMD64.CPUFeature.class);
-                // SSE and SSE2 are added by defaults as they are required by Graal
+                // SSE and SSE2 are added by default as they are required by Graal
                 features.add(AMD64.CPUFeature.SSE);
                 features.add(AMD64.CPUFeature.SSE2);
 
                 features.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
-
-                architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
             }
+            // GR-33542 RTM is only intermittently detected and is not used by Graal
+            features.remove(AMD64.CPUFeature.RTM);
+            architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
             assert architecture instanceof AMD64 : "using AMD64 platform with a different architecture";
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
             return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace);
