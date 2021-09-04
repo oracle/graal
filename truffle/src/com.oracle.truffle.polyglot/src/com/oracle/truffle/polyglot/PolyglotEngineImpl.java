@@ -1637,15 +1637,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         boolean hasContextBindings;
         try {
             if (replayEvents) { // loaded context
-                // A new language can be created during engine patching to set the options.
-                // During engine patching the PolyglotEngineImpl#contexts does not contain
-                // the pre initialized context and resizeContextLocals does update the
-                // Context#contextLocals
-                context.resizeContextLocals(this.contextLocalLocations);
+                // we might have new instruments to run with a preinitialized context
+                synchronized (context) {
+                    context.resizeContextLocals(this.contextLocalLocations);
+                    context.initializeInstrumentContextLocals(context.contextLocals);
+                }
             } else { // is new context
                 try {
                     synchronized (context) {
                         context.initializeContextLocals();
+                        context.notifyContextCreated();
                     }
                 } catch (Throwable t) {
                     if (contextAddedToEngine) {
