@@ -34,7 +34,6 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
@@ -43,6 +42,7 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
@@ -80,6 +80,48 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         PRE_LOOP,
         MAIN_LOOP,
         POST_LOOP
+    }
+
+    /**
+     * A {@link GuardingNode} protecting an unsigned inverted counted loop. {@link IntegerStamp}
+     * does not record information about the sign of a stamp, i.e., it cannot represent
+     * {@link IntegerStamp#upMask()}} and {@link IntegerStamp#downMask()} in relation with unsigned
+     * stamps. Thus, if we have such a guard we set it explicitly to a loop.
+     *
+     * An example for such a loop would be
+     *
+     * <pre>
+     * public static long foo(int start) {
+     *     if (Integer.compareUnsigned(start, 2) < 0) {
+     *         deoptimize();
+     *     }
+     *     int i = start;
+     *     do {
+     *         // body
+     *         i = i - 2;
+     *     } while (Integer.compareUnsigned(i, 2) >= 0);
+     *     return res;
+     * }
+     * </pre>
+     *
+     * Counted loop detection must ensure that start is |>| 1 else the loop would underflow unsigned
+     * integer range immediately. The unsigned comparison with a deopt dominating the loop ensures
+     * that start is always an unsigned integer in the range of [2,UnsignedIntMax], however this can
+     * currently not be expressed with regular {@link IntegerStamp}.
+     */
+    @OptionalInput(InputType.Guard) protected GuardingNode protectedNonOverflowingUnsigned;
+
+    public GuardingNode getUnsignedRangeGuard() {
+        return protectedNonOverflowingUnsigned;
+    }
+
+    public void setUnsignedRangeGuard(GuardingNode guard) {
+        updateUsagesInterface(this.protectedNonOverflowingUnsigned, guard);
+        this.protectedNonOverflowingUnsigned = guard;
+    }
+
+    public boolean isProtectedNonOverflowingUnsigned() {
+        return protectedNonOverflowingUnsigned != null;
     }
 
     /** See {@link LoopEndNode#canSafepoint} for more information. */

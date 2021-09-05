@@ -24,12 +24,12 @@
  */
 package org.graalvm.polybench;
 
-import org.graalvm.polyglot.Value;
-
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Handler;
+
+import org.graalvm.polyglot.Value;
 
 @SuppressWarnings("unused")
 interface Metric {

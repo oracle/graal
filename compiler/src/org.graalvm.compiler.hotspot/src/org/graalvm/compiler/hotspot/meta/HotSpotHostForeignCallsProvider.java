@@ -422,6 +422,33 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                         registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_BYTE, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         link(new ArrayIndexOfStub(options, providers,
                         registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_BYTES, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_1_CHAR, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_CHARS, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_2_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_3_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        link(new ArrayIndexOfStub(options, providers,
+                        registerStubCall(ArrayIndexOf.STUB_INDEX_OF_4_CHARS_COMPACT, LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER.getSignature())));
         link(new UnwindExceptionToCallerStub(options, providers,
                         registerStubCall(UNWIND_EXCEPTION_TO_CALLER, DESTROYS_ALL_CALLER_SAVE_REGISTERS)));

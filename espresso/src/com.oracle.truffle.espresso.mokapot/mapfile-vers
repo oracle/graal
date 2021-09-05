@@ -32,6 +32,7 @@ SUNWprivate_1.1 {
                 getJavaVM;
                 mokapotAttachThread;
                 mokapotGetRTLD_DEFAULT;
+                mokapotGetProcessHandle;
                 getPackageAt;
 
                 # Espresso management native API
@@ -319,6 +320,10 @@ SUNWprivate_1.1 {
                 JVM_ReferenceClear;
                 JVM_ReferenceRefersTo;
                 JVM_RegisterLambdaProxyClassForArchiving;
+
+                # JDK 17
+                JVM_DumpClassListToFile;
+                JVM_DumpDynamicArchive;
 
                 # miscellaneous functions
                 jio_fprintf;

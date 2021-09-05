@@ -732,6 +732,7 @@ public final class HeapImpl extends Heap {
                     log.string("points into an unaligned TLAB chunk of thread ").zhex(thread);
                     return true;
                 }
+                uChunk = HeapChunk.getNext(uChunk);
             }
         }
         return false;

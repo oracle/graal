@@ -1457,8 +1457,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
 
-        if (this.getProfileData().getProfileSource() == ProfileSource.INJECTED && trueEnds.size() == 1 && falseEnds.size() == 1) {
-            propagateInjectedProfile(this.getProfileData(), trueEnds.get(0), falseEnds.get(0));
+        if (this.getProfileData().getProfileSource() == ProfileSource.INJECTED) {
+            // Attempt to propagate the injected profile to predecessor if without a profile.
+            propagateInjectedProfile(this.getProfileData(), trueEnds, falseEnds);
         }
 
         connectEnds(falseEnds, phi, phiValues, oldFalseSuccessor, merge, tool);
@@ -1520,38 +1521,146 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private static IfNode predecessorIf(FixedNode end) {
-        for (FixedNode node : GraphUtil.predecessorIterable(end)) {
-            if (node instanceof IfNode) {
-                return (IfNode) node;
-            } else if (node instanceof AbstractMergeNode) {
-                return null;
-            }
+    /**
+     * Try to propagate the injected branch probability of the to-be-removed if to a preceding if
+     * node with an unknown branch probability that is connected to the merge preceding the if
+     * without any other control flow merges in between. The if node must not be ambiguous.
+     *
+     * Prerequisite: at least one true end and at least one false end, and either exactly one true
+     * end or exactly one false end or both.
+     *
+     * Simple case: Exactly one true and and one false end in the merge and both ends need to lead
+     * to a common predecessor if without merges in between.
+     *
+     * More general case: there can be merges/ifs in one of the two branches, in which case we would
+     * disregard that branch and only look for the predecessor if in the other, merge-less branch:
+     *
+     * <pre>
+     *       if[unknown]---->cond
+     *      /    \
+     *  begin    begin
+     *    |        |
+     *    |  [     if      ]
+     *    |  [    /  \     ]
+     *    |  [ begin begin ]
+     *    |  [   |     |   ]
+     *    |  [  end   end  ]
+     *    |  [   \  /      ]
+     *    |  [    merge    ]
+     *    |        |
+     * trueEnd falseEnd    C1 C0
+     *      \  /            \ /
+     *      merge---------->phi
+     *        |              \
+     *      if[injected]----> == C1
+     *      /    \
+     * trueSucc falseSucc
+     * </pre>
+     *
+     * There can also be either multiple true ends or multiple false ends (but not both). Consider
+     * the following example:
+     *
+     * <pre>
+     *      if[unknown]------->cond
+     *      /      \
+     * falseBegin trueBegin
+     *      |        \
+     *      if        +
+     *     /  \       |
+     *  begin begin   |
+     *    |...  |...  |
+     *    |     |     |
+     *   end   end    |
+     *     \  /       |
+     *     merge      |
+     *       |        |
+     *      if        |
+     *     /  \       |
+     *  begin begin   |
+     *    |... |...   +
+     *    |    |     /
+     *  TEnd TEnd  FEnd     C1 C1 C0
+     *     \  |   /          \ | /
+     *      merge ----------->phi
+     *       |                 \
+     *      if[injected]------> == C1
+     *      /    \
+     * trueSucc falseSucc
+     * </pre>
+     *
+     * Here the false successor of the bottom if is rewired through the single false end to the true
+     * begin of the top if, while the true successor sticks with the leftover true ends of the
+     * merge. We propagate the injected profile from the bottom if to the top if, but because the
+     * false successor of the former is wired to the true successor of the latter, we need to invert
+     * the branch probability.
+     *
+     * @param profile the injected {@link BranchProbabilityData profile} to propagate.
+     * @param trueEnds merge ends where the if condition is true
+     * @param falseEnds merge ends where the if condition is false
+     */
+    private static void propagateInjectedProfile(BranchProbabilityData profile, List<EndNode> trueEnds, List<EndNode> falseEnds) {
+        if (trueEnds.size() >= 1 && falseEnds.size() >= 1 && (trueEnds.size() == 1 || falseEnds.size() == 1)) {
+            EndNode singleTrueEnd = trueEnds.size() == 1 ? trueEnds.get(0) : null;
+            EndNode singleFalseEnd = falseEnds.size() == 1 ? falseEnds.get(0) : null;
+            propagateInjectedProfile(profile, singleTrueEnd, singleFalseEnd);
         }
-        return null;
     }
 
-    private static void propagateInjectedProfile(BranchProbabilityData profile, EndNode trueEnd, EndNode falseEnd) {
-        Node prev = null;
-        for (FixedNode node : GraphUtil.predecessorIterable(trueEnd)) {
-            if (node instanceof IfNode) {
-                IfNode ifNode = (IfNode) node;
-                if (!ProfileSource.isTrusted(ifNode.getProfileData().getProfileSource())) {
-                    if (ifNode == predecessorIf(falseEnd)) {
-                        if (ifNode.trueSuccessor() == prev) {
-                            ifNode.setTrueSuccessorProbability(profile);
-                        } else if (ifNode.falseSuccessor() == prev) {
-                            ifNode.setTrueSuccessorProbability(profile.negated());
-                        } else {
-                            throw new GraalError("Illegal state");
-                        }
-                    }
+    /**
+     * Try to propagate injected branch probability to a predecessor if.
+     *
+     * @param profile the injected {@link BranchProbabilityData profile} to propagate.
+     * @param singleTrueEnd single true condition merge end or null
+     * @param singleFalseEnd single false condition merge end or null
+     */
+    private static void propagateInjectedProfile(BranchProbabilityData profile, EndNode singleTrueEnd, EndNode singleFalseEnd) {
+        IfNode foundIf = null;
+        FixedNode prev = null;
+        boolean viaFalseEnd = false;
+        if (singleTrueEnd != null) {
+            for (FixedNode node : GraphUtil.predecessorIterable(singleTrueEnd)) {
+                if (node instanceof IfNode) {
+                    foundIf = (IfNode) node;
+                    break;
+                } else if (node instanceof AbstractMergeNode) {
+                    break;
                 }
-                return;
-            } else if (node instanceof AbstractMergeNode) {
-                return;
+                prev = node;
             }
-            prev = node;
+        }
+        if (singleFalseEnd != null) {
+            FixedNode falsePrev = null;
+            for (FixedNode node : GraphUtil.predecessorIterable(singleFalseEnd)) {
+                if (node instanceof IfNode) {
+                    if (foundIf == node) {
+                        // found same if node through true and false end
+                        break;
+                    } else if (foundIf == null) {
+                        // found if node only through false end
+                        foundIf = (IfNode) node;
+                        prev = falsePrev;
+                        viaFalseEnd = true;
+                    } else {
+                        // found different if nodes, abort
+                        return;
+                    }
+                } else if (node instanceof AbstractMergeNode) {
+                    break;
+                }
+                falsePrev = node;
+            }
+        }
+
+        if (foundIf != null && !ProfileSource.isTrusted(foundIf.getProfileData().getProfileSource())) {
+            boolean negated;
+            if (foundIf.trueSuccessor() == prev) {
+                negated = viaFalseEnd;
+            } else if (foundIf.falseSuccessor() == prev) {
+                negated = !viaFalseEnd;
+            } else {
+                throw new GraalError("Illegal state");
+            }
+            foundIf.setTrueSuccessorProbability(negated ? profile.negated() : profile);
         }
     }
 

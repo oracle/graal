@@ -531,7 +531,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value fromIndex, Value... searchValues) {
         assert searchValues.length == 1;
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex), asAllocatable(searchValues[0])));
+        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex),
+                        asAllocatable(searchValues[0])));
         return result;
     }
 

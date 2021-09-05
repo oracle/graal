@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Objects;
@@ -113,6 +114,9 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
         CompilerAsserts.neverPartOfCompilation();
+        if (!Files.exists(libraryPath)) {
+            return null;
+        }
         String nfiSource = String.format("load(RTLD_LAZY|ISOLATED_NAMESPACE) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }

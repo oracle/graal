@@ -163,6 +163,18 @@ public abstract class ByteSequence {
         }
     }
 
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
+    public String toHexString() {
+        StringBuilder r = new StringBuilder(length() * 2);
+        for (int i = 0; i < length(); ++i) {
+            byte b = byteAt(i);
+            r.append(HEX[(b >> 4) & 0xf]);
+            r.append(HEX[b & 0xf]);
+        }
+        return r.toString();
+    }
+
     public int lastIndexOf(byte b) {
         for (int i = length() - 1; i >= 0; i--) {
             if (byteAt(i) == b) {
@@ -180,5 +192,32 @@ public abstract class ByteSequence {
      */
     public void writeTo(byte[] dest, int index) {
         System.arraycopy(getUnderlyingBytes(), offset(), dest, index, length());
+    }
+
+    static void writePositiveIntegerString(int v, byte[] dest, int offset, int length) {
+        assert length == positiveIntegerStringSize(v);
+        int i = v;
+        int digit = length;
+        // in '456', '4' is digit 1, '5' is digit 2, etc.
+        while (i >= 10) {
+            int q = i / 10;
+            int r = i - (10 * q);
+            dest[offset + --digit] = (byte) ('0' + r);
+            i = q;
+        }
+        assert digit == 1;
+        dest[offset] = (byte) ('0' + i);
+    }
+
+    static int positiveIntegerStringSize(int x) {
+        assert x >= 0;
+        int p = 10;
+        for (int i = 1; i < 10; i++) {
+            if (x < p) {
+                return i;
+            }
+            p = 10 * p;
+        }
+        return 10;
     }
 }

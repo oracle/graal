@@ -28,7 +28,7 @@ import java.util.ServiceLoader;
 
 public class ModuleSupport {
 
-    static final boolean USE_NI_JPMS;
+    public static final boolean USE_NI_JPMS;
 
     static {
         USE_NI_JPMS = false;

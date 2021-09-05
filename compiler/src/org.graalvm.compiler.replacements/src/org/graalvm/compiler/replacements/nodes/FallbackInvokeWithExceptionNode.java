@@ -31,20 +31,17 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static org.graalvm.compiler.nodes.Invoke.CYCLES_UNKNOWN_RATIONALE;
 import static org.graalvm.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 /**
  * Placeholder for a fallback call from a {@link MacroStateSplitWithExceptionNode}.
  *
- * The {@link #fallbackFunctionCallThrowing()} intrinsic can be used in snippets that lower a
+ * The {@link #fallbackFunctionCall()} intrinsic can be used in snippets that lower a
  * {@link MacroStateSplitWithExceptionNode}. The {@link FallbackInvokeWithExceptionNode} will be
  * replaced with the {@linkplain MacroStateSplitWithExceptionNode#createInvoke original call} of the
  * macro node. This can be useful for handling exceptional and/or slow path cases.
@@ -60,8 +57,8 @@ public final class FallbackInvokeWithExceptionNode extends WithExceptionNode imp
 
     public static final NodeClass<FallbackInvokeWithExceptionNode> TYPE = NodeClass.create(FallbackInvokeWithExceptionNode.class);
 
-    public FallbackInvokeWithExceptionNode(@InjectedNodeParameter MetaAccessProvider metaAccess) {
-        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(Object.class))));
+    public FallbackInvokeWithExceptionNode(@InjectedNodeParameter Stamp stamp) {
+        super(TYPE, stamp);
     }
 
     @Override
@@ -70,8 +67,17 @@ public final class FallbackInvokeWithExceptionNode extends WithExceptionNode imp
     }
 
     /**
+     * At the time when this node was created (i.e. when creating the snippet template), we did not
+     * have actual parameters so the precise stamp was not known. To fix that, we allow updating it
+     * after the snippet was instantiated.
+     */
+    public boolean updateInitialStamp(Stamp newStamp) {
+        return updateStamp(newStamp);
+    }
+
+    /**
      * @see FallbackInvokeWithExceptionNode
      */
     @NodeIntrinsic
-    public static native void fallbackFunctionCallThrowing();
+    public static native Object fallbackFunctionCall();
 }

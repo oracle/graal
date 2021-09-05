@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -109,9 +110,10 @@ public abstract class ClassRegistry implements ContextAccess {
         public final StaticObject classData;
         public final boolean isHidden;
         public final boolean isStrongHidden;
+        public int klassID = -1;
 
         public boolean addedToRegistry() {
-            return !isAnonymousClass() && (!isHidden() || isStrongHidden());
+            return !isAnonymousClass() && !isHidden();
         }
 
         public boolean isAnonymousClass() {
@@ -132,6 +134,10 @@ public abstract class ClassRegistry implements ContextAccess {
                 flags |= Constants.ACC_IS_HIDDEN_CLASS;
             }
             return flags;
+        }
+
+        public void initKlassID(int futureKlassID) {
+            this.klassID = futureKlassID;
         }
     }
 
@@ -237,6 +243,26 @@ public abstract class ClassRegistry implements ContextAccess {
      */
     protected final ConcurrentHashMap<Symbol<Type>, ClassRegistries.RegistryEntry> classes = new ConcurrentHashMap<>();
 
+    /**
+     * Strong hidden classes must be referenced by the class loader data to prevent them from being
+     * reclaimed, while not appearing in the actual registry. This field simply keeps those hidden
+     * classes strongly reachable from the class registry.
+     */
+    private volatile Collection<Klass> strongHiddenKlasses = null;
+
+    private Object getStrongHiddenClassRegistrationLock() {
+        return this;
+    }
+
+    private void registerStrongHiddenClass(Klass klass) {
+        synchronized (getStrongHiddenClassRegistrationLock()) {
+            if (strongHiddenKlasses == null) {
+                strongHiddenKlasses = new ArrayList<>();
+            }
+            strongHiddenKlasses.add(klass);
+        }
+    }
+
     @Override
     public final EspressoContext getContext() {
         return context;
@@ -338,10 +364,9 @@ public abstract class ClassRegistry implements ContextAccess {
     @SuppressWarnings("try")
     public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
         Meta meta = getMeta();
-        String strType = typeOrNull == null ? null : typeOrNull.toString();
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(getContext().getTimers())) {
-            parserKlass = getParserKlass(bytes, strType, info);
+            parserKlass = getParserKlass(bytes, typeOrNull, info);
         }
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 
@@ -357,13 +382,15 @@ public abstract class ClassRegistry implements ContextAccess {
         ObjectKlass klass = createKlass(meta, parserKlass, type, superKlassType, info);
         if (info.addedToRegistry()) {
             registerKlass(klass, type);
+        } else if (info.isStrongHidden()) {
+            registerStrongHiddenClass(klass);
         }
         return klass;
     }
 
-    private ParserKlass getParserKlass(byte[] bytes, String strType, ClassDefinitionInfo info) {
+    private ParserKlass getParserKlass(byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), strType, context, info);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, context, info);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
@@ -426,7 +453,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            LinkedKlass linkedKlass = LinkedKlass.create(getEspressoLanguage(), parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+            LinkedKlass linkedKlass = LinkedKlass.create(context.getLanguage(), context.getJavaVersion(), parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 

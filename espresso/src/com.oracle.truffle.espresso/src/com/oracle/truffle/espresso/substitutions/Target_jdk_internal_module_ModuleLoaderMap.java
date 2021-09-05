@@ -58,7 +58,7 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
             StaticObject originalResult = (StaticObject) original.call();
             // inject our platform modules if options are enabled
             Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
-            if (context.JDWPOptions != null) {
+            if (context.HotSwapAPI) {
                 add.invokeDirect(originalResult, meta.toGuestString(HOTSWAP_MODULE_NAME));
             }
             if (context.Polyglot) {

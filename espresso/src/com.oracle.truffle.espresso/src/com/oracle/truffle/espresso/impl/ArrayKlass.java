@@ -28,7 +28,9 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -113,9 +115,9 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode mode) {
         KLASS_LOOKUP_METHOD_COUNT.inc();
-        return getSuperKlass().lookupMethod(methodName, signature, accessingKlass);
+        return getSuperKlass().lookupMethod(methodName, signature, accessingKlass, mode);
     }
 
     @Override
@@ -174,5 +176,22 @@ public final class ArrayKlass extends Klass {
     @Override
     public String getNameAsString() {
         return "[" + componentType.getNameAsString();
+    }
+
+    @Override
+    public String getExternalName() {
+        String base = super.getExternalName();
+        if (getElementalType().isAnonymous()) {
+            return fixupAnonymousExternalName(base);
+        }
+        if (getElementalType().isHidden()) {
+            return convertHidden(base);
+        }
+        return base;
+    }
+
+    @TruffleBoundary
+    private String fixupAnonymousExternalName(String base) {
+        return base.replace(";", cat("/", getElementalType().getId(), ";"));
     }
 }

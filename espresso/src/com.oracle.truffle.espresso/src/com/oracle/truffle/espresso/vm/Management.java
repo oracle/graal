@@ -466,7 +466,28 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_TOTAL_COUNT:
                 return getContext().getCreatedThreadCount();
         }
-        throw EspressoError.unimplemented("GetLongAttribute " + att);
+        getLogger().warning(() -> "Unknown long attribute: " + att);
+        return -1L;
+    }
+
+    @ManagementImpl
+    @TruffleBoundary
+    public int GetLongAttributes(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject obj,
+                    /* jmmLongAttribute* */ @Pointer TruffleObject atts,
+                    int count,
+                    /* long* */ @Pointer TruffleObject result) {
+        int numAtts = 0;
+        ByteBuffer attsBuffer = NativeUtils.directByteBuffer(atts, count, JavaKind.Int);
+        ByteBuffer resBuffer = NativeUtils.directByteBuffer(result, count, JavaKind.Long);
+        for (int i = 0; i < count; i++) {
+            int att = attsBuffer.getInt();
+            long res = GetLongAttribute(obj, att);
+            resBuffer.putLong(res);
+            if (res != -1L) {
+                numAtts++;
+            }
+        }
+        return numAtts;
     }
 
     private boolean JMM_VERBOSE_GC_state = false;
@@ -489,7 +510,8 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_ALLOCATED_MEMORY:
                 return JMM_THREAD_ALLOCATED_MEMORY_state;
         }
-        throw EspressoError.unimplemented("GetBoolAttribute ", att);
+        getLogger().warning(() -> "Unknown bool attribute: " + att);
+        return false;
     }
 
     @ManagementImpl
@@ -506,7 +528,8 @@ public final class Management extends NativeEnv {
             case JMM_THREAD_ALLOCATED_MEMORY:
                 return JMM_THREAD_ALLOCATED_MEMORY_state = flag;
         }
-        throw EspressoError.unimplemented("SetBoolAttribute ", att);
+        getLogger().warning(() -> "Unknown bool attribute: " + att);
+        return false;
     }
 
     @ManagementImpl

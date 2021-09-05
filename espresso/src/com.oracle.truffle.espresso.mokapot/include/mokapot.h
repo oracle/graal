@@ -358,6 +358,8 @@ JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env);
 
 JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT();
 
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle();
+
 JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
 
 #ifdef __cplusplus

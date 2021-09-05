@@ -2072,7 +2072,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         // Resolution should happen outside of the bytecode patching lock.
-        InvokeDynamicConstant.Resolved inDy = pool.resolvedInvokeDynamicAt(getMethod().getDeclaringKlass(), indyIndex);
+        InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex);
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
         synchronized (this) {
@@ -2080,7 +2080,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 // someone beat us to it, just trust him.
                 quick = nodes[readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(inDy.getMemberName(), inDy.getUnboxedAppendix(), inDy.getParsedSignature(), getMeta(), top, curBCI), QUICK);
+                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
             }
         }
         return quick.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);

@@ -258,7 +258,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
             message += " Reason: " + formatError(cause) + '.';
         }
         if (this.allowIncompleteClasspath) {
-            System.out.println("WARNING: " + message);
+            System.out.println("Warning: " + message);
         } else {
             throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath");
         }

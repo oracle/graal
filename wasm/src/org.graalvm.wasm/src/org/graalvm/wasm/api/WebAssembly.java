@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
+import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
@@ -101,6 +102,7 @@ public class WebAssembly extends Dictionary {
 
         addMember("mem_alloc", new Executable(args -> memAlloc(args)));
         addMember("mem_grow", new Executable(args -> memGrow(args)));
+        addMember("mem_set_grow_callback", new Executable(args -> memSetGrowCallback(args)));
 
         addMember("global_alloc", new Executable(args -> globalAlloc(args)));
         addMember("global_read", new Executable(args -> globalRead(args)));
@@ -112,6 +114,9 @@ public class WebAssembly extends Dictionary {
         addMember("custom_sections", new Executable(args -> customSections(args)));
 
         addMember("instance_export", new Executable(args -> instanceExport(args)));
+
+        addMember("embedder_data_get", new Executable(args -> embedderDataGet(args)));
+        addMember("embedder_data_set", new Executable(args -> embedderDataSet(args)));
     }
 
     private Object moduleInstantiate(Object[] args) {
@@ -532,6 +537,9 @@ public class WebAssembly extends Dictionary {
         typeInfo.append('(');
         int argumentCount = f.numArguments();
         for (int i = 0; i < argumentCount; i++) {
+            if (i != 0) {
+                typeInfo.append(' ');
+            }
             typeInfo.append(ValueType.fromByteValue(f.argumentTypeAt(i)));
         }
         typeInfo.append(')');
@@ -581,6 +589,35 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow memory above max limit");
         }
         return pageSize;
+    }
+
+    private static Object memSetGrowCallback(Object[] args) {
+        InteropLibrary lib = InteropLibrary.getUncached();
+        if (!(args[0] instanceof WasmMemory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        if (!lib.isExecutable(args[1])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        }
+        WasmMemory memory = (WasmMemory) args[0];
+        return memSetGrowCallback(memory, args[1]);
+    }
+
+    private static Object memSetGrowCallback(WasmMemory memory, Object callback) {
+        memory.setGrowCallback(callback);
+        return WasmVoidResult.getInstance();
+    }
+
+    public static void invokeMemGrowCallback(WasmMemory memory) {
+        Object callback = memory.getGrowCallback();
+        if (callback != null) {
+            InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                lib.execute(callback, memory);
+            } catch (InteropException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory grow callback", e);
+            }
+        }
     }
 
     private static Object globalAlloc(Object[] args) {
@@ -730,4 +767,23 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, name + " is not a exported name of the given instance");
         }
     }
+
+    public static Object embedderDataSet(Object[] args) {
+        checkArgumentCount(args, 2);
+        getEmbedderDataHolder(args).setEmbedderData(args[1]);
+        return WasmVoidResult.getInstance();
+    }
+
+    public static Object embedderDataGet(Object[] args) {
+        checkArgumentCount(args, 1);
+        return getEmbedderDataHolder(args).getEmbedderData();
+    }
+
+    private static EmbedderDataHolder getEmbedderDataHolder(Object[] args) {
+        if (!(args[0] instanceof EmbedderDataHolder)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument is an object that cannot hold embedder data");
+        }
+        return ((EmbedderDataHolder) args[0]);
+    }
+
 }

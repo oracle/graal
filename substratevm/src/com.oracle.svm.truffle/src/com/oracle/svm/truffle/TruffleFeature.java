@@ -687,7 +687,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
                 }
             }
 
-            System.out.println("WARNING: suspicious method reachable for runtime compilation: " + printNode.getImplementationMethod().format("%H.%n(%p)"));
+            System.out.println("Warning: suspicious method reachable for runtime compilation: " + printNode.getImplementationMethod().format("%H.%n(%p)"));
             System.out.println("Check the complete tree of reachable methods using the option " + GraalFeature.Options.PrintRuntimeCompileMethods.getDescriptor().getFieldName());
             System.out.println("Suspicious method is called from");
             for (GraalFeature.CallTreeNode cur = printNode; cur != null; cur = cur.getParent()) {
@@ -696,7 +696,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         }
 
         if (neverPartOfCompilationViolations.size() > 0) {
-            System.out.println("ERROR: CompilerAsserts.neverPartOfCompilation reachable for runtime compilation from " + neverPartOfCompilationViolations.size() + " places:");
+            System.out.println("Error: CompilerAsserts.neverPartOfCompilation reachable for runtime compilation from " + neverPartOfCompilationViolations.size() + " places:");
             for (GraalFeature.CallTreeNode neverPartOfCompilationNode : neverPartOfCompilationViolations) {
                 System.out.println("called from");
                 for (GraalFeature.CallTreeNode cur = neverPartOfCompilationNode; cur != null; cur = cur.getParent()) {

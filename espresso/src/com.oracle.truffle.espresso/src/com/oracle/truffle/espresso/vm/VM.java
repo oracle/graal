@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
@@ -171,6 +170,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject getPackageAt;
 
     private final long rtldDefaultValue;
+    private final long processHandleValue;
 
     private final JavaVersion javaVersion;
 
@@ -329,12 +329,18 @@ public final class VM extends NativeEnv implements ContextAccess {
             TruffleObject mokapotGetRTLDDefault = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotGetRTLD_DEFAULT",
                             NativeSignature.create(NativeType.POINTER));
+            @Pointer
+            TruffleObject mokapotGetProcessHandle = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotGetProcessHandle",
+                            NativeSignature.create(NativeType.POINTER));
 
             getPackageAt = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "getPackageAt",
                             NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
             this.mokapotEnvPtr = initializeAndGetEnv(true, initializeMokapotContext, jniEnv.getNativePointer());
             this.rtldDefaultValue = getUncached().asPointer(getUncached().execute(mokapotGetRTLDDefault));
+            this.processHandleValue = getUncached().asPointer(getUncached().execute(mokapotGetProcessHandle));
+            getLogger().finest(() -> String.format("Got RTLD_DEFAULT=0x%016x and ProcessHandle=0x%016x", rtldDefaultValue, processHandleValue));
             assert getUncached().isPointer(this.mokapotEnvPtr);
             assert !getUncached().isNull(this.mokapotEnvPtr);
 
@@ -1085,7 +1091,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             nest = (ObjectKlass) lookup.getMirrorKlass().nest();
         }
         if (!isHidden) {
-            if (StaticObject.isNull(classData)) {
+            if (!StaticObject.isNull(classData)) {
                 throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "classData is only applicable for hidden classes");
             }
             if (isNestMate) {
@@ -1113,11 +1119,13 @@ public final class VM extends NativeEnv implements ContextAccess {
             // Special handling
             k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
         } else {
-            k = getRegistries().defineKlass(type, bytes, loader);
+            k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
         }
 
         if (initialize) {
             k.safeInitialize();
+        } else {
+            k.ensureLinked();
         }
         return k.mirror();
     }
@@ -1216,7 +1224,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         long nativePtr = NativeUtils.interopAsPointer(libraryPtr);
         TruffleObject library = handle2Lib.get(nativePtr);
         if (library == null) {
-            if (nativePtr == rtldDefaultValue) {
+            if (nativePtr == rtldDefaultValue || nativePtr == processHandleValue) {
                 library = getNativeAccess().loadDefaultLibrary();
                 if (library == null) {
                     getLogger().warning("JVM_FindLibraryEntry from default/global namespace is not supported: " + name);
@@ -1549,7 +1557,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                                             // fall-through
                                         case 1:
                                             // Frame 0 and 1 must be caller sensitive.
-                                            if ((method.getModifiers() & ACC_CALLER_SENSITIVE) == 0) {
+                                            if (!method.isCallerSensitive()) {
                                                 exception[0] = Meta.initExceptionWithMessage(meta.java_lang_InternalError, "CallerSensitive annotation expected at frame " + depth);
                                                 return /* ignore */ method;
                                             }
@@ -2672,6 +2680,11 @@ public final class VM extends NativeEnv implements ContextAccess {
             array[i] = nestMembers[i].mirror();
         }
         return StaticObject.createArray(getMeta().java_lang_Class_array, array);
+    }
+
+    @VmImpl(isJni = true)
+    public @JavaType(ProtectionDomain.class) StaticObject JVM_GetProtectionDomain(@JavaType(Class.class) StaticObject current) {
+        return (StaticObject) getMeta().HIDDEN_PROTECTION_DOMAIN.getHiddenObject(current);
     }
 
     @VmImpl(isJni = true)

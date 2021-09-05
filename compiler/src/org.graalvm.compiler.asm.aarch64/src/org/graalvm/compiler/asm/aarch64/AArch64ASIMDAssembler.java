@@ -620,6 +620,7 @@ public abstract class AArch64ASIMDAssembler {
         CMTST(0b10001 << 11),
         MLA(0b10010 << 11),
         MUL(0b10011 << 11),
+        ADDP(0b10111 << 11),
         /* size 0x */
         FMLA(0b11001 << 11),
         FADD(0b11010 << 11),
@@ -941,6 +942,30 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.ADD, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.5 Add pairwise vector.<br>
+     * <p>
+     * From the manual: "This instruction creates a vector by concatenating the vector elements of
+     * the first source SIMD&FP register after the vector elements of the second source SIMD&FP
+     * register, reads each pair of adjacent vector elements from the concatenated vector, adds each
+     * pair of values together, places the result into a vector, and writes the vector to the
+     * destination SIMD&FP register."
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void addpVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize);
+
+        threeSameEncoding(ASIMDInstruction.ADDP, size, elemSizeXX(eSize), dst, src1, src2);
     }
 
     /**
