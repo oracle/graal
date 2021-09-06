@@ -659,8 +659,6 @@ public final class HostAccess {
             this.implementableTypes = copySet(access.implementableTypes, Equivalence.IDENTITY);
             this.targetMappings = access.targetMappings != null ? new ArrayList<>(access.targetMappings) : null;
             this.excludeTypes = access.excludeTypes;
-            this.members = access.members;
-            this.targetMappings = access.targetMappings;
             this.allowPublic = access.allowPublic;
             this.allowListAccess = access.allowListAccess;
             this.allowArrayAccess = access.allowArrayAccess;
