@@ -469,7 +469,10 @@ builds += [
   ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java17-linux-amd64}
 
   # Linux/AARCH64
-  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64}]]        ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java11-linux-aarch64}
+  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [
+    [set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64}]
+    [mx, "benchmark", "interpreter-size:*"] # this is not really a benchmark, but simply reports the sizes of the binaries to bench server
+  ]        ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java11-linux-aarch64}
   ${vm_java_17} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64_java17}]] ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java17-linux-aarch64}
 
   # Darwin/AMD64

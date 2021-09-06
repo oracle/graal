@@ -1080,10 +1080,11 @@ class InterpreterSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         for i in self._interpreters:
             launcher_configs = i.launcher_configs
             if launcher_configs:
-                binary = launcher_configs[0].destination
-                binary = os.path.join(gvm_home, binary)
-                if os.path.exists(binary):
-                    out += "== binary size == {} is {} bytes\n".format(i.dir_name, os.path.getsize(binary))
+                binary_name = launcher_configs[0].destination
+                binary_path = os.path.join(gvm_home, binary_name)
+                if os.path.exists(binary_path):
+                    out += "== binary size == {} is {} bytes\n".format(
+                        os.path.split(binary_name)[-1], os.path.getsize(binary_path))
         print(out)
         return 0, out, dims
 
