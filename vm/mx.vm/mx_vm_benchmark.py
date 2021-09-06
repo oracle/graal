@@ -1053,7 +1053,7 @@ class InterpreterSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return "0.0.1"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["size"]
+        return ["default"]
 
     def get_vm_registry(self):
         return _polybench_vm_registry
