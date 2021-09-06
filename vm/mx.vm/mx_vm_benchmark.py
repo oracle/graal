@@ -1037,8 +1037,6 @@ class InterpreterSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def __init__(self):
         super(InterpreterSizeBenchmarkSuite, self).__init__()
-        from mx_sdk_vm import graalvm_components
-        self._interpreters = list(filter(lambda c: isinstance(c, mx_sdk_vm.GraalVmLanguage), graalvm_components()))
 
     def group(self):
         return "Graal"
@@ -1074,10 +1072,13 @@ class InterpreterSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         }
 
         import os
-        out = ""
+        from mx_sdk_vm import graalvm_components
         from mx_sdk_vm_impl import graalvm_home
         gvm_home = graalvm_home(fatalIfMissing=True)
-        for i in self._interpreters:
+        interpreters = list(filter(lambda c: isinstance(c, mx_sdk_vm.GraalVmLanguage), graalvm_components()))
+
+        out = ""
+        for i in interpreters:
             launcher_configs = i.launcher_configs
             if launcher_configs:
                 binary_name = launcher_configs[0].destination
