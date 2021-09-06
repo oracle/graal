@@ -1,8 +1,13 @@
 // Cycle through grpah coloring.
 
 var color_type = "fg";
+let legend_state = false;
 
 function color_cycle() {
+    let legend_visible = legend_state
+    if (legend_visible) {
+        color_legend(); // Hide the old legend.
+    }
     if (color_type == "fg") {
         color_type = "bl";
     } else if (color_type == "bl") {
@@ -11,6 +16,9 @@ function color_cycle() {
         color_type = "fg";
     }
     update_color(color_type);
+    if (legend_visible) {
+        color_legend(); // Show the old legend.
+    }
 }
 
 function update_color(color_type) {
@@ -67,10 +75,124 @@ function color_for_compilation(interpreted, compiled) {
     return "rgb(" + r.toFixed() + ", " + g.toFixed() + ", " + b.toFixed() + ")";
 }
 
+function color_create_legend() {
+    let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    let e = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    e.id = "legend_" + color_type;
+
+    let r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    svg.x.baseVal.value = xpad;
+    svg.y.baseVal.value = 50;
+    r.x.baseVal.value = 0;
+    r.y.baseVal.value = 0;
+    r.width.baseVal.value = 250;
+    r.style.fill = "white";
+    r.style.stroke = "black";
+    r.style["stroke-width"] = 2;
+    r.rx.baseVal.value = 2;
+    r.ry.baseVal.vlaue = 2;
+
+    let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.style.textAnchor = "middle";
+    t.setAttribute("x", 125);
+    t.setAttribute("y", fg_frameheight * 2);
+    t.style.fontSize = fontSize * 1.5;
+    t.style.fontFamily = "Verdana";
+    t.style.fill = "rgb(0, 0, 0)";
+    t.textContent = "Legend";
+
+    e.appendChild(r);
+    e.appendChild(t);
+    e.style.display = "none";
+    svg.appendChild(e);
+
+    let entry_count = 0;
+    if (color_type == "fg") {
+        let color_name = Object.getOwnPropertyNames(colorData[0])[0];
+        let color = colorData[0][color_name];
+        color_legend_entry(e, entry_count, color, "Sample colors are unique to functions");
+
+        entry_count++;
+    } else if (color_type == "bl") {
+        for (let i = 0; i < languageNames.length; i++) {
+            if (languageNames[i] != "") {
+                let color_name = Object.getOwnPropertyNames(colorData[i])[0];
+                let color = colorData[i][color_name];
+                color_legend_entry(e, entry_count, color, languageNames[i]);
+
+                entry_count++;
+            }
+        }
+    } else if (color_type == "bc") {
+        for (let i = 0; i <= 10; i++) {
+            let color = color_for_compilation(10 - i, i);
+            let text = (i * 10) + "% samples were compiled.";
+
+            color_legend_entry(e, i, color, text);
+        }
+
+        entry_count = 11;
+    }
+
+    r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
+    document.firstElementChild.appendChild(svg);
+    return e;
+}
+
+function color_legend_entry(e, i, color, text) {
+    let y = (fg_frameheight * 2) + (i + 1) * fg_frameheight * 1.5;
+
+    let box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    box.x.baseVal.value = xpad;
+    box.y.baseVal.value = y;
+    box.width.baseVal.value = fg_frameheight * 2;
+    box.height.baseVal.value = fg_frameheight;
+    box.style.fill = color;
+    box.style.stroke = "black";
+    box.style["stroke-width"] = 0.5;
+    box.rx.baseVal.value = 2;
+    box.ry.baseVal.vlaue = 2;
+
+    let label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.style.textAnchor = "left";
+    label.setAttribute("x", xpad + fg_frameheight * 3);
+    label.setAttribute("y", y - 5 + fg_frameheight);
+    label.style.fontSize = fontSize;
+    label.style.fontFamily = "Verdana";
+    label.style.fill = "rgb(0, 0, 0)";
+    label.textContent = text;
+
+    e.appendChild(box);
+    e.appendChild(label);
+}
+
+function color_legend() {
+    let legend_id = "legend_" + color_type;
+    let e = document.getElementById(legend_id);
+    if (e == null) {
+        e = color_create_legend();
+    }
+    if (e != null) {
+        if (e.style["display"] == "none") {
+            e.style["display"] = "block";
+        } else {
+            e.style["display"] = "none";
+        }
+    }
+    legend_state = !legend_state;
+}
+
 // C for color cycle.
 window.addEventListener("keydown",function (e) {
     if (e.key == "c" && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         color_cycle();
     }
-})
+});
+
+window.addEventListener("keydown", function (e) {
+    if (e.key == "l" && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        color_legend();
+    }
+});

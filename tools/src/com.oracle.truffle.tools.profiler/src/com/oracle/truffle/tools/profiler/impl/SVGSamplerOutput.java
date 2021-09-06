@@ -364,6 +364,18 @@ class SVGSamplerOutput {
             result.append(colors.toString());
             result.append(";\n");
 
+            result.append("var languageNames = ");
+            JSONArray languageNames = new JSONArray();
+            for (GraphColorMap cm : GraphColorMap.values()) {
+                if (languageColors.containsKey(cm)) {
+                    languageNames.put(languageColors.get(cm));
+                } else {
+                    languageNames.put("");
+                }
+            }
+            result.append(languageNames.toString());
+            result.append(";\n");
+
             return result.toString();
         }
 
