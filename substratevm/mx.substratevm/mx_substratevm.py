@@ -1387,6 +1387,8 @@ JNIEXPORT void JNICALL {0}() {{
 
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
+    extra_deps = []
+
     def config_file(self, ver):
         return 'graal-compiler-flags-' + str(ver) + '.config'
 
@@ -1456,7 +1458,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             ]
 
             # Packages to add-export
-            distributions_transitive = mx.classpath_entries(self.deps)
+            distributions_transitive = mx.classpath_entries(self.deps + SubstrateCompilerFlagsBuilder.extra_deps)
             jdk = mx.get_jdk(tag='default')
             required_exports = mx_javamodules.requiredExports(distributions_transitive, jdk)
             exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
