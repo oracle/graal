@@ -1086,11 +1086,11 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             if launcher_configs:
                 binary_dst = launcher_configs[0].destination
                 binary_name = os.path.split(binary_dst)[-1]
-                binary_path = os.path.join(gvm_home, binary_dst)
-
+                shlib_path = os.path.join(gvm_home, binary_name, "lib", "lib", "{}.so".format(binary_name))
+                binary_path = shlib_path
                 if not os.path.exists(binary_path):
-                    # could be a shared lib
-                    binary_path = os.path.join(gvm_home, binary_name, "lib", "lib", "{}.so".format(binary_name))
+                    # no shared lib detected, look at binary path (old-style)
+                    binary_path = os.path.join(gvm_home, binary_dst)
 
                 if os.path.exists(binary_path):
                     message = "== binary size == {} is {} bytes\n".format(binary_name, os.path.getsize(binary_path))
