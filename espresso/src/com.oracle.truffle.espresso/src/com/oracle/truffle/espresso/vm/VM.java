@@ -1214,26 +1214,24 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
-    public static @JavaType(byte[].class) StaticObject JVM_GetClassAnnotations(@JavaType(Class.class) StaticObject self) {
+    public @JavaType(byte[].class) StaticObject JVM_GetClassAnnotations(@JavaType(Class.class) StaticObject self) {
         Klass klass = self.getMirrorKlass();
         if (klass instanceof ObjectKlass) {
             Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleAnnotations);
             if (annotations != null) {
-                Meta meta = klass.getMeta();
-                return StaticObject.wrap(annotations.getData(), meta);
+                return StaticObject.wrap(annotations.getData(), getMeta());
             }
         }
         return StaticObject.NULL;
     }
 
     @VmImpl(isJni = true)
-    public static @JavaType(byte[].class) StaticObject JVM_GetClassTypeAnnotations(@JavaType(Class.class) StaticObject self) {
+    public @JavaType(byte[].class) StaticObject JVM_GetClassTypeAnnotations(@JavaType(Class.class) StaticObject self) {
         Klass klass = self.getMirrorKlass();
         if (klass instanceof ObjectKlass) {
             Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleTypeAnnotations);
             if (annotations != null) {
-                Meta meta = klass.getMeta();
-                return StaticObject.wrap(annotations.getData(), meta);
+                return StaticObject.wrap(annotations.getData(), getMeta());
             }
         }
         return StaticObject.NULL;
