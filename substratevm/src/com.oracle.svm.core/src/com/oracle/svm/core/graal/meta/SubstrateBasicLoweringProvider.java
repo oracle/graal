@@ -36,6 +36,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -175,7 +176,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             return graph.unique(new LoadHubNode(tool.getStampProvider(), object));
         }
 
-        assert !object.isConstant() || object.asJavaConstant().isNull() : "Object should either not be a constant or the null constant" + object;
+        GraalError.guarantee(!object.isConstant() || object.asJavaConstant().isNull(), "Object should either not be a constant or the null constant %s", object);
 
         ObjectLayout objectLayout = getObjectLayout();
         Stamp headerBitsStamp = StampFactory.forUnsignedInteger(8 * objectLayout.getReferenceSize());

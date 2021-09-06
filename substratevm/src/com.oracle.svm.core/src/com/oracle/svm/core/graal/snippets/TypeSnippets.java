@@ -96,9 +96,8 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
         }
         GuardingNode guard = SnippetAnchorNode.anchor();
         Object nonNullObject = PiNode.piCastNonNull(object, guard);
-        DynamicHub hubNoneNull = loadHub(nonNullObject);
-        // no need to guard, guarded via hub
-        return slotTypeCheck(start, range, slot, typeIDSlotOffset, hubNoneNull, trueValue, falseValue, null);
+        DynamicHub nonNullHub = loadHub(nonNullObject);
+        return slotTypeCheck(start, range, slot, typeIDSlotOffset, nonNullHub, trueValue, falseValue);
     }
 
     @Snippet
@@ -117,9 +116,8 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
         }
         GuardingNode guard = SnippetAnchorNode.anchor();
         Object nonNullObject = PiNode.piCastNonNull(object, guard);
-        DynamicHub hubNoneNull = loadHub(nonNullObject);
-        // no need to guard, guarded via hub
-        return slotTypeCheck(type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), typeIDSlotOffset, hubNoneNull, trueValue, falseValue, null);
+        DynamicHub nonNullHub = loadHub(nonNullObject);
+        return slotTypeCheck(type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), typeIDSlotOffset, nonNullHub, trueValue, falseValue);
     }
 
     @Snippet
@@ -129,8 +127,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                     SubstrateIntrinsics.Any trueValue,
                     SubstrateIntrinsics.Any falseValue,
                     @Snippet.ConstantParameter int typeIDSlotOffset) {
-        // no guard needed, b guaranteed to be non null
-        return slotTypeCheck(type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), typeIDSlotOffset, checkedHub, trueValue, falseValue, null);
+        return slotTypeCheck(type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), typeIDSlotOffset, checkedHub, trueValue, falseValue);
     }
 
     @DuplicatedInNativeCode
@@ -139,13 +136,13 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                     int typeIDSlotOffset,
                     DynamicHub checkedHub,
                     SubstrateIntrinsics.Any trueValue,
-                    SubstrateIntrinsics.Any falseValue, GuardingNode guard) {
+                    SubstrateIntrinsics.Any falseValue) {
         int typeCheckStart = Short.toUnsignedInt(start);
         int typeCheckRange = Short.toUnsignedInt(range);
         int typeCheckSlot = Short.toUnsignedInt(slot) * 2;
-
+        // No need to guard reading from hub as `checkedHub` is guaranteed to be non-null.
+        final GuardingNode guard = null;
         int checkedTypeID = Short.toUnsignedInt(DynamicHubAccess.readShort(checkedHub, typeIDSlotOffset + typeCheckSlot, NamedLocationIdentity.FINAL_LOCATION, guard));
-
         if (UnsignedMath.belowThan(checkedTypeID - typeCheckStart, typeCheckRange)) {
             return trueValue;
         }

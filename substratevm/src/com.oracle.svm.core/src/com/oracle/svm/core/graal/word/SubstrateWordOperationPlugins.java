@@ -70,7 +70,7 @@ public class SubstrateWordOperationPlugins extends WordOperationPlugin {
         switch (operation.opcode()) {
             case READ_FROM_HUB:
                 JavaKind returnKind = method.getSignature().getReturnKind();
-                assert args.length == 4 : "arg length=" + args.length + " operation=" + operation;
+                GraalError.guarantee(args.length == 4, "arg length=%d operation=%s", args.length, operation);
                 JavaKind readKind = wordTypes.asKind(method.getSignature().getReturnType(method.getDeclaringClass()));
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 LocationIdentity location;
