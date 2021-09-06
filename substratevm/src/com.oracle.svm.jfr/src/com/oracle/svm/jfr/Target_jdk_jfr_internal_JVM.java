@@ -26,6 +26,7 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -297,17 +298,15 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK15OrLater.class)
     public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
-        System.err.println("setHandler");
-        new Exception().printStackTrace();
-        return SubstrateJVM.setHandler(eventClass, handler);
+        // eventHandler fields should all be set at compile time so this method
+        // should never be reached at runtime
+        throw VMError.shouldNotReachHere("eventHandler does not exist for: " + eventClass);
     }
 
     /** See {@link JVM#getHandler}. */
     @Substitute
     @TargetElement(onlyWith = JDK15OrLater.class)
     public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
-        System.err.println("getHandler");
-        new Exception().printStackTrace();
         return SubstrateJVM.getHandler(eventClass);
     }
 

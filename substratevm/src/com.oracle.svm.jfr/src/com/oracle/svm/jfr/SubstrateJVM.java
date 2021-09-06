@@ -143,18 +143,6 @@ class SubstrateJVM {
         return get().jfrLogging;
     }
 
-    // Only with JDK14 or later
-    public static boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
-        try {
-            Field f = eventClass.getDeclaredField("eventHandler");
-            f.setAccessible(true);
-            f.set(null, handler);
-            return true;
-        } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
-            throw new InternalError("Could not access event handler");
-        }
-    }
-
     public static Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
         try {
             Field f = eventClass.getDeclaredField("eventHandler");
