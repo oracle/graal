@@ -26,6 +26,7 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
+import com.oracle.svm.core.jdk.JDK16OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ProcessProperties;
 
@@ -120,7 +121,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getClassIdNonIntrinsic}. */
     @Substitute
-    @TargetElement(onlyWith = JDK15OrEarlier.class)
+    @TargetElement(onlyWith = JDK16OrEarlier.class)
     public static long getClassIdNonIntrinsic(Class<?> clazz) {
         return getClassId(clazz);
     }

@@ -112,15 +112,22 @@ class JfrLogConfiguration {
         result.put(LogTag.JFR_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SETTING));
         result.put(LogTag.JFR_DCMD, EnumSet.of(JfrLogTag.JFR, JfrLogTag.DCMD));
 
-        // JDK17 support
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+        // JDK16 support
+        if (JavaVersionUtil.JAVA_SPEC >= 16) {
             try {
                 LogTag jfrSystemStreaming = Enum.valueOf(LogTag.class, "JFR_SYSTEM_STREAMING");
                 LogTag jfrSystemThrottle = Enum.valueOf(LogTag.class, "JFR_SYSTEM_THROTTLE");
-                LogTag jfrStart = Enum.valueOf(LogTag.class, "JFR_START");
-
                 result.put(jfrSystemStreaming, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.STREAMING));
                 result.put(jfrSystemThrottle, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.THROTTLE));
+            } catch (IllegalArgumentException | NullPointerException e) {
+                throw VMError.shouldNotReachHere("Should be defined", e);
+            }
+        }
+
+        // JDK17 support
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            try {
+                LogTag jfrStart = Enum.valueOf(LogTag.class, "JFR_START");
                 result.put(jfrStart, EnumSet.of(JfrLogTag.JFR, JfrLogTag.START));
             } catch (IllegalArgumentException | NullPointerException e) {
                 throw VMError.shouldNotReachHere("Should be defined", e);
