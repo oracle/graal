@@ -66,12 +66,12 @@ final class HostFunction implements TruffleObject {
         this.context = context;
     }
 
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof HostFunction;
+    public static boolean isInstance(HostLanguage language, TruffleObject obj) {
+        return isInstance(language, (Object) obj);
     }
 
-    public static boolean isInstance(Object obj) {
-        return obj instanceof HostFunction;
+    public static boolean isInstance(HostLanguage language, Object obj) {
+        return HostLanguage.unwrapIfScoped(language, obj) instanceof HostFunction;
     }
 
     @SuppressWarnings("static-method")

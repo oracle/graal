@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Iterator;
 import java.util.List;
@@ -69,34 +67,23 @@ final class PolyglotHostAccess extends AbstractHostAccess {
     @Override
     public Object toGuestValue(Object polyglotContext, Object hostValue) {
         PolyglotContextImpl internalContext = (PolyglotContextImpl) polyglotContext;
+        return toGuestValue(internalContext, hostValue);
+    }
+
+    static Object toGuestValue(PolyglotContextImpl context, Object hostValue) {
         if (hostValue instanceof Value) {
             Value receiverValue = (Value) hostValue;
-            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglot.getAPIAccess().getContext(receiverValue);
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context.getAPIAccess().getContext(receiverValue);
             PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
-            Object valueReceiver = polyglot.getAPIAccess().getReceiver(receiverValue);
-            if (valueContext != internalContext) {
-                valueReceiver = internalContext.migrateValue(valueReceiver, valueContext);
+            Object valueReceiver = context.getAPIAccess().getReceiver(receiverValue);
+            if (valueContext != context) {
+                valueReceiver = context.migrateValue(valueReceiver, valueContext);
             }
             return valueReceiver;
         } else if (PolyglotWrapper.isInstance(hostValue)) {
-            return internalContext.migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
-        } else if (hostValue instanceof Proxy) {
-            return toGuestProxy(hostValue);
+            return context.migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
         }
-        return null;
-    }
-
-    @TruffleBoundary
-    private static Object toGuestProxy(Object hostValue) {
-        if (Proxy.isProxyClass(hostValue.getClass())) {
-            InvocationHandler h = Proxy.getInvocationHandler(hostValue);
-            if (h instanceof PolyglotFunctionProxyHandler) {
-                return ((PolyglotFunctionProxyHandler) h).functionObj;
-            } else if (h instanceof PolyglotObjectProxyHandler) {
-                return ((PolyglotObjectProxyHandler) h).obj;
-            }
-        }
-        return null;
+        return hostValue;
     }
 
     @Override

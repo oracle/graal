@@ -114,6 +114,7 @@ public class HostAccessTest {
     public void constantsCanBeCopied() {
         verifyObjectImpl(HostAccess.NONE);
         verifyObjectImpl(HostAccess.EXPLICIT);
+        verifyObjectImpl(HostAccess.SCOPED);
         verifyObjectImpl(HostAccess.ALL);
     }
 

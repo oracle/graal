@@ -60,6 +60,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -142,16 +143,14 @@ final class HostObject implements TruffleObject {
         return new HostObject(object, context, hostException);
     }
 
-    static boolean isInstance(Object obj) {
+    static boolean isInstance(HostLanguage language, Object v) {
+        Object obj = HostLanguage.unwrapIfScoped(language, v);
         return obj instanceof HostObject || obj instanceof HostException;
     }
 
-    static boolean isHostObjectInstance(Object obj) {
-        return obj instanceof HostObject;
-    }
-
-    static Object withContext(Object obj, HostContext context) {
+    static Object withContext(HostLanguage language, Object originalValue, HostContext context) {
         assert context != null;
+        Object obj = HostLanguage.unwrapIfScoped(language, originalValue);
         if (obj instanceof HostObject) {
             HostObject hostObject = (HostObject) obj;
             return new HostObject(hostObject.obj, context, hostObject.extraInfo);
@@ -162,22 +161,32 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
-        if (isInstance(javaObject)) {
-            final Object value = valueOf(javaObject);
-            return targetType.isInstance(value);
-        } else {
-            return false;
+    static boolean isJavaInstance(HostLanguage language, Class<?> targetType, Object javaObject) {
+        Object unboxed = unboxHostObject(language, javaObject);
+        if (unboxed != null) {
+            return targetType.isInstance(unboxed);
         }
+        return false;
     }
 
-    static Object valueOf(Object value) {
-        if (value instanceof HostException) {
-            return ((HostException) value).getOriginal();
-        } else {
-            final HostObject obj = (HostObject) value;
-            return obj.obj;
+    static Object unboxHostObject(HostLanguage language, Object value) {
+        Object v = HostLanguage.unwrapIfScoped(language, value);
+        if (v instanceof HostObject) {
+            return ((HostObject) v).obj;
+        } else if (v instanceof HostException) {
+            return ((HostException) v).delegate.obj;
         }
+        return null;
+    }
+
+    static Object valueOf(HostLanguage language, Object value) {
+        Object v = HostLanguage.unwrapIfScoped(language, value);
+        if (v instanceof HostObject) {
+            return ((HostObject) v).obj;
+        } else if (v instanceof HostException) {
+            return ((HostException) v).delegate.obj;
+        }
+        return v;
     }
 
     @Override
@@ -2156,19 +2165,21 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean isMetaInstance(Object other,
+                    @CachedLibrary("this") InteropLibrary library,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         if (isClass()) {
             Class<?> c = asClass();
-            if (HostObject.isInstance(other)) {
-                Object otherHostObj = HostObject.valueOf(other);
+            HostLanguage language = context != null ? HostLanguage.get(library) : null;
+            if (HostObject.isInstance(language, other)) {
+                Object otherHostObj = HostObject.valueOf(language, other);
                 if (otherHostObj == null) {
                     return false;
                 } else {
                     return c.isInstance(otherHostObj);
                 }
-            } else if (HostProxy.isProxyGuestObject(other)) {
-                HostProxy otherHost = (HostProxy) other;
-                return c.isInstance(otherHost.proxy);
+            } else if (HostProxy.isProxyGuestObject(language, other)) {
+                Proxy otherHost = HostProxy.toProxyHostObject(language, other);
+                return c.isInstance(otherHost);
             } else {
                 boolean canConvert = HostToTypeNode.canConvert(other, c, c,
                                 HostToTypeNode.allowsImplementation(context, c),
