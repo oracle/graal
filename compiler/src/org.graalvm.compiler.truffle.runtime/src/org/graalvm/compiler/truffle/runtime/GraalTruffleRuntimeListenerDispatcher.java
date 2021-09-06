@@ -79,6 +79,11 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
+    public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
+        invokeListeners((l) -> l.onCompilationStarted(target, tier, time, weight, rate, queueChange));
+    }
+
+    @Override
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
         invokeListeners((l) -> l.onCompilationTruffleTierFinished(target, inliningDecision, graph));
     }

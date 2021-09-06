@@ -70,6 +70,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private double lastWeight;
     private boolean isOSR;
 
+    private double lastRate;
+    private long time;
+    private int queueChange;
+
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
         this.targetRef = targetRef;
@@ -264,9 +268,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             return true;
         }
         int count = target.getCallAndLoopCount();
-        double weight = rate(count, elapsed) * count;
+        lastRate = rate(count, elapsed);
         lastTime = currentTime;
         lastCount = count;
+        double weight = lastRate * lastCount;
         if (engineData.traversingFirstTierPriority) {
             lastWeight = weight;
         } else {
@@ -290,8 +295,8 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     private double rate(int count, long elapsed) {
-        double rawRate = ((double) count - lastCount) / elapsed;
-        return 1.0 + (Double.isNaN(rawRate) ? 0 : rawRate);
+        lastRate = ((double) count - lastCount) / elapsed;
+        return 1.0 + (Double.isNaN(lastRate) ? 0 : lastRate);
     }
 
     public int targetHighestCompiledTier() {
@@ -301,6 +306,35 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         }
         return target.highestCompiledTier();
     }
+
+    @Override
+    public long time() {
+        return time;
+    }
+
+    @Override
+    public double weight() {
+        return lastWeight;
+    }
+
+    @Override
+    public double rate() {
+        return lastRate;
+    }
+
+    @Override
+    public int queueChange() {
+        return queueChange;
+    }
+
+    void setTime(long time) {
+        this.time = time;
+    }
+
+    void setQueueChange(int queueChange) {
+        this.queueChange = queueChange;
+    }
+
 
     /**
      * Since {@link BackgroundCompileQueue} uses a {@link java.util.concurrent.ThreadPoolExecutor}

@@ -193,17 +193,9 @@ public class BackgroundCompileQueue {
     }
 
     public int getQueueSize() {
-        final ExecutorService threadPool = compilationExecutorService;
-        if (threadPool instanceof ThreadPoolExecutor) {
-            BlockingQueue<Runnable> queue = ((ThreadPoolExecutor) threadPool).getQueue();
-            int count = 0;
-            for (Runnable runnable : queue) {
-                CompilationTask.ExecutorServiceWrapper wrapper = (CompilationTask.ExecutorServiceWrapper) runnable;
-                if (!wrapper.isCancelled() && !wrapper.compileTask.isCancelled()) {
-                    count++;
-                }
-            }
-            return count;
+        final ThreadPoolExecutor threadPool = compilationExecutorService;
+        if (threadPool != null) {
+            return threadPool.getQueue().size();
         } else {
             return 0;
         }

@@ -782,6 +782,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                     debug = compiler.openDebugContext(optionsMap, compilation);
                 }
                 listeners.onCompilationStarted(callTarget, task.tier());
+                listeners.onCompilationStarted(callTarget, task.tier(), task.time(), task.weight(), task.rate(), task.queueChange());
                 compilationStarted = true;
                 try {
                     compiler.doCompile(debug, compilation, optionsMap, task, listeners.isEmpty() ? null : listeners);
