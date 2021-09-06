@@ -113,6 +113,7 @@ import org.graalvm.compiler.nodes.PiNode.Placeholder;
 import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
 import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.MemoryMapControlSinkNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -856,7 +857,7 @@ public class SnippetTemplate {
 
             explodeLoops(snippetCopy, providers);
 
-            List<UnwindNode> unwindNodes = snippetCopy.getNodes().filter(UnwindNode.class).snapshot();
+            List<UnwindNode> unwindNodes = snippetCopy.getNodes(UnwindNode.TYPE).snapshot();
             if (unwindNodes.size() == 0) {
                 unwindPath = null;
             } else if (unwindNodes.size() > 1) {
@@ -1007,12 +1008,13 @@ public class SnippetTemplate {
                 anchor.safeDelete();
                 this.memoryAnchor = null;
             } else {
-                // Find out if all the return memory maps point to the anchor (i.e., there's no
-                // kill
-                // anywhere)
+                /*
+                 * Find out if all the return and unwind memory maps point to the anchor (i.e.,
+                 * there's no kill anywhere)
+                 */
                 boolean needsMemoryMaps = false;
-                for (ReturnNode retNode : snippet.getNodes(ReturnNode.TYPE)) {
-                    MemoryMapNode memoryMap = retNode.getMemoryMap();
+                for (MemoryMapControlSinkNode sinkNode : snippet.getNodes(MemoryMapControlSinkNode.TYPE)) {
+                    MemoryMapNode memoryMap = sinkNode.getMemoryMap();
                     if (memoryMap.getLocations().size() > 1 || memoryMap.getLastLocationAccess(LocationIdentity.any()) != anchor) {
                         needsMemoryMaps = true;
                         break;
@@ -1024,7 +1026,7 @@ public class SnippetTemplate {
                 } else {
                     // Check that all those memory maps where the only usages of the anchor
                     needsAnchor = anchor.usages().filter(isNotA(MemoryMapNode.class)).isNotEmpty();
-                    // Remove the useless memory map
+                    // Remove the useless memory map on return nodes
                     MemoryMapNode memoryMap = null;
                     for (ReturnNode retNode : snippet.getNodes(ReturnNode.TYPE)) {
                         if (memoryMap == null) {
@@ -1036,6 +1038,19 @@ public class SnippetTemplate {
                     }
                     if (memoryMap != null) {
                         memoryMap.safeDelete();
+                    }
+                    // Remove the useless memory map on unwind node
+                    MemoryMapNode unwindMemoryMap = null;
+                    for (UnwindNode unwindNode : snippet.getNodes(UnwindNode.TYPE)) {
+                        if (unwindMemoryMap == null) {
+                            unwindMemoryMap = unwindNode.getMemoryMap();
+                        } else {
+                            assert unwindMemoryMap == unwindNode.getMemoryMap();
+                        }
+                        unwindNode.setMemoryMap(null);
+                    }
+                    if (unwindMemoryMap != null) {
+                        unwindMemoryMap.safeDelete();
                     }
                 }
                 if (needsAnchor) {
