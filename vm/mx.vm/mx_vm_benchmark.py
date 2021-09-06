@@ -1034,6 +1034,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
 
 class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+    SZ_MSG_PATTERN = "== binary size == {} is {} bytes"
+
     def __init__(self):
         super(FileSizeBenchmarkSuite, self).__init__()
 
@@ -1074,28 +1076,52 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         }
 
         import os
-        from mx_sdk_vm import graalvm_components
-        from mx_sdk_vm_impl import graalvm_home
+        from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
+        from mx_sdk_vm_impl import graalvm_home, _get_component_type_base, _src_jdk_version, \
+            get_final_graalvm_distribution
         gvm_home = graalvm_home(fatalIfMissing=True)
-        gvm_languages = list(filter(lambda c: isinstance(c, mx_sdk_vm.GraalVmLanguage), graalvm_components()))
 
         out = ""
-        for lang_component in gvm_languages:
-            print("checking GraalVMLanguage: {}".format(lang_component))
-            launcher_configs = lang_component.launcher_configs
-            if launcher_configs:
-                binary_dst = launcher_configs[0].destination
-                binary_name = os.path.split(binary_dst)[-1]
-                shlib_path = os.path.join(gvm_home, binary_name, "lib", "lib", "{}.so".format(binary_name))
-                binary_path = shlib_path
-                if not os.path.exists(binary_path):
-                    # no shared lib detected, look at binary path (old-style)
-                    binary_path = os.path.join(gvm_home, binary_dst)
+        for gcomponent in graalvm_components():
+            sz_msg = None
+            if isinstance(gcomponent, GraalVmLanguage):
+                print("checking GraalVMLanguage: {}".format(gcomponent))
+                _configs = gcomponent.launcher_configs
+                if _configs:
+                    binary_dst = _configs[0].destination
+                    binary_name = os.path.split(binary_dst)[-1]
+                    shlib_path = os.path.join(gvm_home, binary_name, "lib", "lib", "{}.so".format(binary_name))
+                    binary_path = shlib_path
+                    if not os.path.exists(binary_path):
+                        # no shared lib detected, look at binary path (old-style)
+                        binary_path = os.path.join(gvm_home, binary_dst)
 
-                if os.path.exists(binary_path):
-                    message = "== binary size == {} is {} bytes\n".format(binary_name, os.path.getsize(binary_path))
-                    print(message)
-                    out += message
+                    if os.path.exists(binary_path):
+                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(
+                            binary_name, os.path.getsize(binary_path))
+            elif isinstance(gcomponent, GraalVmJreComponent):
+                print("checking GraalVmJreComponent: {}".format(gcomponent))
+                if gcomponent.name == "LibGraal":
+                    _type_base = _get_component_type_base(gcomponent)
+                    if mx.get_os() == 'windows':
+                        _jvmlib_base = _type_base[:-len('lib/')] + 'bin/'
+                    else:
+                        _jvmlib_base = _type_base
+                    if _src_jdk_version < 9 and mx.get_os() not in ['darwin', 'windows']:
+                        _jvm_lib_dest = _jvmlib_base + mx.get_arch() + '/'
+                    else:
+                        _jvm_lib_dest = _jvmlib_base
+
+                    _jvm_lib_dest = get_final_graalvm_distribution().path_substitutions.substitute(_jvm_lib_dest)
+                    shlib_path = os.path.join(get_final_graalvm_distribution().get_output(), _jvm_lib_dest)
+                    if os.path.exists(shlib_path):
+                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(
+                            gcomponent.name, os.path.getsize(shlib_path))
+
+            if sz_msg:
+                print(sz_msg)
+                out += sz_msg + "\n"
+
         return 0, out, dims
 
     def rules(self, output, benchmarks, bmSuiteArgs):
