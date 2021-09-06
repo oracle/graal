@@ -1034,10 +1034,9 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
 
 class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
-    SZ_MSG_PATTERN = "== binary size == {} is {} bytes"
+    SZ_MSG_PATTERN = "== binary size == {} is {} bytes, path = {}"
+    SZ_RGX_PATTERN = r"== binary size == (?P<interpreter>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) bytes, path = (?P<path>.*)"
 
-    def __init__(self):
-        super(FileSizeBenchmarkSuite, self).__init__()
 
     def group(self):
         return "Graal"
@@ -1057,9 +1056,6 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def get_vm_registry(self):
         return _polybench_vm_registry
 
-    def createVmCommandLineArgs(self, benchmarks, runArgs):
-        return super(FileSizeBenchmarkSuite, self).createVmCommandLineArgs(benchmarks, runArgs)
-
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
         vm.extract_vm_info(self.vmArgs(bmSuiteArgs))
@@ -1075,51 +1071,30 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             "guest-vm-config": self.guest_vm_config_name(host_vm, vm),
         }
 
-        import os
         from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
-        from mx_sdk_vm_impl import graalvm_home, _get_component_type_base, _src_jdk_version, \
-            get_final_graalvm_distribution
-        gvm_home = graalvm_home(fatalIfMissing=True)
+        from mx_sdk_vm_impl import get_native_image_locations
 
         out = ""
         for gcomponent in graalvm_components():
             sz_msg = None
             if isinstance(gcomponent, GraalVmLanguage):
-                print("checking GraalVMLanguage: {}".format(gcomponent))
+                mx.log("checking GraalVMLanguage: {}".format(gcomponent))
                 _configs = gcomponent.launcher_configs
                 if _configs:
                     binary_dst = _configs[0].destination
                     binary_name = os.path.split(binary_dst)[-1]
-                    shlib_path = os.path.join(gvm_home, binary_name, "lib", "lib", "{}.so".format(binary_name))
-                    binary_path = shlib_path
-                    if not os.path.exists(binary_path):
-                        # no shared lib detected, look at binary path (old-style)
-                        binary_path = os.path.join(gvm_home, binary_dst)
-
-                    if os.path.exists(binary_path):
-                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(
-                            binary_name, os.path.getsize(binary_path))
+                    pth = get_native_image_locations(gcomponent, binary_name)
+                    if pth and os.path.exists(pth):
+                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(binary_name, os.path.getsize(pth), pth)
             elif isinstance(gcomponent, GraalVmJreComponent):
-                print("checking GraalVmJreComponent: {}".format(gcomponent))
+                mx.log("checking GraalVmJreComponent: {}".format(gcomponent))
                 if gcomponent.name == "LibGraal":
-                    _type_base = _get_component_type_base(gcomponent)
-                    if mx.get_os() == 'windows':
-                        _jvmlib_base = _type_base[:-len('lib/')] + 'bin/'
-                    else:
-                        _jvmlib_base = _type_base
-                    if _src_jdk_version < 9 and mx.get_os() not in ['darwin', 'windows']:
-                        _jvm_lib_dest = _jvmlib_base + mx.get_arch() + '/'
-                    else:
-                        _jvm_lib_dest = _jvmlib_base
-
-                    _jvm_lib_dest = get_final_graalvm_distribution().path_substitutions.substitute(_jvm_lib_dest)
-                    shlib_path = os.path.join(get_final_graalvm_distribution().get_output(), _jvm_lib_dest)
-                    if os.path.exists(shlib_path):
-                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(
-                            gcomponent.name, os.path.getsize(shlib_path))
+                    pth = get_native_image_locations(gcomponent, 'jvmcicompiler')
+                    if pth and os.path.exists(pth):
+                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(gcomponent.name, os.path.getsize(pth), pth)
 
             if sz_msg:
-                print(sz_msg)
+                mx.log(sz_msg)
                 out += sz_msg + "\n"
 
         return 0, out, dims
@@ -1127,10 +1102,11 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def rules(self, output, benchmarks, bmSuiteArgs):
         return [
             mx_benchmark.StdOutRule(
-                r"== binary size == (?P<interpreter>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) bytes",
+                FileSizeBenchmarkSuite.SZ_RGX_PATTERN,
                 {
                     "bench-suite": self.name(),
                     "benchmark": ("<interpreter>", str),
+                    "benchmark-configuration": ("<path>", str),
                     "vm": "svm",
                     "metric.name": "binary-size",
                     "metric.value": ("<value>", int),
