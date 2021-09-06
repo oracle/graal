@@ -306,7 +306,7 @@ public class ClassEntry extends StructureTypeEntry {
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
         MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName,
-                                                  this, resultType, paramTypeArray, paramNameArray);
+                        this, resultType, paramTypeArray, paramNameArray);
         indexMethodEntry(methodEntry);
 
         return methodEntry;
@@ -364,12 +364,6 @@ public class ClassEntry extends StructureTypeEntry {
             }
         }
         return methodEntry;
-    }
-
-    private static boolean listIsSorted(List<MethodEntry> list) {
-        List<MethodEntry> copy = new ArrayList<>(list);
-        copy.sort(MethodEntry::compareTo);
-        return list.equals(copy);
     }
 
     public List<MethodEntry> getMethods() {

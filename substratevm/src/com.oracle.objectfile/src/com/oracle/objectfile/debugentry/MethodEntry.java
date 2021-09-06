@@ -29,15 +29,13 @@ package com.oracle.objectfile.debugentry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> {
+public class MethodEntry extends MemberEntry {
     final TypeEntry[] paramTypes;
     final String[] paramNames;
     static final int DEOPT = 1 << 0;
     static final int IN_RANGE = 1 << 1;
     static final int INLINED = 1 << 2;
-    private final ResolvedJavaMethod javaMethod;
     int flags;
     final String symbolName;
 
@@ -50,7 +48,6 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
         this.symbolName = debugMethodInfo.symbolNameForMethod();
-        this.javaMethod = debugMethodInfo.getJavaMethod();
         this.flags = 0;
         if (debugMethodInfo.isDeoptTarget()) {
             setIsDeopt();
@@ -158,21 +155,5 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
 
     public String getSymbolName() {
         return symbolName;
-    }
-
-    public int compareTo(ResolvedJavaMethod other) {
-        /*
-         * first try to sort methods by name, to have a nice sorting when printing types with ptype
-         */
-        int comparisonResult = javaMethod.getName().compareTo(other.getName());
-        if (comparisonResult != 0) {
-            return comparisonResult;
-        }
-        return this.javaMethod.hashCode() - other.hashCode();
-    }
-
-    @Override
-    public int compareTo(MethodEntry other) {
-        return compareTo(other.javaMethod);
     }
 }

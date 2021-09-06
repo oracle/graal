@@ -649,11 +649,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public ResolvedJavaMethod getJavaMethod() {
-                return hostedMethod;
-            }
-
-            @Override
             public List<String> paramTypes() {
                 Signature signature = hostedMethod.getSignature();
                 int parameterCount = signature.getParameterCount(false);
@@ -875,11 +870,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public ResolvedJavaMethod getJavaMethod() {
-            return hostedMethod;
-        }
-
-        @Override
         public String valueType() {
             return hostedMethod.format("%R");
         }
@@ -1096,11 +1086,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String valueType() {
             return method.format("%R");
-        }
-
-        @Override
-        public ResolvedJavaMethod getJavaMethod() {
-            return method;
         }
 
         @Override
