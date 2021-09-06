@@ -432,11 +432,15 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                value = false;
+            if (hasCompatibleField()) {
+                return compatibleField.getBoolean(obj, forceVolatile);
+            } else {
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    value = false;
+                }
+                return (boolean) value;
             }
-            return (boolean) value;
         } else {
             if (isVolatile() || forceVolatile) {
                 return linkedField.getBooleanVolatile(obj);
@@ -454,7 +458,11 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setBoolean(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setBooleanVolatile(obj, value);
         } else {
@@ -484,11 +492,15 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                value = (byte) 0;
+            if (hasCompatibleField()) {
+                return compatibleField.getByte(obj, forceVolatile);
+            } else {
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    value = (byte) 0;
+                }
+                return (byte) value;
             }
-            return (byte) value;
         } else {
             if (isVolatile() || forceVolatile) {
                 return linkedField.getByteVolatile(obj);
@@ -506,7 +518,11 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setByte(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setByteVolatile(obj, value);
         } else {
@@ -536,11 +552,15 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                value = (char) 0;
+            if (hasCompatibleField()) {
+                return compatibleField.getChar(obj, forceVolatile);
+            } else {
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    value = (char) 0;
+                }
+                return (char) value;
             }
-            return (char) value;
         } else {
             if (isVolatile() || forceVolatile) {
                 return linkedField.getCharVolatile(obj);
@@ -558,7 +578,11 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setChar(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setCharVolatile(obj, value);
         } else {
@@ -588,11 +612,15 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                value = (double) 0;
+            if (hasCompatibleField()) {
+                return compatibleField.getDouble(obj, forceVolatile);
+            } else {
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    value = (double) 0;
+                }
+                return (double) value;
             }
-            return (double) value;
         } else {
             if (isVolatile() || forceVolatile) {
                 return linkedField.getDoubleVolatile(obj);
@@ -610,7 +638,11 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setDouble(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setDoubleVolatile(obj, value);
         } else {
@@ -640,11 +672,15 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                value = (float) 0;
+            if (hasCompatibleField()) {
+                return compatibleField.getFloat(obj, forceVolatile);
+            } else {
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    value = (float) 0;
+                }
+                return (float) value;
             }
-            return (float) value;
         } else {
             if (isVolatile() || forceVolatile) {
                 return linkedField.getFloatVolatile(obj);
@@ -662,7 +698,11 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setFloat(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setFloatVolatile(obj, value);
         } else {
@@ -692,11 +732,15 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                value = 0;
+            if (hasCompatibleField()) {
+                return compatibleField.getInt(obj, forceVolatile);
+            } else {
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    value = 0;
+                }
+                return (int) value;
             }
-            return (int) value;
         } else {
             if (isVolatile() || forceVolatile) {
                 return linkedField.getIntVolatile(obj);
@@ -714,7 +758,11 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setInt(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setIntVolatile(obj, value);
         } else {
@@ -745,11 +793,15 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         assert getKind().needsTwoSlots();
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                value = (long) 0;
+            if (hasCompatibleField()) {
+                return compatibleField.getLong(obj, forceVolatile);
+            } else {
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    value = (long) 0;
+                }
+                return (long) value;
             }
-            return (long) value;
         } else {
             if (isVolatile() || forceVolatile) {
                 return linkedField.getLongVolatile(obj);
@@ -768,7 +820,11 @@ public final class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         assert getKind().needsTwoSlots();
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setLong(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setLongVolatile(obj, value);
         } else {
@@ -799,11 +855,15 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                value = (short) 0;
+            if (hasCompatibleField()) {
+                return compatibleField.getShort(obj, forceVolatile);
+            } else {
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    value = (short) 0;
+                }
+                return (short) value;
             }
-            return (short) value;
         } else {
             if (isVolatile() || forceVolatile) {
                 return linkedField.getShortVolatile(obj);
@@ -821,7 +881,11 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setShort(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setShortVolatile(obj, value);
         } else {
