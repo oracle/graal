@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
@@ -63,6 +62,10 @@ public class ClassEntry extends StructureTypeEntry {
      * Details of methods located in this instance.
      */
     protected List<MethodEntry> methods;
+    /**
+     * An index of all currently known methods keyed by the unique local symbol name of the method.
+     */
+    private Map<String, MethodEntry> methodsIndex;
     /**
      * A list recording details of all primary ranges included in this class sorted by ascending
      * address range.
@@ -98,6 +101,7 @@ public class ClassEntry extends StructureTypeEntry {
         this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
         this.methods = new ArrayList<>();
+        this.methodsIndex = new HashMap<>();
         this.primaryEntries = new ArrayList<>();
         this.primaryIndex = new HashMap<>();
         this.localFiles = new ArrayList<>();
@@ -137,9 +141,7 @@ public class ClassEntry extends StructureTypeEntry {
         /* Add details of fields and field types */
         debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
         /* Add details of methods and method types */
-        debugInstanceTypeInfo.methodInfoProvider().forEach(debugMethodInfo -> this.methods.add(this.processMethod(debugMethodInfo, debugInfoBase, debugContext)));
-        /* Sort methods to improve lookup speed */
-        this.methods.sort(MethodEntry::compareTo);
+        debugInstanceTypeInfo.methodInfoProvider().forEach(debugMethodInfo -> this.processMethod(debugMethodInfo, debugInfoBase, debugContext));
     }
 
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
@@ -172,6 +174,13 @@ public class ClassEntry extends StructureTypeEntry {
         if (subFileEntry != null) {
             indexLocalFileEntry(subFileEntry);
         }
+    }
+
+    private void indexMethodEntry(MethodEntry methodEntry) {
+        String methodName = methodEntry.getSymbolName();
+        assert methodsIndex.get(methodName) == null : methodName;
+        methods.add(methodEntry);
+        methodsIndex.put(methodName, methodEntry);
     }
 
     private void indexLocalFileEntry(FileEntry localFileEntry) {
@@ -296,8 +305,11 @@ public class ClassEntry extends StructureTypeEntry {
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
-        return new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName, this, resultType,
-                        paramTypeArray, paramNameArray);
+        MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName,
+                                                  this, resultType, paramTypeArray, paramNameArray);
+        indexMethodEntry(methodEntry);
+
+        return methodEntry;
     }
 
     @Override
@@ -339,34 +351,19 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public MethodEntry ensureMethodEntryForDebugRangeInfo(DebugRangeInfo debugRangeInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        assert listIsSorted(methods);
-        ResolvedJavaMethod javaMethod = debugRangeInfo.getJavaMethod();
-        /* Since the methods list is sorted we perform a binary search */
-        int start = 0;
-        int end = methods.size() - 1;
-        assert end < (Integer.MAX_VALUE / 2);
-        while (start <= end) {
-            int middle = (start + end) / 2;
-            MethodEntry methodEntry = methods.get(middle);
-            int comparisonResult = methodEntry.compareTo(javaMethod);
-            if (comparisonResult == 0) {
-                methodEntry.updateRangeInfo(debugInfoBase, debugRangeInfo);
-                if (methodEntry.fileEntry != null) {
-                    /* Ensure that the methodEntry's fileEntry is present in the localsFileIndex */
-                    indexLocalFileEntry(methodEntry.fileEntry);
-                }
-                return methodEntry;
-            } else if (comparisonResult < 0) {
-                start = middle + 1;
-            } else {
-                end = middle;
+
+        MethodEntry methodEntry = methodsIndex.get(debugRangeInfo.symbolNameForMethod());
+        if (methodEntry == null) {
+            methodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext);
+        } else {
+            methodEntry.updateRangeInfo(debugInfoBase, debugRangeInfo);
+            /* Ensure that the methodEntry's fileEntry is present in the localsFileIndex */
+            FileEntry methodFileEntry = methodEntry.fileEntry;
+            if (methodFileEntry != null) {
+                indexLocalFileEntry(methodFileEntry);
             }
         }
-        assert start == (end + 1) : start + " != " + end + " + 1";
-        assert start <= methods.size() : start + " > " + methods.size();
-        MethodEntry newMethodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext);
-        methods.add(start, newMethodEntry);
-        return newMethodEntry;
+        return methodEntry;
     }
 
     private static boolean listIsSorted(List<MethodEntry> list) {
