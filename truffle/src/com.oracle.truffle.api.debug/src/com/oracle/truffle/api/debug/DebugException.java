@@ -96,7 +96,7 @@ public final class DebugException extends RuntimeException {
     }
 
     static DebugException create(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
-        return new DebugException(session, exception.getLocalizedMessage(), exception, preferredLanguage, throwLocation, isCatchNodeComputed, catchLocation);
+        return new DebugException(session, getTheMessage(exception), exception, preferredLanguage, throwLocation, isCatchNodeComputed, catchLocation);
     }
 
     private DebugException(DebuggerSession session, String message, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
@@ -124,6 +124,17 @@ public final class DebugException extends RuntimeException {
         this.catchLocation = catchLocation != null ? catchLocation.cloneFor(session) : null;
         // we need to materialize the stack for the case that this exception is printed
         super.setStackTrace(getStackTrace());
+    }
+
+    private static String getTheMessage(Throwable exception) {
+        if (isTruffleException(exception)) {
+            try {
+                return InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getExceptionMessage(exception));
+            } catch (UnsupportedMessageException ex) {
+                // No interop message
+            }
+        }
+        return exception.getLocalizedMessage();
     }
 
     void setSuspendedEvent(SuspendedEvent suspendedEvent) {
@@ -333,10 +344,6 @@ public final class DebugException extends RuntimeException {
         if (!isTruffleException(exception)) {
             return null;
         }
-        Object obj = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject();
-        if (obj == null) {
-            return null;
-        }
         LanguageInfo language = preferredLanguage;
         if (language == null && throwLocation != null) {
             RootNode throwRoot = throwLocation.getRootNode();
@@ -344,7 +351,7 @@ public final class DebugException extends RuntimeException {
                 language = throwRoot.getLanguageInfo();
             }
         }
-        return new DebugValue.HeapValue(session, language, null, obj);
+        return new DebugValue.HeapValue(session, language, null, exception);
     }
 
     /**
