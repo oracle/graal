@@ -1032,11 +1032,10 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         else:
             return "time"
 
-class InterpreterSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
-    BIN_SZ_TEMPLATE = "-==- binary size -==- {}, {} bytes"
 
+class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self):
-        super(InterpreterSizeBenchmarkSuite, self).__init__()
+        super(FileSizeBenchmarkSuite, self).__init__()
 
     def group(self):
         return "Graal"
@@ -1045,7 +1044,7 @@ class InterpreterSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return "truffle"
 
     def name(self):
-        return "interpreter-size"
+        return "file-size"
 
     def version(self):
         return "0.0.1"
@@ -1055,6 +1054,9 @@ class InterpreterSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def get_vm_registry(self):
         return _polybench_vm_registry
+
+    def createVmCommandLineArgs(self, benchmarks, runArgs):
+        return super(FileSizeBenchmarkSuite, self).createVmCommandLineArgs(benchmarks, runArgs)
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
@@ -1075,18 +1077,25 @@ class InterpreterSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         from mx_sdk_vm import graalvm_components
         from mx_sdk_vm_impl import graalvm_home
         gvm_home = graalvm_home(fatalIfMissing=True)
-        interpreters = list(filter(lambda c: isinstance(c, mx_sdk_vm.GraalVmLanguage), graalvm_components()))
+        gvm_languages = list(filter(lambda c: isinstance(c, mx_sdk_vm.GraalVmLanguage), graalvm_components()))
 
         out = ""
-        for i in interpreters:
-            launcher_configs = i.launcher_configs
+        for lang_component in gvm_languages:
+            print("checking GraalVMLanguage: {}".format(lang_component))
+            launcher_configs = lang_component.launcher_configs
             if launcher_configs:
-                binary_name = launcher_configs[0].destination
-                binary_path = os.path.join(gvm_home, binary_name)
+                binary_dst = launcher_configs[0].destination
+                binary_name = os.path.split(binary_dst)[-1]
+                binary_path = os.path.join(gvm_home, binary_dst)
+
+                if not os.path.exists(binary_path):
+                    # could be a shared lib
+                    binary_path = os.path.join(gvm_home, binary_name, "lib", "lib", "{}.so".format(binary_name))
+
                 if os.path.exists(binary_path):
-                    out += "== binary size == {} is {} bytes\n".format(
-                        os.path.split(binary_name)[-1], os.path.getsize(binary_path))
-        print(out)
+                    message = "== binary size == {} is {} bytes\n".format(binary_name, os.path.getsize(binary_path))
+                    print(message)
+                    out += message
         return 0, out, dims
 
     def rules(self, output, benchmarks, bmSuiteArgs):
@@ -1117,7 +1126,7 @@ mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', be
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
 mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
 mx_benchmark.add_bm_suite(PolyBenchBenchmarkSuite())
-mx_benchmark.add_bm_suite(InterpreterSizeBenchmarkSuite())
+mx_benchmark.add_bm_suite(FileSizeBenchmarkSuite())
 
 
 def register_graalvm_vms():
