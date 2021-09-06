@@ -97,7 +97,7 @@ class JfrLogConfiguration {
             }
         }
     }
-    @SuppressWarnings("checkstyle:LocalVariableName")
+
     private static Map<LogTag, Set<JfrLogTag>> createLogTagSets() {
         Map<LogTag, Set<JfrLogTag>> result = new EnumMap<>(LogTag.class);
         result.put(LogTag.JFR, EnumSet.of(JfrLogTag.JFR));
@@ -115,15 +115,15 @@ class JfrLogConfiguration {
         // JDK17 support
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
             try {
-                LogTag JFR_SYSTEM_STREAMING = Enum.valueOf(LogTag.class, "JFR_SYSTEM_STREAMING");
-                LogTag JFR_SYSTEM_THROTTLE = Enum.valueOf(LogTag.class, "JFR_SYSTEM_THROTTLE");
-                LogTag JFR_START = Enum.valueOf(LogTag.class, "JFR_START");
+                LogTag jfrSystemStreaming = Enum.valueOf(LogTag.class, "JFR_SYSTEM_STREAMING");
+                LogTag jfrSystemThrottle = Enum.valueOf(LogTag.class, "JFR_SYSTEM_THROTTLE");
+                LogTag jfrStart = Enum.valueOf(LogTag.class, "JFR_START");
 
-                result.put(JFR_SYSTEM_STREAMING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.STREAMING));
-                result.put(JFR_SYSTEM_THROTTLE, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.THROTTLE));
-                result.put(JFR_START, EnumSet.of(JfrLogTag.JFR, JfrLogTag.START));
+                result.put(jfrSystemStreaming, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.STREAMING));
+                result.put(jfrSystemThrottle, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.THROTTLE));
+                result.put(jfrStart, EnumSet.of(JfrLogTag.JFR, JfrLogTag.START));
             } catch (IllegalArgumentException | NullPointerException e) {
-                throw VMError.shouldNotReachHere("Should be defined");
+                throw VMError.shouldNotReachHere("Should be defined", e);
             }
         }
 

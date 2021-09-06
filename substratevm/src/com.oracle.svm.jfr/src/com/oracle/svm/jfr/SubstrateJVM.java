@@ -143,6 +143,7 @@ class SubstrateJVM {
         return get().jfrLogging;
     }
 
+    // Only with JDK14 or later
     public static boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
         try {
             Field f = eventClass.getDeclaredField("eventHandler");

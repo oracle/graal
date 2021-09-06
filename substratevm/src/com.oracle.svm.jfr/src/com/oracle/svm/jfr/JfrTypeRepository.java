@@ -122,8 +122,8 @@ public class JfrTypeRepository implements JfrConstantPool {
         writer.writeCompressedLong(symbolRepo.getSymbolId(clazz.getName(), true, true));
         writer.writeCompressedLong(typeInfo.getPackageId(clazz.getPackage()));
         writer.writeCompressedLong(clazz.getModifiers());
-        if (HiddenClassSupport.singleton().isHiddenClassSupported()) {
-            writer.writeCompressedLong(HiddenClassSupport.singleton().isHidden(clazz) ? 1 : 0);
+        if (HiddenClassSupport.isAvailable()) {
+            writer.writeBoolean(HiddenClassSupport.singleton().isHidden(clazz));
         }
     }
 

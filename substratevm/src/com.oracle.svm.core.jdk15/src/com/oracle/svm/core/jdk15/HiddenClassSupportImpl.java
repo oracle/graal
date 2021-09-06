@@ -33,10 +33,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.HiddenClassSupport;
 
 
-final class HiddenClassSupportJDK15OrLater extends HiddenClassSupport {
-    @Override
-    public boolean isHiddenClassSupported() { return true; }
-
+final class HiddenClassSupportImpl extends HiddenClassSupport {
     @Override
     public boolean isHidden(Class<?> clazz) {
         return clazz.isHidden();
@@ -44,7 +41,7 @@ final class HiddenClassSupportJDK15OrLater extends HiddenClassSupport {
 }
 
 @AutomaticFeature
-final class HiddenClassFeatureJDK15OrLater implements Feature {
+final class HiddenClassFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return JavaVersionUtil.JAVA_SPEC >= 15;
@@ -52,6 +49,6 @@ final class HiddenClassFeatureJDK15OrLater implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(HiddenClassSupport.class, new HiddenClassSupportJDK15OrLater());
+        ImageSingletons.add(HiddenClassSupport.class, new HiddenClassSupportImpl());
     }
 }

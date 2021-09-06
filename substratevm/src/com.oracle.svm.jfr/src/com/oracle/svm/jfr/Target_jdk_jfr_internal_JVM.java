@@ -26,10 +26,6 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.jdk.JDK14OrLater;
-import com.oracle.svm.core.jdk.JDK15OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -38,15 +34,18 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK14OrEarlier;
+import com.oracle.svm.core.jdk.JDK14OrLater;
+import com.oracle.svm.core.jdk.JDK15OrEarlier;
 import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;
-import jdk.jfr.internal.handlers.EventHandler;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
+import jdk.jfr.internal.handlers.EventHandler;
 
 // Checkstyle: allow synchronization.
 @SuppressWarnings({"static-method", "unused"})
@@ -58,6 +57,11 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
+
+    @Alias
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    private volatile boolean recording;
 
     /** See {@link JVM#registerNatives}. */
     @Substitute
@@ -90,6 +94,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#isRecording}. */
     @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class)
     public boolean isRecording() {
         return SubstrateJVM.get().unsafeIsRecording();
     }
@@ -283,22 +288,26 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getChunkStartNanos}. */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
+    @TargetElement(onlyWith = JDK14OrLater.class)
     public long getChunkStartNanos() {
         return SubstrateJVM.get().getChunkStartNanos();
     }
 
     /** See {@link JVM#setHandler}. */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
+    @TargetElement(onlyWith = JDK15OrLater.class)
     public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
+        System.err.println("setHandler");
+        new Exception().printStackTrace();
         return SubstrateJVM.setHandler(eventClass, handler);
     }
 
     /** See {@link JVM#getHandler}. */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
+    @TargetElement(onlyWith = JDK15OrLater.class)
     public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
+        System.err.println("getHandler");
+        new Exception().printStackTrace();
         return SubstrateJVM.getHandler(eventClass);
     }
 

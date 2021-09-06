@@ -24,20 +24,11 @@
  */
 package com.oracle.svm.jfr;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK15OrEarlier;
-import jdk.internal.misc.Unsafe;
-
 @TargetClass(value = jdk.jfr.internal.StringPool.class, onlyWith = JfrEnabled.class)
 final class Target_jdk_jfr_internal_StringPool {
-    @Alias
-    @TargetElement(onlyWith = JDK15OrEarlier.class)
-    private static Unsafe unsafe;
-
     @Substitute
     public static long addString(@SuppressWarnings("unused") String s) {
         // This disables String caching and forces the EventWriter to write strings by value.

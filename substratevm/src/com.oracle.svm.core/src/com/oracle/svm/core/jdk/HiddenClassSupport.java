@@ -24,56 +24,29 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Abstracts the information about hidden classes, which are not available in Java 11 and Java 8.
  * This class provides all information about hidden classes without exposing any JDK types and
  * methods that are not yet present in the old JDKs.
  */
-public abstract class HiddenClassSupport {
-
+public class HiddenClassSupport {
+    @Fold
     public static HiddenClassSupport singleton() {
         return ImageSingletons.lookup(HiddenClassSupport.class);
     }
 
-    public abstract boolean isHiddenClassSupported();
+    @Fold
+    public static boolean isAvailable() {
+        return ImageSingletons.contains(HiddenClassSupport.class);
+    }
 
     /** Same as {@code Class.isHidden()}. */
-    public abstract boolean isHidden(Class<?> clazz);
-}
-
-/**
- * Placeholder implementation for old JDK version that do not have Record classes. Since
- * {@link #isHidden} always returns false, the other methods must never be invoked.
- */
-final class HiddenClassSupportBeforeJDK15 extends HiddenClassSupport {
-    @Override
-    public boolean isHiddenClassSupported() {
-        return false;
-    }
-
-    @Override
     public boolean isHidden(Class<?> clazz) {
-        return false;
-    }
-}
-
-@AutomaticFeature
-final class HiddenClassFeatureBeforeJDK15 implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC < 15;
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(HiddenClassSupport.class, new HiddenClassSupportBeforeJDK15());
+        throw VMError.shouldNotReachHere();
     }
 }
