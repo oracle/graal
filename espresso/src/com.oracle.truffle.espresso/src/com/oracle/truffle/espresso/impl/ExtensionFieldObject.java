@@ -62,11 +62,9 @@ public final class ExtensionFieldObject extends StaticObject {
             Field field = new Field(holder, linkedField, pool, true);
             LIBRARY.put(fieldStorage, field.getSlot(), new FieldAndValueObject(field));
 
-            // check if there's a compatible field where state could potentially copied from
-            Field compatibleField = compatibleFields.get(initialField);
-            if (compatibleField != null) {
-                // TODO - handle
-            }
+            // mark a compatible field where
+            // state could potentially be copied from
+            field.setCompatibleField(compatibleFields.get(initialField));
         }
     }
 
@@ -76,11 +74,9 @@ public final class ExtensionFieldObject extends StaticObject {
             Field field = new Field(holder, linkedField, pool, true);
             LIBRARY.put(fieldStorage, field.getSlot(), new FieldAndValueObject(field));
 
-            // check if there's a compatible field where state could potentially copied from
-            Field compatibleField = compatibleFields.get(newField);
-            if (compatibleField != null) {
-                // TODO - handle
-            }
+            // mark a compatible field where
+            // state could potentially be copied from
+            field.setCompatibleField(compatibleFields.get(newField));
         }
     }
 
@@ -127,12 +123,9 @@ public final class ExtensionFieldObject extends StaticObject {
             Field field = new Field(holder, linkedField, pool, true);
             toAdd.add(field);
 
-            // check if there's a compatible field where state could potentially be copied from
-            Field compatibleField = compatibleFields.get(newField);
-            if (compatibleField != null) {
-                // TODO - handle
-
-            }
+            // mark a compatible field where
+            // state could potentially be copied from
+            field.setCompatibleField(compatibleFields.get(newField));
         }
         int nextIndex = addedInstanceFields.length;
         addedInstanceFields = Arrays.copyOf(addedInstanceFields, addedInstanceFields.length + toAdd.size());

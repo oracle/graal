@@ -569,59 +569,40 @@ public final class ClassRedefinition {
         boolean sameType = oldField.getType() == newField.getType();
         boolean sameFlags = oldField.getModifiers() == newField.getFlags();
 
-        if (sameName) {
-            if (sameType) {
-                if (sameFlags) {
-                    // same name + type + flags
+        if (sameName && sameType) {
+            if (sameFlags) {
+                // same name + type + flags
 
-                    // check field attributes
-                    Attribute[] oldAttributes = oldField.getAttributes();
-                    Attribute[] newAttributes = newField.getAttributes();
+                // check field attributes
+                Attribute[] oldAttributes = oldField.getAttributes();
+                Attribute[] newAttributes = newField.getAttributes();
 
-                    if (oldAttributes.length != newAttributes.length) {
-                        return false;
-                    }
-
-                    for (Attribute oldAttribute : oldAttributes) {
-                        boolean found = false;
-                        for (Attribute newAttribute : newAttributes) {
-                            if (oldAttribute.getName() == newAttribute.getName() && Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            return false;
-                        }
-                    }
-                    // identical field found
-                    return true;
-                } else {
-                    // same name + type
-                    if (Modifier.isStatic(oldField.getModifiers()) != Modifier.isStatic(newField.getFlags())) {
-                        // a change from static -> non-static or vice versa is not compatible
-                    } else {
-                        System.out.println("Compatible modifiers change for " + oldField.getName() + " : " + oldField.getType());
-                        compatibleFields.put(newField, oldField);
-                    }
+                if (oldAttributes.length != newAttributes.length) {
                     return false;
                 }
+
+                for (Attribute oldAttribute : oldAttributes) {
+                    boolean found = false;
+                    for (Attribute newAttribute : newAttributes) {
+                        if (oldAttribute.getName() == newAttribute.getName() && Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        return false;
+                    }
+                }
+                // identical field found
+                return true;
             } else {
-                // same name
+                // same name + type
                 if (Modifier.isStatic(oldField.getModifiers()) != Modifier.isStatic(newField.getFlags())) {
                     // a change from static -> non-static or vice versa is not compatible
                 } else {
-                    // check basic type compatibility
-                    if (oldField.getKind().isPrimitive()) {
-                      if (newField.getKind().isPrimitive()) {
-                          // TODO - check for compatible primitive types
-                          System.out.println("possible compatible primitive field change: " + oldField.getKind() + " -> " + newField.getKind());
-                      }
-                    } else if (oldField.getKind().isObject() && newField.getKind().isObject()) {
-                        System.out.println("Compatible object type change for " + oldField.getName() + " : " + oldField.getType() + " -> " + newField.getType());
-                        compatibleFields.put(newField, oldField);
-                    }
+                    compatibleFields.put(newField, oldField);
                 }
+                return false;
             }
         }
         return false;

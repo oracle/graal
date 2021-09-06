@@ -2112,11 +2112,13 @@ public final class BytecodeNode extends EspressoMethodNode {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
         Field field = getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
         if (field.isRemoved()) {
-            // try if there's a compatible field
+            // we're OK with a slow path here with full re-resolution on each hit,
+            // because we're executing obsolete, but still active code.
+            // try if there's a fully compatible new field
             try {
                 field = getConstantPool().resolvedFieldAtNoCache(getMethod().getDeclaringKlass(), cpi);
             } catch (EspressoException e) {
-                // no compatible field found, but allow old code to access old fields
+                // no fully compatible field found, but allow old code to use old fields
             }
         }
         return field;

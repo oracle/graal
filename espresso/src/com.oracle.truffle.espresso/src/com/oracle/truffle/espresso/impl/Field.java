@@ -58,7 +58,8 @@ public final class Field extends Member<Type> implements FieldRef {
     @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
 
     private final boolean isAddedField;
-    private boolean removedByRedefinition;
+    private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
+    private Field compatibleField;
 
     public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool) {
         this(holder, linkedField, pool, false);
@@ -85,11 +86,11 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public void removeByRedefintion() {
-        removedByRedefinition = true;
+        removedByRedefinition.invalidate();
     }
 
     public boolean isRemoved() {
-        return removedByRedefinition;
+        return !removedByRedefinition.isValid();
     }
 
     public Attribute[] getAttributes() {
@@ -348,11 +349,15 @@ public final class Field extends Member<Type> implements FieldRef {
     private StaticObject getObject(StaticObject obj, boolean forceVolatile) {
         assert !isHidden() : this + " is hidden, use getHiddenObject";
         if (isAddedField) {
-            Object value = getAddedFieldValue(obj);
-            if (value == null) {
-                return StaticObject.NULL;
+            if (hasCompatibleField()) {
+                return (StaticObject) compatibleField.getObjectHelper(obj, forceVolatile);
             } else {
-                return (StaticObject) value;
+                Object value = getAddedFieldValue(obj);
+                if (value == null) {
+                    return StaticObject.NULL;
+                } else {
+                    return (StaticObject) value;
+                }
             }
         } else {
             return (StaticObject) getObjectHelper(obj, forceVolatile);
@@ -366,7 +371,11 @@ public final class Field extends Member<Type> implements FieldRef {
     public void setObject(StaticObject obj, Object value, boolean forceVolatile) {
         assert !isHidden() : this + " is hidden, use setHiddenObject";
         if (isAddedField) {
-            setAddedFieldValue(obj, value);
+            if (hasCompatibleField()) {
+                compatibleField.setObjectHelper(obj, value, forceVolatile);
+            } else {
+                setAddedFieldValue(obj, value);
+            }
         } else {
             setObjectHelper(obj, value, forceVolatile);
         }
@@ -965,6 +974,18 @@ public final class Field extends Member<Type> implements FieldRef {
                     return;
                 }
         }
+    }
+
+    public void setCompatibleField(Field field) {
+        compatibleField = field;
+    }
+
+    public boolean hasCompatibleField() {
+        return compatibleField != null;
+    }
+
+    public Field getCompatibleField() {
+        return compatibleField;
     }
 
     /**
