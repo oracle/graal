@@ -246,22 +246,22 @@ final class ServiceWatcher {
 
         // Track existing folders for which we need notification upon deletion.
         // This is relevant when parent folders of a watched resource are deleted.
-        private final Map<Path, Set<Path>> watchedForDeletion = Collections.synchronizedMap(new HashMap<>());
+        private final Map<Path, Set<Path>> watchedForDeletion = new HashMap<>();
 
         // Track non-existing folders for which we need notification upon creation.
         // This is relevant when parent folders of a watched resource was previously deleted,
         // and then recreated again.
-        private final Map<Path, Set<Path>> watchedForCreation = Collections.synchronizedMap(new HashMap<>());
+        private final Map<Path, Set<Path>> watchedForCreation = new HashMap<>();
 
         // Map of registered file-system watches to allow us to cancel of watched path
         // in case it's no longer needed for detecting changes to leaf resources.
-        private final Map<Path, WatchKey> registeredWatches = Collections.synchronizedMap(new HashMap<>());
+        private final Map<Path, WatchKey> registeredWatches = new HashMap<>();
 
         // Map all active file watches with the set of paths for which the watch was
         // registered to enable us to cancel watches when deleted folders are recreated.
         // A counter on each path reason is kept for managing when we should cancel the
         // file system watch on the registered path.
-        private final Map<Path, Map<Path, Integer>> activeFileWatches = Collections.synchronizedMap(new HashMap<>());
+        private final Map<Path, Map<Path, Integer>> activeFileWatches = new HashMap<>();
 
         private WatcherThread() throws IOException {
             super("hotswap-watcher-1");
@@ -335,8 +335,10 @@ final class ServiceWatcher {
                             } else if (watchedForCreation.containsKey(resourcePath)) {
                                 handleCreatedFolderEvent(resourcePath);
                             }
-                        } else if (watchActions.containsKey(resourcePath)) {
-                            detectChange(resourcePath);
+                        } else if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
+                            if (watchActions.containsKey(resourcePath)) {
+                                detectChange(resourcePath);
+                            }
                         }
                     }
                     key.reset();
@@ -389,7 +391,7 @@ final class ServiceWatcher {
             detectChange(resourcePath);
         }
 
-        private void registerFileSystemWatch(Path path, Path reason, WatchEvent.Kind<?>[] kinds) throws IOException {
+        private synchronized void registerFileSystemWatch(Path path, Path reason, WatchEvent.Kind<?>[] kinds) throws IOException {
             // register the watch and store the watch key
             WatchKey watchKey = path.register(watchService, kinds);
             registeredWatches.put(path, watchKey);
@@ -402,6 +404,29 @@ final class ServiceWatcher {
             }
             // increment the counter for the reason
             reasons.put(reason, reasons.getOrDefault(reason, 0) + 1);
+        }
+
+        private synchronized void removeFilesystemWatchReason(Path path, Path reason) {
+            // remove the reason from file watch state
+            Map<Path, Integer> reasons = activeFileWatches.getOrDefault(path, Collections.emptyMap());
+            int count = reasons.getOrDefault(reason, 0);
+            if (count <= 1) {
+                reasons.remove(reason);
+            } else {
+                // decrement the reason count
+                reasons.put(reason, reasons.get(reason) - 1);
+            }
+
+            // only cancel the file system watch if the last reason
+            // to have it was removed
+            if (reasons.isEmpty()) {
+                activeFileWatches.remove(path);
+                // cancel the file watch and remove from state
+                WatchKey watchKey = registeredWatches.remove(path);
+                if (watchKey != null) {
+                    watchKey.cancel();
+                }
+            }
         }
 
         private void handleCreatedFolderEvent(Path path) {
@@ -470,29 +495,6 @@ final class ServiceWatcher {
                     System.err.println("[HotSwap API]: Unexpected exception while handling creation of path: " + path);
                     // Checkstyle: resume warning message from guest code
                     e.printStackTrace();
-                }
-            }
-        }
-
-        private void removeFilesystemWatchReason(Path path, Path reason) {
-            // remove the reason from file watch state
-            Map<Path, Integer> reasons = activeFileWatches.getOrDefault(path, Collections.emptyMap());
-            int count = reasons.getOrDefault(reason, 0);
-            if (count <= 1) {
-                reasons.remove(reason);
-            } else {
-                // decrement the reason count
-                reasons.put(reason, reasons.get(reason) - 1);
-            }
-
-            // only cancel the file system watch if the last reason
-            // to have it was removed
-            if (reasons.isEmpty()) {
-                activeFileWatches.remove(path);
-                // cancel the file watch and remove from state
-                WatchKey watchKey = registeredWatches.remove(path);
-                if (watchKey != null) {
-                    watchKey.cancel();
                 }
             }
         }
