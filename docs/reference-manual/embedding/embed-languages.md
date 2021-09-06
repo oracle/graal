@@ -302,7 +302,7 @@ public class Services {
     Value lastResult;
 
     @HostAccess.Export
-    void callback(Value result) {
+    public void callback(Value result) {
         this.lastResult = result;
     }
 
@@ -316,7 +316,7 @@ public static void main(String[] args) {
     try (Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build()) {
         context.getBindings("js").putMember("services", s);
         context.eval("js", "services.callback('Hello from JS');");
-        System.out.println(services.getResult());
+        System.out.println(s.getResult());
     }
 }
 ```
