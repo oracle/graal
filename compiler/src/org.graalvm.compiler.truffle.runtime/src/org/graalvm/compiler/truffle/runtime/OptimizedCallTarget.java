@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
@@ -328,6 +329,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
     volatile List<OptimizedCallTarget> blockCompilations;
+    private final int id;
+    private static final AtomicInteger idCounter = new AtomicInteger(0);
 
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
@@ -339,6 +342,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
         this.uninitializedNodeCount = !isOSR() ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
+        id = idCounter.getAndIncrement();
     }
 
     final Assumption getNodeRewritingAssumption() {
@@ -1682,5 +1686,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     boolean isOSR() {
         return rootNode instanceof BaseOSRRootNode;
+    }
+
+    public int id() {
+        return id;
     }
 }

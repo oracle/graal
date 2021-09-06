@@ -69,32 +69,32 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     @Override
     public void onCompilationQueued(OptimizedCallTarget target, int tier) {
         if (target.engine.traceCompilationDetails) {
-            runtime.logEvent(target, 0, "opt queued", queueProperties(target, tier));
+            log(target, "opt queued", queueProperties(target, tier, 1));
         }
     }
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
         if (target.engine.traceCompilationDetails) {
-            Map<String, Object> properties = queueProperties(target, tier);
+            Map<String, Object> properties = queueProperties(target, tier, -1);
             properties.put("Reason", reason);
-            runtime.logEvent(target, 0, "opt unqueued", properties);
+            log(target, "opt unqueued", properties);
         }
     }
 
-    private Map<String, Object> queueProperties(OptimizedCallTarget target, int tier) {
+    private Map<String, Object> queueProperties(OptimizedCallTarget target, int tier, int queueChange) {
         Map<String, Object> properties = new LinkedHashMap<>();
-        GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
         properties.put("Tier", Integer.toString(tier)); // to avoid padding
-        int callThreshold = tier == 1 ? target.engine.callThresholdInInterpreter : target.engine.callThresholdInFirstTier;
         int scale = runtime.compilationThresholdScale();
-        properties.put("Calls/Thres", String.format("%7d/%5d", target.getCallCount(), FixedPointMath.multiply(scale, callThreshold)));
         int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
         properties.put("CallsAndLoop/Thres", String.format("%7d/%5d", target.getCallAndLoopCount(), FixedPointMath.multiply(scale, callAndLoopThreshold)));
-        properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
-        properties.put("QueueSize", runtime.getCompilationQueueSize());
+        properties.put("Queue", String.format("(Size %d, Change %c%d, Scale %.2f)",
+                        runtime.getCompilationQueueSize(),
+                        queueChange >= 0 ? '+' : '-',
+                        Math.abs(queueChange),
+                        FixedPointMath.toDouble(scale)));
         properties.put("Time", System.nanoTime() - startTime);
-        properties.put("Scale", FixedPointMath.toDouble(scale));
+        properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
         return properties;
     }
 
@@ -106,7 +106,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             } else {
                 Map<String, Object> properties = compilationEndProperties(target, null, null, null, tier);
                 properties.put("Reason", reason);
-                runtime.logEvent(target, 0, "opt failed", properties);
+                log(target, "opt failed", properties);
             }
             currentCompilation.set(null);
         }
@@ -115,12 +115,17 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     @Override
     public void onCompilationStarted(OptimizedCallTarget target, int tier) {
         if (target.engine.traceCompilationDetails) {
-            runtime.logEvent(target, 0, "opt start", queueProperties(target, tier));
+            log(target, "opt start", queueProperties(target, tier, -1));
         }
 
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             currentCompilation.set(new Times());
         }
+    }
+
+    private void log(OptimizedCallTarget target, String event, Map<String, Object> properties) {
+        String subject = String.format("id=%-6d %s", target.id(), target.getName());
+        runtime.logEvent(target, 0, event, subject, properties, null);
     }
 
     @Override
@@ -129,7 +134,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             Map<String, Object> properties = new LinkedHashMap<>();
             GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
             properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
-            runtime.logEvent(target, 0, "opt deopt", properties);
+            log(target, "opt deopt", properties);
         }
     }
 
@@ -150,43 +155,35 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
         Map<String, Object> properties = compilationEndProperties(target, inliningDecision, graph, result, tier);
 
-        runtime.logEvent(target, 0, "opt done", properties);
+        log(target, "opt done", properties);
 
         currentCompilation.set(null);
     }
 
     private Map<String, Object> compilationEndProperties(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
         long timeCompilationFinished = System.nanoTime();
-        int nodeCountLowered = graph == null ? 0 : graph.getNodeCount();
         Times compilation = currentCompilation.get();
 
-        int calls = 0;
-        int inlinedCalls;
-        if (inliningDecision == null) {
-            CallCountVisitor visitor = new CallCountVisitor();
-            target.accept(visitor);
-            calls = visitor.calls;
-            inlinedCalls = 0;
-        } else {
-            calls = inliningDecision.countCalls();
-            inlinedCalls = inliningDecision.countInlinedCalls();
-        }
 
-        int dispatchedCalls = calls - inlinedCalls;
         Map<String, Object> properties = new LinkedHashMap<>();
-        GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
         properties.put("Tier", Integer.toString(tier)); // to avoid padding
         properties.put("Time", String.format("%4.0f(%4.0f+%-4.0f)ms", //
                         (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (compilation.timePartialEvaluationFinished - compilation.timeCompilationStarted) / 1e6, //
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
-        properties.put("Inlined", String.format("%3dY %3dN", inlinedCalls, dispatchedCalls));
-        properties.put("IR", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
-        properties.put("CodeSize", result == null ? 0 : result.getTargetCodeSize());
+        if (inliningDecision != null) {
+            int inlinedCalls = inliningDecision.countInlinedCalls();
+            int dispatchedCalls = inliningDecision.countCalls() - inlinedCalls;
+            properties.put("Inlined", String.format("%3dY %3dN", inlinedCalls, dispatchedCalls));
+        }
+        if (graph != null) {
+            properties.put("IR", String.format("%5d/%5d", compilation.nodeCountPartialEval, graph.getNodeCount()));
+        }
+        if (result != null) {
+            properties.put("CodeSize", result.getTargetCodeSize());
+        }
         if (target.getCodeAddress() != 0) {
             properties.put("Addr", "0x" + Long.toHexString(target.getCodeAddress()));
-        } else {
-            properties.put("Addr", "N/A");
         }
         properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
         return properties;
@@ -204,7 +201,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             Map<String, Object> properties = defaultProperties(target);
             properties.put("Reason", reason);
-            runtime.logEvent(target, 0, "opt inv.", properties);
+            log(target, "opt inv.", properties);
         }
     }
 
