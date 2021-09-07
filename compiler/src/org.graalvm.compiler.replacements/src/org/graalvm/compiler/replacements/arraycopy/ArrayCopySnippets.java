@@ -586,7 +586,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
 
         public void lower(ArrayCopyWithDelayedLoweringNode arraycopy, LoweringTool tool) {
-            if (!arraycopy.reachedLoweringStage()) {
+            if (!arraycopy.reachedRequiredLoweringStage()) {
                 return;
             }
 
