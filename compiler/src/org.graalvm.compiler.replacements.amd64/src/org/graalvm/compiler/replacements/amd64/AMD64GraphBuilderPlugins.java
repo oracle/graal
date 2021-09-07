@@ -41,10 +41,13 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CopySignNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.calc.MaxNode;
+import org.graalvm.compiler.nodes.calc.MinNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
@@ -188,6 +191,10 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             registerFMA(r, useFMAIntrinsics && arch.getFeatures().contains(CPUFeature.FMA));
         }
 
+        if (arch.getFeatures().contains(CPUFeature.AVX)) {
+            registerMinMax(r);
+        }
+
         if (arch.getFeatures().contains(CPUFeature.AVX512VL)) {
             r.register2("copySign", float.class, float.class, new InvocationPlugin() {
                 @Override
@@ -259,6 +266,26 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerMinMax(Registration r) {
+        JavaKind[] supportedKinds = {JavaKind.Float, JavaKind.Double};
+        for (JavaKind kind : supportedKinds) {
+            r.register2("max", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
+                    return true;
+                }
+            });
+            r.register2("min", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements) {
