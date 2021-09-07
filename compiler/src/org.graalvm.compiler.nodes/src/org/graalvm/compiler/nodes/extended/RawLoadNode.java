@@ -178,14 +178,14 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
             if (offset().isConstant() && targetObject.isConstant() && !targetObject.isNullConstant()) {
                 ConstantNode objectConstant = (ConstantNode) targetObject;
                 ResolvedJavaType type = StampTool.typeOrNull(objectConstant);
-                if (type != null && type.isArray()) {
-                    JavaConstant arrayConstant = objectConstant.asJavaConstant();
-                    if (arrayConstant != null) {
+                if (type != null) {
+                    JavaConstant javaConstant = objectConstant.asJavaConstant();
+                    if (javaConstant != null) {
                         int stableDimension = objectConstant.getStableDimension();
-                        if (stableDimension > 0) {
+                        if (locationIdentity.isImmutable() || (type.isArray() && stableDimension > 0)) {
                             NodeView view = NodeView.from(tool);
                             long constantOffset = offset().asJavaConstant().asLong();
-                            Constant constant = stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), arrayConstant, constantOffset);
+                            Constant constant = stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), javaConstant, constantOffset);
                             boolean isDefaultStable = objectConstant.isDefaultStable();
                             if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
                                 /*
@@ -199,7 +199,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                                  * accesses for building the AST during PE, and should not enforce
                                  * ordering on language side accesses.
                                  */
-                                return ConstantNode.forConstant(stamp(view), constant, stableDimension - 1, isDefaultStable, tool.getMetaAccess());
+                                return ConstantNode.forConstant(stamp(view), constant, Math.max(stableDimension - 1, 0), isDefaultStable, tool.getMetaAccess());
                             }
                         }
                     }
