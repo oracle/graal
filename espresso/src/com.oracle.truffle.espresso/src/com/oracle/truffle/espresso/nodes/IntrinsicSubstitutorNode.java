@@ -100,7 +100,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     }
 
     @Override
-    public boolean isTrivial() {
-        return !getMethod().isSynchronized() && substitution.isTrivial();
+    protected boolean isTrivial() {
+        return substitution.isTrivial();
     }
 }

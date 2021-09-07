@@ -48,7 +48,7 @@ public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode 
         return new EspressoBaseMethodNodeWrapper(this, probeNode);
     }
 
-    public boolean isTrivial() {
+    protected boolean isTrivial() {
         return false;
     }
 }

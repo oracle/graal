@@ -420,6 +420,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = LivenessAnalysis.analyze(method);
+        /*
+         * The "triviality" is partially computed here since isTrivial is called from a compiler
+         * thread where the context is not accessible.
+         */
         this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().TrivialMethodSize ? (byte) -1 : 0;
     }
 
@@ -2856,7 +2860,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     @Override
-    public boolean isTrivial() {
+    protected boolean isTrivial() {
         CompilerAsserts.neverPartOfCompilation();
         // These are dynamic and should be checked on every compilation.
         if (!noForeignObjects.isValid() || implicitExceptionProfile) {
