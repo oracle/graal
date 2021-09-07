@@ -2839,7 +2839,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (Bytecodes.MONITORENTER == bc || Bytecodes.MONITOREXIT == bc) {
                 return false;
             }
-            if (Bytecodes.ANEWARRAY == bc) {
+            if (Bytecodes.ANEWARRAY == bc || MULTIANEWARRAY == bc) {
                 // The allocated array is Arrays.fill-ed with StaticObject.NULL but loops are not
                 // allowed in trivial methods.
                 return false;
