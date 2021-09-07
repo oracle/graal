@@ -72,19 +72,30 @@ final class RootNameFilter implements Predicate<String> {
                     if (data == null || data.rootNameFn == null) {
                         continue;
                     }
-                    Object res = iop.execute(data.rootNameFn, rootName);
-                    if (Boolean.TRUE.equals(res)) {
+                    if (rootNameCheck(iop, data, rootName)) {
                         computed = true;
                         break;
                     }
                 }
             }
-        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
-            computed = false;
         } finally {
             this.querying.set(prev);
         }
         cache.put(rootName, computed);
         return computed;
+    }
+
+    static boolean rootNameCheck(final InteropLibrary iop, InsightFilter.Data data, String rootName) {
+        Object res;
+        try {
+            res = iop.execute(data.rootNameFn, rootName);
+        } catch (UnsupportedTypeException ex) {
+            return false;
+        } catch (ArityException ex) {
+            return false;
+        } catch (UnsupportedMessageException ex) {
+            return false;
+        }
+        return Boolean.TRUE.equals(res);
     }
 }

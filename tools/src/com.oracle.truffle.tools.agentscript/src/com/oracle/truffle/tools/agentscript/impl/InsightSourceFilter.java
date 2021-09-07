@@ -56,7 +56,6 @@ final class InsightSourceFilter implements Predicate<Source> {
             }
             this.querying.set(true);
             final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-            final SourceEventObject srcObj = new SourceEventObject(src);
             final int len = key.functionsMaxCount();
             InsightPerContext ctx = insight.findCtx();
             for (int i = 0; i < len; i++) {
@@ -64,16 +63,29 @@ final class InsightSourceFilter implements Predicate<Source> {
                 if (data == null || data.sourceFilterFn == null) {
                     continue;
                 }
-                Object res = iop.execute(data.sourceFilterFn, srcObj);
-                if (Boolean.TRUE.equals(res)) {
+                if (checkSource(iop, data, src)) {
                     return true;
                 }
             }
             return false;
-        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
-            return false;
         } finally {
             this.querying.set(prev);
         }
+    }
+
+    static boolean checkSource(final InteropLibrary iop, InsightFilter.Data data, Source src) {
+        final SourceEventObject srcObj = new SourceEventObject(src);
+        Object res;
+        try {
+            res = iop.execute(data.sourceFilterFn, srcObj);
+        } catch (UnsupportedTypeException ex) {
+            return false;
+        } catch (ArityException ex) {
+            return false;
+        } catch (UnsupportedMessageException ex) {
+            return false;
+        }
+        final boolean is = Boolean.TRUE.equals(res);
+        return is;
     }
 }

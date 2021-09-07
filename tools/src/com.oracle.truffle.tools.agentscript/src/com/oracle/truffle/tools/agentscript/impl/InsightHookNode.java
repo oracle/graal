@@ -36,8 +36,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 final class InsightHookNode extends ExecutionEventNode {
+    @Node.Child private InteropLibrary checkApplicable;
     @Node.Child private InteropLibrary enterDispatch;
     @Node.Child private InteropLibrary exitDispatch;
     @Node.Child private NodeLibrary nodeDispatch;
@@ -46,10 +48,13 @@ final class InsightHookNode extends ExecutionEventNode {
     private final EventContext ctx;
     private final Node instrumentedNode;
     private final InsightInstrument insight;
+    private final String rootName;
+    private final Source src;
 
     private InsightHookNode(InsightInstrument.Key key, InsightInstrument insight, EventContext ctx) {
         this.key = key;
         this.insight = insight;
+        this.checkApplicable = InteropLibrary.getFactory().createDispatched(3);
         this.enterDispatch = InteropLibrary.getFactory().createDispatched(3);
         this.exitDispatch = InteropLibrary.getFactory().createDispatched(3);
         this.exceptionDispatch = InteropLibrary.getFactory().createDispatched(3);
@@ -57,6 +62,8 @@ final class InsightHookNode extends ExecutionEventNode {
         this.nodeDispatch = NodeLibrary.getFactory().create(node);
         this.ctx = ctx;
         this.instrumentedNode = node;
+        this.rootName = node.getRootNode().getName();
+        this.src = ctx.getInstrumentedSourceSection().getSource();
     }
 
     @Override
@@ -66,7 +73,7 @@ final class InsightHookNode extends ExecutionEventNode {
         final InsightPerContext ipc = insight.findCtx();
         for (int i = 0; i < len; i++) {
             InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
-            if (data == null || data.type != AgentType.ENTER) {
+            if (!isApplicable(data, AgentType.ENTER)) {
                 continue;
             }
             final EventContextObject eco = eventCtxObj();
@@ -87,7 +94,7 @@ final class InsightHookNode extends ExecutionEventNode {
         final InsightPerContext ipc = insight.findCtx();
         for (int i = 0; i < len; i++) {
             InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
-            if (data == null || data.type != AgentType.RETURN) {
+            if (!isApplicable(data, AgentType.RETURN)) {
                 continue;
             }
             final EventContextObject eco = eventCtxObj();
@@ -108,7 +115,7 @@ final class InsightHookNode extends ExecutionEventNode {
         final InsightPerContext ipc = insight.findCtx();
         for (int i = 0; i < len; i++) {
             InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
-            if (data == null || data.type != AgentType.RETURN) {
+            if (!isApplicable(data, AgentType.RETURN)) {
                 continue;
             }
             final EventContextObject eco = eventCtxObj();
@@ -157,6 +164,22 @@ final class InsightHookNode extends ExecutionEventNode {
         } else {
             return ArrayObject.array();
         }
+    }
+
+    private boolean isApplicable(InsightFilter.Data data, AgentType agentType) {
+        if (data == null) {
+            return false;
+        }
+        if (data.type != agentType) {
+            return false;
+        }
+        if (data.rootNameFn != null && !RootNameFilter.rootNameCheck(checkApplicable, data, rootName)) {
+            return false;
+        }
+        if (data.sourceFilterFn != null && !InsightSourceFilter.checkSource(checkApplicable, data, src)) {
+            return false;
+        }
+        return true;
     }
 
     private EventContextObject eventCtxObj() {
