@@ -1225,6 +1225,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.objectfile.io",
                 "com.oracle.objectfile.debuginfo",
+                "com.oracle.objectfile.macho",
               ],
 
               "requires" : ["jdk.unsupported"],
