@@ -83,6 +83,7 @@ function color_create_legend() {
     let r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     svg.x.baseVal.value = xpad;
     svg.y.baseVal.value = 50;
+    r.className.baseVal = "popup";
     r.x.baseVal.value = 0;
     r.y.baseVal.value = 0;
     r.width.baseVal.value = 250;
@@ -93,6 +94,7 @@ function color_create_legend() {
     r.ry.baseVal.vlaue = 2;
 
     let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.className.baseVal = "title";
     t.style.textAnchor = "middle";
     t.setAttribute("x", 125);
     t.setAttribute("y", fg_frameheight * 2);
@@ -163,6 +165,7 @@ function color_legend_entry(e, i, color, text) {
     box.ry.baseVal.vlaue = 2;
 
     let label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.className.baseVal = "label";
     label.style.textAnchor = "left";
     label.setAttribute("x", xpad + fg_frameheight * 3);
     label.setAttribute("y", y - 5 + fg_frameheight);
@@ -184,6 +187,7 @@ function color_legend() {
     if (e != null) {
         if (e.style["display"] == "none") {
             e.style["display"] = "block";
+            graph_popup_fix_width(e, false);
         } else {
             e.style["display"] = "none";
         }

@@ -346,6 +346,7 @@ function fg_resize(new_width) {
         zoom(fg_element_for_sample(fg_zoomed_sample));
     }
     document.getElementById("fg_title").setAttribute("x", new_width / 2);
+    document.getElementById("fg_help").setAttribute("x", new_width / 2);
     document.getElementById("search").setAttribute("x", new_width - xpad);
 
 }

@@ -268,6 +268,11 @@ function substring_width(t, txt, x, lengths) {
 function owner_resize(new_width) {
     document.firstElementChild.width.baseVal.value = new_width;
     document.firstElementChild.viewBox.baseVal.width = new_width;
+
+    let help = document.getElementById("help");
+    if (help != null) {
+        help.parentElement.x.baseVal.value = new_width - help.firstElementChild.width.baseVal.value - xpad
+    }
 }
 
 var help_strings = [];
@@ -279,8 +284,8 @@ function graph_create_help() {
     e.id = "help";
 
     let r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    svg.x.baseVal.value = xpad;
     svg.y.baseVal.value = 50;
+    r.className.baseVal = "popup";
     r.x.baseVal.value = 0;
     r.y.baseVal.value = 0;
     r.width.baseVal.value = 250;
@@ -291,8 +296,8 @@ function graph_create_help() {
     r.ry.baseVal.vlaue = 2;
 
     let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.className.baseVal = "title";
     t.style.textAnchor = "middle";
-    t.setAttribute("x", 125);
     t.setAttribute("y", fg_frameheight * 2);
     t.style.fontSize = fontSize * 1.5;
     t.style.fontFamily = "Verdana";
@@ -310,6 +315,8 @@ function graph_create_help() {
         graph_help_entry(e, entry_count, help_strings[entry_count][0], help_strings[entry_count][1]);
     }
 
+    svg.x.baseVal.value = document.firstElementChild.width.baseVal.value - 250 - xpad;
+    t.setAttribute("x", 250 / 2);
     r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
     document.firstElementChild.appendChild(svg);
     return e;
@@ -340,6 +347,7 @@ function graph_help_entry(e, i, key, description) {
     label.textContent = key;
 
     let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.className.baseVal = "label";
     text.style.textAnchor = "left";
     text.setAttribute("x", xpad + fg_frameheight * 3);
     text.setAttribute("y", y - 5 + fg_frameheight);
@@ -353,6 +361,24 @@ function graph_help_entry(e, i, key, description) {
     e.appendChild(text);
 }
 
+function graph_popup_fix_width(e, right_justify) {
+    let labels = e.getElementsByClassName("label");
+    let max_label_end = 250;
+    for (const label of labels) {
+        let label_end = label.x.baseVal[0].value + label.textLength.baseVal.value + xpad;
+        if (label_end > max_label_end) {
+            max_label_end = label_end;
+        }
+    }
+    let title = e.getElementsByClassName("title")[0];
+    title.x.baseVal.value = max_label_end / 2;
+    let popup = e.getElementsByClassName("popup")[0];
+    popup.width.baseVal.value = max_label_end;
+    if (right_justify) {
+        e.parentElement.x.baseVal.value = fg_width - max_label_end - xpad;
+    }
+};
+
 function graph_help() {
     let e = document.getElementById("help");
     if (e == null) {
@@ -361,6 +387,7 @@ function graph_help() {
     if (e != null) {
         if (e.style["display"] == "none") {
             e.style["display"] = "block";
+            graph_popup_fix_width(e, true);
         } else {
             e.style["display"] = "none";
         }
