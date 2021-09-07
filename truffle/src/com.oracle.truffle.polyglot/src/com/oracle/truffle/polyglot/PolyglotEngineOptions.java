@@ -62,7 +62,7 @@ final class PolyglotEngineOptions {
      * into err.
      */
     @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.INTERNAL, help = "Propagates exceptions thrown by instruments.")//
-    static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(false);
+    static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(true);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Propagates cancel execution exception into UncaughtExceptionHandler. " +
                     "For testing purposes only.")//

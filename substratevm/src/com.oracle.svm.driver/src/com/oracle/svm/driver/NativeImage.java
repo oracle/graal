@@ -233,11 +233,11 @@ public class NativeImage {
     private static final String pKeyNativeImageArgs = "NativeImageArgs";
 
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
+    private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
-    private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageModulePath = new LinkedHashSet<>();
     private final ArrayList<String> customJavaArgs = new ArrayList<>();
     private final ArrayList<String> customImageBuilderArgs = new ArrayList<>();
@@ -564,15 +564,16 @@ public class NativeImage {
 
         @Override
         public List<Path> getImageProvidedClasspath() {
-            return getJars(rootDir.resolve(Paths.get("lib", "svm")));
+            return getImageProvidedJars();
         }
 
         @Override
         public List<Path> getImageProvidedModulePath() {
-            if (USE_NI_JPMS) {
-                return getJars(rootDir.resolve(Paths.get("lib", "svm")));
-            }
-            return Collections.emptyList();
+            return getImageProvidedJars();
+        }
+
+        private List<Path> getImageProvidedJars() {
+            return getJars(rootDir.resolve(Paths.get("lib", "svm")));
         }
 
         @Override
@@ -888,19 +889,13 @@ public class NativeImage {
          */
         addImageBuilderJavaArgs("-Xshare:off");
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
-        config.getImageProvidedClasspath().forEach(this::addImageProvidedClasspath);
 
         if (config.getBuilderInspectServerPath() != null) {
             addPlainImageBuilderArg(oHInspectServerContentPath + config.getBuilderInspectServerPath());
         }
 
         if (config.useJavaModules()) {
-            String modulePath = config.getBuilderModulePath().stream()
-                            .map(this::canonicalize).map(Path::toString)
-                            .collect(Collectors.joining(File.pathSeparator));
-            if (!modulePath.isEmpty()) {
-                addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
-            }
+            config.getBuilderModulePath().forEach(this::addImageBuilderModulePath);
             String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
@@ -1223,22 +1218,25 @@ public class NativeImage {
             showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
         }
 
+        LinkedHashSet<Path> finalImageModulePath = new LinkedHashSet<>(imageModulePath);
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
         finalImageClasspath.addAll(imageClasspath);
-        if (!finalImageClasspath.isEmpty()) {
-            finalImageClasspath.addAll(imageProvidedClasspath);
-        }
 
-        LinkedHashSet<Path> finalImageModulePath = new LinkedHashSet<>(imageModulePath);
-        if (!finalImageModulePath.isEmpty()) {
-            finalImageModulePath.addAll(config.getImageProvidedModulePath());
+        List<Path> imageProvidedJars;
+        if (USE_NI_JPMS) {
+            imageProvidedJars = config.getImageProvidedModulePath();
+            finalImageModulePath.addAll(imageProvidedJars);
+        } else {
+            imageProvidedJars = config.getImageProvidedClasspath();
+            finalImageClasspath.addAll(imageProvidedJars);
         }
+        imageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
 
         if (!config.buildFallbackImage() && imageBuilderArgs.contains(oHFallbackThreshold + SubstrateOptions.ForceFallback)) {
             /* Bypass regular build and proceed with fallback image building */
             return 2;
         }
-        return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
+        return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
     }
 
     private static String getLocationAgnosticArgPrefix(String argPrefix) {
@@ -1395,7 +1393,8 @@ public class NativeImage {
         }
     }
 
-    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp, LinkedHashSet<Path> imagemp) {
+    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<Path> mp, ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp,
+                    LinkedHashSet<Path> imagemp) {
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
         command.add(canonicalize(config.getJavaExecutable()).toString());
@@ -1407,6 +1406,11 @@ public class NativeImage {
         if (!cp.isEmpty()) {
             command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         }
+        if (!mp.isEmpty()) {
+            List<String> strings = Arrays.asList("--module-path", mp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+            command.addAll(strings);
+        }
+
         if (USE_NI_JPMS) {
             command.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
         } else {
@@ -1544,6 +1548,10 @@ public class NativeImage {
         }
     }
 
+    public void addImageBuilderModulePath(Path modulePathEntry) {
+        imageBuilderModulePath.add(canonicalize(modulePathEntry));
+    }
+
     void addImageBuilderClasspath(Path classpath) {
         imageBuilderClasspath.add(canonicalize(classpath));
     }
@@ -1603,20 +1611,6 @@ public class NativeImage {
     }
 
     /**
-     * For adding classpath elements that are only on the classpath in the context of native-image
-     * building. I.e. that are not on the classpath when the application would be run with the java
-     * command. (library-support.jar)
-     */
-    private void addImageProvidedClasspath(Path classpath) {
-        VMError.guarantee(imageClasspath.isEmpty() && customImageClasspath.isEmpty());
-        Path classpathEntry = canonicalize(classpath);
-        if (imageProvidedClasspath.add(classpathEntry)) {
-            processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
-            processClasspathNativeImageMetaInf(classpathEntry);
-        }
-    }
-
-    /**
      * For adding classpath elements that are automatically put on the image-classpath.
      */
     void addImageClasspath(Path classpath) {
@@ -1664,6 +1658,10 @@ public class NativeImage {
             builderModuleNames = modules;
         }
         return builderModuleNames;
+    }
+
+    void addImageModulePath(Path modulePathEntry) {
+        addImageModulePath(modulePathEntry, true);
     }
 
     void addImageModulePath(Path modulePathEntry, boolean strict) {

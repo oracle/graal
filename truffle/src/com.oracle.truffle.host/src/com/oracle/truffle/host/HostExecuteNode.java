@@ -109,6 +109,7 @@ abstract class HostExecuteNode extends Node {
                     @Cached ToGuestValueNode toGuest,
                     @Cached("createClassProfile()") ValueProfile receiverProfile,
                     @Cached BranchProfile errorBranch,
+                    @Cached BranchProfile seenDynamicScope,
                     @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
         int arity = cachedMethod.getParameterCount();
         if (args.length != arity) {
@@ -118,18 +119,25 @@ abstract class HostExecuteNode extends Node {
         Class<?>[] types = cachedMethod.getParameterTypes();
         Type[] genericTypes = cachedMethod.getGenericParameterTypes();
         Object[] convertedArguments = new Object[args.length];
+
+        HostMethodScope scope = HostMethodScope.openStatic(cachedMethod);
         try {
-            for (int i = 0; i < toJavaNodes.length; i++) {
-                convertedArguments[i] = toJavaNodes[i].execute(hostContext, args[i], types[i], genericTypes[i], true);
+            try {
+                for (int i = 0; i < toJavaNodes.length; i++) {
+                    Object operand = HostMethodScope.addToScopeStatic(scope, cachedMethod, i, args[i]);
+                    convertedArguments[i] = toJavaNodes[i].execute(hostContext, operand, types[i], genericTypes[i], true);
+                }
+            } catch (RuntimeException e) {
+                errorBranch.enter();
+                if (cache.language.access.isEngineException(e)) {
+                    throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+                }
+                throw e;
             }
-        } catch (RuntimeException e) {
-            errorBranch.enter();
-            if (cache.language.access.isEngineException(e)) {
-                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
-            }
-            throw e;
+            return doInvoke(cachedMethod, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
+        } finally {
+            HostMethodScope.closeStatic(scope, cachedMethod, seenDynamicScope);
         }
-        return doInvoke(cachedMethod, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
     }
 
     @SuppressWarnings("unused")
@@ -140,6 +148,8 @@ abstract class HostExecuteNode extends Node {
                     @Cached ToGuestValueNode toGuest,
                     @Cached("createClassProfile()") ValueProfile receiverProfile,
                     @Cached BranchProfile errorBranch,
+                    @Cached BranchProfile seenDynamicScope,
+                    @Cached("asVarArgs(args, cachedMethod, hostContext)") boolean asVarArgs,
                     @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
         int parameterCount = cachedMethod.getParameterCount();
         int minArity = parameterCount - 1;
@@ -150,28 +160,38 @@ abstract class HostExecuteNode extends Node {
         Class<?>[] types = cachedMethod.getParameterTypes();
         Type[] genericTypes = cachedMethod.getGenericParameterTypes();
         Object[] convertedArguments = new Object[args.length];
+
+        HostMethodScope scope = HostMethodScope.openStatic(cachedMethod);
         try {
-            for (int i = 0; i < minArity; i++) {
-                convertedArguments[i] = toJavaNode.execute(hostContext, args[i], types[i], genericTypes[i], true);
-            }
-            if (asVarArgs(args, cachedMethod, hostContext)) {
-                for (int i = minArity; i < args.length; i++) {
-                    Class<?> expectedType = types[minArity].getComponentType();
-                    Type expectedGenericType = getGenericComponentType(genericTypes[minArity]);
-                    convertedArguments[i] = toJavaNode.execute(hostContext, args[i], expectedType, expectedGenericType, true);
+            try {
+                for (int i = 0; i < minArity; i++) {
+                    Object operand = HostMethodScope.addToScopeStatic(scope, cachedMethod, i, args[i]);
+                    convertedArguments[i] = toJavaNode.execute(hostContext, operand, types[i], genericTypes[i], true);
                 }
-                convertedArguments = createVarArgsArray(cachedMethod, convertedArguments, parameterCount);
-            } else {
-                convertedArguments[minArity] = toJavaNode.execute(hostContext, args[minArity], types[minArity], genericTypes[minArity], true);
+                if (asVarArgs) {
+                    for (int i = minArity; i < args.length; i++) {
+                        Class<?> expectedType = types[minArity].getComponentType();
+                        Type expectedGenericType = getGenericComponentType(genericTypes[minArity]);
+
+                        Object operand = HostMethodScope.addToScopeStatic(scope, cachedMethod, i, args[i]);
+                        convertedArguments[i] = toJavaNode.execute(hostContext, operand, expectedType, expectedGenericType, true);
+                    }
+                    convertedArguments = createVarArgsArray(cachedMethod, convertedArguments, parameterCount);
+                } else {
+                    Object operand = HostMethodScope.addToScopeStatic(scope, cachedMethod, minArity, args[minArity]);
+                    convertedArguments[minArity] = toJavaNode.execute(hostContext, operand, types[minArity], genericTypes[minArity], true);
+                }
+            } catch (RuntimeException e) {
+                errorBranch.enter();
+                if (cache.language.access.isEngineException(e)) {
+                    throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+                }
+                throw e;
             }
-        } catch (RuntimeException e) {
-            errorBranch.enter();
-            if (cache.language.access.isEngineException(e)) {
-                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
-            }
-            throw e;
+            return doInvoke(cachedMethod, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
+        } finally {
+            HostMethodScope.closeStatic(scope, cachedMethod, seenDynamicScope);
         }
-        return doInvoke(cachedMethod, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
     }
 
     @Specialization(replaces = {"doFixed", "doVarArgs"})
@@ -181,6 +201,7 @@ abstract class HostExecuteNode extends Node {
                     @Shared("varArgsProfile") @Cached ConditionProfile isVarArgsProfile,
                     @Shared("hostMethodProfile") @Cached HostMethodProfileNode methodProfile,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch,
+                    @Shared("seenScope") @Cached BranchProfile seenScope,
                     @Shared("cache") @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
         int parameterCount = method.getParameterCount();
         int minArity;
@@ -200,16 +221,21 @@ abstract class HostExecuteNode extends Node {
             throw ArityException.create(minArity, maxArity, args.length);
         }
         Object[] convertedArguments;
+        HostMethodScope scope = HostMethodScope.openDynamic(method, args.length, seenScope);
         try {
-            convertedArguments = prepareArgumentsUncached(method, args, hostContext, toJavaNode, isVarArgsProfile);
-        } catch (RuntimeException e) {
-            errorBranch.enter();
-            if (cache.language.access.isEngineException(e)) {
-                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+            try {
+                convertedArguments = prepareArgumentsUncached(method, args, hostContext, toJavaNode, scope, isVarArgsProfile);
+            } catch (RuntimeException e) {
+                errorBranch.enter();
+                if (cache.language.access.isEngineException(e)) {
+                    throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+                }
+                throw e;
             }
-            throw e;
+            return doInvoke(methodProfile.execute(method), obj, convertedArguments, cache, hostContext, toGuest);
+        } finally {
+            HostMethodScope.closeDynamic(scope, method);
         }
-        return doInvoke(methodProfile.execute(method), obj, convertedArguments, cache, hostContext, toGuest);
     }
 
     // Note: checkArgTypes must be evaluated after selectOverload.
@@ -226,34 +252,43 @@ abstract class HostExecuteNode extends Node {
                     @Cached("asVarArgs(args, overload, hostContext)") boolean asVarArgs,
                     @Cached("createClassProfile()") ValueProfile receiverProfile,
                     @Cached BranchProfile errorBranch,
+                    @Cached BranchProfile seenVariableScope,
                     @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
         assert overload == selectOverload(method, args, hostContext);
         Class<?>[] types = overload.getParameterTypes();
         Type[] genericTypes = overload.getGenericParameterTypes();
         Object[] convertedArguments = new Object[cachedArgTypes.length];
+
+        HostMethodScope scope = HostMethodScope.openStatic(overload);
         try {
-            if (asVarArgs) {
-                assert overload.isVarArgs();
-                int parameterCount = overload.getParameterCount();
-                for (int i = 0; i < cachedArgTypes.length; i++) {
-                    Class<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].getComponentType();
-                    Type expectedGenericType = i < parameterCount - 1 ? genericTypes[i] : getGenericComponentType(genericTypes[parameterCount - 1]);
-                    convertedArguments[i] = toJavaNode.execute(hostContext, args[i], expectedType, expectedGenericType, true);
+            try {
+                if (asVarArgs) {
+                    assert overload.isVarArgs();
+                    int parameterCount = overload.getParameterCount();
+                    for (int i = 0; i < cachedArgTypes.length; i++) {
+                        Class<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].getComponentType();
+                        Type expectedGenericType = i < parameterCount - 1 ? genericTypes[i] : getGenericComponentType(genericTypes[parameterCount - 1]);
+                        Object operand = HostMethodScope.addToScopeStatic(scope, overload, i, args[i]);
+                        convertedArguments[i] = toJavaNode.execute(hostContext, operand, expectedType, expectedGenericType, true);
+                    }
+                    convertedArguments = createVarArgsArray(overload, convertedArguments, parameterCount);
+                } else {
+                    for (int i = 0; i < cachedArgTypes.length; i++) {
+                        Object operand = HostMethodScope.addToScopeStatic(scope, overload, i, args[i]);
+                        convertedArguments[i] = toJavaNode.execute(hostContext, operand, types[i], genericTypes[i], true);
+                    }
                 }
-                convertedArguments = createVarArgsArray(overload, convertedArguments, parameterCount);
-            } else {
-                for (int i = 0; i < cachedArgTypes.length; i++) {
-                    convertedArguments[i] = toJavaNode.execute(hostContext, args[i], types[i], genericTypes[i], true);
+            } catch (RuntimeException e) {
+                errorBranch.enter();
+                if (cache.language.access.isEngineException(e)) {
+                    throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
                 }
+                throw e;
             }
-        } catch (RuntimeException e) {
-            errorBranch.enter();
-            if (cache.language.access.isEngineException(e)) {
-                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
-            }
-            throw e;
+            return doInvoke(overload, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
+        } finally {
+            HostMethodScope.closeStatic(scope, overload, seenVariableScope);
         }
-        return doInvoke(overload, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
     }
 
     @SuppressWarnings("static-method")
@@ -264,22 +299,30 @@ abstract class HostExecuteNode extends Node {
                     @Shared("varArgsProfile") @Cached ConditionProfile isVarArgsProfile,
                     @Shared("hostMethodProfile") @Cached HostMethodProfileNode methodProfile,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch,
+                    @Shared("seenScope") @Cached BranchProfile seenScope,
                     @Shared("cache") @Cached(value = "hostContext.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws ArityException, UnsupportedTypeException {
         SingleMethod overload = selectOverload(method, args, hostContext);
         Object[] convertedArguments;
+
+        HostMethodScope scope = HostMethodScope.openDynamic(overload, args.length, seenScope);
         try {
-            convertedArguments = prepareArgumentsUncached(overload, args, hostContext, toJavaNode, isVarArgsProfile);
-        } catch (RuntimeException e) {
-            errorBranch.enter();
-            if (cache.language.access.isEngineException(e)) {
-                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+            try {
+                convertedArguments = prepareArgumentsUncached(overload, args, hostContext, toJavaNode, scope, isVarArgsProfile);
+            } catch (RuntimeException e) {
+                errorBranch.enter();
+                if (cache.language.access.isEngineException(e)) {
+                    throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+                }
+                throw e;
             }
-            throw e;
+            return doInvoke(methodProfile.execute(overload), obj, convertedArguments, cache, hostContext, toGuest);
+        } finally {
+            HostMethodScope.closeDynamic(scope, overload);
         }
-        return doInvoke(methodProfile.execute(overload), obj, convertedArguments, cache, hostContext, toGuest);
     }
 
-    private static Object[] prepareArgumentsUncached(SingleMethod method, Object[] args, HostContext context, HostToTypeNode toJavaNode, ConditionProfile isVarArgsProfile) {
+    private static Object[] prepareArgumentsUncached(SingleMethod method, Object[] args, HostContext context, HostToTypeNode toJavaNode, HostMethodScope scope,
+                    ConditionProfile isVarArgsProfile) {
         Class<?>[] types = method.getParameterTypes();
         Type[] genericTypes = method.getGenericParameterTypes();
         Object[] convertedArguments = new Object[args.length];
@@ -288,12 +331,14 @@ abstract class HostExecuteNode extends Node {
             for (int i = 0; i < args.length; i++) {
                 Class<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].getComponentType();
                 Type expectedGenericType = i < parameterCount - 1 ? genericTypes[i] : getGenericComponentType(genericTypes[parameterCount - 1]);
-                convertedArguments[i] = toJavaNode.execute(context, args[i], expectedType, expectedGenericType, true);
+                Object operand = HostMethodScope.addToScopeDynamic(scope, args[i]);
+                convertedArguments[i] = toJavaNode.execute(context, operand, expectedType, expectedGenericType, true);
             }
             convertedArguments = createVarArgsArray(method, convertedArguments, parameterCount);
         } else {
             for (int i = 0; i < args.length; i++) {
-                convertedArguments[i] = toJavaNode.execute(context, args[i], types[i], genericTypes[i], true);
+                Object operand = HostMethodScope.addToScopeDynamic(scope, args[i]);
+                convertedArguments[i] = toJavaNode.execute(context, operand, types[i], genericTypes[i], true);
             }
         }
         return convertedArguments;

@@ -73,9 +73,9 @@ final class InsightHookNode extends ExecutionEventNode {
             try {
                 enterDispatch.execute(data.fn, eco, getVariables(frame, true, null));
             } catch (InteropException ex) {
-                throw eco.wrap(data.fn, 2, ex);
+                throw EventContextObject.wrap(data.fn, 2, ex);
             } catch (RuntimeException ex) {
-                throw eco.rethrow(ex, exceptionDispatch);
+                throw EventContextObject.rethrow(ex, exceptionDispatch);
             }
         }
     }
@@ -94,9 +94,9 @@ final class InsightHookNode extends ExecutionEventNode {
             try {
                 exitDispatch.execute(data.fn, eco, getVariables(frame, false, returnValue));
             } catch (InteropException ex) {
-                throw eco.wrap(data.fn, 2, ex);
+                throw EventContextObject.wrap(data.fn, 2, ex);
             } catch (RuntimeException ex) {
-                throw eco.rethrow(ex, exceptionDispatch);
+                throw EventContextObject.rethrow(ex, exceptionDispatch);
             }
         }
     }
@@ -115,9 +115,9 @@ final class InsightHookNode extends ExecutionEventNode {
             try {
                 exitDispatch.execute(data.fn, eco, getVariables(frame, false, null));
             } catch (InteropException ex) {
-                throw eco.wrap(data.fn, 2, ex);
+                throw EventContextObject.wrap(data.fn, 2, ex);
             } catch (RuntimeException ex) {
-                throw eco.rethrow(ex, exceptionDispatch);
+                throw EventContextObject.rethrow(ex, exceptionDispatch);
             }
         }
     }

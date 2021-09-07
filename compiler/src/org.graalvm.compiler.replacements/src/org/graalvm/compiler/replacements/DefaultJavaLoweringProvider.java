@@ -152,7 +152,6 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetLowerableMemoryNode.SnippetLowering;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -187,7 +186,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected Replacements replacements;
 
     private BoxingSnippets.Templates boxingSnippets;
-    private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
     protected IdentityHashCodeSnippets.Templates identityHashCodeSnippets;
     protected IsArraySnippets.Templates isArraySnippets;
 
@@ -204,7 +202,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
         boxingSnippets = new BoxingSnippets.Templates(options, factories, factory, providers, snippetReflection, target);
-        indexOfSnippets = new ConstantStringIndexOfSnippets.Templates(options, factories, providers, snippetReflection, target);
         replacements = providers.getReplacements();
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, factories, providers, snippetReflection, target));
     }
@@ -288,12 +285,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
-            } else if (n instanceof StringIndexOfNode) {
-                lowerIndexOf((StringIndexOfNode) n);
-            } else if (n instanceof StringLatin1IndexOfNode) {
-                lowerLatin1IndexOf((StringLatin1IndexOfNode) n);
-            } else if (n instanceof StringUTF16IndexOfNode) {
-                lowerUTF16IndexOf((StringUTF16IndexOfNode) n);
             } else if (n instanceof ArrayIndexOfDispatchNode) {
                 lowerArrayIndexOf((ArrayIndexOfDispatchNode) n, tool);
             } else if (n instanceof UnpackEndianHalfNode) {
@@ -316,57 +307,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     private void lowerSecondHalf(UnpackEndianHalfNode n) {
         ByteOrder byteOrder = target.arch.getByteOrder();
         n.lower(byteOrder);
-    }
-
-    private void lowerIndexOf(StringIndexOfNode n) {
-        if (n.getArgument(3).isConstant()) {
-            SnippetLowering lowering = new SnippetLowering() {
-                @Override
-                public void lower(SnippetLowerableMemoryNode node, LoweringTool tool) {
-                    if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-                        return;
-                    }
-                    indexOfSnippets.lower(node, tool);
-                }
-            };
-            SnippetLowerableMemoryNode snippetLower = new SnippetLowerableMemoryNode(lowering, NamedLocationIdentity.getArrayLocation(JavaKind.Char), n.stamp(NodeView.DEFAULT), n.toArgumentArray());
-            n.graph().add(snippetLower);
-            n.graph().replaceFixedWithFixed(n, snippetLower);
-        }
-    }
-
-    private void lowerLatin1IndexOf(StringLatin1IndexOfNode n) {
-        if (n.getArgument(2).isConstant()) {
-            SnippetLowering lowering = new SnippetLowering() {
-                @Override
-                public void lower(SnippetLowerableMemoryNode node, LoweringTool tool) {
-                    if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-                        return;
-                    }
-                    indexOfSnippets.lowerLatin1(node, tool);
-                }
-            };
-            SnippetLowerableMemoryNode snippetLower = new SnippetLowerableMemoryNode(lowering, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), n.stamp(NodeView.DEFAULT), n.toArgumentArray());
-            n.graph().add(snippetLower);
-            n.graph().replaceFixedWithFixed(n, snippetLower);
-        }
-    }
-
-    private void lowerUTF16IndexOf(StringUTF16IndexOfNode n) {
-        if (n.getArgument(2).isConstant()) {
-            SnippetLowering lowering = new SnippetLowering() {
-                @Override
-                public void lower(SnippetLowerableMemoryNode node, LoweringTool tool) {
-                    if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
-                        return;
-                    }
-                    indexOfSnippets.lowerUTF16(node, tool);
-                }
-            };
-            SnippetLowerableMemoryNode snippetLower = new SnippetLowerableMemoryNode(lowering, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), n.stamp(NodeView.DEFAULT), n.toArgumentArray());
-            n.graph().add(snippetLower);
-            n.graph().replaceFixedWithFixed(n, snippetLower);
-        }
     }
 
     private static void lowerArrayIndexOf(ArrayIndexOfDispatchNode dispatchNode, LoweringTool tool) {

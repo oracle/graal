@@ -49,7 +49,7 @@ builds += [
       USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM : "true"
     }
     run: [
-      ${svm-cmd-gate} ["build,hellomodule"]
+      ${svm-cmd-gate} ["build,hellomodule,test"]
     ]
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {

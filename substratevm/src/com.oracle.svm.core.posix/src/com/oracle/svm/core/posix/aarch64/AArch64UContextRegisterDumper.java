@@ -93,7 +93,6 @@ class AArch64UContextRegisterDumper implements UContextRegisterDumper {
         dumpReg(log, "R28 ", regs.read(28), printLocationInfo, allowJavaHeapAccess);
         dumpReg(log, "R29 ", regs.read(29), printLocationInfo, allowJavaHeapAccess);
         dumpReg(log, "R30 ", regs.read(30), printLocationInfo, allowJavaHeapAccess);
-        dumpReg(log, "R31 ", regs.read(31), printLocationInfo, allowJavaHeapAccess);
         dumpReg(log, "SP  ", sigcontext.sp(), printLocationInfo, allowJavaHeapAccess);
         dumpReg(log, "PC  ", sigcontext.pc(), printLocationInfo, allowJavaHeapAccess);
     }

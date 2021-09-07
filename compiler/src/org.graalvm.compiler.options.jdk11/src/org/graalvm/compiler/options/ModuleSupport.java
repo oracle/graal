@@ -28,7 +28,7 @@ import java.util.ServiceLoader;
 
 public class ModuleSupport {
 
-    static final boolean USE_NI_JPMS = System.getenv().getOrDefault("USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM", "false").toLowerCase().equals("true");
+    public static final boolean USE_NI_JPMS = System.getenv().getOrDefault("USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM", "false").toLowerCase().equals("true");
 
     static Iterable<OptionDescriptors> getOptionsLoader() {
         /*

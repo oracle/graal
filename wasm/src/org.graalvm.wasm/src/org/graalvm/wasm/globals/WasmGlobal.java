@@ -42,9 +42,10 @@
 package org.graalvm.wasm.globals;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.api.ValueType;
 
-public abstract class WasmGlobal implements TruffleObject {
+public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleObject {
 
     private final ValueType valueType;
     private final boolean mutable;

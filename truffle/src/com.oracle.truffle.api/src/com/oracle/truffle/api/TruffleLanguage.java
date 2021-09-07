@@ -2175,7 +2175,7 @@ public abstract class TruffleLanguage<C> {
          */
         public Object asGuestValue(Object hostObject) {
             try {
-                return LanguageAccessor.engineAccess().toGuestValue(hostObject, polyglotLanguageContext);
+                return LanguageAccessor.engineAccess().toGuestValue(null, hostObject, polyglotLanguageContext);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }

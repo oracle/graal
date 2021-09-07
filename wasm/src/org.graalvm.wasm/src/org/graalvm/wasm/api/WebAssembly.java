@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
+import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
@@ -113,6 +114,9 @@ public class WebAssembly extends Dictionary {
         addMember("custom_sections", new Executable(args -> customSections(args)));
 
         addMember("instance_export", new Executable(args -> instanceExport(args)));
+
+        addMember("embedder_data_get", new Executable(args -> embedderDataGet(args)));
+        addMember("embedder_data_set", new Executable(args -> embedderDataSet(args)));
     }
 
     private Object moduleInstantiate(Object[] args) {
@@ -763,4 +767,23 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, name + " is not a exported name of the given instance");
         }
     }
+
+    public static Object embedderDataSet(Object[] args) {
+        checkArgumentCount(args, 2);
+        getEmbedderDataHolder(args).setEmbedderData(args[1]);
+        return WasmVoidResult.getInstance();
+    }
+
+    public static Object embedderDataGet(Object[] args) {
+        checkArgumentCount(args, 1);
+        return getEmbedderDataHolder(args).getEmbedderData();
+    }
+
+    private static EmbedderDataHolder getEmbedderDataHolder(Object[] args) {
+        if (!(args[0] instanceof EmbedderDataHolder)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument is an object that cannot hold embedder data");
+        }
+        return ((EmbedderDataHolder) args[0]);
+    }
+
 }

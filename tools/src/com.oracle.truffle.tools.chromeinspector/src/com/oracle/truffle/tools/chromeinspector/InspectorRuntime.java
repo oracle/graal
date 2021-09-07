@@ -200,7 +200,7 @@ public final class InspectorRuntime extends RuntimeDomain {
 
                     @Override
                     public Boolean processException(DebugException ex) {
-                        fillExceptionDetails(ret, ex, false);
+                        fillExceptionDetails(ret, ex);
                         return false;
                     }
                 });
@@ -219,7 +219,7 @@ public final class InspectorRuntime extends RuntimeDomain {
             }
         }
         if (exceptionText[0] != null) {
-            fillExceptionDetails(ret, exceptionText[0], false);
+            fillExceptionDetails(ret, exceptionText[0]);
         }
         return new Params(ret);
     }
@@ -240,7 +240,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                         suspendedInfo.lastEvaluatedValue.set(null);
                         LanguageInfo languageInfo = context.getSuspendedInfo().getSuspendedEvent().getTopStackFrame().getLanguage();
                         if (languageInfo == null || !languageInfo.isInteractive()) {
-                            fillExceptionDetails(json, InspectorDebugger.getEvalNonInteractiveMessage(), generatePreview);
+                            fillExceptionDetails(json, InspectorDebugger.getEvalNonInteractiveMessage());
                             return null;
                         }
                         JSONObject result;
@@ -268,15 +268,15 @@ public final class InspectorRuntime extends RuntimeDomain {
 
                     @Override
                     public Void processException(DebugException ex) {
-                        fillExceptionDetails(json, ex, generatePreview);
+                        fillExceptionDetails(json, ex);
                         return null;
                     }
                 });
             } catch (NoSuspendedThreadException ex) {
-                fillExceptionDetails(json, ex.getLocalizedMessage(), generatePreview);
+                fillExceptionDetails(json, ex.getLocalizedMessage());
             }
         } else {
-            fillExceptionDetails(json, "<Not suspended>", generatePreview);
+            fillExceptionDetails(json, "<Not suspended>");
         }
         return new Params(json);
     }
@@ -337,7 +337,7 @@ public final class InspectorRuntime extends RuntimeDomain {
 
                         @Override
                         public Void processException(DebugException ex) {
-                            fillExceptionDetails(json, ex, generatePreview);
+                            fillExceptionDetails(json, ex);
                             return null;
                         }
                     });
@@ -360,7 +360,7 @@ public final class InspectorRuntime extends RuntimeDomain {
 
                         @Override
                         public Void processException(DebugException ex) {
-                            fillExceptionDetails(json, ex, generatePreview);
+                            fillExceptionDetails(json, ex);
                             return null;
                         }
                     });
@@ -515,7 +515,7 @@ public final class InspectorRuntime extends RuntimeDomain {
         json.put("result", result);
         json.put("internalProperties", internals);
         if (exception != null) {
-            fillExceptionDetails(json, exception, generatePreview);
+            fillExceptionDetails(json, exception);
             if (exception.isInternalError()) {
                 PrintWriter err = context.getErr();
                 if (err != null) {
@@ -548,7 +548,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                         public Void executeCommand() throws CommandProcessException {
                             JSONObject result;
                             if (functionNoWS.startsWith(FUNCTION_COMPLETION)) {
-                                result = createCodecompletion(value, scope, generatePreview, context, true);
+                                result = createCodecompletion(value, scope, context, true);
                             } else if (functionNoWS.equals(FUNCTION_SET_PROPERTY)) {
                                 // Set of an array element, or object property
                                 if (arguments == null || arguments.length() < 2) {
@@ -739,7 +739,7 @@ public final class InspectorRuntime extends RuntimeDomain {
 
                         @Override
                         public Void processException(DebugException ex) {
-                            fillExceptionDetails(json, ex, generatePreview);
+                            fillExceptionDetails(json, ex);
                             return null;
                         }
 
@@ -835,7 +835,7 @@ public final class InspectorRuntime extends RuntimeDomain {
         }
     }
 
-    static JSONObject createCodecompletion(DebugValue value, DebugScope scope, boolean generatePreview, InspectorExecutionContext context, boolean resultItems) {
+    static JSONObject createCodecompletion(DebugValue value, DebugScope scope, InspectorExecutionContext context, boolean resultItems) {
         JSONObject result = new JSONObject();
         Iterable<DebugValue> properties = null;
         try {
@@ -845,7 +845,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                 properties = scope.getDeclaredValues();
             }
         } catch (DebugException ex) {
-            fillExceptionDetails(result, ex, context, generatePreview);
+            fillExceptionDetails(result, ex, context);
             if (ex.isInternalError()) {
                 PrintWriter err = context.getErr();
                 if (err != null) {
@@ -873,18 +873,18 @@ public final class InspectorRuntime extends RuntimeDomain {
         return result;
     }
 
-    private void fillExceptionDetails(JSONObject obj, DebugException ex, boolean generatePreview) {
-        fillExceptionDetails(obj, ex, context, generatePreview);
+    private void fillExceptionDetails(JSONObject obj, DebugException ex) {
+        fillExceptionDetails(obj, ex, context);
     }
 
-    static void fillExceptionDetails(JSONObject obj, DebugException ex, InspectorExecutionContext context, boolean generatePreview) {
+    static void fillExceptionDetails(JSONObject obj, DebugException ex, InspectorExecutionContext context) {
         ExceptionDetails exceptionDetails = new ExceptionDetails(ex);
-        obj.put("exceptionDetails", exceptionDetails.createJSON(context, generatePreview));
+        obj.put("exceptionDetails", exceptionDetails.createJSON(context));
     }
 
-    private void fillExceptionDetails(JSONObject obj, String errorMessage, boolean generatePreview) {
+    private void fillExceptionDetails(JSONObject obj, String errorMessage) {
         ExceptionDetails exceptionDetails = new ExceptionDetails(errorMessage);
-        obj.put("exceptionDetails", exceptionDetails.createJSON(context, generatePreview));
+        obj.put("exceptionDetails", exceptionDetails.createJSON(context));
     }
 
     @Override

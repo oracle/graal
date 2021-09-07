@@ -46,6 +46,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
@@ -714,6 +715,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isMethodScopingEnabled(HostAccess access) {
+            return access.isMethodScopingEnabled();
+        }
+
+        @Override
+        public boolean isMethodScoped(HostAccess access, Executable e) {
+            return access.isMethodScoped(e);
+        }
+
+        @Override
         public List<Object> getTargetMappings(HostAccess access) {
             return access.getTargetMappings();
         }
@@ -772,7 +783,6 @@ public final class Engine implements AutoCloseable {
         public String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
             return access.validate(languages);
         }
-
     }
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;

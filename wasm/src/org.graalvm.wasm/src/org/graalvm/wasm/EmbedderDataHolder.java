@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,26 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.instrumentation;
+package org.graalvm.wasm;
 
-@SuppressWarnings("serial")
-final class InstrumentException extends RuntimeException {
+/**
+ * Superclass for wasm entities that can hold embedder data.
+ */
+public class EmbedderDataHolder {
+    private Object embedderData = WasmVoidResult.getInstance();
 
-    final EventContext context;
-    final RuntimeException delegate;
-
-    InstrumentException(EventContext context, RuntimeException delegate) {
-        this.context = context;
-        this.delegate = delegate;
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 
-    EventContext getContext() {
-        return context;
+    public Object getEmbedderData() {
+        return embedderData;
     }
 
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
-    }
 }

@@ -465,7 +465,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
             mx.abort('No matching unit tests found. Skip image build and execution.')
         with open(unittest_file, 'r') as f:
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
-        extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
+        extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=['substratevm:LIBRARY_SUPPORT'])
         unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_test_dir])
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
@@ -953,7 +953,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     license_files=[],
     third_party_license_files=[],
     dependencies=['SubstrateVM'],
-    builder_jar_distributions=['mx:JUNIT_TOOL', 'mx:JUNIT', 'mx:HAMCREST'],
+    jar_distributions=['mx:JUNIT_TOOL', 'mx:JUNIT', 'mx:HAMCREST'],
     support_distributions=['substratevm:NATIVE_IMAGE_JUNIT_SUPPORT'],
     jlink=False,
 ))
