@@ -169,6 +169,6 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     @Override
     public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
         onCompilationQueued((OptimizedCallTarget) compilable, tier);
-        onCompilationStarted((OptimizedCallTarget) compilable, tier);
+        onCompilationStarted((OptimizedCallTarget) compilable, tier, 0, 0, 0, 0);
     }
 }
