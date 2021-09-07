@@ -112,9 +112,13 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
+     * @param target the call target about to be compiled
+     * @param tier Which compilation tier is in question.
+     *
      * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, int)}
      */
     @Deprecated
+    @SuppressWarnings("unused")
     default void onCompilationStarted(OptimizedCallTarget target, int tier) {
     }
 
@@ -122,8 +126,13 @@ public interface GraalTruffleRuntimeListener {
      * Notifies this object when compilation of {@code target} is about to start.
      *
      * @param target the call target about to be compiled
-     * @param tier Which compilation tier is in question.
+     * @param tier which compilation tier is in question.
+     * @param weight the parameter by which we choose this compilation among others form the queue.
+     * @param rate the dynamic component that contributes to weight.
+     * @param queueChange how has starting this compilation impacted the number of compilations in
+     *            the queue.
      */
+    @SuppressWarnings("unused")
     default void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
     }
 
