@@ -68,8 +68,10 @@ import java.util.logging.Handler;
  * <code>--multi-context-runs=2</code>. In the first iteration the source is parsed and the
  * in-memory auxiliary engine cache is stored without running the benchmark, while the second
  * iteration will load the in-memory cache and run the benchmark.
+ *
  */
 public final class PolyBenchLauncher extends AbstractLanguageLauncher {
+
     static class ArgumentConsumer {
         private final String prefix;
         private final BiConsumer<String, Config> action;

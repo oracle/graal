@@ -99,8 +99,8 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
 
     @Specialization
     public LLVMPointer accessMultiContext(VirtualFrame frame,
-                                          @Cached("createStackAccessHolder()") LLVMStack.LLVMStackAccessHolder stackAccessHolder,
-                                          @Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+                    @Cached("createStackAccessHolder()") LLVMStack.LLVMStackAccessHolder stackAccessHolder,
+                    @Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
         return checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
     }
 }

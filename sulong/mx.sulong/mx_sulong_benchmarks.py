@@ -63,6 +63,19 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
                     yield r
         return (x for x in _parse_results_gen())
 
+class PolybenchExcludeWarmupRule(mx_benchmark.StdOutRule):
+    """Rule that behaves as the StdOutRule, but skips input until a certain pattern."""
+
+    def __init__(self, *args, **kwargs):
+        self.startPattern = re.compile(kwargs.pop('startPattern'))
+        super(PolybenchExcludeWarmupRule, self).__init__(*args, **kwargs)
+
+    def parse(self, text):
+        m = self.startPattern.search(text)
+        if m:
+            return super(PolybenchExcludeWarmupRule, self).parse(text[m.end()+1:])
+        else:
+            return []
 
 class SulongBenchmarkSuite(VmBenchmarkSuite):
     def __init__(self, use_polybench, *args, **kwargs):
@@ -113,7 +126,6 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                     # so that all executed commands are visible.
                     cmdline += ["MX_VERBOSE=y"]
                 mx.run(cmdline, env=env)
-                mx.log("Making " + out)
                 self.bench_to_exec[bench] = out
             finally:
                 # reset current Directory
@@ -143,8 +155,12 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         # preparatory benchmark is run using the llimul launcher and passing --multi-context-runs=0.
         # We can capture this argument here and instruct the benchmark infrastructure to ignore
         # the output of this benchmark.
-        if any(a == "--multi-context-runs=0" for a in bmSuiteArgs):
-            return [re.compile(r'.*', re.MULTILINE)]
+        if self.use_polybench:
+            if any(a == "store-aux-engine-cache" for a in bmSuiteArgs):
+                return [re.compile(r'.*', re.MULTILINE)]
+        else:
+            if any(a == "--multi-context-runs=0" for a in bmSuiteArgs):
+                return [re.compile(r'.*', re.MULTILINE)]
         return []
 
     def rules(self, out, benchmarks, bmSuiteArgs):
@@ -224,36 +240,30 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         ]
 
     def polybenchRules(self, output, benchmarks, bmSuiteArgs):
-        warmupIterCountRule = mx_benchmark.StdOutRule(r"warmup-iterations: (?P<value>.*)", {
-            "result": ("<value>", int),
-        }),
-        warmupIterCount = warmupIterCountRule[0].parse(output)[0]['result']
-        metric_name = self._get_metric_name(bmSuiteArgs)
         rules = [
-            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
-                "benchmark": ("<name>", str),
-                "metric.better": "lower",
-                "metric.name": metric_name,
-                "metric.unit": ("<unit>", str),
-                "metric.value": ("<value>", float),
-                "metric.type": "numeric",
-                "metric.score-function": "id",
-                "metric.iteration": 0,
-            })
+           mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
+               "bench-suite": "csuite",
+               "benchmark": benchmarks[0],
+               "metric.better": "lower",
+               "metric.name": "warmup",
+               "metric.unit": ("<unit>", str),
+               "metric.value": ("<value>", float),
+               "metric.type": "numeric",
+               "metric.score-function": "id",
+               "metric.iteration": ("$iteration", int),
+           }),
+           PolybenchExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
+               "bench-suite": "csuite",
+               "benchmark": benchmarks[0],
+               "metric.better": "lower",
+               "metric.name": "time",
+               "metric.unit": ("<unit>", str),
+               "metric.value": ("<value>", float),
+               "metric.type": "numeric",
+               "metric.score-function": "id",
+               "metric.iteration": ("<iteration>", int),
+           }, startPattern=r"::: Running :::")
         ]
-        if warmupIterCount > 0:
-            rules += [
-            	mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after warmup: (?P<value>.*) (?P<unit>.*)", {
-                    "benchmark": ("<name>", str),
-                    "metric.better": "lower",
-                    "metric.name": "warmup",
-                    "metric.unit": ("<unit>", str),
-                    "metric.value": ("<value>", float),
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.iteration": 0,
-                })
-        	]
         return rules
 
     def _get_metric_name(self, bmSuiteArgs):
@@ -277,7 +287,12 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "Please run a specific benchmark (mx benchmark csuite:<benchmark-name>) or all the benchmarks (mx benchmark csuite:*)")
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
         assert isinstance(vm, CExecutionEnvironmentMixin)
-        return join(_benchmarksDirectory(), benchmarks[0], vm.bin_dir())
+
+        if self.use_polybench and (any(a == "store-aux-engine-cache" for a in bmSuiteArgs) or any(a == "load-aux-engine-cache" for a in bmSuiteArgs)):
+            # When storing or loading an aux engine cache, the working directory must be the same (the cache for the source is selected by its URL)
+            return join(_benchmarksDirectory(), benchmarks[0], 'aux-engine-cache')
+        else:
+            return join(_benchmarksDirectory(), benchmarks[0], vm.bin_dir())
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) != 1:
@@ -509,8 +524,17 @@ class SulongMultiContextVm(SulongVm):
         return "llimul"
 
 class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
+
+    def __init__(self, config_name, options, host_vm=None):
+        super(PolybenchVm, self).__init__(host_vm)
+        self._config_name = config_name
+        self._options = options
+
+    def with_host_vm(self, host_vm):
+        return PolybenchVm(self._config_name, self._options, host_vm)
+
     def config_name(self):
-        return "default"
+        return self._config_name
 
     def toolchain_name(self):
         return "native"
@@ -527,7 +551,7 @@ class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
     def run(self, cwd, args):
         bench_file = args[-1:]
         bench_args = args[:-1]
-        launcher_args = ['--path'] + bench_file + bench_args
+        launcher_args = ['--path'] + bench_file + self._options + bench_args
         if hasattr(self.host_vm(), 'run_launcher'):
             result = self.host_vm().run_launcher(self.launcherName(), launcher_args, cwd)
         else:
@@ -545,7 +569,7 @@ class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
             props, launcher_args = _filter_properties(launcher_args)
             sulongCmdLine = self.launcher_vm_args() + \
                             props + \
-                            ['-XX:-UseJVMCIClassLoader', self.launcherClass(), '--path']  + bench_file + bench_args
+                            ['-XX:-UseJVMCIClassLoader', self.launcherClass(), '--path']  + bench_file + launcher_args
             result = self.host_vm().run(cwd, sulongCmdLine)
 
         ret_code, out, vm_dims = result
@@ -597,4 +621,15 @@ native_vm_registry.add_vm(SulongVm(), _suite, 10)
 native_vm_registry.add_vm(SulongMultiContextVm(), _suite, 10)
 
 native_polybench_vm_registry = VmRegistry("NativePolybench", known_host_registries=[java_vm_registry])
-native_polybench_vm_registry.add_vm(PolybenchVm(), _suite, 10)
+native_polybench_vm_registry.add_vm(PolybenchVm('debug-aux-engine-cache',
+    ['--experimental-options', '--use-debug-cache', '--llvm.AOTCacheStore.0=true', '--llvm.AOTCacheLoad.0=false',
+     '--llvm.AOTCacheStore.1=false', '--llvm.AOTCacheLoad.1=true', '--engine.DebugCachePreinitializeContext=false',
+     '--engine.DebugTraceCache=true', '--multi-context-runs=2', '-w', '0', '-i', '10']), _suite, 10)
+native_polybench_vm_registry.add_vm(PolybenchVm('store-aux-engine-cache',
+    ['--experimental-options', '--multi-context-runs=0', '--engine.CacheStore=' + os.path.join(os.getcwd(), 'test.image'),
+     '--llvm.AOTCacheStore=true', '--engine.CacheCompile=aot', '--engine.CachePreinitializeContext=false',
+     '--engine.TraceCache=true']), _suite, 10)
+native_polybench_vm_registry.add_vm(PolybenchVm('load-aux-engine-cache',
+    ['--experimental-options', '--multi-context-runs=1', '--engine.CacheLoad=' + os.path.join(os.getcwd(), 'test.image'),
+     '--llvm.AOTCacheLoad=true', '--engine.CachePreinitializeContext=false', '--engine.TraceCache=true',
+     '-w', '0', '-i', '10']), _suite, 10)
