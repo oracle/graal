@@ -35,24 +35,32 @@ import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyLookup;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
 
+    final MetaAccessProvider metaAccess;
+    final RegisterConfig registerConfig;
+    final TargetDescription target;
     private final Map<ForeignCallSignature, SubstrateForeignCallLinkage> foreignCalls;
     protected ArrayCopyLookup arrayCopyLookup;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateForeignCallsProvider() {
+    public SubstrateForeignCallsProvider(MetaAccessProvider metaAccess, RegisterConfig registerConfig) {
+        this.metaAccess = metaAccess;
+        this.registerConfig = registerConfig;
+        this.target = ConfigurationValues.getTarget();
         this.foreignCalls = new HashMap<>();
     }
 
@@ -62,7 +70,7 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
 
     public void register(Providers providers, SnippetRuntime.SubstrateForeignCallDescriptor... descriptors) {
         for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : descriptors) {
-            SubstrateForeignCallLinkage linkage = new SubstrateForeignCallLinkage(providers, descriptor);
+            SubstrateForeignCallLinkage linkage = new SubstrateForeignCallLinkage(this, descriptor);
             foreignCalls.put(descriptor.getSignature(), linkage);
         }
     }
@@ -84,7 +92,7 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
 
     @Override
     public LIRKind getValueKind(JavaKind javaKind) {
-        return LIRKind.fromJavaKind(ImageSingletons.lookup(SubstrateTargetDescription.class).arch, javaKind);
+        return LIRKind.fromJavaKind(target.arch, javaKind);
     }
 
     public void registerArrayCopyForeignCallsDelegate(ArrayCopyLookup arraycopyForeignCalls) {

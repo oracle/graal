@@ -937,7 +937,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         LLVMValueRef[] callArguments = getCallArguments(args, callType, targetMethod);
 
         LLVMValueRef call;
-        boolean nativeABI = ((SubstrateCallingConventionType) callType).nativeABI;
+        boolean nativeABI = ((SubstrateCallingConventionType) callType).nativeABI();
         if (successor == null && handler == null) {
             call = buildStatepointCall(callee, nativeABI, patchpointId, callArguments);
         } else {
@@ -951,7 +951,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     LLVMValueRef[] getCallArguments(LLVMValueRef[] args, CallingConvention.Type callType, ResolvedJavaMethod targetMethod) {
         LLVMValueRef[] newArgs = args;
 
-        if (!((SubstrateCallingConventionType) callType).nativeABI && SpecialRegister.hasRegisters()) {
+        if (!((SubstrateCallingConventionType) callType).nativeABI() && SpecialRegister.hasRegisters()) {
             newArgs = new LLVMValueRef[SpecialRegister.count() + args.length];
             for (SpecialRegister reg : SpecialRegister.registers()) {
                 newArgs[reg.index] = getSpecialRegisterArgument(reg, targetMethod);
@@ -964,7 +964,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     LLVMTypeRef[] getUnknownCallArgumentTypes(LLVMTypeRef[] types, CallingConvention.Type callType) {
         LLVMTypeRef[] newTypes = types;
 
-        if (!((SubstrateCallingConventionType) callType).nativeABI && SpecialRegister.count() > 0) {
+        if (!((SubstrateCallingConventionType) callType).nativeABI() && SpecialRegister.count() > 0) {
             newTypes = new LLVMTypeRef[SpecialRegister.count() + types.length];
             for (SpecialRegister reg : SpecialRegister.registers()) {
                 newTypes[reg.index] = builder.wordType();

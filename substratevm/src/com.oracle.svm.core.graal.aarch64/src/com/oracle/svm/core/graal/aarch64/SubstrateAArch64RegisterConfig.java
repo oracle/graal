@@ -71,6 +71,7 @@ import java.util.ArrayList;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
@@ -103,7 +104,6 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final RegisterArray calleeSaveRegisters;
     private final RegisterAttributes[] attributesMap;
     private final MetaAccessProvider metaAccess;
-    private final RegisterArray javaGeneralParameterRegisters;
     private final boolean preserveFramePointer;
     public static final Register fp = r29;
 
@@ -115,8 +115,6 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         // This is the Linux 64-bit ABI for parameters.
         generalParameterRegs = new RegisterArray(r0, r1, r2, r3, r4, r5, r6, r7);
         simdParameterRegs = new RegisterArray(v0, v1, v2, v3, v4, v5, v6, v7);
-
-        javaGeneralParameterRegisters = new RegisterArray(r1, r2, r3, r4, r5, r6, r7, r0);
 
         nativeParamsStackOffset = 0;
 
@@ -207,22 +205,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
-        SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
-        switch (kind) {
-            case Boolean:
-            case Byte:
-            case Short:
-            case Char:
-            case Int:
-            case Long:
-            case Object:
-                return (type.nativeABI ? generalParameterRegs : javaGeneralParameterRegisters);
-            case Float:
-            case Double:
-                return simdParameterRegs;
-            default:
-                throw VMError.shouldNotReachHere();
-        }
+        throw VMError.unimplemented();
     }
 
     public boolean shouldPreserveFramePointer() {
@@ -232,7 +215,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     @Override
     public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
-        boolean isEntryPoint = type.nativeABI && !type.outgoing;
+        boolean isEntryPoint = type.nativeABI() && !type.outgoing;
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
 
@@ -243,38 +226,44 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          * We have to reserve a slot between return address and outgoing parameters for the deopt
          * frame handle. Exception: calls to native methods.
          */
-        int currentStackOffset = (type.nativeABI ? nativeParamsStackOffset : target.wordSize);
+        int currentStackOffset = (type.nativeABI() ? nativeParamsStackOffset : target.wordSize);
 
         JavaKind[] kinds = new JavaKind[locations.length];
         for (int i = 0; i < parameterTypes.length; i++) {
             JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
             kinds[i] = kind;
 
-            switch (kind) {
-                case Byte:
-                case Boolean:
-                case Short:
-                case Char:
-                case Int:
-                case Long:
-                case Object:
-                    if (currentGeneral < generalParameterRegs.size()) {
-                        Register register = generalParameterRegs.get(currentGeneral++);
-                        locations[i] = register.asValue(valueKindFactory.getValueKind(kind.getStackKind()));
-                    }
-                    break;
-                case Float:
-                case Double:
-                    if (currentSIMD < simdParameterRegs.size()) {
-                        Register register = simdParameterRegs.get(currentSIMD++);
-                        locations[i] = register.asValue(valueKindFactory.getValueKind(kind));
-                    }
-                    break;
-                default:
-                    throw shouldNotReachHere();
-            }
+            Register register = null;
+            if (type.kind == SubstrateCallingConventionKind.ForwardReturnValue) {
+                VMError.guarantee(i == 0, "Method with calling convention ForwardReturnValue cannot have more than one parameter");
+                register = getReturnRegister(kind);
+            } else {
+                switch (kind) {
+                    case Byte:
+                    case Boolean:
+                    case Short:
+                    case Char:
+                    case Int:
+                    case Long:
+                    case Object:
+                        if (currentGeneral < generalParameterRegs.size()) {
+                            register = generalParameterRegs.get(currentGeneral++);
+                        }
+                        break;
+                    case Float:
+                    case Double:
+                        if (currentSIMD < simdParameterRegs.size()) {
+                            register = simdParameterRegs.get(currentSIMD++);
+                        }
+                        break;
+                    default:
+                        throw shouldNotReachHere();
+                }
 
-            if (locations[i] == null) {
+            }
+            if (register != null) {
+                locations[i] = register.asValue(valueKindFactory.getValueKind(kind.getStackKind()));
+            } else {
                 ValueKind<?> valueKind = valueKindFactory.getValueKind(kind.getStackKind());
                 locations[i] = StackSlot.get(valueKind, currentStackOffset, !type.outgoing);
                 currentStackOffset += Math.max(valueKind.getPlatformKind().getSizeInBytes(), target.wordSize);

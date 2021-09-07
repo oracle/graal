@@ -123,6 +123,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -605,7 +606,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 sig[i] = node.arguments().get(i).stamp(NodeView.DEFAULT).javaType(gen.getMetaAccess());
             }
 
-            CallingConvention convention = gen.getRegisterConfig().getCallingConvention(SubstrateCallingConventionType.JavaCall, null, sig, gen);
+            CallingConvention convention = gen.getRegisterConfig().getCallingConvention(SubstrateCallingConventionKind.Java.toType(true), null, sig, gen);
             append(new AMD64BreakpointOp(visitInvokeArguments(convention, node.arguments())));
         }
 
@@ -619,7 +620,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             Value[] values = super.visitInvokeArguments(invokeCc, arguments);
 
             SubstrateCallingConventionType type = (SubstrateCallingConventionType) ((SubstrateCallingConvention) invokeCc).getType();
-            if (type.nativeABI) {
+            if (type.nativeABI()) {
                 // Native functions might have varargs, in which case we need to set %al to the
                 // number of XMM registers used for passing arguments
                 int xmmCount = 0;
@@ -665,7 +666,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             // The register allocator cannot handle variables at call sites, need a fixed register.
             Register targetRegister = AMD64.rax;
-            if (((SubstrateCallingConventionType) callTarget.callType()).nativeABI) {
+            if (((SubstrateCallingConventionType) callTarget.callType()).nativeABI()) {
                 // Do not use RAX for C calls, it contains the number of XMM registers for varargs.
                 targetRegister = AMD64.r10;
             }
@@ -814,7 +815,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             RegisterConfig registerConfig = tasm.frameMap.getRegisterConfig();
 
             /* Move the DeoptimizedFrame into the first calling convention register. */
-            Register deoptimizedFrame = registerConfig.getCallingConventionRegisters(SubstrateCallingConventionType.JavaCall, tasm.target.wordJavaKind).get(0);
+            Register deoptimizedFrame = ValueUtil.asRegister(callingConvention.getArgument(0));
             asm.movq(deoptimizedFrame, new AMD64Address(registerConfig.getFrameRegister(), 0));
 
             /* Store the original return value registers. */
@@ -840,7 +841,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
 
             /* The new stack pointer is passed in as the first method parameter. */
-            Register firstParameter = tasm.frameMap.getRegisterConfig().getCallingConventionRegisters(SubstrateCallingConventionType.JavaCall, tasm.target.wordJavaKind).get(0);
+            Register firstParameter = ValueUtil.asRegister(callingConvention.getArgument(0));
             asm.movq(rsp, firstParameter);
             /*
              * Compensate that we set the stack pointer after the return address was pushed. Note
@@ -992,8 +993,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     @Override
     public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterAllocationConfig registerAllocationConfig, StructuredGraph graph, Object stub) {
         SharedMethod method = (SharedMethod) graph.method();
-        CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), method.isEntryPoint() ? SubstrateCallingConventionType.NativeCallee
-                        : SubstrateCallingConventionType.JavaCallee, method, this);
+        CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), method.getCallingConventionKind().toType(false), method, this);
         return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), callingConvention, registerAllocationConfig, method);
     }
 
