@@ -158,9 +158,9 @@ public final class ExtensionFieldObject extends StaticObject {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         Object result;
         if (forceVolatile) {
-            result = field.getLinkedField().getObjectVolatile(fieldAndValue);
+            result = field.linkedField.getObjectVolatile(fieldAndValue);
         } else {
-            result = field.getLinkedField().getObject(fieldAndValue);
+            result = field.linkedField.getObject(fieldAndValue);
         }
         return result == null ? StaticObject.NULL : (StaticObject) result;
     }
@@ -168,154 +168,232 @@ public final class ExtensionFieldObject extends StaticObject {
     public void setObject(Field field, Object value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setObjectVolatile(fieldAndValue, value);
+            field.linkedField.setObjectVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setObject(fieldAndValue, value);
+            field.linkedField.setObject(fieldAndValue, value);
         }
+    }
+
+    public StaticObject getAndSetObject(Field field, StaticObject value) {
+        Object result = field.linkedField.getAndSetObject(getOrCreateFieldAndValue(field), value);
+        return result == null ? StaticObject.NULL : (StaticObject) result;
+    }
+
+    public boolean compareAndSwapObject(Field field, Object before, Object after) {
+        return field.linkedField.compareAndSwapObject(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public StaticObject compareAndExchangeObject(Field field, Object before, Object after) {
+        Object result = field.linkedField.compareAndExchangeObject(getOrCreateFieldAndValue(field), before, after);
+        return result == null ? StaticObject.NULL : (StaticObject) result;
     }
 
     public boolean getBoolean(Field field, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            return field.getLinkedField().getBooleanVolatile(fieldAndValue);
+            return field.linkedField.getBooleanVolatile(fieldAndValue);
         } else {
-            return field.getLinkedField().getBoolean(fieldAndValue);
+            return field.linkedField.getBoolean(fieldAndValue);
         }
     }
 
     public void setBoolean(Field field, boolean value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setBooleanVolatile(fieldAndValue, value);
+            field.linkedField.setBooleanVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setBoolean(fieldAndValue, value);
+            field.linkedField.setBoolean(fieldAndValue, value);
         }
+    }
+
+    public boolean compareAndSwapBoolean(Field field, boolean before, boolean after) {
+        return field.linkedField.compareAndSwapBoolean(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public boolean compareAndExchangeBoolean(Field field, boolean before, boolean after) {
+        return field.linkedField.compareAndExchangeBoolean(getOrCreateFieldAndValue(field), before, after);
     }
 
     public byte getByte(Field field, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            return field.getLinkedField().getByteVolatile(fieldAndValue);
+            return field.linkedField.getByteVolatile(fieldAndValue);
         } else {
-            return field.getLinkedField().getByte(fieldAndValue);
+            return field.linkedField.getByte(fieldAndValue);
         }
     }
 
     public void setByte(Field field, byte value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setByteVolatile(fieldAndValue, value);
+            field.linkedField.setByteVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setByte(fieldAndValue, value);
+            field.linkedField.setByte(fieldAndValue, value);
         }
+    }
+
+    public boolean compareAndSwapByte(Field field, byte before, byte after) {
+        return field.linkedField.compareAndSwapByte(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public byte compareAndExchangeByte(Field field, byte before, byte after) {
+        return field.linkedField.compareAndExchangeByte(getOrCreateFieldAndValue(field), before, after);
     }
 
     public char getChar(Field field, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            return field.getLinkedField().getCharVolatile(fieldAndValue);
+            return field.linkedField.getCharVolatile(fieldAndValue);
         } else {
-            return field.getLinkedField().getChar(fieldAndValue);
+            return field.linkedField.getChar(fieldAndValue);
         }
     }
 
     public void setChar(Field field, char value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setCharVolatile(fieldAndValue, value);
+            field.linkedField.setCharVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setChar(fieldAndValue, value);
+            field.linkedField.setChar(fieldAndValue, value);
         }
+    }
+
+    public boolean compareAndSwapChar(Field field, char before, char after) {
+        return field.linkedField.compareAndSwapChar(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public char compareAndExchangeChar(Field field, char before, char after) {
+        return field.linkedField.compareAndExchangeChar(getOrCreateFieldAndValue(field), before, after);
     }
 
     public double getDouble(Field field, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            return field.getLinkedField().getDoubleVolatile(fieldAndValue);
+            return field.linkedField.getDoubleVolatile(fieldAndValue);
         } else {
-            return field.getLinkedField().getDouble(fieldAndValue);
+            return field.linkedField.getDouble(fieldAndValue);
         }
     }
 
     public void setDouble(Field field, double value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setDoubleVolatile(fieldAndValue, value);
+            field.linkedField.setDoubleVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setDouble(fieldAndValue, value);
+            field.linkedField.setDouble(fieldAndValue, value);
         }
+    }
+
+    public boolean compareAndSwapDouble(Field field, double before, double after) {
+        return field.linkedField.compareAndSwapDouble(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public double compareAndExchangeDouble(Field field, double before, double after) {
+        return field.linkedField.compareAndExchangeDouble(getOrCreateFieldAndValue(field), before, after);
     }
 
     public float getFloat(Field field, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            return field.getLinkedField().getFloatVolatile(fieldAndValue);
+            return field.linkedField.getFloatVolatile(fieldAndValue);
         } else {
-            return field.getLinkedField().getFloat(fieldAndValue);
+            return field.linkedField.getFloat(fieldAndValue);
         }
     }
 
     public void setFloat(Field field, float value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setFloatVolatile(fieldAndValue, value);
+            field.linkedField.setFloatVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setFloat(fieldAndValue, value);
+            field.linkedField.setFloat(fieldAndValue, value);
         }
+    }
+
+    public boolean compareAndSwapFloat(Field field, float before, float after) {
+        return field.linkedField.compareAndSwapFloat(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public float compareAndExchangeFloat(Field field, float before, float after) {
+        return field.linkedField.compareAndExchangeFloat(getOrCreateFieldAndValue(field), before, after);
     }
 
     public int getInt(Field field, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            return field.getLinkedField().getIntVolatile(fieldAndValue);
+            return field.linkedField.getIntVolatile(fieldAndValue);
         } else {
-            return field.getLinkedField().getInt(fieldAndValue);
+            return field.linkedField.getInt(fieldAndValue);
         }
     }
 
     public void setInt(Field field, int value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setIntVolatile(fieldAndValue, value);
+            field.linkedField.setIntVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setInt(fieldAndValue, value);
+            field.linkedField.setInt(fieldAndValue, value);
         }
+    }
+
+    public boolean compareAndSwapInt(Field field, int before, int after) {
+        return field.linkedField.compareAndSwapInt(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public int compareAndExchangeInt(Field field, int before, int after) {
+        return field.linkedField.compareAndExchangeInt(getOrCreateFieldAndValue(field), before, after);
     }
 
     public long getLong(Field field, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            return field.getLinkedField().getLongVolatile(fieldAndValue);
+            return field.linkedField.getLongVolatile(fieldAndValue);
         } else {
-            return field.getLinkedField().getLong(fieldAndValue);
+            return field.linkedField.getLong(fieldAndValue);
         }
     }
 
     public void setLong(Field field, long value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setLongVolatile(fieldAndValue, value);
+            field.linkedField.setLongVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setLong(fieldAndValue, value);
+            field.linkedField.setLong(fieldAndValue, value);
         }
+    }
+
+    public boolean compareAndSwapLong(Field field, long before, long after) {
+        return field.linkedField.compareAndSwapLong(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public long compareAndExchangeLong(Field field, long before, long after) {
+        return field.linkedField.compareAndExchangeLong(getOrCreateFieldAndValue(field), before, after);
     }
 
     public short getShort(Field field, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            return field.getLinkedField().getShortVolatile(fieldAndValue);
+            return field.linkedField.getShortVolatile(fieldAndValue);
         } else {
-            return field.getLinkedField().getShort(fieldAndValue);
+            return field.linkedField.getShort(fieldAndValue);
         }
     }
 
     public void setShort(Field field, short value, boolean forceVolatile) {
         FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
-            field.getLinkedField().setShortVolatile(fieldAndValue, value);
+            field.linkedField.setShortVolatile(fieldAndValue, value);
         } else {
-            field.getLinkedField().setShort(fieldAndValue, value);
+            field.linkedField.setShort(fieldAndValue, value);
         }
+    }
+
+    public boolean compareAndSwapShort(Field field, short before, short after) {
+        return field.linkedField.compareAndSwapShort(getOrCreateFieldAndValue(field), before, after);
+    }
+
+    public short compareAndExchangeShort(Field field, short before, short after) {
+        return field.linkedField.compareAndExchangeShort(getOrCreateFieldAndValue(field), before, after);
     }
     // endregion field value read/write/CAS
 

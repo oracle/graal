@@ -43,7 +43,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-
 /**
  * Represents a resolved Espresso field.
  */
@@ -51,7 +50,7 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
-    private final LinkedField linkedField;
+    final LinkedField linkedField;
     private final ObjectKlass holder;
 
     private final RuntimeConstantPool pool;
@@ -86,10 +85,6 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public Symbol<Type> getType() {
         return linkedField.getType();
-    }
-
-    LinkedField getLinkedField() {
-        return linkedField;
     }
 
     public boolean isExtensionField() {
@@ -174,8 +169,8 @@ public final class Field extends Member<Type> implements FieldRef {
             Klass tk = typeKlassCache;
             if (tk == null) {
                 tk = holder.getMeta().resolveSymbolOrFail(getType(),
-                        holder.getDefiningClassLoader(),
-                        holder.protectionDomain());
+                                holder.getDefiningClassLoader(),
+                                holder.protectionDomain());
                 typeKlassCache = tk;
             }
         }
@@ -391,21 +386,45 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert !isHidden() : this + " is hidden";
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return (StaticObject) linkedField.getAndSetObject(obj, value);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.getAndSetObject(obj, value);
+            } else {
+                return getExtensionObject(obj).getAndSetObject(this, value);
+            }
+        } else {
+            return (StaticObject) linkedField.getAndSetObject(obj, value);
+        }
     }
 
     public boolean compareAndSwapObject(StaticObject obj, Object before, Object after) {
         obj.checkNotForeign();
         assert !isHidden() : this + " is hidden";
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapObject(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapObject(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapObject(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapObject(obj, before, after);
+        }
     }
 
     public StaticObject compareAndExchangeObject(StaticObject obj, Object before, Object after) {
         obj.checkNotForeign();
         assert !isHidden() : this + " is hidden";
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return (StaticObject) linkedField.compareAndExchangeObject(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeObject(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeObject(this, before, after);
+            }
+        } else {
+            return (StaticObject) linkedField.compareAndExchangeObject(obj, before, after);
+        }
     }
 
     // region hidden Object
@@ -475,13 +494,29 @@ public final class Field extends Member<Type> implements FieldRef {
     public boolean compareAndSwapBoolean(StaticObject obj, boolean before, boolean after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapBoolean(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapBoolean(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapBoolean(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapBoolean(obj, before, after);
+        }
     }
 
     public boolean compareAndExchangeBoolean(StaticObject obj, boolean before, boolean after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndExchangeBoolean(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeBoolean(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeBoolean(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndExchangeBoolean(obj, before, after);
+        }
     }
     // endregion boolean
 
@@ -531,13 +566,29 @@ public final class Field extends Member<Type> implements FieldRef {
     public boolean compareAndSwapByte(StaticObject obj, byte before, byte after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapByte(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapByte(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapByte(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapByte(obj, before, after);
+        }
     }
 
     public byte compareAndExchangeByte(StaticObject obj, byte before, byte after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndExchangeByte(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeByte(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeByte(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndExchangeByte(obj, before, after);
+        }
     }
     // endregion byte
 
@@ -587,13 +638,29 @@ public final class Field extends Member<Type> implements FieldRef {
     public boolean compareAndSwapChar(StaticObject obj, char before, char after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapChar(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapChar(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapChar(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapChar(obj, before, after);
+        }
     }
 
     public char compareAndExchangeChar(StaticObject obj, char before, char after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndExchangeChar(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeChar(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeChar(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndExchangeChar(obj, before, after);
+        }
     }
     // endregion char
 
@@ -643,13 +710,29 @@ public final class Field extends Member<Type> implements FieldRef {
     public boolean compareAndSwapDouble(StaticObject obj, double before, double after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapDouble(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapDouble(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapDouble(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapDouble(obj, before, after);
+        }
     }
 
     public double compareAndExchangeDouble(StaticObject obj, double before, double after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndExchangeDouble(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeDouble(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeDouble(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndExchangeDouble(obj, before, after);
+        }
     }
     // endregion double
 
@@ -699,13 +782,29 @@ public final class Field extends Member<Type> implements FieldRef {
     public boolean compareAndSwapFloat(StaticObject obj, float before, float after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapFloat(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapFloat(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapFloat(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapFloat(obj, before, after);
+        }
     }
 
     public float compareAndExchangeFloat(StaticObject obj, float before, float after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndExchangeFloat(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeFloat(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeFloat(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndExchangeFloat(obj, before, after);
+        }
     }
     // endregion float
 
@@ -755,13 +854,29 @@ public final class Field extends Member<Type> implements FieldRef {
     public boolean compareAndSwapInt(StaticObject obj, int before, int after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapInt(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapInt(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapInt(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapInt(obj, before, after);
+        }
     }
 
     public int compareAndExchangeInt(StaticObject obj, int before, int after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndExchangeInt(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeInt(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeInt(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndExchangeInt(obj, before, after);
+        }
     }
     // endregion int
 
@@ -814,13 +929,29 @@ public final class Field extends Member<Type> implements FieldRef {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
         assert getKind().needsTwoSlots();
-        return linkedField.compareAndSwapLong(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapLong(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapLong(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapLong(obj, before, after);
+        }
     }
 
     public long compareAndExchangeLong(StaticObject obj, long before, long after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndExchangeLong(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeLong(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeLong(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndExchangeLong(obj, before, after);
+        }
     }
     // endregion long
 
@@ -870,16 +1001,31 @@ public final class Field extends Member<Type> implements FieldRef {
     public boolean compareAndSwapShort(StaticObject obj, short before, short after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndSwapShort(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndSwapShort(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndSwapShort(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndSwapShort(obj, before, after);
+        }
     }
 
     public short compareAndExchangeShort(StaticObject obj, short before, short after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
-        return linkedField.compareAndExchangeShort(obj, before, after);
+        if (isAddedField) {
+            if (hasCompatibleField()) {
+                return compatibleField.compareAndExchangeShort(obj, before, after);
+            } else {
+                return getExtensionObject(obj).compareAndExchangeShort(this, before, after);
+            }
+        } else {
+            return linkedField.compareAndExchangeShort(obj, before, after);
+        }
     }
     // endregion short
-
 
     private ExtensionFieldObject getExtensionObject(StaticObject instance) {
         ExtensionFieldObject extensionFieldObject;
