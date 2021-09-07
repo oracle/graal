@@ -815,7 +815,7 @@ public class NativeImage {
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry();
 
-        /* Default handler needs to be fist */
+        /* Default handler needs to be first */
         defaultOptionHandler = new DefaultOptionHandler(this);
         registerOptionHandler(defaultOptionHandler);
         apiOptionHandler = new APIOptionHandler(this);
@@ -1372,21 +1372,24 @@ public class NativeImage {
         return result;
     }
 
+    protected static String createVMInvocationArgumentFile(List<String> arguments) {
+        try {
+            Path argsFile = Files.createTempFile("vminvocation", ".args");
+            String joinedOptions = String.join("\n", arguments);
+            Files.write(argsFile, joinedOptions.getBytes());
+            argsFile.toFile().deleteOnExit();
+            return "@" + argsFile;
+        } catch (IOException e) {
+            throw showError(e.getMessage());
+        }
+    }
+
     protected static String createImageBuilderArgumentFile(List<String> imageBuilderArguments) {
         try {
-            Path argsFile = Files.createTempFile("native-image", "args");
+            Path argsFile = Files.createTempFile("native-image", ".args");
             String joinedOptions = String.join("\0", imageBuilderArguments);
             Files.write(argsFile, joinedOptions.getBytes());
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        Files.delete(argsFile);
-                    } catch (IOException e) {
-                        System.err.println("Failed to delete temporary image builder arguments file: " + argsFile.toString());
-                    }
-                }
-            });
+            argsFile.toFile().deleteOnExit();
             return NativeImageGeneratorRunner.IMAGE_BUILDER_ARG_FILE_OPTION + argsFile.toString();
         } catch (IOException e) {
             throw showError(e.getMessage());
@@ -1395,37 +1398,46 @@ public class NativeImage {
 
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<Path> mp, ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp,
                     LinkedHashSet<Path> imagemp) {
-        /* Construct ProcessBuilder command from final arguments */
-        List<String> command = new ArrayList<>();
-        command.add(canonicalize(config.getJavaExecutable()).toString());
-        command.addAll(javaArgs);
+        List<String> arguments = new ArrayList<>();
+        arguments.addAll(javaArgs);
         if (!bcp.isEmpty()) {
-            command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
+            arguments.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
 
         if (!cp.isEmpty()) {
-            command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
+            arguments.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         }
         if (!mp.isEmpty()) {
             List<String> strings = Arrays.asList("--module-path", mp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
-            command.addAll(strings);
+            arguments.addAll(strings);
         }
 
         if (USE_NI_JPMS) {
-            command.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
+            arguments.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
         } else {
-            command.add(config.getGeneratorMainClass());
+            arguments.add(config.getGeneratorMainClass());
         }
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
              * (e.g. using CTRL-C in Gradle daemon mode)
              */
-            command.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
+            arguments.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
         List<String> finalImageBuilderArgs = createImageBuilderArgs(imageArgs, imagecp, imagemp);
-        List<String> completeCommandList = Stream.concat(command.stream(), finalImageBuilderArgs.stream()).collect(Collectors.toList());
+
+        /* Construct ProcessBuilder command from final arguments */
+        List<String> command = new ArrayList<>();
+        command.add(canonicalize(config.getJavaExecutable()).toString());
+        List<String> completeCommandList = new ArrayList<>(command);
+        if (config.useJavaModules()) { // Only in JDK9+ 'java' executable supports @argFiles.
+            command.add(createVMInvocationArgumentFile(arguments));
+        } else {
+            command.addAll(arguments);
+        }
         command.add(createImageBuilderArgumentFile(finalImageBuilderArgs));
+
+        completeCommandList.addAll(Stream.concat(arguments.stream(), finalImageBuilderArgs.stream()).collect(Collectors.toList()));
         final String commandLine = SubstrateUtil.getShellCommandString(completeCommandList, true);
         if (isDiagnostics()) {
             // write to the diagnostics dir
