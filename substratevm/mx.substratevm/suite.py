@@ -626,7 +626,7 @@ suite = {
 
         "svm-compiler-flags-builder": {
             "class" : "SubstrateCompilerFlagsBuilder",
-            "dependencies" : [
+            "buildDependencies" : [
                 "SVM",
             ],
         },
