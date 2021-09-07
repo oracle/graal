@@ -2864,7 +2864,22 @@ public final class BytecodeNode extends EspressoMethodNode {
     @Override
     protected boolean isTrivial() {
         CompilerAsserts.neverPartOfCompilation();
-        // These are dynamic and should be checked on every compilation.
+        /**
+         * These two checks are dynamic and must be performed on every compilation. In the worst
+         * case (a race):
+         * 
+         * - A trivial "block" (interop operation or implicit exception creation and throw) is
+         * introduced => the method will be inlined, which may or may not blow-up compilation. The
+         * compiler checks that trivial methods have <= 500 Graal nodes, which reduces the chances
+         * of choking the compiler with huge graphs.
+         * 
+         * - A non-trivial "block" (interop operation or implicit exception creation and throw) is
+         * introduced => the compiler "triviality" checks fail, the call is not inlined and a
+         * warning is printed.
+         * 
+         * The compiler checks that trivial methods have no guest calls, no loops and a have <= 500
+         * Graal nodes.
+         */
         if (!noForeignObjects.isValid() || implicitExceptionProfile) {
             return false;
         }
