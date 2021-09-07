@@ -167,7 +167,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationStarted(OptimizedCallTarget target, int tier) {
+    public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
         compilations++;
         final Times times = new Times();
         compilationTimes.set(times);
@@ -620,10 +620,10 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationStarted(OptimizedCallTarget target, int tier) {
+        public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationStarted(target, tier);
+                listener.onCompilationStarted(target, tier, time, weight, rate, queueChange);
             }
         }
 

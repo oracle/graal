@@ -171,7 +171,6 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         long timeCompilationFinished = System.nanoTime();
         Times compilation = currentCompilation.get();
 
-
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("Tier", Integer.toString(tier)); // to avoid padding
         properties.put("Time", String.format("%4.0f(%4.0f+%-4.0f)ms", //

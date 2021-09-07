@@ -104,7 +104,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target, int tier) {
+    public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
         CompilationEvent event = null;
         if (factory != null) {
             event = factory.createCompilationEvent();

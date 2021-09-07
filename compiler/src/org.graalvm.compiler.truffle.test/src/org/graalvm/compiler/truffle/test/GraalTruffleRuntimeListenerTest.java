@@ -373,7 +373,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
 
         @Override
-        public void onCompilationStarted(OptimizedCallTarget target, int tier) {
+        public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
             if (isImportant(target)) {
                 waitForInitialTarget();
                 events.add(EventType.COMPILATION_STARTED);

@@ -74,6 +74,7 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onCompilationStarted(OptimizedCallTarget target, int tier) {
         invokeListeners((l) -> l.onCompilationStarted(target, tier));
     }

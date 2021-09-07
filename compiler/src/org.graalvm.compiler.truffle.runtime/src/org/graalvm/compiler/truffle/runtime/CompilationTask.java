@@ -335,7 +335,6 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         this.queueChange = queueChange;
     }
 
-
     /**
      * Since {@link BackgroundCompileQueue} uses a {@link java.util.concurrent.ThreadPoolExecutor}
      * to run compilations, and since the executor expects each {@link Callable} (in our case, the

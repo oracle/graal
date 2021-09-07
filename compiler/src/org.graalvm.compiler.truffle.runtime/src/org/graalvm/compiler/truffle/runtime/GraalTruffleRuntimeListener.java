@@ -115,15 +115,8 @@ public interface GraalTruffleRuntimeListener {
      * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, int)}
      */
     @Deprecated
-    default void onCompilationStarted(OptimizedCallTarget target) {
-        onCompilationStarted(target, 0);
+    default void onCompilationStarted(OptimizedCallTarget target, int tier) {
     }
-
-    /**
-     * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, int)}
-     */
-    @Deprecated
-    default void onCompilationStarted(OptimizedCallTarget target, int tier) {}
 
     /**
      * Notifies this object when compilation of {@code target} is about to start.
