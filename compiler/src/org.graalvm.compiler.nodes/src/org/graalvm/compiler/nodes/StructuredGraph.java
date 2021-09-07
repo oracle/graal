@@ -134,7 +134,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this != AFTER_FSA;
         }
 
-        public boolean reachedStage(GuardsStage stage) {
+        public boolean reachedGuardsStage(GuardsStage stage) {
             return this.ordinal() >= stage.ordinal();
         }
     }

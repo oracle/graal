@@ -74,6 +74,6 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode {
     }
 
     public boolean reachedRequiredLoweringStage() {
-        return graph().getGuardsStage().reachedStage(delayUntil);
+        return graph().getGuardsStage().reachedGuardsStage(delayUntil);
     }
 }
