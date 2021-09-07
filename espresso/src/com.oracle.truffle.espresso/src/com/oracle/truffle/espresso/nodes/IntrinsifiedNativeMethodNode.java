@@ -31,16 +31,27 @@ import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
     @Child private CallableFromNative nativeMethod;
     private final Object env;
+    private final boolean prependClass;
 
     public IntrinsifiedNativeMethodNode(CallableFromNative.Factory factory, Method method, Object env) {
         super(method.getMethodVersion());
         this.nativeMethod = insert(factory.create(getMeta()));
         this.env = env;
+        this.prependClass = shouldPrependClass(factory, method);
     }
 
     @Override
     Object executeBody(VirtualFrame frame) {
-        return nativeMethod.invokeDirect(env, frame.getArguments());
+        Object[] args = frame.getArguments();
+        if (prependClass) {
+            Method method = getMethod();
+            int parameterCount = method.getParameterCount();
+            Object[] newArgs = new Object[parameterCount + 1];
+            newArgs[0] = method.getDeclaringKlass().mirror();
+            System.arraycopy(args, 0, newArgs, 1, parameterCount);
+            args = newArgs;
+        }
+        return nativeMethod.invokeDirect(env, args);
     }
 
     @Override
@@ -51,5 +62,14 @@ public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
     @Override
     public int getBci(Frame frame) {
         return -2;
+    }
+
+    /* Static native methods may prepend the Class in the arg array */
+    private static boolean shouldPrependClass(CallableFromNative.Factory factory, Method method) {
+        return method.isStatic() && (factory.parameterCount()) == method.getParameterCount() + 1;
+    }
+
+    public static boolean validParameterCount(CallableFromNative.Factory factory, Method method) {
+        return factory.parameterCount() == method.getParameterCount() || shouldPrependClass(factory, method);
     }
 }

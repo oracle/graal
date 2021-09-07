@@ -2089,7 +2089,7 @@ public final class JniEnv extends NativeEnv {
         try {
             long functionPointer = InteropLibrary.getUncached().asPointer(closure);
             CallableFromNative.Factory knownVmMethod = getVM().lookupKnownVmMethod(functionPointer);
-            if (knownVmMethod != null) {
+            if (knownVmMethod != null && IntrinsifiedNativeMethodNode.validParameterCount(knownVmMethod, targetMethod)) {
                 return createJniRootNodeFactory(() -> new IntrinsifiedNativeMethodNode(knownVmMethod, targetMethod, getVM()), targetMethod);
             }
         } catch (UnsupportedMessageException e) {

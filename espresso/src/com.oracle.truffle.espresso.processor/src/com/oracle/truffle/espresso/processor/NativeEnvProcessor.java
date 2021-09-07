@@ -64,8 +64,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
 
     private static final String GENERATE_INTRISIFICATION = "com.oracle.truffle.espresso.substitutions.GenerateNativeEnv";
 
-    private static final String SHOULD_NOT_REACH_HERE = "com.oracle.truffle.espresso.meta.EspressoError.shouldNotReachHere()";
-
     protected static final String IMPORT_NATIVE_SIGNATURE = NATIVE_SIGNATURE;
     protected static final String IMPORT_NATIVE_TYPE = NATIVE_TYPE;
 
