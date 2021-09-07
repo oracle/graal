@@ -56,6 +56,7 @@ import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmVoidResult;
@@ -1295,15 +1296,15 @@ public class WasmJsApiSuite {
     }
 
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
-        final Context.Builder contextBuilder = Context.newBuilder("wasm");
+        final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         final Context context = contextBuilder.build();
-        Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binaryWithExports), "main");
+        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
         Source source = sourceBuilder.build();
         context.eval(source);
-        Value main = context.getBindings("wasm").getMember("main").getMember("main");
+        Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
         main.execute();
-        Value run = context.getBindings("wasm").getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+        Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
         run.execute(new GuestCode(testCase));
     }
 

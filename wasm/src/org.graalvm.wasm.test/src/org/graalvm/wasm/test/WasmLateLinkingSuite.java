@@ -44,6 +44,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.WasmLanguage;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -56,17 +57,17 @@ public class WasmLateLinkingSuite {
     @Test
     public void testLateMemoryLink() throws IOException {
         runTest(binaryWithMemoryExport, context -> {
-            Value main = context.getBindings("wasm").getMember("main").getMember("main");
+            Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
             main.execute();
-            Value memory = context.getBindings("wasm").getMember("main").getMember("memory");
+            Value memory = context.getBindings(WasmLanguage.ID).getMember("main").getMember("memory");
             memory.setArrayElement(0, 11);
-            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binaryWithMemoryImport), "aux");
+            Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithMemoryImport), "aux");
             try {
                 context.eval(sourceBuilder.build());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            Value loadZero = context.getBindings("wasm").getMember("aux").getMember("loadZero");
+            Value loadZero = context.getBindings(WasmLanguage.ID).getMember("aux").getMember("loadZero");
             Value result = loadZero.execute();
             Assert.assertEquals(11, result.asInt());
         });
@@ -74,24 +75,24 @@ public class WasmLateLinkingSuite {
 
     @Test
     public void linkingTooLate() throws IOException, InterruptedException {
-        final Context context = Context.newBuilder("wasm").build();
+        final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", textWithExportFun));
         final ByteSequence binaryMain = ByteSequence.create(compileWat("file1", textWithImportFunExportFun));
-        final Source sourceAux = Source.newBuilder("wasm", binaryAux, "m1").build();
-        final Source sourceMain = Source.newBuilder("wasm", binaryMain, "m2").build();
+        final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "m1").build();
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "m2").build();
         context.parse(sourceMain); // main
         context.parse(sourceAux); // m1
-        final Value g = context.getBindings("wasm").getMember("main").getMember("g");
+        final Value g = context.getBindings(WasmLanguage.ID).getMember("main").getMember("g");
         Assert.assertEquals(42, g.execute().asInt());
     }
 
     @Test
     public void linkingFailureInvertedOnlyAux() throws IOException, InterruptedException {
-        final Context context = Context.newBuilder("wasm").build();
+        final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func))"));
         final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(func (export \"g\") (result i32) (i32.const 42))"));
-        final Source sourceAux = Source.newBuilder("wasm", binaryAux, "module1").build();
-        final Source sourceMain = Source.newBuilder("wasm", binaryMain, "module2").build();
+        final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
         context.eval(sourceAux);
         final Value module2Instance = context.eval(sourceMain);
 
@@ -121,11 +122,11 @@ public class WasmLateLinkingSuite {
 
     @Test
     public void linkingFailureOnlyAux() throws IOException, InterruptedException {
-        final Context context = Context.newBuilder("wasm").build();
+        final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func))"));
         final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(func (export \"g\") (result i32) (i32.const 42))"));
-        final Source sourceAux = Source.newBuilder("wasm", binaryAux, "module1").build();
-        final Source sourceMain = Source.newBuilder("wasm", binaryMain, "module2").build();
+        final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
         final Value module2Instance = context.eval(sourceMain);
         context.eval(sourceAux);
 
@@ -155,11 +156,11 @@ public class WasmLateLinkingSuite {
 
     @Test
     public void linkingFailureDueToDependency() throws IOException, InterruptedException {
-        final Context context = Context.newBuilder("wasm").build();
+        final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func)) (func (export \"h\") (result i32) (i32.const 42))"));
         final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(import \"main\" \"h\" (func)) (func (export \"g\") (result i32) (i32.const 42))"));
-        final Source sourceAux = Source.newBuilder("wasm", binaryAux, "module1").build();
-        final Source sourceMain = Source.newBuilder("wasm", binaryMain, "module2").build();
+        final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
         context.eval(sourceAux);
         final Value module2Instance = context.eval(sourceMain);
 
@@ -201,11 +202,11 @@ public class WasmLateLinkingSuite {
                         "(export \"testFunc\" (func 0))" +
                         ")");
 
-        final Context context = Context.newBuilder("wasm").build();
+        final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final ByteSequence exportByteSeq = ByteSequence.create(exportBytes);
         final ByteSequence importByteSeq = ByteSequence.create(importBytes);
-        final Source exportSource = Source.newBuilder("wasm", exportByteSeq, "exportModule").build();
-        final Source importSource = Source.newBuilder("wasm", importByteSeq, "importModule").build();
+        final Source exportSource = Source.newBuilder(WasmLanguage.ID, exportByteSeq, "exportModule").build();
+        final Source importSource = Source.newBuilder(WasmLanguage.ID, importByteSeq, "importModule").build();
         final Value exportModuleInstance = context.eval(exportSource);
         exportModuleInstance.getMember("table");
         // Linking of the first module was triggered by this point.
@@ -215,10 +216,10 @@ public class WasmLateLinkingSuite {
     }
 
     private static void runTest(byte[] firstBinary, Consumer<Context> testCase) throws IOException {
-        final Context.Builder contextBuilder = Context.newBuilder("wasm");
+        final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         final Context context = contextBuilder.build();
-        Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(firstBinary), "main");
+        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(firstBinary), "main");
         Source source = sourceBuilder.build();
         context.eval(source);
         testCase.accept(context);

@@ -71,7 +71,7 @@ public class ImportModule extends BuiltinModule {
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null), functions.size());
+        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), functions.size());
         for (Map.Entry<String, Pair<WasmFunction, Object>> entry : functions.entrySet()) {
             final String functionName = entry.getKey();
             final Pair<WasmFunction, Object> info = entry.getValue();

@@ -84,14 +84,14 @@ public class TestutilModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final Path temporaryDirectory = createTemporaryDirectory();
-        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null), NUMBER_OF_FUNCTIONS);
+        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
         defineFunction(instance, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
 
         // The following methods are exposed to the Wasm test programs.
-        defineFunction(instance, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFileNode(language, temporaryDirectory));
+        defineFunction(instance, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFileNode(language, instance, temporaryDirectory));
 
         return instance;
     }
