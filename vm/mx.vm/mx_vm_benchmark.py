@@ -1079,9 +1079,8 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             sz_msg = None
             if isinstance(gcomponent, GraalVmLanguage):
                 mx.log("checking GraalVMLanguage: {}".format(gcomponent))
-                _configs = gcomponent.launcher_configs
-                if _configs:
-                    binary_dst = _configs[0].destination
+                for cfg in gcomponent.launcher_configs:
+                    binary_dst = cfg.destination
                     binary_name = os.path.split(binary_dst)[-1]
                     pth = get_native_image_locations(gcomponent, binary_name)
                     if pth and os.path.exists(pth):
