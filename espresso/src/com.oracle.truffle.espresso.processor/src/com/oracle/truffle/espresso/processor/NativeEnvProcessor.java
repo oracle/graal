@@ -60,6 +60,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
 
     private static final String ENV_ARG_NAME = "env";
     private static final String INVOKE = "invoke(Object " + ENV_ARG_NAME + ", Object[] " + ARGS_NAME + ") {\n";
+    private static final String INVOKEDIRECT = "invokeDirect(Object " + ENV_ARG_NAME + ", Object[] " + ARGS_NAME + ") {\n";
 
     private static final String GENERATE_INTRISIFICATION = "com.oracle.truffle.espresso.substitutions.GenerateNativeEnv";
 
@@ -358,10 +359,10 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         return signature.toArray(new NativeType[0]);
     }
 
-    String extractArg(int index, String clazz, boolean isNonPrimitive, int startAt, String tabulation) {
+    String extractArg(int index, String clazz, boolean fromHandles, int startAt, String tabulation) {
         String decl = tabulation + clazz + " " + ARG_NAME + index + " = ";
         String obj = ARGS_NAME + "[" + (index + startAt) + "]";
-        if (isNonPrimitive) {
+        if (fromHandles) {
             if (!clazz.equals("StaticObject")) {
                 return decl + castTo(obj, clazz) + ";\n";
             }
@@ -443,8 +444,12 @@ public final class NativeEnvProcessor extends EspressoProcessor {
 
     @Override
     String generateInvoke(String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
+        return generateInvokeFromNative(className, parameterTypes, helper) + "\n\n" + generateInvokeDirect(className, parameterTypes, helper);
+    }
+
+    private String generateInvokeFromNative(String className, List<String> parameterTypes, SubstitutionHelper helper) {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
+        StringBuilder str = new StringBuilder();
         str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
         if (h.needsHandlify || !h.isStatic) {
             str.append(TAB_2).append(envClassName).append(" ").append(envName).append(" = ").append("(").append(envClassName).append(") " + ENV_ARG_NAME + ";\n");
@@ -467,7 +472,28 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                 str.append(TAB_2).append("return ").append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
         }
         str.append(TAB_1).append("}\n");
-        str.append("}");
+        return str.toString();
+    }
+
+    private String generateInvokeDirect(String className, List<String> parameterTypes, SubstitutionHelper helper) {
+        IntrinsincsHelper h = (IntrinsincsHelper) helper;
+        StringBuilder str = new StringBuilder();
+        str.append(TAB_1).append(OVERRIDE).append("\n");
+        str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKEDIRECT);
+        if (!h.isStatic) {
+            str.append(TAB_2).append(envClassName).append(" ").append(envName).append(" = ").append("(").append(envClassName).append(") " + ENV_ARG_NAME + ";\n");
+        }
+        int argIndex = 0;
+        for (String type : parameterTypes) {
+            str.append(extractArg(argIndex++, type, false, 0, TAB_2));
+        }
+        if (h.jniNativeSignature[0] == NativeType.VOID) {
+            str.append(TAB_2).append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
+            str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
+        } else {
+            str.append(TAB_2).append("return ").append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
+        }
+        str.append(TAB_1).append("}\n");
         return str.toString();
     }
 }

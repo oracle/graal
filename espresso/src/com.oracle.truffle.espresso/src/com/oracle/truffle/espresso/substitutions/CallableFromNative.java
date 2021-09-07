@@ -66,4 +66,6 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
     }
 
     public abstract Object invoke(Object env, Object[] args);
+
+    public abstract Object invokeDirect(Object env, Object[] args);
 }

@@ -79,6 +79,21 @@ public abstract class NativeEnv implements ContextAccess {
     private Map<String, CallableFromNative.Factory> methods;
 
     // region Exposed interface
+    protected abstract List<CallableFromNative.Factory> getCollector();
+
+    protected int lookupCallBackArgsCount() {
+        return LOOKUP_CALLBACK_ARGS_COUNT;
+    }
+
+    protected NativeSignature lookupCallbackSignature() {
+        return NativeSignature.create(NativeType.POINTER, NativeType.POINTER);
+    }
+
+    @SuppressWarnings("unused")
+    protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
+        assert args.length == lookupCallBackArgsCount();
+    }
+
     public JNIHandles getHandles() {
         return jni().getHandles();
     }
@@ -98,8 +113,6 @@ public abstract class NativeEnv implements ContextAccess {
     // endregion Exposed interface
 
     // region Initialization helper
-    protected abstract List<CallableFromNative.Factory> getCollector();
-
     protected TruffleObject initializeAndGetEnv(TruffleObject initializeFunctionPointer, Object... extraArgs) {
         return initializeAndGetEnv(false, initializeFunctionPointer, extraArgs);
     }
@@ -156,12 +169,14 @@ public abstract class NativeEnv implements ContextAccess {
     }
 
     private TruffleObject getLookupCallbackClosure() {
-        Callback callback = new Callback(LOOKUP_CALLBACK_ARGS_COUNT, new Callback.Function() {
+        Callback callback = new Callback(lookupCallBackArgsCount(), new Callback.Function() {
             @Override
             public Object call(Object... args) {
                 try {
                     String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
-                    return lookupIntrinsic(name);
+                    CallableFromNative.Factory factory = lookupFactory(name);
+                    processCallBackResult(name, factory, args);
+                    return createNativeClosure(factory, name);
                 } catch (ClassCastException e) {
                     throw EspressoError.shouldNotReachHere(e);
                 } catch (RuntimeException e) {
@@ -171,7 +186,7 @@ public abstract class NativeEnv implements ContextAccess {
                 }
             }
         });
-        return getNativeAccess().createNativeClosure(callback, NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
+        return getNativeAccess().createNativeClosure(callback, lookupCallbackSignature());
     }
 
     private CallableFromNative.Factory lookupFactory(String methodName) {
@@ -180,8 +195,7 @@ public abstract class NativeEnv implements ContextAccess {
     }
 
     @TruffleBoundary
-    private TruffleObject lookupIntrinsic(String methodName) {
-        CallableFromNative.Factory factory = lookupFactory(methodName);
+    private TruffleObject createNativeClosure(CallableFromNative.Factory factory, String methodName) {
         // Dummy placeholder for unimplemented/unknown methods.
         if (factory == null) {
             String envName = NativeEnv.this.getClass().getSimpleName();

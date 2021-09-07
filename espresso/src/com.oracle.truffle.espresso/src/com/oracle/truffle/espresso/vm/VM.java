@@ -60,6 +60,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -383,10 +384,42 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private static final List<CallableFromNative.Factory> VM_IMPL_FACTORIES = VmImplCollector.getInstances(CallableFromNative.Factory.class);
+    private static final int VM_LOOKUP_CALLBACK_ARGS = 2;
+
+    private EconomicMap<Long, CallableFromNative.Factory> knownVmMethods = EconomicMap.create();
 
     @Override
     protected List<CallableFromNative.Factory> getCollector() {
         return VM_IMPL_FACTORIES;
+    }
+
+    @Override
+    protected int lookupCallBackArgsCount() {
+        return VM_LOOKUP_CALLBACK_ARGS;
+    }
+
+    @Override
+    protected NativeSignature lookupCallbackSignature() {
+        return NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+    }
+
+    @Override
+    protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
+        assert args.length == lookupCallBackArgsCount();
+        try {
+            InteropLibrary uncached = InteropLibrary.getUncached();
+            Object ptr = args[1];
+            if (factory != null && !uncached.isNull(ptr) && uncached.isPointer(ptr)) {
+                long closurePointer = uncached.asPointer(ptr);
+                knownVmMethods.put(closurePointer, factory);
+            }
+        } catch (UnsupportedMessageException e) {
+            /* Ignore */
+        }
+    }
+
+    public CallableFromNative.Factory lookupKnownVmMethod(long functionPointer) {
+        return knownVmMethods.get(functionPointer);
     }
 
     public static VM create(JniEnv jniEnv) {
