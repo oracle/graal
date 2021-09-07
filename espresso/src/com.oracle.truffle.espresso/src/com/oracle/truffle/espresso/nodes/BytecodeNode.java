@@ -361,6 +361,10 @@ public final class BytecodeNode extends EspressoMethodNode {
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
     private static final DebugCounter[] BYTECODE_HISTOGRAM;
 
+    private static final byte TRIVIAL_UNINITIALIZED = -1;
+    private static final byte TRIVIAL_NO = 0;
+    private static final byte TRIVIAL_YES = 1;
+
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
     static {
@@ -424,7 +428,9 @@ public final class BytecodeNode extends EspressoMethodNode {
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
          */
-        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().TrivialMethodSize ? (byte) -1 : 0;
+        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().TrivialMethodSize
+                        ? TRIVIAL_UNINITIALIZED
+                        : TRIVIAL_NO;
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -2825,8 +2831,10 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private boolean trivialBytecodes() {
         byte[] originalCode = getMethodVersion().getOriginalCode();
-        // Must check originalCode.length < TrivialMethodSize, but this method is called from a
-        // compiler thread where the context is not accessible.
+        /*
+         * originalCode.length < TrivialMethodSize is checked in the constructor because this method
+         * is called from a compiler thread where the context is not accessible.
+         */
         BytecodeStream stream = new BytecodeStream(originalCode);
         for (int bci = 0; bci < stream.endBCI(); bci = stream.nextBCI(bci)) {
             int bc = stream.currentBC(bci);
@@ -2860,10 +2868,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (!noForeignObjects.isValid() || implicitExceptionProfile) {
             return false;
         }
-        if (trivialBytecodesCache < 0) {
+        if (trivialBytecodesCache == TRIVIAL_UNINITIALIZED) {
             // Cache "triviality" of original bytecodes.
-            trivialBytecodesCache = trivialBytecodes() ? (byte) 1 : (byte) 0;
+            trivialBytecodesCache = trivialBytecodes() ? TRIVIAL_YES : TRIVIAL_NO;
         }
-        return trivialBytecodesCache != 0;
+        return trivialBytecodesCache == TRIVIAL_YES;
     }
 }
