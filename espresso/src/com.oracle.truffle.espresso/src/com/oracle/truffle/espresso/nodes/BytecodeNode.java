@@ -2824,9 +2824,6 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     private boolean trivialBytecodes() {
-        if (getMethod().isSynchronized()) {
-            return false;
-        }
         byte[] originalCode = getMethodVersion().getOriginalCode();
         // Must check originalCode.length < TrivialMethodSize, but this method is called from a
         // compiler thread where the context is not accessible.
@@ -2838,9 +2835,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                 return false;
             }
             if (Bytecodes.LOOKUPSWITCH == bc || Bytecodes.TABLESWITCH == bc) {
-                return false;
-            }
-            if (Bytecodes.MONITORENTER == bc || Bytecodes.MONITOREXIT == bc) {
                 return false;
             }
             if (Bytecodes.ANEWARRAY == bc || MULTIANEWARRAY == bc) {
