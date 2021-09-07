@@ -74,7 +74,7 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        HeapImpl heap = new HeapImpl(access);
+        HeapImpl heap = new HeapImpl(access, SubstrateOptions.getPageSize());
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(SubstrateAllocationSnippets.class, new GenScavengeAllocationSnippets());
         ImageSingletons.add(RememberedSet.class, createRememberedSet());
@@ -106,10 +106,11 @@ class HeapFeature implements GraalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         ImageHeapLayouter heapLayouter;
+        int imageHeapNullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
         if (HeapImpl.usesImageHeapChunks()) { // needs CommittedMemoryProvider: registered late
-            heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, true);
+            heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, imageHeapNullRegionSize);
         } else {
-            heapLayouter = new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, true);
+            heapLayouter = new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, imageHeapNullRegionSize);
         }
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
     }

@@ -70,6 +70,7 @@ public final class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstObject;
     @UnknownObjectField(types = Object.class) public Object lastObject;
 
+    // All offsets are relative to the heap base.
     @UnknownPrimitiveField public long offsetOfFirstWritableAlignedChunk;
     @UnknownPrimitiveField public long offsetOfFirstWritableUnalignedChunk;
 

@@ -251,10 +251,6 @@ public final class ManagementSupport implements ThreadListener {
         threadMXBean.noteThreadFinish(javaThread);
     }
 
-    public void noteThreadFinish(@SuppressWarnings("unused") Thread thread) {
-        // Will be removed as soon as possible.
-    }
-
     synchronized MBeanServer getPlatformMBeanServer() {
         if (platformMBeanServer == null) {
             /* Modified version of JDK 11: ManagementFactory.getPlatformMBeanServer */
