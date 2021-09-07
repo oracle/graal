@@ -78,20 +78,24 @@ public class JfrManager {
         return ImageSingletons.lookup(JfrManager.class);
     }
 
-    void setup() {
-        parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
-        if (SubstrateOptions.FlightRecorder.getValue()) {
-            periodicEventSetup();
-            initRecording();
-        }
+    Runnable startupHook() {
+        return () -> {
+            parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
+            if (SubstrateOptions.FlightRecorder.getValue()) {
+                periodicEventSetup();
+                initRecording();
+            }
+        };
     }
 
-    void teardown() {
-        if (SubstrateOptions.FlightRecorder.getValue()) {
-            // Everything should already have been torn down by JVM.destroyJFR(), which is called in
-            // a shutdown hook.
-            assert !SubstrateJVM.isInitialized();
-        }
+    Runnable shutdownHook() {
+        return () -> {
+            if (SubstrateOptions.FlightRecorder.getValue()) {
+                // Everything should already have been torn down by JVM.destroyJFR(), which is called in
+                // a shutdown hook.
+                assert !SubstrateJVM.isInitialized();
+            }
+        };
     }
 
     private static void parseFlightRecorderLogging(String option) {
