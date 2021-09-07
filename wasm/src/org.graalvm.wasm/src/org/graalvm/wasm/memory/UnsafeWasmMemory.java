@@ -55,10 +55,14 @@ import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
 
+@ExportLibrary(InteropLibrary.class)
 public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     /**
      * @see #declaredMinSize()
@@ -358,6 +362,17 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
         if (!freed()) {
             free();
         }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    public long asPointer() {
+        return startAddress;
     }
 
     static {
