@@ -135,8 +135,17 @@ function color_create_legend() {
     }
 
     r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
-    document.firstElementChild.appendChild(svg);
+    color_insert_legend(svg);
     return e;
+}
+
+function color_insert_legend(e) {
+    let help = document.getElementById("help");
+    if (help == null) {
+        document.firstElementChild.appendChild(e);
+    } else {
+        document.firstElementChild.insertBefore(e, help.parentElement);
+    }
 }
 
 function color_legend_entry(e, i, color, text) {
@@ -183,16 +192,5 @@ function color_legend() {
 }
 
 // C for color cycle.
-window.addEventListener("keydown",function (e) {
-    if (e.key == "c" && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        color_cycle();
-    }
-});
-
-window.addEventListener("keydown", function (e) {
-    if (e.key == "l" && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        color_legend();
-    }
-});
+graph_register_handler("c", "Cycle through graph colorings", color_cycle);
+graph_register_handler("l", "Toggle legend display", color_legend);

@@ -269,3 +269,113 @@ function owner_resize(new_width) {
     document.firstElementChild.width.baseVal.value = new_width;
     document.firstElementChild.viewBox.baseVal.width = new_width;
 }
+
+var help_strings = [];
+var help_state = false;
+
+function graph_create_help() {
+    let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    let e = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    e.id = "help";
+
+    let r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    svg.x.baseVal.value = xpad;
+    svg.y.baseVal.value = 50;
+    r.x.baseVal.value = 0;
+    r.y.baseVal.value = 0;
+    r.width.baseVal.value = 250;
+    r.style.fill = "white";
+    r.style.stroke = "black";
+    r.style["stroke-width"] = 2;
+    r.rx.baseVal.value = 2;
+    r.ry.baseVal.vlaue = 2;
+
+    let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t.style.textAnchor = "middle";
+    t.setAttribute("x", 125);
+    t.setAttribute("y", fg_frameheight * 2);
+    t.style.fontSize = fontSize * 1.5;
+    t.style.fontFamily = "Verdana";
+    t.style.fill = "rgb(0, 0, 0)";
+    t.textContent = "Keyboard shortcut";
+
+    e.appendChild(r);
+    e.appendChild(t);
+    e.style.display = "none";
+    svg.appendChild(e);
+
+    let entry_count = 0;
+
+    for (; entry_count < help_strings.length; entry_count++) {
+        graph_help_entry(e, entry_count, help_strings[entry_count][0], help_strings[entry_count][1]);
+    }
+
+    r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
+    document.firstElementChild.appendChild(svg);
+    return e;
+
+}
+
+function graph_help_entry(e, i, key, description) {
+    let y = (fg_frameheight * 2) + (i + 1) * fg_frameheight * 1.5;
+
+    let box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    box.x.baseVal.value = xpad;
+    box.y.baseVal.value = y;
+    box.width.baseVal.value = fg_frameheight * 2;
+    box.height.baseVal.value = fg_frameheight;
+    box.style.fill = "white";
+    box.style.stroke = "black";
+    box.style["stroke-width"] = 0.5;
+    box.rx.baseVal.value = 2;
+    box.ry.baseVal.vlaue = 2;
+
+    let label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.style.textAnchor = "middle";
+    label.setAttribute("x", xpad + fg_frameheight);
+    label.setAttribute("y", y - 5 + fg_frameheight);
+    label.style.fontSize = fontSize;
+    label.style.fontFamily = "Verdana";
+    label.style.fill = "rgb(0, 0, 0)";
+    label.textContent = key;
+
+    let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.style.textAnchor = "left";
+    text.setAttribute("x", xpad + fg_frameheight * 3);
+    text.setAttribute("y", y - 5 + fg_frameheight);
+    text.style.fontSize = fontSize;
+    text.style.fontFamily = "Verdana";
+    text.style.fill = "rgb(0, 0, 0)";
+    text.textContent = description;
+
+    e.appendChild(box);
+    e.appendChild(label);
+    e.appendChild(text);
+}
+
+function graph_help() {
+    let e = document.getElementById("help");
+    if (e == null) {
+        e = graph_create_help();
+    }
+    if (e != null) {
+        if (e.style["display"] == "none") {
+            e.style["display"] = "block";
+        } else {
+            e.style["display"] = "none";
+        }
+    }
+    help_state = !help_state;
+}
+
+function graph_register_handler(key, description, action) {
+    window.addEventListener("keydown", function (e) {
+        if (e.key == key && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            action();
+        }
+    });
+    help_strings.push([key, description]);
+}
+
+graph_register_handler("?", "Display keyboard shortcuts", graph_help);

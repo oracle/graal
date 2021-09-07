@@ -269,6 +269,7 @@ class SVGSamplerOutput {
         public String script() {
             StringBuilder result = new StringBuilder();
             result.append("<script type=\"text/ecmascript\">\n<![CDATA[\n");
+            result.append(getResource("graphowner.js"));
             result.append("'use strict';\n");
             result.append(String.format("var fontSize = %s;\n", fontSize()));
             result.append(String.format("var fontWidth = %s;\n", fontWidth()));
@@ -281,7 +282,6 @@ class SVGSamplerOutput {
             for (SVGComponent component: components) {
                 result.append(component.script());
             }
-            result.append(getResource("graphowner.js"));
             result.append("]]>\n</script>");
             return result.toString();
         }

@@ -1,11 +1,6 @@
 var searchbtn, matchedtxt;
 // ctrl-F for search
-window.addEventListener("keydown",function (e) {
-    if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
-        e.preventDefault();
-        search_prompt();
-    }
-})
+graph_register_handler("f", "Search or clear highlighted entries", search_prompt);
 
 function search_prompt() {
     if (search_matches.length == 0) {
