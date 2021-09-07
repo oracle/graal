@@ -386,6 +386,9 @@ public final class VM extends NativeEnv implements ContextAccess {
     private static final List<CallableFromNative.Factory> VM_IMPL_FACTORIES = VmImplCollector.getInstances(CallableFromNative.Factory.class);
     private static final int VM_LOOKUP_CALLBACK_ARGS = 2;
 
+    /**
+     * Maps native function pointers to node factories for VM methods.
+     */
     private EconomicMap<Long, CallableFromNative.Factory> knownVmMethods = EconomicMap.create();
 
     @Override
@@ -407,6 +410,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
         assert args.length == lookupCallBackArgsCount();
         try {
+            /*
+             * Registers this known VM method's function pointer. Later native method bindings can
+             * perform a lookup when trying to bind to a function pointer, and if a match happensm
+             * this is a known VM method, and we can link directly to it, bypassing native calls.
+             */
             InteropLibrary uncached = InteropLibrary.getUncached();
             Object ptr = args[1];
             if (factory != null && !uncached.isNull(ptr) && uncached.isPointer(ptr)) {
