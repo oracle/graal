@@ -2216,7 +2216,7 @@ public class SnippetTemplate {
  * CFG edges for select snippet lowerings.
  */
 @NodeInfo(size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0, cyclesRationale = "This node is immediately removed on next simplification pass")
-final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable {
+final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable, SingleMemoryKill {
     static final NodeClass<PlaceholderWithExceptionNode> TYPE = NodeClass.create(PlaceholderWithExceptionNode.class);
 
     protected PlaceholderWithExceptionNode() {
@@ -2229,6 +2229,11 @@ final class PlaceholderWithExceptionNode extends WithExceptionNode implements Si
             killExceptionEdge();
         }
         graph().removeSplit(this, next());
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 }
 
