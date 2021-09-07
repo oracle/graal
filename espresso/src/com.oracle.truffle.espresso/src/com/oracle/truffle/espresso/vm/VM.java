@@ -161,7 +161,7 @@ import sun.misc.Unsafe;
  * <p>
  * - for new VM methods (/ex: upgrading from java 8 to 11), updating include/jvm.h
  */
-@GenerateNativeEnv(target = VmImpl.class)
+@GenerateNativeEnv(target = VmImpl.class, reachableForAutoSubstitution = true)
 public final class VM extends NativeEnv implements ContextAccess {
 
     private final @Pointer TruffleObject disposeMokapotContext;
@@ -407,6 +407,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @Override
+    @TruffleBoundary
     protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
         assert args.length == lookupCallBackArgsCount();
         try {
@@ -426,6 +427,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
+    @TruffleBoundary
     public CallableFromNative.Factory lookupKnownVmMethod(long functionPointer) {
         return knownVmMethods.get(functionPointer);
     }

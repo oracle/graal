@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
@@ -171,12 +172,13 @@ public abstract class NativeEnv implements ContextAccess {
     private TruffleObject getLookupCallbackClosure() {
         Callback callback = new Callback(lookupCallBackArgsCount(), new Callback.Function() {
             @Override
+            @TruffleBoundary
             public Object call(Object... args) {
                 try {
                     String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
                     CallableFromNative.Factory factory = lookupFactory(name);
                     processCallBackResult(name, factory, args);
-                    return createNativeClosure(factory, name);
+                    return createNativeClosureForFactory(factory, name);
                 } catch (ClassCastException e) {
                     throw EspressoError.shouldNotReachHere(e);
                 } catch (RuntimeException e) {
@@ -191,11 +193,12 @@ public abstract class NativeEnv implements ContextAccess {
 
     private CallableFromNative.Factory lookupFactory(String methodName) {
         assert methods != null;
+        CompilerAsserts.neverPartOfCompilation();
         return methods.get(methodName);
     }
 
     @TruffleBoundary
-    private TruffleObject createNativeClosure(CallableFromNative.Factory factory, String methodName) {
+    private TruffleObject createNativeClosureForFactory(CallableFromNative.Factory factory, String methodName) {
         // Dummy placeholder for unimplemented/unknown methods.
         if (factory == null) {
             String envName = NativeEnv.this.getClass().getSimpleName();
