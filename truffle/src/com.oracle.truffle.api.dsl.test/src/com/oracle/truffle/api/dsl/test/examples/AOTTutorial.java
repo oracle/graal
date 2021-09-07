@@ -372,7 +372,7 @@ public class AOTTutorial {
             // immediately compiled at parse time without prior execution.
             Value v = context.parse("AOTTestLanguage", "sample");
             String beforeExecute = log.toString();
-            assertTrue(beforeExecute, beforeExecute.contains("[engine] opt done     sample"));
+            assertTrue(beforeExecute, beforeExecute.contains("[engine] opt done") && beforeExecute.contains("sample"));
 
             // we can compile the function and it is executed compiled immediately.
             // note that if we would use any other types than the ones used during AOT
