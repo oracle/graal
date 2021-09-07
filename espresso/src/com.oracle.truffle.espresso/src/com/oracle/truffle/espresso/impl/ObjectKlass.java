@@ -1228,7 +1228,7 @@ public final class ObjectKlass extends Klass {
             } else {
                 // add new fields to the extension object
                 extensionFieldObject = (ExtensionFieldObject) object;
-                extensionFieldObject.addStaticNewFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
+                extensionFieldObject.addNewStaticFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
             }
             extensionFieldObject.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
             noAddedFields.invalidate();

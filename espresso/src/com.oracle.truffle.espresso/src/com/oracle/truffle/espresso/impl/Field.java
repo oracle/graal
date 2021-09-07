@@ -27,6 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
@@ -60,6 +61,7 @@ public final class Field extends Member<Type> implements FieldRef {
     private final boolean isAddedField;
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
     private Field compatibleField;
+    private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
 
     public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool) {
         this(holder, linkedField, pool, false);
@@ -70,6 +72,11 @@ public final class Field extends Member<Type> implements FieldRef {
         this.holder = holder;
         this.pool = pool;
         this.isAddedField = isAddedField;
+        if (isAddedField) {
+            StaticShape.Builder shapeBuilder = StaticShape.newBuilder(getDeclaringKlass().getEspressoLanguage());
+            shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), isFinalFlagSet());
+            this.extensionShape = shapeBuilder.build(ExtensionFieldObject.FieldAndValueObject.class, ExtensionFieldObject.ExtensionFieldObjectFactory.class);
+        }
     }
 
     @Override
@@ -79,6 +86,10 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public Symbol<Type> getType() {
         return linkedField.getType();
+    }
+
+    LinkedField getLinkedField() {
+        return linkedField;
     }
 
     public boolean isExtensionField() {
@@ -352,12 +363,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return (StaticObject) compatibleField.getObjectHelper(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    return StaticObject.NULL;
-                } else {
-                    return (StaticObject) value;
-                }
+                return getExtensionObject(obj).getObject(this, forceVolatile);
             }
         } else {
             return (StaticObject) getObjectHelper(obj, forceVolatile);
@@ -374,7 +380,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setObjectHelper(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setObject(this, value, forceVolatile);
             }
         } else {
             setObjectHelper(obj, value, forceVolatile);
@@ -435,11 +441,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return compatibleField.getBoolean(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    value = false;
-                }
-                return (boolean) value;
+                return getExtensionObject(obj).getBoolean(this, forceVolatile);
             }
         } else {
             if (isVolatile() || forceVolatile) {
@@ -461,7 +463,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setBoolean(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setBoolean(this, value, forceVolatile);
             }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setBooleanVolatile(obj, value);
@@ -495,11 +497,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return compatibleField.getByte(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    value = (byte) 0;
-                }
-                return (byte) value;
+                return getExtensionObject(obj).getByte(this, forceVolatile);
             }
         } else {
             if (isVolatile() || forceVolatile) {
@@ -521,7 +519,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setByte(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setByte(this, value, forceVolatile);
             }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setByteVolatile(obj, value);
@@ -555,11 +553,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return compatibleField.getChar(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    value = (char) 0;
-                }
-                return (char) value;
+                return getExtensionObject(obj).getChar(this, forceVolatile);
             }
         } else {
             if (isVolatile() || forceVolatile) {
@@ -581,7 +575,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setChar(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setChar(this, value, forceVolatile);
             }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setCharVolatile(obj, value);
@@ -615,11 +609,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return compatibleField.getDouble(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    value = (double) 0;
-                }
-                return (double) value;
+                return getExtensionObject(obj).getDouble(this, forceVolatile);
             }
         } else {
             if (isVolatile() || forceVolatile) {
@@ -641,7 +631,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setDouble(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setDouble(this, value, forceVolatile);
             }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setDoubleVolatile(obj, value);
@@ -675,11 +665,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return compatibleField.getFloat(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    value = (float) 0;
-                }
-                return (float) value;
+                return getExtensionObject(obj).getFloat(this, forceVolatile);
             }
         } else {
             if (isVolatile() || forceVolatile) {
@@ -701,7 +687,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setFloat(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setFloat(this, value, forceVolatile);
             }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setFloatVolatile(obj, value);
@@ -735,11 +721,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return compatibleField.getInt(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    value = 0;
-                }
-                return (int) value;
+                return getExtensionObject(obj).getInt(this, forceVolatile);
             }
         } else {
             if (isVolatile() || forceVolatile) {
@@ -761,7 +743,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setInt(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setInt(this, value, forceVolatile);
             }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setIntVolatile(obj, value);
@@ -796,11 +778,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return compatibleField.getLong(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    value = (long) 0;
-                }
-                return (long) value;
+                return getExtensionObject(obj).getLong(this, forceVolatile);
             }
         } else {
             if (isVolatile() || forceVolatile) {
@@ -823,7 +801,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setLong(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setLong(this, value, forceVolatile);
             }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setLongVolatile(obj, value);
@@ -858,11 +836,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 return compatibleField.getShort(obj, forceVolatile);
             } else {
-                Object value = getAddedFieldValue(obj);
-                if (value == null) {
-                    value = (short) 0;
-                }
-                return (short) value;
+                return getExtensionObject(obj).getShort(this, forceVolatile);
             }
         } else {
             if (isVolatile() || forceVolatile) {
@@ -884,7 +858,7 @@ public final class Field extends Member<Type> implements FieldRef {
             if (hasCompatibleField()) {
                 compatibleField.setShort(obj, value, forceVolatile);
             } else {
-                setAddedFieldValue(obj, value);
+                getExtensionObject(obj).setShort(this, value, forceVolatile);
             }
         } else if (isVolatile() || forceVolatile) {
             linkedField.setShortVolatile(obj, value);
@@ -906,27 +880,8 @@ public final class Field extends Member<Type> implements FieldRef {
     }
     // endregion short
 
-    private Object getAddedFieldValue(StaticObject instance) {
-        ExtensionFieldObject extensionFieldObject;
-        if (isStatic()) {
-            extensionFieldObject = getDeclaringKlass().getStaticExtensionFieldObject();
-        } else {
-            Field extensionField = holder.getMeta().HIDDEN_OBJECT_EXTENSION_FIELD;
-            Object object = extensionField.getHiddenObject(instance);
-            if (object == null) {
-                // create new instance Extension field object
-                synchronized (instance) {
-                    extensionFieldObject = new ExtensionFieldObject();
-                    extensionField.setHiddenObject(instance, extensionFieldObject);
-                }
-            } else {
-                extensionFieldObject = (ExtensionFieldObject) object;
-            }
-        }
-        return extensionFieldObject.getValue(this);
-    }
 
-    private void setAddedFieldValue(StaticObject instance, Object value) {
+    private ExtensionFieldObject getExtensionObject(StaticObject instance) {
         ExtensionFieldObject extensionFieldObject;
         if (isStatic()) {
             extensionFieldObject = getDeclaringKlass().getStaticExtensionFieldObject();
@@ -936,14 +891,19 @@ public final class Field extends Member<Type> implements FieldRef {
             if (object == null) {
                 // create new instance Extension field object
                 synchronized (instance) {
-                    extensionFieldObject = new ExtensionFieldObject();
-                    extensionField.setHiddenObject(instance, extensionFieldObject);
+                    object = extensionField.getHiddenObject(instance);
+                    if (object == null) {
+                        extensionFieldObject = new ExtensionFieldObject();
+                        extensionField.setHiddenObject(instance, extensionFieldObject);
+                    } else {
+                        extensionFieldObject = (ExtensionFieldObject) object;
+                    }
                 }
             } else {
                 extensionFieldObject = (ExtensionFieldObject) object;
             }
         }
-        extensionFieldObject.setValue(this, value);
+        return extensionFieldObject;
     }
 
     // endregion Field accesses
@@ -1050,6 +1010,10 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public Field getCompatibleField() {
         return compatibleField;
+    }
+
+    public StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> getExtensionShape() {
+        return extensionShape;
     }
 
     /**
