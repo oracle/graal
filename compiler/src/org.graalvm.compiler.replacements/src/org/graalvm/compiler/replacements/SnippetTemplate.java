@@ -1546,6 +1546,7 @@ public class SnippetTemplate {
     }
 
     private void rewireMemoryGraph(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
+        verifyWithExceptionNode(replacee);
         if (replacee.graph().isAfterStage(StageFlag.FLOATING_READS)) {
             // rewire outgoing memory edges
             replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
@@ -1575,6 +1576,19 @@ public class SnippetTemplate {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Verifies that a {@link WithExceptionNode} does not have memory usages. It shouldn't because
+     * if it is a memory kill, its {@link WithExceptionNode#next()} and
+     * {@link WithExceptionNode#exceptionEdge()} edges should start with a memory kill as well
+     * ({@link org.graalvm.compiler.nodes.KillingBeginNode}, {@link ExceptionObjectNode}) or be
+     * {@linkplain UnreachableBeginNode unreachable}.
+     */
+    private static void verifyWithExceptionNode(ValueNode node) {
+        if (node instanceof WithExceptionNode) {
+            GraalError.guarantee(node.hasNoUsages() || !node.hasUsagesOfType(InputType.Memory), "%s should not have any memory usages", node);
         }
     }
 

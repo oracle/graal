@@ -457,6 +457,24 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
+     * Checks whether this node has usages of that type.
+     *
+     * @param type the type of usages to look for
+     */
+    public final boolean hasUsagesOfType(InputType type) {
+        for (Node usage : usages()) {
+            for (Position pos : usage.inputPositions()) {
+                if (pos.get(usage) == this) {
+                    if (pos.getInputType() == type) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Adds a given node to this node's {@linkplain #usages() usages}.
      *
      * @param node the node to add
