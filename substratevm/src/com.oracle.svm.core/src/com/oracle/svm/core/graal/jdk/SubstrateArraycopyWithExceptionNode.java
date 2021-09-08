@@ -38,6 +38,8 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 import org.graalvm.word.LocationIdentity;
 
@@ -51,7 +53,7 @@ import jdk.vm.ci.meta.JavaKind;
  * go through {@link SubstrateArraycopySnippets}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "may be replaced with non-throwing counterpart", size = SIZE_64)
-public class SubstrateArraycopyWithExceptionNode extends WithExceptionNode implements ArrayCopy {
+public class SubstrateArraycopyWithExceptionNode extends WithExceptionNode implements ArrayCopy, Simplifiable {
 
     public static final NodeClass<SubstrateArraycopyWithExceptionNode> TYPE = NodeClass.create(SubstrateArraycopyWithExceptionNode.class);
 
@@ -133,5 +135,15 @@ public class SubstrateArraycopyWithExceptionNode extends WithExceptionNode imple
     @Override
     public JavaKind getElementKind() {
         return elementKind;
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (this.elementKind == null) {
+            this.elementKind = ArrayCopy.selectComponentKind(this);
+            if (this.elementKind != null) {
+                tool.addToWorkList(usages());
+            }
+        }
     }
 }
