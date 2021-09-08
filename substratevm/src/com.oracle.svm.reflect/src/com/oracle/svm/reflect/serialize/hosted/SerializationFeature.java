@@ -27,21 +27,27 @@ package com.oracle.svm.reflect.serialize.hosted;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.capturingClasses;
 import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
 
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
 import java.io.Serializable;
+import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -71,6 +77,7 @@ import jdk.vm.ci.meta.MetaUtil;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
+    public static final HashSet<Class<?>> capturingClasses = new HashSet<>();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
@@ -255,17 +262,31 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
     }
 
     @Override
-    public void registerWithTargetConstructorClass(String targetClassName, String customTargetConstructorClassName) {
+    public void registerWithTargetConstructorClass(String rawTargetClassName, String customTargetConstructorClassName) {
         abortIfSealed();
+        String targetClassName = rawTargetClassName.contains("$$Lambda$") ? rawTargetClassName.split(LambdaUtils.SPLIT_BY_LAMBDA)[0] : rawTargetClassName;
+
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
+
+        if (rawTargetClassName.contains("$$Lambda$") && !SerializationFeature.capturingClasses.contains(serializationTargetClass)) {
+            capturingClasses.add(serializationTargetClass);
+            RuntimeReflection.register(serializationTargetClass);
+            try {
+                RuntimeReflection.register(serializationTargetClass.getDeclaredMethod("$deserializeLambda$", SerializedLambda.class));
+            } catch (NoSuchMethodException e) {
+                VMError.shouldNotReachHere("Method named $deserializeLambda$ must exist in capturing class (" + serializationTargetClass.getName() + ") of lambdas that have writeReplace method.");
+            }
+            return ;
+        }
+
         UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
-                        " Please make sure it is in the classpath", targetClassName);
+                " Please make sure it is in the classpath", targetClassName);
         if (customTargetConstructorClassName != null) {
             Class<?> customTargetConstructorClass = typeResolver.resolveType(customTargetConstructorClassName);
             UserError.guarantee(customTargetConstructorClass != null,
-                            "Cannot find targetConstructorClass %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
-                                            " Please make sure it is in the classpath",
-                            customTargetConstructorClass);
+                    "Cannot find targetConstructorClass %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
+                            " Please make sure it is in the classpath",
+                    customTargetConstructorClass);
             registerWithTargetConstructorClass(serializationTargetClass, customTargetConstructorClass);
         } else {
             registerWithTargetConstructorClass(serializationTargetClass, null);
@@ -275,9 +296,7 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
     @Override
     public void registerWithTargetConstructorClass(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
-        if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
-            println("Warning: Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
-        } else if (denyRegistry.isAllowed(serializationTargetClass)) {
+        if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
                 UserError.guarantee(customTargetConstructorClass.isAssignableFrom(serializationTargetClass),
                                 "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",
@@ -289,6 +308,25 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
     }
 
     public void duringAnalysis(Feature.DuringAnalysisAccess a) {
+        FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) a;
+        AnalysisUniverse universe = impl.getUniverse();
+
+        List<AnalysisType> types = universe.getTypes();
+
+        for (AnalysisType type : types) {
+            if (type.getName().contains("$$Lambda$") && type.isReachable()) {
+                Class<?> capturingClass = a.findClassByName(type.getJavaClass().getName().split(LambdaUtils.SPLIT_BY_LAMBDA)[0]);
+                if (SerializationFeature.capturingClasses.contains(capturingClass)) {
+                    try {
+                        Method serializeLambdaMethod = type.getJavaClass().getDeclaredMethod("writeReplace");
+                        RuntimeReflection.register(serializeLambdaMethod);
+                    } catch (NoSuchMethodException e) {
+                        VMError.shouldNotReachHere("You have to register class from which you want lambdas to be serialized.");
+                    }
+                }
+            }
+        }
+
         if (newClasses.isEmpty()) {
             return;
         }

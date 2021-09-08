@@ -27,6 +27,7 @@ package com.oracle.svm.configure.config;
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
+import org.graalvm.compiler.java.LambdaUtils;
 
 import java.io.IOException;
 import java.util.Comparator;
@@ -57,7 +58,15 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
-        writer.quote(SerializationConfigurationParser.NAME_KEY).append(':').quote(qualifiedJavaName);
+
+        if (qualifiedJavaName.contains("$$Lambda$") && !qualifiedJavaName.contains("/")) {
+            String capturingClass = qualifiedJavaName.split(LambdaUtils.SPLIT_BY_LAMBDA)[0];
+            writer.quote(SerializationConfigurationParser.LAMBDA_CAPTURING_CLASS_KEY).append(":").quote(capturingClass);
+        }
+        else {
+            writer.quote(SerializationConfigurationParser.NAME_KEY).append(':').quote(qualifiedJavaName);
+        }
+
         if (qualifiedCustomTargetConstructorJavaName != null) {
             writer.append(',').newline();
             writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(':')

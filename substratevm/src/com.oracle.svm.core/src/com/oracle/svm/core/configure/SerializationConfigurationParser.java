@@ -27,6 +27,7 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
@@ -37,6 +38,7 @@ import com.oracle.svm.core.util.json.JSONParser;
 public class SerializationConfigurationParser extends ConfigurationParser {
 
     public static final String NAME_KEY = "name";
+    public static final String LAMBDA_CAPTURING_CLASS_KEY = "lambdaCapturingClass";
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
 
     private final RuntimeSerializationSupport serializationSupport;
@@ -56,8 +58,8 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     }
 
     private void parseSerializationDescriptorObject(Map<String, Object> data) {
-        checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY));
-        String targetSerializationClass = asString(data.get(NAME_KEY));
+        checkMultipleOptionsAttributes(data, "serialization descriptor object", Collections.unmodifiableCollection(Arrays.asList(NAME_KEY, LAMBDA_CAPTURING_CLASS_KEY)), Collections.singleton(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY));
+        String targetSerializationClass = data.containsKey(NAME_KEY) ? asString(data.get(NAME_KEY)) : asString(data.get(LAMBDA_CAPTURING_CLASS_KEY)) + "$$Lambda$";
         Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
         String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
         serializationSupport.registerWithTargetConstructorClass(targetSerializationClass, customTargetConstructorClass);

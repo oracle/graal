@@ -51,7 +51,7 @@ public class SerializationProcessor extends AbstractProcessor {
         }
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
-        if ("ObjectStreamClass.<init>".equals(function)) {
+        if ("ObjectStreamClass.<init>".equals(function) || "ObjectStreamClass.invokeReadResolve".equals(function)) {
             expectSize(args, 2);
 
             if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null))) {

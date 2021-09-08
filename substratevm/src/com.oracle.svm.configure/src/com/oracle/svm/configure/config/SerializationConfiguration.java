@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 public class SerializationConfiguration implements ConfigurationBase, RuntimeSerializationSupport {
@@ -83,7 +84,8 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
     }
 
     @Override
-    public void registerWithTargetConstructorClass(String className, String customTargetConstructorClassName) {
+    public void registerWithTargetConstructorClass(String rawClassName, String customTargetConstructorClassName) {
+        String className = rawClassName.contains("$$Lambda$") ? rawClassName.split(LambdaUtils.SPLIT_BY_LAMBDA)[0] + "$$Lambda$" : rawClassName;
         serializations.add(createConfigurationType(className, customTargetConstructorClassName));
     }
 
