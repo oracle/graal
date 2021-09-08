@@ -76,11 +76,11 @@ final class SVGSamplerOutput {
         output.append(data);
     }
 
-    public String allocateColor(int r, int g, int b) {
+    public static String allocateColor(int r, int g, int b) {
         return String.format("rgb(%d, %d, %d)", r, g, b);
     }
 
-    public String startGroup(Map<String, String> attributes) {
+    public static String startGroup(Map<String, String> attributes) {
         StringBuilder result = new StringBuilder();
         result.append("<g ");
         for (String key : new String[]{"class", "style", "onmouseover", "onmouseout", "onclick", "id"}) {
@@ -113,7 +113,7 @@ final class SVGSamplerOutput {
         return result.toString();
     }
 
-    public String endGroup(Map<String, String> attributes) {
+    public static String endGroup(Map<String, String> attributes) {
         StringBuilder result = new StringBuilder();
         if (attributes.containsKey("href")) {
             result.append("</a>\n");
@@ -122,7 +122,7 @@ final class SVGSamplerOutput {
         return result.toString();
     }
 
-    public String startSubDrawing(Map<String, String> attributes) {
+    public static String startSubDrawing(Map<String, String> attributes) {
         StringBuilder result = new StringBuilder();
         result.append("<svg ");
         for (Map.Entry<String, String> e : attributes.entrySet()) {
@@ -134,13 +134,13 @@ final class SVGSamplerOutput {
         return result.toString();
     }
 
-    public String endSubDrawing() {
+    public static String endSubDrawing() {
         StringBuilder result = new StringBuilder();
         result.append("</svg>\n");
         return result.toString();
     }
 
-    public String fillRectangle(double x1, double y1, double w, double h, String fill, String extras, Map<String, String> attributes) {
+    public static String fillRectangle(double x1, double y1, double w, double h, String fill, String extras, Map<String, String> attributes) {
         StringBuilder result = new StringBuilder();
         result.append(String.format("<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" fill=\"%s\" %s", x1, y1, w, h, fill, extras));
         for (Map.Entry<String, String> entry : attributes.entrySet()) {
@@ -150,7 +150,7 @@ final class SVGSamplerOutput {
         return result.toString();
     }
 
-    public String ttfString(String color, String font, double size, double x, double y, String text, String loc, String extras) {
+    public static String ttfString(String color, String font, double size, double x, double y, String text, String loc, String extras) {
         return String.format("<text text-anchor=\"%s\" x=\"%f\" y=\"%f\" font-size=\"%f\" font-family=\"%s\" fill=\"%s\" %s >%s</text>\n", loc == null ? "left" : loc, x, y, size, font, color,
                         extras == null ? "" : extras, escape(text));
     }
@@ -168,22 +168,28 @@ final class SVGSamplerOutput {
         return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
     }
 
-    public String black() {
+    public static String black() {
         return allocateColor(0, 0, 0);
     }
 
     private interface SVGComponent {
 
         String css();
+
         String script();
+
         String initFunction(String argName);
+
         String resizeFunction();
+
         String searchFunction(String argName);
+
         String resetSearchFunction();
 
         String drawCanvas(double x, double y);
 
         double width();
+
         double height();
     }
 
@@ -216,7 +222,7 @@ final class SVGSamplerOutput {
         public final JSONArray sampleNames = new JSONArray();
         public final JSONObject sampleData = new JSONObject();
 
-        GraphOwner(StringBuilder output, Map<TruffleContext,CPUSamplerData> data) {
+        GraphOwner(StringBuilder output, Map<TruffleContext, CPUSamplerData> data) {
             svg = new SVGSamplerOutput(output);
             this.data = data;
             components = new ArrayList<>();
@@ -259,7 +265,7 @@ final class SVGSamplerOutput {
             css.append("</defs>\n");
             css.append("<style type=\"text/css\">\n");
 
-            for (SVGComponent component: components) {
+            for (SVGComponent component : components) {
                 css.append(component.css());
             }
             css.append("</style>\n");
@@ -279,7 +285,7 @@ final class SVGSamplerOutput {
             result.append(searchFunction("term"));
             result.append(resetSearchFunction());
             result.append(colorChangeFunction());
-            for (SVGComponent component: components) {
+            for (SVGComponent component : components) {
                 result.append(component.script());
             }
             result.append("]]>\n</script>");
@@ -299,15 +305,15 @@ final class SVGSamplerOutput {
             JSONArray children = new JSONArray();
             for (CPUSamplerData value : data.values()) {
                 for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : value.getThreadData().entrySet()) {
-                Thread thread = node.getKey();
-                // Output the thread node itself...
-                // Optput the samples under that node...
-                List<ProfilerNode<CPUSampler.Payload>> samples = new ArrayList<>(node.getValue());
-                children.put(threadSampelData(thread, samples, totalSamples));
-                for (ProfilerNode<CPUSampler.Payload> sample : samples) {
-                    totalSamples += sample.getPayload().getHitCount();
+                    Thread thread = node.getKey();
+                    // Output the thread node itself...
+                    // Optput the samples under that node...
+                    List<ProfilerNode<CPUSampler.Payload>> samples = new ArrayList<>(node.getValue());
+                    children.put(threadSampelData(thread, samples, totalSamples));
+                    for (ProfilerNode<CPUSampler.Payload> sample : samples) {
+                        totalSamples += sample.getPayload().getHitCount();
+                    }
                 }
-            }
             }
             sampleData.put("h", totalSamples);
             sampleData.put("s", children);
@@ -317,9 +323,9 @@ final class SVGSamplerOutput {
         private JSONObject threadSampelData(Thread thread, List<ProfilerNode<CPUSampler.Payload>> samples, long x) {
             JSONObject result = new JSONObject();
             result.put("n", nameHash.computeIfAbsent(thread.getName(), k -> {
-                        sampleNames.put(thread.getName());
-                        return nameCounter++;
-                    }));
+                sampleNames.put(thread.getName());
+                return nameCounter++;
+            }));
             result.put("id", sampleId++);
             result.put("i", 0);
             result.put("c", 0);
@@ -382,9 +388,9 @@ final class SVGSamplerOutput {
         public JSONObject sampleData(ProfilerNode<CPUSampler.Payload> sample, long x) {
             JSONObject result = new JSONObject();
             final int nameId = nameHash.computeIfAbsent(sample.getRootName(), k -> {
-                        sampleNames.put(sample.getRootName());
-                        return nameCounter++;
-                });
+                sampleNames.put(sample.getRootName());
+                return nameCounter++;
+            });
             result.put("n", nameId);
             result.put("id", sampleId++);
             result.put("i", sample.getPayload().getTierSelfCount(0));
@@ -447,7 +453,7 @@ final class SVGSamplerOutput {
         public String initFunction(String argName) {
             StringBuilder result = new StringBuilder();
             result.append(String.format("function init(%s) {\n", argName));
-            for (SVGComponent component: components) {
+            for (SVGComponent component : components) {
                 result.append(component.initFunction(argName));
             }
             result.append("resize();\n");
@@ -459,7 +465,7 @@ final class SVGSamplerOutput {
             StringBuilder result = new StringBuilder();
             result.append("function resize() {\n");
             result.append("owner_resize(window.innerWidth);\n");
-            for (SVGComponent component: components) {
+            for (SVGComponent component : components) {
                 result.append(component.resizeFunction());
             }
             result.append("}\n");
@@ -473,7 +479,7 @@ final class SVGSamplerOutput {
             result.append(getResource("search.js"));
 
             result.append(String.format("function search(%s) {\n", argName));
-            for (SVGComponent component: components) {
+            for (SVGComponent component : components) {
                 result.append(component.searchFunction(argName));
             }
             result.append("}\n");
@@ -483,7 +489,7 @@ final class SVGSamplerOutput {
         public String resetSearchFunction() {
             StringBuilder result = new StringBuilder();
             result.append("    function reset_search() {\n");
-            for (SVGComponent component: components) {
+            for (SVGComponent component : components) {
                 result.append(component.resetSearchFunction());
             }
             result.append("}\n");
@@ -500,7 +506,7 @@ final class SVGSamplerOutput {
         public String drawCanvas(double x, double y) {
             double offset = y;
             StringBuilder canvas = new StringBuilder();
-            for (SVGComponent component: components) {
+            for (SVGComponent component : components) {
                 canvas.append(component.drawCanvas(x, offset));
                 offset = offset + component.height();
             }
@@ -535,52 +541,52 @@ final class SVGSamplerOutput {
             v3 = random.nextDouble();
 
             switch (type) {
-            case FLAME:
-                r = (int) (200 + (35 * v3));
-                g = (int) (100 + (100 * v1));
-                b = (int) (30 + (50 * v2));
-                break;
-            case RED:
-                r = (int) (200 + (55 * v1));
-                g = (int) (80 * v1);
-                b = g;
-                break;
-            case ORANGE:
-                r = (int) (190 + (65 * v1));
-                g = (int) (90 + (65 * v1));
-                b = 0;
-                break;
-            case YELLOW:
-                r = (int) (175 + (55 * v1));
-                g = r;
-                b = (int) (50 + (20 * v1));
-                break;
-            case GREEN:
-                g = (int) (200 + (55 * v1));
-                r = (int) (80 * v1);
-                b = r;
-                break;
-            case AQUA:
-                r = (int) (50 + (60 * v1));
-                g = (int) (165 + (55 * v1));
-                b = (int) (165 + (55 * v1));
-                break;
-            case BLUE:
-                r = (int) (80 * v1);
-                g = r;
-                b = (int) (200 + (55 * v1));
-                break;
-            case PURPLE:
-                r = (int) (190 + (65 * v1));
-                g = (int) (80 + (60 * v1));
-                b = r;
-                break;
-            case GRAY:
-                r = (int) (175 + (55 * v1));
-                g = r;
-                b = r;
+                case FLAME:
+                    r = (int) (200 + (35 * v3));
+                    g = (int) (100 + (100 * v1));
+                    b = (int) (30 + (50 * v2));
+                    break;
+                case RED:
+                    r = (int) (200 + (55 * v1));
+                    g = (int) (80 * v1);
+                    b = g;
+                    break;
+                case ORANGE:
+                    r = (int) (190 + (65 * v1));
+                    g = (int) (90 + (65 * v1));
+                    b = 0;
+                    break;
+                case YELLOW:
+                    r = (int) (175 + (55 * v1));
+                    g = r;
+                    b = (int) (50 + (20 * v1));
+                    break;
+                case GREEN:
+                    g = (int) (200 + (55 * v1));
+                    r = (int) (80 * v1);
+                    b = r;
+                    break;
+                case AQUA:
+                    r = (int) (50 + (60 * v1));
+                    g = (int) (165 + (55 * v1));
+                    b = (int) (165 + (55 * v1));
+                    break;
+                case BLUE:
+                    r = (int) (80 * v1);
+                    g = r;
+                    b = (int) (200 + (55 * v1));
+                    break;
+                case PURPLE:
+                    r = (int) (190 + (65 * v1));
+                    g = (int) (80 + (60 * v1));
+                    b = r;
+                    break;
+                case GRAY:
+                    r = (int) (175 + (55 * v1));
+                    g = r;
+                    b = r;
             }
-            String color = svg.allocateColor(r, g, b);
+            String color = allocateColor(r, g, b);
             colors.put(name, color);
             return color;
         }
@@ -657,9 +663,8 @@ final class SVGSamplerOutput {
         public String getResource(String name) {
             StringBuilder resource = new StringBuilder();
             try (
-                 InputStream stream = SVGHistogram.class.getResourceAsStream("resources/" + name);
-                 Scanner scanner = new Scanner(stream);
-                 ) {
+                            InputStream stream = SVGHistogram.class.getResourceAsStream("resources/" + name);
+                            Scanner scanner = new Scanner(stream);) {
                 while (scanner.hasNextLine()) {
                     resource.append(scanner.nextLine());
                     resource.append('\n');
@@ -697,7 +702,7 @@ final class SVGSamplerOutput {
                 int childDepth = 0;
                 if (samples.has("s")) {
                     for (Object child : samples.getJSONArray("s")) {
-                        childDepth = Integer.max(childDepth, maxDepth((JSONObject)child));
+                        childDepth = Integer.max(childDepth, maxDepth((JSONObject) child));
                     }
                 }
                 return childDepth + 1;
@@ -724,33 +729,33 @@ final class SVGSamplerOutput {
             svgattr.put("wdith", Double.toString(width()));
             svgattr.put("height", Double.toString(height()));
             svgattr.put("viewBox", String.format("0.0 -%f %f %f", height(), width(), height()));
-            output.append(owner.svg.startSubDrawing(svgattr));
+            output.append(startSubDrawing(svgattr));
             Map<String, String> attr = new HashMap<>();
             Map<String, String> canvasAttr = new HashMap<>();
             attr.put("id", "flamegraph");
             canvasAttr.put("id", "fg_canvas");
-            output.append(owner.svg.startGroup(attr));
-            output.append(owner.svg.fillRectangle(0, -height(), width(), height(), "url(#background)", "", canvasAttr));
+            output.append(startGroup(attr));
+            output.append(fillRectangle(0, -height(), width(), height(), "url(#background)", "", canvasAttr));
             output.append(drawTree());
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), XPAD, -(bottomPadding / 2),
-                                              " ", "", "id=\"details\""));
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), width() - XPAD - 100, -(bottomPadding / 2),
-                                              " ", "", "id=\"matched\" onclick=\"search_prompt()\""));
-            output.append(owner.svg.endGroup(attr));
-            output.append(owner.svg.endSubDrawing());
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize(), XPAD, -(bottomPadding / 2),
+                            " ", "", "id=\"details\""));
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize(), width() - XPAD - 100, -(bottomPadding / 2),
+                            " ", "", "id=\"matched\" onclick=\"search_prompt()\""));
+            output.append(endGroup(attr));
+            output.append(endSubDrawing());
 
             // We put the title and top buttons outside the main group
             // so we won't need to move them if zooming in or out
             // changes the max height of the graph.
 
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2,
-                                              "Flamegraph", "middle", "id=\"fg_title\""));
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), width() / 2, owner.fontSize() * 3,
-                                              "Press \"?\" for help", "middle", "id=\"fg_help\""));
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), XPAD, owner.fontSize() * 2,
-                                              "Reset zoom", "", "id=\"unzoom\" onclick=\"unzoom()\" style=\"opacity:0.1;cursor:pointer\""));
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), width() - XPAD, owner.fontSize() * 2,
-                                              "Search", "end", "id=\"search\"  onclick=\"search_prompt()\" onmouseover=\"fg_searchover()\" onmouseout=\"fg_searchout()\""));
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2,
+                            "Flamegraph", "middle", "id=\"fg_title\""));
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize(), width() / 2, owner.fontSize() * 3,
+                            "Press \"?\" for help", "middle", "id=\"fg_help\""));
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize(), XPAD, owner.fontSize() * 2,
+                            "Reset zoom", "", "id=\"unzoom\" onclick=\"unzoom()\" style=\"opacity:0.1;cursor:pointer\""));
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize(), width() - XPAD, owner.fontSize() * 2,
+                            "Search", "end", "id=\"search\"  onclick=\"search_prompt()\" onmouseover=\"fg_searchover()\" onmouseout=\"fg_searchout()\""));
             return output.toString();
         }
 
@@ -797,18 +802,18 @@ final class SVGSamplerOutput {
             double percent = 100.0 * (compiled + interpreted) / sampleCount;
             title.append(String.format("%.2f%% of displayed samples.\n", percent));
             groupAttrs.put("title", escape(title.toString()));
-            output.append(owner.svg.startGroup(groupAttrs));
+            output.append(startGroup(groupAttrs));
 
             HashMap<String, String> rectAttrs = new HashMap<>();
 
-            output.append(owner.svg.fillRectangle(x, y, width, FRAMEHEIGHT, owner.colorForName(sample.getInt("n"), GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
+            output.append(fillRectangle(x, y, width, FRAMEHEIGHT, owner.colorForName(sample.getInt("n"), GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
 
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), x + 3, y - 5 + FRAMEHEIGHT, owner.abbreviate(fullText, width), null, ""));
-            output.append(owner.svg.endGroup(groupAttrs));
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize(), x + 3, y - 5 + FRAMEHEIGHT, owner.abbreviate(fullText, width), null, ""));
+            output.append(endGroup(groupAttrs));
             if (sample.has("s")) {
                 JSONArray children = sample.getJSONArray("s");
                 for (Object child : children) {
-                    output.append(drawSample(y - FRAMEHEIGHT, (JSONObject)child));
+                    output.append(drawSample(y - FRAMEHEIGHT, (JSONObject) child));
                 }
             }
             return output.toString();
@@ -879,14 +884,14 @@ final class SVGSamplerOutput {
 
         private void buildHistogram(JSONObject sample, Map<String, JSONObject> bars) {
             JSONObject bar = bars.computeIfAbsent(owner.sampleNames.getString(sample.getInt("n")),
-                                                  k -> {
-                                                      JSONObject entry = new JSONObject();
-                                                      entry.put("id", sample.getInt("id"));
-                                                      entry.put("i", 0);
-                                                      entry.put("c", 0);
-                                                      entry.put("l", sample.getInt("l"));
-                                                      entry.put("n", sample.getInt("n"));
-                                                      return entry;
+                            k -> {
+                                JSONObject entry = new JSONObject();
+                                entry.put("id", sample.getInt("id"));
+                                entry.put("i", 0);
+                                entry.put("c", 0);
+                                entry.put("l", sample.getInt("l"));
+                                entry.put("n", sample.getInt("n"));
+                                return entry;
                             });
             bar.put("i", bar.getInt("i") + sample.getInt("i"));
             bar.put("c", bar.getInt("c") + sample.getInt("c"));
@@ -928,20 +933,20 @@ final class SVGSamplerOutput {
             svgattr.put("wdith", Double.toString(width()));
             svgattr.put("height", Double.toString(height()));
             svgattr.put("viewBox", String.format("0.0 0.0 %f %f", width(), height()));
-            output.append(owner.svg.startSubDrawing(svgattr));
+            output.append(startSubDrawing(svgattr));
             Map<String, String> attr = new HashMap<>();
             Map<String, String> canvasAttr = new HashMap<>();
             attr.put("id", "histogram");
             canvasAttr.put("id", "h_canvas");
-            output.append(owner.svg.startGroup(attr));
-            output.append(owner.svg.fillRectangle(0, 0, width(), height(), "url(#background)", "", canvasAttr));
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2, "Histogram", "middle", "id=\"h_title\""));
+            output.append(startGroup(attr));
+            output.append(fillRectangle(0, 0, width(), height(), "url(#background)", "", canvasAttr));
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2, "Histogram", "middle", "id=\"h_title\""));
 
             for (int position = 0; position < histogram.size(); position++) {
                 output.append(drawElement(histogram.get(position), position));
             }
-            output.append(owner.svg.endGroup(attr));
-            output.append(owner.svg.endSubDrawing());
+            output.append(endGroup(attr));
+            output.append(endSubDrawing());
 
             return output.toString();
         }
@@ -974,11 +979,11 @@ final class SVGSamplerOutput {
             double percent = 100.0 * (compiled + interpreted) / sampleCount;
             title.append(String.format("%.2f%% of displayed samples.\n", percent));
             groupAttrs.put("title", escape(title.toString()));
-            output.append(owner.svg.startGroup(groupAttrs));
+            output.append(startGroup(groupAttrs));
 
             HashMap<String, String> rectAttrs = new HashMap<>();
 
-            output.append(owner.svg.fillRectangle(x1, y1, width, FRAMEHEIGHT, owner.colorForName(nameId, GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
+            output.append(fillRectangle(x1, y1, width, FRAMEHEIGHT, owner.colorForName(nameId, GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
             double afterWidth = IMAGEWIDTH - width - XPAD * 2;
             int textLength = (int) (width / (owner.fontSize() / owner.fontWidth()));
             int afterLength = (int) (afterWidth / (owner.fontSize() / owner.fontWidth()));
@@ -999,8 +1004,8 @@ final class SVGSamplerOutput {
                 }
             }
 
-            output.append(owner.svg.ttfString(owner.svg.black(), owner.fontName(), owner.fontSize(), textX, y1 - 5 + FRAMEHEIGHT, text , null, ""));
-            output.append(owner.svg.endGroup(groupAttrs));
+            output.append(ttfString(black(), owner.fontName(), owner.fontSize(), textX, y1 - 5 + FRAMEHEIGHT, text, null, ""));
+            output.append(endGroup(groupAttrs));
             return output.toString();
         }
 
