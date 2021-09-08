@@ -650,6 +650,14 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
         public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated,
                         Object receiver, Object originalValue) {
             int offset = (int) originalValue;
+            if (offset == 0) {
+                /*
+                 * The offset is not yet initialized, probably because no shape was built for the
+                 * receiver static property
+                 */
+                return offset;
+            }
+
             StaticProperty receiverStaticProperty = (StaticProperty) receiver;
 
             String internalKindName;
