@@ -35,6 +35,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
@@ -68,65 +69,17 @@ final class InsightHookNode extends ExecutionEventNode {
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        final int len = key.functionsMaxCount();
-        CompilerAsserts.partialEvaluationConstant(len);
-        final InsightPerContext ipc = insight.findCtx();
-        for (int i = 0; i < len; i++) {
-            InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
-            if (!isApplicable(data, AgentType.ENTER)) {
-                continue;
-            }
-            final EventContextObject eco = eventCtxObj();
-            try {
-                enterDispatch.execute(data.fn, eco, getVariables(frame, true, null));
-            } catch (InteropException ex) {
-                throw EventContextObject.wrap(data.fn, 2, ex);
-            } catch (RuntimeException ex) {
-                throw EventContextObject.rethrow(ex, exceptionDispatch);
-            }
-        }
+        loopHooks(frame, AgentType.ENTER, null);
     }
 
     @Override
     protected void onReturnValue(VirtualFrame frame, Object returnValue) {
-        final int len = key.functionsMaxCount();
-        CompilerAsserts.partialEvaluationConstant(len);
-        final InsightPerContext ipc = insight.findCtx();
-        for (int i = 0; i < len; i++) {
-            InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
-            if (!isApplicable(data, AgentType.RETURN)) {
-                continue;
-            }
-            final EventContextObject eco = eventCtxObj();
-            try {
-                exitDispatch.execute(data.fn, eco, getVariables(frame, false, returnValue));
-            } catch (InteropException ex) {
-                throw EventContextObject.wrap(data.fn, 2, ex);
-            } catch (RuntimeException ex) {
-                throw EventContextObject.rethrow(ex, exceptionDispatch);
-            }
-        }
+        loopHooks(frame, AgentType.RETURN, returnValue);
     }
 
     @Override
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-        final int len = key.functionsMaxCount();
-        CompilerAsserts.partialEvaluationConstant(len);
-        final InsightPerContext ipc = insight.findCtx();
-        for (int i = 0; i < len; i++) {
-            InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
-            if (!isApplicable(data, AgentType.RETURN)) {
-                continue;
-            }
-            final EventContextObject eco = eventCtxObj();
-            try {
-                exitDispatch.execute(data.fn, eco, getVariables(frame, false, null));
-            } catch (InteropException ex) {
-                throw EventContextObject.wrap(data.fn, 2, ex);
-            } catch (RuntimeException ex) {
-                throw EventContextObject.rethrow(ex, exceptionDispatch);
-            }
-        }
+        loopHooks(frame, AgentType.RETURN, null);
     }
 
     @Override
@@ -134,7 +87,44 @@ final class InsightHookNode extends ExecutionEventNode {
         return info;
     }
 
-    static ThreadDeath returnNow(EventContext context, Object[] args) throws ArityException, ThreadDeath {
+    private void loopHooks(VirtualFrame frame, final AgentType type, Object returnValue) throws RuntimeException, ThreadDeath {
+        final int len = key.functionsMaxCount();
+        CompilerAsserts.partialEvaluationConstant(len);
+        final InsightPerContext ipc = insight.findCtx();
+        ReturnNow returnNow = null;
+        for (int i = 0; i < len; i++) {
+            InsightFilter.Data data = (InsightFilter.Data) ipc.functionFor(key, i);
+            if (!isApplicable(data, type)) {
+                continue;
+            }
+            final EventContextObject eco = eventCtxObj();
+            try {
+                exitDispatch.execute(data.fn, eco, getVariables(frame, type == AgentType.ENTER, returnValue));
+            } catch (ReturnNow ex) {
+                if (returnNow == null) {
+                    returnNow = ex;
+                }
+            } catch (InteropException ex) {
+                throw EventContextObject.wrap(data.fn, 2, ex);
+            } catch (RuntimeException ex) {
+                throw EventContextObject.rethrow(ex, exceptionDispatch);
+            }
+        }
+        if (returnNow != null) {
+            throw ctx.createUnwind(NullObject.nullCheck(returnNow.returnValue));
+        }
+    }
+
+    private static final class ReturnNow extends ControlFlowException {
+        static final long serialVersionUID = 49092343L;
+        final Object returnValue;
+
+        ReturnNow(Object returnValue) {
+            this.returnValue = returnValue;
+        }
+    }
+
+    static ControlFlowException returnNow(Object[] args) throws ArityException {
         Object returnValue;
         switch (args.length) {
             case 0:
@@ -146,7 +136,7 @@ final class InsightHookNode extends ExecutionEventNode {
             default:
                 throw ArityException.create(1, 1, args.length);
         }
-        return context.createUnwind(NullObject.nullCheck(returnValue));
+        return new ReturnNow(returnValue);
     }
 
     private Object getVariables(VirtualFrame frame, boolean nodeEnter, Object returnValue) {
