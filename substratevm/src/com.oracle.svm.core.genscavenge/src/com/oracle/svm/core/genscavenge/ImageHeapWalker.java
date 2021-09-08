@@ -25,14 +25,12 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -94,7 +92,7 @@ public final class ImageHeapWalker {
         if (HeapImpl.usesImageHeapChunks()) {
             Pointer base = WordFactory.zero();
             if (!CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
-                base = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
+                base = HeapImpl.getImageHeapStart();
             }
             Pointer offset = current.subtract(base);
             UnsignedWord chunkOffset = alignedChunks ? UnsignedUtils.roundDown(offset, HeapPolicy.getAlignedHeapChunkAlignment())
