@@ -278,7 +278,7 @@ public final class SubprocessUtil {
      * @param mainClassAndArgs the main class and its arguments
      */
     public static Subprocess java(List<String> vmArgs, List<String> mainClassAndArgs) throws IOException, InterruptedException {
-        return javaHelper(vmArgs, null, mainClassAndArgs, null);
+        return javaHelper(vmArgs, null, null, mainClassAndArgs, null);
     }
 
     /**
@@ -289,7 +289,20 @@ public final class SubprocessUtil {
      * @param timeout the timeout duration until the process is killed
      */
     public static Subprocess java(List<String> vmArgs, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
-        return javaHelper(vmArgs, null, mainClassAndArgs, timeout);
+        return javaHelper(vmArgs, null, null, mainClassAndArgs, timeout);
+    }
+
+    /**
+     * Executes a Java subprocess with a timeout in the specified working directory.
+     *
+     * @param vmArgs the VM arguments
+     * @param workingDir the working directory of the subprocess. If null, the working directory of
+     *            the current process is used.
+     * @param mainClassAndArgs the main class and its arguments
+     * @param timeout the timeout duration until the process is killed
+     */
+    public static Subprocess java(List<String> vmArgs, File workingDir, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
+        return javaHelper(vmArgs, null, workingDir, mainClassAndArgs, timeout);
     }
 
     /**
@@ -311,19 +324,23 @@ public final class SubprocessUtil {
      * @param mainClassAndArgs the main class and its arguments
      */
     public static Subprocess java(List<String> vmArgs, Map<String, String> env, List<String> mainClassAndArgs) throws IOException, InterruptedException {
-        return javaHelper(vmArgs, env, mainClassAndArgs, null);
+        return javaHelper(vmArgs, env, null, mainClassAndArgs, null);
     }
 
     /**
      * Executes a Java subprocess.
      *
-     * @param vmArgs the VM arguments
+     * @param vmArgs the VM arguments. If {@code vmArgs} contains {@link #PACKAGE_OPENING_OPTIONS},
+     *            the argument is replaced with arguments to do package opening (see
+     *            {@link SubprocessUtil#getPackageOpeningOptions()}
      * @param env the environment variables
+     * @param workingDir the working directory of the subprocess. If null, the working directory of
+     *            the current process is used.
      * @param mainClassAndArgs the main class and its arguments
      * @param timeout the duration to wait for the process to finish. If null, the calling thread
      *            waits for the process indefinitely.
      */
-    private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
+    private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, File workingDir, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(vmArgs.size());
         Path packageOpeningOptionsArgumentsFile = null;
         for (String vmArg : vmArgs) {
@@ -342,6 +359,9 @@ public final class SubprocessUtil {
         }
         command.addAll(mainClassAndArgs);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
+        if (workingDir != null) {
+            processBuilder.directory(workingDir);
+        }
         if (env != null) {
             Map<String, String> processBuilderEnv = processBuilder.environment();
             processBuilderEnv.putAll(env);
