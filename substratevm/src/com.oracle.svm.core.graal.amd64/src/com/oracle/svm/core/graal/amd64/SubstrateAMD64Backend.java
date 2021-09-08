@@ -31,7 +31,6 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
-import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -813,15 +812,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public void enter(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             RegisterConfig registerConfig = tasm.frameMap.getRegisterConfig();
+            Register gpReturnReg = registerConfig.getReturnRegister(JavaKind.Long);
+            Register fpReturnReg = registerConfig.getReturnRegister(JavaKind.Double);
 
             /* Move the DeoptimizedFrame into the first calling convention register. */
             Register deoptimizedFrame = ValueUtil.asRegister(callingConvention.getArgument(0));
+            assert !deoptimizedFrame.equals(gpReturnReg) : "overwriting return reg";
             asm.movq(deoptimizedFrame, new AMD64Address(registerConfig.getFrameRegister(), 0));
 
             /* Store the original return value registers. */
             int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
-            asm.movq(new AMD64Address(deoptimizedFrame, scratchOffset), registerConfig.getReturnRegister(JavaKind.Long));
-            asm.movq(new AMD64Address(deoptimizedFrame, scratchOffset + 8), registerConfig.getReturnRegister(JavaKind.Double));
+            asm.movq(new AMD64Address(deoptimizedFrame, scratchOffset), gpReturnReg);
+            asm.movq(new AMD64Address(deoptimizedFrame, scratchOffset + 8), fpReturnReg);
 
             super.enter(tasm);
         }
@@ -857,13 +859,19 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public void leave(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
+            RegisterConfig registerConfig = tasm.frameMap.getRegisterConfig();
+            Register gpReturnReg = registerConfig.getReturnRegister(JavaKind.Long);
+            Register fpReturnReg = registerConfig.getReturnRegister(JavaKind.Double);
 
             super.leave(tasm);
 
-            // Restore the return value registers (the DeoptimizedFrame is in rax).
+            /*
+             * Restore the return value registers (the DeoptimizedFrame object is initially in
+             * gpReturnReg).
+             */
             int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
-            asm.movq(xmm0, new AMD64Address(rax, scratchOffset + 8));
-            asm.movq(rax, new AMD64Address(rax, scratchOffset));
+            asm.movq(fpReturnReg, new AMD64Address(gpReturnReg, scratchOffset + 8));
+            asm.movq(gpReturnReg, new AMD64Address(gpReturnReg, scratchOffset));
         }
     }
 
