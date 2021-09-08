@@ -46,8 +46,8 @@ Name         | Description
 [GraalPython] | Implementation of the Python language.
 [GraalVM Demos][graalvm-demos] | Several example applications illustrating GraalVM capabilities.
 [Native Build Tools][native-build-tools] | Build tool plugins for GraalVM Native Image.
-[SimpleLanguage] | A simple example language built in the Truffle framework.
-[SimpleTool] | A simple example tool built in the Truffle framework. 
+[SimpleLanguage] | A simple example language built with the Truffle framework.
+[SimpleTool] | A simple example tool built with the Truffle framework. 
 [TruffleRuby] | Implementation of the Ruby language.
 [VS Code Extensions][vscode-extensions] | VS Code extensions for GraalVM.
 

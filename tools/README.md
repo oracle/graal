@@ -3,7 +3,7 @@
 This tools suite provides tooling support for guest languages running on
 GraalVM. It depends on [Truffle](https://github.com/graalvm/graal/tree/master/truffle)
 and is language-agnostic. The tools are available to be used with any language
-built in Truffle and passing [TCK](https://github.com/graalvm/graal/blob/master/truffle/docs/TCK.md)
+built with Truffle and passing [TCK](https://github.com/graalvm/graal/blob/master/truffle/docs/TCK.md)
 tests.
 
 ## Using Tools
