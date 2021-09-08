@@ -18,20 +18,20 @@ and put onto your PATH. Also, point `JAVA_HOME` to a
 [JVMCI-enabled JDK 8](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
 
 ```bash
-git clone https://github.com/graalvm/mx.git
-export PATH=$PWD/mx:$PATH
-git clone https://github.com/graalvm/graal.git
-cd graal/tools
-mx build
-mx unittest
+$ git clone https://github.com/graalvm/mx.git
+$ export PATH=$PWD/mx:$PATH
+$ git clone https://github.com/graalvm/graal.git
+$ cd graal/tools
+$ mx build
+$ mx unittest
 ```
 
 ## IDE Configuration
 
 You can generate IDE project configurations by running:
 
-```
-mx ideinit
+```bash
+$ mx ideinit
 ```
 
 This will generate Eclipse, IntelliJ, and NetBeans project configurations.
