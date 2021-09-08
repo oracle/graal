@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -113,9 +112,9 @@ public final class HeapImpl extends Heap {
     private List<Class<?>> classList;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public HeapImpl(FeatureAccess access, int pageSize) {
+    public HeapImpl(int pageSize) {
         this.pageSize = pageSize;
-        this.gcImpl = new GCImpl(access);
+        this.gcImpl = new GCImpl();
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         HeapParameters.initialize();
         SubstrateDiagnostics.DiagnosticThunkRegister.getSingleton().register(new DumpHeapSettingsAndStatistics());

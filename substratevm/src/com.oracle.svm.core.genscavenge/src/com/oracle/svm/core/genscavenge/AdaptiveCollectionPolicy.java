@@ -33,10 +33,12 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
- * A port of HotSpot's ParallelGC adaptive size policy for throughput and footprint, but without the
- * pause time goals. The relevant methods in this class have been adapted from classes
- * {@code PSAdaptiveSizePolicy} and its base class {@code AdaptiveSizePolicy}. Method and variable
- * names have been kept mostly the same for comparability.
+ * A garbage collection policy that balances throughput and memory footprint.
+ *
+ * Much of this is based on HotSpot's ParallelGC adaptive size policy, but without the pause time
+ * goals. Many methods in this class have been adapted from classes {@code PSAdaptiveSizePolicy} and
+ * its base class {@code AdaptiveSizePolicy}. Method and variable names have been kept mostly the
+ * same for comparability.
  */
 final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
@@ -47,40 +49,40 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
      * Don't change these values individually without carefully going over their occurrences in
      * HotSpot source code, there are dependencies between them that are not handled in our code.
      */
-    static final int ADAPTIVE_SIZE_POLICY_READY_THRESHOLD = 5;
-    static final int ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR = 4;
-    static final int ADAPTIVE_SIZE_POLICY_WEIGHT = 10;
-    static final int ADAPTIVE_TIME_WEIGHT = 25;
-    static final boolean USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC = false;
-    static final boolean USE_ADAPTIVE_SIZE_DECAY_MAJOR_GC_COST = true;
-    static final double ADAPTIVE_SIZE_MAJOR_GC_DECAY_TIME_SCALE = 10;
-    static final boolean USE_ADAPTIVE_SIZE_POLICY_FOOTPRINT_GOAL = true;
-    static final int THRESHOLD_TOLERANCE = 10;
-    static final int SURVIVOR_PADDING = 3;
-    static final int INITIAL_TENURING_THRESHOLD = 7;
-    static final int PROMOTED_PADDING = 3;
-    static final int TENURED_GENERATION_SIZE_SUPPLEMENT_DECAY = 2;
-    static final int YOUNG_GENERATION_SIZE_SUPPLEMENT_DECAY = 8;
-    static final int PAUSE_PADDING = 1;
+    private static final int ADAPTIVE_TIME_WEIGHT = DEFAULT_TIME_WEIGHT;
+    private static final int ADAPTIVE_SIZE_POLICY_READY_THRESHOLD = 5;
+    private static final int ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR = 4;
+    private static final int ADAPTIVE_SIZE_POLICY_WEIGHT = 10;
+    private static final boolean USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC = false;
+    private static final boolean USE_ADAPTIVE_SIZE_DECAY_MAJOR_GC_COST = true;
+    private static final double ADAPTIVE_SIZE_MAJOR_GC_DECAY_TIME_SCALE = 10;
+    private static final boolean USE_ADAPTIVE_SIZE_POLICY_FOOTPRINT_GOAL = true;
+    private static final int THRESHOLD_TOLERANCE = 10;
+    private static final int SURVIVOR_PADDING = 3;
+    private static final int INITIAL_TENURING_THRESHOLD = 7;
+    private static final int PROMOTED_PADDING = 3;
+    private static final int TENURED_GENERATION_SIZE_SUPPLEMENT_DECAY = 2;
+    private static final int YOUNG_GENERATION_SIZE_SUPPLEMENT_DECAY = 8;
+    private static final int PAUSE_PADDING = 1;
     /**
      * Ratio of mutator wall-clock time to GC wall-clock time. HotSpot's default is 99, i.e.
      * spending 1% of time in GC. We set it to 19, i.e. 5%, to prefer a small footprint.
      */
-    static final int GC_TIME_RATIO = 19;
+    private static final int GC_TIME_RATIO = 19;
     /**
      * Maximum size increment step percentages. We reduce them from HotSpot's default of 20 to avoid
      * growing the heap too eagerly, and to enable {@linkplain #ADAPTIVE_SIZE_USE_COST_ESTIMATORS
      * cost estimators} to resize the heap in smaller steps which might yield improved throughput
      * when larger steps do not.
      */
-    static final int YOUNG_GENERATION_SIZE_INCREMENT = 10;
-    static final int TENURED_GENERATION_SIZE_INCREMENT = 10;
+    private static final int YOUNG_GENERATION_SIZE_INCREMENT = 10;
+    private static final int TENURED_GENERATION_SIZE_INCREMENT = 10;
     /*
      * Supplements to accelerate the expansion of the heap at startup. We do not use them in favor
      * of a small footprint.
      */
-    static final int YOUNG_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
-    static final int TENURED_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
+    private static final int YOUNG_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
+    private static final int TENURED_GENERATION_SIZE_SUPPLEMENT = 0; // HotSpot default: 80
     /**
      * Use least square fitting to estimate if increasing heap sizes will significantly improve
      * throughput. This is intended to limit memory usage once throughput cannot be increased much
@@ -89,18 +91,18 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
      * discounting of old data points, unlike HotSpot's AdaptiveSizeThroughPutPolicy option
      * (disabled by default) which uses linear least-square fitting without discounting.
      */
-    static final boolean ADAPTIVE_SIZE_USE_COST_ESTIMATORS = true;
-    static final int ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS = ADAPTIVE_SIZE_POLICY_READY_THRESHOLD;
+    private static final boolean ADAPTIVE_SIZE_USE_COST_ESTIMATORS = true;
+    private static final int ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS = ADAPTIVE_SIZE_POLICY_READY_THRESHOLD;
     /** The minimum increase in throughput in percent for expanding a space by 1% of its size. */
-    static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_THROUGHPUT_TRADEOFF = 0.8;
+    private static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_THROUGHPUT_TRADEOFF = 0.8;
     /** The effective number of most recent data points used by estimator (exponential decay). */
-    static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = ADAPTIVE_TIME_WEIGHT;
+    private static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = ADAPTIVE_TIME_WEIGHT;
     /** Threshold for triggering a complete collection after repeated minor collections. */
-    static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 2;
+    private static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 2;
 
     /* Constants derived from other constants. */
-    static final double THROUGHPUT_GOAL = 1.0 - 1.0 / (1.0 + GC_TIME_RATIO);
-    static final double THRESHOLD_TOLERANCE_PERCENT = 1.0 + THRESHOLD_TOLERANCE / 100.0;
+    private static final double THROUGHPUT_GOAL = 1.0 - 1.0 / (1.0 + GC_TIME_RATIO);
+    private static final double THRESHOLD_TOLERANCE_PERCENT = 1.0 + THRESHOLD_TOLERANCE / 100.0;
 
     private final Timer minorTimer = new Timer("minor/between minor");
     private final AdaptiveWeightedAverage avgMinorGcCost = new AdaptiveWeightedAverage(ADAPTIVE_TIME_WEIGHT);
@@ -381,7 +383,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         UnsignedWord youngChunkBytes = GCImpl.getGCImpl().getAccounting().getYoungChunkBytesBefore();
         if (youngChunkBytes.notEqual(0)) {
             UnsignedWord youngAlignedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getAlignedChunkBytes();
-            avgYoungGenAlignedChunkFraction.sample(UnsignedUtils.toFloat(youngAlignedChunkBytes) / UnsignedUtils.toFloat(youngChunkBytes));
+            avgYoungGenAlignedChunkFraction.sample(UnsignedUtils.toDouble(youngAlignedChunkBytes) / UnsignedUtils.toDouble(youngChunkBytes));
         }
 
         timer.reset();
@@ -534,13 +536,13 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             double cost = 0;
             double mutatorInSeconds = TimeUtils.nanosToSecondsDouble(mutatorNanos);
             double pauseInSeconds = TimeUtils.nanosToSecondsDouble(pauseNanos);
-            pauseAverage.sample((float) pauseInSeconds);
+            pauseAverage.sample(pauseInSeconds);
             if (mutatorInSeconds > 0 && pauseInSeconds > 0) {
                 double intervalInSeconds = mutatorInSeconds + pauseInSeconds;
                 cost = pauseInSeconds / intervalInSeconds;
-                costAverage.sample((float) cost);
+                costAverage.sample(cost);
                 if (intervalSeconds != null) {
-                    intervalSeconds.sample((float) intervalInSeconds);
+                    intervalSeconds.sample(intervalInSeconds);
                 }
             }
             costEstimator.sample(UnsignedUtils.toDouble(sizeBytes), cost);

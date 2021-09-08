@@ -29,7 +29,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
- * A weighted average maintains a running, weighted average of some float value.
+ * A weighted average maintains a running, weighted average of some floating-point value.
  *
  * The average is adaptive in that we smooth it for the initial samples; we don't use the weight
  * until we have enough samples for it to be meaningful.
@@ -41,24 +41,24 @@ class AdaptiveWeightedAverage {
 
     private final int weight;
 
-    private float average;
+    private double average;
     private long sampleCount;
     private boolean isOld;
 
     AdaptiveWeightedAverage(int weight) {
-        this(weight, 0.0f);
+        this(weight, 0);
     }
 
-    AdaptiveWeightedAverage(int weight, float avg) {
+    AdaptiveWeightedAverage(int weight, double avg) {
         this.weight = weight;
         this.average = avg;
     }
 
-    public float getAverage() {
+    public double getAverage() {
         return average;
     }
 
-    public void sample(float value) {
+    public void sample(double value) {
         sampleCount++;
         if (!isOld && sampleCount > OLD_THRESHOLD) {
             isOld = true;
@@ -67,10 +67,10 @@ class AdaptiveWeightedAverage {
     }
 
     public final void sample(UnsignedWord value) {
-        sample(UnsignedUtils.toFloat(value));
+        sample(UnsignedUtils.toDouble(value));
     }
 
-    protected float computeAdaptiveAverage(float sample, float avg) {
+    protected double computeAdaptiveAverage(double sample, double avg) {
         /*
          * We smoothen the samples by not using weight directly until we've had enough data to make
          * it meaningful. We'd like the first weight used to be 1, the second to be 1/2, etc until
@@ -84,9 +84,9 @@ class AdaptiveWeightedAverage {
         return expAvg(avg, sample, adaptiveWeight);
     }
 
-    private static float expAvg(float avg, float sample, long adaptiveWeight) {
+    private static double expAvg(double avg, double sample, long adaptiveWeight) {
         assert adaptiveWeight <= 100 : "weight must be a percentage";
-        return (100.0f - adaptiveWeight) * avg / 100.0f + adaptiveWeight * sample / 100.0f;
+        return (100.0 - adaptiveWeight) * avg / 100.0 + adaptiveWeight * sample / 100.0;
     }
 }
 
@@ -100,8 +100,8 @@ class AdaptivePaddedAverage extends AdaptiveWeightedAverage {
     private final int padding;
     private final boolean noZeroDeviations;
 
-    private float paddedAverage;
-    private float deviation;
+    private double paddedAverage;
+    private double deviation;
 
     AdaptivePaddedAverage(int weight, int padding) {
         this(weight, padding, false);
@@ -119,20 +119,20 @@ class AdaptivePaddedAverage extends AdaptiveWeightedAverage {
     }
 
     @Override
-    public void sample(float value) {
+    public void sample(double value) {
         super.sample(value);
-        float average = super.getAverage();
+        double average = super.getAverage();
         if (value != 0 || !noZeroDeviations) {
             deviation = computeAdaptiveAverage(Math.abs(value - average), deviation);
         }
         paddedAverage = average + padding * deviation;
     }
 
-    public float getPaddedAverage() {
+    public double getPaddedAverage() {
         return paddedAverage;
     }
 
-    public float getDeviation() {
+    public double getDeviation() {
         return deviation;
     }
 }

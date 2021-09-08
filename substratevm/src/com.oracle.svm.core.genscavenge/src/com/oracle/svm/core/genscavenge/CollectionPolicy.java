@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -39,12 +38,12 @@ import com.oracle.svm.core.util.UserError;
 /** The interface for a garbage collection policy. All sizes are in bytes. */
 public interface CollectionPolicy {
     final class Options {
-        @Option(help = "The garbage collection policy, one of Adaptive, BySpaceAndTime, OnlyCompletely, OnlyIncrementally, NeverCollect, or the fully-qualified name of a custom policy class.")//
-        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>(AdaptiveCollectionPolicy.class.getName());
+        @Option(help = "The garbage collection policy, either Adaptive (default) or BySpaceAndTime.")//
+        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive");
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static CollectionPolicy getInitialPolicy(Feature.FeatureAccess access) {
+    static CollectionPolicy getInitialPolicy() {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
             return new BasicCollectionPolicies.NeverCollect();
         } else if (!SubstrateOptions.useRememberedSet()) {
@@ -69,18 +68,7 @@ public interface CollectionPolicy {
             case "NeverCollect":
                 return new BasicCollectionPolicies.NeverCollect();
         }
-        Class<?> policyClass = access.findClassByName(name);
-        if (policyClass == null) {
-            throw UserError.abort("Policy %s does not exist. If it is a custom policy class, it must be a fully qualified class name, which might require quotes or escaping.", name);
-        }
-        if (!CollectionPolicy.class.isAssignableFrom(policyClass)) {
-            throw UserError.abort("Policy %s does not extend %s.", name, CollectionPolicy.class.getTypeName());
-        }
-        try {
-            return (CollectionPolicy) policyClass.getDeclaredConstructor().newInstance();
-        } catch (Exception ex) {
-            throw UserError.abort(ex, "Policy %s cannot be instantiated.", name);
-        }
+        throw UserError.abort("Policy %s does not exist.", name);
     }
 
     String getName();
@@ -119,8 +107,7 @@ public interface CollectionPolicy {
 
     /**
      * The current limit for the size of the entire heap, which is less than or equal to
-     * {@link #getMaximumHeapSize}. Outside of the policy, this limit is used only for free space
-     * calculations.
+     * {@link #getMaximumHeapSize}.
      *
      * NOTE: this can currently be exceeded during a collection while copying objects in the old
      * generation.

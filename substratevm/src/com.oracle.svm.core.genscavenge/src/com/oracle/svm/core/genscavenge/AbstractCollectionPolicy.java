@@ -36,6 +36,7 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -48,18 +49,19 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
      * Don't change these values individually without carefully going over their occurrences in
      * HotSpot source code, there are dependencies between them that are not handled in our code.
      */
-    static final int INITIAL_SURVIVOR_RATIO = 8;
-    static final int MIN_SURVIVOR_RATIO = 3;
+    protected static final int INITIAL_SURVIVOR_RATIO = 8;
+    protected static final int MIN_SURVIVOR_RATIO = 3;
+    protected static final int DEFAULT_TIME_WEIGHT = 25; // -XX:AdaptiveTimeWeight
 
     /* Constants to compute defaults for values which can be set through existing options. */
     /** HotSpot: -XX:MaxHeapSize default without ergonomics. */
-    static final UnsignedWord SMALL_HEAP_SIZE = WordFactory.unsigned(96 * 1024 * 1024);
-    static final int NEW_RATIO = 2; // HotSpot: -XX:NewRatio
-    static final int LARGE_MEMORY_MAX_HEAP_PERCENT = 25; // -XX:MaxRAMPercentage
-    static final int SMALL_MEMORY_MAX_HEAP_PERCENT = 50; // -XX:MinRAMPercentage
-    static final double INITIAL_HEAP_MEMORY_PERCENT = 1.5625; // -XX:InitialRAMPercentage
+    protected static final UnsignedWord SMALL_HEAP_SIZE = WordFactory.unsigned(96 * 1024 * 1024);
+    protected static final int NEW_RATIO = 2; // HotSpot: -XX:NewRatio
+    protected static final int LARGE_MEMORY_MAX_HEAP_PERCENT = 25; // -XX:MaxRAMPercentage
+    protected static final int SMALL_MEMORY_MAX_HEAP_PERCENT = 50; // -XX:MinRAMPercentage
+    protected static final double INITIAL_HEAP_MEMORY_PERCENT = 1.5625; // -XX:InitialRAMPercentage
 
-    protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(AdaptiveCollectionPolicy.ADAPTIVE_TIME_WEIGHT);
+    protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(DEFAULT_TIME_WEIGHT);
 
     protected UnsignedWord survivorSize;
     protected UnsignedWord edenSize;
@@ -165,7 +167,8 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
          */
         survivorSize = UnsignedUtils.min(survivorSize, params.maxSurvivorSize());
         edenSize = UnsignedUtils.min(edenSize, maxEdenSize());
-        oldSize = UnsignedUtils.min(oldSize, sizes.maxOldSize());
+        oldSize = UnsignedUtils.min(oldSize, params.maxOldSize());
+        promoSize = UnsignedUtils.min(promoSize, params.maxOldSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -187,18 +190,21 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Override
     public UnsignedWord getCurrentHeapCapacity() {
+        assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
         return edenSize.add(survivorSize.multiply(2)).add(oldSize);
     }
 
     @Override
     public UnsignedWord getSurvivorSpacesCapacity() {
+        assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
         return survivorSize;
     }
 
     @Override
     public UnsignedWord getMaximumFreeAlignedChunksSize() {
+        assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
         /*
          * Keep chunks ready for allocations in eden and for the survivor to-spaces during young
@@ -207,12 +213,13 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
          * getCurrentHeapCapacity() to have chunks ready during full GCs as well.
          */
         UnsignedWord total = edenSize.add(survivorSize);
-        float alignedFraction = Math.min(1, Math.max(0, avgYoungGenAlignedChunkFraction.getAverage()));
+        double alignedFraction = Math.min(1, Math.max(0, avgYoungGenAlignedChunkFraction.getAverage()));
         return UnsignedUtils.fromDouble(UnsignedUtils.toDouble(total) * alignedFraction);
     }
 
     @Override
     public int getTenuringAge() {
+        assert VMOperation.isGCInProgress() : "use only during GC";
         return tenuringThreshold;
     }
 

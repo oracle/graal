@@ -40,10 +40,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
-/**
- * Garbage collection policies. These are referenced by fully-qualified class names and should not
- * be renamed or moved.
- */
+/** Basic/legacy garbage collection policies. */
 final class BasicCollectionPolicies {
     public static class Options {
         @Option(help = "Percentage of total collection time that should be spent on young generation collections.")//

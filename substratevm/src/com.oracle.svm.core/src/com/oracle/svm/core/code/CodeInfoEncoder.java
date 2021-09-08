@@ -41,7 +41,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
@@ -629,7 +628,6 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
-    @AlwaysInline("GC performance")
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         int derivedOffset = NumUtil.safeToInt(objRef.rawValue());
         result.markReferenceAtOffset(derivedOffset, derivedOffset - innerOffset, compressed);

@@ -179,7 +179,7 @@ public final class HeapParameters {
         Word.ensureInitialized();
     }
 
-    private static final UnsignedWord producedHeapChunkZapInt = WordFactory.unsigned(0xbaadbeef);
+    private static final UnsignedWord producedHeapChunkZapInt = WordFactory.unsigned(0xbaadbabe);
     private static final UnsignedWord producedHeapChunkZapWord = producedHeapChunkZapInt.shiftLeft(32).or(producedHeapChunkZapInt);
 
     private static final UnsignedWord consumedHeapChunkZapInt = WordFactory.unsigned(0xdeadbeef);

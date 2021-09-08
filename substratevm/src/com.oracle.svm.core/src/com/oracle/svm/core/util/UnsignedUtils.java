@@ -116,18 +116,6 @@ public final class UnsignedUtils {
         return min(max(value, min), max);
     }
 
-    public static float toFloat(UnsignedWord u) {
-        long l = u.rawValue();
-        if (l >= 0) {
-            return l;
-        }
-        /*
-         * The shift does not lose precision because the float's mantissa has fewer bits than long
-         * anyway. The bitwise and of the LSB rounds to nearest as required by JLS 5.1.2.
-         */
-        return ((l >>> 1) | (l & 1)) * 2.0f;
-    }
-
     public static double toDouble(UnsignedWord u) {
         long l = u.rawValue();
         if (l >= 0) {

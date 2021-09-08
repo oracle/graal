@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -117,8 +116,8 @@ public final class GCImpl implements GC {
     private UnsignedWord collectionEpoch = WordFactory.zero();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    GCImpl(FeatureAccess access) {
-        this.policy = CollectionPolicy.getInitialPolicy(access);
+    GCImpl() {
+        this.policy = CollectionPolicy.getInitialPolicy();
         RuntimeSupport.getRuntimeSupport().addShutdownHook(this::printGCSummary);
     }
 
@@ -535,7 +534,12 @@ public final class GCImpl implements GC {
                 assert chunkReleaser.isEmpty();
                 releaseSpaces();
 
-                boolean keepAllAlignedChunks = incremental; // in case we follow up with a full GC
+                /*
+                 * Do not uncommit any aligned chunks yet if we just did an incremental GC so if we
+                 * decide to do a full GC next, we can reuse the chunks for copying live old objects
+                 * with fewer chunk allocations. In either case, excess chunks are released later.
+                 */
+                boolean keepAllAlignedChunks = incremental;
                 chunkReleaser.release(keepAllAlignedChunks);
             } finally {
                 releaseSpacesTimer.close();
