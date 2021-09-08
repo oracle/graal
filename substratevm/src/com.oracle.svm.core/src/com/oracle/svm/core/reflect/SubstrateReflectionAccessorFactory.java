@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.helpers;
+package com.oracle.svm.core.reflect;
 
-/**
- * Marker interface for generated accessor classes.
- */
-public interface ReflectionProxy {
+// Checkstyle: allow reflection
+
+import java.lang.reflect.Executable;
+
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+
+public interface SubstrateReflectionAccessorFactory {
+    SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer);
+
+    SubstrateConstructorAccessor createConstructorAccessor(Executable member, CFunctionPointer newInstanceFunctionPointer);
 }

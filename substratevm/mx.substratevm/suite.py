@@ -204,6 +204,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.module",
+                    "jdk.internal.reflect",
                     "jdk.internal.misc",
                     "jdk.internal.logger",
                     "jdk.internal.loader",
