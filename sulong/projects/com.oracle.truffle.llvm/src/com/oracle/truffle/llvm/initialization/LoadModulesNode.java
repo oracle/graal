@@ -45,9 +45,7 @@ import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalScope;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
@@ -503,23 +501,8 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     @TruffleBoundary
-    private static void addIDToLocalScope(LLVMLocalScope localScope, BitcodeID bitcodeID) {
-        localScope.addID(bitcodeID);
-    }
-
-    @TruffleBoundary
     private static LLVMScopeChain createLocalScopeChain(BitcodeID id, LLVMScope scope) {
         return new LLVMScopeChain(id, scope);
-    }
-
-    @TruffleBoundary
-    private static LLVMGlobalScope createGlobalScope(BitcodeID id) {
-        return new LLVMGlobalScope(id);
-    }
-
-    @TruffleBoundary
-    private static LLVMScope createLLVMScope() {
-        return new LLVMScope();
     }
 
     /**
