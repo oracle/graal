@@ -11,6 +11,7 @@ function fg_init(evt) {
     var el = flamegraph.getElementsByTagName("g");
     for(let i=0;i<el.length;i++)
         update_text(el[i]);
+    color_legend();
 }
 
 function fg_element_for_sample(sample) {
