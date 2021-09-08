@@ -820,7 +820,7 @@ class NativeImageBuildBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         ]
 
 
-class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
     def __init__(self):
         super(AgentScriptJsBenchmarkSuite, self).__init__()
         self._benchmarks = {
@@ -872,17 +872,6 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": ("$iteration", int),
-            }),
-            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms\n(\t|$)', {
-                "bench-suite": self.name(),
-                "benchmark": (benchmarks[0], str),
-                "metric.name": "time",
-                "metric.type": "numeric",
-                "metric.unit": "ms",
-                "metric.value": ("<time>", int),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": ("$iteration", int),
             })
         ]
 
@@ -901,6 +890,11 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def get_vm_registry(self):
         return mx_benchmark.js_vm_registry
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(AgentScriptJsBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        self.addAverageAcrossLatestResults(results)
+        return results
 
 
 class ExcludeWarmupRule(mx_benchmark.StdOutRule):
