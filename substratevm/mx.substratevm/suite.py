@@ -624,13 +624,6 @@ suite = {
             "spotbugs": "false",
         },
 
-        "svm-compiler-flags-builder": {
-            "class" : "SubstrateCompilerFlagsBuilder",
-            "buildDependencies" : [
-                "SVM",
-            ],
-        },
-
         "com.oracle.svm.junit": {
             "subDir": "src",
             "sourceDirs": ["src"],

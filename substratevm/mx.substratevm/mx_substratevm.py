@@ -1385,9 +1385,18 @@ JNIEXPORT void JNICALL {0}() {{
     def __str__(self):
         return 'JvmFuncsFallbacksBuildTask {}'.format(self.subject)
 
+def mx_register_dynamic_suite_constituents(register_project, _):
+    register_project(SubstrateCompilerFlagsBuilder())
+
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
-    extra_deps = []
+    flags_build_dependencies = [
+        'substratevm:SVM'
+    ]
+
+    def __init__(self):
+        mx.ArchivableProject.__init__(self, suite, 'svm-compiler-flags-builder', [], None, None)
+        self.buildDependencies = list(SubstrateCompilerFlagsBuilder.flags_build_dependencies)
 
     def config_file(self, ver):
         return 'graal-compiler-flags-' + str(ver) + '.config'
@@ -1458,7 +1467,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             ]
 
             # Packages to add-export
-            distributions_transitive = mx.classpath_entries(self.deps + SubstrateCompilerFlagsBuilder.extra_deps)
+            distributions_transitive = mx.classpath_entries(self.buildDependencies)
             jdk = mx.get_jdk(tag='default')
             required_exports = mx_javamodules.requiredExports(distributions_transitive, jdk)
             exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
