@@ -365,7 +365,7 @@ function graph_popup_fix_width(e, right_justify) {
     let labels = e.getElementsByClassName("label");
     let max_label_end = 250;
     for (const label of labels) {
-        let label_end = label.x.baseVal[0].value + label.textLength.baseVal.value + xpad;
+        let label_end = label.x.baseVal[0].value + label.getSubStringLength(0, label.textContent.length) + xpad;
         if (label_end > max_label_end) {
             max_label_end = label_end;
         }
