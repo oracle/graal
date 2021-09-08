@@ -862,7 +862,18 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def rules(self, out, benchmarks, bmSuiteArgs):
         assert len(benchmarks) == 1
         return [
-            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms\n$', {
+            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms$', {
+                "bench-suite": self.name(),
+                "benchmark": (benchmarks[0], str),
+                "metric.name": "warmup",
+                "metric.type": "numeric",
+                "metric.unit": "ms",
+                "metric.value": ("<time>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": ("$iteration", int),
+            }),
+            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms\n(\t|$)', {
                 "bench-suite": self.name(),
                 "benchmark": (benchmarks[0], str),
                 "metric.name": "time",
