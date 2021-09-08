@@ -278,6 +278,7 @@ public final class ThreadLocalAllocation {
 
         HeapChunk.setNext(newTlabChunk, tlab.getUnalignedChunk());
         tlab.setUnalignedChunk(newTlabChunk);
+        HeapImpl.getHeapImpl().getAccounting().increaseEdenUsedBytes(size);
 
         Pointer memory = UnalignedHeapChunk.allocateMemory(newTlabChunk, size);
         assert memory.isNonNull();
@@ -394,6 +395,7 @@ public final class ThreadLocalAllocation {
     private static void registerNewAllocationChunk(Descriptor tlab, AlignedHeader newChunk) {
         HeapChunk.setNext(newChunk, tlab.getAlignedChunk());
         tlab.setAlignedChunk(newChunk);
+        HeapImpl.getHeapImpl().getAccounting().increaseEdenUsedBytes(HeapParameters.getAlignedHeapChunkSize());
 
         resumeAllocationInCurrentChunk(tlab);
     }

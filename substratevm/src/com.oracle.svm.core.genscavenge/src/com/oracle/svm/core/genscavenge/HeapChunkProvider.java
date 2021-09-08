@@ -123,8 +123,6 @@ final class HeapChunkProvider {
             zap(result, HeapParameters.getProducedHeapChunkZapWord());
         }
 
-        HeapImpl.getHeapImpl().getAccounting().increaseEdenUsedBytes(chunkSize);
-
         log().string("  result chunk: ").zhex(result).string("  ]").newline();
         return result;
     }
@@ -275,8 +273,6 @@ final class HeapChunkProvider {
         if (HeapParameters.getZapProducedHeapChunks()) {
             zap(result, HeapParameters.getProducedHeapChunkZapWord());
         }
-
-        HeapImpl.getHeapImpl().getAccounting().increaseEdenUsedBytes(chunkSize);
 
         log().string("  returns ").zhex(result).string("  ]").newline();
         return result;

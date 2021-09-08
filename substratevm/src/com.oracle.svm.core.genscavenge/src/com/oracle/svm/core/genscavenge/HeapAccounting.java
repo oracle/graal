@@ -50,6 +50,7 @@ public final class HeapAccounting {
         edenUsedBytes.set(edenBytes);
     }
 
+    @Uninterruptible(reason = "Must be done during TLAB registration to not race with a potential collection.", callerMustBe = true)
     public void increaseEdenUsedBytes(UnsignedWord value) {
         youngUsedBytes.addAndGet(value);
         edenUsedBytes.addAndGet(value);
