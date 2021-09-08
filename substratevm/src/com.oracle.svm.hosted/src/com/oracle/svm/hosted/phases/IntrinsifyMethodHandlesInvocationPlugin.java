@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 
+import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
