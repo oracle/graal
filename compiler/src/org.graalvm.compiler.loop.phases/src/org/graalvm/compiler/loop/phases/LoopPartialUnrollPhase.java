@@ -57,7 +57,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
             changed = false;
             try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
                 LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
-                dataCounted.detectedCountedLoops();
+                dataCounted.detectCountedLoops();
                 Graph.Mark mark = graph.getMark();
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     if (!LoopTransformations.isUnrollableLoop(loop)) {
@@ -119,7 +119,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
     private static boolean checkCounted(StructuredGraph graph, LoopsDataProvider loopsDataProvider, Graph.Mark mark) {
         LoopsData dataCounted;
         dataCounted = loopsDataProvider.getLoopsData(graph);
-        dataCounted.detectedCountedLoops();
+        dataCounted.detectCountedLoops();
         for (LoopEx anyLoop : dataCounted.loops()) {
             if (graph.isNew(mark, anyLoop.loopBegin())) {
                 assert anyLoop.isCounted() : "pre/post transformation loses counted loop " + anyLoop.loopBegin();

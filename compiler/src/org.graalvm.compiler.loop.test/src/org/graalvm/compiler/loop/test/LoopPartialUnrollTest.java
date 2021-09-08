@@ -345,7 +345,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             new ConditionalEliminationPhase(true).apply(graph, context);
             if (partialUnroll) {
                 LoopsData dataCounted = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
-                dataCounted.detectedCountedLoops();
+                dataCounted.detectCountedLoops();
                 assertTrue(!dataCounted.countedLoops().isEmpty(), "must have counted loops");
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     LoopFragmentInside newSegment = loop.inside().duplicate();

@@ -122,7 +122,7 @@ public class LoopsData {
         return counted;
     }
 
-    public void detectedCountedLoops() {
+    public void detectCountedLoops() {
         for (LoopEx loop : loops()) {
             loop.detectCounted();
         }

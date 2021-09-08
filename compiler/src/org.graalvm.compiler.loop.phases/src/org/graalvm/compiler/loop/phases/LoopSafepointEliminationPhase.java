@@ -106,7 +106,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     @Override
     protected final void run(StructuredGraph graph, MidTierContext context) {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-        loops.detectedCountedLoops();
+        loops.detectCountedLoops();
         for (LoopEx loop : loops.countedLoops()) {
             if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop))) {
                 boolean hasSafepoint = false;

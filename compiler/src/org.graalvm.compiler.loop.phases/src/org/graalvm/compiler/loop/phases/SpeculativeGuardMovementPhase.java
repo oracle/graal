@@ -121,7 +121,7 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                 return;
             }
             LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-            loops.detectedCountedLoops();
+            loops.detectCountedLoops();
             performSpeculativeGuardMovement(context, graph, loops);
         } finally {
             graph.setAfterStage(StageFlag.GUARD_MOVEMENT);
