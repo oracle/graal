@@ -1,3 +1,5 @@
+# GraalVM Compiler
+
 The GraalVM compiler is a dynamic compiler written in Java that integrates with the HotSpot JVM. It has a focus on high performance and extensibility.
 In addition, it provides optimized performance for languages implemented with [Truffle Framework](https://github.com/graalvm/graal/tree/master/truffle)-based languages running on the JVM.
 For brevity, the GraalVM compiler is often referred to as "the compiler" below.
@@ -165,7 +167,7 @@ Without leaving the `graal/vm` directory, you can now run libgraal as follows:
 
 ## Publications and Presentations
 
-For video tutorials, presentations and publications on the GraalVM compiiler visit the [Publications](../docs/Publications.md) page.
+For video tutorials, presentations and publications on the GraalVM compiler visit the [Publications](../docs/Publications.md) page.
 
 ## Building JVMCI JDK 8
 

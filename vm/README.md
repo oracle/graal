@@ -1,4 +1,4 @@
-# VM suite
+# VM Suite
 
 The VM suite allows you to build custom GraalVM distributions, as well as installable components.
 It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the GraalVM SDK, Truffle, and the GraalVM component installer.

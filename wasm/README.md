@@ -12,7 +12,7 @@ Feedback, bug reports, and open-source contributions are welcome!
 
 ## Building GraalWasm
 
-### Prerequisits
+### Prerequisites
 
 - Python 3 (required by `mx`)
 - git (to download, update, and locate repositories)
@@ -313,6 +313,6 @@ Value mainFunction = context.getBindings("wasm").getMember("example").getMember(
 mainFunction.execute();
 ```
 
-For more Polyglot-related examples, consult the documentation at the
+For more polyglot-related examples, consult the documentation at the
 [GraalVM website](https://www.graalvm.org/docs/reference-manual/polyglot/).
 
