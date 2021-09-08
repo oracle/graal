@@ -125,13 +125,13 @@ public final class LLVMContext {
     private LLVMScopeChain tailGlobalScopeChain;
     // the previous of first is always null, and the next of last is always null.
 
-    //private final ArrayList<LLVMLocalScope> localScopes;
+    // private final ArrayList<LLVMLocalScope> localScopes;
 
     private final DynamicLinkChain dynamicLinkChain;
     private final DynamicLinkChain dynamicLinkChainForScopes;
 
     // Change this to a map, library id -> destructorCallTarget
-    //private final List<RootCallTarget> destructorFunctions;
+    // private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
@@ -198,7 +198,7 @@ public final class LLVMContext {
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
-        //this.destructorFunctions = new ArrayList<>();
+        // this.destructorFunctions = new ArrayList<>();
         this.nativeCallStatistics = SulongEngineOption.optionEnabled(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
@@ -215,7 +215,7 @@ public final class LLVMContext {
 
         this.headGlobalScopeChain = new LLVMScopeChain();
         this.tailGlobalScopeChain = headGlobalScopeChain;
-        //this.localScopes = new ArrayList<>();
+        // this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
         this.dynamicLinkChainForScopes = new DynamicLinkChain();
 
@@ -683,7 +683,7 @@ public final class LLVMContext {
         if (!sourceCache.containsKey(bitcodeID)) {
             sourceCache.put(bitcodeID, source);
         }
-}
+    }
 
     public LLVMLanguage getLanguage() {
         return language;
@@ -834,7 +834,8 @@ public final class LLVMContext {
             int index = bitcodeID.getId();
             assert symbolDynamicStorage == symbolFinalStorage;
             if (index < symbolDynamicStorage.length && symbolDynamicStorage[index] != null) {
-                //throw new IllegalStateException("Registering a new symbol table for an existing id.");
+                // throw new IllegalStateException("Registering a new symbol table for an existing
+                // id.");
                 return;
             }
             if (index >= symbolDynamicStorage.length) {
@@ -1098,7 +1099,7 @@ public final class LLVMContext {
         }
 
         private void addScope(LLVMScope newScope) {
-            //assert !scopes.contains(newScope);
+            // assert !scopes.contains(newScope);
             if (!scopes.contains(newScope)) {
                 scopes.add(newScope);
             }

@@ -65,8 +65,8 @@ public class LLVMGlobalScope extends LLVMScope {
     @TruffleBoundary
     @Override
     public LLVMSymbol get(String name) {
-       LLVMSymbol symbol = super.get(name);
-       return symbol != null ? symbol : next.get(name);
+        LLVMSymbol symbol = super.get(name);
+        return symbol != null ? symbol : next.get(name);
     }
 
 }

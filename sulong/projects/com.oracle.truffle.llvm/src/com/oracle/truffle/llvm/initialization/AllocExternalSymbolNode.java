@@ -90,8 +90,9 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
         this.symbol = symbol;
     }
 
-    public abstract LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension, LLVMContext context,
-                                        RTLDFlags rtldFlags);
+    public abstract LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
+                    LLVMContext context,
+                    RTLDFlags rtldFlags);
 
     /**
      * Allocating symbols to the symbol table as provided by the local scope.

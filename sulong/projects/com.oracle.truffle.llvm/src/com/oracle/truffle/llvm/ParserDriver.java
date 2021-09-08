@@ -353,7 +353,7 @@ final class ParserDriver {
         TargetTriple targetTriple = TargetTriple.create(module.getTargetInformation(com.oracle.truffle.llvm.parser.model.target.TargetTriple.class).toString());
         verifyBitcodeSource(source, targetDataLayout, targetTriple);
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
-        //Create a new public file scope to be returned inside sulong library.
+        // Create a new public file scope to be returned inside sulong library.
         LLVMScope publicFileScope = new LLVMScope();
         LLVMScope fileScope = new LLVMScope();
         LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, publicFileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module),

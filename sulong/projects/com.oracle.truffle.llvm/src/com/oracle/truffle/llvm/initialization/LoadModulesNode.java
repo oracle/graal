@@ -98,7 +98,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     @Child LLVMStatementNode initContext;
 
     @Child InitializeSymbolsNode initSymbols;
-    //@Child InitializeScopeNode initScopes;
+    // @Child InitializeScopeNode initScopes;
     @Child InitializeExternalNode initExternals;
     @Child InitializeGlobalNode initGlobals;
     @Child InitializeOverwriteNode initOverwrite;
@@ -144,7 +144,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         this.initContext = null;
         String moduleName = parserResult.getRuntime().getLibraryName();
         this.initSymbols = new InitializeSymbolsNode(parserResult, lazyParsing, isInternalSulongLibrary, moduleName);
-        //this.initScopes = new InitializeScopeNode(parserRuntime);
+        // this.initScopes = new InitializeScopeNode(parserRuntime);
         this.initExternals = new InitializeExternalNode(parserResult);
         this.initGlobals = new InitializeGlobalNode(parserResult, moduleName);
         this.initOverwrite = new InitializeOverwriteNode(parserResult);
@@ -224,7 +224,8 @@ public final class LoadModulesNode extends LLVMRootNode {
         stackAccess.executeEnter(frame, getContext().getThreadingStack().getStack());
         try {
             LLVMLoadingPhase phase;
-            // instead of creating a llvm local scope, just create a llvm scope here, and then put it inside the chains
+            // instead of creating a llvm local scope, just create a llvm scope here, and then put
+            // it inside the chains
             LLVMScopeChain headLocalScopeChain = null;
             LLVMScopeChain tailLocalScopeChain = null;
             BitSet visited;
@@ -250,7 +251,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                     que = (ArrayDeque<CallTarget>) frame.getArguments()[4];
                     tailResultScopeChain = (LLVMScopeChain) frame.getArguments()[5];
                 }
-                if (phase == LLVMLoadingPhase.INIT_EXTERNALS || phase == LLVMLoadingPhase.INIT_OVERWRITE){
+                if (phase == LLVMLoadingPhase.INIT_EXTERNALS || phase == LLVMLoadingPhase.INIT_OVERWRITE) {
                     headLocalScopeChain = (LLVMScopeChain) frame.getArguments()[3];
                 }
                 // For the root library, it is defined when either the frame has no argument, or
@@ -406,7 +407,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     @TruffleBoundary
-    private void executeInitialiseExternal(LLVMContext context, BitSet visited,  RTLDFlags rtldFlags, LLVMScopeChain scopeChain) {
+    private void executeInitialiseExternal(LLVMContext context, BitSet visited, RTLDFlags rtldFlags, LLVMScopeChain scopeChain) {
         int id = bitcodeID.getId();
         if (!visited.get(id)) {
             visited.set(id);
@@ -433,7 +434,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     @TruffleBoundary
-    private void executeInitialiseOverwrite(LLVMContext context, BitSet visited,  RTLDFlags rtldFlags, LLVMScopeChain scopeChain) {
+    private void executeInitialiseOverwrite(LLVMContext context, BitSet visited, RTLDFlags rtldFlags, LLVMScopeChain scopeChain) {
         int id = bitcodeID.getId();
         if (!visited.get(id)) {
             visited.set(id);
@@ -485,7 +486,6 @@ public final class LoadModulesNode extends LLVMRootNode {
             context.markLibraryLoaded(bitcodeID);
         }
     }
-
 
     @TruffleBoundary
     private static void queAdd(ArrayDeque<CallTarget> que, CallTarget callTarget) {
