@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 
-class SVGSamplerOutput {
+final class SVGSamplerOutput {
 
     public static void printSamplingFlameGraph(PrintStream out, Map<TruffleContext, CPUSamplerData> data) {
         GraphOwner graph = new GraphOwner(new StringBuilder(), data);
