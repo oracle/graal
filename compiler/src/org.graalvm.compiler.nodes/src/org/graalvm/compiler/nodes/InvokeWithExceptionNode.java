@@ -248,6 +248,8 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, newInvoke, this.next());
         GraphUtil.killCFG(oldException);
+        // copy across any original node source position
+        newInvoke.setNodeSourcePosition(getNodeSourcePosition());
         return newInvoke;
     }
 

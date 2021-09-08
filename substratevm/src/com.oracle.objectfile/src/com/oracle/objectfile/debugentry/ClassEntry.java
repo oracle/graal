@@ -30,7 +30,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -63,6 +62,10 @@ public class ClassEntry extends StructureTypeEntry {
      * Details of methods located in this instance.
      */
     protected List<MethodEntry> methods;
+    /**
+     * An index of all currently known methods keyed by the unique local symbol name of the method.
+     */
+    private Map<String, MethodEntry> methodsIndex;
     /**
      * A list recording details of all primary ranges included in this class sorted by ascending
      * address range.
@@ -98,6 +101,7 @@ public class ClassEntry extends StructureTypeEntry {
         this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
         this.methods = new ArrayList<>();
+        this.methodsIndex = new HashMap<>();
         this.primaryEntries = new ArrayList<>();
         this.primaryIndex = new HashMap<>();
         this.localFiles = new ArrayList<>();
@@ -137,9 +141,7 @@ public class ClassEntry extends StructureTypeEntry {
         /* Add details of fields and field types */
         debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
         /* Add details of methods and method types */
-        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.methods.add(this.processMethod(methodFieldInfo, debugInfoBase, debugContext, false)));
-        /* Sort methods to improve lookup speed */
-        this.methods.sort(MethodEntry::compareTo);
+        debugInstanceTypeInfo.methodInfoProvider().forEach(debugMethodInfo -> this.processMethod(debugMethodInfo, debugInfoBase, debugContext));
     }
 
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
@@ -168,11 +170,17 @@ public class ClassEntry extends StructureTypeEntry {
         /* We should already have seen the primary range. */
         assert primaryEntry != null;
         assert primaryEntry.getClassEntry() == this;
-        primaryEntry.addSubRange(subrange);
         FileEntry subFileEntry = subrange.getFileEntry();
         if (subFileEntry != null) {
             indexLocalFileEntry(subFileEntry);
         }
+    }
+
+    private void indexMethodEntry(MethodEntry methodEntry) {
+        String methodName = methodEntry.getSymbolName();
+        assert methodsIndex.get(methodName) == null : methodName;
+        methods.add(methodEntry);
+        methodsIndex.put(methodName, methodEntry);
     }
 
     private void indexLocalFileEntry(FileEntry localFileEntry) {
@@ -273,8 +281,8 @@ public class ClassEntry extends StructureTypeEntry {
         interfaceClassEntry.addImplementor(this, debugContext);
     }
 
-    protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext, boolean fromRangeInfo) {
-        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
+    protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        String methodName = debugMethodInfo.name();
         String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
         int modifiers = debugMethodInfo.modifiers();
         List<String> paramTypes = debugMethodInfo.paramTypes();
@@ -297,8 +305,11 @@ public class ClassEntry extends StructureTypeEntry {
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
-        return new MethodEntry(methodFileEntry, debugMethodInfo.symbolNameForMethod(), methodName, this, resultType,
-                        paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget(), fromRangeInfo);
+        MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName,
+                        this, resultType, paramTypeArray, paramNameArray);
+        indexMethodEntry(methodEntry);
+
+        return methodEntry;
     }
 
     @Override
@@ -340,35 +351,19 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public MethodEntry ensureMethodEntryForDebugRangeInfo(DebugRangeInfo debugRangeInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        assert listIsSorted(methods);
-        ListIterator<MethodEntry> methodIterator = methods.listIterator();
-        String methodName = debugInfoBase.uniqueDebugString(debugRangeInfo.name());
-        String paramSignature = debugRangeInfo.paramSignature();
-        String returnTypeName = debugRangeInfo.valueType();
-        while (methodIterator.hasNext()) {
-            MethodEntry methodEntry = methodIterator.next();
-            int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
-            if (comparisonResult == 0) {
-                methodEntry.setInRangeAndUpdateFileEntry(debugInfoBase, debugRangeInfo);
-                if (methodEntry.fileEntry != null) {
-                    /* Ensure that the methodEntry's fileEntry is present in the localsFileIndex */
-                    indexLocalFileEntry(methodEntry.fileEntry);
-                }
-                return methodEntry;
-            } else if (comparisonResult > 0) {
-                methodIterator.previous();
-                break;
+
+        MethodEntry methodEntry = methodsIndex.get(debugRangeInfo.symbolNameForMethod());
+        if (methodEntry == null) {
+            methodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext);
+        } else {
+            methodEntry.updateRangeInfo(debugInfoBase, debugRangeInfo);
+            /* Ensure that the methodEntry's fileEntry is present in the localsFileIndex */
+            FileEntry methodFileEntry = methodEntry.fileEntry;
+            if (methodFileEntry != null) {
+                indexLocalFileEntry(methodFileEntry);
             }
         }
-        MethodEntry newMethodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext, true);
-        methodIterator.add(newMethodEntry);
-        return newMethodEntry;
-    }
-
-    private static boolean listIsSorted(List<MethodEntry> list) {
-        List<MethodEntry> copy = new ArrayList<>(list);
-        copy.sort(MethodEntry::compareTo);
-        return list.equals(copy);
+        return methodEntry;
     }
 
     public List<MethodEntry> getMethods() {

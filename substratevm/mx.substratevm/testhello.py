@@ -87,6 +87,7 @@ class Checker:
                         print(self)
                         print(text)
                         sys.exit(1)
+                        return matches
                 else:
                     matches.append(match)
                 line_idx += 1
@@ -95,6 +96,7 @@ class Checker:
             print(self)
             print(text)
             sys.exit(1)
+            return matches
         print(text)
         return matches
 
@@ -124,6 +126,7 @@ def test():
 
     # define some useful patterns
     address_pattern = '0x[0-9a-f]+'
+    hex_digits_pattern = '[0-9a-f]+'
     spaces_pattern = '[ \t]+'
     maybe_spaces_pattern = '[ \t]*'
     digits_pattern = '[0-9]+'
@@ -168,29 +171,32 @@ def test():
     # enable pretty printing of structures
     execute("set print pretty on")
     # set a break point at hello.Hello::main
-    # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line 67."
+    # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line 70."
     exec_string = execute("break hello.Hello::main")
-    rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line 67\."%address_pattern
+    rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line 70\."%address_pattern
     checker = Checker('break main', rexp)
     checker.check(exec_string)
 
-    # run the program
+    # run the program till the breakpoint
     execute("run")
+    execute("delete breakpoints")
 
     # list the line at the breakpoint
-    # expect "67	        Greeter greeter = Greeter.greeter(args);"
+    # expect "70	        Greeter greeter = Greeter.greeter(args);"
     exec_string = execute("list")
-    checker = Checker(r"list bp 1", "67%sGreeter greeter = Greeter\.greeter\(args\);"%spaces_pattern)
+    checker = Checker(r"list bp 1", "70%sGreeter greeter = Greeter\.greeter\(args\);"%spaces_pattern)
     checker.check(exec_string, skip_fails=False)
 
     # run a backtrace
-    # expect "#0  hello.Hello.main(java.lang.String[] *).* at hello.Hello.java:67"
+    # expect "#0  hello.Hello.main(java.lang.String[] *).* at hello.Hello.java:70"
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello::main",
-                      [r"#0%shello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:67"%(spaces_pattern, wildcard_pattern),
-                       r"#1%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern)
-                       ])
+                      [r"#0%shello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:70"%(spaces_pattern, wildcard_pattern),
+                       r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#2%s com\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
+                       r"#3%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s"%(spaces_pattern, address_pattern, hex_digits_pattern, wildcard_pattern)
+                      ])
     checker.check(exec_string, skip_fails=False)
 
     if can_print_data:
@@ -263,14 +269,6 @@ def test():
                           r"%s = 1000"%(wildcard_pattern))
         checker.check(exec_string, skip_fails=False)
 
-
-    # set a break point at hello.Hello$DefaultGreeter::greet
-    # expect "Breakpoint 2 at 0x[0-9a-f]+: file hello/Target_Hello_DefaultGreeter.java, line [0-9]+."
-    exec_string = execute("break hello.Hello$DefaultGreeter::greet")
-    rexp = r"Breakpoint 2 at %s: file hello/Target_hello_Hello_DefaultGreeter\.java, line %s\."%(address_pattern, digits_pattern)
-    checker = Checker("break on substituted method", rexp)
-    checker.check(exec_string, skip_fails=False)
-
     # look up greet methods
     # expect "All functions matching regular expression "greet":"
     # expect ""
@@ -287,40 +285,26 @@ def test():
             r"File hello/Target_hello_Hello_DefaultGreeter\.java:",
             r"%svoid hello.Hello\$DefaultGreeter::greet\(void\);"%maybe_spaces_pattern]
     checker = Checker("info func greet", rexp)
-    checker.check(exec_string, skip_fails=True)
+    checker.check(exec_string)
 
     # look up PrintStream.println methods
     # expect "All functions matching regular expression "java.io.PrintStream.println":"
     # expect ""
     # expect "File java.base/java/io/PrintStream.java:"
-    # expect "      void java.io.PrintStream::println(java.lang.Object);"
-    # expect "      void java.io.PrintStream::println(java.lang.String);"
+    # expect "      void java.io.PrintStream::println(java.lang.Object *);"
+    # expect "      void java.io.PrintStream::println(java.lang.String *);"
     exec_string = execute("info func java.io.PrintStream::println")
-    #    checker = Checker("info func java.io.PrintStream::println",
-    #                      ["All functions matching regular expression \"java\\.io\\.PrintStream::println\":",
-    #                       "",
-    #                       "File .*java/io/PrintStream.java:",
-    #                       "[ \t]*void java.io.PrintStream::println\\(java\\.lang\\.Object \\*\\);",
-    #                       "[ \t]*void java.io.PrintStream::println\\(java\\.lang\\.String \\*\\);",
-    #                      ])
     rexp = r"%svoid java.io.PrintStream::println\(java\.lang\.String \*\)"%maybe_spaces_pattern
     checker = Checker("info func java.io.PrintStream::println", rexp)
     checker.check(exec_string)
-
-    # set a break point at PrintStream.println(String)
-    # expect "Breakpoint 3 at 0x[0-9a-f]+: java.base/java/io/PrintStream.java, line [0-9]+."
-    exec_string = execute("break java.io.PrintStream::println(java.lang.String *)")
-    rexp = r"Breakpoint 3 at %s: file .*java/io/PrintStream\.java, line %s\."%(address_pattern, digits_pattern)
-    checker = Checker('break println', rexp)
-    checker.check(exec_string, skip_fails=False)
 
     # step into method call
     execute("step")
 
     # list current line
-    # expect "34	            if (args.length == 0) {"
+    # expect "37	            if (args.length == 0) {"
     exec_string = execute("list")
-    rexp = r"34%sif \(args\.length == 0\) {"%spaces_pattern
+    rexp = r"37%sif \(args\.length == 0\) {"%spaces_pattern
     checker = Checker('list hello.Hello$Greeter.greeter', rexp)
     checker.check(exec_string, skip_fails=False)
 
@@ -399,15 +383,14 @@ def test():
     checker.check(exec_string, skip_fails=True)
 
     # run a backtrace
-    # expect "#0  _hello.Hello$Greeter::greeter(java.lang.String[]).* at hello.Hello.java:34"
-    # expect "#1  0x[0-9a-f]+ in _hello.Hello::main(java.lang.String[]).* at hello.Hello.java:67"
-    # expect "#2  0x[0-9a-f]+ in _com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello.Greeter::greeter",
-                      [r"#0%shello\.Hello\$Greeter::greeter\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:34"%(spaces_pattern, wildcard_pattern),
-                       r"#1%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:67"%(spaces_pattern, address_pattern, wildcard_pattern),
-                       r"#2%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at [a-z/]+/JavaMainWrapper\.java:%s"%(spaces_pattern, address_pattern, wildcard_pattern, digits_pattern)
-                       ])
+                      [r"#0%shello\.Hello\$Greeter::greeter\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:37"%(spaces_pattern, wildcard_pattern),
+                       r"#1%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:70"%(spaces_pattern, address_pattern, wildcard_pattern),
+                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#3%scom\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
+                       r"#4%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s"%(spaces_pattern, address_pattern, hex_digits_pattern, wildcard_pattern)
+                      ])
     checker.check(exec_string, skip_fails=False)
 
     # now step into inlined code
@@ -426,16 +409,34 @@ def test():
         print(checker)
         sys.exit(1)
 
-    # continue to next 2 breakpoints
-    execute("continue")
+    # set breakpoint at substituted method hello.Hello$DefaultGreeter::greet
+    # expect "Breakpoint 2 at 0x[0-9a-f]+: file hello/Target_Hello_DefaultGreeter.java, line [0-9]+."
+    exec_string = execute("break hello.Hello$DefaultGreeter::greet")
+    rexp = r"Breakpoint %s at %s: file hello/Target_hello_Hello_DefaultGreeter\.java, line %s\."%(digits_pattern, address_pattern, digits_pattern)
+    checker = Checker("break on substituted method", rexp)
+    checker.check(exec_string, skip_fails=False)
+    execute("delete breakpoints")
+
+    # set a break point at standard library PrintStream.println(String)
+    # expect "Breakpoint 3 at 0x[0-9a-f]+: java.base/java/io/PrintStream.java, line [0-9]+."
+    exec_string = execute("break java.io.PrintStream::println(java.lang.String *)")
+    rexp = r"Breakpoint %s at %s: file .*java/io/PrintStream\.java, line %s\."%(digits_pattern, address_pattern, digits_pattern)
+    checker = Checker('break println', rexp)
+    checker.check(exec_string, skip_fails=False)
+
     execute("continue")
 
     # run backtrace to check we are in java.io.PrintStream::println(java.lang.String)
     # expect "#0  java.io.PrintStream::println(java.lang.String).* at java.base/java/io/PrintStream.java:[0-9]+"
-    exec_string = execute("backtrace 1")
-    checker = Checker("backtrace 1 PrintStream::println",
-                      [r"#0%sjava\.io\.PrintStream::println\(java\.lang\.String \*\)%s at %sjava/io/PrintStream.java:%s"%(spaces_pattern, wildcard_pattern, wildcard_pattern, digits_pattern)])
-    checker.check(exec_string, skip_fails=False)
+    exec_string = execute("backtrace 6")
+    rexp = [r"#0%sjava\.io\.PrintStream::println\(java\.lang\.String \*\)%s at %sjava/io/PrintStream.java:%s"%(spaces_pattern, wildcard_pattern, wildcard_pattern, digits_pattern),
+            r"#1%s%s in hello\.SubstituteHelperClass::nestedGreet\(void\) \(\) at hello/Target_hello_Hello_DefaultGreeter\.java:59"%(spaces_pattern, address_pattern),
+            r"#2%s%s in hello\.SubstituteHelperClass::staticInlineGreet \(\) at hello/Target_hello_Hello_DefaultGreeter\.java:53"%(spaces_pattern, address_pattern),
+            r"#3%s hello\.SubstituteHelperClass::inlineGreet \(\) at hello/Target_hello_Hello_DefaultGreeter\.java:48"%(spaces_pattern),
+            r"#4%s hello\.Hello\$DefaultGreeter::greet\(void\) \(\) at hello/Target_hello_Hello_DefaultGreeter\.java:40"%(spaces_pattern),
+            r"#5%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:71"%(spaces_pattern, address_pattern)]
+    checker = Checker("backtrace PrintStream::println", rexp)
+    checker.check(exec_string)
 
     # list current line
     # expect "[0-9]+        synchronized (this) {"
@@ -490,6 +491,196 @@ def test():
         checker = Checker("print PrintStream hub name",
                           r"%s:%s\"java.io.PrintStream.*\""%(address_pattern, spaces_pattern))
         checker.check(exec_string, skip_fails=False)
+
+    ###
+    # Tests for inlined methods
+    ###
+
+    # print details of Hello type
+    exec_string = execute("ptype 'hello.Hello'")
+    rexp = [r"type = class hello\.Hello : public java\.lang\.Object {",
+            # ptype lists inlined methods although they are not listed with info func
+            r"%sprivate:"%spaces_pattern,
+            r"%sstatic void inlineA\(void\);"%spaces_pattern,
+            r"%sstatic void inlineCallChain\(void\);"%spaces_pattern,
+            r"%sstatic void inlineFrom\(void\);"%spaces_pattern,
+            r"%sstatic void inlineHere\(int\);"%spaces_pattern,
+            r"%sstatic void inlineIs\(void\);"%spaces_pattern,
+            r"%sstatic void inlineMee\(void\);"%spaces_pattern,
+            r"%sstatic void inlineMixTo\(int\);"%spaces_pattern,
+            r"%sstatic void inlineMoo\(void\);"%spaces_pattern,
+            r"%sstatic void inlineTailRecursion\(int\);"%spaces_pattern,
+            r"%sstatic void inlineTo\(int\);"%spaces_pattern,
+            r"%spublic:"%spaces_pattern,
+            r"%sstatic void main\(java\.lang\.String\[\] \*\);"%spaces_pattern,
+            r"%sprivate:"%spaces_pattern,
+            r"%sstatic void noInlineFoo\(void\);"%spaces_pattern,
+            r"%sstatic void noInlineHere\(int\);"%spaces_pattern,
+            r"%sstatic void noInlineTest\(void\);"%spaces_pattern,
+            r"%sstatic void noInlineThis\(void\);"%spaces_pattern,
+            r"}"]
+    checker = Checker('ptype hello.Hello', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    # list methods matching regural expression "nlined", inline methods are not listed
+    exec_string = execute("info func nline")
+    rexp = [r"All functions matching regular expression \"nline\":",
+            r"File hello/Hello\.java:",
+            r"%svoid hello\.Hello::noInlineFoo\(void\);"%spaces_pattern,
+            r"%svoid hello\.Hello::noInlineHere\(int\);"%spaces_pattern,
+            r"%svoid hello\.Hello::noInlineTest\(void\);"%spaces_pattern,
+            r"%svoid hello\.Hello::noInlineThis\(void\);"%spaces_pattern]
+    checker = Checker('ptype info func nline', rexp)
+    checker.check(exec_string)
+
+    # list inlineMee and inlineMoo and check that the listing maps to the inlined code instead of the actual code,
+    # although not ideal this is how GDB treats inlined code in C/C++ as well
+    rexp = [r"109%sSystem\.out\.println\(\"This is a cow\"\);"%spaces_pattern]
+    checker = Checker('list inlineMee', rexp)
+    checker.check(execute("list inlineMee"))
+    checker = Checker('list inlineMoo', rexp)
+    checker.check(execute("list inlineMoo"))
+
+    execute("delete breakpoints")
+    # Set breakpoint at inlined method and step through its nested inline methods
+    exec_string = execute("break hello.Hello::inlineMee")
+    rexp = r"Breakpoint %s at %s: hello\.Hello::inlineMee\. \(3 locations\)"%(digits_pattern, address_pattern)
+    checker = Checker('break inlineMee', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    exec_string = execute("info break 4")
+    # The breakpoint will be set to the inlined code instead of the actual code,
+    # although not ideal this is how GDB treats inlined code in C/C++ as well
+    rexp = [r"4.1%sy%s%s in hello\.Hello::inlineMee at hello/Hello\.java:109"%(spaces_pattern, spaces_pattern, address_pattern),
+            r"4.2%sy%s%s in hello\.Hello::inlineMee at hello/Hello\.java:109"%(spaces_pattern, spaces_pattern, address_pattern),
+            r"4.3%sy%s%s in hello\.Hello::inlineMee at hello/Hello\.java:109"%(spaces_pattern, spaces_pattern, address_pattern)]
+    checker = Checker('info break inlineMee', rexp)
+    checker.check(exec_string)
+
+    execute("continue")
+    exec_string = execute("list")
+    rexp = [r"104%sinlineMoo\(\);"%spaces_pattern]
+    checker = Checker('hit break at inlineMee', rexp)
+    checker.check(exec_string, skip_fails=False)
+    execute("step")
+    exec_string = execute("list")
+    rexp = [r"109%sSystem\.out\.println\(\"This is a cow\"\);"%spaces_pattern]
+    checker = Checker('step in inlineMee', rexp)
+    checker.check(exec_string, skip_fails=False)
+    exec_string = execute("backtrace 4")
+    rexp = [r"#0%shello\.Hello::inlineMoo \(\) at hello/Hello\.java:109"%spaces_pattern,
+            r"#1%shello\.Hello::inlineMee \(\) at hello/Hello\.java:104"%spaces_pattern,
+            r"#2%shello\.Hello::noInlineFoo\(void\) \(\) at hello/Hello\.java:94"%spaces_pattern,
+            r"#3%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:85"%(spaces_pattern, address_pattern)]
+    checker = Checker('backtrace inlineMee', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    execute("continue")
+    exec_string = execute("list")
+    rexp = [r"104%sinlineMoo\(\);"%spaces_pattern]
+    checker = Checker('hit break at inlineMee', rexp)
+    checker.check(exec_string, skip_fails=False)
+    execute("step")
+    exec_string = execute("list")
+    rexp = [r"109%sSystem\.out\.println\(\"This is a cow\"\);"%spaces_pattern]
+    checker = Checker('step in inlineMee', rexp)
+    checker.check(exec_string, skip_fails=False)
+    exec_string = execute("backtrace 4")
+    rexp = [r"#0%shello\.Hello::inlineMoo \(\) at hello/Hello\.java:109"%spaces_pattern,
+            r"#1%shello\.Hello::inlineMee \(\) at hello/Hello\.java:104"%spaces_pattern,
+            r"#2%shello\.Hello::inlineCallChain \(\) at hello/Hello\.java:99"%spaces_pattern,
+            r"#3%shello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:86"%spaces_pattern]
+    checker = Checker('backtrace inlineMee 2', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    execute("delete breakpoints")
+    exec_string = execute("break hello.Hello::noInlineTest")
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 129\."%(digits_pattern, address_pattern)
+    checker = Checker('break noInlineTest', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    execute("continue")
+    exec_string = execute("list")
+    rexp = r"129%sSystem.out.println\(\"This is a test\"\);"%spaces_pattern
+    checker = Checker('hit breakpoint in noInlineTest', rexp)
+    checker.check(exec_string, skip_fails=False)
+    exec_string = execute("backtrace 5")
+    rexp = [r"#0%shello\.Hello::noInlineTest\(void\) \(\) at hello/Hello\.java:129"%(spaces_pattern),
+            r"#1%s%s in hello\.Hello::inlineA \(\) at hello/Hello\.java:124"%(spaces_pattern, address_pattern),
+            r"#2%shello\.Hello::inlineIs \(\) at hello/Hello\.java:119"%(spaces_pattern),
+            r"#3%shello\.Hello::noInlineThis\(void\) \(\) at hello/Hello\.java:114"%(spaces_pattern),
+            r"#4%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:87"%(spaces_pattern, address_pattern)]
+    checker = Checker('backtrace in inlineMethod', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    execute("delete breakpoints")
+    exec_string = execute("break Hello.java:149")
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 149\."%(digits_pattern, address_pattern)
+    checker = Checker('break Hello.java:149', rexp)
+    checker.check(exec_string)
+
+    execute("continue 5")
+    exec_string = execute("backtrace 14")
+    rexp = [r"#0%shello\.Hello::inlineMixTo \(\) at hello/Hello\.java:149"%(spaces_pattern),
+            r"#1%shello\.Hello::noInlineHere\(int\) \(\) at hello/Hello\.java:141"%(spaces_pattern),
+            r"#2%s%s in hello\.Hello::inlineMixTo \(\) at hello/Hello\.java:147"%(spaces_pattern, address_pattern),
+            r"#3%shello\.Hello::noInlineHere\(int\) \(\) at hello/Hello\.java:141"%(spaces_pattern),
+            r"#4%s%s in hello\.Hello::inlineMixTo \(\) at hello/Hello\.java:147"%(spaces_pattern, address_pattern),
+            r"#5%shello\.Hello::noInlineHere\(int\) \(\) at hello/Hello\.java:141"%(spaces_pattern),
+            r"#6%s%s in hello\.Hello::inlineMixTo \(\) at hello/Hello\.java:147"%(spaces_pattern, address_pattern),
+            r"#7%shello\.Hello::noInlineHere\(int\) \(\) at hello/Hello\.java:141"%(spaces_pattern),
+            r"#8%s%s in hello\.Hello::inlineMixTo \(\) at hello/Hello\.java:147"%(spaces_pattern, address_pattern),
+            r"#9%shello\.Hello::noInlineHere\(int\) \(\) at hello/Hello\.java:141"%(spaces_pattern),
+            r"#10%s%s in hello\.Hello::inlineMixTo \(\) at hello/Hello\.java:147"%(spaces_pattern, address_pattern),
+            r"#11%shello\.Hello::noInlineHere\(int\) \(\) at hello/Hello\.java:141"%(spaces_pattern),
+            r"#12%s%s in hello\.Hello::inlineFrom \(\) at hello/Hello\.java:134"%(spaces_pattern, address_pattern),
+            r"#13%shello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:88"%(spaces_pattern)]
+    checker = Checker('backtrace in recursive inlineMixTo', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    execute("delete breakpoints")
+    exec_string = execute("break Hello.java:162")
+    rexp = r"Breakpoint %s at %s: Hello\.java:162\. \(2 locations\)"%(digits_pattern, address_pattern)
+    checker = Checker('break Hello.java:162', rexp)
+    checker.check(exec_string)
+
+    execute("continue 5")
+    exec_string = execute("backtrace 14")
+    rexp = [r"#0%shello\.Hello::inlineTo\(int\) \(\) at hello/Hello\.java:162"%(spaces_pattern),
+            r"#1%s%s in hello\.Hello::inlineHere \(\) at hello/Hello\.java:154"%(spaces_pattern, address_pattern),
+            r"#2%shello\.Hello::inlineTo\(int\) \(\) at hello/Hello\.java:160"%(spaces_pattern),
+            r"#3%s%s in hello\.Hello::inlineHere \(\) at hello/Hello\.java:154"%(spaces_pattern, address_pattern),
+            r"#4%shello\.Hello::inlineTo\(int\) \(\) at hello/Hello\.java:160"%(spaces_pattern),
+            r"#5%s%s in hello\.Hello::inlineHere \(\) at hello/Hello\.java:154"%(spaces_pattern, address_pattern),
+            r"#6%shello\.Hello::inlineTo\(int\) \(\) at hello/Hello\.java:160"%(spaces_pattern),
+            r"#7%s%s in hello\.Hello::inlineHere \(\) at hello/Hello\.java:154"%(spaces_pattern, address_pattern),
+            r"#8%shello\.Hello::inlineTo\(int\) \(\) at hello/Hello\.java:160"%(spaces_pattern),
+            r"#9%s%s in hello\.Hello::inlineHere \(\) at hello/Hello\.java:154"%(spaces_pattern, address_pattern),
+            r"#10%shello\.Hello::inlineTo \(\) at hello/Hello\.java:160"%(spaces_pattern),
+            r"#11%shello\.Hello::inlineHere \(\) at hello/Hello\.java:154"%(spaces_pattern),
+            r"#12%shello\.Hello::inlineFrom \(\) at hello/Hello\.java:135"%(spaces_pattern),
+            r"#13%shello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:88"%(spaces_pattern)]
+    checker = Checker('backtrace in recursive inlineTo', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    execute("delete breakpoints")
+    exec_string = execute("break Hello.java:168")
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 168\."%(digits_pattern, address_pattern)
+    checker = Checker('break Hello.java:168', rexp)
+    checker.check(exec_string)
+
+    execute("continue 5")
+    exec_string = execute("backtrace 8")
+    rexp = [r"#0%shello\.Hello::inlineTailRecursion\(int\) \(\) at hello/Hello\.java:168"%(spaces_pattern),
+            r"#1%s%s in hello\.Hello::inlineTailRecursion\(int\) \(\) at hello/Hello\.java:171"%(spaces_pattern, address_pattern),
+            r"#2%s%s in hello\.Hello::inlineTailRecursion\(int\) \(\) at hello/Hello\.java:171"%(spaces_pattern, address_pattern),
+            r"#3%s%s in hello\.Hello::inlineTailRecursion\(int\) \(\) at hello/Hello\.java:171"%(spaces_pattern, address_pattern),
+            r"#4%s%s in hello\.Hello::inlineTailRecursion\(int\) \(\) at hello/Hello\.java:171"%(spaces_pattern, address_pattern),
+            r"#5%s%s in hello\.Hello::inlineTailRecursion \(\) at hello/Hello\.java:171"%(spaces_pattern, address_pattern),
+            r"#6%shello\.Hello::inlineFrom \(\) at hello/Hello\.java:136"%(spaces_pattern),
+            r"#7%shello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:88"%(spaces_pattern)]
+    checker = Checker('backtrace in recursive inlineTo', rexp)
+    checker.check(exec_string, skip_fails=False)
 
     print(execute("quit 0"))
 
