@@ -32,7 +32,7 @@ public class LLVMGlobalScope extends LLVMScope {
 
     private LLVMGlobalScope next;
     private LLVMGlobalScope prev;
-    private BitcodeID id;
+    private final BitcodeID id;
 
     public LLVMGlobalScope() {
         this.id = IDGenerater.INVALID_ID;

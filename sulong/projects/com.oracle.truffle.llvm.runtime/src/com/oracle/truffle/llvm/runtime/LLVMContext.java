@@ -29,22 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -79,6 +63,21 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
+import org.graalvm.collections.EconomicMap;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public final class LLVMContext {
 
@@ -121,12 +120,12 @@ public final class LLVMContext {
     @CompilationFinal private Env env;
 
     // The first globalscope is for traversing and finding symbols
-    private final LLVMGlobalScope firstGlobalScope;
+    private LLVMScopeChain headGlobalScopeChain;
     // The last globalscope is for adding symbols
-    private LLVMGlobalScope lastGlobalScope;
+    private LLVMScopeChain tailGlobalScopeChain;
     // the previous of first is always null, and the next of last is always null.
 
-    private final ArrayList<LLVMLocalScope> localScopes;
+    //private final ArrayList<LLVMLocalScope> localScopes;
 
     private final DynamicLinkChain dynamicLinkChain;
     private final DynamicLinkChain dynamicLinkChainForScopes;
@@ -145,6 +144,7 @@ public final class LLVMContext {
     // Assumptions that get invalidated whenever an entry in the above array changes:
     @CompilationFinal(dimensions = 2) private Assumption[][] symbolAssumptions;
 
+    private boolean[] libraryLoaded;
     private RootCallTarget[] destructorFunctions;
 
     // Source cache (for reusing bitcode IDs).
@@ -213,9 +213,9 @@ public final class LLVMContext {
         this.internalLibraryNames = Collections.unmodifiableList(Arrays.asList(language.getCapability(PlatformCapability.class).getSulongDefaultLibraries()));
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
-        this.firstGlobalScope = new LLVMGlobalScope();
-        this.lastGlobalScope = firstGlobalScope;
-        this.localScopes = new ArrayList<>();
+        this.headGlobalScopeChain = new LLVMScopeChain();
+        this.tailGlobalScopeChain = headGlobalScopeChain;
+        //this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
         this.dynamicLinkChainForScopes = new DynamicLinkChain();
 
@@ -230,6 +230,7 @@ public final class LLVMContext {
         symbolAssumptions = new Assumption[10][];
         // These two fields contain the same value, but have different CompilationFinal annotations:
         symbolFinalStorage = symbolDynamicStorage = new LLVMPointer[10][];
+        libraryLoaded = new boolean[10];
         destructorFunctions = new RootCallTarget[10];
     }
 
@@ -651,7 +652,18 @@ public final class LLVMContext {
 
     public boolean isLibraryAlreadyLoaded(BitcodeID bitcodeID) {
         int id = bitcodeID.getId();
-        return id < destructorFunctions.length && destructorFunctions[id] != null;
+        return id < libraryLoaded.length && libraryLoaded[id];
+    }
+
+    public void markLibraryLoaded(BitcodeID bitcodeID) {
+        int id = bitcodeID.getId();
+        if (id >= libraryLoaded.length) {
+            int newLength = (id + 1) + ((id + 1) / 2);
+            boolean[] temp = new boolean[newLength];
+            System.arraycopy(libraryLoaded, 0, temp, 0, libraryLoaded.length);
+            libraryLoaded = temp;
+        }
+        libraryLoaded[id] = true;
     }
 
     public void registerDestructorFunctions(BitcodeID bitcodeID, RootCallTarget destructor) {
@@ -671,7 +683,7 @@ public final class LLVMContext {
         if (!sourceCache.containsKey(bitcodeID)) {
             sourceCache.put(bitcodeID, source);
         }
-    }
+}
 
     public LLVMLanguage getLanguage() {
         return language;
@@ -681,32 +693,41 @@ public final class LLVMContext {
         return env;
     }
 
-    public LLVMGlobalScope getGlobalScope() {
-        return firstGlobalScope;
+    public LLVMScopeChain getGlobalScopeChain() {
+        return headGlobalScopeChain;
     }
 
-    public synchronized void addGlobalScope(LLVMGlobalScope scope) {
-        assert scope.getPrev() == null && scope.getNext() == null;
-        lastGlobalScope.setNext(scope);
-        scope.setPrev(lastGlobalScope);
-        lastGlobalScope = scope;
+    public synchronized void addGlobalScope(LLVMScopeChain scope) {
+        if (headGlobalScopeChain.getScope() == null && headGlobalScopeChain.getId().equals(IDGenerater.INVALID_ID)) {
+            headGlobalScopeChain = scope;
+        } else {
+            tailGlobalScopeChain.concatNextChain(scope);
+        }
+        tailGlobalScopeChain = scope;
     }
 
-    public synchronized void removeGlobalScope(LLVMGlobalScope scope) {
-        assert scope != firstGlobalScope;
+    public synchronized void removeGlobalScope(BitcodeID id) {
+        assert !(headGlobalScopeChain.getId().equals(id));
+        LLVMScopeChain tmp = headGlobalScopeChain.getNext();
+        while (tmp != null) {
+            if (tmp.getId().equals(id)) {
+                removeGlobalScope(tmp);
+                return;
+            }
+            tmp = tmp.getNext();
+        }
+    }
+
+    private synchronized void removeGlobalScope(LLVMScopeChain scope) {
+        assert scope != headGlobalScopeChain;
         scope.getPrev().setNext(scope.getNext());
-        if (lastGlobalScope == scope) {
-            lastGlobalScope = scope.getPrev();
+        if (tailGlobalScopeChain == scope) {
+            tailGlobalScopeChain = scope.getPrev();
         } else {
             scope.getNext().setPrev(scope.getPrev());
         }
         scope.setNext(null);
         scope.setPrev(null);
-    }
-
-    @TruffleBoundary
-    public void addLocalScope(LLVMLocalScope scope) {
-        localScopes.add(scope);
     }
 
     public LLVMPointer getSymbolUncached(LLVMSymbol symbol) throws LLVMIllegalSymbolIndexException {
@@ -752,6 +773,9 @@ public final class LLVMContext {
         synchronized (symbols) {
             try {
                 int index = symbol.getSymbolIndexUncached();
+                if (symbols[index] != null && symbols[index].isSame(value)) {
+                    return;
+                }
                 symbols[index] = value;
                 assumptions[index] = Truffle.getRuntime().createAssumption();
                 if (symbol instanceof LLVMFunction) {
@@ -809,16 +833,26 @@ public final class LLVMContext {
         synchronized (this) {
             int index = bitcodeID.getId();
             assert symbolDynamicStorage == symbolFinalStorage;
+            if (index < symbolDynamicStorage.length && symbolDynamicStorage[index] != null) {
+                //throw new IllegalStateException("Registering a new symbol table for an existing id.");
+                return;
+            }
             if (index >= symbolDynamicStorage.length) {
                 int newLength = (index + 1) + ((index + 1) / 2);
                 symbolAssumptions = Arrays.copyOf(symbolAssumptions, newLength);
                 symbolFinalStorage = symbolDynamicStorage = Arrays.copyOf(symbolDynamicStorage, newLength);
             }
-            if (symbolDynamicStorage[index] != null) {
-                throw new IllegalStateException("Registering a new symbol table for an existing id. ");
-            }
             symbolAssumptions[index] = new Assumption[globalLength];
             symbolDynamicStorage[index] = new LLVMPointer[globalLength];
+        }
+    }
+
+    // Will need to invalidate the assumption first.
+    public void removeSymbolTable(BitcodeID id) {
+        synchronized (this) {
+            int index = id.getId();
+            symbolAssumptions[index] = null;
+            symbolDynamicStorage[index] = null;
         }
     }
 
@@ -897,12 +931,6 @@ public final class LLVMContext {
         assert threadingStack != null;
         return threadingStack;
     }
-
-    /*public void registerDestructorFunctions(RootCallTarget destructor) {
-        assert destructor != null;
-        assert !destructorFunctions.contains(destructor);
-        destructorFunctions.add(destructor);
-    }*/
 
     @TruffleBoundary
     public boolean isScopeLoaded(LLVMScope scope) {
@@ -1070,8 +1098,10 @@ public final class LLVMContext {
         }
 
         private void addScope(LLVMScope newScope) {
-            assert !scopes.contains(newScope);
-            scopes.add(newScope);
+            //assert !scopes.contains(newScope);
+            if (!scopes.contains(newScope)) {
+                scopes.add(newScope);
+            }
         }
 
         private boolean containsScope(LLVMScope scope) {

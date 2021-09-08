@@ -71,15 +71,13 @@ import java.util.Objects;
 public final class SulongLibrary implements TruffleObject {
 
     private final String name;
-    private final LLVMScope scope;
+    private final LLVMScopeChain scope;
     private final LLVMContext context;
     final CachedMainFunction main;
     private final LibraryLocator libraryLocator;
     private final BitcodeID bitcodeID;
 
-    // probably need the bitcodeID here as well.
-
-    public SulongLibrary(String name, LLVMScope scope, CachedMainFunction main, LLVMContext context, LibraryLocator libraryLocator, BitcodeID bitcodeID) {
+    public SulongLibrary(String name, LLVMScopeChain scope, CachedMainFunction main, LLVMContext context, LibraryLocator libraryLocator, BitcodeID bitcodeID) {
         this.name = name;
         this.scope = scope;
         this.main = main;
@@ -138,6 +136,10 @@ public final class SulongLibrary implements TruffleObject {
 
     public String getName() {
         return name;
+    }
+
+    public BitcodeID getBitcodeID() {
+        return bitcodeID;
     }
 
     @GenerateUncached

@@ -94,7 +94,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
                     @Cached BranchProfile exception) {
         LLVMContext ctx = LLVMContext.get(this);
         String name = readStr.executeWithTarget(symbolName);
-        LLVMSymbol symbol = ctx.getGlobalScope().get(name);
+        LLVMSymbol symbol = ctx.getGlobalScopeChain().get(name);
         if (symbol == null) {
             Object nativeSymbol = getNativeSymbol(name, ctx);
             if (nativeSymbol == null) {

@@ -69,7 +69,6 @@ import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.DESTRUCTORS_VARN
  * Registers the destructor and executes the constructor of a module. This happens after
  * <emph>all</emph> globals have been initialized by {@link InitializeGlobalNode}.
  *
- * @see InitializeScopeNode
  * @see InitializeSymbolsNode
  * @see InitializeGlobalNode
  * @see InitializeExternalNode

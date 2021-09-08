@@ -104,7 +104,7 @@ public abstract class LLVMInteropNonvirtualCallNode extends LLVMNode {
     }
 
     final LLVMFunction getLLVMFunction(Method method, LLVMInteropType.Clazz clazz, BranchProfile notFound) {
-        LLVMFunction llvmFunction = getContext().getGlobalScope().getFunction(method.getLinkageName());
+        LLVMFunction llvmFunction = getContext().getGlobalScopeChain().getFunction(method.getLinkageName());
         if (llvmFunction == null) {
             notFound.enter();
             throw new LLVMLinkerException(this, mkErrorMessage(clazz, method));
