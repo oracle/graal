@@ -686,7 +686,6 @@ final class SVGSamplerOutput {
             this.topPadding = 3 * owner.fontSize();
             this.sampleCount = owner.sampleData.getInt("h");
             widthPerTime = (width() - 2 * XPAD) / sampleCount;
-            int depth = 0;
             maxDepth = maxDepth(owner.sampleData);
         }
 
@@ -984,7 +983,6 @@ final class SVGSamplerOutput {
             int textLength = (int) (width / (owner.fontSize() / owner.fontWidth()));
             int afterLength = (int) (afterWidth / (owner.fontSize() / owner.fontWidth()));
 
-            boolean textOUtsideBar;
             double textX;
             String text = name;
             if (textLength > name.length()) {
