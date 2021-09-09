@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,40 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.toolchain.launchers.windows;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+#include <stdint.h>
 
-import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
-import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
+__attribute__((noinline)) void print(uint32_t a, uint32_t b, uint32_t shift) {
+    uint32_t result = (a << (32 - shift)) | (b >> shift);
+    printf("0x%08x 0x%08x >> %d == %08x\n", a, b, shift, result);
+}
 
-public final class WindowsLinker extends Driver {
+int main() {
+    print(0xcccccccc, 0xaaaaaaaa, 4);
+    print(0xcccccccc, 0xaaaaaaaa, 8);
+    print(0xcccccccc, 0xaaaaaaaa, 3);
+    print(0xcccccccc, 0xaaaaaaaa, 31);
 
-    public static final String LLD_LINK = "lld-link.exe";
-    public static final String LLD_LINK_NO_EXE = "lld-link";
-
-    private WindowsLinker() {
-        super(LLD_LINK);
-    }
-
-    public static List<String> getLinkerFlags() {
-        return Arrays.asList("-mllvm:-lto-embed-bitcode", "-opt:lldlto=0", "-debug:dwarf");
-    }
-
-    public static void link(String[] args) {
-        new WindowsLinker().doLink(args);
-    }
-
-    private void doLink(String[] args) {
-        List<String> sulongArgs = new ArrayList<>();
-        sulongArgs.add(exe);
-        sulongArgs.add("-libpath:" + getSulongHome().resolve(ClangLike.NATIVE_PLATFORM).resolve("lib"));
-        sulongArgs.addAll(WindowsLinker.getLinkerFlags());
-        List<String> userArgs = Arrays.asList(args);
-        boolean verbose = userArgs.contains("-verbose");
-        runDriver(sulongArgs, userArgs, verbose, false, false);
-    }
-
+    return 0;
 }

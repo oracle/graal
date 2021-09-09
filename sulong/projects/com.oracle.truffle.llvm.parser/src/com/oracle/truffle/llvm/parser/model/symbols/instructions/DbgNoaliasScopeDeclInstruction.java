@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,40 +27,49 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.toolchain.launchers.windows;
+package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import com.oracle.truffle.llvm.parser.metadata.MDNode;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
-import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
-import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
+public final class DbgNoaliasScopeDeclInstruction extends VoidInstruction {
 
-public final class WindowsLinker extends Driver {
+    private final MDNode scope;
 
-    public static final String LLD_LINK = "lld-link.exe";
-    public static final String LLD_LINK_NO_EXE = "lld-link";
-
-    private WindowsLinker() {
-        super(LLD_LINK);
+    public DbgNoaliasScopeDeclInstruction(MDNode scope) {
+        this.scope = scope;
     }
 
-    public static List<String> getLinkerFlags() {
-        return Arrays.asList("-mllvm:-lto-embed-bitcode", "-opt:lldlto=0", "-debug:dwarf");
+    public MDNode getScope() {
+        return scope;
     }
 
-    public static void link(String[] args) {
-        new WindowsLinker().doLink(args);
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 
-    private void doLink(String[] args) {
-        List<String> sulongArgs = new ArrayList<>();
-        sulongArgs.add(exe);
-        sulongArgs.add("-libpath:" + getSulongHome().resolve(ClangLike.NATIVE_PLATFORM).resolve("lib"));
-        sulongArgs.addAll(WindowsLinker.getLinkerFlags());
-        List<String> userArgs = Arrays.asList(args);
-        boolean verbose = userArgs.contains("-verbose");
-        runDriver(sulongArgs, userArgs, verbose, false, false);
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final DbgNoaliasScopeDeclInstruction that = (DbgNoaliasScopeDeclInstruction) o;
+
+        return this.scope.equals(that.scope);
+    }
+
+    @Override
+    public int hashCode() {
+        return this.scope.hashCode();
+    }
 }
