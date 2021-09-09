@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -89,5 +89,71 @@ public class Math_minMax extends JTTTest {
     @Test
     public void testMinFloat() throws Throwable {
         runTest("minFloat", (float) input0, (float) input1);
+    }
+
+    public static double maxDoubleConst0(double x) {
+        return Math.max(x, 0.0);
+    }
+
+    public static double minDoubleConst0(double x) {
+        return Math.min(x, 0.0);
+    }
+
+    public static double maxDoubleConstM0(double x) {
+        return Math.max(x, -0.0);
+    }
+
+    public static double minDoubleConstM0(double x) {
+        return Math.min(x, -0.0);
+    }
+
+    public static double maxDoubleConstNaN(double x) {
+        return Math.max(x, Double.NaN);
+    }
+
+    public static double minDoubleConstNaN(double x) {
+        return Math.min(x, Double.NaN);
+    }
+
+    public static double maxDoubleConstNegInf(double x) {
+        return Math.max(x, Double.NEGATIVE_INFINITY);
+    }
+
+    public static double minDoubleConstPosInf(double x) {
+        return Math.min(x, Double.POSITIVE_INFINITY);
+    }
+
+    public static double maxDoubleConstMinValue(double x) {
+        return Math.max(x, Double.MIN_VALUE);
+    }
+
+    public static double minDoubleConstMaxValue(double x) {
+        return Math.min(x, Double.MAX_VALUE);
+    }
+
+    @Test
+    public void testMaxDoubleConst() {
+        if (input0 != input1) {
+            // skip
+            return;
+        }
+        runTest("maxDoubleConst0", input0);
+        runTest("maxDoubleConstM0", input0);
+        runTest("maxDoubleConstNaN", input0);
+        runTest("maxDoubleConstNegInf", input0);
+        runTest("maxDoubleConstMinValue", input0);
+    }
+
+    @Test
+    public void testMinDoubleConst() {
+        if (input0 != input1) {
+            // skip
+            return;
+        }
+        runTest("minDoubleConst0", input0);
+        runTest("minDoubleConstM0", input0);
+        runTest("minDoubleConstNaN", input0);
+        runTest("minDoubleConstPosInf", input0);
+        runTest("minDoubleConstMaxValue", input0);
     }
 }
