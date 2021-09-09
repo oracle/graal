@@ -260,7 +260,7 @@ public class NativeImage {
 
     static class BuildConfiguration {
 
-        boolean modulePathBuild = Boolean.parseBoolean(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+        boolean modulePathBuild;
 
         protected final Path workDir;
         protected final Path rootDir;
@@ -279,6 +279,7 @@ public class NativeImage {
 
         @SuppressWarnings("deprecation")
         BuildConfiguration(Path rootDir, Path workDir, List<String> args) {
+            modulePathBuild = Boolean.parseBoolean(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
             this.args = args;
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
