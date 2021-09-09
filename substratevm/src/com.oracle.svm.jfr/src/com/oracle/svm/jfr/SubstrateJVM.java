@@ -68,8 +68,9 @@ class SubstrateJVM {
     private final JfrLogging jfrLogging;
 
     private boolean initialized;
-    // We can't reuse the field JVM.recording because it does not get set in all the cases that we
-    // are interested in.
+    // We need this separate field for all JDK versions, even for versions
+    // where the field JVM.recording is present as JVM.recording is not set for
+    // all the cases that we are interested in
     private volatile boolean recording;
     private byte[] metadataDescriptor;
 
