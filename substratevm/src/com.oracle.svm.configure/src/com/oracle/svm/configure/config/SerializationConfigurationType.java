@@ -62,8 +62,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
         if (qualifiedJavaName.contains("$$Lambda$") && !qualifiedJavaName.contains("/")) {
             String capturingClass = qualifiedJavaName.split(LambdaUtils.SPLIT_BY_LAMBDA)[0];
             writer.quote(SerializationConfigurationParser.LAMBDA_CAPTURING_CLASS_KEY).append(":").quote(capturingClass);
-        }
-        else {
+        } else {
             writer.quote(SerializationConfigurationParser.NAME_KEY).append(':').quote(qualifiedJavaName);
         }
 

@@ -32,7 +32,6 @@ import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.print
 
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
-import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -276,7 +275,7 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
             } catch (NoSuchMethodException e) {
                 VMError.shouldNotReachHere("Method named $deserializeLambda$ must exist in capturing class (" + serializationTargetClass.getName() + ") of lambdas that have writeReplace method.");
             }
-            return ;
+            return;
         }
 
         UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
