@@ -127,8 +127,8 @@ public final class WindowsJavaThreads extends JavaThreads {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = OSThreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = OSThreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished)
     static WordBase osThreadStartRoutine(WindowsThreadStartData data) {
         ObjectHandle threadHandle = data.getThreadHandle();
         WinBase.HANDLE osThreadHandle = data.getOSThreadHandle();

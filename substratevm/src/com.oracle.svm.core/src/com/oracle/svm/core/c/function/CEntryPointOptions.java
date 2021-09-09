@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,10 +74,18 @@ public @interface CEntryPointOptions {
      *
      * The provided class must have a nullary constructor, which is used to instantiate the class.
      * Then the supplier function is called on the newly instantiated instance.
+     *
+     * @deprecated Use {@link CEntryPoint#include()}.
      */
+    @Deprecated
     Class<? extends BooleanSupplier> include() default CEntryPointOptions.AlwaysIncluded.class;
 
-    /** A {@link BooleanSupplier} that always returns {@code true}. */
+    /**
+     * A {@link BooleanSupplier} that always returns {@code true}.
+     *
+     * @deprecated Use {@link org.graalvm.nativeimage.c.function.CEntryPoint.AlwaysIncluded}.
+     */
+    @Deprecated
     class AlwaysIncluded implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
@@ -85,7 +93,13 @@ public @interface CEntryPointOptions {
         }
     }
 
-    /** A {@link BooleanSupplier} that always returns {@code false}. */
+    /**
+     * A {@link BooleanSupplier} that always returns {@code false}.
+     *
+     * @deprecated Use
+     *             {@link org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically}.
+     */
+    @Deprecated
     class NotIncludedAutomatically implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {

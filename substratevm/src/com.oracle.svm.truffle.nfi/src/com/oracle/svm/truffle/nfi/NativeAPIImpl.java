@@ -75,28 +75,28 @@ final class NativeAPIImpl {
         return support.resolveContextHandle(context.contextHandle());
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static NativeTruffleContext getTruffleContext(NativeTruffleEnv env) {
         return env.context();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static TruffleObjectHandle newObjectRef(@SuppressWarnings("unused") NativeTruffleEnv env, TruffleObjectHandle handle) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Object object = support.resolveHandle(handle);
         return support.createGlobalHandle(object);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static void releaseObjectRef(@SuppressWarnings("unused") NativeTruffleEnv env, TruffleObjectHandle handle) {
         ImageSingletons.lookup(TruffleNFISupport.class).destroyGlobalHandle(handle);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static TruffleObjectHandle releaseAndReturn(@SuppressWarnings("unused") NativeTruffleEnv env, TruffleObjectHandle handle) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Object object = support.resolveHandle(handle);
@@ -104,8 +104,8 @@ final class NativeAPIImpl {
         return TruffleNFISupport.createLocalHandle(object);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static int isSameObject(@SuppressWarnings("unused") NativeTruffleEnv env, TruffleObjectHandle handle1, TruffleObjectHandle handle2) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Object object1 = support.resolveHandle(handle1);
@@ -113,22 +113,22 @@ final class NativeAPIImpl {
         return object1 == object2 ? 1 : 0;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static void newClosureRef(NativeTruffleEnv env, PointerBase closure) {
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context = lookupContext(env.context());
         context.newClosureRef(closure.rawValue());
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static void releaseClosureRef(NativeTruffleEnv env, PointerBase closure) {
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context = lookupContext(env.context());
         context.releaseClosureRef(closure.rawValue());
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static TruffleObjectHandle getClosureObject(NativeTruffleEnv env, PointerBase closure) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context = lookupContext(env.context());
@@ -136,8 +136,8 @@ final class NativeAPIImpl {
         return support.createGlobalHandle(ret);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = GetTruffleEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = GetTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
     static NativeTruffleEnv getTruffleEnv(NativeTruffleContext context) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
@@ -152,8 +152,8 @@ final class NativeAPIImpl {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = AttachCurrentThreadPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = AttachCurrentThreadPrologue.class, publishAs = Publish.NotPublished)
     static NativeTruffleEnv attachCurrentThread(NativeTruffleContext context) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
@@ -172,8 +172,8 @@ final class NativeAPIImpl {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterNativeTruffleContextPrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterNativeTruffleContextPrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished)
     static void detachCurrentThread(@SuppressWarnings("unused") NativeTruffleContext context) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
