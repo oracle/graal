@@ -1415,10 +1415,9 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region JNI Invocation Interface
     @VmImpl
-    public int DestroyJavaVM() {
-        int result = DetachCurrentThread();
+    public int DestroyJavaVM(@Inject EspressoContext context) {
+        int result = DetachCurrentThread(context);
         try {
-            EspressoContext context = getContext();
             context.destroyVM(!context.ExitHost);
         } catch (EspressoExitException exit) {
             // expected
@@ -1464,8 +1463,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @TruffleBoundary
-    public int DetachCurrentThread() {
-        EspressoContext context = getContext();
+    public int DetachCurrentThread(@Inject EspressoContext context) {
         StaticObject currentThread = context.getCurrentThread();
         if (currentThread == null) {
             return JNI_OK;
