@@ -26,8 +26,6 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.jdk.JDK16OrEarlier;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -39,8 +37,9 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK14OrEarlier;
 import com.oracle.svm.core.jdk.JDK14OrLater;
-import com.oracle.svm.core.jdk.JDK15OrEarlier;
 import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK16OrEarlier;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 
 import jdk.jfr.Event;
@@ -60,9 +59,8 @@ public final class Target_jdk_jfr_internal_JVM {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
 
-    @Alias
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
     private volatile boolean recording;
 
     /** See {@link JVM#registerNatives}. */
@@ -408,6 +406,7 @@ public final class Target_jdk_jfr_internal_JVM {
         // Temporarily do nothing. This is used for JFR streaming.
         return false;
     }
+
     /** See {@link JVM#markChunkFinal}. */
     @Substitute
     @TargetElement(onlyWith = JDK14OrLater.class) //

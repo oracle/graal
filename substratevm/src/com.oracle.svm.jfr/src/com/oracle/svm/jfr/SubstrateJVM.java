@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.jfr;
 
+//Checkstyle: allow reflection
+import java.lang.reflect.Field;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -43,11 +45,8 @@ import com.oracle.svm.jfr.logging.JfrLogging;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.EventWriter;
-import jdk.jfr.internal.handlers.EventHandler;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
-
-import java.lang.reflect.Field;
 
 /**
  * Manager class that handles most JFR Java API, see {@link Target_jdk_jfr_internal_JVM}.
@@ -68,8 +67,9 @@ class SubstrateJVM {
     private final JfrLogging jfrLogging;
 
     private boolean initialized;
-    // We can't reuse the field JVM.recording because it does not get set in all the cases that we
-    // are interested in.
+    // We need this separate field for all JDK versions, i.e., even for versions where the field
+    // JVM.recording is present (JVM.recording is not set for all the cases that we are interested
+    // in).
     private volatile boolean recording;
     private byte[] metadataDescriptor;
 

@@ -29,9 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-
 import com.oracle.svm.core.jdk.HiddenClassSupport;
-
 
 final class HiddenClassSupportImpl extends HiddenClassSupport {
     @Override

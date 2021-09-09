@@ -26,13 +26,12 @@
 
 package com.oracle.svm.test.jdk11.jfr;
 
-import jdk.jfr.Recording;
-
 import static org.junit.Assert.assertNotNull;
 
-import jdk.jfr.consumer.RecordingFile;
 import org.junit.Test;
 
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
 
 public class TestClassEvent {
     @Test

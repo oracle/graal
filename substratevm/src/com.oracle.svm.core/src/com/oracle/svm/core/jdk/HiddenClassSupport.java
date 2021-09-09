@@ -34,7 +34,7 @@ import com.oracle.svm.core.util.VMError;
  * This class provides all information about hidden classes without exposing any JDK types and
  * methods that are not yet present in the old JDKs.
  */
-public class HiddenClassSupport {
+public abstract class HiddenClassSupport {
     @Fold
     public static HiddenClassSupport singleton() {
         return ImageSingletons.lookup(HiddenClassSupport.class);
@@ -46,7 +46,7 @@ public class HiddenClassSupport {
     }
 
     /** Same as {@code Class.isHidden()}. */
-    public boolean isHidden(Class<?> clazz) {
+    public boolean isHidden(@SuppressWarnings("unused") Class<?> clazz) {
         throw VMError.shouldNotReachHere();
     }
 }

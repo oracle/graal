@@ -24,14 +24,17 @@
  */
 package com.oracle.svm.core.jdk17;
 
+import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK17OrLater;
-import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 
-import jdk.internal.platform.CgroupMetrics;
-
-@TargetClass(value = jdk.internal.platform.CgroupMetrics.class, onlyWith = JDK17OrLater.class)
+@Platforms(Platform.LINUX.class)
+@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = JDK17OrLater.class)
 public final class Target_jdk_internal_platform_CgroupMetrics_JDK17OrLater {
     @Substitute
     public static boolean isUseContainerSupport() {

@@ -36,12 +36,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.jfr.Recording;
-import jdk.jfr.internal.OldObjectSample;
-import jdk.jfr.internal.PrivateAccess;
-import jdk.jfr.internal.SecuritySupport;
-import jdk.jfr.internal.Utils;
-import jdk.jfr.internal.jfc.JFC;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -59,9 +53,15 @@ import com.oracle.svm.jfr.events.OSInformation;
 import com.oracle.svm.jfr.events.PhysicalMemory;
 
 import jdk.jfr.FlightRecorder;
+import jdk.jfr.Recording;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.Logger;
+import jdk.jfr.internal.OldObjectSample;
+import jdk.jfr.internal.PrivateAccess;
+import jdk.jfr.internal.SecuritySupport;
+import jdk.jfr.internal.Utils;
+import jdk.jfr.internal.jfc.JFC;
 
 /**
  * Called during VM startup and teardown. Also triggers the JFR argument parsing.
@@ -91,8 +91,8 @@ public class JfrManager {
     Runnable shutdownHook() {
         return () -> {
             if (SubstrateOptions.FlightRecorder.getValue()) {
-                // Everything should already have been torn down by JVM.destroyJFR(), which is called in
-                // a shutdown hook.
+                // Everything should already have been torn down by JVM.destroyJFR(), which is
+                // called in a shutdown hook.
                 assert !SubstrateJVM.isInitialized();
             }
         };
@@ -128,15 +128,15 @@ public class JfrManager {
         try {
             if (Logger.shouldLog(LogTag.JFR_DCMD, LogLevel.DEBUG)) {
                 Logger.log(LogTag.JFR_DCMD, LogLevel.DEBUG, "Executing DCmdStart: name=" + name +
-                        ", settings=" + Arrays.asList(settings) +
-                        ", delay=" + delay +
-                        ", duration=" + duration +
-                        ", disk=" + disk +
-                        ", filename=" + path +
-                        ", maxage=" + maxAge +
-                        ", maxsize=" + maxSize +
-                        ", dumponexit =" + dumpOnExit +
-                        ", path-to-gc-roots=" + pathToGcRoots);
+                                ", settings=" + Arrays.asList(settings) +
+                                ", delay=" + delay +
+                                ", duration=" + duration +
+                                ", disk=" + disk +
+                                ", filename=" + path +
+                                ", maxage=" + maxAge +
+                                ", maxsize=" + maxSize +
+                                ", dumponexit =" + dumpOnExit +
+                                ", path-to-gc-roots=" + pathToGcRoots);
             }
             if (name != null) {
                 try {
@@ -179,7 +179,6 @@ public class JfrManager {
                     throw new Exception("Could not start recording, delay must be at least 1 second.");
                 }
             }
-
 
             Recording recording = new Recording();
             if (name != null) {
@@ -260,6 +259,7 @@ public class JfrManager {
             VMError.shouldNotReachHere(e);
         }
     }
+
     private static SecuritySupport.SafePath resolvePath(Recording recording, String filename) throws InvalidPathException {
         if (filename == null) {
             return makeGenerated(recording, Paths.get("."));
