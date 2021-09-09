@@ -44,6 +44,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.truffle.api.staticobject.StaticProperty;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -107,6 +109,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -219,8 +222,9 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
     @Override
     public void cleanup() {
-        // clean the cached call target nodes to prevent them from keeping application
-        // classes alive
+        /*
+         * Clean the cached call target nodes to prevent them from keeping application classes alive
+         */
         TruffleRuntime runtime = Truffle.getRuntime();
         if (!(runtime instanceof DefaultTruffleRuntime) && !(runtime instanceof SubstrateTruffleRuntime)) {
             throw VMError.shouldNotReachHere("Only SubstrateTruffleRuntime and DefaultTruffleRuntime supported");
@@ -512,16 +516,14 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
         static void duringAnalysis(DuringAnalysisAccess access) {
             boolean requiresIteration = false;
-            // We need to register as unsafe-accessed the primitive, object, and shape
-            // fields of
-            // generated storage classes. However, these classes do not share a common super
-            // type, and their fields are not annotated. Plus, the invocation plugin does
-            // not
-            // intercept calls to `StaticShape.Builder.build()` that happen during the
-            // analysis,
-            // for example because of context pre-initialization. Therefore, we inspect the
-            // generator cache in ArrayBasedShapeGenerator, which contains references to all
-            // generated storage classes.
+            /*
+             * We need to register as unsafe-accessed the primitive, object, and shape fields of
+             * generated storage classes. However, these classes do not share a common super type,
+             * and their fields are not annotated. Plus, the invocation plugin does not intercept
+             * calls to `StaticShape.Builder.build()` that happen during the analysis, for example
+             * because of context pre-initialization. Therefore, we inspect the generator cache in
+             * ArrayBasedShapeGenerator, which contains references to all generated storage classes.
+             */
             ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
             for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
                 Object shapeGenerator = entry.getValue();
@@ -625,6 +627,82 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     }
 }
 
+@TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
+    int offset;
+
+    public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+        /*
+         * We have to use reflection to access private members instead of aliasing them in the
+         * substitution class since substitutions are present only at runtime
+         */
+        private static final Method staticPropertyGetInternalKind;
+
+        static {
+            // Checkstyle: stop
+            staticPropertyGetInternalKind = ReflectionUtil.lookupMethod(StaticProperty.class, "getInternalKindName");
+            // Checkstyle: resume
+        }
+
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated,
+                        Object receiver, Object originalValue) {
+            int offset = (int) originalValue;
+            if (offset == 0) {
+                /*
+                 * The offset is not yet initialized, probably because no shape was built for the
+                 * receiver static property
+                 */
+                return offset;
+            }
+
+            StaticProperty receiverStaticProperty = (StaticProperty) receiver;
+
+            String internalKindName;
+            try {
+                // Checkstyle: stop
+                internalKindName = (String) staticPropertyGetInternalKind.invoke(receiverStaticProperty);
+                // Checkstyle: resume
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+
+            int baseOffset;
+            int indexScale;
+            JavaKind javaKind;
+            if (internalKindName.equals("Object")) {
+                javaKind = JavaKind.Object;
+                baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+            } else {
+                javaKind = JavaKind.Byte;
+                baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
+            }
+
+            assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;
+
+            /*
+             * Reverse the offset computation to find the index
+             */
+            int index = (offset - baseOffset) / indexScale;
+
+            /*
+             * Find SVM array base offset and array index scale for this JavaKind
+             */
+            int svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
+            int svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
+
+            /*
+             * Redo the offset computation with the SVM array base offset and array index scale
+             */
+            return svmArrayBaseOffset + svmArrayIndexScaleOffset * index;
+        }
+    }
+}
+
 @TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator {
 
@@ -676,22 +754,22 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
 
 // Checkstyle: stop
 
-// If allowProcess() is disabled at build time, then we ensure that
-// ProcessBuilder is not reachable.
-// The main purpose of this is to test that ProcessBuilder is not part of the
-// image when building
-// language images with allowProcess() disabled, which we interpret as "forbid
-// shelling out to
-// external processes" (GR-14041).
+/*
+ * If allowProcess() is disabled at build time, then we ensure that ProcessBuilder is not reachable.
+ * The main purpose of this is to test that ProcessBuilder is not part of the image when building
+ * language images with allowProcess() disabled, which we interpret as
+ * "forbid shelling out to external processes" (GR-14041).
+ */
 @Delete
 @TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleBaseFeature.IsEnabled.class,
                 TruffleBaseFeature.IsCreateProcessDisabled.class})
 final class Target_java_lang_ProcessBuilder {
 }
 
-// If allowProcess() is disabled at build time, then we ensure
-// ObjdumpDisassemblerProvider does not
-// try to invoke the nonexistent ProcessBuilder.
+/*
+ * If allowProcess() is disabled at build time, then we ensure ObjdumpDisassemblerProvider does not
+ * try to invoke the nonexistent ProcessBuilder.
+ */
 @TargetClass(className = "org.graalvm.compiler.code.ObjdumpDisassemblerProvider", onlyWith = {
                 TruffleBaseFeature.IsEnabled.class, TruffleBaseFeature.IsCreateProcessDisabled.class})
 final class Target_org_graalvm_compiler_code_ObjdumpDisassemblerProvider {
