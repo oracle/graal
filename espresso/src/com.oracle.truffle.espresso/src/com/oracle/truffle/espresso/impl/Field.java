@@ -74,7 +74,7 @@ public final class Field extends Member<Type> implements FieldRef {
         if (isAddedField) {
             StaticShape.Builder shapeBuilder = StaticShape.newBuilder(getDeclaringKlass().getEspressoLanguage());
             shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), isFinalFlagSet());
-            this.extensionShape = shapeBuilder.build(ExtensionFieldObject.FieldAndValueObject.class, ExtensionFieldObject.ExtensionFieldObjectFactory.class);
+            this.extensionShape = shapeBuilder.build(ExtensionFieldObject.FieldStorageObject.class, ExtensionFieldObject.ExtensionFieldObjectFactory.class);
         }
     }
 
@@ -1152,10 +1152,6 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public boolean hasCompatibleField() {
         return compatibleField != null;
-    }
-
-    public Field getCompatibleField() {
-        return compatibleField;
     }
 
     public StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> getExtensionShape() {

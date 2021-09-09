@@ -165,11 +165,6 @@ public abstract class ClassInfo {
             // always mark super hierachy changes as incompatible
             return 0;
         }
-        if (!getFieldFingerprint().equals(other.getFieldFingerprint())) {
-            // field changed not supported yet
-            // Remove this restriction when supported
-            return 0;
-        }
         int score = 0;
         score += getMethodFingerprint().equals(other.getMethodFingerprint()) ? InnerClassRedefiner.METHOD_FINGERPRINT_EQUALS : 0;
         score += getEnclosingMethodFingerprint().equals(other.getEnclosingMethodFingerprint()) ? InnerClassRedefiner.ENCLOSING_METHOD_FINGERPRINT_EQUALS : 0;

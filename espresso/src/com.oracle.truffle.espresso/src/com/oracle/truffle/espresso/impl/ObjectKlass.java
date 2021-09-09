@@ -128,6 +128,7 @@ public final class ObjectKlass extends Klass {
     private final Field[] staticFieldTable;
 
     private final Assumption noAddedFields = Truffle.getRuntime().createAssumption();
+    private ExtensionFieldsMetadata extensionFieldsMetadata;
 
     // used for class redefintion when refreshing vtables etc.
     private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
@@ -519,10 +520,9 @@ public final class ObjectKlass extends Klass {
     @Override
     public Field[] getDeclaredFields() {
         if (noAddedFields.isValid()) {
-            // Speculate that there are no hidden fields except the extension field
-            // we always filter the extension fields, so subtract 1 from the new length
-            Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex - 1);
-            int insertionIndex = staticFieldTable.length - 1;
+            // Speculate that there are no hidden fields
+            Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex);
+            int insertionIndex = staticFieldTable.length;
             for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
                 Field f = fieldTable[i];
                 if (!f.isHidden() && !f.isRemoved()) {
@@ -537,16 +537,6 @@ public final class ObjectKlass extends Klass {
             for (Field f : getStaticFieldTable()) {
                 if (!f.isHidden() && !f.isRemoved()) {
                     fields.add(f);
-                } else if (f.isExtensionField()) {
-                    Object object = f.getHiddenObject(getStatics());
-                    if (object != StaticObject.NULL) {
-                        ExtensionFieldObject extensionFieldObject = (ExtensionFieldObject) object;
-                        for (Field field : extensionFieldObject.getDeclaredAddedFields()) {
-                            if (!field.isRemoved()) {
-                                fields.add(field);
-                            }
-                        }
-                    }
                 }
             }
             // instance fields
@@ -556,6 +546,8 @@ public final class ObjectKlass extends Klass {
                     fields.add(f);
                 }
             }
+            // extension fields
+            fields.addAll(extensionFieldsMetadata.getDeclaredAddedFields());
             return fields.toArray(new Field[fields.size()]);
         }
     }
@@ -682,9 +674,8 @@ public final class ObjectKlass extends Klass {
             ObjectKlass objectKlass = this;
             while (objectKlass != null) {
                 try {
-                    ExtensionFieldObject staticExtensionFieldObject = objectKlass.getStaticExtensionFieldObject();
-                    if (staticExtensionFieldObject != null) {
-                        return staticExtensionFieldObject.getInstanceFieldAtSlot(slot);
+                    if (objectKlass.extensionFieldsMetadata != null) {
+                        return objectKlass.extensionFieldsMetadata.getInstanceFieldAtSlot(slot);
                     }
                 } catch (NoSuchFieldException e) {
                     // continue search in super
@@ -700,7 +691,7 @@ public final class ObjectKlass extends Klass {
             assert slot < staticFieldTable.length;
             return staticFieldTable[slot];
         } else { // negative values used for extension fields
-            return getStaticExtensionFieldObject().getStaticFieldAtSlot(slot);
+            return extensionFieldsMetadata.getStaticFieldAtSlot(slot);
         }
     }
 
@@ -1218,19 +1209,13 @@ public final class ObjectKlass extends Klass {
         // fields
         if (!packet.detectedChange.getAddedStaticFields().isEmpty() || !packet.detectedChange.getAddedInstanceFields().isEmpty()) {
             Map<ParserField, Field> compatibleFields = packet.detectedChange.getMappedCompatibleFields();
-            Field extensionField = staticFieldTable[staticFieldTable.length - 1];
-            Object object = extensionField.getHiddenObject(getStatics());
-            ExtensionFieldObject extensionFieldObject;
-            if (object == StaticObject.NULL) {
-                // make sure the extension field is initialized
-                extensionFieldObject = new ExtensionFieldObject(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
-                extensionField.setHiddenObject(getStatics(), extensionFieldObject);
-            } else {
-                // add new fields to the extension object
-                extensionFieldObject = (ExtensionFieldObject) object;
-                extensionFieldObject.addNewStaticFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
+            if (extensionFieldsMetadata == null) {
+                // make sure the extension metadata is initialized
+                extensionFieldsMetadata = new ExtensionFieldsMetadata();
             }
-            extensionFieldObject.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
+            // add new fields to the extension object
+            extensionFieldsMetadata.addNewStaticFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
+            extensionFieldsMetadata.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
             noAddedFields.invalidate();
         }
 
@@ -1424,9 +1409,16 @@ public final class ObjectKlass extends Klass {
         Field extensionField = getStaticFieldTable()[staticFieldTable.length - 1];
         Object object = extensionField.getHiddenObject(getStatics());
         if (object == StaticObject.NULL) {
-            return null;
+            // create new Extension field object
+            synchronized (extensionField) {
+                object = extensionField.getHiddenObject(getStatics());
+                if (object == StaticObject.NULL) {
+                    object = new ExtensionFieldObject();
+                    extensionField.setHiddenObject(getStatics(), object);
+                }
+            }
         }
-        return (ExtensionFieldObject) extensionField.getHiddenObject(getStatics());
+        return (ExtensionFieldObject) object;
     }
 
     public final class KlassVersion {

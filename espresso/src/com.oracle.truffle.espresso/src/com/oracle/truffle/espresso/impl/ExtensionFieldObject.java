@@ -22,77 +22,40 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class ExtensionFieldObject extends StaticObject {
-    private static AtomicInteger nextAvailableFieldSlot = new AtomicInteger(-1);
-    private static final FieldAndValueObject NULL_OBJECT = new FieldAndValueObject(null);
+// This class models the data in fields that were added by class redefinition
+// each instance of this class maps to one guest instance. Either a class object
+// for which static field state is maintained or a regular object for which
+// instance field state is managed.
+public final class ExtensionFieldObject {
+
+    private static final FieldStorageObject NULL_OBJECT = new FieldStorageObject();
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
+    // expandable object that manages the storage of each added field
     private final DynamicObject fieldStorage;
 
-    @CompilationFinal(dimensions = 1) private Field[] addedInstanceFields = Field.EMPTY_ARRAY;
-
     public ExtensionFieldObject() {
-        super(null, false);
         this.fieldStorage = new FieldsHolderObject(Shape.newBuilder().layout(FieldsHolderObject.class).build());
     }
 
-    public ExtensionFieldObject(ObjectKlass holder, List<ParserField> newStaticFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
-        this();
-        addNewStaticFields(holder, newStaticFields, pool, compatibleFields);
+    private FieldStorageObject getFieldAndValue(int slot) {
+        return (FieldStorageObject) LIBRARY.getOrDefault(fieldStorage, slot, NULL_OBJECT);
     }
 
-    public void addNewStaticFields(ObjectKlass holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
-        for (ParserField newField : newFields) {
-            LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
-            Field field = new Field(holder, linkedField, pool, true);
-            getOrCreateFieldAndValue(field);
-
-            // mark a compatible field where
-            // state could potentially be copied from
-            field.setCompatibleField(compatibleFields.get(newField));
-        }
-    }
-
-    public Collection<Field> getDeclaredAddedFields() {
-        List<Field> result = new ArrayList<>();
-        Property[] propertyArray = LIBRARY.getPropertyArray(fieldStorage);
-        for (Property property : propertyArray) {
-            result.add(getFieldAndValue((int) property.getKey()).field);
-        }
-        result.addAll(Arrays.asList(addedInstanceFields));
-        return Collections.unmodifiableList(result);
-    }
-
-    private FieldAndValueObject getFieldAndValue(int slot) {
-        return (FieldAndValueObject) LIBRARY.getOrDefault(fieldStorage, slot, NULL_OBJECT);
-    }
-
-    private FieldAndValueObject getOrCreateFieldAndValue(Field field) {
+    private FieldStorageObject getOrCreateFieldAndValue(Field field) {
         // fetch to check if exists to avoid producing garbage
-        FieldAndValueObject result = getFieldAndValue(field.getSlot());
+        FieldStorageObject result = getFieldAndValue(field.getSlot());
         if (result == NULL_OBJECT) {
-            synchronized (field) {
+            synchronized (fieldStorage) {
                 result = getFieldAndValue(field.getSlot());
                 if (result == NULL_OBJECT) {
-                    result = field.getExtensionShape().getFactory().create(field);
+                    result = field.getExtensionShape().getFactory().create();
                     LIBRARY.put(fieldStorage, field.getSlot(), result);
                 }
             }
@@ -100,62 +63,9 @@ public final class ExtensionFieldObject extends StaticObject {
         return result;
     }
 
-    public void addNewInstanceFields(ObjectKlass holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (instanceFields.isEmpty()) {
-            return;
-        }
-        List<Field> toAdd = new ArrayList<>(instanceFields.size());
-        for (ParserField newField : instanceFields) {
-            LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
-            Field field = new Field(holder, linkedField, pool, true);
-            toAdd.add(field);
-
-            // mark a compatible field where
-            // state could potentially be copied from
-            field.setCompatibleField(compatibleFields.get(newField));
-        }
-        int nextIndex = addedInstanceFields.length;
-        addedInstanceFields = Arrays.copyOf(addedInstanceFields, addedInstanceFields.length + toAdd.size());
-        for (Field field : toAdd) {
-            addedInstanceFields[nextIndex++] = field;
-        }
-    }
-
-    public Field getStaticFieldAtSlot(int slot) throws IndexOutOfBoundsException {
-        FieldAndValueObject fieldAndValue = getFieldAndValue(slot);
-        if (fieldAndValue == NULL_OBJECT) {
-            throw new IndexOutOfBoundsException("Index out of range: " + slot);
-        } else {
-            return fieldAndValue.field;
-        }
-    }
-
-    public Field getInstanceFieldAtSlot(int slot) throws NoSuchFieldException {
-        return binarySearch(addedInstanceFields, slot);
-    }
-
-    private static Field binarySearch(Field[] arr, int slot) throws NoSuchFieldException {
-        int firstIndex = 0;
-        int lastIndex = arr.length - 1;
-
-        while (firstIndex <= lastIndex) {
-            int middleIndex = (firstIndex + lastIndex) / 2;
-
-            if (arr[middleIndex].getSlot() == slot) {
-                return arr[middleIndex];
-            } else if (arr[middleIndex].getSlot() > slot) {
-                firstIndex = middleIndex + 1;
-            } else if (arr[middleIndex].getSlot() < slot) {
-                lastIndex = middleIndex - 1;
-            }
-        }
-        throw new NoSuchFieldException("Index out of range: " + slot);
-    }
-
     // region field value read/write/CAS
     public StaticObject getObject(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         Object result;
         if (forceVolatile) {
             result = field.linkedField.getObjectVolatile(fieldAndValue);
@@ -166,7 +76,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setObject(Field field, Object value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setObjectVolatile(fieldAndValue, value);
         } else {
@@ -189,7 +99,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public boolean getBoolean(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getBooleanVolatile(fieldAndValue);
         } else {
@@ -198,7 +108,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setBoolean(Field field, boolean value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setBooleanVolatile(fieldAndValue, value);
         } else {
@@ -215,7 +125,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public byte getByte(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getByteVolatile(fieldAndValue);
         } else {
@@ -224,7 +134,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setByte(Field field, byte value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setByteVolatile(fieldAndValue, value);
         } else {
@@ -241,7 +151,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public char getChar(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getCharVolatile(fieldAndValue);
         } else {
@@ -250,7 +160,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setChar(Field field, char value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setCharVolatile(fieldAndValue, value);
         } else {
@@ -267,7 +177,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public double getDouble(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getDoubleVolatile(fieldAndValue);
         } else {
@@ -276,7 +186,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setDouble(Field field, double value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setDoubleVolatile(fieldAndValue, value);
         } else {
@@ -293,7 +203,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public float getFloat(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getFloatVolatile(fieldAndValue);
         } else {
@@ -302,7 +212,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setFloat(Field field, float value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setFloatVolatile(fieldAndValue, value);
         } else {
@@ -319,7 +229,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public int getInt(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getIntVolatile(fieldAndValue);
         } else {
@@ -328,7 +238,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setInt(Field field, int value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setIntVolatile(fieldAndValue, value);
         } else {
@@ -345,7 +255,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public long getLong(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getLongVolatile(fieldAndValue);
         } else {
@@ -354,7 +264,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setLong(Field field, long value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setLongVolatile(fieldAndValue, value);
         } else {
@@ -371,7 +281,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public short getShort(Field field, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getShortVolatile(fieldAndValue);
         } else {
@@ -380,7 +290,7 @@ public final class ExtensionFieldObject extends StaticObject {
     }
 
     public void setShort(Field field, short value, boolean forceVolatile) {
-        FieldAndValueObject fieldAndValue = getOrCreateFieldAndValue(field);
+        FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setShortVolatile(fieldAndValue, value);
         } else {
@@ -403,15 +313,11 @@ public final class ExtensionFieldObject extends StaticObject {
         }
     }
 
-    public static class FieldAndValueObject {
-        private final Field field;
+    public static class FieldStorageObject {
 
-        public FieldAndValueObject(Field field) {
-            this.field = field;
-        }
     }
 
     public interface ExtensionFieldObjectFactory {
-        FieldAndValueObject create(Field field);
+        FieldStorageObject create();
     }
 }
