@@ -1503,6 +1503,7 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
+    @TruffleBoundary
     public @JavaType(String.class) StaticObject NewString(@Pointer TruffleObject unicodePtr, int len) {
         // TODO(garcia) : works only for UTF16 encoded strings.
         final char[] array = new char[len];
