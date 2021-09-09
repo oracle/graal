@@ -698,7 +698,7 @@ public final class LLVMContext {
     }
 
     public synchronized void addGlobalScope(LLVMScopeChain scope) {
-        if (headGlobalScopeChain.getScope() == null && headGlobalScopeChain.getId().equals(IDGenerater.INVALID_ID)) {
+        if (headGlobalScopeChain.getScope() == null && headGlobalScopeChain.getId().same(IDGenerater.INVALID_ID)) {
             headGlobalScopeChain = scope;
         } else {
             tailGlobalScopeChain.concatNextChain(scope);
