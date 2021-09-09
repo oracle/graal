@@ -148,7 +148,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
             /* Iterate over the receiver objects. */
             for (AnalysisObject receiver : objectState.objects()) {
                 /* Get the field flow corresponding to the receiver object. */
-                FieldTypeFlow fieldFlow = receiver.getInstanceFieldFlow(bb, this.method(), field, true);
+                FieldTypeFlow fieldFlow = receiver.getInstanceFieldFlow(bb, objectFlow, source, field, true);
                 /* Register the field flow as a use, if not already registered. */
                 this.addUse(bb, fieldFlow);
             }
