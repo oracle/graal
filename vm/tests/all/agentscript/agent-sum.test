@@ -5,6 +5,7 @@
 > js --insight=agent-summul2.js agent-sum.js
 720
 > js --insight=agent-sumneg.js  agent-sum.js
+Original value was 21, but returning -21
 -21
 > js --insight=agent-summul2.js agent-fib.js
 Three is the result 80
