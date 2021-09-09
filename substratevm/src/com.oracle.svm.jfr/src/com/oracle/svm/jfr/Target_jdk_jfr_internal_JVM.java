@@ -26,8 +26,6 @@ package com.oracle.svm.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.jdk.JDK16OrEarlier;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -39,8 +37,9 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK14OrEarlier;
 import com.oracle.svm.core.jdk.JDK14OrLater;
-import com.oracle.svm.core.jdk.JDK15OrEarlier;
 import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK16OrEarlier;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 
 import jdk.jfr.Event;
