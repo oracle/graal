@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,50 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.configure;
 
-import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.core.TypeResult;
+public class ConditionalElement<T> {
+    private ConfigurationCondition condition;
+    private T element;
 
-public interface ReflectionConfigurationParserDelegate<T> {
+    public ConditionalElement(ConfigurationCondition condition, T element) {
+        this.condition = condition;
+        this.element = element;
+    }
 
-    TypeResult<ConfigurationCondition> resolveCondition(String typeName);
+    public ConfigurationCondition getCondition() {
+        return condition;
+    }
 
-    TypeResult<T> resolveType(ConfigurationCondition condition, String typeName);
+    public T getElement() {
+        return element;
+    }
 
-    void registerType(T type);
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ConditionalElement<?> that = (ConditionalElement<?>) o;
+        return Objects.equals(condition, that.condition) &&
+                        Objects.equals(element, that.element);
+    }
 
-    void registerPublicClasses(T type);
-
-    void registerDeclaredClasses(T type);
-
-    void registerPublicFields(T type);
-
-    void registerDeclaredFields(T type);
-
-    void registerPublicMethods(T type);
-
-    void registerDeclaredMethods(T type);
-
-    void registerPublicConstructors(T type);
-
-    void registerDeclaredConstructors(T type);
-
-    void registerField(T type, String fieldName, boolean allowWrite) throws NoSuchFieldException;
-
-    boolean registerAllMethodsWithName(T type, String methodName);
-
-    void registerMethod(T type, String methodName, List<T> methodParameterTypes) throws NoSuchMethodException;
-
-    void registerConstructor(T type, List<T> methodParameterTypes) throws NoSuchMethodException;
-
-    boolean registerAllConstructors(T type);
-
-    String getTypeName(T type);
-
-    String getSimpleName(T type);
-
+    @Override
+    public int hashCode() {
+        return Objects.hash(condition, element);
+    }
 }

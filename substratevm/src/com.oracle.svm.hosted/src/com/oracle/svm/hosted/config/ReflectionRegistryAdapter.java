@@ -28,16 +28,18 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.MetaUtil;
 
-public class ReflectionRegistryAdapter implements ReflectionConfigurationParserDelegate<Class<?>> {
+public class ReflectionRegistryAdapter implements ReflectionConfigurationParserDelegate<ConditionalElement<Class<?>>> {
     private final ReflectionRegistry registry;
     private final ImageClassLoader classLoader;
 
@@ -47,78 +49,86 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public void registerType(Class<?> type) {
-        registry.register(type);
+    public void registerType(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), type.getElement());
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public Class<?> resolveType(String typeName) {
-        return resolveTypeResult(typeName).get();
+    public TypeResult<ConfigurationCondition> resolveCondition(String typeName) {
+        String canonicalizedName = canonicalizeTypeName(typeName);
+        TypeResult<Class<?>> clazz = classLoader.findClass(canonicalizedName);
+        return clazz.map(Class::getTypeName)
+                        .map(ConfigurationCondition::create);
     }
 
     @Override
-    public TypeResult<Class<?>> resolveTypeResult(String typeName) {
+    public TypeResult<ConditionalElement<Class<?>>> resolveType(ConfigurationCondition condition, String typeName) {
+        String name = canonicalizeTypeName(typeName);
+        TypeResult<Class<?>> clazz = classLoader.findClass(name);
+        return clazz.map(c -> new ConditionalElement<>(condition, c));
+    }
+
+    private static String canonicalizeTypeName(String typeName) {
         String name = typeName;
         if (name.indexOf('[') != -1) {
             /* accept "int[][]", "java.lang.String[]" */
             name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
         }
-        return classLoader.findClass(name);
+        return name;
     }
 
     @Override
-    public void registerPublicClasses(Class<?> type) {
-        registry.register(type.getClasses());
+    public void registerPublicClasses(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), type.getElement().getClasses());
     }
 
     @Override
-    public void registerDeclaredClasses(Class<?> type) {
-        registry.register(type.getDeclaredClasses());
+    public void registerDeclaredClasses(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), type.getElement().getDeclaredClasses());
     }
 
     @Override
-    public void registerPublicFields(Class<?> type) {
-        registry.register(false, type.getFields());
+    public void registerPublicFields(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), false, type.getElement().getFields());
     }
 
     @Override
-    public void registerDeclaredFields(Class<?> type) {
-        registry.register(false, type.getDeclaredFields());
+    public void registerDeclaredFields(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), false, type.getElement().getDeclaredFields());
     }
 
     @Override
-    public void registerPublicMethods(Class<?> type) {
-        registry.register(type.getMethods());
+    public void registerPublicMethods(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), type.getElement().getMethods());
     }
 
     @Override
-    public void registerDeclaredMethods(Class<?> type) {
-        registry.register(type.getDeclaredMethods());
+    public void registerDeclaredMethods(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), type.getElement().getDeclaredMethods());
     }
 
     @Override
-    public void registerPublicConstructors(Class<?> type) {
-        registry.register(type.getConstructors());
+    public void registerPublicConstructors(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), type.getElement().getConstructors());
     }
 
     @Override
-    public void registerDeclaredConstructors(Class<?> type) {
-        registry.register(type.getDeclaredConstructors());
+    public void registerDeclaredConstructors(ConditionalElement<Class<?>> type) {
+        registry.register(type.getCondition(), type.getElement().getDeclaredConstructors());
     }
 
     @Override
-    public void registerField(Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
-        registry.register(allowWrite, type.getDeclaredField(fieldName));
+    public void registerField(ConditionalElement<Class<?>> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
+        registry.register(type.getCondition(), allowWrite, type.getElement().getDeclaredField(fieldName));
     }
 
     @Override
-    public boolean registerAllMethodsWithName(Class<?> type, String methodName) {
+    public boolean registerAllMethodsWithName(ConditionalElement<Class<?>> type, String methodName) {
         boolean found = false;
-        Executable[] methods = type.getDeclaredMethods();
+        Executable[] methods = type.getElement().getDeclaredMethods();
         for (Executable method : methods) {
             if (method.getName().equals(methodName)) {
-                registry.register(method);
+                registry.register(type.getCondition(), method);
                 found = true;
             }
         }
@@ -126,20 +136,20 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public boolean registerAllConstructors(Class<?> clazz) {
-        Executable[] methods = clazz.getDeclaredConstructors();
+    public boolean registerAllConstructors(ConditionalElement<Class<?>> type) {
+        Executable[] methods = type.getElement().getDeclaredConstructors();
         for (Executable method : methods) {
-            registry.register(method);
+            registry.register(type.getCondition(), method);
         }
         return methods.length > 0;
     }
 
     @Override
-    public void registerMethod(Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
-        Class<?>[] parameterTypesArray = methodParameterTypes.toArray(new Class<?>[0]);
+    public void registerMethod(ConditionalElement<Class<?>> type, String methodName, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
+        Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
         Method method;
         try {
-            method = type.getDeclaredMethod(methodName, parameterTypesArray);
+            method = type.getElement().getDeclaredMethod(methodName, parameterTypesArray);
         } catch (NoClassDefFoundError e) {
             /*
              * getDeclaredMethod() builds a set of all the declared methods, which can fail when a
@@ -150,27 +160,33 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
              * precisely because the application used getMethod() instead of getDeclaredMethod().
              */
             try {
-                method = type.getMethod(methodName, parameterTypesArray);
+                method = type.getElement().getMethod(methodName, parameterTypesArray);
             } catch (Throwable ignored) {
                 throw e;
             }
         }
-        registry.register(method);
+        registry.register(type.getCondition(), method);
     }
 
     @Override
-    public void registerConstructor(Class<?> clazz, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
-        Class<?>[] parameterTypesArray = methodParameterTypes.toArray(new Class<?>[0]);
-        registry.register(clazz.getDeclaredConstructor(parameterTypesArray));
+    public void registerConstructor(ConditionalElement<Class<?>> type, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
+        Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
+        registry.register(type.getCondition(), type.getElement().getDeclaredConstructor(parameterTypesArray));
+    }
+
+    private static Class<?>[] getParameterTypes(List<ConditionalElement<Class<?>>> methodParameterTypes) {
+        return methodParameterTypes.stream()
+                        .map(ConditionalElement::getElement)
+                        .toArray(Class<?>[]::new);
     }
 
     @Override
-    public String getTypeName(Class<?> type) {
-        return type.getTypeName();
+    public String getTypeName(ConditionalElement<Class<?>> type) {
+        return type.getElement().getTypeName();
     }
 
     @Override
-    public String getSimpleName(Class<?> type) {
-        return ClassUtil.getUnqualifiedName(type);
+    public String getSimpleName(ConditionalElement<Class<?>> type) {
+        return ClassUtil.getUnqualifiedName(type.getElement());
     }
 }

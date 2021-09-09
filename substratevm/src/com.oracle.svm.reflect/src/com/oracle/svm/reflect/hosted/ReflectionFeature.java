@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
@@ -34,7 +33,9 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.hosted.FallbackFeature;
@@ -82,7 +83,7 @@ public final class ReflectionFeature implements GraalFeature {
             ImageSingletons.add(ReflectionSubstitutionType.Factory.class, new ReflectionSubstitutionType.Factory());
         }
 
-        ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
+        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
                         ConfigurationFiles.Options.ReflectionConfigurationFiles, ConfigurationFiles.Options.ReflectionConfigurationResources,
                         ConfigurationFile.REFLECTION.getFileName());
@@ -92,7 +93,14 @@ public final class ReflectionFeature implements GraalFeature {
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /* duplicated to reduce the number of analysis iterations */
+        reflectionData.flushConditionalConfiguration(access);
+    }
+
+    @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
+        reflectionData.flushConditionalConfiguration(access);
         reflectionData.duringAnalysis(access);
     }
 
