@@ -101,6 +101,8 @@ public final class Encodings {
 
         public abstract boolean isFixedCodePointWidth(CodePointSet set);
 
+        public abstract boolean isUnicode();
+
         public abstract AbstractStringBuffer createStringBuffer(int capacity);
 
         public abstract DFAStateNode.LoopOptimizationNode extractLoopOptNode(CodePointSet loopCPS);
@@ -142,6 +144,11 @@ public final class Encodings {
 
             @Override
             public boolean isFixedCodePointWidth(CodePointSet set) {
+                return true;
+            }
+
+            @Override
+            public boolean isUnicode() {
                 return true;
             }
 
@@ -221,6 +228,11 @@ public final class Encodings {
             }
 
             @Override
+            public boolean isUnicode() {
+                return true;
+            }
+
+            @Override
             public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
                 if (cps.inverseGetMax(this) <= 0xffff) {
                     char[] indexOfChars = cps.inverseToCharArray(this);
@@ -274,7 +286,7 @@ public final class Encodings {
 
             @Override
             public void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer) {
-                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.BYTE_RANGE, Constants.BMP_RANGE_WITHOUT_LATIN1, Constants.ASTRAL_SYMBOLS);
+                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.BYTE_RANGE, Constants.BMP_RANGE_WITHOUT_LATIN1, Constants.ASTRAL_SYMBOLS_AND_LONE_SURROGATES);
             }
 
             @Override
@@ -312,6 +324,11 @@ public final class Encodings {
 
             @Override
             public boolean isFixedCodePointWidth(CodePointSet set) {
+                return true;
+            }
+
+            @Override
+            public boolean isUnicode() {
                 return true;
             }
 
@@ -400,6 +417,11 @@ public final class Encodings {
             }
 
             @Override
+            public boolean isUnicode() {
+                return true;
+            }
+
+            @Override
             public StringBufferUTF8 createStringBuffer(int capacity) {
                 return new StringBufferUTF8(capacity);
             }
@@ -425,7 +447,8 @@ public final class Encodings {
 
             @Override
             public void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer) {
-                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.ASCII_RANGE, Constants.UTF8_TWO_BYTE_RANGE, Constants.UTF8_THREE_BYTE_RANGE, Constants.ASTRAL_SYMBOLS);
+                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.ASCII_RANGE, Constants.UTF8_TWO_BYTE_RANGE, Constants.UTF8_THREE_BYTE_RANGE,
+                                Constants.ASTRAL_SYMBOLS);
             }
 
             @Override
@@ -463,6 +486,11 @@ public final class Encodings {
             @Override
             public boolean isFixedCodePointWidth(CodePointSet set) {
                 return true;
+            }
+
+            @Override
+            public boolean isUnicode() {
+                return false;
             }
 
             @Override

@@ -56,8 +56,10 @@ public abstract class LibraryExport<T extends Library> {
     static final String GENERATED_CLASS_SUFFIX = "Gen";
 
     private final Class<?> receiverClass;
-    private final Class<? extends T> library;
+    private final Class<T> library;
     private final boolean defaultExport;
+    private final boolean aot;
+    final int aotPriority;
 
     Class<?> registerClass;
 
@@ -67,9 +69,21 @@ public abstract class LibraryExport<T extends Library> {
      * @since 19.0
      */
     protected LibraryExport(Class<? extends T> library, Class<?> receiverClass, boolean defaultExport) {
-        this.library = library;
+        this(library, receiverClass, defaultExport, false, 0);
+    }
+
+    /**
+     * Constructor for generated code. Do not call manually.
+     *
+     * @since 21.2
+     */
+    @SuppressWarnings("unchecked")
+    protected LibraryExport(Class<? extends T> library, Class<?> receiverClass, boolean defaultExport, boolean aot, int aotPriority) {
+        this.library = (Class<T>) library;
         this.receiverClass = receiverClass;
         this.defaultExport = defaultExport;
+        this.aot = aot;
+        this.aotPriority = aotPriority;
     }
 
     /**
@@ -86,6 +100,10 @@ public abstract class LibraryExport<T extends Library> {
      */
     protected abstract T createCached(Object receiver);
 
+    final boolean isAOT() {
+        return aot;
+    }
+
     final boolean isDefaultExport() {
         return defaultExport;
     }
@@ -94,7 +112,7 @@ public abstract class LibraryExport<T extends Library> {
         return receiverClass;
     }
 
-    final Class<? extends T> getLibrary() {
+    final Class<T> getLibrary() {
         return library;
     }
 

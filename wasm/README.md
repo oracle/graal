@@ -12,50 +12,86 @@ Feedback, bug reports, and open-source contributions are welcome!
 
 ## Building GraalWasm
 
+### Prerequisits
+
+- Python 3 (required by `mx`)
+- git (to download, update, and locate repositories)
+- A [JVMCI-enabled JDK 8](https://github.com/graalvm/graal-jvmci-8/releases) or a newer JDK version (JDK 9+)
+- GCC for translating C files
+
+### Building
+
 To build GraalWasm, you need to follow the standard workflow for Graal projects.
 We summarize the basic steps below:
 
-0. Download the Mx tool from [GitHub](https://github.com/graalvm/mx), and put the `mx` script to your `PATH`.
-1. Clone GraalVM from [GitHub](https://github.com/oracle/graal).
-2. Make sure that you have the latest [JVMCI-enabled JDK](https://github.com/graalvm/openjdk8-jvmci-builder).
-3. Set `JAVA_HOME` to point to your JVMCI-enabled JDK.
-4. In the `wasm` subdirectory of the GraalVM project, run:
-
+1. Create a new folder where your repositories `mx` and `graal` should be located
+```bash
+mkdir graalvm
+cd graalvm
 ```
-$ mx --dy /truffle,/compiler build
+2. Clone `mx` and add it to the PATH
+
+```bash
+git clone https://github.com/graalvm/mx.git
+export PATH=$PWD/mx:$PATH
 ```
 
-These steps will build the `wasm.jar` file in `mxbuild/dists/jdk<version>` directory,
+3. Clone the `graal` repository and enter the wasm directory.
+
+```bash
+git clone https://github.com/oracle/graal.git
+cd graal/wasm
+```
+
+4. Set JAVA_HOME
+
+```bash
+export JAVA_HOME=[path to JDK]
+```
+
+5. Build the project
+```bash
+mx --dy /truffle,/compiler build
+```
+
+These steps will build the `wasm.jar` file in the `mxbuild/dists/jdk<version>` directory,
 which contains the GraalWasm implementation.
 
 
-## Running the basic tests
+## Tests and Benchmarks
 
-The `build` command will also create the `wasm-tests.jar`, which contains the main test cases.
-After building GraalWasm, the tests can be run as follows:
+### Test setup
 
-1. Download the binary of the [WebAssembly binary toolkit](https://github.com/WebAssembly/wabt).
-2. Set the `WABT_DIR` variable to the path to the root folder of the WebAssembly binary toolkit.
-3. Run a specific test suite. The following command runs all the test suites:
+The `build` command will also create the `wasm-tests.jar`, which contains the main test cases. To run these tests, the WebAssembly binary toolkit is needed.
 
+1. Download the binary of the [WebAssembly binary toolkit(wabt)](https://github.com/WebAssembly/wabt) and extract it.
+2. Set `WABT_DIR`
+
+```bash
+export WABT_DIR=[path to wabt]/bin
+```
+
+### Run basic tests
+
+After building GraalWasm, the `WasmTestSuite` can be run as follows:
 ```
 mx --dy /truffle,/compiler --jdk jvmci unittest \
-  -Dwasmtest.watToWasmExecutable=$WABT_DIR \
+  -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*\$" \
   WasmTestSuite
 ```
 
-4. To run a specific test, you can specify a regex for its name with the `testFilter` flag.
+To run a specific test, you can specify a regex for its name with the `testFilter` flag.
    Here is an example command that runs all the tests that mention `branch` in their name:
 
 ```
 mx --dy /truffle,/compiler --jdk jvmci unittest \
-  -Dwasmtest.watToWasmExecutable=$WABT_DIR \
+  -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*branch.*\$" \
   WasmTestSuite
 ```
 
-This command results with the following output:
+This command results in the following output:
 
 ```
 --------------------------------------------------------------------------------
@@ -67,27 +103,60 @@ Finished running: BranchBlockSuite
 🍀 4/4 Wasm tests passed.
 ```
 
-The `WasmTestSuite` is the aggregation of all the basic tests.
+The `WasmTestSuite` is the aggregation of all basic tests.
 
-
-## Building the additional tests and benchmarks
+### Test setup for additional tests and benchmarks
 
 The GraalWasm repository includes a set of additional tests and benchmarks
-that are written in C, and are not a part of the default build.
+that are written in C, and are not part of the default build.
 To compile these programs, you will need to install additional dependencies on your system.
 
 To build these additional tests and benchmarks, you need to:
 
-1. Install the [Emscripten SDK]( https://github.com/emscripten-core/emsdk).
-   We currently test against Emscripten 1.39.13.
-2. Set the `EMCC_DIR` variable to the `emscripten/emscripten-1.39.13` folder of the SDK.
-3. Run the `mx emscripten-init ~/.emscripten <Emscripten-SDK-root-folder>` command.
-3. Set the `GCC_DIR` variable to the path to your GCC binary folder
-   (usually `/usr/bin`).
-4. Run the following Mx command:
+1. Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html). We currently test against Emscripten **1.39.13**.
+   
+```bash
+cd [preferred emsdk install location]
 
+# Clone repository
+
+git clone https://github.com/emscripten-core/emsdk.git
+
+# Move to folder
+
+cd emsdk
+
+# Install sdk
+
+./emsdk install [version number]
+
+# Activate sdk
+
+./emsdk activate [version number]
+
+# Set up environment
+
+source ./emsdk_env.sh
 ```
-$ mx --dy /truffle,/compiler build --all
+
+2. Set `EMCC_DIR` and `GCC_DIR`
+
+```bash
+export EMCC_DIR=[path to emsdk]/upstream/emscripten
+export GCC_DIR=[path to gcc (usually /usr/bin)]
+```
+
+3. Run `emscripten-init`
+
+```bash
+cd grallvm/graal/wasm
+mx emscripten-init ~/.emscripten [path to emsdk] --local
+```
+
+4. Build with additional dependencies
+
+```bash
+mx --dy /truffle,/compiler build --all
 ```
 
 This will build several additional JARs in `mxbuild/dists/jdk<version>`:
@@ -95,11 +164,13 @@ This will build several additional JARs in `mxbuild/dists/jdk<version>`:
 These JAR files contain `.wasm` files that correspond to the tests and the benchmarks
 whose source code is in C.
 
+### Run additional tests
+
 You can run the additional tests as follows:
 
 ```
 mx --dy /truffle,/compiler --jdk jvmci unittest \
-  -Dwasmtest.watToWasmExecutable=$WABT_DIR \
+  -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*\$" \
   CSuite
 ```
@@ -122,7 +193,7 @@ We currently have the following extra test suites:
 - `WatSuite` -- set of programs written in textual WebAssembly
 
 
-## Running the benchmarks
+### Run benchmarks
 
 The GraalWasm project includes a custom JMH-based benchmark suite,
 which is capable of running WebAssembly benchmark programs.
@@ -130,17 +201,23 @@ The benchmark programs consist of several special functions,
 most notably `benchmarkRun`, which runs the body of the benchmark.
 The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` Mx project.
 
+For the benchmarks to run `NODE_DIR` has to be set. You can use the node version that is part of emscripten, for example:
+
+```bash
+export NODE_DIR=[path to emsdk]/node/14.15.5_64bit/bin
+```
+
 After building the additional benchmarks, as described in the last section,
 they can be executed as follows:
 
 ```
 mx --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- \
-  -Dwasmbench.benchmarkName=<-benchmark-name-> -- \
-  CBenchmarkSuite
+  -Dwasmbench.benchmarkName=[benchmark-name] -- \
+  CMicroBenchmarkSuite
 ```
 
-In the previous command, replace `<-benchmark-name->` with the particular benchmark name,
-for example, `loop-posterize`.
+In the previous command, replace `[benchmark-name]` with the particular benchmark name,
+for example, `cdf`.
 This runs the JMH wrapper for the test, and produces an output similar to the following:
 
 ```
@@ -170,7 +247,7 @@ Result "com.oracle.truffle.wasm.benchcases.bench.CBenchmarkSuite.run":
 # Run complete. Total time: 00:03:47
 ```
 
-We current have the following benchmark suites:
+We currently have the following benchmark suites:
 
 - `CMicroBenchmarkSuite` -- set of programs written in C
 - `WatBenchmarkSuite` -- set of programs written in textual WebAssembly

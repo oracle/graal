@@ -49,7 +49,7 @@ final class Target_java_lang_System_Posix {
     public static long currentTimeMillis() {
         timeval timeval = StackValue.get(timeval.class);
         timezone timezone = WordFactory.nullPointer();
-        Time.gettimeofday(timeval, timezone);
+        Time.NoTransitions.gettimeofday(timeval, timezone);
         return timeval.tv_sec() * 1_000L + timeval.tv_usec() / 1_000L;
     }
 }

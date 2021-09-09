@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,6 +61,7 @@ public class Driver {
 
     public enum OS {
 
+        WINDOWS,
         DARWIN,
         LINUX;
 
@@ -71,6 +72,9 @@ public class Driver {
             }
             if (name.equals("Mac OS X") || name.equals("Darwin")) {
                 return DARWIN;
+            }
+            if (name.startsWith("Windows")) {
+                return WINDOWS;
             }
             throw new IllegalArgumentException("unknown OS: " + name);
         }

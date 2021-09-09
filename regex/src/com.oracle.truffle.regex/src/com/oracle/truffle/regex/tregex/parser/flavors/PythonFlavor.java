@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ import com.oracle.truffle.regex.RegexSource;
  *
  * @see PythonREMode
  */
-public final class PythonFlavor implements RegexFlavor {
+public final class PythonFlavor extends RegexFlavor {
 
     public static final PythonFlavor INSTANCE = new PythonFlavor(PythonREMode.None);
 
@@ -75,6 +75,7 @@ public final class PythonFlavor implements RegexFlavor {
     private final PythonREMode mode;
 
     private PythonFlavor(PythonREMode mode) {
+        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK);
         this.mode = mode;
     }
 

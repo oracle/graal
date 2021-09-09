@@ -141,10 +141,6 @@ public class FeatureImpl {
 
         @Override
         public List<Path> getApplicationModulePath() {
-            /*
-             * GR-16855: The image generator does not yet support a module path. This method will
-             * return the proper module path when module support gets implemented.
-             */
             return imageClassLoader.applicationModulePath();
         }
 
@@ -164,7 +160,7 @@ public class FeatureImpl {
         private final MetaAccessProvider metaAccess;
         private Pair<Method, CEntryPointData> mainEntryPoint;
 
-        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, Pair<Method, CEntryPointData> mainEntryPoint,
+        public AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, Pair<Method, CEntryPointData> mainEntryPoint,
                         DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.metaAccess = metaAccess;
@@ -226,7 +222,7 @@ public class FeatureImpl {
         }
 
         public boolean isReachable(AnalysisMethod method) {
-            return method.isImplementationInvoked();
+            return method.isReachable();
         }
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
@@ -252,7 +248,7 @@ public class FeatureImpl {
 
     public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess {
 
-        DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
+        public DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
         }
 
@@ -295,7 +291,7 @@ public class FeatureImpl {
 
         private final NativeLibraries nativeLibraries;
 
-        BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
+        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
         }
@@ -437,7 +433,7 @@ public class FeatureImpl {
 
         private boolean requireAnalysisIteration;
 
-        DuringAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
+        public DuringAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, nativeLibraries, debugContext);
         }
 
@@ -454,13 +450,13 @@ public class FeatureImpl {
     }
 
     public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess {
-        AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
+        public AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
 
     public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements Feature.OnAnalysisExitAccess {
-        OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
+        public OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
@@ -582,7 +578,7 @@ public class FeatureImpl {
 
     public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess {
 
-        BeforeCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
+        public BeforeCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
                         NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeBuilder);
         }
@@ -595,7 +591,7 @@ public class FeatureImpl {
     public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess {
         private Collection<CompileQueue.CompileTask> compilationTasks;
 
-        AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
+        public AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
                         Collection<CompileQueue.CompileTask> compilationTasks, NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeBuilder);
             this.compilationTasks = compilationTasks;
@@ -610,7 +606,7 @@ public class FeatureImpl {
         protected final HostedMetaAccess hMetaAccess;
         protected final NativeImageHeap heap;
 
-        AfterHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageHeap heap, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
+        public AfterHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, NativeImageHeap heap, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.heap = heap;
             this.hMetaAccess = hMetaAccess;

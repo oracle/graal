@@ -17,7 +17,7 @@ Software of the Johannes Kepler University Linz.
 
 ## Using Truffle
 
-If you are looking for documentation on how to use truffle, please consult the [user documentation](docs/README.md).
+If you are looking for documentation on how to use Truffle, please consult the documentation [here](../docs/truffle-framework/README.md) or [on the website](https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/).
 
 ## Hacking Truffle
 

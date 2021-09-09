@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.collection.ByteArrayList;
@@ -241,10 +242,14 @@ public class BinaryParser extends BinaryStreamParser {
         Assert.assertUnsignedIntLessOrEqual(sectionEndOffset, data.length, Failure.UNEXPECTED_END);
         module.allocateCustomSection(name, offset, sectionEndOffset - offset);
         if ("name".equals(name)) {
-            readNameSection();
-        } else {
-            offset = sectionEndOffset;
+            try {
+                readNameSection();
+            } catch (WasmException ex) {
+                // Malformed name section should not result in invalidation of the module
+                assert ex.getExceptionType() == ExceptionType.PARSE_ERROR;
+            }
         }
+        offset = sectionEndOffset;
     }
 
     /**
@@ -271,7 +276,7 @@ public class BinaryParser extends BinaryStreamParser {
      */
     private void readModuleName() {
         final int subsectionId = read1();
-        assert subsectionId == 2;
+        assert subsectionId == 0;
         final int size = readLength();
         // We don't currently use debug module name.
         offset += size;
@@ -288,8 +293,11 @@ public class BinaryParser extends BinaryStreamParser {
         final int size = readLength();
         final int startOffset = offset;
         final int length = readLength();
+        final int maxFunctionIndex = module.numFunctions() - 1;
         for (int i = 0; i < length; ++i) {
             final int functionIndex = readFunctionIndex();
+            assertIntLessOrEqual(0, functionIndex, "Negative function index", Failure.UNSPECIFIED_MALFORMED);
+            assertIntLessOrEqual(functionIndex, maxFunctionIndex, "Function index too large", Failure.UNSPECIFIED_MALFORMED);
             final String functionName = readName();
             module.function(functionIndex).setDebugName(functionName);
         }
@@ -677,6 +685,9 @@ public class BinaryParser extends BinaryStreamParser {
                     if (returnLength == 1) {
                         state.push(module.symbolTable().functionTypeReturnType(expectedFunctionTypeIndex));
                     }
+
+                    // Function from current context profile
+                    state.incrementProfileCount();
 
                     children.add(WasmIndirectCallNode.create());
                     final int tableIndex = read1();
@@ -1322,8 +1333,8 @@ public class BinaryParser extends BinaryStreamParser {
                 // directly.
                 final WasmMemory memory = linkedInstance.memory();
 
-                Assert.assertUnsignedIntLessOrEqual(offsetAddress, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
-                Assert.assertUnsignedIntLessOrEqual(offsetAddress + byteLength, memory.byteSize(), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
 
                 for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
                     final byte b = read1();
@@ -1576,10 +1587,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case ImportIdentifier.GLOBAL: {
                         readValueType();
-                        byte mutability = readMutability();
-                        if (mutability == GlobalModifier.MUTABLE) {
-                            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Cannot reset imports of mutable global variables (not implemented).");
-                        }
+                        readMutability();
                         globalIndex++;
                         break;
                     }
@@ -1618,10 +1626,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.GLOBAL_GET: {
                         int existingIndex = readGlobalIndex();
-                        if (module.symbolTable().globalMutability(existingIndex) == GlobalModifier.MUTABLE) {
-                            throw WasmException.create(Failure.UNSPECIFIED_UNLINKABLE, "Cannot reset global variables that were initialized " +
-                                            "with a non-constant global variable (not implemented).");
-                        }
                         final int existingAddress = instance.globalAddress(existingIndex);
                         value = globals.loadAsLong(existingAddress);
                         break;

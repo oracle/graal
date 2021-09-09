@@ -151,13 +151,13 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
 
     @SuppressWarnings("static-method")
     protected final boolean isInitialized(Instrument instrument) {
-        Object instrumentImpl = ReflectionUtils.getField(instrument, "impl");
+        Object instrumentImpl = ReflectionUtils.getField(instrument, "receiver");
         return (Boolean) ReflectionUtils.getField(instrumentImpl, "initialized");
     }
 
     @SuppressWarnings("static-method")
     protected final boolean isCreated(Instrument instrument) {
-        Object instrumentImpl = ReflectionUtils.getField(instrument, "impl");
+        Object instrumentImpl = ReflectionUtils.getField(instrument, "receiver");
         return (Boolean) ReflectionUtils.getField(instrumentImpl, "created");
     }
 
@@ -172,12 +172,12 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
     }
 
     static final com.oracle.truffle.api.source.Source sourceToImpl(Source source) {
-        return (com.oracle.truffle.api.source.Source) ReflectionUtils.getField(source, "impl");
+        return (com.oracle.truffle.api.source.Source) ReflectionUtils.getField(source, "receiver");
     }
 
     @SuppressWarnings("static-method")
     protected final com.oracle.truffle.api.source.SourceSection getSectionImpl(SourceSection sourceSection) {
-        return (com.oracle.truffle.api.source.SourceSection) ReflectionUtils.getField(sourceSection, "impl");
+        return (com.oracle.truffle.api.source.SourceSection) ReflectionUtils.getField(sourceSection, "receiver");
     }
 
     protected final SourceSection createSection(Source source, int charIndex, int length) {
@@ -187,7 +187,7 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
     }
 
     private Object getPolyglotEngine() {
-        return ReflectionUtils.getField(engine, "impl");
+        return ReflectionUtils.getField(engine, "receiver");
     }
 
     @After

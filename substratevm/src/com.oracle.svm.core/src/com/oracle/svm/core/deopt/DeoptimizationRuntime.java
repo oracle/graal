@@ -26,6 +26,7 @@ package com.oracle.svm.core.deopt;
 
 import java.util.Objects;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
@@ -54,7 +55,7 @@ public class DeoptimizationRuntime {
     @NeverInline("Access of caller frame")
     private static void deoptimize(long actionAndReason, SpeculationReason speculation) {
         /*
-         * In cases where we doeptimize because of a StackOverflowError, we do not immediately want
+         * In cases where we deoptimize because of a StackOverflowError, we do not immediately want
          * to create and throw another StackOverflowError. Therefore, we enable the yellow zone. The
          * actual deoptimization operation is a VMOperation and would enable the yellow zone anyway.
          */
@@ -84,7 +85,7 @@ public class DeoptimizationRuntime {
         }
     }
 
-    private static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp, CodePointer ip) {
+    public static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp, CodePointer ip) {
         Log log = Log.log().string("[Deoptimization initiated").newline();
 
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);
@@ -100,7 +101,10 @@ public class DeoptimizationRuntime {
         log.string("    debugId: ").signed(debugId).string("  speculation: ").string(Objects.toString(speculation)).newline();
 
         NodeSourcePosition sourcePosition = DeoptimizationSourcePositionDecoder.decode(debugId, ip);
-        if (sourcePosition != null) {
+        if (sourcePosition == null || !SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
+            log.string("    To see the stack trace that triggered deoptimization, build the native image with -H:+IncludeNodeSourcePositions and run with --engine.NodeSourcePositions");
+            log.newline();
+        } else {
             log.string("    stack trace that triggered deoptimization:").newline();
             NodeSourcePosition cur = sourcePosition;
             while (cur != null) {

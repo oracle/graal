@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -125,6 +125,26 @@ public class GraalError extends Error {
     public static void guarantee(boolean condition, String msg, Object arg1, Object arg2, Object arg3) {
         if (!condition) {
             throw new GraalError("failed guarantee: " + msg, arg1, arg2, arg3);
+        }
+    }
+
+    /**
+     * Checks a given condition and throws a {@link GraalError} if it is false. Guarantees are
+     * stronger than assertions in that they are always checked. Error messages for guarantee
+     * violations should clearly indicate the nature of the problem as well as a suggested solution
+     * if possible.
+     *
+     * @param condition the condition to check
+     * @param msg the message that will be associated with the error, in
+     *            {@link String#format(String, Object...)} syntax
+     * @param arg1 argument to the format string in {@code msg}
+     * @param arg2 argument to the format string in {@code msg}
+     * @param arg3 argument to the format string in {@code msg}
+     * @param arg4 argument to the format string in {@code msg}
+     */
+    public static void guarantee(boolean condition, String msg, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (!condition) {
+            throw new GraalError("failed guarantee: " + msg, arg1, arg2, arg3, arg4);
         }
     }
 

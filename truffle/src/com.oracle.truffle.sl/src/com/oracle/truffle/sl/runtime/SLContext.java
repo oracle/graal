@@ -48,13 +48,16 @@ import java.io.PrintWriter;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
@@ -67,6 +70,7 @@ import com.oracle.truffle.sl.builtins.SLImportBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLIsExecutableBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLIsInstanceBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLIsNullBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLJavaTypeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLNewObjectBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
@@ -76,6 +80,7 @@ import com.oracle.truffle.sl.builtins.SLReadlnBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLTypeOfBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLWrapPrimitiveBuiltinFactory;
+import org.graalvm.polyglot.Context;
 
 /**
  * The run-time state of SL during execution. The context is created by the {@link SLLanguage}. It
@@ -88,7 +93,7 @@ import com.oracle.truffle.sl.builtins.SLWrapPrimitiveBuiltinFactory;
 public final class SLContext {
 
     private final SLLanguage language;
-    private final Env env;
+    @CompilationFinal private Env env;
     private final BufferedReader input;
     private final PrintWriter output;
     private final SLFunctionRegistry functionRegistry;
@@ -105,6 +110,17 @@ public final class SLContext {
         for (NodeFactory<? extends SLBuiltinNode> builtin : externalBuiltins) {
             installBuiltin(builtin);
         }
+    }
+
+    /**
+     * Patches the {@link SLContext} to use a new {@link Env}. The method is called during the
+     * native image execution as a consequence of {@link Context#create(java.lang.String...)}.
+     *
+     * @param newEnv the new {@link Env} to use.
+     * @see TruffleLanguage#patchContext(Object, Env)
+     */
+    public void patchContext(Env newEnv) {
+        this.env = newEnv;
     }
 
     /**
@@ -158,6 +174,7 @@ public final class SLContext {
         installBuiltin(SLWrapPrimitiveBuiltinFactory.getInstance());
         installBuiltin(SLTypeOfBuiltinFactory.getInstance());
         installBuiltin(SLIsInstanceBuiltinFactory.getInstance());
+        installBuiltin(SLJavaTypeBuiltinFactory.getInstance());
     }
 
     public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {
@@ -214,8 +231,10 @@ public final class SLContext {
         return (TruffleObject) env.getPolyglotBindings();
     }
 
-    public static SLContext getCurrent() {
-        return SLLanguage.getCurrentContext();
+    private static final ContextReference<SLContext> REFERENCE = ContextReference.create(SLLanguage.class);
+
+    public static SLContext get(Node node) {
+        return REFERENCE.get(node);
     }
 
 }

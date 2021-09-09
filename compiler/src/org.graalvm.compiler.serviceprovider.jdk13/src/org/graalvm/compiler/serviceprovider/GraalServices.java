@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,7 +64,7 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
 /**
- * JDK 13+ version of {@link GraalServices}.
+ * JDK 13..15 version of {@link GraalServices}.
  */
 public final class GraalServices {
 

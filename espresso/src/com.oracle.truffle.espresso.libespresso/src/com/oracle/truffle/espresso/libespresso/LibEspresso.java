@@ -50,12 +50,20 @@ public class LibEspresso {
         }
         // TODO use Launcher infra to parse graalvm specific options
         Context.Builder builder = Context.newBuilder().allowAllAccess(true);
+
+        // Since Espresso has a verifier, the Static Object Model does not need to perform shape
+        // checks and can use unsafe casts.
+        // This option needs to be set before calling `Arguments.setupContext()` so that cmd line
+        // args can override the default behavior.
+        builder.option("engine.RelaxStaticObjectSafetyChecks", "true");
+
         int result = Arguments.setupContext(builder, args);
         if (result != JNIErrors.JNI_OK()) {
             return result;
         }
         // Use the nuclear option for System.exit
         builder.option("java.ExitHost", "true");
+        builder.option("java.EnableSignals", "true");
         builder.option("java.ExposeNativeJavaVM", "true");
         Context context = builder.build();
         context.enter();

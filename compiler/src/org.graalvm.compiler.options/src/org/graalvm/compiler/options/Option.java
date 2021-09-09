@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import org.graalvm.options.OptionDescriptor;
 
 /**
  * Describes the attributes of an option whose {@link OptionKey value} is in a static field
@@ -74,4 +76,9 @@ public @interface Option {
      * Deprecated option.
      */
     boolean deprecated() default false;
+
+    /**
+     * The deprecation reason and the recommended replacement.
+     */
+    String deprecationMessage() default "";
 }

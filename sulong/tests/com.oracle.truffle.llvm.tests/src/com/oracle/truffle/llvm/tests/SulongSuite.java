@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.tests;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -43,12 +42,12 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
-@Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
+@Parameterized.UseParametersRunnerFactory(CommonTestUtils.ExcludingParametersFactory.class)
 public class SulongSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
+        Path suitesPath = new File(TestOptions.getTestDistribution("SULONG_STANDALONE_TEST_SUITES")).toPath();
         return TestCaseCollector.collectTestCases(SulongSuite.class, suitesPath, SulongSuite::isReference);
     }
 
@@ -58,14 +57,5 @@ public class SulongSuite extends BaseSuiteHarness {
 
     private static Stream<Path> pathStream(Path path) {
         return StreamSupport.stream(path.spliterator(), false);
-    }
-
-    @Override
-    protected Predicate<? super Path> getIsSulongFilter() {
-        return f -> {
-            boolean isBC = f.getFileName().toString().endsWith(".bc");
-            boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isBC || (isOut && !Platform.isDarwin());
-        };
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,13 +33,12 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
@@ -60,10 +59,10 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     private static final ByteArraySupport byteSupport = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN ? ByteArraySupport.bigEndian() : ByteArraySupport.littleEndian();
 
     /**
-     * This node initializes a block of memory with a with combination of raw bytes and explicit
-     * store nodes. When executed, it transfers all bytes from {@code data} to the target (using i8
-     * and i64 stores as appropriate), except for those covered by a node in {@code stores}. Every
-     * store node has a corresponding entry in {@code offsets} and {@sizes}.
+     * This node initializes a block of memory with a combination of raw bytes and explicit store
+     * nodes. When executed, it transfers all bytes from {@code data} to the target (using i8 and
+     * i64 stores as appropriate), except for those covered by a node in {@code stores}. Every store
+     * node has a corresponding entry in {@code offsets} and {@sizes}.
      */
     public AggregateLiteralInPlaceNode(byte[] data, LLVMOffsetStoreNode[] stores, int[] offsets, int[] sizes, int[] bufferOffsets, LLVMGlobal[] descriptors) {
         assert offsets.length == stores.length + 1 && stores.length == sizes.length;
@@ -79,18 +78,19 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
 
     @Specialization
     protected void initialize(VirtualFrame frame,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached LLVMI8OffsetStoreNode storeI8,
-                    @Cached LLVMI64OffsetStoreNode storeI64) {
-        writePrimitives(context, storeI8, storeI64);
-        writeObjects(frame, context);
+                    @Cached LLVMI64OffsetStoreNode storeI64,
+                    @Cached BranchProfile exception) {
+        LLVMContext context = getContext();
+        writePrimitives(context, storeI8, storeI64, exception);
+        writeObjects(frame, context, exception);
     }
 
-    private void writePrimitives(LLVMContext context, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64) {
+    private void writePrimitives(LLVMContext context, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64, BranchProfile exception) {
         int offset = 0;
         int nextStore = 0;
         for (int i = 0; i < descriptors.length; i++) {
-            LLVMPointer address = context.getSymbol(descriptors[i]);
+            LLVMPointer address = context.getSymbol(descriptors[i], exception);
             int bufferOffset = bufferOffsets[i];
             int bufferEnd = i == descriptors.length - 1 ? data.length : bufferOffsets[i + 1];
             while (offset < bufferEnd) {
@@ -104,11 +104,11 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     }
 
     @ExplodeLoop
-    private void writeObjects(VirtualFrame frame, LLVMContext context) {
+    private void writeObjects(VirtualFrame frame, LLVMContext context, BranchProfile exception) {
         int offset = 0;
         int nextStore = 0;
         for (int i = 0; i < descriptors.length; i++) {
-            LLVMPointer address = context.getSymbol(descriptors[i]);
+            LLVMPointer address = context.getSymbol(descriptors[i], exception);
             int bufferOffset = bufferOffsets[i];
             int bufferEnd = i == descriptors.length - 1 ? data.length : bufferOffsets[i + 1];
             while (offset < bufferEnd) {

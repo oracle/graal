@@ -25,8 +25,21 @@
 package org.graalvm.compiler.nodeinfo;
 
 /**
- * Constants representing an estimation of of the size needed to represent a compiler node in
- * machine code.
+ * Constants representing the abstract number of CPU instructions needed to represent a node. This
+ * ignores byte sizes of instructions (i.e., 32/64/variable-length).
+ *
+ * Note that the sizes specified are only estimations and should only be used to enhance performance
+ * of generated code. They should not be used to change any semantics of nodes.
+ *
+ * If a specific node has vastly different sizes based on different CPUs or how it might be
+ * potentially lowered (e.g., 1 versus 100 instructions), it should override
+ * {@code Node.estimatedNodeSize()}. Otherwise, just use the average of the different values (e.g.,
+ * if AMD64 size is 5 and AArch64 is 1, use 3).
+ *
+ * In general, the current sizes for nodes are based on domain knowledge and experience, including
+ * machine-learning based tweaking. When adding a new node, it's best to look at the cost model for
+ * similar nodes if unsure what values to specify. Benchmarking is also useful to tune model
+ * parameters.
  */
 public enum NodeSize {
 
@@ -36,6 +49,7 @@ public enum NodeSize {
      * For further information about the use of {@code SIZE_UNSET} see {@link NodeInfo#size()}.
      */
     SIZE_UNSET(0),
+
     /**
      * Nodes for which, due to arbitrary reasons, no estimation can be made either (1) statically
      * without inspecting the properties of a node or (2) at all (like e.g. for an invocation).
@@ -44,15 +58,17 @@ public enum NodeSize {
      * property to clarify why an estimation cannot be done.
      */
     SIZE_UNKNOWN(0),
+
     /**
      * Nodes for which code size information is irrelevant and can be ignored, e.g. for test nodes.
      */
     SIZE_IGNORED(0),
+
     /**
-     * Nodes that do not require any code to be generated in order to be "executed", e.g. a pinode
-     * node.
+     * Nodes that do not require any code to be generated in order to be "executed", e.g. a PiNode.
      */
     SIZE_0(0),
+
     SIZE_1(1),
     SIZE_2(2),
     SIZE_4(4),

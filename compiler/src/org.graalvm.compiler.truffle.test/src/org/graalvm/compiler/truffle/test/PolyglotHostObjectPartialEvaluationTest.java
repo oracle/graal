@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAPITest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -59,7 +60,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
     public void hasBufferElements() {
         for (final Buffer buffer : ValueAPITest.makeTestBuffers()) {
             getContext().initialize(ProxyLanguage.ID);
-            final Object bufferHostObject = ProxyLanguage.getCurrentContext().getEnv().asGuestValue(buffer);
+            final Object bufferHostObject = LanguageContext.get(null).getEnv().asGuestValue(buffer);
             final RootNode node = new RootNode(null) {
                 @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(1);
 
@@ -68,7 +69,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
                     return interop.hasBufferElements(bufferHostObject);
                 }
             };
-            assertPartialEvalEquals("constantTrue", node);
+            assertPartialEvalEquals(PolyglotHostObjectPartialEvaluationTest::constantTrue, node);
         }
     }
 
@@ -76,7 +77,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
     public void isBufferWritable() {
         for (final Buffer buffer : ValueAPITest.makeTestBuffers()) {
             getContext().initialize(ProxyLanguage.ID);
-            final Object bufferHostObject = ProxyLanguage.getCurrentContext().getEnv().asGuestValue(buffer);
+            final Object bufferHostObject = LanguageContext.get(null).getEnv().asGuestValue(buffer);
             final RootNode node = new RootNode(null) {
                 @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(1);
 
@@ -89,7 +90,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
                     }
                 }
             };
-            assertPartialEvalEquals(buffer.isReadOnly() ? "constantFalse" : "constantTrue", node);
+            assertPartialEvalEquals(buffer.isReadOnly() ? PolyglotHostObjectPartialEvaluationTest::constantFalse : PolyglotHostObjectPartialEvaluationTest::constantTrue, node);
         }
     }
 
@@ -97,7 +98,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
     public void getBufferSize() {
         for (final Buffer buffer : ValueAPITest.makeTestBuffers()) {
             getContext().initialize(ProxyLanguage.ID);
-            final Object bufferHostObject = ProxyLanguage.getCurrentContext().getEnv().asGuestValue(buffer);
+            final Object bufferHostObject = LanguageContext.get(null).getEnv().asGuestValue(buffer);
             final RootNode node = new RootNode(null) {
                 @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(1);
 
@@ -118,7 +119,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
     public void readBufferByte() {
         for (final Buffer buffer : ValueAPITest.makeTestBuffers()) {
             getContext().initialize(ProxyLanguage.ID);
-            final Object bufferHostObject = ProxyLanguage.getCurrentContext().getEnv().asGuestValue(buffer);
+            final Object bufferHostObject = LanguageContext.get(null).getEnv().asGuestValue(buffer);
             final RootNode node = new RootNode(null) {
                 @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(1);
 
@@ -142,7 +143,7 @@ public class PolyglotHostObjectPartialEvaluationTest extends PartialEvaluationTe
                 continue;
             }
             getContext().initialize(ProxyLanguage.ID);
-            final Object bufferHostObject = ProxyLanguage.getCurrentContext().getEnv().asGuestValue(buffer);
+            final Object bufferHostObject = LanguageContext.get(null).getEnv().asGuestValue(buffer);
             final RootNode node = new RootNode(null) {
                 @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(1);
 

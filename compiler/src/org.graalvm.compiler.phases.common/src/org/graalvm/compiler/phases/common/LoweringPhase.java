@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,6 +61,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -164,7 +165,8 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
             if (OptEliminateGuards.getValue(graph.getOptions())) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).isNegated() == negated &&
-                                    (!before.graph().hasValueProxies() || nodeMap.get(((GuardNode) usage).getAnchor().asNode()).isInSameOrOuterLoopOf(nodeMap.get(before)))) {
+                                    (before.graph().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) ||
+                                                    nodeMap.get(((GuardNode) usage).getAnchor().asNode()).isInSameOrOuterLoopOf(nodeMap.get(before)))) {
                         return (GuardNode) usage;
                     }
                 }
@@ -234,6 +236,9 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
     protected void run(final StructuredGraph graph, CoreProviders context) {
         lower(graph, context, LoweringMode.LOWERING);
         assert checkPostLowering(graph, context);
+        if (loweringStage == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+            graph.setAfterStage(StageFlag.HIGH_TIER);
+        }
     }
 
     private void lower(StructuredGraph graph, CoreProviders context, LoweringMode mode) {
@@ -273,7 +278,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
                 assert postLoweringMark.equals(mark) : graph + ": lowering of " + node + " produced lowerable " + n + " that should have been recursively lowered as it introduces these new nodes: " +
                                 graph.getNewNodes(postLoweringMark).snapshot();
             }
-            if (graph.isAfterFloatingReadPhase() && n instanceof MemoryKill && !(node instanceof MemoryKill) && !(node instanceof ControlSinkNode)) {
+            if (graph.isAfterStage(StageFlag.FLOATING_READS) && n instanceof MemoryKill && !(node instanceof MemoryKill) && !(node instanceof ControlSinkNode)) {
                 /*
                  * The lowering introduced a MemoryCheckpoint but the current node isn't a
                  * checkpoint. This is only OK if the locations involved don't affect the memory

@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.truffle.TruffleFeature;
+import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -54,7 +54,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
      * at one point in time (or not an entry point, if invalid). Must never be {@code null}.
      * <p>
      * Does not need to be volatile because it is modified only in safepoint operations. Reads of
-     * this field must be done carefully placed so they cannot float across safepoint checks.
+     * this field must be done carefully so they cannot float across safepoint checks.
      */
     protected SubstrateOptimizedCallTargetInstalledCode installedCode;
 
@@ -123,7 +123,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public SubstrateOptimizedCallTargetInstalledCode createSubstrateInstalledCode() {
-        assert TruffleFeature.Support.isIsolatedCompilation() : "Must be called only with isolated compilation";
+        assert TruffleSupport.isIsolatedCompilation() : "Must be called only with isolated compilation";
         return createInstalledCode();
     }
 

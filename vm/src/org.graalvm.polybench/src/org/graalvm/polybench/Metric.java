@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,9 @@ package org.graalvm.polybench;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Handler;
+
+import org.graalvm.polyglot.Value;
 
 @SuppressWarnings("unused")
 interface Metric {
@@ -46,6 +49,16 @@ interface Metric {
      */
     default Map<String, String> getEngineOptions(Config config) {
         return Collections.emptyMap();
+    }
+
+    /**
+     * Allows Metric to forward engine logging into supplied logger.
+     */
+    default Handler getLogHandler() {
+        return null;
+    }
+
+    default void parseBenchSpecificOptions(Value runner) {
     }
 
     default void beforeIteration(boolean warmup, int iteration, Config config) {

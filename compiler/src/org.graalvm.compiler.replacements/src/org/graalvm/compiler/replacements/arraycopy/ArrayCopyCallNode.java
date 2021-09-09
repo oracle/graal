@@ -36,8 +36,8 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -67,6 +67,16 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
+/**
+ * Implements {@link System#arraycopy} via a {@linkplain ForeignCallNode call} to specialized stubs
+ * based on the element type and memory properties.
+ *
+ * The target of the call is queried via {@link ArrayCopyLookup#lookupArraycopyDescriptor}.
+ *
+ * @see GenericArrayCopyCallNode A generic {@link System#arraycopy} stub call node.
+ * @see CheckcastArrayCopyCallNode A {@link System#arraycopy} stub call node that performs a fast
+ *      check cast.
+ */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, MemoryAccess, Canonicalizable {
 

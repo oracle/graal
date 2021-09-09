@@ -29,39 +29,29 @@
  */
 package com.oracle.truffle.llvm.tests.options;
 
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.junit.Assume;
 
 public final class TestOptions {
-    public static final String[] FILE_EXTENSION_FILTER = getFileExtensions();
     public static final String TEST_DISCOVERY_PATH = System.getProperty("sulongtest.testDiscoveryPath");
     public static final String TEST_AOT_IMAGE = System.getProperty("sulongtest.testAOTImage");
     public static final String TEST_AOT_ARGS = System.getProperty("sulongtest.testAOTArgs");
     public static final String TEST_FILTER = System.getProperty("sulongtest.testFilter");
     public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
     public static final String CONFIG_ROOT = System.getProperty("sulongtest.configRoot");
-    public static final String TEST_SUITE_PATH = getTestDistribution("SULONG_TEST_SUITES");
-    public static final String EXTERNAL_TEST_SUITE_PATH = System.getProperty("sulongtest.externalTestSuitePath");
-    public static final String TEST_SOURCE_PATH = System.getProperty("sulongtest.testSourcePath");
-    public static final String TEST_CONFIG_PATH = System.getProperty("sulongtest.testConfigPath");
-
-    private static String[] getFileExtensions() {
-        String property = System.getProperty("sulongtest.fileExtensionFilter");
-        if (property != null && property.length() > 0) {
-            return property.split(":");
-        } else {
-            return new String[0];
-        }
-    }
 
     /**
-     * Gets the path of an mx test distribution.
+     * Gets the path of an mx test distribution. The
+     * {@link TestEngineConfig#getDistributionSuffix()} is added to the provided
+     * {@code distribution} name.
      * 
      * The properties are set in {@code mx_sulong} via (@code mx_unittest.add_config_participant}.
      */
     public static String getTestDistribution(String distribution) {
-        String property = System.getProperty("sulongtest.path." + distribution);
+        TestEngineConfig config = TestEngineConfig.getInstance();
+        String property = System.getProperty("sulongtest.path." + distribution + config.getDistributionSuffix());
         if (property == null) {
-            throw new RuntimeException("Test distribution does not exist: " + distribution);
+            throw new RuntimeException("Test distribution " + distribution + " does not exist for configuration " + config);
         }
         return property;
     }

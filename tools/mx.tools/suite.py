@@ -1,10 +1,32 @@
+#
+# Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
 suite = {
-    "mxversion": "5.271.0",
+    "mxversion": "5.300.4",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "21.1.0",
+    "version" : "21.3.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -95,11 +117,26 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
+        "org.graalvm.tools.insight.heap" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "org.graalvm.tools.insight",
+            ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+            ],
+            "javaCompliance" : "8+",
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "workingSets" : "Tools",
+        },
         "org.graalvm.tools.insight.test" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.agentscript",
+                "org.graalvm.tools.insight.heap",
                 "truffle:TRUFFLE_TEST",
                 "mx:JUNIT"
             ],
@@ -278,31 +315,31 @@ suite = {
           "sourceSha1" : "298db2b3c573f9e76a5a7a60a49c7ceb5ddd35f7",
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944.tar.gz"],
-            "sha1" : "bcad60202ad88475c24648b0aed61732c6e769cd",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071.tar.gz"],
+            "sha1" : "2a351659ef8604351ad212c16e24918357338fc3",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944-linux-amd64.tar.gz"],
-                        "sha1" : "3f276219657688958f919110b12f329a080326c1",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071-linux-amd64.tar.gz"],
+                        "sha1" : "215cb6990ce88ebf6b2891fc9ca249ec358ed54c",
                     },
                     "aarch64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944-linux-aarch64.tar.gz"],
-                        "sha1" : "bb15cff42c33966f034544599c7dd8458ed0b583",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071-linux-aarch64.tar.gz"],
+                        "sha1" : "de59d5a642fe861ca4a9a475fa17dcd7f18137ab",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944-macosx-x86_64.tar.gz"],
-                        "sha1" : "4caf27fd64a4687b1d3d7513a18d55c920122932",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071-macosx-x86_64.tar.gz"],
+                        "sha1" : "0191b79501cba23771257c7e988a8dda0771af17",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944-windows-amd64.tar.gz"],
-                        "sha1" : "81c6e3cea89d0786a45ec940b2cbd05c3624e6e6",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071-windows-amd64.tar.gz"],
+                        "sha1" : "656dfd0e813d2d82eff934084aeceac23027a47b",
                     }
                 },
             }
@@ -376,6 +413,29 @@ suite = {
             },
             "description" : "The Ultimate Insights Gathering Platform",
         },
+        "INSIGHT_HEAP": {
+            "subDir": "src",
+            # This distribution defines a module.
+            "moduleInfo" : {
+                "name" : "org.graalvm.tools.insight.heap",
+                "requiresConcealed" : {
+                    "org.graalvm.truffle" : [
+                        "com.oracle.truffle.api.instrumentation",
+                    ],
+                },
+            },
+            "dependencies": [
+                "org.graalvm.tools.insight.heap"
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+                "INSIGHT",
+            ],
+            "maven" : {
+              "artifactId" : "insight-heap",
+            },
+            "description" : "Heap Dump for GraalVM Insight",
+        },
         "INSIGHT_TEST": {
             "subDir": "src",
             "dependencies": [
@@ -384,6 +444,7 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_TEST",
                 "INSIGHT",
+                "INSIGHT_HEAP",
             ],
             "description" : "Tests for the Ultimate Insights Gathering Platform",
             "maven" : False,
@@ -391,6 +452,13 @@ suite = {
         "INSIGHT_GRAALVM_SUPPORT" : {
             "native" : True,
             "description" : "The Ultimate Insights Gathering Platform for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-insight.properties",
+            },
+        },
+        "INSIGHT_HEAP_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Heap Dump for Insight for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-insight.properties",
             },

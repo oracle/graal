@@ -78,10 +78,10 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                     AllowAssumptions allowAssumptions, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
-                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, boolean needsExplicitException) {
         super(architecture, graph, providers, loopExplosionPlugin,
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
-                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>());
+                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), needsExplicitException);
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;

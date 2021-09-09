@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -122,6 +122,7 @@ public enum Failure {
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),
 
     CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
+    MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),
 
     // TODO(mbovel): replace UNSPECIFIED_INTERNAL usages with assertInternal/shouldNotReachHere.
     UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified");
@@ -149,13 +150,4 @@ public enum Failure {
         this.name = name;
     }
 
-    public static Failure fromArithmeticException(ArithmeticException exception) {
-        switch (exception.getMessage()) {
-            case "/ by zero":
-            case "BigInteger divide by zero":
-                return Failure.INT_DIVIDE_BY_ZERO;
-            default:
-                throw exception;
-        }
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,71 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ThreadLocalAction;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 
 final class PolyglotStackFramesRetriever {
-    @SuppressWarnings("unused")
-    static FrameInstance[][] getStackFrames(Thread[] threads, int maxFrames) {
-        return new FrameInstance[0][0];
+
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+    static FrameInstance[][] getStackFrames(PolyglotContextImpl context) {
+        Map<Thread, List<FrameInstance>> frameInstancesByThread = new ConcurrentHashMap<>();
+        Thread[] threads;
+        Future<Void> future;
+        synchronized (context) {
+            threads = context.getSeenThreads().keySet().toArray(new Thread[0]);
+            if (!context.state.isClosed()) {
+                future = context.threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, new ThreadLocalAction(false, false) {
+                    @Override
+                    protected void perform(Access access) {
+                        List<FrameInstance> frameInstances = new ArrayList<>();
+                        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                            @Override
+                            public Object visitFrame(FrameInstance frameInstance) {
+                                return frameInstances.add(frameInstance);
+                            }
+                        });
+                        frameInstancesByThread.put(access.getThread(), frameInstances);
+                    }
+                }, false);
+            } else {
+                future = CompletableFuture.completedFuture(null);
+            }
+        }
+
+        TruffleSafepoint.setBlockedThreadInterruptible(context.engine.getUncachedLocation(), new TruffleSafepoint.Interruptible<Future<Void>>() {
+            @Override
+            public void apply(Future<Void> arg) throws InterruptedException {
+                try {
+                    arg.get();
+                } catch (ExecutionException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+            }
+        }, future);
+
+        FrameInstance[][] toRet = new FrameInstance[threads.length][];
+        for (int i = 0; i < threads.length; i++) {
+            Thread thread = threads[i];
+            List<FrameInstance> frameInstances = frameInstancesByThread.get(thread);
+            if (frameInstances != null) {
+                toRet[i] = frameInstances.toArray(new FrameInstance[0]);
+            } else {
+                toRet[i] = new FrameInstance[0];
+            }
+        }
+
+        return toRet;
     }
 }

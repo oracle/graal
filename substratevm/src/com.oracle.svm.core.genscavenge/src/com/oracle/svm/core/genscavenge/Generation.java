@@ -68,6 +68,4 @@ abstract class Generation {
      *         or a new Object if promotion was done by copying.
      */
     protected abstract Object promoteObject(Object original, UnsignedWord header);
-
-    protected abstract boolean verify(HeapVerifier.Occasion occasion);
 }

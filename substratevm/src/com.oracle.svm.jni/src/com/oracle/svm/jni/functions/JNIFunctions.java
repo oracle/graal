@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -55,7 +56,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -67,6 +68,7 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -77,7 +79,6 @@ import com.oracle.svm.jni.JNIObjectHandles;
 import com.oracle.svm.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.jni.JNIThreadLocalPinnedObjects;
 import com.oracle.svm.jni.JNIThreadOwnedMonitors;
-import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.jni.access.JNIAccessibleMethodDescriptor;
 import com.oracle.svm.jni.access.JNINativeLinkage;
@@ -113,20 +114,20 @@ import sun.misc.Unsafe;
 
 /**
  * Implementations of the functions defined by the Java Native Interface.
- * 
+ *
  * Not all functions are currently implemented. Some functions are generated, and therefore not
  * defined in this class:
- * 
+ *
  * <ul>
  * <li>Field getters and setters ({@code Get<Type>Field}, {@code Set<Type>Field},
  * {@code GetStatic<Type>Field}, and {@code SetStatic<Type>Field}) are generated in
  * {@link JNIFieldAccessorMethod}.</li>
- * 
+ *
  * <li>Operations on primitive arrays {@code New<PrimitiveType>Array},
  * {@code Get<PrimitiveType>ArrayElements}, {@code Release<PrimitiveType>ArrayElements},
  * {@code Get<PrimitiveType>ArrayRegion} and {@code Set<PrimitiveType>ArrayRegion}) are generated in
  * {@link JNIPrimitiveArrayOperationMethod}</li>
- * 
+ *
  * <li>Wrappers for the methods callable by JNI are generated in
  * {@link JNIJavaCallWrapperMethod}.</li>
  * </ul>
@@ -370,14 +371,13 @@ public final class JNIFunctions {
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);
             } else {
-                String message = clazz.getName() + '.' + name + signature;
-                JNINativeLinkage l = JNIReflectionDictionary.singleton().getClosestLinkage(declaringClass, name, signature);
-                if (l != null) {
-                    message += " (found closely matching JNI-accessible method: " +
-                                    MetaUtil.internalNameToJava(l.getDeclaringClassName(), true, false) +
-                                    "." + l.getName() + l.getDescriptor() + ")";
-                }
-                throw new NoSuchMethodError(message);
+                /*
+                 * It happens that libraries register arbitrary Java native methods from their
+                 * native code. If during analysis, we didn't reach some of those JNI methods (see
+                 * com.oracle.svm.jni.hosted.JNINativeCallWrapperSubstitutionProcessor.lookup and
+                 * com.oracle.svm.jni.access.JNIAccessFeature.duringAnalysis) we shouldn't fail:
+                 * those native methods can never be invoked.
+                 */
             }
 
             p = p.add(SizeOf.get(JNINativeMethod.class));
@@ -612,14 +612,6 @@ public final class JNIFunctions {
      * jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity);
      */
 
-    @TargetClass(className = "java.nio.DirectByteBuffer")
-    static final class Target_java_nio_DirectByteBuffer {
-        @Alias
-        Target_java_nio_DirectByteBuffer(long addr, int cap) {
-        }
-
-    }
-
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class)
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle NewDirectByteBuffer(JNIEnvironment env, WordPointer address, long capacity) {
@@ -834,11 +826,21 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @NeverInline("Access of caller frame.")
     static void FatalError(JNIEnvironment env, CCharPointer message) {
-        Log log = Log.log().autoflush(true);
-        log.string("Fatal error reported via JNI: ").string(message).newline();
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        CodePointer callerIP = KnownIntrinsics.readReturnAddress();
+        LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
+        Log log = Log.enterFatalContext(logHandler, callerIP, CTypeConversion.toJavaString(message), null);
+        if (log != null) {
+            try {
+                log.string("Fatal error reported via JNI: ").string(message).newline();
+                VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+                SubstrateDiagnostics.print(log, KnownIntrinsics.readCallerStackPointer(), callerIP);
+            } catch (Throwable ignored) {
+                /*
+                 * Ignore exceptions reported during error reporting, we are going to exit anyway.
+                 */
+            }
+        }
+        logHandler.fatalError();
     }
 
     /*
@@ -858,12 +860,10 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullWordOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIFieldId FromReflectedField(JNIEnvironment env, JNIObjectHandle fieldHandle) {
         JNIFieldId fieldId = WordFactory.zero();
-        if (JNIAccessFeature.singleton().haveJavaRuntimeReflectionSupport()) {
-            Field obj = JNIObjectHandles.getObject(fieldHandle);
-            if (obj != null) {
-                boolean isStatic = Modifier.isStatic(obj.getModifiers());
-                fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
-            }
+        Field obj = JNIObjectHandles.getObject(fieldHandle);
+        if (obj != null) {
+            boolean isStatic = Modifier.isStatic(obj.getModifiers());
+            fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
         }
         return fieldId;
     }
@@ -875,16 +875,14 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle ToReflectedField(JNIEnvironment env, JNIObjectHandle classHandle, JNIFieldId fieldId) {
         Field field = null;
-        if (JNIAccessFeature.singleton().haveJavaRuntimeReflectionSupport()) {
-            Class<?> clazz = JNIObjectHandles.getObject(classHandle);
-            if (clazz != null) {
-                String name = JNIReflectionDictionary.singleton().getFieldNameByID(clazz, fieldId);
-                if (name != null) {
-                    try {
-                        field = clazz.getDeclaredField(name);
-                    } catch (NoSuchFieldException ignored) {
-                        // proceed and return null
-                    }
+        Class<?> clazz = JNIObjectHandles.getObject(classHandle);
+        if (clazz != null) {
+            String name = JNIReflectionDictionary.singleton().getFieldNameByID(clazz, fieldId);
+            if (name != null) {
+                try {
+                    field = clazz.getDeclaredField(name);
+                } catch (NoSuchFieldException ignored) {
+                    // proceed and return null
                 }
             }
         }
@@ -898,13 +896,11 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullWordOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIMethodId FromReflectedMethod(JNIEnvironment env, JNIObjectHandle methodHandle) {
         JNIMethodId methodId = WordFactory.nullPointer();
-        if (JNIAccessFeature.singleton().haveJavaRuntimeReflectionSupport()) {
-            Executable method = JNIObjectHandles.getObject(methodHandle);
-            if (method != null) {
-                boolean isStatic = Modifier.isStatic(method.getModifiers());
-                JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-                methodId = JNIReflectionDictionary.singleton().getDeclaredMethodID(method.getDeclaringClass(), descriptor, isStatic);
-            }
+        Executable method = JNIObjectHandles.getObject(methodHandle);
+        if (method != null) {
+            boolean isStatic = Modifier.isStatic(method.getModifiers());
+            JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
+            methodId = JNIReflectionDictionary.singleton().getDeclaredMethodID(method.getDeclaringClass(), descriptor, isStatic);
         }
         return methodId;
     }
@@ -916,25 +912,23 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIObjectHandle ToReflectedMethod(JNIEnvironment env, JNIObjectHandle classHandle, JNIMethodId methodId, boolean isStatic) {
         Executable result = null;
-        if (JNIAccessFeature.singleton().haveJavaRuntimeReflectionSupport()) {
-            JNIAccessibleMethod jniMethod = JNIReflectionDictionary.getMethodByID(methodId);
-            JNIAccessibleMethodDescriptor descriptor = JNIReflectionDictionary.getMethodDescriptor(jniMethod);
-            if (descriptor != null) {
-                Class<?> clazz = jniMethod.getDeclaringClass().getClassObject();
-                if (descriptor.isConstructor()) {
-                    for (Constructor<?> ctor : clazz.getDeclaredConstructors()) {
-                        if (descriptor.equals(JNIAccessibleMethodDescriptor.of(ctor))) {
-                            result = ctor;
-                            break;
-                        }
+        JNIAccessibleMethod jniMethod = JNIReflectionDictionary.getMethodByID(methodId);
+        JNIAccessibleMethodDescriptor descriptor = JNIReflectionDictionary.getMethodDescriptor(jniMethod);
+        if (descriptor != null) {
+            Class<?> clazz = jniMethod.getDeclaringClass().getClassObject();
+            if (descriptor.isConstructor()) {
+                for (Constructor<?> ctor : clazz.getDeclaredConstructors()) {
+                    if (descriptor.equals(JNIAccessibleMethodDescriptor.of(ctor))) {
+                        result = ctor;
+                        break;
                     }
-                } else {
-                    for (Method method : clazz.getDeclaredMethods()) {
-                        if (descriptor.getName().equals(method.getName())) {
-                            if (descriptor.equals(JNIAccessibleMethodDescriptor.of(method))) {
-                                result = method;
-                                break;
-                            }
+                }
+            } else {
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (descriptor.getName().equals(method.getName())) {
+                        if (descriptor.equals(JNIAccessibleMethodDescriptor.of(method))) {
+                            result = method;
+                            break;
                         }
                     }
                 }

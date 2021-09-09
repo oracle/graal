@@ -38,7 +38,6 @@ public class SuspendedInfo {
     private final SuspendedEvent event;
     private final CallFrame[] stackFrames;
     private final Object thread;
-    private DebuggerCommand.Kind stepKind;
     private final RootNode callerRootNode;
     private boolean forceEarlyInProgress;
     private final HashMap<Object, Integer> monitorEntryCounts;
@@ -77,24 +76,12 @@ public class SuspendedInfo {
         return thread;
     }
 
-    public void recordStep(DebuggerCommand.Kind kind) {
-        stepKind = kind;
-    }
-
-    public DebuggerCommand.Kind getStepKind() {
-        return stepKind;
-    }
-
     public RootNode getCallerRootNode() {
         return callerRootNode;
     }
 
     public Frame getCallerFrame() {
         return stackFrames.length > 1 ? stackFrames[1].getFrame() : null;
-    }
-
-    public void clearStepping() {
-        stepKind = null;
     }
 
     public void setForceEarlyReturnInProgress() {

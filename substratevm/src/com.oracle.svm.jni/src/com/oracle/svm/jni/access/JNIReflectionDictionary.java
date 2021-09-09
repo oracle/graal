@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
 
-import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -48,7 +47,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
@@ -146,34 +144,6 @@ public final class JNIReflectionDictionary {
         return nativeLinkages.get(key);
     }
 
-    /**
-     * Gets the linkage for a method that most closely matches a given method description above the
-     * fuzzy matching threshold defined by {@link OptionsParser#FUZZY_MATCH_THRESHOLD}.
-     *
-     * @param declaringClass the {@linkplain JavaType#getName() name} of the class declaring the
-     *            native method
-     * @param name the name of the native method
-     * @param descriptor the {@linkplain Signature#toMethodDescriptor() descriptor} of the native
-     *            method
-     * @return the linkage that most closely matches the method described by {@code declaringClass},
-     *         {@code name} and {@code descriptor} or {@code null} if there is no close match
-     */
-    public JNINativeLinkage getClosestLinkage(String declaringClass, String name, String descriptor) {
-        JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
-        String keyString = key.toString();
-        float threshold = OptionsParser.FUZZY_MATCH_THRESHOLD;
-        JNINativeLinkage closest = null;
-        for (JNINativeLinkage l : nativeLinkages.keySet()) {
-            String s = l.toString();
-            float similarity = OptionsParser.stringSimilarity(s, keyString);
-            if (similarity > threshold) {
-                threshold = similarity;
-                closest = l;
-            }
-        }
-        return closest;
-    }
-
     public void unsetEntryPoints(String declaringClass) {
         for (JNINativeLinkage linkage : nativeLinkages.keySet()) {
             if (declaringClass.equals(linkage.getDeclaringClassName())) {
@@ -253,7 +223,7 @@ public final class JNIReflectionDictionary {
             }
             obj = p.toObject();
         }
-        return KnownIntrinsics.convertUnknownValue(obj, JNIAccessibleMethod.class);
+        return (JNIAccessibleMethod) obj;
     }
 
     private JNIAccessibleField getDeclaredField(Class<?> classObject, String name, boolean isStatic, String dumpLabel) {

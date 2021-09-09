@@ -23,9 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,10 +38,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
-public class StackWalk {
+public final class StackWalk {
     // -1 and 0 are reserved values.
     private final AtomicLong walkerIds = new AtomicLong(1);
 
@@ -111,9 +108,9 @@ public class StackWalk {
      *         {@code java.lang.StackStreamFactory.AbstractStackWalker#doStackWalk(long, int, int, int,
      *         int)} .
      */
-    public StaticObject fetchFirstBatch(@Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
+    public StaticObject fetchFirstBatch(@JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
                     int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
+                    @JavaType(Object[].class) StaticObject frames,
                     Meta meta) {
         assert synchronizedConstants(meta);
         FrameWalker fw = new FrameWalker(meta, mode);
@@ -121,7 +118,7 @@ public class StackWalk {
         Integer decodedOrNull = fw.doStackWalk(frames);
         int decoded = decodedOrNull == null ? fw.decoded() : decodedOrNull;
         if (decoded < 1) {
-            throw Meta.throwException(meta.java_lang_InternalError);
+            throw meta.throwException(meta.java_lang_InternalError);
         }
         register(fw);
         Object result = meta.java_lang_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
@@ -136,15 +133,15 @@ public class StackWalk {
      * @return The position in the buffer at the end of fetching.
      */
     public int fetchNextBatch(
-                    @SuppressWarnings("unused") @Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
+                    @SuppressWarnings("unused") @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
                     long mode, long anchor,
                     int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
+                    @JavaType(Object[].class) StaticObject frames,
                     Meta meta) {
         assert synchronizedConstants(meta);
         FrameWalker fw = getAnchored(anchor);
         if (fw == null) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "doStackWalk: corrupted buffers");
+            throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "doStackWalk: corrupted buffers");
         }
         if (batchSize <= 0) {
             return startIndex;
@@ -184,7 +181,7 @@ public class StackWalk {
         private int depth = 0;
         private int decoded = 0;
 
-        private static final int LOCATE_CALLSTACKWALk = 0;
+        private static final int LOCATE_CALLSTACKWALK = 0;
         private static final int LOCATE_STACK_BEGIN = 1;
         private static final int LOCATE_FROM = 2;
         private static final int PROCESS = 3;
@@ -209,7 +206,7 @@ public class StackWalk {
         }
 
         public void clear() {
-            state = LOCATE_CALLSTACKWALk;
+            state = LOCATE_CALLSTACKWALK;
             depth = 0;
             decoded = 0;
         }
@@ -271,7 +268,7 @@ public class StackWalk {
             Method m = root == null ? null : root.getMethod();
             if (m != null) {
                 switch (state) {
-                    case LOCATE_CALLSTACKWALk:
+                    case LOCATE_CALLSTACKWALK:
                         if (!isCallStackWalk(m)) {
                             break;
                         }
@@ -325,12 +322,13 @@ public class StackWalk {
 
         private void tryProcessFrame(FrameInstance frameInstance, Method m, int index) {
             if (getCallerClass(mode) || skipHiddenFrames(mode)) {
-                if ((m.getModifiers() & ACC_LAMBDA_FORM_HIDDEN) != 0) {
+                if (m.isHidden()) {
+                    // Skip hidden frames.
                     return;
                 }
             }
-            if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && ((m.getModifiers() & ACC_CALLER_SENSITIVE) != 0)) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
+            if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && m.isCallerSensitive()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive " + m.getNameAsString() + " method");
             }
             processFrame(frameInstance, m, index);
             decoded++;
@@ -345,7 +343,7 @@ public class StackWalk {
                 fillFrame(frameInstance, m, index);
             } else {
                 // Only class info is needed.
-                frames.putObject(m.getDeclaringKlass().mirror(), index, meta);
+                meta.getInterpreterToVM().setArrayObject(m.getDeclaringKlass().mirror(), index, frames);
             }
         }
 

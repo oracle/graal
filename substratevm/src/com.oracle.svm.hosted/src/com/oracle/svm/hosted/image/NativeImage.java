@@ -141,7 +141,7 @@ public abstract class NativeImage extends AbstractImage {
 
         uniqueEntryPoints.addAll(entryPoints);
 
-        int pageSize = NativeImageOptions.getPageSize();
+        int pageSize = SubstrateOptions.getPageSize();
         objectFile = ObjectFile.getNativeObjectFile(pageSize);
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
         wordSize = FrameAccess.wordSize();
@@ -380,7 +380,7 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     private ObjectFile.Symbol defineDataSymbol(String name, Element section, long position) {
-        return objectFile.createDefinedSymbol(name, section, position, wordSize, false, true);
+        return objectFile.createDefinedSymbol(name, section, position, wordSize, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
     }
 
     private ObjectFile.Symbol defineRelocationForSymbol(String name, long position) {
@@ -429,7 +429,7 @@ public abstract class NativeImage extends AbstractImage {
 
             // Define symbols for the sections.
             objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false);
-            objectFile.createDefinedSymbol("__svm_text_end", textSection, textSectionSize, 0, false, true);
+            objectFile.createDefinedSymbol("__svm_text_end", textSection, textSectionSize, 0, false, SubstrateOptions.InternalSymbolsAreGlobal.getValue());
             objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection, 0, 0, false, false);
             objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection, 0, 0, false, false);
 
@@ -441,8 +441,9 @@ public abstract class NativeImage extends AbstractImage {
             codeCache.writeConstants(writer, roDataBuffer);
             // - Non-heap global data goes at the beginning of the read-write data section.
             cGlobals.writeData(rwDataBuffer,
-                            (offset, symbolName) -> defineDataSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET),
-                            (offset, symbolName) -> defineRelocationForSymbol(symbolName, offset));
+                            (offset, symbolName, isGlobalSymbol) -> objectFile.createDefinedSymbol(symbolName, rwDataSection, offset + RWDATA_CGLOBALS_PARTITION_OFFSET, wordSize, false,
+                                            isGlobalSymbol || SubstrateOptions.InternalSymbolsAreGlobal.getValue()),
+                            (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
             /*
@@ -688,21 +689,6 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     /**
-     * Given a java.lang.reflect.Method, compute the symbol name of its start address (if any) in
-     * the image. The symbol name returned is the one that would be used for local references (e.g.
-     * for relocation), so is guaranteed to exist if the method is in the image. However, it is not
-     * necessarily visible for linking from other objects.
-     *
-     * @param m a java.lang.reflect.Method
-     * @return its symbol name as it would appear in the image (regardless of whether it actually
-     *         does)
-     */
-    public static String localSymbolNameForMethod(java.lang.reflect.Method m) {
-        /* We don't mangle local symbols, because they never need be referenced by an assembler. */
-        return SubstrateUtil.uniqueShortName(m);
-    }
-
-    /**
      * Given a {@link ResolvedJavaMethod}, compute what symbol name of its start address (if any) in
      * the image. The symbol name returned is the one that would be used for local references (e.g.
      * for relocation), so is guaranteed to exist if the method is in the image. However, it is not
@@ -714,7 +700,7 @@ public abstract class NativeImage extends AbstractImage {
      */
     public static String localSymbolNameForMethod(ResolvedJavaMethod sm) {
         /* We don't mangle local symbols, because they never need be referenced by an assembler. */
-        return SubstrateOptions.ImageSymbolsPrefix.getValue() + SubstrateUtil.uniqueShortName(sm);
+        return SubstrateOptions.ImageSymbolsPrefix.getValue() + (sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm));
     }
 
     /**
@@ -744,7 +730,7 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String globalSymbolNameForMethod(ResolvedJavaMethod sm) {
-        return mangleName(SubstrateUtil.uniqueShortName(sm));
+        return mangleName((sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm)));
     }
 
     @Override
@@ -891,7 +877,7 @@ public abstract class NativeImage extends AbstractImage {
                 // 1. fq with return type
                 for (Map.Entry<HostedMethod, CompilationResult> ent : codeCache.getCompilations().entrySet()) {
                     final String symName = localSymbolNameForMethod(ent.getKey());
-                    final String signatureString = SubstrateUtil.uniqueShortName(ent.getKey());
+                    final String signatureString = ent.getKey().getUniqueShortName();
                     final HostedMethod existing = methodsBySignature.get(signatureString);
                     HostedMethod current = ent.getKey();
                     if (existing != null) {

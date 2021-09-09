@@ -1,7 +1,6 @@
 # The Substrate VM Project
 
-Substrate VM is an internal project
-name for the technology behind [GraalVM Native Image](README.md).
+Substrate VM is an internal project name for the technology behind [GraalVM Native Image](../docs/reference-manual/native-image/README.md).
 This guide shows how to set up a development environment for the project.
 
 To get started, install [mx](https://github.com/graalvm/mx).
@@ -67,7 +66,7 @@ mx native-image HelloWorld -H:Dump= -H:MethodFilter=HelloWorld.*
 
 ## Options
 
-More information about options and the important distinction between hosted and runtime options is available [here](Options.md).
+More information about options and the important distinction between hosted and runtime options is available [here](../docs/reference-manual/native-image/Options.md).
 
 ## Project Structure
 
@@ -76,7 +75,7 @@ Instead, a new project is created by adding it in `suite.py` and running `mx ide
 
 ## Code Formatting
 
-Style rules and procedures for checking adherence are described in the [style guide](CodeStyle.md).
+Style rules and procedures for checking adherence are described in the [style guide](../docs/reference-manual/native-image/CodeStyle.md).
 
 ## Troubleshooting Eclipse
 
@@ -92,6 +91,10 @@ following should reset everything:
 * `mx build`
 * `mx ideinit`
 * Import all projects into Eclipse again
+
+## Usage Documentation
+
+The documentation on how to use Native Image is available [here](../docs/reference-manual/native-image/README.md) or [on the website](https://www.graalvm.org/reference-manual/native-image/).
 
 ## License
 

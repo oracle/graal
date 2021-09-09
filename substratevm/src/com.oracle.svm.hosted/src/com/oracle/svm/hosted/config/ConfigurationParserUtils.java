@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.config;
 
 import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
 
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -59,13 +58,14 @@ import com.oracle.svm.hosted.NativeImageOptions;
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<Class<?>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
-        return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader), NativeImageOptions.AllowIncompleteClasspath.getValue());
+        return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader),
+                        NativeImageOptions.AllowIncompleteClasspath.getValue(), ConfigurationFiles.Options.StrictConfiguration.getValue());
     }
 
     /**
      * Parses configurations in files specified by {@code configFilesOption} and resources specified
      * by {@code configResourcesOption} and registers the parsed elements using
-     * {@link ConfigurationParser#parseAndRegister(Reader)} .
+     * {@link ConfigurationParser#parseAndRegister} .
      *
      * @param featureName name of the feature using the configuration (e.g., "JNI")
      * @param directoryFileName file name for searches via {@link ConfigurationFiles}.
@@ -82,12 +82,8 @@ public final class ConfigurationParserUtils {
             if (!Files.exists(path)) {
                 throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);
             }
-            try (Reader reader = new FileReader(path.toFile())) {
-                doParseAndRegister(parser, reader, featureName, path, configFilesOption);
-                return 1;
-            } catch (IOException e) {
-                throw UserError.abort("Could not open %s: %s", path, e.getMessage());
-            }
+            doParseAndRegister(parser, featureName, path, configFilesOption);
+            return 1;
         }).sum();
 
         Stream<URL> configResourcesFromOption = OptionUtils.flatten(",", configResourcesOption.getValue()).stream().flatMap(s -> {
@@ -113,24 +109,23 @@ public final class ConfigurationParserUtils {
         });
         Stream<URL> resources = Stream.concat(configResourcesFromOption, ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
         parsedCount += resources.mapToInt(url -> {
-            try {
-                URLConnection urlConnection = url.openConnection();
-                urlConnection.setUseCaches(false);
-                try (Reader reader = new InputStreamReader(urlConnection.getInputStream())) {
-                    doParseAndRegister(parser, reader, featureName, url, configResourcesOption);
-                    return 1;
-                }
-            } catch (IOException e) {
-                throw UserError.abort("Could not open %s: %s", url, e.getMessage());
-            }
+            doParseAndRegister(parser, featureName, url, configResourcesOption);
+            return 1;
         }).sum();
-
         return parsedCount;
     }
 
-    private static void doParseAndRegister(ConfigurationParser parser, Reader reader, String featureName, Object location, HostedOptionKey<LocatableMultiOptionValue.Strings> option) {
+    private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location, HostedOptionKey<LocatableMultiOptionValue.Strings> option) {
         try {
-            parser.parseAndRegister(reader);
+            if (location instanceof Path) {
+                parser.parseAndRegister((Path) location);
+            } else {
+                URLConnection urlConnection = ((URL) location).openConnection();
+                urlConnection.setUseCaches(false);
+                try (Reader reader = new InputStreamReader(urlConnection.getInputStream())) {
+                    parser.parseAndRegister(reader);
+                }
+            }
         } catch (IOException | JSONParserException e) {
             String errorMessage = e.getMessage();
             if (errorMessage == null || errorMessage.isEmpty()) {

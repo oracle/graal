@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,31 +29,37 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.util.List;
-
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
+import com.oracle.truffle.llvm.runtime.LLVMElemPtrSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
+import java.util.List;
+
 public final class LLVMParserRuntime {
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
-    private final int bitcodeID;
+    private final BitcodeID bitcodeID;
     private final TruffleFile file;
     private final String libName;
     private final List<LLVMSourceFileReference> sourceFileReferences;
+    private final LibraryLocator locator;
 
-    public LLVMParserRuntime(LLVMScope fileScope, NodeFactory nodeFactory, int bitcodeID, TruffleFile file, String libName, List<LLVMSourceFileReference> sourceFileReferences) {
+    public LLVMParserRuntime(LLVMScope fileScope, NodeFactory nodeFactory, BitcodeID bitcodeID, TruffleFile file, String libName, List<LLVMSourceFileReference> sourceFileReferences,
+                    LibraryLocator locator) {
         this.fileScope = fileScope;
         this.nodeFactory = nodeFactory;
         this.bitcodeID = bitcodeID;
         this.file = file;
         this.libName = libName;
         this.sourceFileReferences = sourceFileReferences;
+        this.locator = locator;
     }
 
     public TruffleFile getFile() {
@@ -72,8 +78,12 @@ public final class LLVMParserRuntime {
         return nodeFactory;
     }
 
-    public int getBitcodeID() {
+    public BitcodeID getBitcodeID() {
         return bitcodeID;
+    }
+
+    public LibraryLocator getLocator() {
+        return locator;
     }
 
     public List<LLVMSourceFileReference> getSourceFileReferences() {
@@ -94,6 +104,14 @@ public final class LLVMParserRuntime {
             return symbol.asGlobalVariable();
         }
         throw new IllegalStateException("Retrieving unknown global symbol in LLVMParserRuntime: " + name);
+    }
+
+    public LLVMElemPtrSymbol lookUpElemPtrExpression(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
+        if (symbol != null && symbol.isElemPtrExpression()) {
+            return symbol.asElemPtrExpression();
+        }
+        throw new IllegalStateException("Retrieving unknown getElementPointer symbol in LLVMParserRuntime: " + name);
     }
 
     public LLVMSymbol lookupSymbol(String name) {

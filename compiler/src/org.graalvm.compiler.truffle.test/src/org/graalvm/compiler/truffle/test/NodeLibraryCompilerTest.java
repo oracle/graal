@@ -74,7 +74,7 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
         setupContext(Context.newBuilder());
         getContext().initialize(ProxyLanguage.ID);
         doInstrument(getContext().getEngine());
-        this.language = ProxyLanguage.getCurrentLanguage();
+        this.language = ProxyLanguage.get(null);
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -132,6 +133,21 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return states.length;
     }
 
+    public int getNumberOfTransitions() {
+        int sum = 0;
+        for (DFAAbstractStateNode state : states) {
+            sum += state.getSuccessors().length;
+            if (state instanceof DFAStateNode && ((DFAStateNode) state).getMatchers().getNoMatchSuccessor() >= 0) {
+                sum++;
+            }
+        }
+        return sum;
+    }
+
+    public int getNumberOfCGTransitions() {
+        return cgTransitions.length;
+    }
+
     public boolean recordExecution() {
         return debugRecorder != null;
     }
@@ -195,6 +211,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         }
         int ip = 0;
         outer: while (true) {
+            LoopNode.reportLoopCount(this, 1);
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }
@@ -280,7 +297,6 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     /*
                      * find matching DFA state transition
                      */
-                    state.getStateReachedProfile().enter();
                     inputAdvance(locals);
                     state.beforeFindSuccessor(locals, this);
                     if (isForward() && state.canDoIndexOf()) {
@@ -346,7 +362,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         CharMatcher[] enc3 = utf8Matchers.getEnc3();
                         CharMatcher[] enc4 = utf8Matchers.getEnc4();
                         int c = inputReadRaw(locals);
-                        if (getInputProfile().profile(c < 128)) {
+                        if (c < 128) {
                             inputIncNextIndexRaw(locals);
                             if (ascii != null) {
                                 for (int i = 0; i < ascii.length; i++) {
@@ -357,6 +373,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 }
                             }
                         } else {
+                            getBMPProfile().enter();
                             int codepoint = c & 0x3f;
                             if (isBackward()) {
                                 assert c >> 6 == 2;
@@ -400,6 +417,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     break;
                                 case 4:
                                     if (enc4 != null) {
+                                        getAstralProfile().enter();
                                         codepoint = inputUTF8Decode4(locals, c, codepoint);
                                         for (int i = 0; i < enc4.length; i++) {
                                             if (match(enc4, i, codepoint)) {
@@ -418,7 +436,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         final int c = inputReadAndDecode(locals);
                         CharMatcher[] latin1 = ((UTF16RawMatchers) matchers).getLatin1();
                         CharMatcher[] bmp = ((UTF16RawMatchers) matchers).getBmp();
-                        if (latin1 != null && (bmp == null || compactString || getInputProfile().profile(c < 256))) {
+                        if (latin1 != null && (bmp == null || compactString || c < 256)) {
                             for (int i = 0; i < latin1.length; i++) {
                                 if (match(latin1, i, c)) {
                                     ip = transitionMatch(state, i);
@@ -426,6 +444,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 }
                             }
                         } else if (bmp != null) {
+                            getBMPProfile().enter();
                             for (int i = 0; i < bmp.length; i++) {
                                 if (match(bmp, i, c)) {
                                     ip = transitionMatch(state, i);
@@ -448,30 +467,31 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         inputIncNextIndexRaw(locals);
 
                         if (!compactString && state.utf16MustDecode() && inputUTF16IsHighSurrogate(c) && inputHasNext(locals, locals.getNextIndex())) {
+                            getAstralProfile().enter();
                             int c2 = inputReadRaw(locals, locals.getNextIndex());
                             if (inputUTF16IsLowSurrogate(c2)) {
                                 locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
                                 if (astral != null) {
                                     c = inputUTF16ToCodePoint(c, c2);
-                                    for (int i = 0; i < astral.length; i++) {
-                                        if (match(astral, i, c)) {
-                                            ip = transitionMatch(state, i);
-                                            continue outer;
-                                        }
+                                }
+                            }
+                            if (astral != null) {
+                                for (int i = 0; i < astral.length; i++) {
+                                    if (match(astral, i, c)) {
+                                        ip = transitionMatch(state, i);
+                                        continue outer;
                                     }
                                 }
-                                ip = transitionNoMatch(state);
-                                continue outer;
                             }
-                        } else if (latin1 != null && (bmp == null || compactString || getInputProfile().profile(c < 256))) {
+                        } else if (latin1 != null && (bmp == null || compactString || c < 256)) {
                             for (int i = 0; i < latin1.length; i++) {
                                 if (match(latin1, i, c)) {
                                     ip = transitionMatch(state, i);
                                     continue outer;
                                 }
                             }
-                        }
-                        if (bmp != null) {
+                        } else if (bmp != null) {
+                            getBMPProfile().enter();
                             for (int i = 0; i < bmp.length; i++) {
                                 if (match(bmp, i, c)) {
                                     ip = transitionMatch(state, i);
@@ -532,13 +552,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     private static boolean match(CharMatcher[] matchers, int i, final int c) {
-        return matchers[i] != null && matchers[i].execute(c);
+        return matchers[i] != null && matchers[i].match(c);
     }
 
     /**
      * Returns a new instruction pointer value that denotes transition {@code i} of {@code state}.
      */
     private static int transitionMatch(DFAStateNode state, int i) {
+        CompilerAsserts.partialEvaluationConstant(state);
         return state.getId() | IP_TRANSITION_MARKER | (i << 16);
     }
 
@@ -547,6 +568,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
      * {@link Matchers#getNoMatchSuccessor() no-match successor} of {@code state}.
      */
     private static int transitionNoMatch(DFAStateNode state) {
+        CompilerAsserts.partialEvaluationConstant(state);
         return state.getId() | IP_TRANSITION_MARKER | (state.getMatchers().getNoMatchSuccessor() << 16);
     }
 

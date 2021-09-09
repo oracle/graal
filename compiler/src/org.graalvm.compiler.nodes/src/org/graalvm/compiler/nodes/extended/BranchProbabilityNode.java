@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -35,14 +34,11 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -50,8 +46,15 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Instances of this node class will look for a preceding if node and put the given probability into
@@ -64,26 +67,42 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
     public static final NodeClass<BranchProbabilityNode> TYPE = NodeClass.create(BranchProbabilityNode.class);
     public static final double LIKELY_PROBABILITY = 0.6;
     public static final double NOT_LIKELY_PROBABILITY = 1 - LIKELY_PROBABILITY;
+    public static final BranchProbabilityData LIKELY_PROFILE = BranchProbabilityData.injected(LIKELY_PROBABILITY);
+    public static final BranchProbabilityData NOT_LIKELY_PROFILE = BranchProbabilityData.injected(NOT_LIKELY_PROBABILITY);
 
     public static final double FREQUENT_PROBABILITY = 0.9;
     public static final double NOT_FREQUENT_PROBABILITY = 1 - FREQUENT_PROBABILITY;
+    public static final BranchProbabilityData FREQUENT_PROFILE = BranchProbabilityData.injected(FREQUENT_PROBABILITY);
+    public static final BranchProbabilityData NOT_FREQUENT_PROFILE = BranchProbabilityData.injected(NOT_FREQUENT_PROBABILITY);
 
     public static final double FAST_PATH_PROBABILITY = 0.99;
     public static final double SLOW_PATH_PROBABILITY = 1 - FAST_PATH_PROBABILITY;
+    public static final BranchProbabilityData FAST_PATH_PROFILE = BranchProbabilityData.injected(FAST_PATH_PROBABILITY);
+    public static final BranchProbabilityData SLOW_PATH_PROFILE = BranchProbabilityData.injected(SLOW_PATH_PROBABILITY);
 
     public static final double VERY_FAST_PATH_PROBABILITY = 0.999;
     public static final double VERY_SLOW_PATH_PROBABILITY = 1 - VERY_FAST_PATH_PROBABILITY;
-
-    public static final double DEOPT_PROBABILITY = 0.0;
+    public static final BranchProbabilityData VERY_FAST_PATH_PROFILE = BranchProbabilityData.injected(VERY_FAST_PATH_PROBABILITY);
+    public static final BranchProbabilityData VERY_SLOW_PATH_PROFILE = BranchProbabilityData.injected(VERY_SLOW_PATH_PROBABILITY);
 
     /*
-     * This probability may seem excessive, but it makes a difference in long running loops. Lets
-     * say a loop is executed 100k times and it has a few null checks with probability 0.999. As
-     * these probabilities multiply for every loop iteration, the overall loop frequency will be
+     * This probability may seem excessive, but it makes a difference in long running loops. Let's
+     * say a loop is executed 100k times and has a few null checks with probability 0.999. As these
+     * probabilities multiply for every loop iteration, the overall loop frequency will be
      * calculated as approximately 30 while it should be 100k.
      */
-    public static final double LUDICROUSLY_FAST_PATH_PROBABILITY = 0.999999;
-    public static final double LUDICROUSLY_SLOW_PATH_PROBABILITY = 1 - LUDICROUSLY_FAST_PATH_PROBABILITY;
+    public static final double EXTREMELY_FAST_PATH_PROBABILITY = 0.999999;
+    public static final double EXTREMELY_SLOW_PATH_PROBABILITY = 1 - EXTREMELY_FAST_PATH_PROBABILITY;
+    public static final BranchProbabilityData EXTREMELY_FAST_PATH_PROFILE = BranchProbabilityData.injected(EXTREMELY_FAST_PATH_PROBABILITY);
+    public static final BranchProbabilityData EXTREMELY_SLOW_PATH_PROFILE = BranchProbabilityData.injected(EXTREMELY_SLOW_PATH_PROBABILITY);
+
+    public static final double DEOPT_PROBABILITY = 0.0;
+    public static final BranchProbabilityData DEOPT_PROFILE = BranchProbabilityData.injected(DEOPT_PROBABILITY);
+
+    public static final double ALWAYS_TAKEN_PROBABILITY = 1.0;
+    public static final double NEVER_TAKEN_PROBABILITY = 1 - ALWAYS_TAKEN_PROBABILITY;
+    public static final BranchProbabilityData ALWAYS_TAKEN_PROFILE = BranchProbabilityData.injected(ALWAYS_TAKEN_PROBABILITY);
+    public static final BranchProbabilityData NEVER_TAKEN_PROFILE = BranchProbabilityData.injected(NEVER_TAKEN_PROBABILITY);
 
     @Input ValueNode probability;
     @Input ValueNode condition;
@@ -143,7 +162,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                     }
                     for (IfNode ifNodeUsages : node.usages().filter(IfNode.class)) {
                         usageFound = true;
-                        ifNodeUsages.setTrueSuccessorProbability(probabilityToSet);
+                        ifNodeUsages.setTrueSuccessorProbability(BranchProbabilityData.injected(probabilityToSet));
                     }
                     if (!usageFound) {
                         usageFound = node.usages().filter(NodePredicates.isA(FixedGuardNode.class).or(ConditionalNode.class)).isNotEmpty();
@@ -159,7 +178,45 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                 }
                 replaceAndDelete(currentCondition);
                 if (tool != null) {
-                    tool.addToWorkList(currentCondition.usages());
+                    // @formatter:off
+                    // Try to eliminate useless Conditional == Constant eagerly, e.g.:
+                    //
+                    // <condition>
+                    //    |  C(1) C(0)
+                    //    |   |   /
+                    // Conditional
+                    //    |
+                    // BranchProbability
+                    //    |     C(0|1)
+                    //    |       /
+                    // IntegerEquals
+                    //    |
+                    //   If
+                    //
+                    // Should be directly simplified to:
+                    //
+                    // <condition>
+                    //    |
+                    //   If
+                    //
+                    // This allows the If to be simplified immediately after injecting the profile.
+                    // @formatter:on
+                    if (currentCondition instanceof ConditionalNode &&
+                                    ((ConditionalNode) currentCondition).trueValue().isConstant() && ((ConditionalNode) currentCondition).falseValue().isConstant()) {
+                        for (IntegerEqualsNode eq : currentCondition.usages().filter(IntegerEqualsNode.class).snapshot()) {
+                            if (eq.getY().isConstant() || eq.getX().isConstant()) {
+                                ValueNode canonical = eq.canonical(tool);
+                                if (canonical != eq && canonical != null) {
+                                    tool.addToWorkList(eq.usages());
+                                    eq.replaceAtUsages(graph().maybeAddOrUnique(canonical));
+                                    GraphUtil.killWithUnusedFloatingInputs(eq);
+                                }
+                            }
+                        }
+                    }
+                    if (currentCondition.hasUsages()) {
+                        tool.addToWorkList(currentCondition.usages());
+                    }
                 }
             } else {
                 if (!isSubstitutionGraph()) {

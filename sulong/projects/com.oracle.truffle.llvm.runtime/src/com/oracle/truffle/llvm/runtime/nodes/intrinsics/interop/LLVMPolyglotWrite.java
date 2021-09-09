@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -67,6 +67,7 @@ public final class LLVMPolyglotWrite {
         }
 
         @Specialization
+        @GenerateAOT.Exclude
         protected void doIntrinsic(LLVMManagedPointer target, Object id, Object value,
                         @Cached LLVMAsForeignNode asForeign,
                         @CachedLibrary(limit = "3") InteropLibrary foreignWrite,
@@ -117,21 +118,23 @@ public final class LLVMPolyglotWrite {
         }
 
         @Specialization
+        @GenerateAOT.Exclude
         protected Object doIntrinsic(LLVMManagedPointer target, int id, Object value,
                         @Cached LLVMAsForeignNode asForeign,
-                        @CachedLibrary(limit = "3") InteropLibrary foreignWrite) {
+                        @CachedLibrary(limit = "3") InteropLibrary foreignWrite,
+                        @Cached BranchProfile exception) {
             Object foreign = asForeign.execute(target);
             Object escapedValue = prepareValueForEscape.executeWithTarget(value);
             try {
                 foreignWrite.writeArrayElement(foreign, id, escapedValue);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Cannot write to index %d of polyglot value.", id);
             } catch (InvalidArrayIndexException e) {
-                CompilerDirectives.transferToInterpreter();
+                exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Index %d does not exist.", id);
             } catch (UnsupportedTypeException e) {
-                CompilerDirectives.transferToInterpreter();
+                exception.enter();
                 throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing index %d.", id);
             }
             return null;

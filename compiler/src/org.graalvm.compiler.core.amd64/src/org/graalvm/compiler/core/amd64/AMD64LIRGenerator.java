@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,6 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
-import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
@@ -76,6 +75,8 @@ import org.graalvm.compiler.lir.amd64.AMD64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
+import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackOp;
+import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.amd64.AMD64Call;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -171,7 +172,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 return JavaConstant.forLong(dead);
             case SINGLE:
                 return JavaConstant.forFloat(Float.intBitsToFloat((int) dead));
+            case MASK16:
+            case MASK64:
+                return JavaConstant.forLong(dead);
             default:
+                assert ((AMD64Kind) kind).isXMM() : "kind " + kind + " not supported in zapping";
                 // we don't support vector types, so just zap with double for all of them
                 return JavaConstant.forDouble(Double.longBitsToDouble(dead));
         }
@@ -471,7 +476,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     private Variable emitCondMoveOp(Condition condition, Value trueValue, Value falseValue, boolean isFloatComparison, boolean unorderedIsTrue, boolean isSelfEqualsCheck) {
         boolean isParityCheckNecessary = isFloatComparison && unorderedIsTrue != AMD64ControlFlow.trueOnUnordered(condition);
-        Variable result = newVariable(trueValue.getValueKind());
+        Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
         if (!isParityCheckNecessary && isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0)) {
             if (isFloatComparison) {
                 append(new FloatCondSetOp(result, condition));
@@ -643,7 +648,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rdst, dst);
         emitMove(rlen, len);
 
-        append(new AMD64StringLatin1InflateOp(this, getAVX3Threshold(), rsrc, rdst, rlen));
+        append(new AMD64StringLatin1InflateOp(this, getAVX3Threshold(), getMaxVectorSize(), rsrc, rdst, rlen));
     }
 
     @Override
@@ -659,7 +664,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         LIRKind reskind = LIRKind.value(AMD64Kind.DWORD);
         RegisterValue rres = AMD64.rax.asValue(reskind);
 
-        append(new AMD64StringUTF16CompressOp(this, getAVX3Threshold(), rres, rsrc, rdst, rlen));
+        append(new AMD64StringUTF16CompressOp(this, getAVX3Threshold(), getMaxVectorSize(), rres, rsrc, rdst, rlen));
 
         Variable res = newVariable(reskind);
         emitMove(res, rres);
@@ -726,7 +731,20 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+    public void emitCacheWriteback(Value address) {
+        append(new AMD64CacheWritebackOp(asAddressValue(address)));
+    }
+
+    @Override
+    public void emitCacheWritebackSync(boolean isPreSync) {
+        // only need a post sync barrier on AMD64
+        if (!isPreSync) {
+            append(new AMD64CacheWritebackPostSyncOp());
+        }
+    }
+
+    @Override
+    public LIRInstruction createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         return new AMD64ZapRegistersOp(zappedRegisters, zapValues);
     }
 

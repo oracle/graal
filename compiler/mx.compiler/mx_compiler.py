@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@
 
 from __future__ import print_function
 import os
-from os.path import join, exists, getmtime, basename, dirname, isdir
+from os.path import join, exists, getmtime, basename, dirname, isdir, islink
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
@@ -58,13 +58,13 @@ from mx_renamegraalpackages import renamegraalpackages
 from mx_sdk_vm import jlink_new_jdk
 import mx_sdk_vm_impl
 
-import mx_jaotc
-
-import mx_graal_benchmark # pylint: disable=unused-import
+import mx_benchmark
+import mx_graal_benchmark
 import mx_graal_tools #pylint: disable=unused-import
 
 import argparse
 import shlex
+import json
 
 # Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
 if sys.version_info[0] < 3:
@@ -99,6 +99,9 @@ def get_vm_prefix(asList=True):
 
 #: The JDK used to build and run Graal.
 jdk = mx.get_jdk(tag='default')
+
+#: 3-tuple (major, minor, build) of JVMCI version, if any, denoted by `jdk`
+_jdk_jvmci_version = None
 
 if jdk.javaCompliance < '1.8':
     mx.abort('Graal requires JDK8 or later, got ' + str(jdk))
@@ -143,13 +146,20 @@ def _check_jvmci_version(jdk):
             with open(unqualified_source_path, 'w') as fp:
                 fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
             mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
-    mx.run([jdk.java, '-cp', binDir, unqualified_name])
+
+    jvmci_version_file = join(binDir, 'jvmci_version.' + str(os.getpid()))
+    mx.run([jdk.java, '-DJVMCIVersionCheck.jvmci.version.file=' + jvmci_version_file, '-cp', binDir, unqualified_name])
+    if exists(jvmci_version_file):
+        with open(jvmci_version_file) as fp:
+            global _jdk_jvmci_version
+            _jdk_jvmci_version = tuple((int(n) for n in fp.read().split(',')))
+        os.remove(jvmci_version_file)
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
 mx_gate.add_jacoco_includes(['org.graalvm.*'])
-mx_gate.add_jacoco_excludes(['com.oracle.truffle.*'])
+mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
 def _get_XX_option_value(vmargs, name, default):
@@ -340,6 +350,7 @@ class GraalTags:
     bootstraplite = ['bootstraplite', 'bootstrap', 'fulltest']
     bootstrapfullverify = ['bootstrapfullverify', 'fulltest']
     test = ['test', 'fulltest']
+    unittest = ['unittest', 'test', 'fulltest']
     coverage = ['coverage']
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
@@ -350,29 +361,6 @@ def _remove_empty_entries(a):
     if not a:
         return []
     return [x for x in a if x]
-
-def _gate_java_benchmark(args, successRe):
-    """
-    Runs a Java benchmark and aborts if the benchmark process exits with a non-zero
-    exit code or the `successRe` pattern is not in the output of the benchmark process.
-
-    :param list args: the arguments to pass to the VM
-    :param str successRe: a regular expression
-    """
-    out = mx.OutputCapture()
-    try:
-        run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT)
-    finally:
-        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\\]hs_err_pid[0-9]+\.log)', out.data)
-        if jvmErrorFile:
-            jvmErrorFile = jvmErrorFile.group()
-            mx.log('Dumping ' + jvmErrorFile)
-            with open(jvmErrorFile) as fp:
-                mx.log(fp.read())
-            os.unlink(jvmErrorFile)
-
-    if not re.search(successRe, out.data, re.MULTILINE):
-        mx.abort('Could not find benchmark success pattern: ' + successRe)
 
 def _is_batik_supported(jdk):
     """
@@ -388,29 +376,28 @@ def _is_batik_supported(jdk):
         return False
 
 def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, set_start_heap_size=True, threads=None):
+    if iterations == -1:
+        return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
     if set_start_heap_size:
         vmargs += ['-Xms2g']
     vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
-    dacapoJar = mx.library('DACAPO').get_path(True)
-    if name == 'batik' and not _is_batik_supported(jdk):
-        return
-    args = ['-n', str(iterations)]
+    args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
-    _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name] + args, r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
+    return mx_benchmark.gate_mx_benchmark(["dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
     return jdk.javaCompliance < '11'
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
+    if iterations == -1:
+        return
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
-    if name == 'actors' and jdk.javaCompliance >= '9' and jdk_includes_corba(jdk):
-        vmargs += ['--add-modules', 'java.corba']
-    scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
-    _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
+    args = ['-n', str(iterations), '--preserve']
+    return mx_benchmark.gate_mx_benchmark(["scala-dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':
@@ -453,7 +440,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:
             ctw([
-                    '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+                    '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
                     '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
                     '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
@@ -468,63 +455,48 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
 
 def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
-    # run selected DaCapo benchmarks
+    # run DaCapo benchmarks #
+    #########################
 
     # DaCapo benchmarks that can run with system assertions enabled but
     # java.util.Logging assertions disabled because the the DaCapo harness
-    # misuses the API.
-    dacapos = {
-        'avrora':     1,
-        'h2':         1,
-        'jython':     2,
-        'luindex':    1,
-        'lusearch':   4,
-        'xalan':      1,
-        'batik':      1,
-        'fop':        8,
-        'pmd':        1,
-        'sunflow':    2,
+    # misuses the API. The same harness is used by Scala DaCapo.
+    dacapo_esa = ['-esa', '-da:java.util.logging...']
+
+    # A few iterations to increase the chance of catching compilation errors
+    default_iterations = 2
+
+    dacapo_suite = mx_graal_benchmark.DaCapoBenchmarkSuite()
+    dacapo_gate_iterations = {
+        k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
-    for name, iterations in sorted(dacapos.items()):
+    dacapo_gate_iterations.update({'fop': 8})
+    mx.warn("Disabling gate for dacapo:tradesoap (GR-33605)")
+    dacapo_gate_iterations.update({'tradesoap': -1})
+    for name, iterations in sorted(dacapo_gate_iterations.items()):
+        if name == "batik" and not _is_batik_supported(jdk):
+            continue
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
-                               ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
+                               ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
-    # run selected Scala DaCapo benchmarks
-    # Scala DaCapo benchmarks that can run with system assertions enabled but
-    # java.util.Logging assertions disabled because the the DaCapo harness
-    # misuses the API.
-    scala_dacapos = {
-        'apparat':    1,
-        'factorie':   1,
-        'kiama':      4,
-        'scalac':     1,
-        'scaladoc':   1,
-        'scalap':     1,
-        'scalariform':1,
-        'scalatest':  1,
-        'scalaxb':    1,
-        'specs':      1,
-        'tmt':        1,
-        'actors':     1,
+    # run Scala DaCapo benchmarks #
+    ###############################
+    scala_dacapo_suite = mx_graal_benchmark.ScalaDaCapoBenchmarkSuite()
+    scala_dacapo_gate_iterations = {
+        k: default_iterations for k, v in scala_dacapo_suite.daCapoIterations().items() if v > 0
     }
-    if not jdk_includes_corba(jdk):
-        mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
-        del scala_dacapos['actors']
 
-    if jdk.javaCompliance >= "16":
-        # See GR-29222 for details.
-        mx.warn('Removing scaladacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
-        del scala_dacapos['specs']
-
-    for name, iterations in sorted(scala_dacapos.items()):
+    for name, iterations in sorted(scala_dacapo_gate_iterations.items()):
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
-                                     ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
+                                     ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
+    # run benchmark with non default setup #
+    ########################################
     # ensure -Xbatch still works
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
+        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-Xbatch'])
 
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
@@ -533,12 +505,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
                 try:
-                    _gate_dacapo('pmd', 3, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
                     with open(logFile) as fp:
                         haystack = fp.read()
                         needle = 'MoveOperations (dynamic counters)'
                         if needle not in haystack:
-                            mx.abort('Expected to see "' + needle + '" in output of length ' + len(haystack) + ':\n' + haystack)
+                            mx.abort('Expected to see "' + needle + '" in output of length ' + str(len(haystack)) + ':\n' + haystack)
                 finally:
                     os.remove(logFile)
 
@@ -548,29 +520,29 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
 
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
     if isJDK8:
         # temporarily isolate those test (GR-10990)
         cms = ['cms']
         # ensure CMS still works
         with Task(prefix + 'DaCapo_pmd:CMS', tasks, tags=cms) as t:
-            if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+            if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
         # ensure CMSIncrementalMode still works
         with Task(prefix + 'DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
-            if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+            if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
         if prefix != '':
             # ensure G1 still works with libgraal
             with Task(prefix + 'DaCapo_pmd:G1', tasks, tags=cms) as t:
-                if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+                if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
 
 graal_unit_test_runs = [
-    UnitTestRun('UnitTests', [], tags=GraalTags.test + GraalTags.coverage),
+    UnitTestRun('UnitTests', [], tags=GraalTags.unittest + GraalTags.coverage),
 ]
 
 _registers = {
@@ -604,14 +576,9 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsImmutableCode', _defaultFlags + _assertionFlags + _immutableCodeFlags + ['-Dgraal.VerifyPhases=true'] + _graalErrorFlags, tags=GraalTags.bootstrap)
 ]
 
-def _is_jaotc_supported():
-    return exists(jdk.exe_path('jaotc'))
-
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
     compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
-    if _is_jaotc_supported():
-        mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -701,6 +668,9 @@ def _unittest_config_participant(config):
     if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
         vmArgs.append('-XX:TypeProfileWidth=8')
 
+    # TODO: GR-31197, this should be removed.
+    vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
+    vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -985,6 +955,53 @@ def run_vm_with_jvmci_compiler(args, nonZeroIsFatal=True, out=None, err=None, cw
     jvmci_args = ['-XX:+UseJVMCICompiler'] + args
     return run_vm(jvmci_args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout, debugLevel=debugLevel, vmbuild=vmbuild)
 
+def _check_latest_jvmci_version():
+    """
+    If `_jdk_jvmci_version` is not None, checks that it is the same as
+    the JVMCI version of the JVMCI JDKs in the "jdks" section of the
+    ``common.json`` file and issues a warning if not.
+    """
+    jvmci_re = re.compile(r'.*-jvmci-(\d+)\.(\d+)-b(\d+)')
+    common_path = join(_suite.dir, '..', 'common.json')
+
+    if _jdk_jvmci_version is None:
+        # Not using a JVMCI JDK
+        return
+
+    def get_latest_jvmci_version():
+        with open(common_path) as common_file:
+            common_cfg = json.load(common_file)
+
+        latest = None
+        for distribution in common_cfg['jdks']:
+            version = common_cfg['jdks'][distribution].get('version', None)
+            if version and '-jvmci-' in version:
+                current = tuple(int(n) for n in jvmci_re.match(version).group(1, 2, 3))
+                if latest is None:
+                    latest = current
+                elif latest != current:
+                    # All JVMCI JDKs in common.json are expected to have the same JVMCI version.
+                    # If they don't then the repo is in some transitionary state
+                    # (e.g. making a JVMCI release) so skip the check.
+                    return None
+        return latest
+
+    def jvmci_version_str(version):
+        major, minor, build = version
+        return 'jvmci-{}.{}-b{:02d}'.format(major, minor, build)
+
+    latest = get_latest_jvmci_version()
+    if latest is not None and _jdk_jvmci_version < latest:
+        common_path = os.path.normpath(common_path)
+        msg = 'JVMCI version of JAVA_HOME is older than in {}: {} < {} '.format(
+            common_path,
+            jvmci_version_str(_jdk_jvmci_version),
+            jvmci_version_str(latest))
+        msg += os.linesep + 'This poses the risk of hitting JVMCI bugs that have already been fixed.'
+        msg += os.linesep + 'Consider using {}, which you can get via:'.format(jvmci_version_str(latest))
+        msg += os.linesep + 'mx fetch-jdk --configuration {}'.format(common_path)
+        mx.warn(msg)
+
 class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
 
@@ -996,7 +1013,18 @@ class GraalArchiveParticipant:
         self.services = services
         self.arc = arc
 
-    def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
+    def __process__(self, arcname, contents_supplier, is_source):
+        if is_source:
+            return False
+        def add_serviceprovider(service, provider, version):
+            if version is None:
+                # Non-versioned service
+                self.services.setdefault(service, []).append(provider)
+            else:
+                # Versioned service
+                services = self.services.setdefault(int(version), {})
+                services.setdefault(service, []).append(provider)
+
         m = GraalArchiveParticipant.providersRE.match(arcname)
         if m:
             if self.isTest:
@@ -1006,33 +1034,37 @@ class GraalArchiveParticipant:
                 pass
             else:
                 provider = m.group(2)
-                for service in _decode(contents).strip().split(os.linesep):
+                for service in _decode(contents_supplier()).strip().split(os.linesep):
                     assert service
                     version = m.group(1)
-                    if version is None:
-                        # Non-versioned service
-                        self.services.setdefault(service, []).append(provider)
-                    else:
-                        # Versioned service
-                        services = self.services.setdefault(int(version), {})
-                        services.setdefault(service, []).append(provider)
+                    add_serviceprovider(service, provider, version)
             return True
-        elif arcname.endswith('_OptionDescriptors.class') and not arcname.startswith('META-INF/'):
+        elif arcname.endswith('_OptionDescriptors.class'):
             if self.isTest:
                 mx.warn('@Option defined in test code will be ignored: ' + arcname)
             else:
                 # Need to create service files for the providers of the
                 # jdk.internal.vm.ci.options.Options service created by
                 # jdk.internal.vm.ci.options.processor.OptionProcessor.
+                version_prefix = 'META-INF/versions/'
+                if arcname.startswith(version_prefix):
+                    # If OptionDescriptor is version-specific, get version
+                    # from arcname and adjust arcname to non-version form
+                    version, _, arcname = arcname[len(version_prefix):].partition('/')
+                else:
+                    version = None
                 provider = arcname[:-len('.class'):].replace('/', '.')
-                self.services.setdefault('org.graalvm.compiler.options.OptionDescriptors', []).append(provider)
-        return False
-
-    def __addsrc__(self, arcname, contents):
+                service = 'org.graalvm.compiler.options.OptionDescriptors'
+                add_serviceprovider(service, provider, version)
         return False
 
     def __closing__(self):
         _record_last_updated_jar(self.dist, self.arc.path)
+        if self.dist.name == 'GRAAL':
+            # Check if we're using the same JVMCI JDK as the CI system does.
+            # This only done when building the GRAAL distribution so as to
+            # not be too intrusive.
+            _check_latest_jvmci_version()
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
@@ -1242,7 +1274,12 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         mx.log('Updating/creating {} from {} using intermediate directory {} since {}'.format(dst_jdk_dir, src_jdk.home, tmp_dst_jdk_dir, update_reason))
         def _copy_file(src, dst):
             mx.log('Copying {} to {}'.format(src, dst))
-            shutil.copyfile(src, dst)
+            if mx.can_symlink():
+                if exists(dst) and islink(dst):
+                    os.remove(dst)
+                os.symlink(src, dst)
+            else:
+                shutil.copyfile(src, dst)
 
         vm_name = 'Server VM Graal'
         for d in _graal_config().jvmci_dists:
@@ -1275,7 +1312,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
                 boot_jars += _graal_config().jvmci_parent_jars
 
             for src_jar in boot_jars:
-                _copy_file(src_jar, join(boot_dir, basename(src_jar)))
+                dst_jar = join(boot_dir, basename(src_jar))
+                _copy_file(src_jar, dst_jar)
 
         else:
             module_dists = _graal_config().dists
@@ -1284,7 +1322,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             # Setting dedup_legal_notices=False avoids due to license files conflicting
             # when switching JAVA_HOME from an OpenJDK to an OracleJDK or vice versa between executions.
             if _jlink_libraries():
-                jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info, dedup_legal_notices=False)
+                jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, ignore_dists=[], root_module_names=root_module_names, vendor_info=vendor_info, dedup_legal_notices=False)
                 if export_truffle:
                     jmd = as_java_module(_graal_config().dists_dict['truffle:TRUFFLE_API'], jdk)
                     add_exports = []
@@ -1404,7 +1442,7 @@ def _jvmci_jars():
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
         'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-    ] + (['compiler:JAOTC'] if not isJDK8 and _is_jaotc_supported() else [])
+    ]
 
 # The community compiler component
 cmp_ce_components = [
@@ -1421,6 +1459,7 @@ cmp_ce_components = [
         ],
         jvmci_jars=_jvmci_jars(),
         graal_compiler='graal',
+        stability="supported",
     ),
     mx_sdk_vm.GraalVmComponent(
         suite=_suite,
@@ -1451,8 +1490,6 @@ def print_graaljdk_home(args):
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
-    'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
-    'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],

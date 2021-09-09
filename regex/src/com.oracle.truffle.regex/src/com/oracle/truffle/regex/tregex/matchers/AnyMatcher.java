@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,23 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.dsl.Specialization;
-
 /**
  * A character matcher that always matches.
  */
-public abstract class AnyMatcher extends CharMatcher {
+public final class AnyMatcher extends CharMatcher {
+
+    private static final AnyMatcher INSTANCE = new AnyMatcher();
 
     public static CharMatcher create() {
-        return AnyMatcherNodeGen.create();
+        return INSTANCE;
     }
 
     public static CharMatcher create(boolean invert) {
         return invert ? EmptyMatcher.create() : create();
     }
 
-    @Specialization
-    @SuppressWarnings("unused")
-    boolean match(int c) {
+    @Override
+    public boolean match(@SuppressWarnings("unused") int c) {
         return true;
     }
 

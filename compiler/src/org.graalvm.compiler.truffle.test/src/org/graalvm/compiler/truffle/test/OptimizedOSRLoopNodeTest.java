@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertSame;
 
 import java.util.concurrent.ExecutionException;
@@ -37,6 +37,7 @@ import java.util.stream.IntStream;
 
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.junit.Assert;
 import org.junit.Before;
@@ -115,17 +116,35 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         Assert.assertTrue(rootNode.wasRepeatingCalledCompiled());
     }
 
+    @Theory
+    public void testNoInliningForLatency(OSRLoopFactory factory) {
+        setupContext("engine.MultiTier", "false", "engine.Mode", "latency");
+        TestRootNode rootNode = new TestRootNode(osrThreshold, factory, new CallsTargetRepeatingNode(
+                        (OptimizedDirectCallNode) runtime.createDirectCallNode(runtime.createCallTarget(new RootNode(null) {
+                            @Override
+                            public Object execute(VirtualFrame frame) {
+                                if (CompilerDirectives.inCompiledCode() && !CompilerDirectives.inCompilationRoot()) {
+                                    Assert.fail("Must not inline into OSR compilation on latency mode.");
+                                }
+                                return 42;
+                            }
+                        }))));
+        CallTarget target = runtime.createCallTarget(rootNode);
+        target.call(osrThreshold + 1);
+        assertCompiled(rootNode.getOSRTarget());
+    }
+
     @SuppressWarnings("try")
     @Theory
     public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
-        setupContext("engine.CompilationThreshold", "3");
+        setupContext("engine.SingleTierCompilationThreshold", "3");
         TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(osrThreshold, factory, new TestRepeatingNode());
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         target.call(osrThreshold + 1);
         assertCompiled(rootNode.getOSRTarget());
         assertNotCompiled(target);
         target.nodeReplaced(rootNode.toReplace, new TestRepeatingNode(), "test");
-        for (int i = 0; i < target.getOptionValue(CompilationThreshold) + target.getOptionValue(ReplaceReprofileCount) - 1; i++) {
+        for (int i = 0; i < target.getOptionValue(SingleTierCompilationThreshold) + target.getOptionValue(ReplaceReprofileCount) - 1; i++) {
             target.call(2);
         }
         assertCompiled(rootNode.getOSRTarget());
@@ -758,4 +777,22 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     }
 
+    private static final class CallsTargetRepeatingNode extends TestRepeatingNode implements RepeatingNode {
+
+        final OptimizedDirectCallNode callNode;
+        int count;
+
+        private CallsTargetRepeatingNode(OptimizedDirectCallNode callNode) {
+            this.callNode = callNode;
+        }
+
+        @Override
+        public boolean executeRepeating(VirtualFrame frame) {
+            callNode.call(frame.getArguments());
+            if (CompilerDirectives.inCompiledCode() && count++ < 5) {
+                return false;
+            }
+            return true;
+        }
+    }
 }

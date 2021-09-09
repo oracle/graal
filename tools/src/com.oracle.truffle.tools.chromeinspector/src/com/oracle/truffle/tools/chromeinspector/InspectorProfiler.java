@@ -35,15 +35,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.domains.ProfilerDomain;
 import com.oracle.truffle.tools.chromeinspector.instrument.Enabler;
@@ -59,12 +55,13 @@ import com.oracle.truffle.tools.chromeinspector.types.ScriptCoverage;
 import com.oracle.truffle.tools.chromeinspector.types.ScriptTypeProfile;
 import com.oracle.truffle.tools.chromeinspector.types.TypeObject;
 import com.oracle.truffle.tools.chromeinspector.types.TypeProfileEntry;
-
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CPUTracer;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
 import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public final class InspectorProfiler extends ProfilerDomain {
 
@@ -119,7 +116,6 @@ public final class InspectorProfiler extends ProfilerDomain {
         synchronized (sampler) {
             oldGatherSelfHitTimes = sampler.isGatherSelfHitTimes();
             sampler.setGatherSelfHitTimes(true);
-            sampler.setMode(CPUSampler.Mode.ROOTS);
             sampler.setFilter(SourceSectionFilter.newBuilder().includeInternal(context.isInspectInternal()).build());
             sampler.setCollecting(true);
         }
@@ -127,6 +123,7 @@ public final class InspectorProfiler extends ProfilerDomain {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public Params stop() {
         long time = System.currentTimeMillis();
         synchronized (sampler) {

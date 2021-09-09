@@ -34,6 +34,14 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * This node intrinsifies {@link System#arraycopy}.
+ *
+ * Lowering is implemented in the platform/VM specific
+ * {@link org.graalvm.compiler.nodes.spi.LoweringProvider LoweringProvider}. Most of them eventually
+ * go through
+ * {@link ArrayCopySnippets.Templates#lower(ArrayCopyNode, boolean, org.graalvm.compiler.nodes.spi.LoweringTool)}.
+ */
 @NodeInfo
 public final class ArrayCopyNode extends BasicArrayCopyNode implements Lowerable {
 

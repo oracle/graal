@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
-import java.util.logging.Level;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -124,16 +123,10 @@ public interface FieldRefConstant extends MemberRefConstant {
             Field field = lookupField(holderKlass, name, type);
             if (field == null) {
                 Meta meta = pool.getContext().getMeta();
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, meta.toGuestString(name));
+                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, meta.toGuestString(name));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field)) {
-                Meta meta = pool.getContext().getMeta();
-                meta.getContext().getLogger().log(Level.WARNING,
-                                "Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
-                                                " throws IllegalAccessError");
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
-            }
+            MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, field, pool.getContext().getMeta());
 
             field.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), field.getDeclaringKlass().getDefiningClassLoader());
 
@@ -148,10 +141,11 @@ public interface FieldRefConstant extends MemberRefConstant {
     }
 
     final class Resolved implements FieldRefConstant, Resolvable.ResolvedConstant {
-        private final Field resolved;
+        private final Field.FieldVersion resolved;
 
-        Resolved(Field resolved) {
-            this.resolved = Objects.requireNonNull(resolved);
+        Resolved(Field resolvedField) {
+            Objects.requireNonNull(resolvedField);
+            this.resolved = resolvedField.getFieldVersion();
         }
 
         @Override
@@ -160,7 +154,7 @@ public interface FieldRefConstant extends MemberRefConstant {
         }
 
         @Override
-        public Field value() {
+        public Field.FieldVersion value() {
             return resolved;
         }
 
@@ -171,7 +165,7 @@ public interface FieldRefConstant extends MemberRefConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return resolved.getName();
+            return resolved.getField().getName();
         }
 
         @Override

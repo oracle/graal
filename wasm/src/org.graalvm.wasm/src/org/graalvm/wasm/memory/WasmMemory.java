@@ -40,9 +40,24 @@
  */
 package org.graalvm.wasm.memory;
 
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+
+import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.nodes.WasmNode;
+
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -50,17 +65,12 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.collection.ByteArrayList;
-import org.graalvm.wasm.constants.Sizes;
-import org.graalvm.wasm.nodes.WasmNode;
-
-import java.nio.charset.StandardCharsets;
-
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
-import static java.lang.Math.toIntExact;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class WasmMemory implements TruffleObject {
+public abstract class WasmMemory extends EmbedderDataHolder implements TruffleObject {
+
+    private Object growCallback = null;
 
     public abstract void copy(Node node, int src, int dst, int n);
 
@@ -73,7 +83,7 @@ public abstract class WasmMemory implements TruffleObject {
     /**
      * The current size of this memory instance (measured in bytes).
      */
-    public abstract int byteSize();
+    public abstract long byteSize();
 
     /**
      * The minimum size of this memory as declared in the binary (measured in number of
@@ -107,54 +117,61 @@ public abstract class WasmMemory implements TruffleObject {
     public abstract void reset();
 
     // Checkstyle: stop
-    public abstract int load_i32(Node node, int address);
+    public abstract int load_i32(Node node, long address);
 
-    public abstract long load_i64(Node node, int address);
+    public abstract long load_i64(Node node, long address);
 
-    public abstract float load_f32(Node node, int address);
+    public abstract float load_f32(Node node, long address);
 
-    public abstract double load_f64(Node node, int address);
+    public abstract double load_f64(Node node, long address);
 
-    public abstract int load_i32_8s(Node node, int address);
+    public abstract int load_i32_8s(Node node, long address);
 
-    public abstract int load_i32_8u(Node node, int address);
+    public abstract int load_i32_8u(Node node, long address);
 
-    public abstract int load_i32_16s(Node node, int address);
+    public abstract int load_i32_16s(Node node, long address);
 
-    public abstract int load_i32_16u(Node node, int address);
+    public abstract int load_i32_16u(Node node, long address);
 
-    public abstract long load_i64_8s(Node node, int address);
+    public abstract long load_i64_8s(Node node, long address);
 
-    public abstract long load_i64_8u(Node node, int address);
+    public abstract long load_i64_8u(Node node, long address);
 
-    public abstract long load_i64_16s(Node node, int address);
+    public abstract long load_i64_16s(Node node, long address);
 
-    public abstract long load_i64_16u(Node node, int address);
+    public abstract long load_i64_16u(Node node, long address);
 
-    public abstract long load_i64_32s(Node node, int address);
+    public abstract long load_i64_32s(Node node, long address);
 
-    public abstract long load_i64_32u(Node node, int address);
+    public abstract long load_i64_32u(Node node, long address);
 
-    public abstract void store_i32(Node node, int address, int value);
+    public abstract void store_i32(Node node, long address, int value);
 
-    public abstract void store_i64(Node node, int address, long value);
+    public abstract void store_i64(Node node, long address, long value);
 
-    public abstract void store_f32(Node node, int address, float value);
+    public abstract void store_f32(Node node, long address, float value);
 
-    public abstract void store_f64(Node node, int address, double value);
+    public abstract void store_f64(Node node, long address, double value);
 
-    public abstract void store_i32_8(Node node, int address, byte value);
+    public abstract void store_i32_8(Node node, long address, byte value);
 
-    public abstract void store_i32_16(Node node, int address, short value);
+    public abstract void store_i32_16(Node node, long address, short value);
 
-    public abstract void store_i64_8(Node node, int address, byte value);
+    public abstract void store_i64_8(Node node, long address, byte value);
 
-    public abstract void store_i64_16(Node node, int address, short value);
+    public abstract void store_i64_16(Node node, long address, short value);
 
-    public abstract void store_i64_32(Node node, int address, int value);
+    public abstract void store_i64_32(Node node, long address, int value);
     // Checkstyle: resume
 
     public abstract WasmMemory duplicate();
+
+    @TruffleBoundary
+    protected final WasmException trapOutOfBounds(Node node, long address, int length) {
+        final String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
+                        length, address, address, byteSize());
+        return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
+    }
 
     /**
      * Reads the null-terminated UTF-8 string starting at {@code startOffset}.
@@ -289,6 +306,139 @@ public abstract class WasmMemory implements TruffleObject {
         return padded.toString();
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean hasBufferElements() {
+        return true;
+    }
+
+    @ExportMessage
+    final long getBufferSize() {
+        return byteSize();
+    }
+
+    private void checkOffset(long byteOffset, int opLength, BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || getBufferSize() - opLength < byteOffset) {
+            errorBranch.enter();
+            throw InvalidBufferOffsetException.create(byteOffset, opLength);
+        }
+    }
+
+    @ExportMessage
+    final byte readBufferByte(long byteOffset,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Byte.BYTES, errorBranch);
+        return (byte) load_i32_8s(null, (int) byteOffset);
+    }
+
+    @ExportMessage
+    final short readBufferShort(ByteOrder order, long byteOffset,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Short.BYTES, errorBranch);
+        short result = (short) load_i32_16s(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Short.reverseBytes(result);
+        }
+        return result;
+    }
+
+    @ExportMessage
+    final int readBufferInt(ByteOrder order, long byteOffset,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Integer.BYTES, errorBranch);
+        int result = load_i32(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Integer.reverseBytes(result);
+        }
+        return result;
+    }
+
+    @ExportMessage
+    final long readBufferLong(ByteOrder order, long byteOffset,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Long.BYTES, errorBranch);
+        long result = load_i64(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Long.reverseBytes(result);
+        }
+        return result;
+    }
+
+    @ExportMessage
+    final float readBufferFloat(ByteOrder order, long byteOffset,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Float.BYTES, errorBranch);
+        float result = load_f32(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(result)));
+        }
+        return result;
+    }
+
+    @ExportMessage
+    final double readBufferDouble(ByteOrder order, long byteOffset,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Double.BYTES, errorBranch);
+        double result = load_f64(null, (int) byteOffset);
+        if (order == ByteOrder.BIG_ENDIAN) {
+            result = Double.longBitsToDouble(Long.reverseBytes(Double.doubleToRawLongBits(result)));
+        }
+        return result;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean isBufferWritable() {
+        return true;
+    }
+
+    @ExportMessage
+    final void writeBufferByte(long byteOffset, byte value,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Byte.BYTES, errorBranch);
+        store_i32_8(null, (int) byteOffset, value);
+    }
+
+    @ExportMessage
+    final void writeBufferShort(ByteOrder order, long byteOffset, short value,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Short.BYTES, errorBranch);
+        short actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Short.reverseBytes(value);
+        store_i32_16(null, (int) byteOffset, actualValue);
+    }
+
+    @ExportMessage
+    final void writeBufferInt(ByteOrder order, long byteOffset, int value,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Integer.BYTES, errorBranch);
+        int actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Integer.reverseBytes(value);
+        store_i32(null, (int) byteOffset, actualValue);
+    }
+
+    @ExportMessage
+    final void writeBufferLong(ByteOrder order, long byteOffset, long value,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Long.BYTES, errorBranch);
+        long actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Long.reverseBytes(value);
+        store_i64(null, (int) byteOffset, actualValue);
+    }
+
+    @ExportMessage
+    final void writeBufferFloat(ByteOrder order, long byteOffset, float value,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Float.BYTES, errorBranch);
+        float actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(value)));
+        store_f32(null, (int) byteOffset, actualValue);
+    }
+
+    @ExportMessage
+    final void writeBufferDouble(ByteOrder order, long byteOffset, double value,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Double.BYTES, errorBranch);
+        double actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Double.longBitsToDouble(Long.reverseBytes(Double.doubleToRawLongBits(value)));
+        store_f64(null, (int) byteOffset, actualValue);
+    }
+
     @ExportMessage
     boolean hasArrayElements() {
         return true;
@@ -316,27 +466,43 @@ public abstract class WasmMemory implements TruffleObject {
     }
 
     @ExportMessage
-    public Object readArrayElement(long address) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(toIntExact(address))) {
-            transferToInterpreter();
+    public Object readArrayElement(long address,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(address)) {
+            errorBranch.enter();
             throw InvalidArrayIndexException.create(address);
         }
-        return load_i32_8u(null, toIntExact(address));
+        return load_i32_8u(null, (int) address);
     }
 
-    @ExportMessage(limit = "3")
-    public void writeArrayElement(long address, Object value, @CachedLibrary("value") InteropLibrary valueLib)
+    @ExportMessage
+    public void writeArrayElement(long address, Object value,
+                    @CachedLibrary(limit = "3") InteropLibrary valueLib,
+                    @Shared("errorBranch") @Cached BranchProfile errorBranch)
                     throws InvalidArrayIndexException, UnsupportedMessageException, UnsupportedTypeException {
-        if (!isArrayElementReadable(toIntExact(address))) {
-            transferToInterpreter();
+        if (!isArrayElementModifiable(address)) {
+            errorBranch.enter();
             throw InvalidArrayIndexException.create(address);
         }
         byte rawValue;
         if (valueLib.fitsInByte(value)) {
             rawValue = valueLib.asByte(value);
         } else {
+            errorBranch.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, "Only bytes can be stored into WebAssembly memory.");
         }
-        store_i32_8(null, toIntExact(address), rawValue);
+        store_i32_8(null, (int) address, rawValue);
+    }
+
+    public void setGrowCallback(Object growCallback) {
+        this.growCallback = growCallback;
+    }
+
+    public Object getGrowCallback() {
+        return growCallback;
+    }
+
+    protected void invokeGrowCallback() {
+        WebAssembly.invokeMemGrowCallback(this);
     }
 }

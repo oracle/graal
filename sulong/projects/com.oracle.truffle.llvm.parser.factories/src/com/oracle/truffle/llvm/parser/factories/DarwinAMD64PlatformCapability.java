@@ -38,12 +38,32 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.amd64.DarwinAMD6
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorageFactory.X86_64VAListPointerWrapperFactoryNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinAMD64Syscall> {
 
+    public static final int RTLD_GLOBAL_DARWIN = 8;
+    public static final int RTLD_FIRST_DARWIN = 100;
+    public static final long RTLD_DEFAULT_DARWIN = -2;
+
     DarwinAMD64PlatformCapability(boolean loadCxxLibraries) {
         super(DarwinAMD64Syscall.class, loadCxxLibraries);
+    }
+
+    @Override
+    public boolean isGlobalDLOpenFlagSet(int flag) {
+        return (flag & RTLD_GLOBAL_DARWIN) == RTLD_GLOBAL_DARWIN;
+    }
+
+    @Override
+    public boolean isFirstDLOpenFlagSet(int flag) {
+        return (flag & RTLD_FIRST_DARWIN) == RTLD_FIRST_DARWIN;
+    }
+
+    @Override
+    public boolean isDefaultDLSymFlagSet(long flag) {
+        return flag == RTLD_DEFAULT_DARWIN;
     }
 
     @Override
@@ -59,8 +79,8 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
     }
 
     @Override
-    public Object createVAListStorage(RootNode rootNode) {
-        return new LLVMX86_64VaListStorage(rootNode);
+    public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
+        return new LLVMX86_64VaListStorage(rootNode, vaListStackPtr);
     }
 
     @Override

@@ -56,6 +56,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.StabilityLevel;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -709,5 +710,37 @@ public class DirectoryStorageTest extends CommandTestBase {
         assertEquals(1, loaded.size());
         ComponentInfo compare = loaded.iterator().next();
         assertEquals(StabilityLevel.Experimental_Earlyadopter, compare.getStability());
+    }
+
+    /**
+     * Checks that the hardcoded core component declares stability level.
+     */
+    @Test
+    public void testDefaultCoreHasStability() throws Exception {
+        Files.copy(dataFile("release_simple.properties"), graalVMPath.resolve("release"));
+        copyDir("emptylist", registryPath);
+        Set<ComponentInfo> loaded = storage.loadComponentMetadata(BundleConstants.GRAAL_COMPONENT_ID);
+        assertEquals(1, loaded.size());
+        ComponentInfo ci = loaded.iterator().next();
+        assertNotNull(ci);
+        assertEquals(StabilityLevel.Supported, ci.getStability());
+        assertFalse(ci.isNativeComponent());
+        assertEquals(DistributionType.BUNDLED, ci.getDistributionType());
+    }
+
+    /**
+     * Checks that the core component registration is loaded, if present.
+     */
+    @Test
+    public void testExplicitCoreMetadata() throws Exception {
+        Files.copy(dataFile("release_simple.properties"), graalVMPath.resolve("release"));
+        Files.copy(dataFile("graalvmcore.properties"), registryPath.resolve(BundleConstants.GRAAL_COMPONENT_ID + ".component"));
+        Set<ComponentInfo> loaded = storage.loadComponentMetadata(BundleConstants.GRAAL_COMPONENT_ID);
+        assertEquals(1, loaded.size());
+        ComponentInfo ci = loaded.iterator().next();
+        assertNotNull(ci);
+        assertEquals(StabilityLevel.Experimental, ci.getStability());
+        assertFalse(ci.isNativeComponent());
+        assertEquals(DistributionType.BUNDLED, ci.getDistributionType());
     }
 }

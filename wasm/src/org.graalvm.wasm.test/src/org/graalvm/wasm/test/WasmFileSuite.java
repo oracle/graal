@@ -126,7 +126,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         contextBuilder.option("engine.BackgroundCompilation", "true");
         contextBuilder.option("engine.CompileImmediately", "false");
         contextBuilder.option("engine.Inlining", "false");
-        contextBuilder.option("engine.CompilationThreshold", "100");
+        contextBuilder.option("engine.FirstTierCompilationThreshold", "100");
         return contextBuilder.build();
     }
 
@@ -170,7 +170,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 return;
             }
 
-            final WasmContext wasmContext = WasmContext.getCurrent();
+            final WasmContext wasmContext = WasmContext.get(null);
             final Value mainFunction = findMain(wasmContext);
 
             resetStatus(System.out, phaseIcon, phaseLabel);

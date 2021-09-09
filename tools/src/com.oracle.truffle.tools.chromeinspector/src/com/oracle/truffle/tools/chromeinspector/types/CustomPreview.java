@@ -71,10 +71,7 @@ public final class CustomPreview {
     }
 
     private static JSONObject create(DebugValue debugValue, DebugValue config, LanguageInfo language, InspectorExecutionContext context) {
-        DebuggerSession debuggerSession = context.getDebuggerSession();
-        if (debuggerSession == null) {
-            return null;
-        }
+        DebuggerSession debuggerSession = debugValue.getSession();
         DebugScope topScope = debuggerSession.getTopScope(language.getId());
         DebugValue formatters = null;
         while (topScope != null) {

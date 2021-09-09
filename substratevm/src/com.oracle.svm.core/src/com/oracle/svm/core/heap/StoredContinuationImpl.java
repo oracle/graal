@@ -24,7 +24,19 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.MemoryUtil;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.util.TypeConversion;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -35,29 +47,18 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 import com.oracle.svm.core.util.VMError;
-import jdk.vm.ci.meta.JavaKind;
-import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
-import java.util.ArrayList;
-import java.util.List;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Helper class to access a {@link StoredContinuation}.
- * 
+ *
  * Memory layout of a {@link StoredContinuation} instance:
  *
  * Each {@link StoredContinuation} has a fixed-size header (16 bytes) which stores the size of the
@@ -91,7 +92,7 @@ public final class StoredContinuationImpl {
     private static final int HEADER_SIZE = PAYLOAD_OFFSET;
 
     private static StoredContinuation allocate(long size) {
-        return KnownIntrinsics.convertUnknownValue(NewStoredContinuationNode.allocate(size), StoredContinuation.class);
+        return NewStoredContinuationNode.allocate(size);
     }
 
     /* All method calls in this function except `allocate` should be `@Uninterruptible` */
@@ -219,7 +220,7 @@ public final class StoredContinuationImpl {
     @Uninterruptible(reason = "access stack")
     public static void writeBuf(StoredContinuation f, byte[] buf) {
         Pointer frameStart = payloadFrameStart(f);
-        MemoryUtil.copy(frameStart, Word.objectToUntrackedPointer(buf).add(getByteArrayBaseOffset()), WordFactory.unsigned(buf.length));
+        UnmanagedMemoryUtil.copy(frameStart, Word.objectToUntrackedPointer(buf).add(getByteArrayBaseOffset()), WordFactory.unsigned(buf.length));
     }
 
     public static int allocateFromCurrentStack(Target_java_lang_Continuation contRef, Pointer rootSp, Pointer leafSp, CodePointer leafIp) {
@@ -277,7 +278,7 @@ public final class StoredContinuationImpl {
         Pointer frameStart = payloadFrameStart(contRef.internalContinuation);
         long frameSize = readAllFrameSize(contRef.internalContinuation);
         VMError.guarantee(frameSize == allFrameSize);
-        MemoryUtil.copy(resultLeafSP, frameStart, WordFactory.unsigned(frameSize));
+        UnmanagedMemoryUtil.copy(resultLeafSP, frameStart, WordFactory.unsigned(frameSize));
 
         return JavaContinuations.YIELD_SUCCESS;
     }
@@ -288,7 +289,7 @@ public final class StoredContinuationImpl {
      */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     public static boolean walkStoredContinuationFromPointer(Pointer baseAddress, ObjectReferenceVisitor visitor, Object holderObject) {
-        StoredContinuation f = KnownIntrinsics.convertUnknownValue(holderObject, StoredContinuation.class);
+        StoredContinuation f = (StoredContinuation) holderObject;
 
         Pointer payloadStart = StoredContinuationImpl.payloadLocation(f);
         assert payloadStart.subtract(baseAddress).equal(StoredContinuationImpl.HEADER_SIZE) : "base address not pointing to frame instance";

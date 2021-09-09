@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -394,6 +394,23 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadIsMethodHandleReturnOffset = getFieldOffset("JavaThread::_is_method_handle_return", Integer.class, "int");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
+    public final int jvmciReserved0Offset;
+    {
+        int offset;
+        try {
+            offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1, hasJVMCIReservedFields());
+        } catch (jdk.vm.ci.common.JVMCIError t) {
+            // at some point the field was migrated to jlong
+            offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1, hasJVMCIReservedFields());
+        }
+        jvmciReserved0Offset = offset;
+    }
+    public final int jvmciReservedReference0Offset = getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1, hasJVMCIReservedFields());
+
+    private static boolean hasJVMCIReservedFields() {
+        return JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17 || (IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 13);
+    }
+
     public final int doingUnsafeAccessOffset = getFieldOffset("JavaThread::_doing_unsafe_access", Integer.class, "bool", Integer.MAX_VALUE, JVMCI || JDK >= 14);
     // @formatter:off
     public final int javaThreadReservedStackActivationOffset =
@@ -513,7 +530,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t", -1, gr21761);
     public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1, jdk13Backport);
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*", -1, jdk13Backport);
-    public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "Thread*", -1, jdk13Backport);
+    public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, JDK < 17 ? "Thread*" : "JavaThread*", -1, jdk13Backport);
 
     public final int markWordNoHashInPlace = getConstant(markWordField("no_hash_in_place"), Integer.class);
     public final int markWordNoLockInPlace = getConstant(markWordField("no_lock_in_place"), Integer.class);
@@ -661,8 +678,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         } else if (JDK < 16) {
             threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "volatile void*");
         } else {
-            // JDK-8253180
-            threadPollingPageOffset = getFieldOffset("Thread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
+            // JDK-8253180 & JDK-8265932
+            String name = JDK == 16 ? "Thread::_poll_data" : "JavaThread::_poll_data";
+            threadPollingPageOffset = getFieldOffset(name, Integer.class, "SafepointMechanism::ThreadData") +
                             getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
         }
     }
@@ -672,32 +690,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final int threadLocalAllocBufferStartOffset = getFieldOffset("ThreadLocalAllocBuffer::_start", Integer.class, "HeapWord*");
     private final int threadLocalAllocBufferEndOffset = getFieldOffset("ThreadLocalAllocBuffer::_end", Integer.class, "HeapWord*");
     private final int threadLocalAllocBufferTopOffset = getFieldOffset("ThreadLocalAllocBuffer::_top", Integer.class, "HeapWord*");
-    private final int threadLocalAllocBufferPfTopOffset = getFieldOffset("ThreadLocalAllocBuffer::_pf_top", Integer.class, "HeapWord*");
-    private final int threadLocalAllocBufferSlowAllocationsOffset = getFieldOffset("ThreadLocalAllocBuffer::_slow_allocations", Integer.class, "unsigned");
-    private final int threadLocalAllocBufferFastRefillWasteOffset = getFieldOffset("ThreadLocalAllocBuffer::_fast_refill_waste", Integer.class, "unsigned");
-    private final int threadLocalAllocBufferNumberOfRefillsOffset = getFieldOffset("ThreadLocalAllocBuffer::_number_of_refills", Integer.class, "unsigned");
-    private final int threadLocalAllocBufferRefillWasteLimitOffset = getFieldOffset("ThreadLocalAllocBuffer::_refill_waste_limit", Integer.class, "size_t");
-    private final int threadLocalAllocBufferDesiredSizeOffset = getFieldOffset("ThreadLocalAllocBuffer::_desired_size", Integer.class, "size_t");
-
-    public int tlabSlowAllocationsOffset() {
-        return threadTlabOffset + threadLocalAllocBufferSlowAllocationsOffset;
-    }
-
-    public int tlabFastRefillWasteOffset() {
-        return threadTlabOffset + threadLocalAllocBufferFastRefillWasteOffset;
-    }
-
-    public int tlabNumberOfRefillsOffset() {
-        return threadTlabOffset + threadLocalAllocBufferNumberOfRefillsOffset;
-    }
-
-    public int tlabRefillWasteLimitOffset() {
-        return threadTlabOffset + threadLocalAllocBufferRefillWasteLimitOffset;
-    }
-
-    public int threadTlabSizeOffset() {
-        return threadTlabOffset + threadLocalAllocBufferDesiredSizeOffset;
-    }
 
     public int threadTlabStartOffset() {
         return threadTlabOffset + threadLocalAllocBufferStartOffset;
@@ -709,10 +701,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public int threadTlabTopOffset() {
         return threadTlabOffset + threadLocalAllocBufferTopOffset;
-    }
-
-    public int threadTlabPfTopOffset() {
-        return threadTlabOffset + threadLocalAllocBufferPfTopOffset;
     }
 
     public final int tlabAlignmentReserve = getFieldValue("CompilerToVM::Data::ThreadLocalAllocBuffer_alignment_reserve", Integer.class, "size_t");
@@ -815,6 +803,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
     public final long newMultiArrayOrNullAddress = getAddress("JVMCIRuntime::new_multi_array_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
     public final long dynamicNewInstanceOrNullAddress = getAddress("JVMCIRuntime::dynamic_new_instance_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
+
+    public final long invokeJavaMethodAddress = getAddress("JVMCIRuntime::invoke_static_method_one_arg", 0L,
+                    JVMCI ? jvmciGE(JVMCI_21_1_b02) : (JDK >= 17 || (IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 13)));
 
     public boolean areNullAllocationStubsAvailable() {
         return newInstanceOrNullAddress != 0L;

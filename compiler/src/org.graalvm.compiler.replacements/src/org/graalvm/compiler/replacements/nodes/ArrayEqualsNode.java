@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -105,10 +105,10 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
         return (kind == JavaKind.Float && Float.isNaN(constant.asFloat())) || (kind == JavaKind.Double && Double.isNaN(constant.asDouble()));
     }
 
-    private static boolean arrayEquals(ConstantReflectionProvider constantReflection, JavaConstant a, JavaConstant b, int len) {
+    protected static boolean arrayEquals(ConstantReflectionProvider constantReflection, JavaConstant a, int startIndexA, JavaConstant b, int startIndexB, int len) {
         for (int i = 0; i < len; i++) {
-            JavaConstant aElem = constantReflection.readArrayElement(a, i);
-            JavaConstant bElem = constantReflection.readArrayElement(b, i);
+            JavaConstant aElem = constantReflection.readArrayElement(a, startIndexA + i);
+            JavaConstant bElem = constantReflection.readArrayElement(b, startIndexB + i);
             if (!constantReflection.constantEquals(aElem, bElem) && !(isNaNFloat(aElem) && isNaNFloat(bElem))) {
                 return false;
             }
@@ -134,7 +134,7 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
                 Integer c1Length = constantReflection.readArrayLength(c1.asJavaConstant());
                 Integer c2Length = constantReflection.readArrayLength(c2.asJavaConstant());
                 if (c1Length != null && c2Length != null && c1Length.equals(c2Length)) {
-                    boolean ret = arrayEquals(constantReflection, c1.asJavaConstant(), c2.asJavaConstant(), length.asJavaConstant().asInt());
+                    boolean ret = arrayEquals(constantReflection, c1.asJavaConstant(), 0, c2.asJavaConstant(), 0, length.asJavaConstant().asInt());
                     return ConstantNode.forBoolean(ret);
                 }
             }
@@ -249,7 +249,9 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        if (UseGraalStubs.getValue(graph().getOptions())) {
+        if (length.isJavaConstant() && kind.isNumericInteger()) {
+            // Full-unroll opportunity in LIR.
+        } else if (UseGraalStubs.getValue(graph().getOptions())) {
             ForeignCallLinkage linkage = gen.lookupGraalStub(this);
             if (linkage != null) {
                 Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(array1), gen.operand(array2), gen.operand(length));

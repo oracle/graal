@@ -46,26 +46,28 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.collections.Pair;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
-import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -82,6 +84,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.utilities.TriState;
 
 @SuppressWarnings({"static-method", "unused"})
 public class DebugValueTest extends AbstractDebugTest {
@@ -219,23 +223,9 @@ public class DebugValueTest extends AbstractDebugTest {
      */
     @Test
     public void testValueAttributes() throws Throwable {
-        final Source source = testSource("DEFINE(function, ROOT(\n" +
-                        "  ARGUMENT(a), \n" +
-                        "  STATEMENT()\n" +
-                        "))\n");
-        Context context = Context.create();
-        context.eval(source);
-        Value functionValue = context.getBindings(InstrumentationTestLanguage.ID).getMember("function");
-        assertNotNull(functionValue);
-        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
-
         // Test of the default attribute values:
         NoAttributesTruffleObject nao = new NoAttributesTruffleObject();
-        boolean[] suspended = new boolean[]{false};
-        DebuggerSession session = debugger.startSession((SuspendedEvent event) -> {
-            assertFalse(suspended[0]);
-            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
-            assertNotNull(value);
+        checkDebugValueOf(nao, (event, value) -> {
             DebugValue attributesTOValue = value.getProperties().iterator().next();
             assertEquals("property", attributesTOValue.getName());
             // Property is readable by default
@@ -252,25 +242,16 @@ public class DebugValueTest extends AbstractDebugTest {
             assertFalse(attributesTOValue.canExecute());
             DebugValue fvalue = event.getSession().getTopScope(InstrumentationTestLanguage.ID).getDeclaredValue("function");
             assertTrue(fvalue.canExecute());
-            event.prepareContinue();
-            suspended[0] = true;
         });
-        session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
-        functionValue.execute(nao);
-        session.close();
-        assertTrue(suspended[0]);
 
         // Test of the modified attribute values:
-        suspended[0] = false;
         final ModifiableAttributesTruffleObject mao = new ModifiableAttributesTruffleObject();
-        session = debugger.startSession((SuspendedEvent event) -> {
-            assertFalse(suspended[0]);
-            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
-            assertNotNull(value);
+        checkDebugValueOf(mao, value -> {
             DebugValue attributesTOValue = value.getProperties().iterator().next();
             assertEquals("property", attributesTOValue.getName());
             // All false initially
             assertFalse(attributesTOValue.isReadable());
+            assertEquals("<not readable>", attributesTOValue.toDisplayString());
             assertFalse(attributesTOValue.isWritable());
             assertFalse(attributesTOValue.isInternal());
             assertFalse(attributesTOValue.hasReadSideEffects());
@@ -289,32 +270,13 @@ public class DebugValueTest extends AbstractDebugTest {
             attributesTOValue = value.getProperties().iterator().next();
             assertTrue(attributesTOValue.hasReadSideEffects());
             assertTrue(attributesTOValue.hasWriteSideEffects());
-            event.prepareContinue();
-            suspended[0] = true;
         });
-        session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
-        functionValue.execute(mao);
-        session.close();
-        assertTrue(suspended[0]);
     }
 
     @Test
     public void testCached() {
-        final Source source = testSource("DEFINE(function, ROOT(\n" +
-                        "  ARGUMENT(a), \n" +
-                        "  STATEMENT()\n" +
-                        "))\n");
-        Context context = Context.create();
-        context.eval(source);
-        Value functionValue = context.getBindings(InstrumentationTestLanguage.ID).getMember("function");
-        assertNotNull(functionValue);
-        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
-
-        boolean[] suspended = new boolean[]{false};
         final ModifiableAttributesTruffleObject ma = new ModifiableAttributesTruffleObject();
-        try (DebuggerSession session = debugger.startSession((SuspendedEvent event) -> {
-            assertFalse(suspended[0]);
-            DebugValue a = event.getTopStackFrame().getScope().getDeclaredValue("a");
+        checkDebugValueOf(ma, a -> {
             ma.setIsReadable(true);
             DebugValue ap1 = a.getProperty("p1");
             DebugValue ap2 = a.getProperty("p2");
@@ -348,13 +310,7 @@ public class DebugValueTest extends AbstractDebugTest {
             // Original properties are unchanged:
             assertEquals(0, ap1.asInt());
             assertEquals(1, ap2.asInt());
-            event.prepareContinue();
-            suspended[0] = true;
-        })) {
-            session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
-            functionValue.execute(ma);
-        }
-        assertTrue(suspended[0]);
+        });
     }
 
     @Test
@@ -367,16 +323,22 @@ public class DebugValueTest extends AbstractDebugTest {
 
             final class TestRootNode extends RootNode {
                 @Node.Child TestBody body = new TestBody();
+                private final FrameSlot a;
+                private final FrameSlot b;
+                private final FrameSlot c;
 
                 TestRootNode(TruffleLanguage<?> language) {
                     super(language);
+                    a = getFrameDescriptor().addFrameSlot("a", FrameSlotKind.Object);
+                    b = getFrameDescriptor().addFrameSlot("b", FrameSlotKind.Int);
+                    c = getFrameDescriptor().addFrameSlot("c", FrameSlotKind.Object);
                 }
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    if (frame.getArguments().length == 0) {
-                        return getCallTarget().call(null, 11, new Object());
-                    }
+                    frame.setObject(a, new ValueLanguageTest.NullObject());
+                    frame.setInt(b, 11);
+                    frame.setObject(c, new Object());
                     return body.execute(frame);
                 }
             }
@@ -387,34 +349,163 @@ public class DebugValueTest extends AbstractDebugTest {
             tester.startEval(source);
             expectSuspended((SuspendedEvent event) -> {
                 Iterator<DebugValue> declaredValues = event.getTopStackFrame().getScope().getDeclaredValues().iterator();
-                DebugValue arg0 = declaredValues.next();
-                DebugValue arg1 = declaredValues.next();
-                DebugValue arg2 = declaredValues.next();
+                DebugValue var0 = declaredValues.next();
+                DebugValue var1 = declaredValues.next();
+                // var2 is not an interop value
                 assertFalse(declaredValues.hasNext());
 
-                assertFalse(arg0.isReadable());
-                assertTrue(arg1.isReadable());
-                assertFalse(arg2.isReadable());
+                assertTrue(var0.isReadable());
+                assertTrue(var1.isReadable());
 
-                assertEquals("<not readable>", arg0.toDisplayString());
-                assertNull(arg0.getProperties());
-                assertNull(arg0.getMetaObject());
-                assertFalse(arg0.isArray());
-                assertFalse(arg0.isBoolean());
-                assertFalse(arg0.isDate());
-                assertFalse(arg0.isDuration());
-                assertFalse(arg0.isInstant());
-                assertFalse(arg0.isInternal());
-                assertFalse(arg0.isMetaObject());
-                assertFalse(arg0.isNull());
-                assertFalse(arg0.isNumber());
-                assertFalse(arg0.isReadable());
-                assertFalse(arg0.isString());
-                assertFalse(arg0.isTime());
-                assertFalse(arg0.isTimeZone());
+                assertNull(var0.getProperties());
+                assertFalse(var0.isArray());
+                assertFalse(var0.isBoolean());
+                assertFalse(var0.isDate());
+                assertFalse(var0.isDuration());
+                assertFalse(var0.isInstant());
+                assertFalse(var0.isInternal());
+                assertFalse(var0.isMetaObject());
+                assertTrue(var0.isNull());
+                assertFalse(var0.isNumber());
+                assertTrue(var0.isReadable());
+                assertFalse(var0.isString());
+                assertFalse(var0.isTime());
+                assertFalse(var0.isTimeZone());
 
-                assertEquals("11", arg1.toDisplayString());
-                assertEquals("<not readable>", arg2.toDisplayString());
+                assertEquals("11", var1.toDisplayString());
+            });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testHashCode() {
+        final Source source = testSource("DEFINE(getHashCode, ROOT(\n" +
+                        "  ARGUMENT(a), \n" +
+                        "  STATEMENT()\n" +
+                        "))\n");
+        Value getHashCode = getFunctionValue(source, "getHashCode");
+
+        List<Pair<Object, Integer>> hashes = new ArrayList<>();
+        hashes.add(Pair.create(42, System.identityHashCode(42)));
+        hashes.add(Pair.create(true, System.identityHashCode(true)));
+        hashes.add(Pair.create(new IdentityObject(42, 24), 24));
+
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startExecute(c -> {
+                for (Pair<Object, Integer> hash : new ArrayList<>(hashes)) {
+                    getHashCode.execute(hash.getLeft());
+                }
+                return Value.asValue(null);
+            });
+            while (!hashes.isEmpty()) {
+                expectSuspended((SuspendedEvent event) -> {
+                    DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
+                    assertNotNull(value);
+                    Pair<Object, Integer> hash = hashes.remove(0);
+                    assertEquals("Hash of " + hash.getLeft(), hash.getRight().intValue(), value.hashCode());
+                    event.prepareStepOver(1);
+                });
+            }
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testEquals() {
+        final Source source = testSource("DEFINE(isEqual, ROOT(\n" +
+                        "  ARGUMENT(a), \n" +
+                        "  ARGUMENT(b), \n" +
+                        "  STATEMENT()\n" +
+                        "))\n");
+        Value isEqual = getFunctionValue(source, "isEqual");
+
+        List<Pair<Pair<Object, Object>, Boolean>> equals = new ArrayList<>();
+        equals.add(Pair.create(Pair.create(42, 42), true));
+        equals.add(Pair.create(Pair.create(42, 10), false));
+        equals.add(Pair.create(Pair.create(false, false), true));
+        equals.add(Pair.create(Pair.create(true, false), false));
+        equals.add(Pair.create(Pair.create(new IdentityObject("aa", 10), new IdentityObject("aa", 10)), true));
+        equals.add(Pair.create(Pair.create(new IdentityObject("aa", 10), new IdentityObject("bb", 10)), false));
+
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startExecute(c -> {
+                for (Pair<Pair<Object, Object>, Boolean> eq : new ArrayList<>(equals)) {
+                    Pair<Object, Object> objects = eq.getLeft();
+                    isEqual.execute(objects.getLeft(), objects.getRight());
+                }
+                return Value.asValue(null);
+            });
+            while (!equals.isEmpty()) {
+                expectSuspended((SuspendedEvent event) -> {
+                    DebugValue valueA = event.getTopStackFrame().getScope().getDeclaredValue("a");
+                    DebugValue valueB = event.getTopStackFrame().getScope().getDeclaredValue("b");
+                    assertNotNull(valueA);
+                    assertNotNull(valueB);
+                    Pair<Pair<Object, Object>, Boolean> eq = equals.remove(0);
+                    Pair<Object, Object> objects = eq.getLeft();
+                    assertEquals("Equality of " + objects.getLeft() + " and " + objects.getRight(), eq.getRight().booleanValue(), valueA.equals(valueB));
+                    event.prepareStepOver(1);
+                });
+            }
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testUnreadableEquals() {
+        final Source source = testSource("DEFINE(isEqual, ROOT(\n" +
+                        "  ARGUMENT(a1), \n" +
+                        "  ARGUMENT(a2), \n" +
+                        "  ARGUMENT(b), \n" +
+                        "  ARGUMENT(c), \n" +
+                        "  STATEMENT()\n" +
+                        "))\n");
+        Value isEqual = getFunctionValue(source, "isEqual");
+
+        ModifiableAttributesTruffleObject obj1 = new ModifiableAttributesTruffleObject();
+        obj1.setIsReadable(false);
+        obj1.setIsWritable(true);
+        ModifiableAttributesTruffleObject obj2 = new ModifiableAttributesTruffleObject();
+        obj2.setIsReadable(false);
+        obj2.setIsWritable(true);
+        ModifiableAttributesTruffleObject objReadable = new ModifiableAttributesTruffleObject();
+        objReadable.setIsReadable(true);
+
+        // a1 and a2 refer to the same value with unreadable properties
+        // b refer to a different value with unreadable properties
+        // c refer to a value with readable properties
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startExecute(c -> isEqual.execute(obj1, obj1, obj2, objReadable));
+            expectSuspended((SuspendedEvent event) -> {
+                DebugValue a1 = event.getTopStackFrame().getScope().getDeclaredValue("a1");
+                DebugValue a2 = event.getTopStackFrame().getScope().getDeclaredValue("a2");
+                DebugValue b = event.getTopStackFrame().getScope().getDeclaredValue("b");
+                DebugValue c = event.getTopStackFrame().getScope().getDeclaredValue("c");
+                assertNotNull(a1);
+                assertNotNull(a2);
+                assertNotNull(b);
+                assertNotNull(c);
+                assertTrue(a1.equals(a2));
+                assertFalse(a1.equals(b));
+                assertFalse(a1.equals(c));
+                DebugValue a1p1 = a1.getProperty("p1");
+                DebugValue a1p2 = a1.getProperty("p2");
+                DebugValue a2p1 = a2.getProperty("p1");
+                DebugValue a2p2 = a2.getProperty("p2");
+                DebugValue bp1 = b.getProperty("p1");
+                DebugValue bp2 = b.getProperty("p2");
+                DebugValue cp1 = c.getProperty("p1");
+                assertTrue(a1p1.equals(a2p1));
+                assertTrue(a1p2.equals(a2p2));
+                assertFalse(a1p1.equals(a2p2));
+                assertFalse(a1p1.equals(bp1));
+                assertFalse(a1p2.equals(bp2));
+                assertFalse(bp1.equals(cp1));
+                event.prepareStepOver(1);
             });
         }
         expectDone();
@@ -646,4 +737,28 @@ public class DebugValueTest extends AbstractDebugTest {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static final class IdentityObject implements TruffleObject {
+
+        private final Object equalsDelegate;
+        private final int hashCode;
+
+        IdentityObject(Object equalsDelegate, int hashCode) {
+            this.equalsDelegate = equalsDelegate;
+            this.hashCode = hashCode;
+        }
+
+        @ExportMessage
+        int identityHashCode() {
+            return hashCode;
+        }
+
+        @ExportMessage
+        TriState isIdenticalOrUndefined(Object other) {
+            if (other == this) {
+                return TriState.TRUE;
+            }
+            return TriState.valueOf((other instanceof IdentityObject) && equalsDelegate.equals(((IdentityObject) other).equalsDelegate));
+        }
+    }
 }

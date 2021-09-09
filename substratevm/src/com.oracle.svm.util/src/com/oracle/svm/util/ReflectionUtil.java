@@ -50,27 +50,41 @@ public final class ReflectionUtil {
      * declaring class.
      */
     private static void openModule(Class<?> declaringClass) {
-        ModuleSupport.openModule(declaringClass, ReflectionUtil.class);
+        ModuleSupport.openModuleByClass(declaringClass, ReflectionUtil.class);
     }
 
     public static Method lookupMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+        return lookupMethod(false, declaringClass, methodName, parameterTypes);
+    }
+
+    public static Method lookupMethod(boolean optional, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
         try {
             Method result = declaringClass.getDeclaredMethod(methodName, parameterTypes);
             openModule(declaringClass);
             result.setAccessible(true);
             return result;
         } catch (ReflectiveOperationException ex) {
+            if (optional) {
+                return null;
+            }
             throw new ReflectionUtilError(ex);
         }
     }
 
     public static <T> Constructor<T> lookupConstructor(Class<T> declaringClass, Class<?>... parameterTypes) {
+        return lookupConstructor(false, declaringClass, parameterTypes);
+    }
+
+    public static <T> Constructor<T> lookupConstructor(boolean optional, Class<T> declaringClass, Class<?>... parameterTypes) {
         try {
             Constructor<T> result = declaringClass.getDeclaredConstructor(parameterTypes);
             openModule(declaringClass);
             result.setAccessible(true);
             return result;
         } catch (ReflectiveOperationException ex) {
+            if (optional) {
+                return null;
+            }
             throw new ReflectionUtilError(ex);
         }
     }
@@ -84,12 +98,19 @@ public final class ReflectionUtil {
     }
 
     public static Field lookupField(Class<?> declaringClass, String fieldName) {
+        return lookupField(false, declaringClass, fieldName);
+    }
+
+    public static Field lookupField(boolean optional, Class<?> declaringClass, String fieldName) {
         try {
             Field result = declaringClass.getDeclaredField(fieldName);
             openModule(declaringClass);
             result.setAccessible(true);
             return result;
         } catch (ReflectiveOperationException ex) {
+            if (optional) {
+                return null;
+            }
             throw new ReflectionUtilError(ex);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,16 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.nfi.spi.NFIBackend;
-import com.oracle.truffle.nfi.spi.NFIBackendFactory;
-import com.oracle.truffle.nfi.spi.NFIBackendTools;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.backend.spi.NFIBackend;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 
 final class NFIContext {
 
@@ -113,5 +115,11 @@ final class NFIContext {
         }
 
         return null;
+    }
+
+    private static final ContextReference<NFIContext> REFERENCE = ContextReference.create(NFILanguage.class);
+
+    static NFIContext get(Node node) {
+        return REFERENCE.get(node);
     }
 }

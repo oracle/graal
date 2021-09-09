@@ -96,13 +96,13 @@ public final class JavaStackWalker {
      * See {@link #initWalk(JavaStackWalk, Pointer, CodePointer)}, except that the instruction
      * pointer will be read from the stack later on.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void initWalk(JavaStackWalk walk, Pointer startSP) {
         initWalk(walk, startSP, (CodePointer) WordFactory.nullPointer());
         assert walk.getIPCodeInfo().isNull() : "otherwise, the caller would have to be uninterruptible as well";
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void initWalk(JavaStackWalk walk, Pointer startSP, Pointer endSP) {
         initWalk(walk, startSP);
         walk.setEndSP(endSP);

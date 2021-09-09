@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -40,6 +38,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -176,10 +176,15 @@ public class LayoutEncoding {
         return encoding < (ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int getArrayBaseOffsetAsInt(int encoding) {
+        return (encoding >> ARRAY_BASE_SHIFT) & ARRAY_BASE_MASK;
+    }
+
     // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getArrayBaseOffset(int encoding) {
-        return WordFactory.unsigned((encoding >> ARRAY_BASE_SHIFT) & ARRAY_BASE_MASK);
+        return WordFactory.unsigned(getArrayBaseOffsetAsInt(encoding));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -187,6 +192,7 @@ public class LayoutEncoding {
         return (encoding >> ARRAY_INDEX_SHIFT_SHIFT) & ARRAY_INDEX_SHIFT_MASK;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getArrayIndexScale(int encoding) {
         return 1 << getArrayIndexShift(encoding);
     }
@@ -202,12 +208,13 @@ public class LayoutEncoding {
         return getArrayElementOffset(encoding, length).add(alignmentMask).and(~alignmentMask);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
         } else if (isStoredContinuation(encoding)) {
-            return WordFactory.unsigned(StoredContinuationImpl.readSize(KnownIntrinsics.convertUnknownValue(obj, StoredContinuation.class)));
+            return WordFactory.unsigned(StoredContinuationImpl.readSize((StoredContinuation) obj));
         } else {
             return getInstanceSize(encoding);
         }

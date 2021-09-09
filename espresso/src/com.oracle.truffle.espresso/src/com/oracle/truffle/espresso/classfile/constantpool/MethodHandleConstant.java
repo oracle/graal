@@ -101,12 +101,13 @@ public interface MethodHandleConstant extends PoolConstant {
             this.refIndex = PoolConstant.u2(refIndex);
         }
 
+        @Override
         public RefKind getRefKind() {
-            RefKind kind = RefKind.forValue(refKind);
-            assert kind != null;
-            return kind;
+            // not yet validated! Could be null
+            return RefKind.forValue(refKind);
         }
 
+        @Override
         public char getRefIndex() {
             return refIndex;
         }
@@ -136,7 +137,7 @@ public interface MethodHandleConstant extends PoolConstant {
                 refName = target.getName();
             } else {
                 assert refTag == Tag.FIELD_REF;
-                Field field = pool.resolvedFieldAt(accessingKlass, refIndex);
+                Field field = pool.resolvedFieldAt(accessingKlass, refIndex).getField();
                 mtype = meta.resolveSymbolAndAccessCheck(field.getType(), accessingKlass).mirror();
                 mklass = field.getDeclaringKlass();
                 refName = field.getName();

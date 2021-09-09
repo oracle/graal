@@ -190,7 +190,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
     }
 
     private List<String> filterGraalCompilerClasses(List<String> loadedGraalClassNames) {
-        HashSet<Class<?>> whitelist = new HashSet<>();
+        HashSet<Class<?>> allowList = new HashSet<>();
         List<Class<?>> loadedGraalClasses = new ArrayList<>();
 
         for (String name : loadedGraalClassNames) {
@@ -205,7 +205,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
             }
         }
         /*
-         * Look for all loaded OptionDescriptors classes, and whitelist the classes that declare the
+         * Look for all loaded OptionDescriptors classes, and allow the classes that declare the
          * options. They may be loaded by the option parsing code.
          */
         for (Class<?> cls : loadedGraalClasses) {
@@ -213,20 +213,20 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
                 try {
                     OptionDescriptors optionDescriptors = cls.asSubclass(OptionDescriptors.class).getDeclaredConstructor().newInstance();
                     for (OptionDescriptor option : optionDescriptors) {
-                        whitelist.add(option.getDeclaringClass());
-                        whitelist.add(option.getOptionValueType());
-                        whitelist.add(option.getOptionType().getDeclaringClass());
+                        allowList.add(option.getDeclaringClass());
+                        allowList.add(option.getOptionValueType());
+                        allowList.add(option.getOptionType().getDeclaringClass());
                     }
                 } catch (ReflectiveOperationException e) {
                 }
             }
         }
 
-        whitelist.add(Cancellable.class);
+        allowList.add(Cancellable.class);
 
         List<String> forbiddenClasses = new ArrayList<>();
         for (Class<?> cls : loadedGraalClasses) {
-            if (whitelist.contains(cls)) {
+            if (allowList.contains(cls)) {
                 continue;
             }
 

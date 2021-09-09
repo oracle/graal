@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,6 +107,10 @@ final class AssertUtils {
         return String.format("Invariant contract violation for receiver %s and index %s.", formatValue(receiver), arg);
     }
 
+    static String violationInvariant(Object receiver, Object arg) {
+        return String.format("Invariant contract violation for receiver %s and key %s.", formatValue(receiver), formatValue(arg));
+    }
+
     private static String violationReturn(Object receiver, Object returnValue) {
         return String.format("Post-condition contract violation for receiver %s and return value %s.",
                         formatValue(receiver), formatValue(returnValue));
@@ -118,16 +122,31 @@ final class AssertUtils {
                         formatValue(receiver), formatValue(arg));
     }
 
-    static boolean validReturn(Object receiver, Object arg) {
-        assert isInteropValue(arg) : violationReturn(receiver, arg);
+    static boolean validInteropReturn(Object receiver, Object arg) {
+        assert InteropLibrary.isValidValue(arg) : violationReturn(receiver, arg);
         return true;
     }
 
-    static boolean validArgument(Object receiver, Object arg) {
+    static boolean validProtocolReturn(Object receiver, Object arg) {
+        assert InteropLibrary.isValidProtocolValue(arg) : violationReturn(receiver, arg);
+        return true;
+    }
+
+    static boolean validInteropArgument(Object receiver, Object arg) {
         if (arg == null) {
             throw new NullPointerException(violationArgument(receiver, arg));
         }
-        if (!isInteropValue(arg)) {
+        if (!InteropLibrary.isValidValue(arg)) {
+            throw new ClassCastException(violationArgument(receiver, arg));
+        }
+        return true;
+    }
+
+    static boolean validProtocolArgument(Object receiver, Object arg) {
+        if (arg == null) {
+            throw new NullPointerException(violationArgument(receiver, arg));
+        }
+        if (!InteropLibrary.isValidProtocolValue(arg)) {
             throw new ClassCastException(violationArgument(receiver, arg));
         }
         return true;
@@ -157,16 +176,10 @@ final class AssertUtils {
                         formatValue(receiver), formatValue(arg));
     }
 
-    @SuppressWarnings("deprecation")
-    static boolean isInteropValue(Object o) {
-        return o instanceof com.oracle.truffle.api.TruffleException || o instanceof TruffleObject || o instanceof Boolean || o instanceof Byte || o instanceof Short || o instanceof Integer ||
-                        o instanceof Long || o instanceof Float || o instanceof Double || o instanceof Character || o instanceof String;
-    }
-
     static boolean validArguments(Object receiver, Object[] args) {
         assert args != null : violationPre(receiver);
         for (Object arg : args) {
-            assert validArgument(receiver, arg);
+            assert validInteropArgument(receiver, arg);
         }
         return true;
     }

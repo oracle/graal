@@ -34,7 +34,6 @@ import com.oracle.objectfile.ElementImpl;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
-import com.oracle.objectfile.ObjectFile.RelocationRecord;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSection;
 import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSectionFlag;
@@ -141,7 +140,7 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public void markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
         if (useImplicitAddend != (explicitAddend == null)) {
             throw new IllegalArgumentException("must have either an explicit or implicit addend");
         }
@@ -149,7 +148,10 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
         PECoffRelocationTable rs = (PECoffRelocationTable) getOrCreateRelocationElement(useImplicitAddend);
         assert symbolName != null;
         PECoffSymtab.Entry ent = syms.getSymbol(symbolName);
-        assert ent != null;
+        if (ent == null) {
+            warn("attempting to mark relocation site for non-existent symbol " + symbolName);
+            return;
+        }
 
         AssemblyBuffer sbb = new AssemblyBuffer(bb);
         sbb.setByteOrder(getOwner().getByteOrder());
@@ -194,6 +196,15 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
         // return ByteBuffer cursor to where it was
         sbb.pop();
 
-        return rs.addEntry(this, offset, PECoffMachine.getRelocation(getOwner().getMachine(), k), ent, explicitAddend);
+        rs.addEntry(this, offset, PECoffMachine.getRelocation(getOwner().getMachine(), k), ent, explicitAddend);
+    }
+
+    /**
+     * Report a warning message in SVM.
+     *
+     * @param msg warning message that is printed.
+     */
+    private static void warn(String msg) {
+        System.err.println("Warning: " + msg);
     }
 }

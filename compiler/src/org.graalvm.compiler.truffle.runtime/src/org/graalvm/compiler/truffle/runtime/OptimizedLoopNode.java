@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,42 +25,32 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
-public final class OptimizedLoopNode extends LoopNode {
-
-    @Child private RepeatingNode repeatingNode;
+public final class OptimizedLoopNode extends AbstractOptimizedLoopNode {
 
     OptimizedLoopNode(RepeatingNode repeatingNode) {
-        this.repeatingNode = repeatingNode;
-    }
-
-    @Override
-    public RepeatingNode getRepeatingNode() {
-        return repeatingNode;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        execute(frame);
+        super(repeatingNode);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         Object status;
-        int loopCount = 0;
+        long loopCount = 0;
         try {
-            while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame))) {
-                if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.inFirstTier()) {
+            while (inject(repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame)))) {
+                if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.hasNextTier()) {
                     loopCount++;
                 }
+                TruffleSafepoint.poll(this);
             }
             return status;
         } finally {
-            reportLoopCount(this, loopCount);
+            profileCounted(loopCount);
+            reportLoopCount(this, OptimizedOSRLoopNode.toIntOrMaxInt(loopCount));
         }
     }
 

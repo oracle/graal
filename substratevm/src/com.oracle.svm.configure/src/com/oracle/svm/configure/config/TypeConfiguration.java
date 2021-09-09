@@ -28,17 +28,38 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.JavaKind;
-
-public class TypeConfiguration implements JsonPrintable {
+public class TypeConfiguration implements ConfigurationBase {
     private final ConcurrentMap<String, ConfigurationType> types = new ConcurrentHashMap<>();
+
+    public TypeConfiguration() {
+    }
+
+    public TypeConfiguration(TypeConfiguration other) {
+        for (ConfigurationType configurationType : other.types.values()) {
+            types.put(configurationType.getQualifiedJavaName(), new ConfigurationType(configurationType));
+        }
+    }
+
+    public void removeAll(TypeConfiguration other) {
+        for (Map.Entry<String, ConfigurationType> typeEntry : other.types.entrySet()) {
+            types.computeIfPresent(typeEntry.getKey(), (key, value) -> {
+                if (value.equals(typeEntry.getValue())) {
+                    return null;
+                }
+                assert value.getQualifiedJavaName().equals(typeEntry.getValue().getQualifiedJavaName());
+                value.removeAll(typeEntry.getValue());
+                return value.isEmpty() ? null : value;
+            });
+        }
+    }
 
     public ConfigurationType get(String qualifiedJavaName) {
         return types.get(qualifiedJavaName);
@@ -46,45 +67,32 @@ public class TypeConfiguration implements JsonPrintable {
 
     public void add(ConfigurationType type) {
         ConfigurationType previous = types.putIfAbsent(type.getQualifiedJavaName(), type);
-        UserError.guarantee(previous == null || previous == type, "Cannot replace existing type %s with %s", previous, type);
+        if (previous != null && previous != type) {
+            VMError.shouldNotReachHere("Cannot replace existing type " + previous + " with " + type);
+        }
     }
 
     public ConfigurationType getOrCreateType(String qualifiedForNameString) {
-        assert qualifiedForNameString.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
-        assert !qualifiedForNameString.endsWith("[]") : "Requires Class.forName syntax, for example '[Ljava.lang.String;'";
-        String s = qualifiedForNameString;
-        int n = 0;
-        while (n < s.length() && s.charAt(n) == '[') {
-            n++;
-        }
-        if (n > 0) { // transform to Java source syntax
-            StringBuilder sb = new StringBuilder(s.length() + n);
-            if (s.charAt(n) == 'L' && s.charAt(s.length() - 1) == ';') {
-                sb.append(s, n + 1, s.length() - 1); // cut off leading '[' and 'L' and trailing ';'
-            } else if (n == s.length() - 1) {
-                sb.append(JavaKind.fromPrimitiveOrVoidTypeChar(s.charAt(n)).getJavaName());
-            } else {
-                throw new IllegalArgumentException();
-            }
-            for (int i = 0; i < n; i++) {
-                sb.append("[]");
-            }
-            s = sb.toString();
-        }
-        return types.computeIfAbsent(s, ConfigurationType::new);
+        return types.computeIfAbsent(SignatureUtil.toInternalClassName(qualifiedForNameString), ConfigurationType::new);
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('[');
-        String prefix = "\n";
+        String prefix = "";
         List<ConfigurationType> list = new ArrayList<>(types.values());
         list.sort(Comparator.comparing(ConfigurationType::getQualifiedJavaName));
         for (ConfigurationType value : list) {
-            writer.append(prefix);
+            writer.append(prefix).newline();
             value.printJson(writer);
-            prefix = ",\n";
+            prefix = ",";
         }
-        writer.newline().append(']').newline();
+        writer.newline().append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return types.isEmpty();
+    }
+
 }

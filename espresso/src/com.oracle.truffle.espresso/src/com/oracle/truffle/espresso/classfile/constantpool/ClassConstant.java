@@ -128,7 +128,7 @@ public interface ClassConstant extends PoolConstant {
                     Meta meta = context.getMeta();
                     context.getLogger().log(Level.WARNING,
                                     "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                    throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
+                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
                 }
 
                 return new Resolved(klass);
@@ -137,7 +137,7 @@ public interface ClassConstant extends PoolConstant {
                 CompilerDirectives.transferToInterpreter();
                 Meta meta = pool.getContext().getMeta();
                 if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                    throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, meta.toGuestString(klassName));
+                    throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, meta.toGuestString(klassName));
                 }
                 throw e;
             } catch (VirtualMachineError e) {
@@ -204,7 +204,7 @@ public interface ClassConstant extends PoolConstant {
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     context.getLogger().log(Level.WARNING,
                                     "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                    throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
+                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
                 }
 
                 return new Resolved(klass);

@@ -142,6 +142,25 @@ public final class CodeInfoAccess {
         return cast(info).getState();
     }
 
+    public static String stateToString(int codeInfoState) {
+        switch (codeInfoState) {
+            case CodeInfo.STATE_CREATED:
+                return "created";
+            case CodeInfo.STATE_CODE_CONSTANTS_LIVE:
+                return "code constants live";
+            case CodeInfo.STATE_NON_ENTRANT:
+                return "non-entrant";
+            case CodeInfo.STATE_READY_FOR_INVALIDATION:
+                return "ready for invalidation";
+            case CodeInfo.STATE_PARTIALLY_FREED:
+                return "partially freed";
+            case CodeInfo.STATE_UNREACHABLE:
+                return "unreachable";
+            default:
+                return "invalid state";
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAlive(CodeInfo info) {
         return isAliveState(cast(info).getState());
@@ -354,5 +373,25 @@ public final class CodeInfoAccess {
     private static CodeInfoImpl cast(UntetheredCodeInfo info) {
         assert isValid(info);
         return (CodeInfoImpl) info;
+    }
+
+    public static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
+        String name = allowJavaHeapAccess ? CodeInfoAccess.getName(info) : null;
+        printCodeInfo(log, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
+    }
+
+    public static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
+        log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
+                        .string(CodeInfoAccess.stateToString(state));
+        if (name != null) {
+            log.string(" - ").string(name);
+        }
+        log.string(", ip: (").zhex(codeStart).string(" - ").zhex(codeEnd).string(")");
+        log.newline();
+        /*
+         * Note that we are not trying to output the InstalledCode object. It is not a pinned
+         * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
+         * could segfault.
+         */
     }
 }

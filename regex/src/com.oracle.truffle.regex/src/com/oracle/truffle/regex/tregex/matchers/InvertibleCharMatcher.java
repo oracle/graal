@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,18 +46,22 @@ package com.oracle.truffle.regex.tregex.matchers;
  */
 public abstract class InvertibleCharMatcher extends CharMatcher {
 
-    private final boolean invert;
+    final boolean invert;
 
     /**
      * Construct a new {@link InvertibleCharMatcher}.
      *
-     * @param invert if this is set to true, the result of {@link #execute(int)} is always inverted.
+     * @param invert if this is set to true, the result of {@link #match(int)} is always inverted.
      */
     protected InvertibleCharMatcher(boolean invert) {
         this.invert = invert;
     }
 
     protected boolean result(boolean result) {
+        return result(invert, result);
+    }
+
+    public static boolean result(boolean invert, boolean result) {
         return result != invert;
     }
 

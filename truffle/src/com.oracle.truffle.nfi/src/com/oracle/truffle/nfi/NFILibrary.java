@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ import java.util.Map;
 @ExportLibrary(InteropLibrary.class)
 final class NFILibrary implements TruffleObject {
 
-    private final Object library;
+    final Object library;
     private final Map<String, Object> symbols;
 
     @TruffleBoundary
@@ -148,6 +148,21 @@ final class NFILibrary implements TruffleObject {
     @SuppressWarnings("unused")
     static Object toDisplayString(NFILibrary receiver, boolean allowSideEffects) {
         return "Native Library";
+    }
+
+    @ExportMessage
+    boolean isPointer(@CachedLibrary("this.library") InteropLibrary interop) {
+        return interop.isPointer(this.library);
+    }
+
+    @ExportMessage
+    long asPointer(@CachedLibrary("this.library") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asPointer(this.library);
+    }
+
+    @ExportMessage
+    void toNative(@CachedLibrary("this.library") InteropLibrary interop) {
+        interop.toNative(this.library);
     }
 
     @ExportLibrary(InteropLibrary.class)

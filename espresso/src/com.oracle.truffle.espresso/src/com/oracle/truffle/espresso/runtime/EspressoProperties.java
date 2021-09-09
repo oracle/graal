@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -272,9 +273,23 @@ public interface EspressoProperties {
             bootClasspath = new ArrayList<>(options.get(EspressoOptions.BootClasspath));
         }
 
-        // Inject polyglot.jar.
+        Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
+
+        // Inject hotswap.jar
+        if (options.get(EspressoOptions.JDWPOptions) != null) {
+            Path hotswapJar = espressoHome.resolve("lib").resolve("hotswap.jar");
+            if (Files.isReadable(hotswapJar)) {
+                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding HotSwap API to the boot classpath: " + hotswapJar);
+                bootClasspath.add(hotswapJar);
+            } else {
+                TruffleLogger.getLogger(EspressoLanguage.ID).warning("hotswap.jar (HotSwap API) not found at " + espressoHome.resolve("lib"));
+            }
+        } else {
+            JDWP.LOGGER.fine(() -> "Espresso HotSwap Plugin support is disabled. HotSwap is only supported in debug mode.");
+        }
+
+        // Inject polyglot.jar
         if (options.get(EspressoOptions.Polyglot)) {
-            Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
             Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
             if (Files.isReadable(polyglotJar)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);

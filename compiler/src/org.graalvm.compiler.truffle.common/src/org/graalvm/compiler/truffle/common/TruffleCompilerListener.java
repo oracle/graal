@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,14 +113,14 @@ public interface TruffleCompilerListener {
      *            method on {@code graph} after this method returns will result in an
      *            {@link IllegalStateException}.
      */
-    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph);
+    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph);
 
     /**
      * @deprecated use
-     *             {@link #onSuccess(CompilableTruffleAST, TruffleMetaAccessProvider, GraphInfo, CompilationResultInfo, int)}
+     *             {@link #onSuccess(CompilableTruffleAST, TruffleInliningData, GraphInfo, CompilationResultInfo, int)}
      */
     @Deprecated
-    default void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo) {
+    default void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo) {
         onSuccess(compilable, inliningPlan, graph, compilationResultInfo, 0);
     }
 
@@ -139,7 +139,7 @@ public interface TruffleCompilerListener {
      *            method returns will result in an {@link IllegalStateException}.
      * @param tier Which compilation tier was the compilation
      */
-    default void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo, int tier) {
+    default void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo, int tier) {
     }
 
     /**

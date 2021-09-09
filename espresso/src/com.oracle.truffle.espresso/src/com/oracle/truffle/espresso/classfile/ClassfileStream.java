@@ -27,10 +27,10 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * Operations for sequentially scanning data items in a class file. Any IO exceptions that occur
@@ -169,8 +169,8 @@ public final class ClassfileStream {
     }
 
     public ClassFormatError classFormatError(String format, Object... args) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        throw Meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, String.format(format, args) + " in classfile " + classfile);
+        Meta meta = EspressoContext.get(null).getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, String.format(format, args) + " in classfile " + classfile);
     }
 
     public ClassFormatError ioError(IOException ioException) {

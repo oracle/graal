@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -37,7 +38,10 @@ final class EspressoFrame {
 
     public static int popInt(long[] primitives, int slot) {
         int result = peekInt(primitives, slot);
-        primitives[slot] = 0;
+        if (CompilerDirectives.inCompiledCode()) {
+            // Avoid keeping track of popped slots in FrameStates.
+            primitives[slot] = 0;
+        }
         return result;
     }
 
@@ -64,7 +68,10 @@ final class EspressoFrame {
 
     public static long popLong(long[] primitives, int slot) {
         long result = peekLong(primitives, slot);
-        primitives[slot] = 0;
+        if (CompilerDirectives.inCompiledCode()) {
+            // Avoid keeping track of popped slots in FrameStates.
+            primitives[slot] = 0;
+        }
         return result;
     }
 
@@ -220,7 +227,10 @@ final class EspressoFrame {
     }
 
     public static void clear(long[] primitives, Object[] refs, int slot) {
-        primitives[slot] = 0;
+        if (CompilerDirectives.inCompiledCode()) {
+            // Avoid keeping track of popped slots in FrameStates.
+            primitives[slot] = 0;
+        }
         refs[slot] = null;
     }
 }

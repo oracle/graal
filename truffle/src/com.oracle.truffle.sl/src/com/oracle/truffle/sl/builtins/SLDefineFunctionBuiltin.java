@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
@@ -57,13 +56,13 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
 
     @TruffleBoundary
     @Specialization
-    public String defineFunction(String code, @CachedContext(SLLanguage.class) SLContext context) {
+    public String defineFunction(String code) {
         // @formatter:off
         Source source = Source.newBuilder(SLLanguage.ID, code, "[defineFunction]").
             build();
         // @formatter:on
         /* The same parsing code as for parsing the initial source. */
-        context.getFunctionRegistry().register(source);
+        SLContext.get(this).getFunctionRegistry().register(source);
 
         return code;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -119,7 +119,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
             memsetBoundary(address.asNative(), size, value);
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreter(); // yes, really
             throw e;
         }
     }
@@ -149,7 +149,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
             freeBoundary(address);
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreter(); // yes, really
             throw e;
         }
     }
@@ -165,7 +165,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
             return LLVMNativePointer.create(allocateMemoryBoundary(size));
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreter(); // yes, really
             throw e;
         }
     }
@@ -184,7 +184,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
             return LLVMNativePointer.create(reallocateMemoryBoundary(addr.asNative(), size));
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreter(); // yes, really
             throw e;
         }
     }
@@ -216,8 +216,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
     @Override
     public LLVMIVarBit getIVarBit(Node location, LLVMNativePointer addr, int bitWidth) {
         if (bitWidth % Byte.SIZE != 0) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError();
+            throw CompilerDirectives.shouldNotReachHere();
         }
         int bytes = bitWidth / Byte.SIZE;
         byte[] loadedBytes = new byte[bytes];
@@ -540,11 +539,6 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
             nevv = f.apply(old != 0, value);
         } while (!compareAndSwapI8(location, address, old, (byte) (nevv ? 1 : 0)).isSwap());
         return old != 0;
-    }
-
-    @Override
-    public void fullFence() {
-        unsafe.fullFence();
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,8 +58,9 @@
 
 #define __thread __declspec(thread)
 
-#else
+#else // !_WIN32
 
+#include <stdint.h>
 #include <alloca.h>
 
 #endif
@@ -67,10 +68,10 @@
 struct __TruffleContextInternal {
     const struct __TruffleThreadAPI *functions;
     JavaVM *javaVM;
-    jobject NFIContext;
+    jobject LibFFIContext;
 
 #if defined(ENABLE_ISOLATED_NAMESPACE)    
-    jfieldID NFIContext_isolatedNamespaceId;
+    jfieldID LibFFIContext_isolatedNamespaceId;
 #endif
 
     jmethodID CallTarget_call;
@@ -89,15 +90,20 @@ struct __TruffleContextInternal {
     jclass NativeString;
     jfieldID NativeString_nativePointer;
 
-    jmethodID NFIContext_getNativeEnv;
-    jmethodID NFIContext_createClosureNativePointer;
-    jmethodID NFIContext_newClosureRef;
-    jmethodID NFIContext_releaseClosureRef;
-    jmethodID NFIContext_getClosureObject;
+    jmethodID LibFFIContext_getNativeEnv;
+    jmethodID LibFFIContext_attachThread;
+    jmethodID LibFFIContext_detachThread;
+    jmethodID LibFFIContext_createClosureNativePointer;
+    jmethodID LibFFIContext_newClosureRef;
+    jmethodID LibFFIContext_releaseClosureRef;
+    jmethodID LibFFIContext_getClosureObject;
 
     jfieldID RetPatches_count;
     jfieldID RetPatches_patches;
     jfieldID RetPatches_objects;
+
+    jclass NativeArgumentBuffer_Pointer;
+    jfieldID NativeArgumentBuffer_Pointer_pointer;
 
     jclass Object;
     jclass String;

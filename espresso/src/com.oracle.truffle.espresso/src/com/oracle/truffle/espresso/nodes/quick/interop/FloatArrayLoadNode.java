@@ -23,15 +23,14 @@
 
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -61,25 +60,21 @@ public abstract class FloatArrayLoadNode extends QuickNode {
     float doForeign(StaticObject array, int index,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
-        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, context.getMeta(), exceptionProfile);
+        Meta meta = context.getMeta();
+        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, meta, exceptionProfile);
 
         try {
-            return (float) toEspressoNode.execute(result, context.getMeta()._float);
+            return (float) toEspressoNode.execute(result, meta._float);
         } catch (UnsupportedTypeException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to float");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast the foreign array element to float");
         }
     }
 
     @Specialization(guards = "array.isEspressoObject()")
     float doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayFloat(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
+        return getBytecodeNode().getInterpreterToVM().getArrayFloat(index, array);
     }
 }

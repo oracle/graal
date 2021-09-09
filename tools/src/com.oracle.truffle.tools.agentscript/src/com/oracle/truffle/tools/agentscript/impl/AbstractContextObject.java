@@ -28,13 +28,14 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 abstract class AbstractContextObject implements TruffleObject {
     static final ArrayObject MEMBERS = ArrayObject.array(
                     "name", "source", "characters",
                     "line", "startLine", "endLine",
-                    "column", "startColumn", "endColumn");
+                    "column", "startColumn", "endColumn", "charIndex", "charLength", "charEndIndex");
 
     @CompilerDirectives.CompilationFinal private String name;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private int[] values;
@@ -49,9 +50,10 @@ abstract class AbstractContextObject implements TruffleObject {
             case "name":
                 if (name == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    name = getInstrumentedNode().getRootNode().getName();
+                    final RootNode node = getInstrumentedNode().getRootNode();
+                    name = node.getQualifiedName();
                 }
-                return name;
+                return NullObject.nullCheck(name);
             case "characters": {
                 CompilerDirectives.transferToInterpreter();
                 final SourceSection ss = getInstrumentedSourceSection();
@@ -81,6 +83,15 @@ abstract class AbstractContextObject implements TruffleObject {
             case "endColumn":
                 index = 3;
                 break;
+            case "charIndex":
+                index = 4;
+                break;
+            case "charLength":
+                index = 5;
+                break;
+            case "charEndIndex":
+                index = 6;
+                break;
             default:
                 throw UnknownIdentifierException.create(member);
         }
@@ -95,13 +106,16 @@ abstract class AbstractContextObject implements TruffleObject {
     private int[] valuesForContext() {
         final SourceSection section = getInstrumentedSourceSection();
         if (section == null) {
-            return new int[4];
+            return new int[7];
         }
         return new int[]{
                         section.getStartLine(),
                         section.getEndLine(),
                         section.getStartColumn(),
-                        section.getEndColumn()
+                        section.getEndColumn(),
+                        section.getCharIndex(),
+                        section.getCharLength(),
+                        section.getCharEndIndex(),
         };
     }
 }

@@ -57,7 +57,7 @@ public interface ProxyIterable extends Proxy {
 
     /**
      * Returns an iterator. The returned object must be interpreted as an iterator using the
-     * semantics of {@link Context#asValue(Object)} otherwise and {@link IllegalStateException} is
+     * semantics of {@link Context#asValue(Object)} otherwise an {@link IllegalStateException} is
      * thrown. Examples for valid return values are:
      * <ul>
      * <li>{@link ProxyIterator}
@@ -73,7 +73,7 @@ public interface ProxyIterable extends Proxy {
 
     /**
      * Creates a proxy iterable backed by a Java {@link Iterable}. If the values of the iterable are
-     * host values then the they will be {@link Value#asHostObject() unboxed}.
+     * host values then they will be {@link Value#asHostObject() unboxed}.
      *
      * @since 21.1
      */

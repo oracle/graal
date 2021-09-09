@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
@@ -153,7 +154,8 @@ public abstract class Log implements AutoCloseable {
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public final Log string(byte[] value) {
-        return string(value, 0, value.length);
+        string(value, 0, value.length);
+        return this;
     }
 
     /**
@@ -274,6 +276,13 @@ public abstract class Log implements AutoCloseable {
      * 16-digits.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
+    public abstract Log zhex(WordBase value);
+
+    /**
+     * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
+     * 16-digits.
+     */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log zhex(long value);
 
     /**
@@ -319,8 +328,15 @@ public abstract class Log implements AutoCloseable {
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public final Log indent(boolean addOrRemove) {
-        return redent(addOrRemove).newline();
+        redent(addOrRemove).newline();
+        return this;
     }
+
+    /**
+     * Reset the indentation to 0.
+     */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
+    public abstract Log resetIndentation();
 
     /**
      * Prints the strings "true" or "false" depending on the value.
@@ -345,7 +361,8 @@ public abstract class Log implements AutoCloseable {
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public Log exception(Throwable t) {
-        return exception(t, Integer.MAX_VALUE);
+        exception(t, Integer.MAX_VALUE);
+        return this;
     }
 
     /**
@@ -363,7 +380,21 @@ public abstract class Log implements AutoCloseable {
     /** An implementation of AutoCloseable.close(). */
     @Override
     public void close() {
-        return;
+    }
+
+    /**
+     * Enters a fatal logging context which may redirect or suppress further log output if
+     * {@code logHandler} is a {@link LogHandlerExtension}.
+     *
+     * @return {@code null} if fatal error logging is to be suppressed, otherwise the {@link Log}
+     *         object to be used for fatal error logging
+     */
+    public static Log enterFatalContext(LogHandler logHandler, CodePointer callerIP, String msg, Throwable ex) {
+        if (logHandler instanceof LogHandlerExtension) {
+            LogHandlerExtension ext = (LogHandlerExtension) logHandler;
+            return ext.enterFatalContext(callerIP, msg, ex);
+        }
+        return Log.log();
     }
 
     /**
@@ -526,6 +557,11 @@ public abstract class Log implements AutoCloseable {
         }
 
         @Override
+        public Log zhex(WordBase value) {
+            return this;
+        }
+
+        @Override
         public Log zhex(long value) {
             return this;
         }
@@ -547,7 +583,7 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log hexdump(PointerBase from, int wordSize, int numWords) {
-            return null;
+            return this;
         }
 
         @Override
@@ -557,6 +593,11 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log redent(boolean addOrRemove) {
+            return this;
+        }
+
+        @Override
+        public Log resetIndentation() {
             return this;
         }
     }

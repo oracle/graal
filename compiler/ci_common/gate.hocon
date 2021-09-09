@@ -3,11 +3,11 @@ gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
 
 graalWeekly: ${graal-weekly-notifications} {
   targets: ["weekly"]
-  timelimit: "45:00"
+  timelimit: "1:30:00"
 }
 graalDaily: ${graal-weekly-notifications} {
   targets: ["daily"]
-  timelimit: "45:00"
+  timelimit: "1:30:00"
 }
 gateTest : {
   environment : {
@@ -23,7 +23,7 @@ gateCoverage : {
     EXTRA_VM_ARGS : ""
   }
   run : [
-    ${gateCmd} ["build,coverage", --jacocout, html]
+    ${gateCmd} ["build,coverage", --jacoco-omit-excluded, --jacocout, html]
     [mx, coverage-upload]
     # GR-18258 [mx, sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."${jvm-config.default}, "-Dsonar.projectName=GraalVM - Compiler ("${jvm-config.default}")", --exclude-generated, --skip-coverage]
   ]
@@ -46,21 +46,26 @@ gateTestMaxVS : ${gateTest} {
 
 gateTestAVX0 : ${gateTest} {
   environment : {
-    EXTRA_VM_ARGS : "-XX:UseAVX=0"
+    JVM_CONFIG    : ${jvm-config.default}"-avx0"
+    EXTRA_VM_ARGS : "-Dgraal.ForceAdversarialLayout=true"
   }
 }
 
 gateTestAVX1 : ${gateTest} {
   environment : {
-    EXTRA_VM_ARGS : "-XX:UseAVX=1"
+    JVM_CONFIG    : ${jvm-config.default}"-avx1"
+    EXTRA_VM_ARGS : "-Dgraal.ForceAdversarialLayout=true"
   }
 }
 
-gateTestCompileImmediately : ${gateTest} {
+gateTestCompileImmediately : {
   environment : {
     EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.CompileImmediately=true -Dpolyglot.engine.BackgroundCompilation=false -Dtck.inlineVerifierInstrument=false"
     EXTRA_UNITTEST_ARGS : "truffle"
   }
+  run : [
+    ${gateCmd} ["build,unittest"]
+  ]
 }
 
 gateTestCTW : {
@@ -82,7 +87,7 @@ gateTestCTWWeekly : {
   run : [
     # At least one gate build should run without strict
     # compliance as that's how Travis runs on JDK9
-    ["mx"] ${gateCmdSuffix} ["build,ctw", "--jacocout", "html"]
+    ["mx"] ${gateCmdSuffix} ["build,ctw", "--jacoco-omit-excluded", "--jacocout", "html"]
     ["mx", "coverage-upload"]
   ]
   timelimit : "1:30:00"
@@ -152,45 +157,11 @@ gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
 
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
-gateJAOTC : {
-  environment : {
-    EXTRA_VM_ARGS : ""
-  }
-  run : [
-    ${gateCmd} ["build,jaotc"]
-  ]
-}
-
-# This task listens to the hotspot math stubs changes. In case of failure, please check if the hotspot changes affect the
-# emitted stub code in C2, and update corresponding recasts in the org.graalvm.compiler.lir.amd64 package accordingly.
-gateMathStubsListener: ${linux-amd64} {
-  run: [
-    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_cos.cpp]
-    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_exp.cpp]
-    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_log10.cpp]
-    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_log.cpp]
-    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_pow.cpp]
-    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_sin.cpp]
-    [wget, http://hg.openjdk.java.net/jdk/jdk/raw-file/tip/src/hotspot/cpu/x86/macroAssembler_x86_tan.cpp]
-    [echo, -e, "f801a757f3d5473368dce85993618e04  macroAssembler_x86_cos.cpp", |, md5sum, -c]
-    [echo, -e, "c2b94938c05999e4985ed43b18e5ed9f  macroAssembler_x86_exp.cpp", |, md5sum, -c]
-    [echo, -e, "5ede616384ebf2d7eb26cb889aca6cf0  macroAssembler_x86_log10.cpp", |, md5sum, -c]
-    [echo, -e, "9887acd94bae05f305873621950a7707  macroAssembler_x86_log.cpp", |, md5sum, -c]
-    [echo, -e, "1ce7e5d9af42216767f1e73faff9f738  macroAssembler_x86_pow.cpp", |, md5sum, -c]
-    [echo, -e, "612e6870fff00bd5e44452123170b16d  macroAssembler_x86_sin.cpp", |, md5sum, -c]
-    [echo, -e, "41e14dedcaddfbcc7a3042f7b926d474  macroAssembler_x86_tan.cpp", |, md5sum, -c]
-  ]
-  targets: [daily]
-  notify_emails: [
-    "yudi.zheng@oracle.com"
-  ]
-}
-
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
   capabilities : ["linux", "amd64", "x82"]
-  notify_emails: [
-    "yudi.zheng@oracle.com"
-  ]
+  environment : {
+    JVM_CONFIG    : ${jvm-config.default}"-avx3"
+  }
 }
 
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }

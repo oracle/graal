@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,16 +59,14 @@ final class GraphManager {
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
     }
 
-    Entry pe(CompilableTruffleAST truffleAST, boolean optimizeOnExpand) {
+    Entry pe(CompilableTruffleAST truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
             final PartialEvaluator.Request request = newRequest(truffleAST, false);
             request.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             partialEvaluator.doGraphPE(request, plugin, graphCacheForInlining);
-            if (optimizeOnExpand) {
-                partialEvaluator.truffleTier(request);
-            }
+            partialEvaluator.truffleTier(request);
             entry = new Entry(request.graph, plugin);
             irCache.put(truffleAST, entry);
         }
@@ -81,28 +79,25 @@ final class GraphManager {
                         rootRequest.debug,
                         truffleAST,
                         finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),
-                        rootRequest.inliningPlan,
                         rootRequest.compilationId,
                         rootRequest.log,
                         rootRequest.task);
     }
 
     private PEAgnosticInlineInvokePlugin newPlugin() {
-        return new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator);
+        return new PEAgnosticInlineInvokePlugin(rootRequest.task.inliningData(), partialEvaluator);
     }
 
-    Entry peRoot(boolean truffleTierOnExpand) {
+    Entry peRoot() {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
         partialEvaluator.doGraphPE(rootRequest, plugin, graphCacheForInlining);
-        if (truffleTierOnExpand) {
-            partialEvaluator.truffleTier(rootRequest);
-        }
+        partialEvaluator.truffleTier(rootRequest);
         return new Entry(rootRequest.graph, plugin);
     }
 
-    UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
+    UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
         return InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTarget(truffleAST),
-                        "cost-benefit analysis", AgnosticInliningPhase.class.getName());
+                        "cost-benefit analysis", AgnosticInliningPhase.class.getName(), returnAction);
     }
 
     void finalizeGraph(Invoke invoke, CompilableTruffleAST truffleAST) {

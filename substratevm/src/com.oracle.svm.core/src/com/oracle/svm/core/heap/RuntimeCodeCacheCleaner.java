@@ -36,6 +36,7 @@ import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
 /**
@@ -81,6 +82,7 @@ public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
     private static void freeMemory(CodeInfo codeInfo) {
         boolean removed = RuntimeCodeInfoMemory.singleton().removeDuringGC(codeInfo);
         assert removed : "must have been present";
+        RuntimeCodeInfoHistory.singleton().logFree(codeInfo);
         RuntimeCodeInfoAccess.releaseMethodInfoMemory(codeInfo, false);
     }
 }

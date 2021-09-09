@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -47,6 +49,7 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 @NodeChild(type = Dummy.class)
 @NodeChild(type = InteropTypeNode.class)
+@GenerateUncached
 public abstract class ToPointer extends ForeignToLLVM {
 
     public static ToPointer create() {
@@ -126,6 +129,7 @@ public abstract class ToPointer extends ForeignToLLVM {
     }
 
     @Specialization(guards = {"foreigns.isForeign(obj)", "nativeTypes.hasNativeType(obj) || typeFromMethodSignature == null"})
+    @GenerateAOT.Exclude
     protected LLVMManagedPointer fromTypedTruffleObjectNoAttachedType(Object obj, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
@@ -133,6 +137,7 @@ public abstract class ToPointer extends ForeignToLLVM {
     }
 
     @Specialization(guards = {"foreigns.isForeign(obj)", "!nativeTypes.hasNativeType(obj)", "typeFromMethodSignature != null"})
+    @GenerateAOT.Exclude
     protected LLVMManagedPointer fromNonTypedTruffleObject(Object obj, LLVMInteropType.Structured typeFromMethodSignature,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {

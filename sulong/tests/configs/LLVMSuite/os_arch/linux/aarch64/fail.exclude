@@ -1,4 +1,0 @@
-# Tests that fail.
-test-suite-3.2.src/SingleSource/Regression/C++/2008-01-29-ParamAliasesReturn.cpp.dir
-test-suite-3.2.src/SingleSource/Regression/C/globalrefs.c.dir
-test-suite-3.2.src/SingleSource/UnitTests/2006-01-23-UnionInit.c.dir

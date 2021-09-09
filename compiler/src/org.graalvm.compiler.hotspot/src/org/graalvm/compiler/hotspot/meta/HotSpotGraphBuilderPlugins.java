@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,8 @@ import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
@@ -61,6 +63,8 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
@@ -81,6 +85,7 @@ import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -228,7 +233,10 @@ public class HotSpotGraphBuilderPlugins {
                 registerArrayPlugins(invocationPlugins, replacements);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
+                registerReferencePlugins(invocationPlugins, replacements);
+                registerTrufflePlugins(invocationPlugins, wordTypes, config);
             }
+
         });
         if (!IS_IN_NATIVE_IMAGE) {
             // In libgraal all NodeIntrinsics been converted into special nodes so the plugins
@@ -247,6 +255,36 @@ public class HotSpotGraphBuilderPlugins {
             });
         }
         return plugins;
+    }
+
+    private static void registerTrufflePlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config) {
+        if (config.jvmciReservedReference0Offset == -1) {
+            // cannot install intrinsics without
+            return;
+        }
+
+        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+        tl.register1("get", InvocationPlugin.Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
+                GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
+                b.addPush(JavaKind.Object, new HotSpotLoadReservedReferenceNode(b.getMetaAccess(), wordTypes, jvmciReservedReference0Offset));
+                return true;
+            }
+
+        });
+        tl.register2("set", InvocationPlugin.Receiver.class, Object[].class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode value) {
+                int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
+                GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
+                b.add(new HotSpotStoreReservedReferenceNode(wordTypes, value, jvmciReservedReference0Offset));
+                return true;
+            }
+        });
+
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, GraalHotSpotVMConfig config, Replacements replacements) {
@@ -1028,6 +1066,47 @@ public class HotSpotGraphBuilderPlugins {
                                 }
                             });
 
+        }
+    }
+
+    private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
+        if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            Registration r = new Registration(plugins, Reference.class, replacements);
+            r.register2("refersTo0", Receiver.class, Object.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
+                    ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                    AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
+                    FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                    JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_FIELD, true));
+                    LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
+                    b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
+                    return true;
+                }
+
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+            });
+            r = new Registration(plugins, PhantomReference.class, replacements);
+            r.register2("refersTo0", Receiver.class, Object.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
+                    ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                    AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
+                    FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                    JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, true));
+                    LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
+                    b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
+                    return true;
+                }
+
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+            });
         }
     }
 }

@@ -40,7 +40,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
-@Parameterized.UseParametersRunnerFactory(BaseSuiteHarness.ExcludingParametersFactory.class)
+@Parameterized.UseParametersRunnerFactory(CommonTestUtils.ExcludingParametersFactory.class)
 public final class GccFortranSuite extends GccSuiteBase {
 
     public static final String TEST_DISTRIBUTION = "SULONG_GCC_FORTRAN_TEST_SUITE";

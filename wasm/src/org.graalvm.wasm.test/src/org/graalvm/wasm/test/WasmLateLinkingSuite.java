@@ -182,6 +182,38 @@ public class WasmLateLinkingSuite {
         }
     }
 
+    @Test
+    public void lazyLinkEquivalenceClasses() throws IOException, InterruptedException {
+        // Exports table with a function
+        final byte[] exportBytes = compileWat("exportTable", "(module" +
+                        "(func $f0 (result i32) i32.const 42)" +
+                        "(table 1 1 funcref)" +
+                        "(export \"table\" (table 0))" +
+                        "(elem (i32.const 0) $f0)" +
+                        ")");
+
+        // Imports table and exports function that invokes functions from the table
+        final byte[] importBytes = compileWat("importTable", "(module" +
+                        "(type (func (param i32) (result i32)))" +
+                        "(type (func (result i32)))" +
+                        "(import \"main\" \"table\" (table 1 1 funcref))" +
+                        "(func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))" +
+                        "(export \"testFunc\" (func 0))" +
+                        ")");
+
+        final Context context = Context.newBuilder("wasm").build();
+        final ByteSequence exportByteSeq = ByteSequence.create(exportBytes);
+        final ByteSequence importByteSeq = ByteSequence.create(importBytes);
+        final Source exportSource = Source.newBuilder("wasm", exportByteSeq, "exportModule").build();
+        final Source importSource = Source.newBuilder("wasm", importByteSeq, "importModule").build();
+        final Value exportModuleInstance = context.eval(exportSource);
+        exportModuleInstance.getMember("table");
+        // Linking of the first module was triggered by this point.
+        final Value importModuleInstance = context.eval(importSource);
+        importModuleInstance.getMember("testFunc").execute(0);
+        // Linking of the second module was triggered by this point.
+    }
+
     private static void runTest(byte[] firstBinary, Consumer<Context> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder("wasm");
         contextBuilder.option("wasm.Builtins", "testutil:testutil");

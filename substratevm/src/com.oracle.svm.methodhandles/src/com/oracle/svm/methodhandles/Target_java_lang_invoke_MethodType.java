@@ -56,6 +56,12 @@ final class Target_java_lang_invoke_MethodType {
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private Target_java_lang_invoke_Invokers invokers;
+
+    /**
+     * This field is used as a cache, so the value can be re-computed at run time when needed.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private String methodDescriptor;
 }
 
 @TargetClass(value = java.lang.invoke.MethodType.class, innerClass = "ConcurrentWeakInternSet")

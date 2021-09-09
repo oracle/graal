@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 
 @GenerateLibrary
+@GenerateAOT
 abstract class NFITypeLibrary extends Library {
 
     public abstract Object convertToNative(TypeCachedState state, NFIType type, Object value);

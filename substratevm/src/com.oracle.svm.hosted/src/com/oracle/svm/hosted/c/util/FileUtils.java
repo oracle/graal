@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -117,17 +118,32 @@ public class FileUtils {
     }
 
     public static void traceCommand(ProcessBuilder command) {
-        if (SubstrateOptions.TraceNativeToolUsage.getValue()) {
+        if (isTraceEnabled()) {
             String commandLine = SubstrateUtil.getShellCommandString(command.command(), false);
-            System.out.printf(">> %s%n", commandLine);
+            trace(">> %s", commandLine);
         }
     }
 
     public static void traceCommandOutput(List<String> lines) {
-        if (SubstrateOptions.TraceNativeToolUsage.getValue()) {
+        if (isTraceEnabled()) {
             for (String line : lines) {
-                System.out.printf("># %s%n", line);
+                trace("># %s", line);
             }
+        }
+    }
+
+    private static boolean isTraceEnabled() {
+        return SubstrateOptions.TraceNativeToolUsage.getValue() ||
+                        DebugContext.forCurrentThread().isLogEnabled(DebugContext.VERBOSE_LEVEL);
+    }
+
+    private static void trace(String format, String arg) {
+        assert isTraceEnabled();
+        DebugContext debug = DebugContext.forCurrentThread();
+        if (debug.isLogEnabled(DebugContext.VERBOSE_LEVEL)) {
+            debug.log(format, arg);
+        } else {
+            System.out.printf(format + "%n", arg);
         }
     }
 }

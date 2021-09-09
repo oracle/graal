@@ -325,6 +325,18 @@ $(eval $(call TOOLCHAIN_OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
 $(eval $(call TOOLCHAIN_OPT_RULES,O1,-O1))
 $(eval $(call TOOLCHAIN_OPT_RULES,O2,-O2))
 $(eval $(call TOOLCHAIN_OPT_RULES,O3,-O3))
+# no link
+$(eval $(call TOOLCHAIN_OPT_RULES,plain_nolink,-c))
+$(eval $(call TOOLCHAIN_OPT_RULES,O0_nolink,-c -O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
+$(eval $(call TOOLCHAIN_OPT_RULES,O1_nolink,-c -O1))
+$(eval $(call TOOLCHAIN_OPT_RULES,O2_nolink,-c -O2))
+$(eval $(call TOOLCHAIN_OPT_RULES,O3_nolink,-c -O3))
+# shared
+$(eval $(call TOOLCHAIN_OPT_RULES,plain_shared,-shared -fPIC))
+$(eval $(call TOOLCHAIN_OPT_RULES,O0_shared,-shared -fPIC -O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
+$(eval $(call TOOLCHAIN_OPT_RULES,O1_shared,-shared -fPIC -O1))
+$(eval $(call TOOLCHAIN_OPT_RULES,O2_shared,-shared -fPIC -O2))
+$(eval $(call TOOLCHAIN_OPT_RULES,O3_shared,-shared -fPIC -O3))
 
 # allow linking ll tests with C sources
 

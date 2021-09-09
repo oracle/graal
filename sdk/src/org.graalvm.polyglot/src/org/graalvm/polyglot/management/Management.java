@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import java.lang.reflect.Method;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 
 /*
@@ -55,21 +55,22 @@ final class Management {
     private Management() {
     }
 
-    static final AbstractManagementImpl IMPL = initImpl();
+    static final AbstractManagementDispatch IMPL = initImpl();
 
-    private static AbstractManagementImpl initImpl() {
+    private static AbstractManagementDispatch initImpl() {
         try {
             Method method = Engine.class.getDeclaredMethod("getImpl");
             method.setAccessible(true);
             AbstractPolyglotImpl impl = (AbstractPolyglotImpl) method.invoke(null);
             impl.setMonitoring(new ManagementAccessImpl());
-            return impl.getManagementImpl();
+            return impl.getManagementDispatch();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to initialize execution listener class.", e);
         }
     }
 
-    private static class ManagementAccessImpl extends ManagementAccess {
+    private static final class ManagementAccessImpl extends ManagementAccess {
+
         @Override
         public ExecutionEvent newExecutionEvent(Object event) {
             return new ExecutionEvent(event);

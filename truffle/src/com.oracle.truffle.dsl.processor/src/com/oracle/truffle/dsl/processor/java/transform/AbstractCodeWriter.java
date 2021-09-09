@@ -51,6 +51,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import javax.annotation.processing.FilerException;
 import javax.lang.model.element.AnnotationMirror;
@@ -78,7 +79,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.sun.org.apache.xpath.internal.functions.Function;
 
 public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> {
 
@@ -186,7 +186,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         }
     }
 
-    static class Foobar<S extends Function, BiFunction> {
+    static class Foobar<S extends Function<?, ?>, BiFunction> {
 
     }
 

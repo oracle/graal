@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,31 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Queue;
+import java.util.function.Function;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyIterable;
+import org.graalvm.polyglot.proxy.ProxyIterator;
+import org.graalvm.polyglot.proxy.ProxyObject;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -75,32 +100,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Queue;
-import java.util.function.Function;
-import java.util.logging.Handler;
-import java.util.logging.LogRecord;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.TypeLiteral;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
-import org.graalvm.polyglot.proxy.ProxyIterable;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.graalvm.polyglot.proxy.ProxyIterator;
-import org.graalvm.polyglot.proxy.ProxyObject;
-import org.junit.Before;
-import org.junit.Test;
 
 public class IteratorTest extends AbstractPolyglotTest {
+
+    private static final TypeLiteral<Function<Object, Object>> FUNCTION_OBJECT_OBJECT = new TypeLiteral<Function<Object, Object>>() {
+    };
+
+    private static final TypeLiteral<Iterable<Value>> ITERABLE_VALUE = new TypeLiteral<Iterable<Value>>() {
+    };
 
     private VerifyingHandler verifyingHandler;
 
@@ -299,8 +306,21 @@ public class IteratorTest extends AbstractPolyglotTest {
         verifyIterable(iterable, values, false);
         assertTrue(iterable.canExecute());
         assertEquals(42, iterable.execute(42).asInt());
-        assertEquals(42, iterable.as(new TypeLiteral<Function<Object, Object>>() {
-        }).apply(42));
+        assertEquals(42, iterable.as(FUNCTION_OBJECT_OBJECT).apply(42));
+
+        verifyIterator(iterable.as(ITERABLE_VALUE).iterator(), Arrays.stream(values).map(context::asValue).toArray(), false);
+    }
+
+    @Test
+    public void testProxyIterableIteratorHasMembers() {
+        String[] values = {"a", "b"};
+        List<Object> valuesList = new ArrayList<>();
+        Collections.addAll(valuesList, values);
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
+        Value iterable = context.asValue((ProxyIterable) () -> new ProxyIteratorWithMembersImpl(valuesList.iterator()));
+        verifyIterable(iterable, values, false);
+
+        verifyIterator(iterable.as(ITERABLE_VALUE).iterator(), Arrays.stream(values).map(context::asValue).toArray(), false);
     }
 
     @Test
@@ -334,8 +354,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         assertEquals(42, iterator.execute(42).asInt());
         iterator = context.asValue(new ExecutableProxyIteratorImpl(values));
         verifyIterator(iterator.as(Iterator.class), values, false);
-        assertEquals(42, iterator.as(new TypeLiteral<Function<Object, Object>>() {
-        }).apply(42));
+        assertEquals(42, iterator.as(FUNCTION_OBJECT_OBJECT).apply(42));
     }
 
     @Test
@@ -600,6 +619,58 @@ public class IteratorTest extends AbstractPolyglotTest {
                 throw new UnsupportedOperationException();
             }
             return arguments[0];
+        }
+    }
+
+    private static final class ProxyIteratorWithMembersImpl implements ProxyIterator, ProxyObject {
+        private Iterator<Object> iterator;
+
+        ProxyIteratorWithMembersImpl(Iterator<Object> iterator) {
+            this.iterator = iterator;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return iterator.hasNext();
+        }
+
+        @Override
+        public Object getNext() throws NoSuchElementException, UnsupportedOperationException {
+            return iterator.next();
+        }
+
+        @Override
+        public Object getMemberKeys() {
+            return ProxyArray.fromArray("hasNext", "next");
+        }
+
+        @Override
+        public Object getMember(String key) {
+            switch (key) {
+                case "hasNext":
+                    return (ProxyExecutable) (a) -> hasNext();
+                case "next":
+                    return (ProxyExecutable) (a) -> getNext();
+                default:
+                    return null;
+            }
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            switch (key) {
+                case "hasNext":
+                    return true;
+                case "next":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            throw new UnsupportedOperationException();
         }
     }
 

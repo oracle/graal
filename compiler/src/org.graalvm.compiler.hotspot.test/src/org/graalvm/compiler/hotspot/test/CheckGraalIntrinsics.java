@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import org.junit.Test;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMField;
@@ -349,10 +350,19 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK11OrHigher()) {
-            if (!(arch instanceof AArch64)) {
+            if (arch instanceof AMD64) {
                 add(toBeInvestigated,
                                 "java/lang/Math.abs(I)I",
-                                "java/lang/Math.abs(J)J");
+                                "java/lang/Math.abs(J)J",
+                                "java/lang/Math.max(DD)D",
+                                "java/lang/Math.max(FF)F",
+                                "java/lang/Math.min(DD)D",
+                                "java/lang/Math.min(FF)F");
+                if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX512VL)) {
+                    add(ignore,
+                                    "java/lang/Math.copySign(DD)D",
+                                    "java/lang/Math.copySign(FF)F");
+                }
             }
             add(toBeInvestigated,
                             "java/lang/CharacterDataLatin1.isDigit(I)Z",
@@ -376,10 +386,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "java/lang/Math.min(DD)D",
                                 "java/lang/Math.min(FF)F");
             }
-            add(toBeInvestigated,
-                            "jdk/internal/misc/Unsafe.writeback0(J)V",
-                            "jdk/internal/misc/Unsafe.writebackPostSync0()V",
-                            "jdk/internal/misc/Unsafe.writebackPreSync0()V");
         }
 
         if (isJDK14OrHigher()) {
@@ -393,21 +399,12 @@ public class CheckGraalIntrinsics extends GraalTest {
             add(ignore, "java/lang/Object.<blackhole>*");
 
             add(toBeInvestigated,
-                            "java/lang/Math.copySign(DD)D",
-                            "java/lang/Math.copySign(FF)F",
-                            "java/lang/Math.signum(D)D",
-                            "java/lang/Math.signum(F)F",
                             // Added by JDK-8173585: Intrinsify StringLatin1.indexOf(char)
                             // TODO: Enhance StringLatin1IndexOfNode to support this
                             "java/lang/StringLatin1.indexOfChar([BIII)I",
 
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
                             "java/lang/invoke/MethodHandle.linkToNative*",
-
-                            // JDK-8256999: Add C2 intrinsic for Reference.refersTo and
-                            // PhantomReference::refersTo
-                            "java/lang/ref/PhantomReference.refersTo0(Ljava/lang/Object;)Z",
-                            "java/lang/ref/Reference.refersTo0(Ljava/lang/Object;)Z",
 
                             // JDK-8248188: Add IntrinsicCandidate and API for Base64 decoding
                             "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
@@ -416,7 +413,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/internal/util/Preconditions.checkIndex(JJLjava/util/function/BiFunction;)J",
 
                             // JDK-8223347: Integration of Vector API (Incubator)
-                            // Checkstyle: stop
+                            // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Ljava/lang/Object;",
                             "jdk/internal/vm/vector/VectorSupport.blend(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorBlendOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
                             "jdk/internal/vm/vector/VectorSupport.broadcastCoerced(Ljava/lang/Class;Ljava/lang/Class;IJLjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$BroadcastOperation;)Ljava/lang/Object;",
@@ -427,6 +424,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/internal/vm/vector/VectorSupport.insert(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;IJLjdk/internal/vm/vector/VectorSupport$VecInsertOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
                             "jdk/internal/vm/vector/VectorSupport.load(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjava/lang/Object;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadOperation;)Ljava/lang/Object;",
                             "jdk/internal/vm/vector/VectorSupport.loadWithMap(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorOperationWithMap;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                            "jdk/internal/vm/vector/VectorSupport.maskReductionCoerced(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljdk/internal/vm/vector/VectorSupport$VectorMaskOp;)I",
                             "jdk/internal/vm/vector/VectorSupport.maybeRebox(Ljava/lang/Object;)Ljava/lang/Object;",
                             "jdk/internal/vm/vector/VectorSupport.rearrangeOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;Ljdk/internal/vm/vector/VectorSupport$VectorRearrangeOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
                             "jdk/internal/vm/vector/VectorSupport.reductionCoerced(ILjava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljava/util/function/Function;)J",
@@ -437,7 +435,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/internal/vm/vector/VectorSupport.ternaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/VectorSupport$TernaryOperation;)Ljava/lang/Object;",
                             "jdk/internal/vm/vector/VectorSupport.test(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Z",
                             "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;",
-                            // Checkstyle: resume
+                            // @formatter:on
 
                             // JDK-8253525: Implement getInstanceSize/sizeOf intrinsics
                             "sun/instrument/InstrumentationImpl.getObjectSize0(JLjava/lang/Object;)J",
@@ -641,9 +639,9 @@ public class CheckGraalIntrinsics extends GraalTest {
                 }
             } else {
                 if (toBeInvestigated.contains(m)) {
-                    mischaracterizedAsToBeInvestigated.add(m);
+                    mischaracterizedAsToBeInvestigated.add(m + " [plugin: " + plugin + "]");
                 } else if (ignore.contains(m)) {
-                    mischaracterizedAsIgnored.add(m);
+                    mischaracterizedAsIgnored.add(m + " [plugin: " + plugin + "]");
                 }
             }
         }

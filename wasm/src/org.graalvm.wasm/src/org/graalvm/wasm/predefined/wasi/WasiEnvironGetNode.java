@@ -40,15 +40,16 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import java.util.Map;
+
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import java.util.Map;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class WasiEnvironGetNode extends WasmBuiltinRootNode {
 
@@ -66,7 +67,7 @@ public final class WasiEnvironGetNode extends WasmBuiltinRootNode {
     private int environGet(int envInitialPointer, int bufInitialPointer) {
         int bufPointer = bufInitialPointer;
         int envPointer = envInitialPointer;
-        final Map<String, String> env = contextReference().get().environment().getEnvironment();
+        final Map<String, String> env = getContext().environment().getEnvironment();
         for (final Map.Entry<String, String> entry : env.entrySet()) {
             memory().store_i32(this, envPointer, bufPointer);
             envPointer += 4;

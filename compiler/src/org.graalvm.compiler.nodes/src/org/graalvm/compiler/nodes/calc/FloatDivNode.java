@@ -27,12 +27,11 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_32;
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
-import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Div;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -53,7 +52,6 @@ public class FloatDivNode extends BinaryArithmeticNode<Div> {
 
     protected FloatDivNode(NodeClass<? extends FloatDivNode> c, ValueNode x, ValueNode y) {
         super(c, getArithmeticOpTable(x).getDiv(), x, y);
-        assert stamp instanceof FloatStamp;
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {

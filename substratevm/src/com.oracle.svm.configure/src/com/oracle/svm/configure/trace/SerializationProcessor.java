@@ -31,9 +31,11 @@ import java.util.Map;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 
 public class SerializationProcessor extends AbstractProcessor {
+    private final AccessAdvisor advisor;
     private final SerializationConfiguration serializationConfiguration;
 
-    public SerializationProcessor(SerializationConfiguration serializationConfiguration) {
+    public SerializationProcessor(AccessAdvisor advisor, SerializationConfiguration serializationConfiguration) {
+        this.advisor = advisor;
         this.serializationConfiguration = serializationConfiguration;
     }
 
@@ -51,7 +53,12 @@ public class SerializationProcessor extends AbstractProcessor {
         List<?> args = (List<?>) entry.get("args");
         if ("ObjectStreamClass.<init>".equals(function)) {
             expectSize(args, 2);
-            serializationConfiguration.add((String) args.get(0), (String) args.get(1));
+
+            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null))) {
+                return;
+            }
+
+            serializationConfiguration.registerWithTargetConstructorClass((String) args.get(0), (String) args.get(1));
         }
     }
 }

@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
@@ -99,60 +98,6 @@ public class WinBase {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int DuplicateHandle(HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, LPHANDLE lpTargetHandle, int dwDesiredAccess, boolean bInheritHandle,
                     int dwOptions);
-
-    /**
-     * GetModuleHandle
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native HMODULE GetModuleHandleA(PointerBase lpModuleName);
-
-    /**
-     * GetModuleFileNameA
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int GetModuleFileNameA(HMODULE hModule, CCharPointer lpFilename, int nSize);
-
-    @CConstant
-    public static native int GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS();
-
-    @CConstant
-    public static native int GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT();
-
-    /**
-     * GetModuleHandleExA
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native boolean GetModuleHandleExA(int flags, PointerBase lpModuleName, HMODULEPointer module);
-
-    /**
-     * GetProcAddress
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native PointerBase GetProcAddress(HMODULE hModule, PointerBase lpProcName);
-
-    /**
-     * LoadLibraryA
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native HMODULE LoadLibraryA(PointerBase lpFileName);
-
-    /**
-     * LoadLibraryExA
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native HMODULE LoadLibraryExA(PointerBase lpFileName, int dummy, int flags);
-
-    /**
-     * FreeLibrary
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native void FreeLibrary(PointerBase pointer);
-
-    /**
-     * SetDllDirectoryA
-     */
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native boolean SetDllDirectoryA(PointerBase lpPathName);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetCurrentDirectoryW(int nBufferLength, WCharPointer lpBuffer);

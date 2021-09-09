@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ public class WasmPolyglotTestSuite {
         context.eval(source);
         final Value mainModule = context.getBindings("wasm").getMember("main");
         mainModule.getMember("main").execute();
-        final TruffleLanguage.Env env = WasmContext.getCurrent().environment();
+        final TruffleLanguage.Env env = WasmContext.get(null).environment();
         final UnsafeWasmMemory memory = (UnsafeWasmMemory) env.asGuestValue(mainModule.getMember("memory"));
         Assert.assertTrue("Memory should have been allocated.", !memory.freed());
         context.close();
@@ -113,6 +113,26 @@ public class WasmPolyglotTestSuite {
         Value mainFunction = context.getBindings("wasm").getMember("main").getMember("main");
         Value result = mainFunction.execute();
         Assert.assertEquals("Should be equal: ", 11, result.asInt());
+    }
+
+    @Test
+    public void divisionByZeroStressTest() throws IOException, InterruptedException {
+        String divisionByZeroWAT = "(module (func (export \"main\") (result i32) i32.const 1 i32.const 0 i32.div_s))";
+        ByteSequence test = ByteSequence.create(compileWat("test", divisionByZeroWAT));
+        Source source = Source.newBuilder("wasm", test, "main").build();
+        try (Context context = Context.create("wasm")) {
+            context.eval(source);
+            Value mainFunction = context.getBindings("wasm").getMember("main").getMember("main");
+
+            for (int iteration = 0; iteration < 20000; iteration++) {
+                try {
+                    mainFunction.execute();
+                    Assert.fail("Should have thrown");
+                } catch (PolyglotException pex) {
+                    Assert.assertTrue("Should not throw internal error", !pex.isInternalError());
+                }
+            }
+        }
     }
 
     // (module

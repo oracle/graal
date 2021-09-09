@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -50,6 +51,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -58,17 +60,17 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
-import com.oracle.svm.core.heap.ReferenceHandlerThreadFeature;
+import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -167,6 +169,20 @@ public abstract class JavaThreads {
         JavaContinuations.LoomCompatibilityUtil.setThreadStatus(toTarget(thread), threadStatus);
     }
 
+    /**
+     * Safe method to check whether a thread has been interrupted.
+     *
+     * Use instead of {@link Thread#isInterrupted()}, which is not {@code final} and can be
+     * overridden with code that does locking or performs other actions that are unsafe especially
+     * in VM-internal contexts.
+     */
+    public static boolean isInterrupted(Thread thread) {
+        if (JavaVersionUtil.JAVA_SPEC >= 14) {
+            return toTarget(thread).interruptedJDK14OrLater;
+        }
+        return toTarget(thread).interrupted;
+    }
+
     protected static AtomicReference<ParkEvent> getUnsafeParkEvent(Thread thread) {
         return toTarget(thread).unsafeParkEvent;
     }
@@ -199,6 +215,25 @@ public abstract class JavaThreads {
         return toTarget(thread).isVirtual();
     }
 
+    /**
+     * Returns the isolate thread associated with a Java thread. The Java thread must currently be
+     * alive (started) and remain alive during the execution of this method and then for as long as
+     * the returned {@link IsolateThread} pointer is used.
+     */
+    public static IsolateThread getIsolateThreadUnsafe(Thread t) {
+        return toTarget(t).isolateThread;
+    }
+
+    /**
+     * Returns the isolate thread associated with a Java thread. The caller must own the
+     * {@linkplain VMThreads#THREAD_MUTEX threads mutex} and release it only after it has finished
+     * using the returned {@link IsolateThread} pointer.
+     */
+    public static IsolateThread getIsolateThread(Thread t) {
+        VMThreads.guaranteeOwnsThreadMutex("Threads mutex must be locked before accessing/iterating the thread list.");
+        return getIsolateThreadUnsafe(t);
+    }
+
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_ThreadGroup toTarget(ThreadGroup threadGroup) {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);
@@ -210,6 +245,7 @@ public abstract class JavaThreads {
 
         Target_java_lang_Thread javaThread = SubstrateUtil.cast(currentThread.get(thread), Target_java_lang_Thread.class);
         javaThread.exit();
+        ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), currentThread.get(thread));
     }
 
     /**
@@ -253,6 +289,34 @@ public abstract class JavaThreads {
         } finally {
             VMThreads.THREAD_MUTEX.unlock();
         }
+    }
+
+    /**
+     * Returns the thread size requested for this thread; otherwise, if there are no expectations,
+     * then returns 0.
+     */
+    public static long getRequestedThreadSize(Thread thread) {
+        /* Return a stack size based on parameters and command line flags. */
+        long stackSize;
+        long threadSpecificStackSize = JavaContinuations.LoomCompatibilityUtil.getStackSize(toTarget(thread));
+        if (threadSpecificStackSize != 0) {
+            /* If the user set a thread stack size at thread creation, then use that. */
+            stackSize = threadSpecificStackSize;
+        } else {
+            /* If the user set a thread stack size on the command line, then use that. */
+            stackSize = SubstrateOptions.StackSize.getValue();
+        }
+
+        if (stackSize != 0) {
+            /*
+             * Add the yellow+red zone size: This area of the stack is not accessible to the user's
+             * Java code, so it would be surprising if we gave the user less stack space to use than
+             * explicitly requested. In particular, a size less than the yellow+red size would lead
+             * to an immediate StackOverflowError.
+             */
+            stackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
+        }
+        return stackSize;
     }
 
     /**
@@ -305,8 +369,7 @@ public abstract class JavaThreads {
      * PosixJavaThreads.pthreadStartRoutine, e.g., called from PosixJavaThreads.start0.
      */
     public static void assignJavaThread(Thread thread, boolean manuallyStarted) {
-        VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
-        currentThread.set(thread);
+        assignJavaThread0(thread);
 
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
@@ -321,10 +384,20 @@ public abstract class JavaThreads {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void assignJavaThread0(Thread thread) {
+        VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
+        currentThread.set(thread);
+
+        assert toTarget(thread).isolateThread.isNull();
+        toTarget(thread).isolateThread = CurrentIsolate.getCurrentThread();
+        ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
+    }
+
     @Uninterruptible(reason = "Called during isolate initialization")
     public void initializeIsolate() {
         /* The thread that creates the isolate is considered the "main" thread. */
-        currentThread.set(mainThread);
+        assignJavaThread0(mainThread);
     }
 
     /**
@@ -355,11 +428,10 @@ public abstract class JavaThreads {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
         assert StatusSupport.isStatusIgnoreSafepoints(vmThread) || VMOperation.isInProgress();
 
-        // Detach ParkEvents for this thread, if any.
-        final Thread thread = currentThread.get(vmThread);
+        Thread thread = currentThread.get(vmThread);
         ParkEvent.detach(getUnsafeParkEvent(thread));
         ParkEvent.detach(getSleepParkEvent(thread));
-
+        toTarget(thread).isolateThread = WordFactory.nullPointer();
         if (!thread.isDaemon()) {
             nonDaemonThreads.decrementAndGet();
         }
@@ -510,9 +582,7 @@ public abstract class JavaThreads {
         ObjectHandles.getGlobal().destroy(threadHandle);
 
         singleton().unattachedStartedThreads.decrementAndGet();
-
         singleton().beforeThreadRun(thread);
-        ManagementSupport.getSingleton().noteThreadStart(thread);
 
         try {
             if (VMThreads.isTearingDown()) {
@@ -524,12 +594,10 @@ public abstract class JavaThreads {
             }
 
             thread.run();
-
         } catch (Throwable ex) {
             dispatchUncaughtException(thread, ex);
         } finally {
             exit(thread);
-            ManagementSupport.getSingleton().noteThreadFinish(thread);
         }
     }
 
@@ -550,7 +618,7 @@ public abstract class JavaThreads {
      * that they can check their interrupted status.
      */
     protected static void wakeUpVMConditionWaiters(Thread thread) {
-        if (ReferenceHandler.useDedicatedThread() && thread == ImageSingletons.lookup(ReferenceHandlerThreadFeature.class).getThread()) {
+        if (ReferenceHandler.useDedicatedThread() && thread == ImageSingletons.lookup(ReferenceHandlerThreadSupport.class).getThread()) {
             Heap.getHeap().wakeUpReferencePendingListWaiters();
         }
     }
@@ -568,7 +636,7 @@ public abstract class JavaThreads {
 
         StackTraceElement[][] result = new StackTraceElement[1][0];
         JavaVMOperation.enqueueBlockingSafepoint("getStackTrace", () -> {
-            result[0] = getStackTrace(VMThreads.findFromJavaThread(thread));
+            result[0] = getStackTrace(getIsolateThread(thread));
         });
         return result[0];
     }
@@ -679,7 +747,7 @@ public abstract class JavaThreads {
     static void park() {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        if (thread.isInterrupted()) { // avoid state changes and synchronization
+        if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
         /*
@@ -702,7 +770,7 @@ public abstract class JavaThreads {
     static void park(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        if (thread.isInterrupted()) { // avoid state changes and synchronization
+        if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
         /*
@@ -759,7 +827,7 @@ public abstract class JavaThreads {
          * the interrupted check because if not, the interrupt code will not assign one and the
          * wakeup will be lost, too.
          */
-        if (thread.isInterrupted()) {
+        if (isInterrupted(thread)) {
             return; // likely leaves a stale unpark which will be reset before the next sleep()
         }
         final int oldStatus = JavaThreads.getThreadStatus(thread);
@@ -854,7 +922,7 @@ public abstract class JavaThreads {
                             if (thread != null) {
                                 final String name = thread.getName();
                                 final Thread.State status = thread.getState();
-                                final boolean interruptedStatus = thread.isInterrupted();
+                                final boolean interruptedStatus = isInterrupted(thread);
                                 trace.string("  thread.getName(): ").string(name)
                                                 .string("  interruptedStatus: ").bool(interruptedStatus)
                                                 .string("  getState(): ").string(status.name());

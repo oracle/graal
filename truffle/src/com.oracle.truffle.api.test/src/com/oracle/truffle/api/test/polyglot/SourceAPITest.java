@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -528,7 +528,9 @@ public class SourceAPITest {
     public void testHttpURL() throws IOException, URISyntaxException {
         URL resource = new URL("http://example.org/test/File.html");
         Source s = Source.newBuilder("TestJS", resource).content("Empty").build();
-        assertEquals(resource, s.getURL());
+        // The URL is converted into URI before comparison to skip the expensive hostname
+        // normalization.
+        assertEquals(resource.toURI(), s.getURL().toURI());
         assertEquals(resource.toURI(), s.getURI());
         assertEquals("File.html", s.getName());
         assertEquals("/test/File.html", s.getPath());
@@ -683,6 +685,7 @@ public class SourceAPITest {
         assertTrue(section.hasLines());
         assertTrue(section.hasColumns());
         assertEquals("", section.getCharacters());
+        assertTrue(truffleSource.getURI().toString().contains("name"));
     }
 
     @Test

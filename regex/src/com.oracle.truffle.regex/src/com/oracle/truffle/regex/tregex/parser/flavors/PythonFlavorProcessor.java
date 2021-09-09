@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -100,8 +102,19 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
 
-    private static final String UNICODE_WORD_BOUNDARY_SNIPPET;
-    private static final String UNICODE_WORD_NON_BOUNDARY_SNIPPET;
+    // The behavior of the word-boundary assertions depends on the notion of a word character.
+    // Python's notion differs from that of ECMAScript and so we cannot compile Python word-boundary
+    // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
+    // character is dependent on whether the Python regular expression is set to use the ASCII range
+    // only. These are helper constants that we use to implement word-boundary assertions.
+    // WORD_BOUNDARY and WORD_NON_BOUNDARY are templates for word-boundary and word-non-boundary
+    // assertions, respectively. These templates contain occurrences of \w and \W, which are
+    // substituted with the correct notion of a word character during regexp transpilation time.
+    public static final Pattern WORD_CHARS_PATTERN = Pattern.compile("\\\\[wW]");
+    public static final String WORD_BOUNDARY = "(?:(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$))";
+    // Note that in Python, \b and \B are not direct inverses. In an empty string, position 0
+    // doesn't match neither \b and \B (i.e. /\B/ does not match where /^$/ would match).
+    public static final String WORD_NON_BOUNDARY = "(?:^(?=\\W)|(?<=\\W)$|(?<=\\W)(?=\\W)|(?<=\\w)(?=\\w))";
 
     private static final String ASCII_WHITESPACE = "\\x09-\\x0d\\x20";
     private static final String ASCII_NON_WHITESPACE = "\\x00-\\x08\\x0e-\\x1f\\x21-\\u{10ffff}";
@@ -172,13 +185,6 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         CodePointSet nonWordChars = wordChars.createInverse(Encodings.UTF_32);
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
         UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
-
-        // This is the snippet that we want to build, but with Python's definitions of \w and \W:
-        // "(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$)"
-        UNICODE_WORD_BOUNDARY_SNIPPET = "(?:(?:^|(?<=[^" + wordCharsStr + "]))(?=[" + wordCharsStr + "])|(?<=[" + wordCharsStr + "])(?:(?=[^" + wordCharsStr + "])|$))";
-
-        // "(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w)"
-        UNICODE_WORD_NON_BOUNDARY_SNIPPET = "(?:(?:^|(?<=[^" + wordCharsStr + "]))(?:(?=[^" + wordCharsStr + "])|$)|(?<=[" + wordCharsStr + "])(?=[" + wordCharsStr + "]))";
     }
 
     /**
@@ -186,12 +192,11 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private enum TermCategory {
         /**
-         * A lookahead, lookbehind, beginning-of-string/line, end-of-string/line or
-         * (non)-word-boundary assertion.
+         * A beginning-of-string/line, end-of-string/line or (non)-word-boundary assertion.
          */
         Assertion,
         /**
-         * A literal character, a character class or a group.
+         * A literal character, a character class, a group, a lookahead or a lookbehind.
          */
         Atom,
         /**
@@ -441,6 +446,10 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         advance(-1);
     }
 
+    private void retreat(int len) {
+        advance(-len);
+    }
+
     private void advance(int len) {
         switch (mode) {
             case Str:
@@ -610,7 +619,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         if (getLocalFlags().isLocale()) {
             bailOut("locale-specific case folding is not supported");
         }
-        CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
+        CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
         CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
     }
 
@@ -656,18 +665,16 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     private void parse() {
         PythonFlags startFlags;
-        globalFlags = globalFlags.fixFlags(inSource, mode);
 
         // The pattern can contain inline switches for global flags. However, these inline switches
         // need to be taken into account when processing whatever came before them too. Therefore,
         // we redo the parse if any inline switches changed the set of active global flags.
         do {
             startFlags = globalFlags;
-
             disjunction();
-
-            globalFlags = globalFlags.fixFlags(inSource, mode);
         } while (!globalFlags.equals(startFlags));
+
+        globalFlags = globalFlags.fixFlags(inSource, mode);
 
         if (!atEnd()) {
             assert curChar() == ')';
@@ -845,27 +852,43 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 emitSnippet("$");
                 return true;
             case 'b':
-                if (getLocalFlags().isUnicode()) {
-                    emitSnippet(UNICODE_WORD_BOUNDARY_SNIPPET);
+                if (getLocalFlags().isUnicode(mode)) {
+                    emitWordBoundaryAssertion(WORD_BOUNDARY, UNICODE_CHAR_CLASS_REPLACEMENTS.get('w'));
                 } else if (getLocalFlags().isLocale()) {
                     bailOut("locale-specific word boundary assertions not supported");
                 } else {
-                    emitSnippet("\\b");
+                    emitWordBoundaryAssertion(WORD_BOUNDARY, "\\w");
                 }
                 return true;
             case 'B':
-                if (getLocalFlags().isUnicode()) {
-                    emitSnippet(UNICODE_WORD_NON_BOUNDARY_SNIPPET);
+                if (getLocalFlags().isUnicode(mode)) {
+                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, UNICODE_CHAR_CLASS_REPLACEMENTS.get('w'));
                 } else if (getLocalFlags().isLocale()) {
                     bailOut("locale-specific word boundary assertions not supported");
                 } else {
-                    emitSnippet("\\B");
+                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, "\\w");
                 }
                 return true;
             default:
                 retreat();
                 return false;
         }
+    }
+
+    private void emitWordBoundaryAssertion(String snippetTemplate, String wordCharsStr) {
+        Matcher matcher = WORD_CHARS_PATTERN.matcher(snippetTemplate);
+        int lastAppendPosition = 0;
+        while (matcher.find()) {
+            emitSnippet(snippetTemplate.substring(lastAppendPosition, matcher.start()));
+            if (matcher.group().equals("\\w")) {
+                emitSnippet("[" + wordCharsStr + "]");
+            } else {
+                assert matcher.group().equals("\\W");
+                emitSnippet("[^" + wordCharsStr + "]");
+            }
+            lastAppendPosition = matcher.end();
+        }
+        emitSnippet(snippetTemplate.substring(lastAppendPosition));
     }
 
     /**
@@ -893,7 +916,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             case 'W':
                 char className = (char) curChar();
                 advance();
-                if (getLocalFlags().isUnicode()) {
+                if (getLocalFlags().isUnicode(mode)) {
                     if (inCharClass) {
                         if (UNICODE_CHAR_CLASS_REPLACEMENTS.containsKey(className)) {
                             emitSnippet(UNICODE_CHAR_CLASS_REPLACEMENTS.get(className));
@@ -932,6 +955,19 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private boolean backreference() {
         if (curChar() >= '1' && curChar() <= '9') {
+            // if there are three octal digits following a backslash,
+            // always treat that as an octal escape
+            String octalEscape = getUpTo(3, PythonFlavorProcessor::isOctDigit);
+            if (octalEscape.length() == 3) {
+                int codePoint = Integer.parseInt(octalEscape, 8);
+                if (codePoint > 0377) {
+                    throw syntaxErrorAtRel(PyErrorMessages.invalidOctalEscape(octalEscape), 1 + octalEscape.length());
+                }
+                emitChar(codePoint);
+                return true;
+            } else {
+                retreat(octalEscape.length());
+            }
             String number = getUpTo(2, PythonFlavorProcessor::isDecDigit);
             int groupNumber = Integer.parseInt(number);
             if (groupNumber > groups) {
@@ -941,7 +977,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             if (getLocalFlags().isIgnoreCase()) {
                 bailOut("case insensitive backreferences not supported");
             } else {
-                emitSnippet("\\" + number);
+                emitSnippet("(?:\\" + number + ")");
             }
             return true;
         } else {
@@ -1060,7 +1096,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                         throw syntaxErrorAtRel(PyErrorMessages.invalidOctalEscape(code), 1 + code.length());
                     }
                     return codePoint;
-                } else if (isAsciiLetter(ch)) {
+                } else if (isAsciiLetter(ch) || isDecDigit(ch)) {
                     throw syntaxErrorAtRel(PyErrorMessages.badEscape(ch), 2);
                 } else {
                     return ch;
@@ -1188,7 +1224,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                     return;
                 }
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
-                    throw syntaxErrorAtAbs(PyErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
+                    throw syntaxErrorAtAbs(PyErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start + 1);
                 }
                 if (lowerBound.isPresent()) {
                     emitSnippet(inPattern.substring(start, position));
@@ -1381,10 +1417,10 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     /**
-     * Parses a parenthesized comment, assuming that the '(#' prefix was already parsed.
+     * Parses a parenthesized comment, assuming that the '(?#' prefix was already parsed.
      */
     private void parenComment() {
-        int start = position - 2;
+        int start = position - 3;
         getMany(c -> c != ')');
         if (!match(")")) {
             throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_COMMENT, start);
@@ -1439,17 +1475,17 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     private void lookahead(boolean positive) {
         int start = position - 3;
         if (positive) {
-            emitSnippet("(?=");
+            emitSnippet("(?:(?=");
         } else {
-            emitSnippet("(?!");
+            emitSnippet("(?:(?!");
         }
         disjunction();
         if (match(")")) {
-            emitSnippet(")");
+            emitSnippet("))");
         } else {
             throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_SUBPATTERN, start);
         }
-        lastTerm = TermCategory.Assertion;
+        lastTerm = TermCategory.Atom;
     }
 
     /**
@@ -1458,19 +1494,19 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     private void lookbehind(boolean positive) {
         int start = position - 4;
         if (positive) {
-            emitSnippet("(?<=");
+            emitSnippet("(?:(?<=");
         } else {
-            emitSnippet("(?<!");
+            emitSnippet("(?:(?<!");
         }
         lookbehindStack.push(new Lookbehind(groups + 1));
         disjunction();
         lookbehindStack.pop();
         if (match(")")) {
-            emitSnippet(")");
+            emitSnippet("))");
         } else {
             throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_SUBPATTERN, start);
         }
-        lastTerm = TermCategory.Assertion;
+        lastTerm = TermCategory.Atom;
     }
 
     /**
@@ -1562,6 +1598,13 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                     throw syntaxErrorHere(PyErrorMessages.MISSING_FLAG);
                 }
                 ch = consumeChar();
+                if (!PythonFlags.isValidFlagChar(ch)) {
+                    if (Character.isAlphabetic(ch)) {
+                        throw syntaxErrorAtRel(PyErrorMessages.UNKNOWN_FLAG, 1);
+                    } else {
+                        throw syntaxErrorAtRel(PyErrorMessages.MISSING_FLAG, 1);
+                    }
+                }
                 PythonFlags negativeFlags = PythonFlags.EMPTY_INSTANCE;
                 while (PythonFlags.isValidFlagChar(ch)) {
                     negativeFlags = negativeFlags.addFlag(ch);
@@ -1605,7 +1648,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private void localFlags(PythonFlags positiveFlags, PythonFlags negativeFlags, int start) {
         if (positiveFlags.overlaps(negativeFlags)) {
-            throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_FLAG_TURNED_ON_AND_OFF);
+            throw syntaxErrorAtRel(PyErrorMessages.INLINE_FLAGS_FLAG_TURNED_ON_AND_OFF, 1);
         }
         PythonFlags newFlags = getLocalFlags().addFlags(positiveFlags).delFlags(negativeFlags);
         if (positiveFlags.numberOfTypeFlags() > 0) {

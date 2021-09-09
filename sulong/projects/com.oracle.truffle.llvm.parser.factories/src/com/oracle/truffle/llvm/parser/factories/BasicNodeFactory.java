@@ -48,10 +48,12 @@ import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.IDGenerater;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
@@ -107,6 +109,7 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMI64R
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMI8RetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMIVarBitRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMStructRetNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMArrayRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVectorRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNode;
@@ -158,6 +161,15 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeti
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMSimpleArithmeticPrimitiveNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceAddNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceMulNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceAndNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceOrNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceXorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceUnsignedMaxNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceSignedMaxNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceUnsignedMinNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceSignedMinNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI16NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI32NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountLeadingZeroesNodeFactory.CountLeadingZeroesI64NodeGen;
@@ -238,6 +250,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadI8VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadPointerVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMStructLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI16RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI1RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI32RMWNodeFactory;
@@ -716,6 +729,8 @@ public class BasicNodeFactory implements NodeFactory {
             return LLVMIVarBitRetNodeGen.create(retValue);
         } else if (type instanceof PointerType || type instanceof FunctionType) {
             return LLVMAddressRetNodeGen.create(retValue);
+        } else if (type instanceof ArrayType) {
+            return LLVMArrayRetNodeGen.create(retValue);
         } else if (type instanceof StructureType) {
             try {
                 long size = getByteSize(type);
@@ -842,8 +857,11 @@ public class BasicNodeFactory implements NodeFactory {
             } else {
                 throw new AssertionError(type);
             }
-        } else if (type instanceof PointerType || type instanceof StructureType || type instanceof ArrayType) {
+        } else if (type instanceof PointerType) {
             return LLVMPointerLoadNodeGen.create(targetAddress);
+        } else if (type instanceof StructureType || type instanceof ArrayType) {
+            // basically no-op
+            return LLVMStructLoadNodeGen.create(targetAddress);
         } else {
             throw new AssertionError(type + " is not supported for extractvalue");
         }
@@ -1192,7 +1210,7 @@ public class BasicNodeFactory implements NodeFactory {
             assemblyRoot = getLazyUnsupportedInlineRootNode(asmExpression, e);
         }
         LLVMIRFunction function = new LLVMIRFunction(LLVMLanguage.createCallTarget(assemblyRoot), null);
-        LLVMFunction functionDetail = LLVMFunction.create("<asm>", function, new FunctionType(MetaType.UNKNOWN, 0, false), LLVMSymbol.INVALID_INDEX, LLVMSymbol.INVALID_INDEX,
+        LLVMFunction functionDetail = LLVMFunction.create("<asm>", function, new FunctionType(MetaType.UNKNOWN, 0, false), IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX,
                         false, assemblyRoot.getName(), false);
         // The function descriptor for the inline assembly does not require a language.
         LLVMFunctionDescriptor asm = new LLVMFunctionDescriptor(functionDetail, new LLVMFunctionCode(functionDetail));
@@ -1268,8 +1286,20 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, Type.TypeArrayBuilder argsTypes, int callerArgumentCount) {
-        if (target instanceof FunctionDeclaration) {
-            FunctionDeclaration declaration = (FunctionDeclaration) target;
+        Symbol actualTarget = target;
+        if (actualTarget instanceof CastConstant && ((CastConstant) actualTarget).getValue() instanceof FunctionDeclaration) {
+            /*
+             * This branch solves the following scenario, in which a builtin is bitcast before its
+             * invocation:
+             *
+             * %1 = call i32 bitcast (i32 (...)* @polyglot_get_arg_count to i32 ()*)() #2, !dbg !18
+             *
+             * Otherwise the builtin would be handled as a normal function.
+             */
+            actualTarget = ((CastConstant) actualTarget).getValue();
+        }
+        if (actualTarget instanceof FunctionDeclaration) {
+            FunctionDeclaration declaration = (FunctionDeclaration) actualTarget;
             String name = declaration.getName();
             /*
              * These "llvm." builtins are *not* function intrinsics. Builtins replace statements
@@ -1617,6 +1647,51 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMX86_Pmovmskb128NodeGen.create(args[1]);
                 case "llvm.x86.sse2.movmsk.pd":
                     return LLVMX86_MovmskpdNodeGen.create(args[1]);
+                case "llvm.experimental.vector.reduce.add.v4i32":
+                case "llvm.experimental.vector.reduce.add.v4i64":
+                case "llvm.vector.reduce.add.v4i32":
+                case "llvm.vector.reduce.add.v4i64":
+                    return LLVMVectorReduceAddNodeGen.create(args[1], 4);
+                case "llvm.experimental.vector.reduce.mul.v4i32":
+                case "llvm.experimental.vector.reduce.mul.v4i64":
+                case "llvm.vector.reduce.mul.v4i32":
+                case "llvm.vector.reduce.mul.v4i64":
+                    return LLVMVectorReduceMulNodeGen.create(args[1], 4);
+                case "llvm.experimental.vector.reduce.and.v4i32":
+                case "llvm.experimental.vector.reduce.and.v4i64":
+                case "llvm.vector.reduce.and.v4i32":
+                case "llvm.vector.reduce.and.v4i64":
+                    return LLVMVectorReduceAndNodeGen.create(args[1], 4);
+                case "llvm.experimental.vector.reduce.or.v4i32":
+                case "llvm.experimental.vector.reduce.or.v4i64":
+                case "llvm.vector.reduce.or.v4i32":
+                case "llvm.vector.reduce.or.v4i64":
+                    return LLVMVectorReduceOrNodeGen.create(args[1], 4);
+                case "llvm.experimental.vector.reduce.xor.v4i32":
+                case "llvm.experimental.vector.reduce.xor.v4i64":
+                case "llvm.vector.reduce.xor.v4i32":
+                case "llvm.vector.reduce.xor.v4i64":
+                    return LLVMVectorReduceXorNodeGen.create(args[1], 4);
+                case "llvm.experimental.vector.reduce.umax.v4i32":
+                case "llvm.experimental.vector.reduce.umax.v4i64":
+                case "llvm.vector.reduce.umax.v4i32":
+                case "llvm.vector.reduce.umax.v4i64":
+                    return LLVMVectorReduceUnsignedMaxNodeGen.create(args[1], 4);
+                case "llvm.experimental.vector.reduce.smax.v4i32":
+                case "llvm.experimental.vector.reduce.smax.v4i64":
+                case "llvm.vector.reduce.smax.v4i32":
+                case "llvm.vector.reduce.smax.v4i64":
+                    return LLVMVectorReduceSignedMaxNodeGen.create(args[1], 4);
+                case "llvm.experimental.vector.reduce.umin.v4i32":
+                case "llvm.experimental.vector.reduce.umin.v4i64":
+                case "llvm.vector.reduce.umin.v4i32":
+                case "llvm.vector.reduce.umin.v4i64":
+                    return LLVMVectorReduceUnsignedMinNodeGen.create(args[1], 4);
+                case "llvm.experimental.vector.reduce.smin.v4i32":
+                case "llvm.experimental.vector.reduce.smin.v4i64":
+                case "llvm.vector.reduce.smin.v4i32":
+                case "llvm.vector.reduce.smin.v4i64":
+                    return LLVMVectorReduceSignedMinNodeGen.create(args[1], 4);
                 default:
                     break;
             }

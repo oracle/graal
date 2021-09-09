@@ -24,20 +24,21 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public class SubstitutionProfiler extends Node {
 
-    @CompilerDirectives.CompilationFinal //
-    private char profiles = 0;
+    @CompilationFinal //
+    private long profiles = 0;
 
     /**
      * Profiles whether a branch was hit or not. Current implementation only allows 16 branches per
      * substitution.
      */
     public final void profile(int branch) {
-        assert branch < 16;
+        assert branch < 64;
         if ((profiles << branch) == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             profiles |= (1 << branch);

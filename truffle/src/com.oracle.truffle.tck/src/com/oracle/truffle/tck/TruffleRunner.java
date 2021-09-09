@@ -126,7 +126,7 @@ import com.oracle.truffle.tck.TruffleTestInvoker.TruffleTestClass;
  *
  * @since 0.25
  */
-public final class TruffleRunner extends BlockJUnit4ClassRunner {
+public class TruffleRunner extends BlockJUnit4ClassRunner {
 
     private static final TruffleTestInvoker<?, ?> truffleTestInvoker = TruffleTestInvoker.create();
 
@@ -353,7 +353,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.25
      */
     @Override
-    protected Statement methodInvoker(FrameworkMethod method, Object test) {
+    protected final Statement methodInvoker(FrameworkMethod method, Object test) {
         Statement ret = truffleTestInvoker.createStatement(getTestClass().getJavaClass().getSimpleName() + "#" + testName(method), method, test);
         if (ret == null) {
             ret = super.methodInvoker(method, test);
@@ -367,7 +367,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.25
      */
     @Override
-    protected void validateTestMethods(List<Throwable> errors) {
+    protected final void validateTestMethods(List<Throwable> errors) {
         TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
     }
 
@@ -377,7 +377,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.27
      */
     @Override
-    protected TestClass createTestClass(Class<?> testClass) {
+    protected final TestClass createTestClass(Class<?> testClass) {
         return new TruffleTestClass(testClass);
     }
 }

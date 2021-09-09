@@ -1,19 +1,54 @@
 suite = {
-  "mxversion" : "5.281.3",
+  "mxversion" : "5.309.2",
   "name": "java-benchmarks",
 
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "SHOPCART_0.3": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.zip"],
-      "sha1": "e99ed0d4f4ffa9317939bf895840e7a3f17542d0",
+    "TIKA_1.0.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.6.zip"],
+      "sha1": "bf34a3b2ef72025125a4925b6327506076110537",
+      "packedResource": True,
+    },
+
+    "PETCLINIC_0.1.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.6.zip"],
+      "sha1": "a27e41c3f4718b6d66ac0d39728f931dcfb2c613",
+      "packedResource": True,
+    },
+
+    "SHOPCART_0.3.5": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.5.zip"],
+      "sha1": "da961b7b81c161fda51ac1939a983cbfc95a5b28",
+      "packedResource": True,
+    },
+
+    "SPRING_HW_1.0.1": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-1.0.1.zip"],
+      "sha1": "6c3b2d41dc0df793bd39150270b50e36578c27e0",
+      "packedResource": True,
+    },
+
+    "QUARKUS_HW_1.0.1": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.1.zip"],
+      "sha1": "3b647ae68654264745bb32d09422a0c3c45f850a",
+      "packedResource": True,
+    },
+
+    "MICRONAUT_HW_1.0.2": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.2.zip"],
+      "sha1": "daba8f34099dfd884b59fe73855e74d139efe18d",
       "packedResource": True,
     },
 
     "DACAPO" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-bach-patched.jar"],
       "sha1" : "e39957904b7e79caf4fa54f30e8e4ee74d4e9e37",
+    },
+
+    "DACAPO_MR1_BACH" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-MR1-bach.jar"],
+      "sha1" : "9cf63ef9620032b47f1a4897fe910755596b371a",
     },
 
     "DACAPO_SCALA" : {
@@ -297,7 +332,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JMH_1_21",
-        "SCALAFMT"
       ],
       "javaCompliance" : "8+",
       "checkPackagePrefix" : "false",
@@ -319,6 +353,26 @@ suite = {
       "workingSets" : "Graal,Bench",
       "testProject" : True,
     },
+    "org.graalvm.bench.console" : {
+      "subDir" : "java",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "SCALAFMT"
+      ],
+      "javaCompliance" : "8+",
+      "checkPackagePrefix" : "false",
+      "workingSets" : "Graal,Bench",
+      "testProject" : True,
+    },
+  },
+
+  "imports" : {
+    "suites": [
+      {
+        "name" : "sdk",
+        "subdir": True
+      }
+    ]
   },
 
   "distributions" : {
@@ -331,6 +385,12 @@ suite = {
     "GRAAL_BENCH_SHOOTOUT" : {
       "subDir" : "java",
       "dependencies" : ["org.graalvm.bench.shootouts"],
+      "testDistribution" : True,
+      "maven": False,
+    },
+    "GRAAL_BENCH_CONSOLE" : {
+      "subDir" : "java",
+      "dependencies" : ["org.graalvm.bench.console"],
       "testDistribution" : True,
       "maven": False,
     }

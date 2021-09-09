@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,14 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import org.graalvm.options.OptionValues;
 
 public abstract class LLVMShouldPrintStackTraceOnAbort extends LLVMIntrinsic {
 
@@ -46,7 +44,7 @@ public abstract class LLVMShouldPrintStackTraceOnAbort extends LLVMIntrinsic {
     }
 
     @Specialization
-    protected int doOp(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-        return shouldPrintStackTraceOnAbort(ctx.getEnv().getOptions());
+    protected int doOp() {
+        return shouldPrintStackTraceOnAbort(getContext().getEnv().getOptions());
     }
 }

@@ -68,9 +68,6 @@ public final class Target_java_lang_Shutdown {
      */
     @Alias
     static native void shutdown();
-
-    @Alias
-    public static native void add(int slot, boolean registerShutdownInProgress, Runnable hook);
 }
 
 /** Utility methods for Target_java_lang_Shutdown. */

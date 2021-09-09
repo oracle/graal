@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 /**
  * Helper class for tests to simplify the declaration of interop objects.
@@ -369,7 +370,7 @@ public abstract class ProxyInteropObject implements TruffleObject {
     @ExportMessage
     protected Object toDisplayString(boolean allowSideEffects) {
         if (allowSideEffects) {
-            return ProxyLanguage.getCurrentLanguage().toString(ProxyLanguage.getCurrentContext(), this);
+            return ProxyLanguage.get(null).toString(LanguageContext.get(null), this);
         } else {
             return getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(this));
         }

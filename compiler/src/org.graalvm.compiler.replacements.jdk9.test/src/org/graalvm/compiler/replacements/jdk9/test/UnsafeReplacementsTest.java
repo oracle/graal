@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,12 @@
  */
 package org.graalvm.compiler.replacements.jdk9.test;
 
-import jdk.vm.ci.code.TargetDescription;
-import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
-import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeReplacementsTest extends MethodSubstitutionTest {
-
-    private static final TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
 
     static class Container {
         public volatile boolean booleanField;
@@ -89,14 +84,29 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.compareAndSetByte(container, byteOffset, (byte) -17, (byte) 121);
     }
 
+    public static boolean unsafeCompareAndSetByteWithIntArgs(int expectedValue, int newValue) {
+        Container container = new Container();
+        return unsafe.compareAndSetByte(container, byteOffset, (byte) expectedValue, (byte) newValue);
+    }
+
     public static boolean unsafeCompareAndSetChar() {
         Container container = new Container();
         return unsafe.compareAndSetChar(container, charOffset, (char) 1025, (char) 1777);
     }
 
+    public static boolean unsafeCompareAndSetCharWithIntArgs(int expectedValue, int newValue) {
+        Container container = new Container();
+        return unsafe.compareAndSetChar(container, charOffset, (char) expectedValue, (char) newValue);
+    }
+
     public static boolean unsafeCompareAndSetShort() {
         Container container = new Container();
         return unsafe.compareAndSetShort(container, shortOffset, (short) -2232, (short) 12111);
+    }
+
+    public static boolean unsafeCompareAndSetShortWithIntArgs(int expectedValue, int newValue) {
+        Container container = new Container();
+        return unsafe.compareAndSetShort(container, shortOffset, (short) expectedValue, (short) newValue);
     }
 
     public static boolean unsafeCompareAndSetInt() {
@@ -123,8 +133,11 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     public void testCompareAndSet() {
         testGraph("unsafeCompareAndSetBoolean");
         testGraph("unsafeCompareAndSetByte");
+        testGraph("unsafeCompareAndSetByteWithIntArgs");
         testGraph("unsafeCompareAndSetChar");
+        testGraph("unsafeCompareAndSetCharWithIntArgs");
         testGraph("unsafeCompareAndSetShort");
+        testGraph("unsafeCompareAndSetShortWithIntArgs");
         testGraph("unsafeCompareAndSetInt");
         testGraph("unsafeCompareAndSetLong");
         testGraph("unsafeCompareAndSetFloat");
@@ -132,8 +145,11 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
         test("unsafeCompareAndSetBoolean");
         test("unsafeCompareAndSetByte");
+        test("unsafeCompareAndSetByteWithIntArgs", -17, 121);
         test("unsafeCompareAndSetChar");
+        test("unsafeCompareAndSetCharWithIntArgs", 1025, 1777);
         test("unsafeCompareAndSetShort");
+        test("unsafeCompareAndSetShortWithIntArgs", -2232, 12111);
         test("unsafeCompareAndSetInt");
         test("unsafeCompareAndSetLong");
         test("unsafeCompareAndSetFloat");
@@ -1094,5 +1110,30 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetPutCharUnaligned");
         test("unsafeGetPutIntUnaligned");
         test("unsafeGetPutLongUnaligned");
+    }
+
+    public static Object unsafeGetUncompressedObject(long address) {
+        return unsafe.getUncompressedObject(address);
+    }
+
+    @Test
+    public void testUnsafeGetUncompressionObject() {
+        testGraph("unsafeGetUncompressedObject");
+        // Allocate some memory and fill it with non-zero values.
+        final int size = 32;
+        final long address = unsafe.allocateMemory(size);
+        unsafe.setMemory(address, size, (byte) 0x23);
+
+        // The only thing we can do is check for null-ness.
+        // So, store a null somewhere.
+        unsafe.putAddress(address + 16, 0);
+
+        Object nullObj = unsafe.getUncompressedObject(address + 16);
+        if (nullObj != null) {
+            throw new InternalError("should be null");
+        }
+
+        test("unsafeGetUncompressedObject", address + 16);
+        unsafe.freeMemory(address);
     }
 }

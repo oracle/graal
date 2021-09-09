@@ -50,45 +50,45 @@ import org.graalvm.polyglot.Value;
  * A special implementation for polyglot bindings, exposed to the embedder. The difference to a
  * normal polyglot value is that it preserves the language information for each member.
  */
-final class PolyglotBindingsValue extends PolyglotValue {
+final class PolyglotBindingsValue extends PolyglotValueDispatch {
 
     final Value delegateBindings;
     final Map<String, Value> values;
 
     PolyglotBindingsValue(PolyglotLanguageContext context, PolyglotBindings bindings) {
-        super(context);
+        super(context.getImpl(), context.context.engine);
         this.values = context.context.polyglotBindings;
         this.delegateBindings = context.asValue(bindings);
     }
 
     @Override
-    public Value getMember(Object receiver, String key) {
+    public Value getMember(Object context, Object receiver, String key) {
         return values.get(key);
     }
 
     @Override
-    public Set<String> getMemberKeys(Object receiver) {
+    public Set<String> getMemberKeys(Object context, Object receiver) {
         return values.keySet();
     }
 
     @Override
-    public boolean removeMember(Object receiver, String key) {
+    public boolean removeMember(Object context, Object receiver, String key) {
         Value result = values.remove(key);
         return result != null;
     }
 
     @Override
-    public void putMember(Object receiver, String key, Object member) {
-        values.put(key, languageContext.context.asValue(member));
+    public void putMember(Object context, Object receiver, String key, Object member) {
+        values.put(key, ((PolyglotLanguageContext) context).context.asValue(member));
     }
 
     @Override
-    public boolean hasMembers(Object receiver) {
+    public boolean hasMembers(Object context, Object receiver) {
         return true;
     }
 
     @Override
-    public boolean hasMember(Object receiver, String key) {
+    public boolean hasMember(Object context, Object receiver, String key) {
         return values.containsKey(key);
     }
 
@@ -98,22 +98,22 @@ final class PolyglotBindingsValue extends PolyglotValue {
      * members.
      */
     @Override
-    public <T> T as(Object receiver, Class<T> targetType) {
+    public <T> T as(Object context, Object receiver, Class<T> targetType) {
         return delegateBindings.as(targetType);
     }
 
     @Override
-    public <T> T as(Object receiver, TypeLiteral<T> targetType) {
+    public <T> T as(Object context, Object receiver, TypeLiteral<T> targetType) {
         return delegateBindings.as(targetType);
     }
 
     @Override
-    public String toStringImpl(Object receiver) {
+    public String toStringImpl(Object context, Object receiver) {
         return delegateBindings.toString();
     }
 
     @Override
-    public Value getMetaObjectImpl(Object receiver) {
+    public Value getMetaObjectImpl(PolyglotLanguageContext context, Object receiver) {
         return delegateBindings.getMetaObject();
     }
 }

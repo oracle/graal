@@ -1,6 +1,6 @@
 ; ModuleID = 'unary.bc'
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 @format = private unnamed_addr constant [7 x i8] c"%f %f\0A\00", align 1
 @formatPtr = global i8* getelementptr inbounds ([7 x i8], [7 x i8]* @format, i64 0, i64 0), align 8

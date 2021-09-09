@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,11 +32,9 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -46,8 +44,8 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
     @Child private IndirectCallNode callNode = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
-    protected Object doOp(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-        runDestructorFunctions(ctx);
+    protected Object doOp() {
+        runDestructorFunctions(getContext());
         return LLVMNativePointer.createNull();
     }
 

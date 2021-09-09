@@ -30,7 +30,8 @@ final class DebuggerCommand {
         STEP_OUT,
         SUBMIT_LINE_BREAKPOINT,
         SUBMIT_METHOD_ENTRY_BREAKPOINT,
-        SUBMIT_EXCEPTION_BREAKPOINT
+        SUBMIT_EXCEPTION_BREAKPOINT,
+        SPECIAL_STEP
     }
 
     final Kind kind;

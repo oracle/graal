@@ -23,15 +23,14 @@
 
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -52,7 +51,9 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
     public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 2));
         int index = BytecodeNode.popInt(primitives, top - 1);
-        BytecodeNode.putObject(refs, top - 2, executeLoad(array, index));
+        StaticObject result = executeLoad(array, index);
+        getBytecodeNode().checkNoForeignObjectAssumption(result);
+        BytecodeNode.putObject(refs, top - 2, result);
         return Bytecodes.stackEffectOf(Bytecodes.AALOAD);
     }
 
@@ -62,26 +63,22 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
     StaticObject doForeign(StaticObject array, int index,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached ToEspressoNode toEspressoNode,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
-        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, context.getMeta(), exceptionProfile);
+        Meta meta = context.getMeta();
+        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, meta, exceptionProfile);
 
         ArrayKlass arrayKlass = (ArrayKlass) array.getKlass();
         try {
             return (StaticObject) toEspressoNode.execute(result, arrayKlass.getComponentType());
         } catch (UnsupportedTypeException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to the array component type");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast the foreign array element to the array component type");
         }
     }
 
     @Specialization(guards = "array.isEspressoObject()")
     StaticObject doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayObject(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return BytecodeNode.peekObject(refs, top - 2).isForeignObject();
+        return getBytecodeNode().getInterpreterToVM().getArrayObject(index, array);
     }
 }

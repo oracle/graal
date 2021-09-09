@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,18 +37,18 @@ import java.util.Map.Entry;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ExportLibrary(InteropLibrary.class)
@@ -121,6 +121,21 @@ public class LLVMScope implements TruffleObject {
         LLVMSymbol symbol = get(name);
         if (symbol != null && symbol.isGlobalVariable()) {
             return symbol.asGlobalVariable();
+        }
+        return null;
+    }
+
+    /**
+     * Lookup an elementPointerSymbol in the scope by name.
+     *
+     * @param name Variable name to lookup.
+     * @return A handle to the global if found, null otherwise.
+     */
+    @TruffleBoundary
+    public LLVMElemPtrSymbol getGetElementPtrSymbol(String name) {
+        LLVMSymbol symbol = get(name);
+        if (symbol != null && symbol.isElemPtrExpression()) {
+            return symbol.asElemPtrExpression();
         }
         return null;
     }
@@ -244,23 +259,21 @@ public class LLVMScope implements TruffleObject {
     @ExportMessage
     Object readMember(String globalName,
                     @Cached BranchProfile exception,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) throws UnknownIdentifierException {
+                    @Cached LLVMPointerDataEscapeNode escape,
+                    @CachedLibrary("this") InteropLibrary self) throws UnknownIdentifierException {
 
         if (contains(globalName)) {
             LLVMSymbol symbol = get(globalName);
-            if (symbol != null && symbol.isFunction()) {
+            if (symbol != null) {
                 try {
-                    LLVMPointer value = context.getSymbol(symbol);
+                    LLVMPointer value = LLVMContext.get(self).getSymbol(symbol, exception);
                     if (value != null) {
-                        return LLVMManagedPointer.cast(value).getObject();
+                        return escape.executeWithTarget(value);
                     }
                 } catch (LLVMLinkerException | LLVMIllegalSymbolIndexException e) {
                     // fallthrough
                 }
-                exception.enter();
-                throw UnknownIdentifierException.create(globalName);
             }
-            return symbol;
         }
         exception.enter();
         throw UnknownIdentifierException.create(globalName);

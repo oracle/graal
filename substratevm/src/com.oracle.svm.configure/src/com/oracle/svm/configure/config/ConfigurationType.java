@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 import com.oracle.svm.configure.json.JsonPrintable;
@@ -55,16 +56,145 @@ public class ConfigurationType implements JsonPrintable {
         this.qualifiedJavaName = qualifiedJavaName;
     }
 
+    public ConfigurationType(ConfigurationType other) {
+        qualifiedJavaName = other.qualifiedJavaName;
+        mergeWith(other);
+    }
+
+    public void mergeWith(ConfigurationType other) {
+        assert qualifiedJavaName.equals(other.qualifiedJavaName);
+        mergeFlagsWith(other);
+        mergeFieldsWith(other);
+        mergeMethodsWith(other);
+    }
+
+    private void mergeFlagsWith(ConfigurationType other) {
+        setFlagsFromOtherUsingPredicate(other, (our, their) -> our || their);
+    }
+
+    private void mergeFieldsWith(ConfigurationType other) {
+        if (other.fields != null) {
+            if (fields == null) {
+                fields = new HashMap<>();
+            }
+            for (Map.Entry<String, FieldInfo> fieldInfoEntry : other.fields.entrySet()) {
+                fields.compute(fieldInfoEntry.getKey(), (key, value) -> {
+                    if (value == null) {
+                        return fieldInfoEntry.getValue();
+                    } else {
+                        return value.newMergedWith(fieldInfoEntry.getValue());
+                    }
+                });
+            }
+        }
+        maybeRemoveFields(allDeclaredFields, allPublicFields);
+    }
+
+    private void maybeRemoveFields(boolean hasAllDeclaredFields, boolean hasAllPublicFields) {
+        if (hasAllDeclaredFields) {
+            removeFields(ConfigurationMemberKind.DECLARED);
+        }
+        if (hasAllPublicFields) {
+            removeFields(ConfigurationMemberKind.PUBLIC);
+        }
+    }
+
+    private void mergeMethodsWith(ConfigurationType other) {
+        if (other.methods != null) {
+            if (methods == null) {
+                methods = new HashMap<>();
+            }
+            for (Map.Entry<ConfigurationMethod, ConfigurationMemberKind> methodEntry : other.methods.entrySet()) {
+                methods.compute(methodEntry.getKey(), (key, value) -> {
+                    if (value != null) {
+                        return value.equals(ConfigurationMemberKind.PRESENT) ? methodEntry.getValue() : value;
+                    } else {
+                        return methodEntry.getValue();
+                    }
+                });
+            }
+        }
+        maybeRemoveMethods(allDeclaredMethods, allPublicMethods, allDeclaredConstructors, allPublicConstructors);
+    }
+
+    private void maybeRemoveMethods(boolean hasAllDeclaredMethods, boolean hasAllPublicMethods, boolean hasAllDeclaredConstructors, boolean hasAllPublicConstructors) {
+        if (hasAllDeclaredMethods) {
+            removeMethods(ConfigurationMemberKind.DECLARED, false);
+        }
+        if (hasAllDeclaredConstructors) {
+            removeMethods(ConfigurationMemberKind.DECLARED, true);
+        }
+
+        if (hasAllPublicMethods) {
+            removeMethods(ConfigurationMemberKind.PUBLIC, false);
+        }
+        if (hasAllPublicConstructors) {
+            removeMethods(ConfigurationMemberKind.PUBLIC, true);
+        }
+    }
+
+    public void removeAll(ConfigurationType other) {
+        removeFlags(other);
+        removeFields(other);
+        removeMethods(other);
+    }
+
+    private void removeFlags(ConfigurationType other) {
+        setFlagsFromOtherUsingPredicate(other, (our, their) -> our && !their);
+    }
+
+    private void removeFields(ConfigurationType other) {
+        maybeRemoveFields(allDeclaredFields || other.allDeclaredFields, allPublicFields || other.allPublicFields);
+        if (fields != null && other.fields != null) {
+            for (Map.Entry<String, FieldInfo> fieldInfoEntry : other.fields.entrySet()) {
+                fields.computeIfPresent(fieldInfoEntry.getKey(), (key, value) -> value.newWithDifferencesFrom(fieldInfoEntry.getValue()));
+            }
+            if (fields.isEmpty()) {
+                fields = null;
+            }
+        }
+    }
+
+    private void removeMethods(ConfigurationType other) {
+        maybeRemoveMethods(allDeclaredMethods || other.allDeclaredMethods, allPublicMethods || other.allPublicMethods,
+                        allDeclaredConstructors || other.allDeclaredConstructors, allPublicConstructors || other.allPublicConstructors);
+        if (methods != null && other.methods != null) {
+            methods.entrySet().removeAll(other.methods.entrySet());
+            if (methods.isEmpty()) {
+                methods = null;
+            }
+        }
+    }
+
+    private void setFlagsFromOtherUsingPredicate(ConfigurationType other, BiPredicate<Boolean, Boolean> predicate) {
+        allDeclaredClasses = predicate.test(allDeclaredClasses, other.allDeclaredClasses);
+        allPublicClasses = predicate.test(allPublicClasses, other.allPublicClasses);
+        allDeclaredFields = predicate.test(allDeclaredFields, other.allDeclaredFields);
+        allPublicFields = predicate.test(allPublicFields, other.allPublicFields);
+        allDeclaredMethods = predicate.test(allDeclaredMethods, other.allDeclaredMethods);
+        allPublicMethods = predicate.test(allPublicMethods, other.allPublicMethods);
+        allDeclaredConstructors = predicate.test(allDeclaredConstructors, other.allDeclaredConstructors);
+        allPublicConstructors = predicate.test(allPublicConstructors, other.allPublicConstructors);
+    }
+
+    public boolean isEmpty() {
+        return methods == null && fields == null && allFlagsFalse();
+    }
+
+    private boolean allFlagsFalse() {
+        return !(allDeclaredClasses || allPublicClasses || allDeclaredFields || allPublicFields || allDeclaredMethods || allPublicMethods || allDeclaredConstructors || allPublicConstructors);
+    }
+
     public String getQualifiedJavaName() {
         return qualifiedJavaName;
     }
 
-    public void addField(String name, ConfigurationMemberKind memberKind, boolean finalButWritable, boolean allowUnsafeAccess) {
-        if (!finalButWritable && !allowUnsafeAccess) {
+    public void addField(String name, ConfigurationMemberKind memberKind, boolean finalButWritable) {
+        if (!finalButWritable) {
             if ((memberKind.includes(ConfigurationMemberKind.DECLARED) && haveAllDeclaredFields()) || (memberKind.includes(ConfigurationMemberKind.PUBLIC) && haveAllPublicFields())) {
                 fields = maybeRemove(fields, map -> {
                     FieldInfo fieldInfo = map.get(name);
-                    if (!fieldInfo.isFinalButWritable() && !fieldInfo.isUnsafeAccessible()) {
+                    if (fieldInfo != null && !fieldInfo.isFinalButWritable()) {
                         map.remove(name);
                     }
                 });
@@ -75,8 +205,8 @@ public class ConfigurationType implements JsonPrintable {
             fields = new HashMap<>();
         }
         fields.compute(name, (k, v) -> (v != null)
-                        ? FieldInfo.get(v.getKind().intersect(memberKind), v.isFinalButWritable() || finalButWritable, v.isUnsafeAccessible() || allowUnsafeAccess)
-                        : FieldInfo.get(memberKind, finalButWritable, allowUnsafeAccess));
+                        ? FieldInfo.get(v.getKind().intersect(memberKind), v.isFinalButWritable() || finalButWritable)
+                        : FieldInfo.get(memberKind, finalButWritable));
     }
 
     public void addMethodsWithName(String name, ConfigurationMemberKind memberKind) {
@@ -97,13 +227,21 @@ public class ConfigurationType implements JsonPrintable {
         }
         ConfigurationMethod method = new ConfigurationMethod(name, internalSignature);
         if (matchesAllSignatures) { // remove any methods that the new entry matches
-            methods.compute(method, (k, v) -> memberKind.union(v));
+            methods.compute(method, (k, v) -> v != null ? memberKind.union(v) : memberKind);
             methods = maybeRemove(methods, map -> map.entrySet().removeIf(entry -> name.equals(entry.getKey().getName()) &&
                             memberKind.includes(entry.getValue()) && !method.equals(entry.getKey())));
         } else {
-            methods.compute(method, (k, v) -> memberKind.intersect(v));
+            methods.compute(method, (k, v) -> v != null ? memberKind.intersect(v) : memberKind);
         }
         assert methods.containsKey(method);
+    }
+
+    public ConfigurationMemberKind getMethodKindIfPresent(ConfigurationMethod method) {
+        return methods == null ? null : methods.get(method);
+    }
+
+    public FieldInfo getFieldInfoIfPresent(String field) {
+        return fields == null ? null : fields.get(field);
     }
 
     public boolean haveAllDeclaredClasses() {
@@ -208,9 +346,6 @@ public class ConfigurationType implements JsonPrintable {
         if (entry.getValue().isFinalButWritable()) {
             w.append(", ").quote("allowWrite").append(':').append("true");
         }
-        if (entry.getValue().isUnsafeAccessible()) {
-            w.append(", ").quote("allowUnsafeAccess").append(':').append("true");
-        }
         w.append('}');
     }
 
@@ -221,7 +356,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private void removeFields(ConfigurationMemberKind memberKind) {
-        fields = maybeRemove(fields, map -> map.values().removeIf(v -> !v.isUnsafeAccessible() && memberKind.includes(v.getKind())));
+        fields = maybeRemove(fields, map -> map.values().removeIf(v -> memberKind.includes(v.getKind())));
     }
 
     private void removeMethods(ConfigurationMemberKind memberKind, boolean constructors) {

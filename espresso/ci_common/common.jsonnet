@@ -31,11 +31,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   linux: self.common + {
     packages+: {
-      binutils: '>=2.30',
+      '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+      '01:binutils': '>=2.34',
       git: '>=1.8.3',
-      gcc: '>=4.9.1',
-      'gcc-build-essentials': '>=4.9.1', # GCC 4.9.0 fails on cluster
-      make: '>=3.83',
       'sys:cmake': '==3.15.2',
       ruby: "==2.6.5",
     },
@@ -52,14 +50,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   darwin: self.common + {
     environment+: {
-      // for compatibility with macOS El Capitan
-      MACOSX_DEPLOYMENT_TARGET: '10.11',
+      // for compatibility with macOS Sierra
+      MACOSX_DEPLOYMENT_TARGET: '10.12',
     },
     capabilities: ['darwin', 'amd64'],
   },
 
   // generic targets
-  gate:            {targets+: ['gate']},
+  gate:            {targets+: ['gate'], timelimit: "1:00:00"},
   postMerge:       {targets+: ['post-merge']},
   bench:           {targets+: ['bench', 'post-merge']},
   dailyBench:      {targets+: ['bench', 'daily']},
@@ -144,10 +142,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // shared functions
   _mx(env, args): ['mx', '--env', env] + args,
 
-  build_espresso(env): {
+  build_espresso(env, debug=false): {
     run+: [
       ['mx', 'sversions'],
-      that._mx(env, ['build']),
+      that._mx(env, (if debug then ['--debug-images'] else []) + ['build']),
     ],
   },
 

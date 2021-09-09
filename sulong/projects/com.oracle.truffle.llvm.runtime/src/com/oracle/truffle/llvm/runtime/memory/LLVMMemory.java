@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -238,8 +238,6 @@ public abstract class LLVMMemory implements LLVMCapability {
     }
 
     public abstract boolean getAndOpI1(Node location, LLVMNativePointer address, boolean value, BooleanBinaryOperator f);
-
-    public abstract void fullFence();
 
     public abstract static class HandleContainer {
 

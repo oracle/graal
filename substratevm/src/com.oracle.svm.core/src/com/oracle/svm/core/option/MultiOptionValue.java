@@ -30,6 +30,12 @@ interface MultiOptionValue<T> {
 
     Class<T> getValueType();
 
+    /**
+     * @return a list of option values, one for each place where the option is used
+     * @implSpec Note that it DOES NOT perform any splitting of string values based on a delimiter.
+     *           If you want to perform this split, use a utility
+     *           {@link OptionUtils#flatten(String, LocatableMultiOptionValue.Strings)}
+     */
     List<T> values();
 
     void valueUpdate(Object value);

@@ -267,7 +267,7 @@ public final class SpecializationGroup {
     public int getUncheckedSpecializationIndex() {
         int groupMaxIndex = getMaxSpecializationIndex();
 
-        int genericIndex = node.getSpecializations().indexOf(node.getGenericSpecialization());
+        int genericIndex = node.getSpecializations().indexOf(node.getFallbackSpecialization());
         if (groupMaxIndex >= genericIndex) {
             // no minimum state check for an generic index
             groupMaxIndex = -1;

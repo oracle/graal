@@ -209,6 +209,9 @@ class EspressoShutdownHandler implements ContextAccess {
 
     private void teardown(boolean killThreads) {
         assert isClosing();
+
+        getVM().getJvmti().postVmDeath();
+
         getContext().prepareDispose();
         getContext().invalidateNoThreadStop("Killing the VM");
         Thread initiatingThread = Thread.currentThread();
@@ -255,7 +258,7 @@ class EspressoShutdownHandler implements ContextAccess {
 
     /**
      * Triggers soft interruption of active threads. This sends an interrupt signal to all leftover
-     * threads, gving them a chance to gracefully exit.
+     * threads, giving them a chance to gracefully exit.
      */
     private void teardownPhase1(Thread initiatingThread) {
         for (StaticObject guest : threadManager.activeThreads()) {
@@ -264,7 +267,7 @@ class EspressoShutdownHandler implements ContextAccess {
                 if (t.isDaemon()) {
                     Target_java_lang_Thread.killThread(guest);
                 }
-                Target_java_lang_Thread.interrupt0(guest);
+                threadManager.interruptThread(guest);
             }
         }
     }
@@ -278,7 +281,7 @@ class EspressoShutdownHandler implements ContextAccess {
             Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
             if (t.isAlive() && t != initiatingThread) {
                 Target_java_lang_Thread.killThread(guest);
-                Target_java_lang_Thread.interrupt0(guest);
+                threadManager.interruptThread(guest);
             }
         }
     }
@@ -298,7 +301,7 @@ class EspressoShutdownHandler implements ContextAccess {
                  * all polyglot threads but should have.
                  */
                 Target_java_lang_Thread.forceKillThread(guest);
-                Target_java_lang_Thread.interrupt0(guest);
+                threadManager.interruptThread(guest);
             }
         }
     }
