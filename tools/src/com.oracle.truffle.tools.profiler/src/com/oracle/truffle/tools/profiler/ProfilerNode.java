@@ -40,9 +40,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents a node in the call tree built up by sampling the shadow stack. Additional data can be
- * attached to this class through the template parameter, allowing individual tools to attached
- * needed data to the call tree.
+ * Represents a node in the call tree built up by sampling the stack. Additional data can be
+ * attached to this class through the template parameter, allowing individual tools to attach needed
+ * data to the call tree.
  *
  * @param <T> The type of data that should be associated with this node.
  * @since 0.30

@@ -85,16 +85,20 @@ public final class InsightObjectFactory extends ProxyLanguage {
     protected CallTarget parse(ParsingRequest request) throws Exception {
         final Source source = request.getSource();
         String scriptName = source.getName();
-        final AgentRootNode root = new AgentRootNode(ProxyLanguage.getCurrentLanguage(), this, scriptName, source, request.getArgumentNames());
+        final AgentRootNode root = new AgentRootNode(ProxyLanguage.get(null), this, scriptName, source, request.getArgumentNames());
         return Truffle.getRuntime().createCallTarget(root);
     }
 
-    @SuppressWarnings("try")
     public static Value readInsight(Context context, Object[] interopValue) throws Exception {
+        return readInsight(context, interopValue, new AutoCloseable[1]);
+    }
+
+    public static Value readInsight(Context context, Object[] interopValue, AutoCloseable[] handle) throws Exception {
         cleanAgentObject();
         final InsightObjectFactory langImpl = new InsightObjectFactory();
         Value value;
-        try (AutoCloseable handle = Embedding.enableInsight(InsightObjectFactory.createAgentSource(Insight.ID), context)) {
+        try {
+            handle[0] = Embedding.enableInsight(InsightObjectFactory.createAgentSource(Insight.ID), context);
             ProxyLanguage.setDelegate(langImpl);
             value = context.eval(ProxyLanguage.ID, "");
             assertNotNull("Agent object has been initialized", langImpl.readObject);
@@ -107,12 +111,16 @@ public final class InsightObjectFactory extends ProxyLanguage {
         return value;
     }
 
-    @SuppressWarnings("try")
     public static Value readObject(Context context, String name) throws Exception {
+        return readObject(context, name, new AutoCloseable[1]);
+    }
+
+    private static Value readObject(Context context, String name, AutoCloseable[] handle) throws Exception {
         cleanAgentObject();
 
         Value value;
-        try (AutoCloseable handle = Embedding.enableInsight(InsightObjectFactory.createAgentSource(name), context)) {
+        try {
+            handle[0] = Embedding.enableInsight(InsightObjectFactory.createAgentSource(name), context);
             final InsightObjectFactory langImpl = new InsightObjectFactory();
             ProxyLanguage.setDelegate(langImpl);
             value = context.eval(ProxyLanguage.ID, "");

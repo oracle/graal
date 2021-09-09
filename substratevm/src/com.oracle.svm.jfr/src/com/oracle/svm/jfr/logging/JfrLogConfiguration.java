@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.UserError;
 
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
@@ -91,8 +90,8 @@ class JfrLogConfiguration {
     private static void verifySelections(JfrLogSelection[] selections) {
         for (JfrLogSelection selection : selections) {
             if (!selection.matchesATagSet) {
-                throw UserError.abort("No tag set matches tag combination %s for FlightRecorderLogging",
-                                selection.tags.toString().toLowerCase() + (selection.wildcard ? "*" : ""));
+                throw new IllegalArgumentException("No tag set matches tag combination " +
+                                selection.tags.toString().toLowerCase() + (selection.wildcard ? "*" : "") + " for FlightRecorderLogging");
             }
         }
     }
@@ -138,7 +137,7 @@ class JfrLogConfiguration {
                 try {
                     level = JfrLogLevel.valueOf(value.toUpperCase());
                 } catch (IllegalArgumentException | NullPointerException e) {
-                    throw UserError.abort(e, "Invalid log level '%s' for FlightRecorderLogging.", value);
+                    throw new IllegalArgumentException("Invalid log level '" + value + "' for FlightRecorderLogging.", e);
                 }
                 tagsStr = str.substring(0, equalsIndex);
             } else {
@@ -158,7 +157,7 @@ class JfrLogConfiguration {
                 try {
                     tags.add(JfrLogTag.valueOf(s.toUpperCase()));
                 } catch (IllegalArgumentException | NullPointerException e) {
-                    throw UserError.abort(e, "Invalid log tag '%s' for FlightRecorderLogging.", s);
+                    throw new IllegalArgumentException("Invalid log tag '" + s + "' for FlightRecorderLogging.", e);
                 }
             }
             return new JfrLogSelection(tags, level, wildcard);

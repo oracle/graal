@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "5.301.0",
+    "mxversion": "5.308.1",
     "name": "substratevm",
     "version" : "21.3.0",
     "release" : False,
@@ -198,7 +198,8 @@ suite = {
             "dependencies": ["com.oracle.svm.core"],
             "requires" : [
                 "java.logging",
-                "jdk.unsupported"
+                "jdk.unsupported",
+                "java.compiler",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -235,7 +236,10 @@ suite = {
         "com.oracle.svm.core.jdk15": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
+            "dependencies": [
+                "com.oracle.svm.core",
+                "com.oracle.svm.core.jdk11"
+            ],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
@@ -403,6 +407,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.core.jdk11"
             ],
             "requires" : ["java.instrument"],
             "requiresConcealed" : {
@@ -1073,16 +1078,21 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
                 "exports" : [
+                    "com.oracle.svm.core.configure", # even Feature impls on class-path need access, thus unqualified
+                    "com.oracle.svm.core.jdk", # Uses of com.oracle.svm.core.jdk.StackTraceUtils
+                    "com.oracle.svm.core.snippets", # Uses of com.oracle.svm.core.snippets.KnownIntrinsics
+                    "com.oracle.svm.core", # Uses of com.oracle.svm.core.TypeResult
+                    "com.oracle.svm.core.util", # Uses of com.oracle.svm.core.util.VMError
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
-                    "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
-                    "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
-                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
+                    "* to jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
                     "com.oracle.svm.core.nodes                    to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.graal.nodes              to jdk.internal.vm.compiler",
+                    "com.oracle.svm.core.graal.snippets           to jdk.internal.vm.compiler",
+                    "com.oracle.svm.hosted.fieldfolding           to jdk.internal.vm.compiler",
                 ],
                 "requires": [
                     "java.management",
@@ -1408,7 +1418,6 @@ suite = {
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
-            "com.oracle.svm.test.jdk11",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
           ],
@@ -1419,6 +1428,20 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
+        },
+
+        "SVM_TESTS_JDK11" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.svm.test.jdk11",
+            ],
+            "distDependencies": [
+                "mx:JUNIT_TOOL",
+                "SVM",
+            ],
+            "javaCompliance": "11+",
+            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,9 +55,11 @@ import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
 
 public class SpectestModule extends BuiltinModule {
+    private static final int NUMBER_OF_FUNCTIONS = 7;
+
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance module = new WasmInstance(context, new WasmModule(name, null));
+        WasmInstance module = new WasmInstance(context, new WasmModule(name, null), NUMBER_OF_FUNCTIONS);
         defineFunction(module, "print", types(), types(), new PrintNode(language, module));
         defineFunction(module, "print_i32", types(I32_TYPE), types(), new PrintNode(language, module));
         defineFunction(module, "print_i64", types(I64_TYPE), types(), new PrintNode(language, module));

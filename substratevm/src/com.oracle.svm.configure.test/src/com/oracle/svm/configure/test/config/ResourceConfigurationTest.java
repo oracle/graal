@@ -107,7 +107,7 @@ public class ResourceConfigurationTest {
                 }
             };
 
-            ResourceConfigurationParser rcp = new ResourceConfigurationParser(registry);
+            ResourceConfigurationParser rcp = new ResourceConfigurationParser(registry, true);
             writerThread.start();
             rcp.parseAndRegister(pr);
 

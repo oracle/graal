@@ -908,6 +908,11 @@ meth public !varargs static void register(java.lang.reflect.Field[])
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object
 
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeSerialization
+meth public !varargs static void register(java.lang.Class<?>[])
+meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
+supr java.lang.Object
+
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
 innr public abstract interface static PLATFORM_JNI
 

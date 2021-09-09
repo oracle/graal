@@ -51,10 +51,11 @@ import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 
 public final class WasiModule extends BuiltinModule {
+    private static final int NUMBER_OF_FUNCTIONS = 16;
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null));
+        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null), NUMBER_OF_FUNCTIONS);
         importMemory(instance, "main", "memory", 0, MAX_MEMORY_DECLARATION_SIZE);
         defineFunction(instance, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, instance));
         defineFunction(instance, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, instance));

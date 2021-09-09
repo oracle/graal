@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,73 +24,9 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
+@SuppressWarnings("unused")
 @TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module {
-
-    @SuppressWarnings("static-method")
-    @Substitute
-    public InputStream getResourceAsStream(String name) {
-        ResourceStorageEntry entry = Resources.get(name);
-        if (entry == null) {
-            return null;
-        } else {
-            return new ByteArrayInputStream(entry.getData().get(0));
-        }
-    }
-
-    /*
-     * All implementations of these stubs are completely empty no-op. This seems appropriate as
-     * DynamicHub only references a singleton Module implementation anyhow, effectively neutering
-     * the module system within JDK11.
-     */
-
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    public boolean isReflectivelyExportedOrOpen(String pn, Target_java_lang_Module other, boolean open) {
-        return true;
-    }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    private void implAddReads(Target_java_lang_Module other, boolean syncVM) {
-    }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    private void implAddExportsOrOpens(String pn,
-                    Target_java_lang_Module other,
-                    boolean open,
-                    boolean syncVM) {
-    }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    void implAddUses(Class<?> service) {
-    }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    public boolean canUse(Class<?> service) {
-        return true;
-    }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    public boolean canRead(Target_java_lang_Module other) {
-        return true;
-    }
-
-    @Delete
-    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
-    public static final class ReflectionData {
-    }
-
 }

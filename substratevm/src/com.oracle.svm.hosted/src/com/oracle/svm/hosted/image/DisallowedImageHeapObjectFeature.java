@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.io.File;
 import java.lang.management.PlatformManagedObject;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -80,10 +81,10 @@ public class DisallowedImageHeapObjectFeature implements Feature {
              * We do not check for the temp directory name and the user name because they have a too
              * high chance of being short or generic terms that appear in valid strings.
              */
-            disallowedSubstrings = new String[]{
+            disallowedSubstrings = getDisallowedSubstrings(
                             System.getProperty("user.home"),
                             System.getProperty("user.dir"),
-                            System.getProperty("java.home")};
+                            System.getProperty("java.home"));
 
             /* We cannot check all byte[] encodings of strings, but we want to check common ones. */
             Set<Charset> encodings = new HashSet<>(Arrays.asList(
@@ -92,13 +93,22 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                             Charset.forName(System.getProperty("sun.jnu.encoding"))));
 
             disallowedByteSubstrings = new IdentityHashMap<>();
-            for (int i = 0; i < disallowedSubstrings.length; i++) {
-                String s = disallowedSubstrings[i];
+            for (String s : disallowedSubstrings) {
                 for (Charset encoding : encodings) {
                     disallowedByteSubstrings.put(s.getBytes(encoding), encoding);
                 }
             }
         }
+    }
+
+    private static String[] getDisallowedSubstrings(String... substrings) {
+        return Arrays.stream(substrings).filter(s -> {
+            /*
+             * To avoid false positives when detecting user directories in the image heap, we
+             * disallow substrings only if they have at least two name-separator characters.
+             */
+            return s.indexOf(File.separatorChar, s.indexOf(File.separatorChar) + 1) != -1;
+        }).toArray(String[]::new);
     }
 
     private Object replacer(Object original) {

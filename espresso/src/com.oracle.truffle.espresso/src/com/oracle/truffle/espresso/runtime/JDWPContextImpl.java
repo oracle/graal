@@ -545,7 +545,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void interruptThread(Object thread) {
-        Target_java_lang_Thread.interrupt0((StaticObject) thread);
+        context.interruptThread((StaticObject) thread);
     }
 
     @Override

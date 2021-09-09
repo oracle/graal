@@ -48,15 +48,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CEntryPointCallStubSupport {
 
-    static void initialize(BigBang bigbang) {
-        ImageSingletons.add(CEntryPointCallStubSupport.class, new CEntryPointCallStubSupport(bigbang));
+    static void initialize(BigBang bb) {
+        ImageSingletons.add(CEntryPointCallStubSupport.class, new CEntryPointCallStubSupport(bb));
     }
 
     public static CEntryPointCallStubSupport singleton() {
         return ImageSingletons.lookup(CEntryPointCallStubSupport.class);
     }
 
-    private final BigBang bigbang;
+    private final BigBang bb;
     private final Map<AnalysisMethod, AnalysisMethod> methodToStub = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, AnalysisMethod> methodToJavaStub = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries;
@@ -67,17 +67,17 @@ public final class CEntryPointCallStubSupport {
      */
     private final ConcurrentHashMap<CFunctionPointer, BoxedRelocatedPointer> cFunctionPointerCache = new ConcurrentHashMap<>();
 
-    private CEntryPointCallStubSupport(BigBang bigbang) {
-        this.bigbang = bigbang;
+    private CEntryPointCallStubSupport(BigBang bb) {
+        this.bb = bb;
     }
 
     public AnalysisMethod getStubForMethod(Executable reflectionMethod) {
-        AnalysisMethod method = bigbang.getMetaAccess().lookupJavaMethod(reflectionMethod);
+        AnalysisMethod method = bb.getMetaAccess().lookupJavaMethod(reflectionMethod);
         return getStubForMethod(method);
     }
 
     public AnalysisMethod registerStubForMethod(Executable reflectionMethod, Supplier<CEntryPointData> entryPointDataSupplier) {
-        AnalysisMethod method = bigbang.getMetaAccess().lookupJavaMethod(reflectionMethod);
+        AnalysisMethod method = bb.getMetaAccess().lookupJavaMethod(reflectionMethod);
         return registerStubForMethod(method, entryPointDataSupplier);
     }
 
@@ -86,18 +86,18 @@ public final class CEntryPointCallStubSupport {
     }
 
     public AnalysisMethod getMethodForStub(CEntryPointCallStubMethod method) {
-        return method.lookupTargetMethod(bigbang.getMetaAccess());
+        return method.lookupTargetMethod(bb.getMetaAccess());
     }
 
     public AnalysisMethod registerStubForMethod(AnalysisMethod method, Supplier<CEntryPointData> entryPointDataSupplier) {
         return methodToStub.compute(method, (key, existingValue) -> {
             AnalysisMethod value = existingValue;
             if (value == null) {
-                assert !bigbang.getUniverse().sealed();
+                assert !bb.getUniverse().sealed();
                 CEntryPointData entryPointData = entryPointDataSupplier.get();
-                CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(method, entryPointData, bigbang.getMetaAccess());
-                AnalysisMethod wrapped = bigbang.getUniverse().lookup(stub);
-                bigbang.addRootMethod(wrapped).registerAsEntryPoint(entryPointData);
+                CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(method, entryPointData, bb.getMetaAccess());
+                AnalysisMethod wrapped = bb.getUniverse().lookup(stub);
+                bb.addRootMethod(wrapped).registerAsEntryPoint(entryPointData);
                 value = wrapped;
             }
             return value;
@@ -108,13 +108,13 @@ public final class CEntryPointCallStubSupport {
         return methodToJavaStub.compute(method, (key, existingValue) -> {
             AnalysisMethod value = existingValue;
             if (value == null) {
-                assert !bigbang.getUniverse().sealed();
+                assert !bb.getUniverse().sealed();
                 AnalysisMethod nativeStub = registerStubForMethod(method, () -> CEntryPointData.create(method));
                 CFunctionPointer nativeStubAddress = MethodPointer.factory(nativeStub);
                 String stubName = SubstrateUtil.uniqueShortName(method);
-                ResolvedJavaType holderClass = bigbang.getMetaAccess().lookupJavaType(IsolateLeaveStub.class).getWrapped();
+                ResolvedJavaType holderClass = bb.getMetaAccess().lookupJavaType(IsolateLeaveStub.class).getWrapped();
                 CEntryPointJavaCallStubMethod stub = new CEntryPointJavaCallStubMethod(method.getWrapped(), stubName, holderClass, nativeStubAddress);
-                value = bigbang.getUniverse().lookup(stub);
+                value = bb.getUniverse().lookup(stub);
             }
             return value;
         });

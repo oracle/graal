@@ -55,10 +55,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -172,6 +174,7 @@ public final class EspressoContext {
     public final EspressoOptions.VerifyMode Verify;
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
     public final boolean Polyglot;
+    public final boolean HotSwapAPI;
     public final boolean ExitHost;
     public final boolean EnableSignals;
     private final String multiThreadingDisabled;
@@ -215,11 +218,19 @@ public final class EspressoContext {
     }
 
     public int getNewKlassId() {
-        return klassIdProvider.getAndIncrement();
+        int id = klassIdProvider.getAndIncrement();
+        if (id < 0) {
+            throw EspressoError.shouldNotReachHere("Exhausted klass IDs");
+        }
+        return id;
     }
 
     public int getNewLoaderId() {
-        return loaderIdProvider.getAndIncrement();
+        int id = loaderIdProvider.getAndIncrement();
+        if (id < 0) {
+            throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
+        }
+        return id;
     }
 
     public int getBootClassLoaderID() {
@@ -276,6 +287,7 @@ public final class EspressoContext {
         this.multiThreadingDisabled = multiThreadingDisabledReason;
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
+        this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
@@ -827,6 +839,10 @@ public final class EspressoContext {
         }
     }
 
+    public void interruptThread(StaticObject guestThread) {
+        threadManager.interruptThread(guestThread);
+    }
+
     public void invalidateNoThreadStop(String message) {
         noThreadDeprecationCalled.invalidate();
         noThreadStop.invalidate(message);
@@ -988,5 +1004,11 @@ public final class EspressoContext {
 
     public void rerunclinit(ObjectKlass oldKlass) {
         jdwpContext.rerunclinit(oldKlass);
+    }
+
+    private static final ContextReference<EspressoContext> REFERENCE = ContextReference.create(EspressoLanguage.class);
+
+    public static EspressoContext get(Node node) {
+        return REFERENCE.get(node);
     }
 }

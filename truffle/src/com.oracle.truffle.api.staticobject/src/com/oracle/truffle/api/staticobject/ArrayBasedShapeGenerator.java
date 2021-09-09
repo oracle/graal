@@ -129,7 +129,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return shapeOffset;
     }
 
-    // Invoked also from TruffleFeature.StaticObjectSupport
+    // Invoked also from TruffleBaseFeature.StaticObjectSupport
     @SuppressWarnings("unchecked")
     static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
         ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> cache;
@@ -168,7 +168,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return ArrayBasedStaticShape.create(this, generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties.values(), safetyChecks);
     }
 
-    // Invoked from TruffleFeature.StaticObjectSupport
+    // Invoked from TruffleBaseFeature.StaticObjectSupport
     void patchOffsets(int nativeByteArrayOffset, int nativeObjectArrayOffset, int nativeShapeOffset) {
         assert TruffleOptions.AOT;
         CompilerAsserts.neverPartOfCompilation();

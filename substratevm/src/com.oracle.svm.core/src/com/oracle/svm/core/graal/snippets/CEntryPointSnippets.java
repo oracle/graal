@@ -307,6 +307,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!success) {
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
+
+        /* Adjust stack overflow boundary of main thread. */
+        StackOverflowCheck.singleton().updateStackOverflowBoundary();
+
         assert !isolateInitialized;
         isolateInitialized = true;
 
@@ -611,8 +615,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         VMThreads.singleton().failFatally(code, message);
     }
 
-    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(providers, FOREIGN_CALLS);
+    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(FOREIGN_CALLS);
     }
 
     @SuppressWarnings("unused")

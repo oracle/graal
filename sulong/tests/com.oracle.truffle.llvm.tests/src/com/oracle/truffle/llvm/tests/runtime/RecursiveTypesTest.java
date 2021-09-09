@@ -175,7 +175,7 @@ public class RecursiveTypesTest {
             TruffleLanguage.Env env = runWithPolyglot.getTruffleTestEnv();
             LanguageInfo llvmInfo = env.getInternalLanguages().get("llvm");
             env.initializeLanguage(llvmInfo);
-            dataLayout = LLVMLanguage.getLanguage().getDefaultDataLayout();
+            dataLayout = LLVMLanguage.get(null).getDefaultDataLayout();
             Assert.assertNotNull(dataLayout);
         }
         return dataLayout;

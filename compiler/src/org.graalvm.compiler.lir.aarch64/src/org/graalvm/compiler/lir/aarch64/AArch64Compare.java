@@ -83,28 +83,18 @@ public class AArch64Compare {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            gpCompare(masm, x, y);
-        }
-    }
-
-    /**
-     * Compares integer values x and y.
-     *
-     * @param x integer value to compare. May not be null.
-     * @param y integer value to compare. May not be null.
-     */
-    public static void gpCompare(AArch64MacroAssembler masm, Value x, Value y) {
-        final int size = x.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        if (isRegister(y)) {
-            masm.cmp(size, asRegister(x), asRegister(y));
-        } else {
-            JavaConstant constant = asJavaConstant(y);
-            if (constant.isDefaultForKind()) {
-                masm.cmp(size, asRegister(x), 0);
+            final int size = x.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            if (isRegister(y)) {
+                masm.cmp(size, asRegister(x), asRegister(y));
             } else {
-                JavaKind javaKind = constant.getJavaKind();
-                GraalError.guarantee(javaKind == JavaKind.Int || javaKind == JavaKind.Long, "Unexpected constant size.");
-                masm.cmp(size, asRegister(x), NumUtil.safeToInt(constant.asLong()));
+                JavaConstant constant = asJavaConstant(y);
+                if (constant.isDefaultForKind()) {
+                    masm.compare(size, asRegister(x), 0);
+                } else {
+                    JavaKind javaKind = constant.getJavaKind();
+                    GraalError.guarantee(javaKind == JavaKind.Int || javaKind == JavaKind.Long, "Unexpected constant size.");
+                    masm.compare(size, asRegister(x), NumUtil.safeToInt(constant.asLong()));
+                }
             }
         }
     }

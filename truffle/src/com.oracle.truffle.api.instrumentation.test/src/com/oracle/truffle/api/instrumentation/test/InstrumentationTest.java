@@ -944,6 +944,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testParseInlineDefault() throws IOException {
+        context.initialize(InstrumentationTestLanguage.ID);
         Source source = Source.create(TestLanguageNoParseInline.ID, "STATEMENT");
         instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
             @Override
@@ -1877,7 +1878,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testAccessInstrumentFromLanguage() {
         context.initialize(InstrumentationTestLanguage.ID);
-        TruffleLanguage.Env env = InstrumentationTestLanguage.currentEnv();
+        TruffleLanguage.Env env = InstrumentContext.get(null).env;
         LanguageInfo langInfo = env.getInternalLanguages().get(InstrumentationTestLanguage.ID);
         assertNotNull(langInfo);
         assertEquals(InstrumentationTestLanguage.ID, langInfo.getId());
@@ -2003,11 +2004,12 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    @Ignore("We didn't use to support throwing on create of execution event node, can we now?")
     public void testErrorPropagationCreate() throws Exception {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
         instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, new ExecutionEventNodeFactory() {
             public ExecutionEventNode create(EventContext c) {
-                throw c.createError(new TestException(c.getInstrumentedNode()));
+                throw new TestException(c.getInstrumentedNode());
             }
         });
         try {
@@ -2033,7 +2035,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             }
 
             public void onEnter(EventContext c, VirtualFrame frame) {
-                throw c.createError(new TestException(c.getInstrumentedNode()));
+                throw new TestException(c.getInstrumentedNode());
             }
         });
         try {
@@ -2052,7 +2054,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
         EventBinding<?> b = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
             public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
-                throw c.createError(new TestException(c.getInstrumentedNode()));
+                throw new TestException(c.getInstrumentedNode());
             }
 
             public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
@@ -2080,7 +2082,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             }
 
             public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
-                throw c.createError(new TestException(c.getInstrumentedNode()));
+                throw new TestException(c.getInstrumentedNode());
             }
 
             public void onEnter(EventContext c, VirtualFrame frame) {
@@ -2104,7 +2106,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             return new ExecutionEventNode() {
                 @Override
                 protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
-                    throw c.createError(new TestException(c.getInstrumentedNode()));
+                    throw new TestException(c.getInstrumentedNode());
                 }
             };
         });
@@ -2134,7 +2136,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 @TruffleBoundary
                 protected Object onUnwind(VirtualFrame frame, Object info) {
                     assertEquals("test", info);
-                    throw c.createError(new TestException(c.getInstrumentedNode()));
+                    throw new TestException(c.getInstrumentedNode());
                 }
             };
         });
@@ -2157,7 +2159,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 @Override
                 public void onReturnValue(VirtualFrame frame, Object result) {
-                    throw c.createError(new TestException(c.getInstrumentedNode()));
+                    throw new TestException(c.getInstrumentedNode());
                 }
             };
         });
@@ -2167,7 +2169,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 @Override
                 public void onReturnValue(VirtualFrame frame, Object result) {
-                    throw c.createError(new TestException(c.getInstrumentedNode()));
+                    throw new TestException(c.getInstrumentedNode());
                 }
             };
         });

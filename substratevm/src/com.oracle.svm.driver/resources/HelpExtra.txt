@@ -15,6 +15,7 @@ Non-standard options help:
                           attach to debugger during image building (default port is 8000)
     --diagnostics-mode    Enables logging of image-build information to a diagnostics folder.
     --dry-run             output the command line that would be used for building
+    --list-cpu-features   list all possible -H:CPUFeatures
 
     -V<key>=<value>       provide values for placeholders in native-image.properties files
 

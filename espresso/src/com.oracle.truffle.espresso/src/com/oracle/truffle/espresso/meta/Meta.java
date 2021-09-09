@@ -23,12 +23,12 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.ALL;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_16_OR_HIGHER;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_8_OR_LOWER;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VERSION_9_OR_HIGHER;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VersionRange.higher;
-import static com.oracle.truffle.espresso.meta.DiffVersionLoadHelper.VersionRange.lower;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.lower;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -353,9 +353,12 @@ public final class Meta implements ContextAccess {
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
+        // The interrupted field is no longer hidden as of JDK14+
+        HIDDEN_INTERRUPTED = diff() //
+                        .field(lower(13), Name.HIDDEN_INTERRUPTED, Type._boolean)//
+                        .field(higher(14), Name.interrupted, Type._boolean) //
+                        .maybeHiddenfield(java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
-        HIDDEN_IS_ALIVE = java_lang_Thread.requireHiddenField(Name.HIDDEN_IS_ALIVE);
-        HIDDEN_INTERRUPTED = java_lang_Thread.requireHiddenField(Name.HIDDEN_INTERRUPTED);
         HIDDEN_DEATH = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH);
         HIDDEN_DEATH_THROWABLE = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH_THROWABLE);
         HIDDEN_SUSPEND_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_SUSPEND_LOCK);
@@ -376,6 +379,7 @@ public final class Meta implements ContextAccess {
         java_lang_Thread_dispatchUncaughtException = java_lang_Thread.requireDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         java_lang_Thread_init_ThreadGroup_Runnable = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable);
         java_lang_Thread_init_ThreadGroup_String = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String);
+        java_lang_Thread_interrupt = java_lang_Thread.requireDeclaredMethod(Name.interrupt, Signature._void);
         java_lang_Thread_exit = java_lang_Thread.requireDeclaredMethod(Name.exit, Signature._void);
         java_lang_Thread_run = java_lang_Thread.requireDeclaredMethod(Name.run, Signature._void);
         java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
@@ -445,6 +449,14 @@ public final class Meta implements ContextAccess {
 
         java_lang_invoke_MethodHandles = knownKlass(Type.java_lang_invoke_MethodHandles);
         java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.requireDeclaredMethod(Name.lookup, Signature.MethodHandles$Lookup);
+
+        // j.l.i.VarHandles is there in JDK9+, but we only need it to be known for 14+
+        java_lang_invoke_VarHandles = diff() //
+                        .klass(higher(14), Type.java_lang_invoke_VarHandles) //
+                        .notRequiredKlass();
+        java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset = diff() //
+                        .method(higher(14), Name.getStaticFieldFromBaseAndOffset, Signature.Field_Object_long_Class) //
+                        .notRequiredMethod(java_lang_invoke_VarHandles);
 
         java_lang_invoke_CallSite = knownKlass(Type.java_lang_invoke_CallSite);
         java_lang_invoke_CallSite_target = java_lang_invoke_CallSite.requireDeclaredField(Name.target, Type.java_lang_invoke_MethodHandle);
@@ -1146,12 +1158,12 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Thread_contextClassLoader;
     public final Method java_lang_Thread_init_ThreadGroup_Runnable;
     public final Method java_lang_Thread_init_ThreadGroup_String;
+    public final Method java_lang_Thread_interrupt;
     public final Method java_lang_Thread_exit;
     public final Method java_lang_Thread_run;
     public final Method java_lang_Thread_checkAccess;
     public final Method java_lang_Thread_stop;
     public final Field HIDDEN_HOST_THREAD;
-    public final Field HIDDEN_IS_ALIVE;
     public final Field HIDDEN_INTERRUPTED;
     public final Field HIDDEN_DEATH;
     public final Field HIDDEN_DEATH_THROWABLE;
@@ -1232,6 +1244,9 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_invoke_MethodHandles;
     public final Method java_lang_invoke_MethodHandles_lookup;
+
+    public final ObjectKlass java_lang_invoke_VarHandles;
+    public final Method java_lang_invoke_VarHandles_getStaticFieldFromBaseAndOffset;
 
     public final ObjectKlass java_lang_invoke_CallSite;
     public final Field java_lang_invoke_CallSite_target;
@@ -1401,8 +1416,8 @@ public final class Meta implements ContextAccess {
         public final Method UnsupportedTypeException_create_Object_array_String_Throwable;
 
         public final ObjectKlass ArityException;
-        public final Method ArityException_create_int_int;
-        public final Method ArityException_create_int_int_Throwable;
+        public final Method ArityException_create_int_int_int;
+        public final Method ArityException_create_int_int_int_Throwable;
 
         public final ObjectKlass InvalidArrayIndexException;
         public final Method InvalidArrayIndexException_create_long;
@@ -1411,6 +1426,14 @@ public final class Meta implements ContextAccess {
         public final ObjectKlass InvalidBufferOffsetException;
         public final Method InvalidBufferOffsetException_create_long_long;
         public final Method InvalidBufferOffsetException_create_long_long_Throwable;
+
+        public final ObjectKlass StopIterationException;
+        public final Method StopIterationException_create;
+        public final Method StopIterationException_create_Throwable;
+
+        public final ObjectKlass UnknownKeyException;
+        public final Method UnknownKeyException_create_Object;
+        public final Method UnknownKeyException_create_Object_Throwable;
 
         public final ObjectKlass ForeignException;
         public final ObjectKlass ExceptionType;
@@ -1433,8 +1456,8 @@ public final class Meta implements ContextAccess {
             }
 
             ArityException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
-            ArityException_create_int_int = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int);
-            ArityException_create_int_int_Throwable = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_Throwable);
+            ArityException_create_int_int_int = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_int);
+            ArityException_create_int_int_int_Throwable = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_int_Throwable);
 
             UnknownIdentifierException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
             UnknownIdentifierException_create_String = UnknownIdentifierException.requireDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String);
@@ -1456,6 +1479,14 @@ public final class Meta implements ContextAccess {
             InvalidBufferOffsetException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException);
             InvalidBufferOffsetException_create_long_long = InvalidBufferOffsetException.requireDeclaredMethod(Name.create, Signature.InvalidBufferOffsetException_long_long);
             InvalidBufferOffsetException_create_long_long_Throwable = InvalidBufferOffsetException.requireDeclaredMethod(Name.create, Signature.InvalidBufferOffsetException_long_long_Throwable);
+
+            StopIterationException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_StopIterationException);
+            StopIterationException_create = StopIterationException.requireDeclaredMethod(Name.create, Signature.StopIterationException);
+            StopIterationException_create_Throwable = StopIterationException.requireDeclaredMethod(Name.create, Signature.StopIterationException_Throwable);
+
+            UnknownKeyException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownKeyException);
+            UnknownKeyException_create_Object = UnknownKeyException.requireDeclaredMethod(Name.create, Signature.UnknownKeyException_Object);
+            UnknownKeyException_create_Object_Throwable = UnknownKeyException.requireDeclaredMethod(Name.create, Signature.UnknownKeyException_Object_Throwable);
 
             ForeignException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
             ExceptionType = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);

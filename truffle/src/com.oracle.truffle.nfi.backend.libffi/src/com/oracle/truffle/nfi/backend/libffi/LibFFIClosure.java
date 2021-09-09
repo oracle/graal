@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -129,8 +127,9 @@ final class LibFFIClosure implements TruffleObject {
 
         abstract ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature);
 
-        static MonomorphicClosureInfo create(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object executable) {
+        static MonomorphicClosureInfo create(CachedSignatureInfo signatureInfo, Object executable) {
             CompilerAsserts.neverPartOfCompilation();
+            LibFFILanguage lang = LibFFILanguage.get(null);
             CachedTypeInfo retType = signatureInfo.getRetType();
             if (retType instanceof LibFFIType.ObjectType) {
                 // special handling simple object return values
@@ -160,8 +159,9 @@ final class LibFFIClosure implements TruffleObject {
 
         abstract ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver);
 
-        static PolymorphicClosureInfo create(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo create(CachedSignatureInfo signatureInfo) {
             CompilerAsserts.neverPartOfCompilation();
+            LibFFILanguage lang = LibFFILanguage.get(null);
             CachedTypeInfo retType = signatureInfo.getRetType();
             if (retType instanceof LibFFIType.ObjectType) {
                 // special handling simple object return values
@@ -227,7 +227,7 @@ final class LibFFIClosure implements TruffleObject {
             this.nativeArguments = NativeArgumentLibrary.getFactory().create(this.retType);
         }
 
-        RetPatches execute(Object ret, ByteBuffer retBuffer) {
+        RetPatches execute(Object ret, NativeArgumentBuffer.Pointer retBuffer) {
             NativeArgumentBuffer nativeRetBuffer = new NativeArgumentBuffer.Direct(retBuffer, retType.objectCount);
             try {
                 nativeArguments.serialize(retType, nativeRetBuffer, ret);
@@ -291,7 +291,7 @@ final class LibFFIClosure implements TruffleObject {
         }
 
         @Specialization
-        public Object doBufferRet(VirtualFrame frame, ByteBuffer retBuffer) {
+        public Object doBufferRet(VirtualFrame frame, NativeArgumentBuffer.Pointer retBuffer) {
             Object ret = callClosure.execute(frame);
             return encodeRet.execute(ret, retBuffer);
         }

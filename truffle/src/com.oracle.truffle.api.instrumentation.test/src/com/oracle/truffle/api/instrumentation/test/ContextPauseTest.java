@@ -139,9 +139,15 @@ public class ContextPauseTest {
                     for (Future<?> future : futures) {
                         future.get();
                     }
-                } finally {
                     executorService.shutdownNow();
                     Assert.assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
+
+                } catch (Throwable t) {
+                    executorService.shutdownNow();
+
+                    // shorter timeout to show errors more quickly
+                    executorService.awaitTermination(1, TimeUnit.SECONDS);
+                    throw t;
                 }
             }
         }

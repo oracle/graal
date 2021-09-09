@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -44,7 +44,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState newState) {
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the stored value using the field's
          * declared type.
@@ -66,20 +66,20 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
             this.fieldFlow = fieldFlow;
         }
 
-        StoreStaticFieldTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, StoreStaticFieldTypeFlow original) {
+        StoreStaticFieldTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, StoreStaticFieldTypeFlow original) {
             super(original, methodFlows);
             this.valueFlow = methodFlows.lookupCloneOf(bb, original.valueFlow);
             this.fieldFlow = original.fieldFlow;
         }
 
         @Override
-        public StoreFieldTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public StoreFieldTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             /* A store to a static field type flow is not context dependent, but it's value is. */
             return new StoreStaticFieldTypeFlow(bb, methodFlows, this);
         }
 
         @Override
-        public void initClone(BigBang bb) {
+        public void initClone(PointsToAnalysis bb) {
             this.addUse(bb, fieldFlow);
         }
 
@@ -113,14 +113,14 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
             this.objectFlow = objectFlow;
         }
 
-        StoreInstanceFieldTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, StoreInstanceFieldTypeFlow original) {
+        StoreInstanceFieldTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, StoreInstanceFieldTypeFlow original) {
             super(original, methodFlows);
             this.valueFlow = methodFlows.lookupCloneOf(bb, original.valueFlow);
             this.objectFlow = methodFlows.lookupCloneOf(bb, original.objectFlow);
         }
 
         @Override
-        public StoreInstanceFieldTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public StoreInstanceFieldTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new StoreInstanceFieldTypeFlow(bb, methodFlows, this);
         }
 
@@ -135,7 +135,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
             assert this.isClone();
 
@@ -155,7 +155,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
             assert this.isClone();
             /* When receiver flow saturates start observing the flow of the field declaring type. */
             replaceObservedWith(bb, field.getDeclaringClass());

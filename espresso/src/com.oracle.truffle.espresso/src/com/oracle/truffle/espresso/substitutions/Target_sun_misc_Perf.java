@@ -68,7 +68,7 @@ public final class Target_sun_misc_Perf {
     @SuppressWarnings("unused")
     public static @JavaType(ByteBuffer.class) StaticObject createLong(@JavaType(internalName = "Lsun/misc/Perf;") StaticObject self,
                     @SuppressWarnings("unused") @JavaType(String.class) StaticObject name, int variability, int units, long value,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         if (units <= 0 || units > U_Last) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }

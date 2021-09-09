@@ -27,17 +27,19 @@ package com.oracle.svm.core.graal.phases;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SharedMethod;
 
 /**
  * Adds safepoints to loops.
  */
-public class MethodSafepointInsertionPhase extends Phase {
+public class MethodSafepointInsertionPhase extends BasePhase<MidTierContext> {
 
     @Override
     public boolean checkContract() {
@@ -46,13 +48,10 @@ public class MethodSafepointInsertionPhase extends Phase {
         return false;
     }
 
-    @Override
-    protected void run(StructuredGraph graph) {
-
-        SharedMethod method = (SharedMethod) graph.method();
+    public static boolean needSafepointCheck(SharedMethod method) {
         if (method.isUninterruptible()) {
             /* Uninterruptible methods must not have a safepoint inserted. */
-            return;
+            return false;
         }
         if (DirectAnnotationAccess.isAnnotationPresent(method, CFunction.class) || DirectAnnotationAccess.isAnnotationPresent(method, InvokeCFunctionPointer.class)) {
             /*
@@ -61,6 +60,15 @@ public class MethodSafepointInsertionPhase extends Phase {
              * be inserted. This is a performance optimization, the annotated methods are not
              * uninterruptible unless the C function is marked as NO_TRANSITION.
              */
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    protected void run(StructuredGraph graph, MidTierContext context) {
+        SharedMethod method = (SharedMethod) graph.method();
+        if (((SubstrateBackend) context.getTargetProvider()).safepointCheckedInEpilogue(method) || !needSafepointCheck(method)) {
             return;
         }
 

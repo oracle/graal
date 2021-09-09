@@ -42,7 +42,6 @@ package com.oracle.truffle.host;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -223,22 +222,6 @@ final class HostInteropReflect {
             }
         }
         return false;
-    }
-
-    static Object asTruffleViaReflection(Object obj, HostContext context) {
-        if (obj instanceof Proxy) {
-            return asTruffleObjectProxy(obj, context);
-        }
-        return HostObject.forObject(obj, context);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static Object asTruffleObjectProxy(Object obj, HostContext context) {
-        Object unboxed = context.language.access.toGuestValue(context.internalContext, obj);
-        if (unboxed != null) {
-            return unboxed;
-        }
-        return HostObject.forObject(obj, context);
     }
 
     @TruffleBoundary

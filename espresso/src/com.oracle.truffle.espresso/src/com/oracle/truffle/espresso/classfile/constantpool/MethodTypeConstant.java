@@ -108,6 +108,7 @@ public interface MethodTypeConstant extends PoolConstant {
             return pool.symbolAt(descriptorIndex);
         }
 
+        @Override
         public Resolved resolve(RuntimeConstantPool pool, int index, Klass accessingKlass) {
             Symbol<Signature> sig = getSignature(pool);
             Meta meta = accessingKlass.getContext().getMeta();
@@ -138,6 +139,7 @@ public interface MethodTypeConstant extends PoolConstant {
             throw EspressoError.shouldNotReachHere("Method type already resolved !");
         }
 
+        @Override
         public Object value() {
             return resolved;
         }

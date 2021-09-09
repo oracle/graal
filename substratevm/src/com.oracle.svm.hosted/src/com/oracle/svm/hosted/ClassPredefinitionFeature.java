@@ -56,6 +56,7 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 @AutomaticFeature
 public class ClassPredefinitionFeature implements Feature {
     private final Map<String, PredefinedClass> nameToRecord = new HashMap<>();
+    private boolean sealed = false;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess arg) {
@@ -68,7 +69,7 @@ public class ClassPredefinitionFeature implements Feature {
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
         PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);
-        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry);
+        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry, ConfigurationFiles.Options.StrictConfiguration.getValue());
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
                         ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
                         ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
@@ -76,6 +77,8 @@ public class ClassPredefinitionFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        sealed = true;
+
         List<String> skipped = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         nameToRecord.forEach((name, record) -> {
@@ -123,6 +126,8 @@ public class ClassPredefinitionFeature implements Feature {
                 throw UserError.abort("Cannot predefine class with hash %s from %s because class predefinition is disabled. Enable this feature using option %s.",
                                 providedHash, basePath, PredefinedClassesSupport.ENABLE_BYTECODES_OPTION);
             }
+            UserError.guarantee(!sealed, "Too late to add predefined classes. Registration must happen in a Feature before the analysis has started.");
+
             try {
                 Path path = basePath.resolve(providedHash + ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
                 byte[] data = Files.readAllBytes(path);

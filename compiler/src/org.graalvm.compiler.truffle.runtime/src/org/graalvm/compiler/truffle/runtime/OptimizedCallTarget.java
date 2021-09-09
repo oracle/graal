@@ -38,7 +38,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
-import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode.OSRRootNode;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -139,7 +138,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
      * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
      * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
-     * real call to the call target. Reset by TruffleFeature after image generation.
+     * real call to the call target.
      */
     private int callCount;
 
@@ -148,7 +147,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
      * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
      * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
-     * real call to the call target. Reset by TruffleFeature after image generation.
+     * real call to the call target.
      */
     private int callAndLoopCount;
     private int highestCompiledTier = 0;
@@ -176,9 +175,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * the CallTarget, except that the newer profile can only be less precise (= more null) and so
      * will end up not casting at all the argument indices that did not match the profile.
      *
-     * These fields are reset by TruffleFeature after image generation. These fields are initially
-     * null, and once they become non-null they never become null again (except through the reset of
-     * TruffleFeature).
+     * These fields are initially null, and once they become non-null they never become null again.
      */
     @CompilationFinal private volatile ArgumentsProfile argumentsProfile;
     @CompilationFinal private volatile ReturnProfile returnProfile;
@@ -253,7 +250,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     /**
-     * Set if compilation failed or was ignored. Reset by TruffleFeature after image generation.
+     * Set if compilation failed or was ignored. Reset by TruffleBaseFeature after image generation.
      */
     private volatile boolean compilationFailed;
     /**
@@ -265,7 +262,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /**
      * Timestamp when the call target was initialized e.g. used the first time. Reset by
-     * TruffleFeature after image generation.
+     * TruffleBaseFeature after image generation.
      */
     private volatile long initializedTimestamp;
 
@@ -339,8 +336,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.rootNode = rootNode;
         this.engine = GraalTVMCI.getEngineData(rootNode);
         this.resetCompilationProfile();
-        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
-        this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
+        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
+        // node(s).
+        this.uninitializedNodeCount = !(rootNode instanceof BaseOSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
         GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
@@ -529,6 +527,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return true;
     }
 
+    // This call method is hidden from stack traces.
     public final Object callOSR(Object... args) {
         return doInvoke(args);
     }
@@ -592,10 +591,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return !compilationFailed //
                         && !isSubmittedForCompilation() //
                         /*
-                         * Compilation of OSR loop call target is scheduled in
-                         * OptimizedOSRLoopNode#compileImpl.
+                         * Compilation of OSR loop nodes is managed separately.
                          */
-                        && !(getRootNode() instanceof OSRRootNode) //
+                        && !(getRootNode() instanceof BaseOSRRootNode) //
                         && intCallCount >= engine.callThresholdInInterpreter //
                         && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
     }
@@ -730,7 +728,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * for compilation.
      */
     public final boolean compile(boolean lastTierCompilation) {
-        if (!needsCompile(lastTierCompilation)) {
+        boolean lastTier = !engine.firstTierOnly && lastTierCompilation;
+        if (!needsCompile(lastTier)) {
             return true;
         }
         if (!isSubmittedForCompilation()) {
@@ -744,7 +743,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (!needsCompile(lastTierCompilation)) {
+                if (!needsCompile(lastTier)) {
                     return true;
                 }
 
@@ -756,14 +755,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
                     try {
                         assert compilationTask == null;
-                        this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
+                        this.compilationTask = task = runtime().submitForCompilation(this, lastTier);
                     } catch (RejectedExecutionException e) {
                         return false;
                     }
                 }
             }
             if (task != null) {
-                runtime().getListener().onCompilationQueued(this, lastTierCompilation ? 2 : 1);
+                runtime().getListener().onCompilationQueued(this, lastTier ? 2 : 1);
                 return maybeWaitForTask(task);
             }
         }

@@ -88,7 +88,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
 
     @Override
     Object getStorage(Object obj, boolean primitive) {
-        Object receiverObject = cast(obj, storageClass);
+        Object receiverObject = cast(obj, storageClass, false);
         if (safetyChecks) {
             checkShape(receiverObject);
         } else {
@@ -98,7 +98,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     }
 
     private boolean checkShape(Object receiverObject) {
-        ArrayBasedStaticShape<?> receiverShape = cast(UNSAFE.getObject(receiverObject, (long) propertyLayout.generator.getShapeOffset()), ArrayBasedStaticShape.class);
+        ArrayBasedStaticShape<?> receiverShape = cast(UNSAFE.getObject(receiverObject, (long) propertyLayout.generator.getShapeOffset()), ArrayBasedStaticShape.class, false);
         if (this != receiverShape && (receiverShape.superShapes.length < superShapes.length || receiverShape.superShapes[superShapes.length - 1] != this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Incompatible shape on property access. Expected '" + this + "' got '" + receiverShape + "'.");

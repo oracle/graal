@@ -24,8 +24,8 @@
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -33,7 +33,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -81,7 +80,7 @@ public abstract class ArrayLengthNode extends QuickNode {
     })
     int doBufferLike(StaticObject array,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @SuppressWarnings("unused") @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile sizeOverflowProfile) {
         try {
             long bufferLength = interop.getBufferSize(array.rawForeignObject());
@@ -103,7 +102,7 @@ public abstract class ArrayLengthNode extends QuickNode {
     })
     int doArrayLike(StaticObject array,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @SuppressWarnings("unused") @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                     @Cached BranchProfile sizeOverflowProfile) {
         try {
             long arrayLength = interop.getArraySize(array.rawForeignObject());

@@ -60,7 +60,10 @@ import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class CompilationTask {
@@ -311,6 +314,27 @@ public class CompilationTask {
         }
     }
 
+    /**
+     * Resolves all types seen in the signature of the root method. This avoids weird situations
+     * where otherwise resolved types can be seen as unresolved due to inlining where the inlinee
+     * and caller methods were loaded by different class loaders.
+     */
+    private static void resolveTypesInSignature(ResolvedJavaMethod method) {
+        Signature sig = method.getSignature();
+        int max = sig.getParameterCount(false);
+        ResolvedJavaType accessingClass = method.getDeclaringClass();
+        for (int i = 0; i < max; i++) {
+            JavaType type = sig.getParameterType(i, accessingClass);
+            if (!(type instanceof ResolvedJavaType)) {
+                try {
+                    type.resolve(accessingClass);
+                } catch (LinkageError e) {
+                    // This should only ever happen in -Xcomp mode
+                }
+            }
+        }
+    }
+
     @SuppressWarnings("try")
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
@@ -318,6 +342,8 @@ public class CompilationTask {
         int entryBCI = getEntryBCI();
         boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
         HotSpotResolvedJavaMethod method = getMethod();
+
+        resolveTypesInSignature(method);
 
         if (installAsDefault || isOSR) {
             // If there is already compiled code for this method on our level we simply return.

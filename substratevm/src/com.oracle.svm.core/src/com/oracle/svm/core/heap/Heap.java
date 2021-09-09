@@ -35,11 +35,14 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.ImageHeapProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -154,11 +157,20 @@ public abstract class Heap {
     public abstract int getPreferredAddressSpaceAlignment();
 
     /**
-     * Returns the offset that the image heap should have when mapping the native image file to the
-     * address space in memory.
+     * Returns an offset relative to the heap base, at which the image heap should be mapped into
+     * the address space.
      */
     @Fold
     public abstract int getImageHeapOffsetInAddressSpace();
+
+    /**
+     * Returns the number of null bytes that should be prepended to the image heap during the image
+     * build. This value must be a multiple of the page size. When the image heap is mapped at
+     * runtime, this extra memory gets mapped as well but is marked as inaccessible (see
+     * {@link ImageHeapProvider} for more details).
+     */
+    @Fold
+    public abstract int getImageHeapNullRegionSize();
 
     /**
      * Returns true if the given object is located in the image heap.
@@ -166,9 +178,21 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isInImageHeap(Object object);
 
-    /** Returns true if the object at the given address is located in the image heap. */
+    /**
+     * Returns true if the object at the given address is located in the image heap. Depending on
+     * the used GC, this method may only work reliably for pointers that point to the start of an
+     * object.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isInImageHeap(Pointer objectPtr);
+
+    /** Whether the object is in the primary image heap, as opposed to an auxiliary image heap. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract boolean isInPrimaryImageHeap(Object object);
+
+    /** Whether the object is in the primary image heap, as opposed to an auxiliary image heap. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract boolean isInPrimaryImageHeap(Pointer objectPtr);
 
     /**
      * Determines if the heap currently has {@link Reference} objects that are pending to be
@@ -187,4 +211,10 @@ public abstract class Heap {
      * May return {@code null}.
      */
     public abstract Reference<?> getAndClearReferencePendingList();
+
+    /**
+     * If the passed value is within the Java heap, this method prints some information about that
+     * value and returns true. Otherwise, the method returns false.
+     */
+    public abstract boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess);
 }

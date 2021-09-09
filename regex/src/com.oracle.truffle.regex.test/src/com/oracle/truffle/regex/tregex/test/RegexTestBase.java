@@ -108,7 +108,7 @@ public abstract class RegexTestBase {
         validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBounds);
     }
 
-    private void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBounds) {
+    private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBounds) {
         assert captureGroupBounds.length % 2 == 0;
         assertEquals(isMatch, result.getMember("isMatch").asBoolean());
         if (isMatch) {

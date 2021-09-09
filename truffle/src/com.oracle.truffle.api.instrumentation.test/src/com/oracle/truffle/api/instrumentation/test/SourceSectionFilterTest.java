@@ -164,7 +164,7 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
     }
 
     static RootNode createRootNode(final SourceSection section, final Boolean internal, Node... children) throws Exception {
-        TruffleLanguage<?> truffleLanguage = InstrumentationTestLanguage.current();
+        TruffleLanguage<?> truffleLanguage = InstrumentationTestLanguage.get(null);
         return new RootNode(truffleLanguage) {
 
             @Node.Children Node[] rootChildren = children;

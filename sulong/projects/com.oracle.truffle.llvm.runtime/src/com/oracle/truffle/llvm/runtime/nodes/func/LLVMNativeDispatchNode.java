@@ -33,9 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -43,8 +41,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
@@ -66,12 +62,12 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
     public abstract Object executeDispatch(Object function, Object[] arguments);
 
-    NativeContextExtension getNativeCtxExt(ContextReference<LLVMContext> ctxRef) {
+    NativeContextExtension getNativeCtxExt() {
         if (nativeCtxExtKey == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            nativeCtxExtKey = ctxRef.get().getLanguage().lookupContextExtension(NativeContextExtension.class);
+            nativeCtxExtKey = getLanguage().lookupContextExtension(NativeContextExtension.class);
         }
-        return nativeCtxExtKey.get(ctxRef.get());
+        return nativeCtxExtKey.get(getContext());
     }
 
     @TruffleBoundary
@@ -109,31 +105,29 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     @Specialization(guards = {"function.asNative() == cachedFunction.asNative()", "!cachedFunction.isNull()"}, assumptions = "singleContextAssumption()")
     @GenerateAOT.Exclude
     protected Object doCached(LLVMNativePointer function, Object[] arguments,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("function") @SuppressWarnings("unused") LLVMNativePointer cachedFunction,
-                    @Cached("bindSignature(getNativeCtxExt(context), cachedFunction.asNative())") Object nativeFunctionHandle,
+                    @Cached("bindSignature(getNativeCtxExt(), cachedFunction.asNative())") Object nativeFunctionHandle,
                     @CachedLibrary("nativeFunctionHandle") InteropLibrary nativeCall,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
-                    @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
+                    @Cached("nativeCallStatisticsEnabled()") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
-        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, nativeFunctionHandle, nativeArgs, null);
+        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, nativeCall, nativeFunctionHandle, nativeArgs, null);
         return fromNative.executeConvert(returnValue);
     }
 
     @Specialization(replaces = "doCached", guards = "!function.isNull()")
     @GenerateAOT.Exclude
     protected Object doGeneric(LLVMNativePointer function, Object[] arguments,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @CachedLibrary(limit = "5") InteropLibrary nativeCall,
-                    @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
+                    @Cached("nativeCallStatisticsEnabled()") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
-        Object bound = bindSignature(getNativeCtxExt(context), function.asNative());
-        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, bound, nativeArgs, null);
+        Object bound = bindSignature(getNativeCtxExt(), function.asNative());
+        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, nativeCall, bound, nativeArgs, null);
         return fromNative.executeConvert(returnValue);
     }
 

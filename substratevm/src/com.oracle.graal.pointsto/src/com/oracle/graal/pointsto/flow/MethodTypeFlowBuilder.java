@@ -101,7 +101,7 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.util.GuardedAnnotationAccess;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AtomicReadTypeFlow;
@@ -134,7 +134,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class MethodTypeFlowBuilder {
 
-    protected final BigBang bb;
+    protected final PointsToAnalysis bb;
     protected final MethodTypeFlow methodFlow;
     protected final AnalysisMethod method;
     protected StructuredGraph graph;
@@ -143,14 +143,14 @@ public class MethodTypeFlowBuilder {
 
     protected final TypeFlowGraphBuilder typeFlowGraphBuilder;
 
-    public MethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodFlow) {
+    public MethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodFlow) {
         this.bb = bb;
         this.methodFlow = methodFlow;
         this.method = methodFlow.getMethod();
         typeFlowGraphBuilder = new TypeFlowGraphBuilder(bb);
     }
 
-    public MethodTypeFlowBuilder(BigBang bb, StructuredGraph graph) {
+    public MethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
         this.bb = bb;
         this.graph = graph;
         this.method = (AnalysisMethod) graph.method();
@@ -288,7 +288,7 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    private static void registerForeignCall(BigBang bb, ForeignCallDescriptor foreignCallDescriptor) {
+    private static void registerForeignCall(PointsToAnalysis bb, ForeignCallDescriptor foreignCallDescriptor) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, bb.getProviders().getForeignCalls());
         targetMethod.ifPresent(analysisMethod -> {
             bb.addRootMethod(analysisMethod);

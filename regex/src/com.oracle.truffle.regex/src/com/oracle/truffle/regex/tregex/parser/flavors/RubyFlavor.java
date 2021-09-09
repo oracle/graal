@@ -65,11 +65,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * state so that it deletes any characters matched so far and considers the current position as the
  * start of the reported match. There is no operator like this in ECMAScript that would allow one to
  * tinker with the matcher's state.</li>
- * <li>named capture groups with the same name: Ruby admits regular expressions with named capture
- * groups that share the same name. These situations can't be handled by replacing those capture
- * groups with regular numbered capture groups and then mapping the capture group names to lists of
- * capture group indices as we wouldn't know which of the homonymous capture groups was matched last
- * and therefore which value should be used.</li>
+ * <li>backreferences to named capture groups with the same name: Ruby admits regular expressions
+ * with named capture groups that share the same name. These situations can't be handled by
+ * replacing those capture groups with regular numbered capture groups and then mapping the capture
+ * group names to lists of capture group indices as we wouldn't know which of the homonymous capture
+ * groups was matched last and therefore which value should be used.</li>
  * <li>Unicode character properties not supported by ECMAScript and not covered by the POSIX
  * character classes: Ruby regular expressions use the syntax \p{...} for Unicode character
  * properties. Similar to ECMAScript, they offer access to Unicode Scripts, General Categories and
@@ -86,11 +86,10 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * also don't support those backreferences.</li>
  * <li>(?>....) atomic groups: This construct allows control over the matcher's backtracking by
  * making committed choices which can't be undone. This is not something we can support using
- * ECMAScript regexes.</li>
+ * ECMAScript regexes, however these is an option ({@code IgnoreAtomicGroups}), that lets atomic
+ * groups be treated like any other groups.</li>
  * <li>\X extended grapheme cluster escapes: This is just syntactic sugar for a certain expression
  * which uses atomic groups, and it is therefore not supported.</li>
- * <li>\R line break escapes: These are also translated by Joni to atomic groups, which we do not
- * support.</li>
  * <li>possessive quantifiers, e.g. a*+: Possessive quantifiers are quantifiers which consume
  * greedily and also do not allow backtracking, so they are another example of the atomic groups
  * that we do not support (a*+ is equivalent to (?>a*)).</li>

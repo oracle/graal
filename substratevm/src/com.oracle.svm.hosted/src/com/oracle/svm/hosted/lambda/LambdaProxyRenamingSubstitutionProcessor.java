@@ -57,10 +57,10 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
     private final ConcurrentHashMap<ResolvedJavaType, LambdaSubstitutionType> typeSubstitutions;
     private final Set<String> uniqueLambdaProxyNames;
 
-    LambdaProxyRenamingSubstitutionProcessor(BigBang bigBang) {
+    LambdaProxyRenamingSubstitutionProcessor(BigBang bb) {
         this.typeSubstitutions = new ConcurrentHashMap<>();
         this.uniqueLambdaProxyNames = new HashSet<>();
-        this.bb = bigBang;
+        this.bb = bb;
     }
 
     @Override

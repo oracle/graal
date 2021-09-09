@@ -29,9 +29,9 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
@@ -56,7 +56,6 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
@@ -157,7 +156,7 @@ public final class ClassfileParser {
 
     private final ClasspathFile classfile;
 
-    private final String requestedClassType;
+    private final Symbol<Type> requestedClassType;
 
     private final EspressoContext context;
 
@@ -178,7 +177,7 @@ public final class ClassfileParser {
 
     private ConstantPool pool;
 
-    private ClassfileParser(ClassfileStream stream, StaticObject loader, String requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+    private ClassfileParser(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;
         this.context = context;
         this.classfile = null;
@@ -189,7 +188,7 @@ public final class ClassfileParser {
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassfileStream stream, EspressoContext context) {
-        this(stream, null, "", context, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        this(stream, null, null, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -211,22 +210,22 @@ public final class ClassfileParser {
 
     void checkInvokeDynamicSupport(Tag tag) {
         if (majorVersion < INVOKEDYNAMIC_MAJOR_VERSION) {
-            stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
+            throw stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
         }
     }
 
     void checkDynamicConstantSupport(Tag tag) {
         if (majorVersion < DYNAMICCONSTANT_MAJOR_VERSION) {
-            stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
+            throw stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
         }
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context) {
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName, EspressoContext context) {
         return parse(stream, loader, requestedClassName, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
-        return new ClassfileParser(stream, loader, requestedClassName, context, info).parseClass();
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+        return new ClassfileParser(stream, loader, requestedClassType, context, info).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -249,7 +248,7 @@ public final class ClassfileParser {
 
     /**
      * Verifies that the class file version is supported.
-     * 
+     *
      * @param major the major version number
      * @param minor the minor version number
      */
@@ -324,7 +323,7 @@ public final class ClassfileParser {
     }
 
     private static EspressoException unsupportedClassVersionError(String message) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedClassVersionError, message);
     }
 
@@ -406,7 +405,7 @@ public final class ClassfileParser {
         classType = thisKlassType;
 
         // Checks if name in class file matches requested name
-        if (requestedClassType != null && !requestedClassType.equals(classType.toString())) {
+        if (requestedClassType != null && !classDefinitionInfo.isHidden() && !requestedClassType.equals(classType)) {
             throw ConstantPool.noClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
         }
 
@@ -439,6 +438,15 @@ public final class ClassfileParser {
 
         // Ensure there are no trailing bytes
         stream.checkEndOfFile();
+
+        if (classDefinitionInfo.isHidden()) {
+            assert requestedClassType != null;
+            int futureKlassID = context.getNewKlassId();
+            classDefinitionInfo.initKlassID(futureKlassID);
+            thisKlassName = context.getNames().getOrCreate(Types.hiddenClassName(requestedClassType, futureKlassID));
+            thisKlassType = context.getTypes().fromName(thisKlassName);
+            pool = pool.patchForHiddenClass(thisKlassIndex, thisKlassName);
+        }
 
         return new ParserKlass(pool, classDefinitionInfo.patchFlags(classFlags), thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
     }
@@ -811,8 +819,9 @@ public final class ClassfileParser {
                         Symbol<Type> annotType = constant.value();
                         if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
                             methodFlags |= ACC_LAMBDA_FORM_COMPILED;
-                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType)) {
-                            methodFlags |= ACC_LAMBDA_FORM_HIDDEN;
+                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
+                                        Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
+                            methodFlags |= ACC_HIDDEN;
                         } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
                                         Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
@@ -850,6 +859,10 @@ public final class ClassfileParser {
             if (codeAttribute == null) {
                 throw ConstantPool.classFormatError("Missing Code attribute");
             }
+        }
+
+        if (classDefinitionInfo.isHidden()) {
+            methodFlags |= ACC_HIDDEN;
         }
 
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);

@@ -29,6 +29,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -111,26 +112,26 @@ public class ConfigurationSet {
 
     public ProxyConfiguration loadProxyConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(Arrays.asList(types))), exceptionHandler);
+        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(Arrays.asList(types)), true), exceptionHandler);
         return proxyConfiguration;
     }
 
     public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
                     Function<IOException, Exception> exceptionHandler) throws Exception {
         PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs, shouldExcludeClassesWithHash);
-        loadConfig(predefinedClassesConfigPaths, new PredefinedClassesConfigurationParser(predefinedClassesConfiguration::add), exceptionHandler);
+        loadConfig(predefinedClassesConfigPaths, new PredefinedClassesConfigurationParser(predefinedClassesConfiguration::add, true), exceptionHandler);
         return predefinedClassesConfiguration;
     }
 
     public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
-        loadConfig(resourceConfigPaths, new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration)), exceptionHandler);
+        loadConfig(resourceConfigPaths, new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration), true), exceptionHandler);
         return resourceConfiguration;
     }
 
     public SerializationConfiguration loadSerializationConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         SerializationConfiguration serializationConfiguration = new SerializationConfiguration();
-        loadConfig(serializationConfigPaths, new SerializationConfigurationParser(serializationConfiguration::add), exceptionHandler);
+        loadConfig(serializationConfigPaths, new SerializationConfigurationParser(serializationConfiguration, true), exceptionHandler);
         return serializationConfiguration;
     }
 
@@ -141,9 +142,17 @@ public class ConfigurationSet {
     }
 
     private static void loadConfig(Collection<URI> configPaths, ConfigurationParser configurationParser, Function<IOException, Exception> exceptionHandler) throws Exception {
-        for (URI path : configPaths) {
-            try (Reader reader = new InputStreamReader(path.toURL().openStream())) {
-                configurationParser.parseAndRegister(reader);
+        for (URI uri : configPaths) {
+            Path path = tryGetPath(uri);
+            try {
+                if (path != null) {
+                    // The path can be needed to find extra files, such as predefined class data
+                    configurationParser.parseAndRegister(path);
+                } else {
+                    try (Reader reader = new InputStreamReader(uri.toURL().openStream())) {
+                        configurationParser.parseAndRegister(reader);
+                    }
+                }
             } catch (IOException ioe) {
                 Exception e = ioe;
                 if (exceptionHandler != null) {
@@ -153,6 +162,14 @@ public class ConfigurationSet {
                     throw e;
                 }
             }
+        }
+    }
+
+    private static Path tryGetPath(URI uri) {
+        try {
+            return Paths.get(uri);
+        } catch (Exception e) {
+            return null;
         }
     }
 }

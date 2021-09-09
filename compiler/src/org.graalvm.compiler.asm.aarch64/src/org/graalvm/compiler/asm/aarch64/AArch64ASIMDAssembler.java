@@ -26,6 +26,8 @@ package org.graalvm.compiler.asm.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.SIMD;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.LoadFlag;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rd;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rn;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rs1;
@@ -37,6 +39,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.debug.GraalError;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.PlatformKind;
@@ -519,11 +522,36 @@ public abstract class AArch64ASIMDAssembler {
 
     public enum ASIMDInstruction {
 
+        /* Advanced SIMD load/store multiple structures (C4-296). */
+        ST1_MULTIPLE_4R(0b0010 << 12),
+        ST1_MULTIPLE_3R(0b0110 << 12),
+        ST1_MULTIPLE_1R(0b0111 << 12),
+        ST1_MULTIPLE_2R(0b1010 << 12),
+        LD1_MULTIPLE_4R(LoadFlag | 0b0010 << 12),
+        LD1_MULTIPLE_3R(LoadFlag | 0b0110 << 12),
+        LD1_MULTIPLE_1R(LoadFlag | 0b0111 << 12),
+        LD1_MULTIPLE_2R(LoadFlag | 0b1010 << 12),
+
+        /* Advanced SIMD load/store single structure (C4-299). */
+        LD1R(LoadFlag | 0b110 << 13),
+
         /* Cryptographic AES (C4-341). */
         AESE(0b00100 << 12),
         AESD(0b00101 << 12),
         AESMC(0b00110 << 12),
         AESIMC(0b00111 << 12),
+
+        /* Advanced SIMD table lookup (C4-355). */
+        TBL(0b0 << 12),
+        TBX(0b1 << 12),
+
+        /* Advanced SIMD permute (C4-355). */
+        UZP1(0b001 << 12),
+        TRN1(0b010 << 12),
+        ZIP1(0b011 << 12),
+        UZP2(0b101 << 12),
+        TRN2(0b110 << 12),
+        ZIP2(0b111 << 12),
 
         /* Advanced SIMD extract (C4-356). */
         EXT(0b00 << 22),
@@ -592,6 +620,7 @@ public abstract class AArch64ASIMDAssembler {
         CMTST(0b10001 << 11),
         MLA(0b10010 << 11),
         MUL(0b10011 << 11),
+        ADDP(0b10111 << 11),
         /* size 0x */
         FMLA(0b11001 << 11),
         FADD(0b11010 << 11),
@@ -667,6 +696,19 @@ public abstract class AArch64ASIMDAssembler {
         return !(size == ASIMDSize.HalfReg && eSize == ElementSize.DoubleWord);
     }
 
+    /**
+     * Checks whether all registers follow one another (modulo 32 - the number of SIMD registers).
+     */
+    private static boolean assertConsecutiveSIMDRegisters(Register... regs) {
+        int numRegs = AArch64.simdRegisters.size();
+        assert regs[0].getRegisterCategory().equals(SIMD);
+        for (int i = 1; i < regs.length; i++) {
+            assert regs[i].getRegisterCategory().equals(SIMD);
+            assert (regs[i - 1].encoding + 1) % numRegs == regs[i].encoding : "registers must be consecutive";
+        }
+        return true;
+    }
+
     /* Helper values/methods for encoding instructions */
 
     private static final int ASIMDSizeOffset = 22;
@@ -704,6 +746,64 @@ public abstract class AArch64ASIMDAssembler {
         return (size == ASIMDSize.FullReg ? 1 : 0) << 30;
     }
 
+    /**
+     * Single structures encode sizes at a different spot than the traditional eSize offset
+     * ({@link #ASIMDSizeOffset}).
+     */
+    private static int singleStructureElemSizeEncoding(ASIMDInstruction instr, ElementSize eSize) {
+        int encoding;
+        switch (instr) {
+            case LD1R:
+                encoding = eSize.encoding;
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+        return encoding << 10;
+    }
+
+    private static int encodeStructureAddress(ASIMDInstruction instr, ASIMDSize size, ElementSize eSize, AArch64Address address) {
+        int postIndexEncoding;
+        int offsetEncoding;
+        Register offset;
+        switch (address.getAddressingMode()) {
+            case BASE_REGISTER_ONLY:
+                postIndexEncoding = 0;
+                offsetEncoding = 0;
+                break;
+            case REGISTER_STRUCTURE_POST_INDEXED:
+                postIndexEncoding = 0b1 << 23;
+                offset = address.getOffset();
+                assert !offset.equals(zr);
+                offsetEncoding = rs2(offset);
+                break;
+            case IMMEDIATE_STRUCTURE_POST_INDEXED:
+                postIndexEncoding = 0b1 << 23;
+                offset = address.getOffset();
+                assert offset.equals(zr);
+                assert address.getImmediateRaw() == AArch64Address.determineStructureImmediateValue(instr, size, eSize);
+                offsetEncoding = rs2(offset);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+        return postIndexEncoding | offsetEncoding | rn(address.getBase());
+    }
+
+    private void loadStoreMultipleStructures(ASIMDInstruction instr, ASIMDSize size, ElementSize eSize, Register value, AArch64Address address) {
+        int baseEncoding = 0b0_0_001100_0_0_0_00000_0000_00_00000_00000;
+        int eSizeEncoding = eSize.encoding << 10;
+        int addressEncoding = encodeStructureAddress(instr, size, eSize, address);
+        emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | addressEncoding | rd(value));
+    }
+
+    private void loadStoreSingleStructure(ASIMDInstruction instr, ASIMDSize size, ElementSize eSize, Register value, AArch64Address address) {
+        int baseEncoding = 0b0_0_001101_0_0_0_00000_000_0_00_00000_00000;
+        int eSizeEncoding = singleStructureElemSizeEncoding(instr, eSize);
+        int addressEncoding = encodeStructureAddress(instr, size, eSize, address);
+        emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | addressEncoding | rd(value));
+    }
+
     private void cryptographicAES(ASIMDInstruction instr, Register dst, Register src) {
         int baseEncoding = 0b01001110_00_10100_00000_10_00000_00000;
         emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rn(src));
@@ -714,12 +814,24 @@ public abstract class AArch64ASIMDAssembler {
         emitInt(instr.encoding | baseEncoding | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
     }
 
-    public void scalarShiftByImmEncoding(ASIMDInstruction instr, int imm7, Register dst, Register src) {
+    private void scalarShiftByImmEncoding(ASIMDInstruction instr, int imm7, Register dst, Register src) {
         assert (imm7 & 0b1111_111) == imm7;
         assert (imm7 & 0b1111_111) != 0;
         assert (imm7 & 0b0000_111) != imm7;
         int baseEncoding = 0b01_0_111110_0000_000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | imm7 << 16 | rd(dst) | rs1(src));
+    }
+
+    private void tableLookupEncoding(ASIMDInstruction instr, ASIMDSize size, int numTableRegs, Register dst, Register src1, Register src2) {
+        int baseEncoding = 0b0_0_001110_00_0_00000_0_000_00_00000_00000;
+        assert numTableRegs >= 1 && numTableRegs <= 4;
+        int numTableRegsEncoding = (numTableRegs - 1) << 13;
+        emitInt(instr.encoding | baseEncoding | qBit(size) | numTableRegsEncoding | rd(dst) | rs1(src1) | rs2(src2));
+    }
+
+    private void permuteEncoding(ASIMDInstruction instr, ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        int baseEncoding = 0b0_0_001110_00_0_00000_0_000_10_00000_00000;
+        emitInt(instr.encoding | baseEncoding | qBit(size) | elemSizeXX(eSize) | rd(dst) | rs1(src1) | rs2(src2));
     }
 
     private void copyEncoding(ASIMDInstruction instr, boolean setQBit, ElementSize eSize, Register dst, Register src, int index) {
@@ -743,7 +855,7 @@ public abstract class AArch64ASIMDAssembler {
         emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | rd(dst) | rs1(src));
     }
 
-    public void threeDifferentEncoding(ASIMDInstruction instr, boolean setQBit, int eSizeEncoding, Register dst, Register src1, Register src2) {
+    private void threeDifferentEncoding(ASIMDInstruction instr, boolean setQBit, int eSizeEncoding, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b0_0_0_01110_00_1_00000_0000_00_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(setQBit) | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
     }
@@ -754,17 +866,17 @@ public abstract class AArch64ASIMDAssembler {
 
     }
 
-    public void modifiedImmEncoding(ImmediateOp op, ASIMDSize size, Register dst, long imm) {
+    private void modifiedImmEncoding(ImmediateOp op, ASIMDSize size, Register dst, long imm) {
         int baseEncoding = 0b0_0_0_0111100000_000_0000_0_1_00000_00000;
         int immEncoding = ASIMDImmediateTable.getEncoding(imm, op);
         emitInt(baseEncoding | qBit(size) | immEncoding | rd(dst));
     }
 
-    public void shiftByImmEncoding(ASIMDInstruction instr, ASIMDSize size, int imm7, Register dst, Register src) {
+    private void shiftByImmEncoding(ASIMDInstruction instr, ASIMDSize size, int imm7, Register dst, Register src) {
         shiftByImmEncoding(instr, size == ASIMDSize.FullReg, imm7, dst, src);
     }
 
-    public void shiftByImmEncoding(ASIMDInstruction instr, boolean setQBit, int imm7, Register dst, Register src) {
+    private void shiftByImmEncoding(ASIMDInstruction instr, boolean setQBit, int imm7, Register dst, Register src) {
         assert (imm7 & 0b1111_111) == imm7;
         assert (imm7 & 0b1111_111) != 0;
         assert (imm7 & 0b0000_111) != imm7;
@@ -830,6 +942,30 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.ADD, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.5 Add pairwise vector.<br>
+     * <p>
+     * From the manual: "This instruction creates a vector by concatenating the vector elements of
+     * the first source SIMD&FP register after the vector elements of the second source SIMD&FP
+     * register, reads each pair of adjacent vector elements from the concatenated vector, adds each
+     * pair of values together, places the result into a vector, and writes the vector to the
+     * destination SIMD&FP register."
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void addpVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize);
+
+        threeSameEncoding(ASIMDInstruction.ADDP, size, elemSizeXX(eSize), dst, src1, src2);
     }
 
     /**
@@ -1925,6 +2061,95 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.177 Load multiple single-element structures to one register.<br>
+     *
+     * This instruction loads multiple single-element structures from memory and writes the result
+     * to one register.
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst destination of first structure's value
+     * @param addr address of first structure.
+     */
+    public void ld1MultipleV(ASIMDSize size, ElementSize eSize, Register dst, AArch64Address addr) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_1R, size, eSize, dst, addr);
+    }
+
+    /**
+     * C7.2.177 Load multiple single-element structures to two registers.<br>
+     *
+     * This instruction loads multiple single-element structures from memory and writes the result
+     * to two registers. Note the two registers must be consecutive (modulo the number of SIMD
+     * registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst1 destination of first structure's value.
+     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param addr address of first structure.
+     */
+    public void ld1MultipleVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2);
+        loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_2R, size, eSize, dst1, addr);
+    }
+
+    /**
+     * C7.2.177 Load multiple single-element structures to three registers.<br>
+     *
+     * This instruction loads multiple single-element structures from memory and writes the result
+     * to three registers. Note the three registers must be consecutive (modulo the number of SIMD
+     * registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst1 destination of first structure's value.
+     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param dst3 destination of third structure's value. Must be register after dst2.
+     * @param addr address of first structure.
+     */
+    public void ld1MultipleVVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, Register dst3, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2, dst3);
+        loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_3R, size, eSize, dst1, addr);
+    }
+
+    /**
+     * C7.2.177 Load multiple single-element structures to four registers.<br>
+     *
+     * This instruction loads multiple single-element structures from memory and writes the result
+     * to four registers. Note the four registers must be consecutive (modulo the number of SIMD
+     * registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst1 destination of first structure's value.
+     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param dst3 destination of third structure's value. Must be register after dst2.
+     * @param dst4 destination of fourth structure's value. Must be register after dst3.
+     * @param addr address of first structure.
+     */
+    public void ld1MultipleVVVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, Register dst3, Register dst4, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2, dst3, dst4);
+        loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_4R, size, eSize, dst1, addr);
+    }
+
+    /**
+     * C7.2.179 Load one single-element structure and replicate to all lanes (of one register).<br>
+     *
+     * This instruction loads a single-element structure from memory and replicates the structure to
+     * all lanes of the register.
+     *
+     * @param size register size.
+     * @param eSize element size of value to replicate.
+     * @param dst SIMD register.
+     * @param addr address of structure.
+     */
+    public void ld1rV(ASIMDSize size, ElementSize eSize, Register dst, AArch64Address addr) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        loadStoreSingleStructure(ASIMDInstruction.LD1R, size, eSize, dst, addr);
+    }
+
+    /**
      * C7.2.196 Multiply-add to accumulator.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += int_multiply(src1[i], src2[i])</code>
@@ -2159,6 +2384,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register. Should not be null.
      */
     public void saddlvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
         assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for saddlv";
         assert elementSize != ElementSize.DoubleWord : "Invalid lane width for saddlv";
 
@@ -2399,6 +2626,75 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.321 Store multiple single-element structures from one register.<br>
+     *
+     * This instruction stores elements to memory from one register.
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src value to store in structure.
+     * @param addr address of first structure.
+     */
+    public void st1MultipleV(ASIMDSize size, ElementSize eSize, Register src, AArch64Address addr) {
+        assert src.getRegisterCategory().equals(SIMD);
+        loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_1R, size, eSize, src, addr);
+    }
+
+    /**
+     * C7.2.321 Store multiple single-element structures from two registers.<br>
+     *
+     * This instruction stores elements to memory from two registers. Note the two registers must be
+     * consecutive (modulo the number of SIMD registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src1 value to store in first structure.
+     * @param src2 value to store in second structure. Must be register after src1.
+     * @param addr address of first structure.
+     */
+    public void st1MultipleVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(src1, src2);
+        loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_2R, size, eSize, src1, addr);
+    }
+
+    /**
+     * C7.2.321 Store multiple single-element structures from three registers.<br>
+     *
+     * This instruction stores elements to memory from three registers. Note the three registers
+     * must be consecutive (modulo the number of SIMD registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src1 value to store in first structure.
+     * @param src2 value to store in second structure. Must be register after src1.
+     * @param src3 value to store in third structure. Must be register after src2.
+     * @param addr address of first structure.
+     */
+    public void st1MultipleVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(src1, src2, src3);
+        loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_3R, size, eSize, src1, addr);
+    }
+
+    /**
+     * C7.2.321 Store multiple single-element structures from four registers.<br>
+     *
+     * This instruction stores elements to memory from four registers. Note the four registers must
+     * be consecutive (modulo the number of SIMD registers).
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param src1 value to store in first structure.
+     * @param src2 value to store in second structure. Must be register after src1.
+     * @param src3 value to store in third structure. Must be register after src2.
+     * @param src4 value to store in fourth structure. Must be register after src3.
+     * @param addr address of first structure.
+     */
+    public void st1MultipleVVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, Register src4, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(src1, src2, src3, src4);
+        loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_4R, size, eSize, src1, addr);
+    }
+
+    /**
      * C7.2.334 Integer subtract scalar.<br>
      *
      * <code>dst[0] = int_sub(src1[0], src2[0])</code>
@@ -2437,6 +2733,148 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.SUB, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.339 Table vector lookup (single register table variant).<br>
+     *
+     * This instruction is used to perform permutations at a byte granularity. Within the
+     * destination, each byte is determined by using the index register to pick either a value
+     * within the table register, or if the index exceeds the table's boundary, then the dst
+     * register is set to zero.
+     *
+     * <pre>
+     * tbl[0..n-1] = table[0..n-1]
+     * for i in 0..n-1 {
+     *     idx = index[i]
+     *     if (index < n)
+     *      dst[i] = tbl[idx]
+     *     else
+     *      dst[i] = 0
+     * }
+     * </pre>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param table SIMD register.
+     * @param index SIMD register.
+     */
+    public void tblVVV(ASIMDSize size, Register dst, Register table, Register index) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert table.getRegisterCategory().equals(SIMD);
+        assert index.getRegisterCategory().equals(SIMD);
+
+        tableLookupEncoding(ASIMDInstruction.TBL, size, 1, dst, table, index);
+    }
+
+    /**
+     * C7.2.339 Table vector lookup (two register table variant).<br>
+     *
+     * This instruction is used to perform permutations at a byte granularity. A table is formed by
+     * combining the two table registers. Within the destination, each byte is determined by using
+     * the index register to pick either a value within the table, or if the index exceeds the
+     * table's boundary, then the dst register is set to 0.
+     *
+     * <pre>
+     * tbl[0..n-1] = table1[0..n-1]
+     * tbl[n..2n-1] = table2[0..n-1]
+     * for i in 0..n-1 {
+     *     idx = index[i]
+     *     if (index < 2n)
+     *      dst[i] = tbl[idx]
+     *     else
+     *      dst[i] = 0
+     * }
+     * </pre>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param table1 SIMD register.
+     * @param table2 SIMD register.
+     * @param index SIMD register.
+     */
+    public void tblVVVV(ASIMDSize size, Register dst, Register table1, Register table2, Register index) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert assertConsecutiveSIMDRegisters(table1, table2);
+        assert index.getRegisterCategory().equals(SIMD);
+
+        tableLookupEncoding(ASIMDInstruction.TBL, size, 2, dst, table1, index);
+    }
+
+    /**
+     * C7.2.440 Table vector lookup extension (single register table variant).<br>
+     *
+     * This instruction is used to perform permutations at a byte granularity. Within the
+     * destination, each byte is determined by using the index register to pick either a value
+     * within the table register, or if the index exceeds the table's boundary, then the dst
+     * register is unchanged.
+     *
+     * <pre>
+     * tbl[0..n-1] = table[0..n-1]
+     * for i in 0..n-1 {
+     *     idx = index[i]
+     *     if (index < n)
+     *      dst[i] = tbl[idx]
+     * }
+     * </pre>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param table SIMD register.
+     * @param index SIMD register.
+     */
+    public void tbxVVV(ASIMDSize size, Register dst, Register table, Register index) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert table.getRegisterCategory().equals(SIMD);
+        assert index.getRegisterCategory().equals(SIMD);
+
+        tableLookupEncoding(ASIMDInstruction.TBX, size, 1, dst, table, index);
+    }
+
+    /**
+     * C7.2.341 Transpose vectors (primary).
+     * <p>
+     * From the manual: "This instructions reads corresponding even-numbered vector elements from
+     * the two registers, starting at zero, [and] places each result into consecutive elements of a
+     * vector."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void trn1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.TRN1, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.342 Transpose vectors (secondary).
+     * <p>
+     * From the manual: "This instructions reads corresponding odd-numbered vector elements from the
+     * two registers, starting at zero, [and] places each result into consecutive elements of a
+     * vector."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void trn2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.TRN2, dstSize, eSize, dst, src1, src2);
     }
 
     /**
@@ -2641,6 +3079,54 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.399 Unzip vectors (primary).
+     * <p>
+     * From the manual: "This instructions reads corresponding even-numbered vector elements from
+     * the two source registers, starting at zero, places the result from the first source register
+     * into consecutive elements in the lower half of a vector, and the result from the second
+     * source register into consecutive elements in the upper half of a vector."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void uzp1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.UZP1, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.400 Unzip vectors (secondary).
+     * <p>
+     * From the manual: "This instructions reads corresponding odd-numbered vector elements from the
+     * two source registers, starting at zero, places the result from the first source register into
+     * consecutive elements in the lower half of a vector, and the result from the second source
+     * register into consecutive elements in the upper half of a vector."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void uzp2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.UZP2, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
      * C7.2.402 Extract narrow.<br>
      * <p>
      * From the manual: "This instruction reads each vector element from the source SIMD&FP
@@ -2657,5 +3143,51 @@ public abstract class AArch64ASIMDAssembler {
         assert dstESize != ElementSize.DoubleWord;
 
         twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(dstESize), dst, src);
+    }
+
+    /**
+     * C7.2.403 Zip vectors (primary).
+     * <p>
+     * From the manual: "This instructions reads adjacent vector elements from the lower half of two
+     * source registers as pairs, interleaves the pairs ... and writes the vector to the destination
+     * register."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void zip1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.ZIP1, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.404 Zip vectors (secondary).
+     * <p>
+     * From the manual: "This instructions reads adjacent vector elements from the upper half of two
+     * source registers as pairs, interleaves the pairs ... and writes the vector to the destination
+     * register."
+     *
+     * @param dstSize register size of destination register. Note only half of this size will be
+     *            used within the source registers.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void zip2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize);
+
+        permuteEncoding(ASIMDInstruction.ZIP2, dstSize, eSize, dst, src1, src2);
     }
 }

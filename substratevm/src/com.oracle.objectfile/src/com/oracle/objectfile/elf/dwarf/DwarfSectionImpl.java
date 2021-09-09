@@ -598,4 +598,15 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
         return dwarfSections.getMethodDeclarationIndex(classEntry, methodName);
     }
+
+    protected void setAbstractInlineMethodIndex(ClassEntry classEntry, String methodName, int pos) {
+        dwarfSections.setAbstractInlineMethodIndex(classEntry, methodName, pos);
+    }
+
+    protected int getAbstractInlineMethodIndex(ClassEntry classEntry, String methodName) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getAbstractInlineMethodIndex(classEntry, methodName);
+    }
 }

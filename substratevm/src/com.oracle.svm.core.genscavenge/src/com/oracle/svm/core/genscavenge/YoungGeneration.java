@@ -93,11 +93,11 @@ public final class YoungGeneration extends Generation {
 
     @Override
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Young generation: ").indent(true);
-        log.string("[Eden: ").indent(true);
+        log.string("Young generation: ").indent(true);
+        log.string("Eden: ").indent(true);
         getEden().report(log, traceHeapChunks);
-        log.redent(false).string("]").newline();
-        log.string("[Survivors: ").indent(true);
+        log.redent(false).newline();
+        log.string("Survivors: ").indent(true);
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             this.survivorFromSpaces[i].report(log, traceHeapChunks).newline();
             this.survivorToSpaces[i].report(log, traceHeapChunks);
@@ -105,7 +105,7 @@ public final class YoungGeneration extends Generation {
                 log.newline();
             }
         }
-        log.redent(false).string("]").redent(false).string("]");
+        log.redent(false).redent(false);
         return log;
     }
 
@@ -244,9 +244,17 @@ public final class YoungGeneration extends Generation {
         return usedObjectBytes;
     }
 
+    @AlwaysInline("GC performance")
     @SuppressWarnings("static-method")
     public boolean contains(Object object) {
-        return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
+        if (!HeapImpl.usesImageHeapCardMarking()) {
+            return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
+        }
+        // Only objects in the young generation have no remembered set
+        UnsignedWord header = ObjectHeaderImpl.readHeaderFromObject(object);
+        boolean young = !ObjectHeaderImpl.hasRememberedSet(header);
+        assert young == HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
+        return young;
     }
 
     @AlwaysInline("GC performance")

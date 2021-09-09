@@ -215,12 +215,12 @@ public class AArch64ControlFlow {
     public static class CondMoveOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CondMoveOp> TYPE = LIRInstructionClass.create(CondMoveOp.class);
 
-        @Def protected Value result;
-        @Use protected Value trueValue;
-        @Use protected Value falseValue;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue trueValue;
+        @Use({REG}) protected AllocatableValue falseValue;
         private final AArch64Assembler.ConditionFlag condition;
 
-        public CondMoveOp(Variable result, AArch64Assembler.ConditionFlag condition, Value trueValue, Value falseValue) {
+        public CondMoveOp(Variable result, AArch64Assembler.ConditionFlag condition, AllocatableValue trueValue, AllocatableValue falseValue) {
             super(TYPE);
             assert trueValue.getPlatformKind() == falseValue.getPlatformKind() && trueValue.getPlatformKind() == result.getPlatformKind();
             this.result = result;
@@ -244,7 +244,7 @@ public class AArch64ControlFlow {
     public static class CondSetOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CondSetOp> TYPE = LIRInstructionClass.create(CondSetOp.class);
 
-        @Def protected Value result;
+        @Def({REG}) protected AllocatableValue result;
         private final AArch64Assembler.ConditionFlag condition;
 
         public CondSetOp(Variable result, AArch64Assembler.ConditionFlag condition) {
@@ -368,7 +368,7 @@ public class AArch64ControlFlow {
             masm.sub(32, idxScratchReg, indexReg, lowKey);
             int keyDiff = highKey - lowKey;
             if (AArch64MacroAssembler.isComparisonImmediate(keyDiff)) {
-                masm.cmp(32, idxScratchReg, keyDiff);
+                masm.compare(32, idxScratchReg, keyDiff);
             } else {
                 masm.mov(scratchReg, keyDiff);
                 masm.cmp(32, idxScratchReg, scratchReg);
@@ -397,7 +397,7 @@ public class AArch64ControlFlow {
         long imm = c.getJavaConstant().asLong();
         final int size = key.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         if (AArch64MacroAssembler.isComparisonImmediate(imm)) {
-            masm.cmp(size, asRegister(key), (int) imm);
+            masm.compare(size, asRegister(key), NumUtil.safeToInt(imm));
         } else {
             AArch64Move.move(crb, masm, asAllocatableValue(scratchValue), c);
             masm.cmp(size, asRegister(key), asRegister(scratchValue));

@@ -24,68 +24,51 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
 public class SubstrateForeignCallLinkage implements ForeignCallLinkage {
 
+    private final SubstrateForeignCallsProvider provider;
     private final SubstrateForeignCallDescriptor descriptor;
-    private final CallingConvention outgoingCallingConvention;
-    private final CallingConvention incomingCallingConvention;
     private final ResolvedJavaMethod method;
 
+    private CallingConvention outgoingCallingConvention;
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateForeignCallLinkage(Providers providers, SubstrateForeignCallDescriptor descriptor) {
+    public SubstrateForeignCallLinkage(SubstrateForeignCallsProvider provider, SubstrateForeignCallDescriptor descriptor) {
+        this.provider = provider;
         this.descriptor = descriptor;
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        CodeCacheProvider codeCache = providers.getCodeCache();
-        if (codeCache != null) {
-            RegisterConfig registerConfig = codeCache.getRegisterConfig();
-            Architecture arch = codeCache.getTarget().arch;
-            ValueKindFactory<LIRKind> valueKindFactory = new ValueKindFactory<LIRKind>() {
-                @Override
-                public LIRKind getValueKind(JavaKind javaKind) {
-                    return LIRKind.fromJavaKind(arch, javaKind);
-                }
-            };
-            JavaType resType = metaAccess.lookupJavaType(descriptor.getResultType());
-            JavaType[] argTypes = metaAccess.lookupJavaTypes(descriptor.getArgumentTypes());
-            this.outgoingCallingConvention = registerConfig.getCallingConvention(SubstrateCallingConventionType.JavaCall, resType, argTypes, valueKindFactory);
-            this.incomingCallingConvention = registerConfig.getCallingConvention(SubstrateCallingConventionType.JavaCallee, resType, argTypes, valueKindFactory);
-        } else {
-            this.outgoingCallingConvention = null;
-            this.incomingCallingConvention = null;
-        }
-        this.method = descriptor.findMethod(metaAccess);
+        this.method = descriptor.findMethod(provider.metaAccess);
     }
 
     @Override
     public CallingConvention getOutgoingCallingConvention() {
+        if (outgoingCallingConvention == null) {
+            JavaType resType = provider.metaAccess.lookupJavaType(descriptor.getResultType());
+            JavaType[] argTypes = provider.metaAccess.lookupJavaTypes(descriptor.getArgumentTypes());
+            SubstrateCallingConventionKind callingConventionKind = ((SharedMethod) method).getCallingConventionKind();
+            outgoingCallingConvention = provider.registerConfig.getCallingConvention(callingConventionKind.toType(true), resType, argTypes, provider);
+        }
         return outgoingCallingConvention;
     }
 
     @Override
     public CallingConvention getIncomingCallingConvention() {
-        return incomingCallingConvention;
+        throw VMError.shouldNotReachHere();
     }
 
     @Override

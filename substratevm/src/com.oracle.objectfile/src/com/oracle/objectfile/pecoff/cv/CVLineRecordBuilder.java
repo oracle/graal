@@ -31,6 +31,8 @@ import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
 
+import java.util.Iterator;
+
 /*
  * In CV4, the line table consists of a series of file headers followed by line number entries.
  * If this is a different file, then update the length of the previous file header, write the
@@ -67,7 +69,9 @@ public class CVLineRecordBuilder {
         debug("CVLineRecord.computeContents: processing primary range %s\n", primaryRange);
 
         processRange(primaryRange);
-        for (Range subRange : primaryEntry.getSubranges()) {
+        Iterator<Range> iterator = primaryEntry.leafRangeIterator();
+        while (iterator.hasNext()) {
+            Range subRange = iterator.next();
             debug("CVLineRecord.computeContents: processing range %s\n", subRange);
             processRange(subRange);
         }

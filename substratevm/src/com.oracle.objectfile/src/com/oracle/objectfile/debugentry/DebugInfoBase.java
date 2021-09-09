@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
@@ -103,7 +104,7 @@ public abstract class DebugInfoBase {
     /**
      * index of already seen classes.
      */
-    private Map<String, ClassEntry> primaryClassesIndex = new HashMap<>();
+    private Map<ResolvedJavaType, ClassEntry> primaryClassesIndex = new HashMap<>();
     /**
      * Index of files which contain primary or secondary ranges.
      */
@@ -238,38 +239,24 @@ public abstract class DebugInfoBase {
              */
             String fileName = debugCodeInfo.fileName();
             Path filePath = debugCodeInfo.filePath();
-            String className = TypeEntry.canonicalize(debugCodeInfo.ownerType());
+            ResolvedJavaType ownerType = debugCodeInfo.ownerType();
             String methodName = debugCodeInfo.name();
             int lo = debugCodeInfo.addressLo();
             int hi = debugCodeInfo.addressHi();
             int primaryLine = debugCodeInfo.line();
 
             /* Search for a method defining this primary range. */
-            ClassEntry classEntry = ensureClassEntry(className);
+            ClassEntry classEntry = ensureClassEntry(ownerType);
             MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
             Range primaryRange = new Range(stringTable, methodEntry, lo, hi, primaryLine);
-            debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
+            debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
-            debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
-                String fileNameAtLine = debugLineInfo.fileName();
-                Path filePathAtLine = debugLineInfo.filePath();
-                String classNameAtLine = TypeEntry.canonicalize(debugLineInfo.ownerType());
-                String methodNameAtLine = debugLineInfo.name();
-                int loAtLine = lo + debugLineInfo.addressLo();
-                int hiAtLine = lo + debugLineInfo.addressHi();
-                int line = debugLineInfo.line();
-                /*
-                 * Record all subranges even if they have no line or file so we at least get a
-                 * symbol for them and don't see a break in the address range.
-                 */
-                ClassEntry subClassEntry = ensureClassEntry(classNameAtLine);
-                MethodEntry subMethodEntry = subClassEntry.ensureMethodEntryForDebugRangeInfo(debugLineInfo, this, debugContext);
-                Range subRange = new Range(stringTable, subMethodEntry, loAtLine, hiAtLine, line, primaryRange);
-                classEntry.indexSubRange(subRange);
-                try (DebugContext.Scope s = debugContext.scope("Subranges")) {
-                    debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]", classNameAtLine, methodNameAtLine, filePathAtLine, fileNameAtLine, line, loAtLine, hiAtLine);
-                }
-            });
+            /*
+             * Record all subranges even if they have no line or file so we at least get a symbol
+             * for them and don't see a break in the address range.
+             */
+            debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> recursivelyAddSubRanges(debugLineInfo, primaryRange, classEntry, debugContext));
+            primaryRange.mergeSubranges(debugContext);
         }));
 
         debugInfoProvider.dataInfoProvider().forEach(debugDataInfo -> debugDataInfo.debugContext((debugContext) -> {
@@ -350,17 +337,60 @@ public abstract class DebugInfoBase {
         return (ClassEntry) typeEntry;
     }
 
-    private ClassEntry ensureClassEntry(String className) {
+    /**
+     * Recursively creates subranges based on DebugLineInfo including, and appropriately linking,
+     * nested inline subranges.
+     *
+     * @param lineInfo
+     * @param primaryRange
+     * @param classEntry
+     * @param debugContext
+     * @return the subrange for {@code lineInfo} linked with all its caller subranges up to the
+     *         primaryRange
+     */
+    @SuppressWarnings("try")
+    private Range recursivelyAddSubRanges(DebugInfoProvider.DebugLineInfo lineInfo, Range primaryRange, ClassEntry classEntry, DebugContext debugContext) {
+        if (lineInfo == null) {
+            return primaryRange;
+        }
+        /*
+         * We still insert subranges for the primary method but they don't actually count as inline.
+         * we only need a range so that subranges for inline code can refer to the top level line
+         * number
+         */
+        boolean isInline = lineInfo.getCaller() != null;
+        assert (isInline || (lineInfo.name().equals(primaryRange.getMethodName()) && TypeEntry.canonicalize(lineInfo.ownerType().toJavaName()).equals(primaryRange.getClassName())));
+
+        Range caller = recursivelyAddSubRanges(lineInfo.getCaller(), primaryRange, classEntry, debugContext);
+        final String fileName = lineInfo.fileName();
+        final Path filePath = lineInfo.filePath();
+        final ResolvedJavaType ownerType = lineInfo.ownerType();
+        final String methodName = lineInfo.name();
+        final int lo = primaryRange.getLo() + lineInfo.addressLo();
+        final int hi = primaryRange.getLo() + lineInfo.addressHi();
+        final int line = lineInfo.line();
+        ClassEntry subRangeClassEntry = ensureClassEntry(ownerType);
+        MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(lineInfo, this, debugContext);
+        Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isInline, caller);
+        classEntry.indexSubRange(subRange);
+        try (DebugContext.Scope s = debugContext.scope("Subranges")) {
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]",
+                            ownerType.toJavaName(), methodName, filePath, fileName, line, lo, hi);
+        }
+        return subRange;
+    }
+
+    private ClassEntry ensureClassEntry(ResolvedJavaType type) {
         /* See if we already have an entry. */
-        ClassEntry classEntry = primaryClassesIndex.get(className);
+        ClassEntry classEntry = primaryClassesIndex.get(type);
         if (classEntry == null) {
-            TypeEntry typeEntry = typesIndex.get(className);
+            TypeEntry typeEntry = typesIndex.get(TypeEntry.canonicalize(type.toJavaName()));
             assert (typeEntry != null && typeEntry.isClass());
             classEntry = (ClassEntry) typeEntry;
             primaryClasses.add(classEntry);
-            primaryClassesIndex.put(className, classEntry);
+            primaryClassesIndex.put(type, classEntry);
         }
-        assert (classEntry.getTypeName().equals(className));
+        assert (classEntry.getTypeName().equals(TypeEntry.canonicalize(type.toJavaName())));
         return classEntry;
     }
 

@@ -28,8 +28,6 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.util.function.Function;
 
-import com.oracle.svm.core.posix.linux.libc.GLibC;
-import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -49,11 +47,14 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Locale;
+import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
+import com.oracle.svm.core.posix.linux.libc.GLibC;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
@@ -258,5 +259,25 @@ public class PosixUtils {
             } while (readBytes == -1 && CErrorNumber.getCErrorNumber() == Errno.EINTR());
         }
         return readBytes;
+    }
+
+    /**
+     * Emulates the deprecated {@code signal} function via its replacement {@code sigaction},
+     * assuming BSD semantics (like glibc does, for example).
+     *
+     * Use this or {@code sigaction} directly instead of calling {@code signal} or {@code sigset}:
+     * they are not portable and when running in HotSpot, signal chaining (libjsig) prints warnings.
+     */
+    public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler) {
+        Signal.sigaction old = StackValue.get(Signal.sigaction.class);
+        Signal.sigaction act = StackValue.get(Signal.sigaction.class);
+        Signal.sigemptyset(act.sa_mask());
+        Signal.sigaddset(act.sa_mask(), signum);
+        act.sa_flags(Signal.SA_RESTART());
+        act.sa_handler(handler);
+        if (Signal.sigaction(signum, act, old) != 0) {
+            return Signal.SIG_ERR();
+        }
+        return old.sa_handler();
     }
 }

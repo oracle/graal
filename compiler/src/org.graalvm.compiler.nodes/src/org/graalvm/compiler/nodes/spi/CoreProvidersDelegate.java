@@ -92,4 +92,9 @@ public class CoreProvidersDelegate implements CoreProviders {
     public LoopsDataProvider getLoopsDataProvider() {
         return providers.getLoopsDataProvider();
     }
+
+    @Override
+    public WordVerification getWordVerification() {
+        return providers.getWordVerification();
+    }
 }

@@ -370,7 +370,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     }
 
-    private boolean resize() {
+    boolean resize() {
         int oldSize = tags.length;
         int newSize = descriptor.getSize();
         if (newSize > oldSize) {

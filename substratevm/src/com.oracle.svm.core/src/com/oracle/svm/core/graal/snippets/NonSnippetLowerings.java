@@ -30,9 +30,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -65,8 +65,8 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
+import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -75,13 +75,13 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -245,7 +245,7 @@ public abstract class NonSnippetLowerings {
                 }
                 SharedMethod method = (SharedMethod) callTarget.targetMethod();
                 JavaType[] signature = method.getSignature().toParameterTypes(callTarget.isStatic() ? null : method.getDeclaringClass());
-                CallingConvention.Type callType = SubstrateCallingConventionType.JavaCall;
+                CallingConvention.Type callType = method.getCallingConventionKind().toType(true);
 
                 InvokeKind invokeKind = callTarget.invokeKind();
                 SharedMethod[] implementations = method.getImplementations();
@@ -265,6 +265,17 @@ public abstract class NonSnippetLowerings {
                     if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]),
                                         callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
+                    } else if (!targetMethod.hasCodeOffsetInImage()) {
+                        /*
+                         * The target method is not included in the image. This means that it was
+                         * also not needed for the deoptimization entry point. Thus, we are certain
+                         * that this branch will fold away. If not, we will fail later on.
+                         *
+                         * Also lower the MethodCallTarget below to avoid recursive lowering error
+                         * messages. The invoke and call target are actually dead and will be
+                         * removed by a subsequent dead code elimination pass.
+                         */
+                        loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
                     } else {
                         /*
                          * In runtime-compiled code, we emit indirect calls via the respective heap
@@ -289,18 +300,12 @@ public abstract class NonSnippetLowerings {
                      * We are calling an abstract method with no implementation, i.e., the
                      * closed-world analysis showed that there is no concrete receiver ever
                      * allocated. This must be dead code.
-                     */
-                    FixedGuardNode unreachedGuard = graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true));
-                    graph.addBeforeFixed(node, unreachedGuard);
-                    // Recursive lowering
-                    unreachedGuard.lower(tool);
-
-                    /*
+                     *
                      * Also lower the MethodCallTarget below to avoid recursive lowering error
                      * messages. The invoke and call target are actually dead and will be removed by
                      * a subsequent dead code elimination pass.
                      */
-                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
+                    loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
 
                 } else {
                     int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
@@ -324,6 +329,22 @@ public abstract class NonSnippetLowerings {
                     hub.lower(tool);
                 }
             }
+        }
+
+        private CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, JavaType[] signature, SharedMethod method,
+                        CallingConvention.Type callType, InvokeKind invokeKind) {
+            StructuredGraph graph = node.graph();
+            FixedGuardNode unreachedGuard = graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true));
+            graph.addBeforeFixed(node, unreachedGuard);
+            // Recursive lowering
+            unreachedGuard.lower(tool);
+
+            /*
+             * Also lower the MethodCallTarget below to avoid recursive lowering error messages. The
+             * invoke and call target are actually dead and will be removed by a subsequent dead
+             * code elimination pass.
+             */
+            return graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), returnStamp, signature, method, callType, invokeKind));
         }
     }
 

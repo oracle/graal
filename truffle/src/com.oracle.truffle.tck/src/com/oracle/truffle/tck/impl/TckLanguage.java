@@ -93,7 +93,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         @Override
         @Ignore
         public Object execute(VirtualFrame frame) {
-            Env env = lookupContextReference(TckLanguage.class).get();
+            Env env = CONTEXT_REF.get(this);
             Object[] arguments = frame.getArguments();
             return parseAndEval(env, arguments);
         }
@@ -157,4 +157,5 @@ public final class TckLanguage extends TruffleLanguage<Env> {
         return idx;
     }
 
+    private static final ContextReference<Env> CONTEXT_REF = ContextReference.create(TckLanguage.class);
 }

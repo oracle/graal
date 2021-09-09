@@ -38,7 +38,7 @@ import org.junit.After;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.tools.chromeinspector.InspectorDebugger;
 
 public class SLInspectDebugTest {
@@ -1199,7 +1199,7 @@ public class SLInspectDebugTest {
         Context context = Context.newBuilder().allowIO(true).build();
         context.initialize("sl");
         context.enter();
-        TruffleFile truffleFile = SLLanguage.getCurrentContext().getEnv().getPublicTruffleFile(file.toPath().toString());
+        TruffleFile truffleFile = SLContext.get(null).getEnv().getPublicTruffleFile(file.toPath().toString());
         com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", truffleFile).build();
 
         tester = InspectorTester.start(false);
@@ -1979,6 +1979,8 @@ public class SLInspectDebugTest {
                                                  "]},\"id\":6}\n");
         assertFalse(globals.contains("foo0") || globals.contains("foo1"));
         tester.sendMessage("{\"id\":7,\"method\":\"Debugger.evaluateOnCallFrame\",\"params\":{\"callFrameId\":\"0\",\"expression\":\"function foo0() {n = 0;} function foo1() {n = 1;}\",\"silent\":true,\"includeCommandLineAPI\":true,\"objectGroup\":\"console\",\"returnByValue\":true}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":0,\"scriptId\":\"2\",\"endColumn\":49,\"startColumn\":0,\"startLine\":0,\"length\":49,\"executionContextId\":" + id + ",\"url\":\"eval in context\",\"hash\":\"f33742b9f176a91df047f02ff7ea100fffffffff\"}}\n"));
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":{\"subtype\":\"null\",\"description\":\"NULL\",\"type\":\"object\",\"value\":null}},\"id\":7}\n"));
 

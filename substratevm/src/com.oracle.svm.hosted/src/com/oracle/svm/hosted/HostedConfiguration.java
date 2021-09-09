@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -38,7 +41,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -64,6 +67,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.nativeimage.Platform;
 
 public class HostedConfiguration {
 
@@ -129,8 +133,8 @@ public class HostedConfiguration {
     }
 
     public SVMHost createHostVM(OptionValues options, ForkJoinPool buildExecutor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
-        return new SVMHost(options, buildExecutor, classLoader, classInitializationSupport, automaticSubstitutions);
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
+        return new SVMHost(options, buildExecutor, classLoader, classInitializationSupport, automaticSubstitutions, platform);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
@@ -139,12 +143,12 @@ public class HostedConfiguration {
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtime, deoptimizeAll, aSnippetReflection, executor);
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bigBang, MethodTypeFlow methodTypeFlow) {
-        return new SVMMethodTypeFlowBuilder(bigBang, methodTypeFlow);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodTypeFlow) {
+        return new SVMMethodTypeFlowBuilder(bb, methodTypeFlow);
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bigBang, StructuredGraph graph) {
-        return new SVMMethodTypeFlowBuilder(bigBang, graph);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
+        return new SVMMethodTypeFlowBuilder(bb, graph);
     }
 
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
@@ -169,11 +173,17 @@ public class HostedConfiguration {
         }
     }
 
-    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bigbang, HostedUniverse universe) {
-        if (SubstrateOptions.parseOnce()) {
-            return new SubstrateStrengthenGraphs(bigbang, universe);
+    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(Inflation bb, HostedUniverse universe) {
+        if (bb instanceof PointsToAnalysis) {
+            PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
+            if (SubstrateOptions.parseOnce()) {
+                return new SubstrateStrengthenGraphs(pointsToAnalysis, universe);
+            } else {
+                return new StaticAnalysisResultsBuilder(pointsToAnalysis, universe);
+            }
         } else {
-            return new StaticAnalysisResultsBuilder(bigbang, universe);
+            /*- A custom result builder for Reachability analysis will probably have to be created */
+            throw VMError.shouldNotReachHere("Unsupported analysis type: " + bb.getClass());
         }
     }
 

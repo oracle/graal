@@ -26,6 +26,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import mx
+import mx_benchmark
 import mx_subst
 import mx_unittest
 import mx_sdk_vm
@@ -92,36 +93,36 @@ def gate_body(args, tasks):
                     mx.run([java_exe,
                             '-XX:+UseJVMCICompiler',
                             '-XX:+UseJVMCINativeLibrary',
-                            '-jar', mx.library('DACAPO').get_path(True), 'avrora'])
+                            '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1'])
 
                     # Ensure that fatal errors in libgraal route back to HotSpot
-                    testdir = mkdtemp()
                     try:
-                        scratch_dir = join(testdir, 'scratch')
-                        cmd = [java_exe,
-                                '-XX:+UseJVMCICompiler',
-                                '-XX:+UseJVMCINativeLibrary',
-                                '-XX:+PrintFlagsFinal',
-                                '-Dlibgraal.CrashAt=length,hashCode',
-                                '-Dlibgraal.CrashAtIsFatal=true',
-                                '-jar', mx.library('DACAPO').get_path(True), 'avrora', '--preserve', '--scratch-directory', scratch_dir]
+                        vmargs = ['-XX:+UseJVMCICompiler',
+                                  '-XX:+UseJVMCINativeLibrary',
+                                  '-XX:+PrintFlagsFinal',
+                                  '-Dlibgraal.CrashAt=length,hashCode',
+                                  '-Dlibgraal.CrashAtIsFatal=true']
+                        cmd = ["dacapo:avrora", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
                         out = mx.OutputCapture()
-                        with mx_compiler.DaCapoWrapper(scratch_dir):
-                            exitcode = mx.run(cmd, cwd=testdir, nonZeroIsFatal=False, out=out)
+                        exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, nonZeroIsFatal=False, out=out, err=out)
                         if exitcode == 0:
                             if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
                                 # Executing a VM that does not configure fatal errors handling
                                 # in libgraal to route back through the VM.
                                 pass
                             else:
-                                mx.abort('Expected following command to result in non-zero exit code: ' + ' '.join(cmd))
+                                mx.abort('Expected following benchmark to result in non-zero exit code: ' + ' '.join(cmd))
                         else:
+                            if len(bench_suite.scratchDirs()) == 0:
+                                mx.abort("No scratch dir found despite error being expected!")
+                            latest_scratch_dir = bench_suite.scratchDirs()[-1]
                             seen_libjvmci_log = False
-                            hs_errs = glob.glob(join(testdir, 'hs_err_pid*.log'))
+                            hs_errs = glob.glob(join(latest_scratch_dir, 'hs_err_pid*.log'))
                             if not hs_errs:
-                                mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(listdir(testdir)))
+                                mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
                             for hs_err in hs_errs:
-                                with open(join(testdir, hs_err)) as fp:
+                                mx.log("Verifying content of {}".format(join(latest_scratch_dir, hs_err)))
+                                with open(join(latest_scratch_dir, hs_err)) as fp:
                                     contents = fp.read()
                                 if 'libjvmci' in hs_err:
                                     seen_libjvmci_log = True
@@ -130,11 +131,14 @@ def gate_body(args, tasks):
                                 else:
                                     if 'Fatal error in JVMCI' not in contents:
                                         mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
+
                             if 'JVMCINativeLibraryErrorFile' in out.data and not seen_libjvmci_log:
-                                mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(testdir)))
+                                mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
 
                     finally:
-                        mx.rmtree(testdir)
+                        for scratch_dir in bench_suite.scratchDirs():
+                            mx.log("Cleaning up scratch dir after gate task completion: {}".format(scratch_dir))
+                            mx.rmtree(scratch_dir)
 
             with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:

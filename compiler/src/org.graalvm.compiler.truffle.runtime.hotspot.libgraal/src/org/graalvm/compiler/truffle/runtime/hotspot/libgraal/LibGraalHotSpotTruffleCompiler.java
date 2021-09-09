@@ -37,9 +37,12 @@ import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.util.OptionsEncoder;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Encapsulates handles to {@link HotSpotTruffleCompiler} objects in the libgraal isolates.
@@ -137,11 +140,19 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         // Current implementations only dump profiling data which does not work on libgraal GR-24633
     }
 
-    @SuppressWarnings("try")
     @Override
-    public void installTruffleCallBoundaryMethods(CompilableTruffleAST compilable) {
+    @SuppressWarnings("try")
+    public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.installTruffleCallBoundaryMethods(getIsolateThread(), handle(optionsEncoder(compilable), compilable, false), compilable);
+            TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), handle(optionsEncoder(null), null, false), LibGraal.translate(method));
+        }
+    }
+
+    @Override
+    @SuppressWarnings("try")
+    public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
+        try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), handle(optionsEncoder(null), null, false), LibGraal.translate(method));
         }
     }
 

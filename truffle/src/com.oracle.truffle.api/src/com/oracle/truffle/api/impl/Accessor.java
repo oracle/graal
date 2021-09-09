@@ -102,9 +102,11 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -278,6 +280,8 @@ public abstract class Accessor {
         public abstract boolean isPrimitiveTarget(Class<?> c);
 
         public abstract boolean isGuestToHostRootNode(RootNode root);
+
+        public abstract boolean isHostLanguage(Class<?> languageClass);
     }
 
     public abstract static class EngineSupport extends Support {
@@ -328,8 +332,6 @@ public abstract class Accessor {
 
         public abstract boolean hasCurrentContext();
 
-        public abstract ContextReference<Object> getCurrentContextReference(Object polyglotLanguage);
-
         public abstract boolean isDisposed(Object polyglotLanguageContext);
 
         public abstract Map<String, LanguageInfo> getInternalLanguages(Object polyglotObject);
@@ -352,7 +354,7 @@ public abstract class Accessor {
 
         public abstract TruffleContext getCurrentCreatorTruffleContext();
 
-        public abstract Object toGuestValue(Object obj, Object languageContext);
+        public abstract Object toGuestValue(Node node, Object obj, Object languageContext);
 
         public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);
 
@@ -468,13 +470,9 @@ public abstract class Accessor {
 
         public abstract <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
 
-        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> lookupLanguageReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
+        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> createContextReference(Node node, Class<T> languageClass);
 
-        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> getDirectLanguageReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
-
-        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> lookupContextReference(Object polyglotEngine, TruffleLanguage<?> language, Class<T> languageClass);
-
-        public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object polyglotEngine, TruffleLanguage<?> language, Class<T> languageClass);
+        public abstract <T extends TruffleLanguage<?>> LanguageReference<T> createLanguageReference(Node node, Class<T> targetLanguageClass);
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
 
@@ -619,6 +617,10 @@ public abstract class Accessor {
 
         public abstract Object getHostContext(Object valueContext);
 
+        public abstract Object enterLanguageFromRuntime(TruffleLanguage<?> language);
+
+        public abstract void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev);
+
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -719,13 +721,15 @@ public abstract class Accessor {
 
         public abstract Object getDefaultLoggers();
 
-        public abstract Object createEngineLoggers(Object spi, Map<String, Level> logLevels);
+        public abstract Object createEngineLoggers(Object spi);
 
         public abstract Object getLoggersSPI(Object loggerCache);
 
         public abstract void closeEngineLoggers(Object loggers);
 
         public abstract TruffleLogger getLogger(String id, String loggerName, Object loggers);
+
+        public abstract Object getLoggerCache(TruffleLogger logger);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
@@ -767,7 +771,10 @@ public abstract class Accessor {
 
         public abstract boolean isSideEffectingTLAction(ThreadLocalAction action);
 
+        public abstract boolean isRecurringTLAction(ThreadLocalAction action);
+
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
+
     }
 
     public abstract static class InstrumentSupport extends Support {
@@ -975,6 +982,39 @@ public abstract class Accessor {
         public abstract void onLoopCount(Node source, int iterations);
 
         /**
+         * Reports a back edge to the target location. This information can be used to trigger
+         * on-stack replacement (OSR) for a {@link BytecodeOSRNode}.
+         *
+         * @param osrNode the node which can be on-stack replaced
+         * @return result if OSR was performed, or {@code null}.
+         */
+        public abstract boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode);
+
+        public abstract Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame);
+
+        /**
+         * Reports that a child node of an {@link BytecodeOSRNode} was replaced. Allows the runtime
+         * system to invalidate any OSR targets it has created.
+         *
+         * @param osrNode the node whose child was replaced
+         * @param oldNode the replaced node
+         * @param newNode the replacement node
+         * @param reason the replacement reason
+         */
+        public abstract void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason);
+
+        /**
+         * Transfers state from the {@code source} frame into the {@code target} frame. This method
+         * should only be used inside OSR code. The frames must have the same layout as the frame
+         * passed when executing the {@code osrNode}.
+         *
+         * @param osrNode the node being on-stack replaced.
+         * @param source the frame to transfer state from
+         * @param target the frame to transfer state into
+         */
+        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target);
+
+        /**
          * Returns the compiler options specified available from the runtime.
          */
         public abstract OptionDescriptors getEngineOptionDescriptors();
@@ -1034,6 +1074,10 @@ public abstract class Accessor {
         public abstract Object[] getNonPrimitiveResolvedFields(Class<?> type);
 
         public abstract Object getFieldValue(Object resolvedJavaField, Object obj);
+
+        public AbstractFastThreadLocal getContextThreadLocal() {
+            return DefaultContextThreadLocal.SINGLETON;
+        }
     }
 
     public static final class JDKSupport {
@@ -1237,7 +1281,7 @@ public abstract class Accessor {
     /**
      * Returns a {@link TVMCI} obtained from {@link TruffleRuntime}.
      *
-     * NOTE: this method is called reflectively by {@code TruffleFeature} to initialize
+     * NOTE: this method is called reflectively by {@code TruffleBaseFeature} to initialize
      * {@code tvmci} instance.
      */
     private static TVMCI getTVMCI() {

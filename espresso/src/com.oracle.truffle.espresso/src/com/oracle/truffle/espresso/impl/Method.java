@@ -30,6 +30,8 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITOREXIT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
@@ -297,10 +299,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public BootstrapMethodsAttribute getBootstrapMethods() {
         return (BootstrapMethodsAttribute) getAttribute(BootstrapMethodsAttribute.NAME);
-    }
-
-    public byte[] getCode() {
-        return getCodeAttribute().getCode();
     }
 
     public byte[] getOriginalCode() {
@@ -623,6 +621,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getLinkedMethod().getFlags();
     }
 
+    public boolean isCallerSensitive() {
+        return (getModifiers() & ACC_CALLER_SENSITIVE) != 0;
+    }
+
+    public boolean isHidden() {
+        return (getModifiers() & ACC_HIDDEN) != 0;
+    }
+
     public int getMethodModifiers() {
         return getLinkedMethod().getFlags() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
     }
@@ -904,6 +910,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return localSource;
     }
 
+    @TruffleBoundary
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         for (Symbol<Type> type : getParsedSignature()) {
             getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
@@ -945,7 +952,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Method forceSplit() {
-        Method result = new Method(this, getCodeAttribute().forceSplit());
+        Method result = new Method(this, getCodeAttribute());
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
         result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
@@ -1247,11 +1254,27 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private final CodeAttribute codeAttribute;
         @CompilationFinal private CallTarget callTarget;
 
+        @CompilationFinal(dimensions = 1) //
+        private volatile byte[] code = null;
+
         MethodVersion(RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
             this.assumption = Truffle.getRuntime().createAssumption();
             this.pool = pool;
             this.linkedMethod = linkedMethod;
             this.codeAttribute = codeAttribute;
+        }
+
+        public byte[] getCode() {
+            if (code == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                synchronized (this) {
+                    if (code == null) {
+                        byte[] originalCode = getCodeAttribute().getOriginalCode();
+                        code = Arrays.copyOf(originalCode, originalCode.length);
+                    }
+                }
+            }
+            return code;
         }
 
         public Method getMethod() {
@@ -1358,7 +1381,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                      * The method was obtained through a regular lookup (since it is in the declared
                      * methods). Delegate it to a polysignature method lookup.
                      */
-                    target = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
+                    target = declaringKlass.lookupPolysigMethod(getName(), getRawSignature(), Klass.LookupMode.ALL).getCallTarget();
                 }
 
                 if (target == null) {
@@ -1380,7 +1403,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public int getCodeSize() {
-            return codeAttribute.getCode() != null ? codeAttribute.getCode().length : 0;
+            return getCode() != null ? getCode().length : 0;
         }
 
         public LineNumberTableAttribute getLineNumberTableAttribute() {
@@ -1539,7 +1562,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public long getLastBCI() {
             int bci = 0;
-            BytecodeStream bs = new BytecodeStream(getCodeAttribute().getCode());
+            BytecodeStream bs = new BytecodeStream(getCode());
             int end = bs.endBCI();
 
             while (bci < end) {
@@ -1584,4 +1607,5 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
     // endregion jdwp-specific
+
 }

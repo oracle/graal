@@ -30,17 +30,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange;
 
 final class DiffVersionLoadHelper {
-    static final VersionRange VERSION_8_OR_LOWER = VersionRange.lower(8);
-    static final VersionRange VERSION_9_TO_11 = new VersionRange(9, 11);
-    static final VersionRange VERSION_9_OR_HIGHER = VersionRange.higher(9);
-    static final VersionRange VERSION_11_OR_HIGHER = VersionRange.higher(11);
-    static final VersionRange VERSION_11_TO_17 = new VersionRange(11, 17);
-    static final VersionRange VERSION_16_OR_HIGHER = VersionRange.higher(16);
-    static final VersionRange VERSION_17_OR_HIGHER = VersionRange.higher(17);
-    static final VersionRange ALL = new VersionRange(0, JavaVersion.LATEST_SUPPORTED);
 
     private final Meta meta;
     private Symbol<Name> name;
@@ -112,6 +104,17 @@ final class DiffVersionLoadHelper {
         return klass.requireDeclaredField(name, type);
     }
 
+    Field maybeHiddenfield(ObjectKlass klass) {
+        if (name == null || type == null) {
+            throw EspressoError.shouldNotReachHere();
+        }
+        Field f = klass.lookupDeclaredField(name, type);
+        if (f == null) {
+            return klass.requireHiddenField(name);
+        }
+        return f;
+    }
+
     Field notRequiredField(ObjectKlass klass) {
         if (name == null || type == null) {
             return null;
@@ -122,25 +125,4 @@ final class DiffVersionLoadHelper {
         return klass.lookupDeclaredField(name, type);
     }
 
-    static final class VersionRange {
-        final int low;
-        final int high;
-
-        VersionRange(int low, int high) {
-            this.low = low;
-            this.high = high;
-        }
-
-        static VersionRange lower(int version) {
-            return new VersionRange(0, version);
-        }
-
-        static VersionRange higher(int version) {
-            return new VersionRange(version, JavaVersion.LATEST_SUPPORTED);
-        }
-
-        boolean contains(JavaVersion version) {
-            return version.inRange(low, high);
-        }
-    }
 }

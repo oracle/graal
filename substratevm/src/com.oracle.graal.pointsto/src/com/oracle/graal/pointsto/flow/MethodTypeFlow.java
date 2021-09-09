@@ -44,7 +44,7 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -96,7 +96,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     /**
      * Add the context, if not already added, and return the method flows clone from that context.
      */
-    public MethodFlowsGraph addContext(BigBang bb, AnalysisContext calleeContext, InvokeTypeFlow reason) {
+    public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext, InvokeTypeFlow reason) {
 
         // make sure that the method is parsed before attempting to clone it;
         // the parsing should always happen on the same thread
@@ -151,14 +151,14 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         originalMethodFlows.setParameter(index, parameter);
     }
 
-    public void setInitialReceiverFlow(BigBang bb, AnalysisType declaringType) {
+    public void setInitialReceiverFlow(PointsToAnalysis bb, AnalysisType declaringType) {
         TypeFlow<?> declaringTypeFlow = declaringType.getTypeFlow(bb, false);
         InitialReceiverTypeFlow initialReceiverFlow = new InitialReceiverTypeFlow(method, declaringType);
         declaringTypeFlow.addUse(bb, initialReceiverFlow);
         originalMethodFlows.setInitialParameterFlow(initialReceiverFlow, 0);
     }
 
-    public void setInitialParameterFlow(BigBang bb, AnalysisType declaredType, int i) {
+    public void setInitialParameterFlow(PointsToAnalysis bb, AnalysisType declaredType, int i) {
         TypeFlow<?> declaredTypeFlow = declaredType.getTypeFlow(bb, true);
         InitialParamTypeFlow initialParameterFlow = new InitialParamTypeFlow(method, declaredType, i);
         declaredTypeFlow.addUse(bb, initialParameterFlow);
@@ -169,7 +169,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         originalMethodFlows.addInstanceOf(key, instanceOf);
     }
 
-    public void addNodeFlow(BigBang bb, Node node, TypeFlow<?> input) {
+    public void addNodeFlow(PointsToAnalysis bb, Node node, TypeFlow<?> input) {
         if (bb.strengthenGraalGraphs()) {
             originalMethodFlows.addNodeFlow(node, input);
         } else {
@@ -195,7 +195,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * @param originalTypeFlow the original type flow
      * @return the resulting type state object
      */
-    public TypeState foldTypeFlow(BigBang bb, TypeFlow<?> originalTypeFlow) {
+    public TypeState foldTypeFlow(PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
         if (originalTypeFlow == null) {
             return null;
         }
@@ -216,7 +216,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     }
 
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
-    public boolean isSaturated(BigBang bb, TypeFlow<?> originalTypeFlow) {
+    public boolean isSaturated(PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
         boolean saturated = false;
         for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {
             TypeFlow<?> clonedTypeFlow = methodFlows.lookupCloneOf(bb, originalTypeFlow);
@@ -230,7 +230,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return originalMethodFlows.getParameter(idx);
     }
 
-    public TypeState getParameterTypeState(BigBang bb, int parameter) {
+    public TypeState getParameterTypeState(PointsToAnalysis bb, int parameter) {
         return foldTypeFlow(bb, originalMethodFlows.getParameter(parameter));
     }
 
@@ -277,14 +277,14 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return returnedParameter;
     }
 
-    public void ensureTypeFlowCreated(BigBang bb, InvokeTypeFlow reason) {
+    public void ensureTypeFlowCreated(PointsToAnalysis bb, InvokeTypeFlow reason) {
         if (!typeFlowCreated) {
             createTypeFlow(bb, reason);
         }
     }
 
     /* All threads that try to parse the current method synchronize and only the first parses. */
-    private synchronized void createTypeFlow(BigBang bb, InvokeTypeFlow reason) {
+    private synchronized void createTypeFlow(PointsToAnalysis bb, InvokeTypeFlow reason) {
         if (!typeFlowCreated) {
             parsingReason = reason;
             StructuredGraph graph = null;
@@ -322,7 +322,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     }
 
     @Override
-    public void update(BigBang bb) {
+    public void update(PointsToAnalysis bb) {
         // method type flow update (which is effectively method parsing) is done by
         // MethodTypeFlow.ensureParsed which should always be executed on the same thread as
         // MethodTypeFlow.addContext

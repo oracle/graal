@@ -31,6 +31,8 @@ import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,7 +48,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -100,6 +104,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
+import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -416,6 +421,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return m;
     }
 
+    /*
+     * Make sure the libgraal version HSTruffleCompilerRuntime.resolveType of this method stays in
+     * sync with this method.
+     */
     @Override
     public ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required) {
         Class<?> c = lookupTypes.get(className);
@@ -544,6 +553,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.compilationThresholdScale = scale;
     }
 
+    /**
+     * This class visits native frames in order to construct Truffle {@link FrameInstance
+     * FrameInstances}, which it passes to the provided {@link FrameInstanceVisitor}.
+     */
     private static final class FrameVisitor<T> implements InspectedFrameVisitor<T> {
 
         private final FrameInstanceVisitor<T> visitor;
@@ -552,6 +565,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         private int skipFrames;
 
         private InspectedFrame callNodeFrame;
+        private InspectedFrame osrFrame;
 
         FrameVisitor(FrameInstanceVisitor<T> visitor, CallMethods methods, int skip) {
             this.visitor = visitor;
@@ -559,27 +573,79 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             this.skipFrames = skip;
         }
 
+        /**
+         * A Truffle {@link FrameInstance} logically consists of three components: a
+         * {@link com.oracle.truffle.api.frame.Frame frame}, a {@link CallTarget call target}, and a
+         * {@link Node call node}. These objects are spread across multiple native
+         * {@link InspectedFrame InspectedFrames}, so this visitor remembers previously-seen native
+         * frames (as necessary) in order to construct Truffle {@link FrameInstance FrameInstances}.
+         *
+         * For example, consider this sample stack trace:
+         *
+         * <pre>
+         *  ... -> executeRootNode(A) -> callDirect -> executeRootNode(B) -> callDirect -> executeRootNode(C)
+         *        (call target, frame)  (call node)   (call target, frame)  (call node)   (call target, frame)
+         *                |__________________|                |__________________|                |
+         *                  FrameInstance(A)                    FrameInstance(B)           FrameInstance(C)
+         * </pre>
+         *
+         * Method C is at the top of the stack (it has not called another guest method). Thus, it
+         * does not have a call node. Its call target and frame are the first two parameters of
+         * executeRootNode(C) {@link InspectedFrame}, so we can construct a {@link FrameInstance}
+         * using this frame.
+         *
+         * Down the stack, method B calls C, so it does have a call node. This node is a parameter
+         * to the callDirect {@link InspectedFrame}, so we remember this frame and use it to
+         * construct a {@link FrameInstance} when we reach executeRootNode(B). We construct a
+         * {@link FrameInstance} for A the same way.
+         *
+         *
+         * OSR complicates things. Consider this sample stack trace:
+         *
+         * <pre>
+         *  ... -> executeRootNode(A) -> callOSR -> executeRootNode(A_OSR) -> callDirect -> ...
+         *      (non-OSR call target, _)               (_, new frame)         (call node)
+         *               |___________________________________|____________________|
+         *                                    FrameInstance(A)
+         * </pre>
+         *
+         * With OSR, the program state may be inconsistent between OSR and non-OSR frames. The OSR
+         * frame (executeRootNode(A_OSR)) contains the most up-to-date Truffle
+         * {@link com.oracle.truffle.api.frame.Frame}, so we remember it. OSR should be transparent,
+         * so the call target is obtained from the non-OSR frame (executeRootNode(A)).
+         */
         @Override
         public T visitFrame(InspectedFrame frame) {
-            if (frame.isMethod(methods.callOSRMethod)) {
-                // we ignore OSR frames.
-                skipFrames++;
-                return null;
-            } else if (frame.isMethod(methods.callTargetMethod)) {
-                if (skipFrames == 0) {
-                    try {
-                        return visitor.visitFrame(new GraalFrameInstance(frame, callNodeFrame));
-                    } finally {
-                        callNodeFrame = null;
-                    }
-                } else {
-                    skipFrames--;
-                }
-            } else if (frame.isMethod(methods.callDirectMethod) || frame.isMethod(methods.callIndirectMethod) || frame.isMethod(methods.callInlinedMethod) ||
+            if (frame.isMethod(methods.callDirectMethod) || frame.isMethod(methods.callIndirectMethod) || frame.isMethod(methods.callInlinedMethod) ||
                             frame.isMethod(methods.callInlinedCallMethod)) {
                 callNodeFrame = frame;
+                return null;
             }
-            return null;
+            assert frame.isMethod(methods.callTargetMethod);
+            if (isOSRFrame(frame)) {
+                if (skipFrames == 0 && osrFrame == null) {
+                    osrFrame = frame;
+                }
+                return null;
+            } else if (skipFrames > 0) {
+                skipFrames--;
+                return null;
+            } else {
+                try {
+                    if (osrFrame != null) {
+                        return visitor.visitFrame(new GraalOSRFrameInstance(frame, callNodeFrame, osrFrame));
+                    } else {
+                        return visitor.visitFrame(new GraalFrameInstance(frame, callNodeFrame));
+                    }
+                } finally {
+                    osrFrame = null;
+                    callNodeFrame = null;
+                }
+            }
+        }
+
+        private static boolean isOSRFrame(InspectedFrame frame) {
+            return ((OptimizedCallTarget) frame.getLocal(GraalFrameInstance.CALL_TARGET_INDEX)).getRootNode() instanceof BaseOSRRootNode;
         }
     }
 
@@ -925,7 +991,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         public final ResolvedJavaMethod callInlinedMethod;
         public final ResolvedJavaMethod callIndirectMethod;
         public final ResolvedJavaMethod callTargetMethod;
-        public final ResolvedJavaMethod callOSRMethod;
         public final ResolvedJavaMethod callInlinedCallMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
 
@@ -935,8 +1000,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             this.callInlinedMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED);
             this.callInlinedCallMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED_CALL);
             this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
-            this.callOSRMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_OSR_METHOD);
-            this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callTargetMethod, callOSRMethod, callInlinedCallMethod};
+            this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callTargetMethod, callInlinedCallMethod};
         }
 
         public static CallMethods lookup(MetaAccessProvider metaAccess) {
@@ -1189,4 +1253,94 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         throw new UnsupportedOperationException();
     }
 
+    protected abstract AbstractFastThreadLocal getFastThreadLocalImpl();
+
+    public static class StackTraceHelper {
+        public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {
+            final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
+            final GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            final StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append(reason).append(" at\n");
+            runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
+                int frameIndex = 0;
+
+                @Override
+                public Object visitFrame(FrameInstance frameInstance) {
+                    CallTarget target = frameInstance.getCallTarget();
+                    StringBuilder line = new StringBuilder("  ");
+                    if (frameIndex > 0) {
+                        line.append("  ");
+                    }
+                    line.append(formatStackFrame(frameInstance, target)).append("\n");
+                    frameIndex++;
+
+                    messageBuilder.append(line);
+                    if (frameIndex < limit) {
+                        return null;
+                    } else {
+                        messageBuilder.append("    ...\n");
+                        return frameInstance;
+                    }
+                }
+
+            });
+            final int skip = 3;
+            StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+            String suffix = stackTrace.length > skip + limit ? "\n    ..." : "";
+            messageBuilder.append(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
+            runtime.log(callTarget, messageBuilder.toString());
+        }
+
+        private static String formatStackFrame(FrameInstance frameInstance, CallTarget target) {
+            StringBuilder builder = new StringBuilder();
+            if (target instanceof RootCallTarget) {
+                RootNode root = ((RootCallTarget) target).getRootNode();
+                String name = root.getName();
+                if (name == null) {
+                    builder.append("unnamed-root");
+                } else {
+                    builder.append(name);
+                }
+                Node callNode = frameInstance.getCallNode();
+                SourceSection sourceSection = null;
+                if (callNode != null) {
+                    sourceSection = callNode.getEncapsulatingSourceSection();
+                }
+                if (sourceSection == null) {
+                    sourceSection = root.getSourceSection();
+                }
+
+                if (sourceSection == null || sourceSection.getSource() == null) {
+                    builder.append("(Unknown)");
+                } else {
+                    builder.append("(").append(formatPath(sourceSection)).append(":").append(sourceSection.getStartLine()).append(")");
+                }
+
+                if (target instanceof OptimizedCallTarget) {
+                    OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
+                    if (callTarget.getSourceCallTarget() != null) {
+                        builder.append(" <split-").append(Integer.toHexString(callTarget.hashCode())).append(">");
+                    }
+                }
+
+            } else {
+                builder.append(target.toString());
+            }
+            return builder.toString();
+        }
+
+        private static String formatPath(SourceSection sourceSection) {
+            if (sourceSection.getSource().getPath() != null) {
+                Path path = FileSystems.getDefault().getPath(".").toAbsolutePath();
+                Path filePath = FileSystems.getDefault().getPath(sourceSection.getSource().getPath()).toAbsolutePath();
+
+                try {
+                    return path.relativize(filePath).toString();
+                } catch (IllegalArgumentException e) {
+                    // relativization failed
+                }
+            }
+            return sourceSection.getSource().getName();
+        }
+    }
 }

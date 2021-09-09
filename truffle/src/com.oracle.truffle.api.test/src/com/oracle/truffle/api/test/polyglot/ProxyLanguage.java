@@ -76,6 +76,12 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         public Env getEnv() {
             return env;
         }
+
+        private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(ProxyLanguage.class);
+
+        public static LanguageContext get(Node node) {
+            return REFERENCE.get(node);
+        }
     }
 
     private static volatile ProxyLanguage delegate = new ProxyLanguage();
@@ -97,16 +103,10 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         this.onCreate = onCreate;
     }
 
-    public static LanguageContext getCurrentContext() {
-        return getCurrentContext(ProxyLanguage.class);
-    }
+    private static final LanguageReference<ProxyLanguage> REFERENCE = LanguageReference.create(ProxyLanguage.class);
 
-    public static LanguageContext getCurrentLanguageContext(Class<? extends ProxyLanguage> languageClass) {
-        return getCurrentContext(languageClass);
-    }
-
-    public static ProxyLanguage getCurrentLanguage() {
-        return getCurrentLanguage(ProxyLanguage.class);
+    public static ProxyLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     @Override

@@ -66,11 +66,11 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * Immutable, shareable constant-pool representation.
@@ -177,19 +177,19 @@ public abstract class ConstantPool {
 
     static @JavaType(VerifyError.class) EspressoException verifyError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
     }
 
     public static @JavaType(ClassFormatError.class) EspressoException classFormatError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
     }
 
     static @JavaType(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
     }
 
@@ -568,8 +568,8 @@ public abstract class ConstantPool {
 
         final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, rawPoolLength);
 
-        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched class is
-        // meaningless anyway.
+        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched/hidden class
+        // is meaningless anyway.
         assert patches != null || sameRawPool(constantPool, stream, rawPoolStartPosition, rawPoolLength);
 
         // Validation
@@ -586,5 +586,10 @@ public abstract class ConstantPool {
 
     private static boolean existsAt(StaticObject[] patches, int index) {
         return patches != null && 0 <= index && index < patches.length && StaticObject.notNull(patches[index]);
+    }
+
+    @SuppressWarnings("unused")
+    ConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
+        return this;
     }
 }

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.op;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CreateCast;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -66,7 +65,10 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
     private abstract static class LLVMArithmeticOp {
 
-        abstract boolean doBoolean(boolean left, boolean right);
+        boolean doBoolean(boolean left, boolean right) {
+            int ret = doInt(left ? 1 : 0, right ? 1 : 0);
+            return (ret & 1) == 1;
+        }
 
         abstract byte doByte(byte left, byte right);
 
@@ -662,15 +664,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     private static final LLVMFPArithmeticOp DIV = new LLVMFPArithmeticOp() {
 
         @Override
-        boolean doBoolean(boolean left, boolean right) {
-            if (!right) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException("Division by zero!");
-            }
-            return left;
-        }
-
-        @Override
         byte doByte(byte left, byte right) {
             return (byte) (left / right);
         }
@@ -714,15 +707,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     private static final LLVMArithmeticOp UDIV = new LLVMArithmeticOp() {
 
         @Override
-        boolean doBoolean(boolean left, boolean right) {
-            if (!right) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException("Division by zero!");
-            }
-            return left;
-        }
-
-        @Override
         byte doByte(byte left, byte right) {
             return (byte) (Byte.toUnsignedInt(left) / Byte.toUnsignedInt(right));
         }
@@ -749,15 +733,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     };
 
     private static final LLVMFPArithmeticOp REM = new LLVMFPArithmeticOp() {
-
-        @Override
-        boolean doBoolean(boolean left, boolean right) {
-            if (!right) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException("Division by zero!");
-            }
-            return false;
-        }
 
         @Override
         byte doByte(byte left, byte right) {
@@ -801,15 +776,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     };
 
     private static final LLVMArithmeticOp UREM = new LLVMArithmeticOp() {
-
-        @Override
-        boolean doBoolean(boolean left, boolean right) {
-            if (!right) {
-                CompilerDirectives.transferToInterpreter();
-                throw new ArithmeticException("Division by zero!");
-            }
-            return left;
-        }
 
         @Override
         byte doByte(byte left, byte right) {

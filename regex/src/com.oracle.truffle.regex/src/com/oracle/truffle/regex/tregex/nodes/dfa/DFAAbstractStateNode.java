@@ -47,8 +47,6 @@ import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 
 public abstract class DFAAbstractStateNode extends Node implements JsonConvertible {
 
-    static final int FS_RESULT_NO_SUCCESSOR = -1;
-
     private final short id;
     @CompilationFinal(dimensions = 1) protected final short[] successors;
 

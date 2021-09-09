@@ -29,6 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -45,6 +57,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
@@ -67,17 +80,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
-import java.lang.ref.ReferenceQueue;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
-
-import java.lang.ref.WeakReference;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
@@ -204,7 +206,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     public static LLVMContext getContext() {
         CompilerAsserts.neverPartOfCompilation("Use faster context lookup methods for the fast-path.");
-        return getCurrentContext(LLVMLanguage.class);
+        return LLVMContext.get(null);
+    }
+
+    private static final LanguageReference<LLVMLanguage> REFERENCE = LanguageReference.create(LLVMLanguage.class);
+
+    public static LLVMLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     @Override
@@ -212,16 +220,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         getCapability(PlatformCapability.class).initializeThread(context, thread);
     }
 
-    /**
-     * Do not use this on fast-path.
-     */
-    public static LLVMLanguage getLanguage() {
-        // TODO add neverPartOfCompilation.
-        return getCurrentLanguage(LLVMLanguage.class);
-    }
-
     public static LLDBSupport getLLDBSupport() {
-        return getLanguage().lldbSupport;
+        return get(null).lldbSupport;
     }
 
     public <C extends LLVMCapability> C getCapability(Class<C> type) {
@@ -353,7 +353,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) {
-        Object globalScope = getScope(getCurrentContext(LLVMLanguage.class));
+        Object globalScope = getScope(getContext());
         final DebugExprParser d = new DebugExprParser(request, globalScope);
         try {
             return new DebugExprExecutableNode(d.parse());
@@ -400,11 +400,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         @Child LLVMMemoryOpNode freeRo;
         @Child LLVMMemoryOpNode freeRw;
 
-        final ContextReference<LLVMContext> ctx;
-
         FreeGlobalsNode(LLVMLanguage language, NodeFactory nodeFactory) {
             super(language);
-            this.ctx = lookupContextReference(LLVMLanguage.class);
             this.freeRo = nodeFactory.createFreeGlobalsBlock(true);
             this.freeRw = nodeFactory.createFreeGlobalsBlock(false);
         }
@@ -412,7 +409,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         @Override
         public Object execute(VirtualFrame frame) {
             // Executed in dispose(), therefore can read unsynchronized
-            LLVMContext context = ctx.get();
+            LLVMContext context = LLVMContext.get(this);
             for (LLVMPointer store : context.globalsReadOnlyStore.getValues()) {
                 if (store != null) {
                     freeRo.execute(store);
@@ -435,8 +432,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     abstract static class InitializeContextNode extends LLVMStatementNode {
 
-        @CompilationFinal private ContextReference<LLVMContext> ctxRef;
-
         @Child private DirectCallNode initContext;
 
         InitializeContextNode(LLVMFunctionCode initContextFunctionCode) {
@@ -446,11 +441,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         @Specialization
         public void doInit() {
-            if (ctxRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                ctxRef = lookupContextReference(LLVMLanguage.class);
-            }
-            LLVMContext ctx = ctxRef.get();
+            LLVMContext ctx = LLVMContext.get(this);
             if (!ctx.initialized) {
                 assert !ctx.cleanupNecessary;
                 ctx.initialized = true;

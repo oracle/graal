@@ -122,7 +122,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
         final Class<?> interfaceType;
 
         @Child private ProxyInvokeNode proxyInvoke = ProxyInvokeNodeGen.create();
-        @CompilationFinal private ToGuestValuesNode toGuests = ToGuestValuesNode.create();
+        @Child private ToGuestValuesNode toGuests = ToGuestValuesNode.create();
 
         ObjectProxyNode(Class<?> receiverType, Class<?> interfaceType) {
             this.receiverClass = receiverType;

@@ -81,8 +81,39 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
      */
     private IllegalArgumentException optionsFailure;
 
+    private volatile boolean initialized;
+
+    private void ensureInitialized() {
+        if (!initialized) {
+            synchronized (this) {
+                if (!initialized) {
+                    initialize();
+                    initialized = true;
+                }
+            }
+        }
+    }
+
     @Override
     public void onSelection() {
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            // When instantiating a JVMCI runtime in the libgraal heap there's no
+            // point in delaying HotSpotGraalRuntime initialization as it
+            // is very fast (it's compiled and does no class loading) and will
+            // usually be done immediately after this call anyway (i.e. in a
+            // Graal-as-JIT configuration).
+            initialize();
+            initialized = true;
+        } else {
+            // When instantiating a JVMCI runtime in the HotSpot heap, initialization
+            // of a HotSpotGraalRuntime is deferred until a compiler instance is
+            // requested. This avoids extra class loading when the JMX code in libgraal
+            // (i.e. MBeanProxy) calls back into HotSpot. The HotSpot side of this call
+            // only needs a few Graal classes (namely LibGraalScope and kin).
+        }
+    }
+
+    private void initialize() {
         JVMCIVersionCheck.check(Services.getSavedProperties(), false);
         assert options == null : "cannot select " + getClass() + " service more than once";
         try {
@@ -121,6 +152,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
     @Override
     public void printProperties(PrintStream out) {
+        ensureInitialized();
         out.println("[Graal properties]");
         if (optionsFailure != null) {
             System.err.printf("Error parsing Graal options: %s%n", optionsFailure.getMessage());
@@ -145,6 +177,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
+        ensureInitialized();
         HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) runtime;
         if (optionsFailure != null) {
             System.err.printf("Error parsing Graal options: %s%nError: A fatal exception has occurred. Program will exit.%n", optionsFailure.getMessage());

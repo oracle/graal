@@ -190,7 +190,7 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
         });
         setupContext();
         getContext().initialize(ProxyLanguage.ID);
-        langauge = ProxyLanguage.getCurrentLanguage();
+        langauge = ProxyLanguage.get(null);
         counter = 0;
     }
 

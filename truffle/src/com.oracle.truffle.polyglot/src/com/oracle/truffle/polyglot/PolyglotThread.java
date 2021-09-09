@@ -52,9 +52,7 @@ final class PolyglotThread extends Thread {
 
     private final PolyglotLanguageContext languageContext;
 
-    PolyglotContextImpl context;
-
-    final CallTarget callTarget;
+    private final CallTarget callTarget;
 
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group, long stackSize) {
         super(group, runnable, createDefaultName(languageContext), stackSize);
@@ -114,8 +112,7 @@ final class PolyglotThread extends Thread {
 
         @TruffleBoundary
         private static Object executeImpl(PolyglotLanguageContext languageContext, PolyglotThread thread, PolyglotThreadRunnable run) {
-            PolyglotContextImpl prev;
-            prev = languageContext.enterThread(thread);
+            Object[] prev = languageContext.enterThread(thread);
             assert prev == null; // is this assertion correct?
             try {
                 run.execute();

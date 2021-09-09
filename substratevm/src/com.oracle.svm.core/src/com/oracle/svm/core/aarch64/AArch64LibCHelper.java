@@ -84,6 +84,26 @@ public class AArch64LibCHelper {
 
         @AllowNarrowingCast
         @CField
+        boolean fDCPOP();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSHA3();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSHA512();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSVE();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSVE2();
+
+        @AllowNarrowingCast
+        @CField
         boolean fSTXRPREFETCH();
 
         @AllowNarrowingCast

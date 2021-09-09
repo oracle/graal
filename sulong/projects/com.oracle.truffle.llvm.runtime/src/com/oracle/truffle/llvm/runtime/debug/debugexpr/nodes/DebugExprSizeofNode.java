@@ -29,8 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
@@ -43,7 +44,7 @@ public abstract class DebugExprSizeofNode extends LLVMExpressionNode {
     private final long typeSize;
 
     public static DebugExprSizeofNode create(DebugExprType type) throws TypeOverflowException {
-        DataLayout datalayout = LLVMLanguage.getLanguage().getDefaultDataLayout();
+        DataLayout datalayout = LLVMLanguage.get(null).getDefaultDataLayout();
         return DebugExprSizeofNodeGen.create(type.getLLVMRuntimeType().getSize(datalayout));
     }
 
@@ -52,9 +53,9 @@ public abstract class DebugExprSizeofNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public long getSize() {
+    public long getSize(@Cached BranchProfile exception) {
         if (typeSize < 0) {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw DebugExprException.create(this, "Error while finding type size");
         }
         return typeSize;

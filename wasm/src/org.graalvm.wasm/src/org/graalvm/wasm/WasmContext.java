@@ -40,15 +40,18 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.TruffleLanguage.Env;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.nodes.Node;
 
 public final class WasmContext {
     private final Env env;
@@ -62,10 +65,6 @@ public final class WasmContext {
     private final Map<String, WasmInstance> moduleInstances;
     private int moduleNameCount;
     private final FdManager filesManager;
-
-    public static WasmContext getCurrent() {
-        return WasmLanguage.getCurrentContext();
-    }
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
@@ -196,6 +195,12 @@ public final class WasmContext {
                 instance.target(startFunction.index()).call();
             }
         }
+    }
+
+    private static final ContextReference<WasmContext> REFERENCE = ContextReference.create(WasmLanguage.class);
+
+    public static WasmContext get(Node node) {
+        return REFERENCE.get(node);
     }
 
 }

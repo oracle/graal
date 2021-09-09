@@ -754,7 +754,7 @@ public final class Context implements AutoCloseable {
      */
     @Override
     public int hashCode() {
-        return receiver.hashCode();
+        return Objects.hashCode(receiver);
     }
 
     /**

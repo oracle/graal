@@ -71,7 +71,7 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
  * branches.
  *
  * Details for the algorithm can be found in
- * <a hre="http://ssw.jku.at/Teaching/PhDTheses/Stadler/Thesis_Stadler_14.pdf">this thesis</a>.
+ * <a href="http://ssw.jku.at/Teaching/PhDTheses/Stadler/Thesis_Stadler_14.pdf">this thesis</a>.
  */
 public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 

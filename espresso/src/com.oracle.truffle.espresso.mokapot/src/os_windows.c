@@ -359,7 +359,11 @@ void *os_dl_sym(OS_DL_HANDLE handle, const char *sym) {
 }
 
 OS_DL_HANDLE os_get_RTLD_DEFAULT() {
-    return GetModuleHandleA(NULL);
+    return GetModuleHandle(NULL);
+}
+
+OS_DL_HANDLE os_get_ProcessHandle() {
+    return GetModuleHandle(NULL);
 }
 
 void* os_atomic_load_ptr(void* OS_ATOMIC *ptr) {

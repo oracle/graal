@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -52,11 +53,11 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
     public abstract Object executeWithForeignToLLVMType(Object value, LLVMInteropType.Structured type, ForeignToLLVMType ftlType);
 
-    protected char getSingleStringCharacter(String value) {
+    protected char getSingleStringCharacter(String value, BranchProfile exception) {
         if (value.length() == 1) {
             return value.charAt(0);
         } else {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMPolyglotException(this, "Expected number but got string.");
         }
     }
@@ -95,8 +96,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                 case 64:
                     return ForeignToLLVMType.I64;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalStateException("There is no integer type with " + bitWidth + " bits defined");
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw CompilerDirectives.shouldNotReachHere("There is no integer type with " + bitWidth + " bits defined");
             }
         }
 
@@ -155,8 +156,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                 case DOUBLE:
                     return 0d;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalStateException("Unexpected value: " + type);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw CompilerDirectives.shouldNotReachHere("unexpected type " + type);
             }
         }
     }
@@ -239,14 +240,12 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
         @Override
         public Object executeWithTarget(Object value) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Use convert method.");
+            throw CompilerDirectives.shouldNotReachHere("Use convert method.");
         }
 
         @Override
         public Object executeWithType(Object value, LLVMInteropType.Structured type) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Use convert method.");
+            throw CompilerDirectives.shouldNotReachHere("Use convert method.");
         }
 
         @Override
@@ -254,7 +253,6 @@ public abstract class ForeignToLLVM extends LLVMNode {
             try {
                 return convert(ftlType, value, type);
             } catch (UnsupportedTypeException ex) {
-                CompilerDirectives.transferToInterpreter();
                 throw new LLVMPolyglotException(this, "Unexpected foreign object type.");
             }
         }

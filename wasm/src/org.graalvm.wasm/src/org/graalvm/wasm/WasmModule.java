@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,7 +53,7 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * Represents a parsed and validated WebAssembly module, which has not yet been instantiated.
  */
 @SuppressWarnings("static-method")
-public final class WasmModule extends SymbolTable {
+public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
     private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     private final ModuleLimits limits;

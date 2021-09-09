@@ -32,6 +32,8 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -50,7 +52,7 @@ public abstract class ClassInfo {
         StringBuilder methods = new StringBuilder();
         StringBuilder fields = new StringBuilder();
         StringBuilder enclosing = new StringBuilder();
-        Symbol<Symbol.Name> name = klass.getName();
+        Symbol<Name> name = klass.getName();
 
         Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(name.toString());
         if (matcher.matches()) {
@@ -94,12 +96,13 @@ public abstract class ClassInfo {
         return create(klass, klass.getName(), redefineInfo.getClassBytes(), klass.getDefiningClassLoader(), context);
     }
 
-    public static HotSwapClassInfo create(Symbol<Symbol.Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
+    public static HotSwapClassInfo create(Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
         return create(null, name, bytes, definingLoader, context);
     }
 
-    public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Symbol.Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), definingLoader, "L" + name + ";", context);
+    public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context) {
+        Symbol<Type> type = context.getTypes().fromName(name);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), definingLoader, type, context);
 
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();
@@ -110,7 +113,7 @@ public abstract class ClassInfo {
         if (matcher.matches()) {
             // fingerprints are only relevant for inner classes
             hierarchy.append(parserKlass.getSuperKlass().toString()).append(";");
-            for (Symbol<Symbol.Type> itf : parserKlass.getSuperInterfaces()) {
+            for (Symbol<Type> itf : parserKlass.getSuperInterfaces()) {
                 hierarchy.append(itf.toString()).append(";");
             }
 
@@ -152,7 +155,7 @@ public abstract class ClassInfo {
 
     public abstract ArrayList<? extends ClassInfo> getInnerClasses();
 
-    public abstract Symbol<Symbol.Name> getName();
+    public abstract Symbol<Name> getName();
 
     public abstract StaticObject getClassLoader();
 

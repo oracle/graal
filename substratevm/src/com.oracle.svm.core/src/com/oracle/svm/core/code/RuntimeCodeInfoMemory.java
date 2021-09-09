@@ -30,16 +30,18 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -125,6 +127,7 @@ public class RuntimeCodeInfoMemory {
         } while (resized);
         NonmovableArrays.setWord(table, index, info);
         count++;
+
         assert count > 0 : "invalid counter value";
     }
 
@@ -243,6 +246,38 @@ public class RuntimeCodeInfoMemory {
         return (index + 1 < length) ? (index + 1) : 0;
     }
 
+    public void printTable(Log log, boolean allowJavaHeapAccess) {
+        assert VMOperation.isInProgressAtSafepoint() ||
+                        SubstrateDiagnostics.isInProgressByCurrentThread() : "outside of a safepoint, this may only be used for printing diagnostics as the table could be freed at any time";
+        log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods:").indent(true);
+        if (table.isNonNull()) {
+            for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
+                printCodeInfo(log, i, allowJavaHeapAccess);
+            }
+        }
+        log.indent(false);
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
+    private void printCodeInfo(Log log, int i, boolean allowJavaHeapAccess) {
+        UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+        if (info.isNonNull()) {
+            /*
+             * Newly created CodeInfo objects do not have a tether yet. So, we can't use tethering
+             * to keep the CodeInfo object alive. Instead, we read all relevant values in
+             * uninterruptible code and pass those values to interruptible code that does the
+             * printing.
+             */
+            String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+            printCodeInfo0(log, info, UntetheredCodeInfoAccess.getState(info), name, UntetheredCodeInfoAccess.getCodeStart(info), UntetheredCodeInfoAccess.getCodeEnd(info));
+        }
+    }
+
+    @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
+    private static void printCodeInfo0(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
+        CodeInfoAccess.printCodeInfo(log, codeInfo, state, name, codeStart, codeEnd);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void tearDown() {
         if (table.isNonNull()) {
@@ -263,12 +298,61 @@ public class RuntimeCodeInfoMemory {
             table = NonmovableArrays.nullArray();
         }
     }
-}
 
-@AutomaticFeature
-class RuntimeMethodInfoMemoryFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
+    public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
+        assert SubstrateDiagnostics.isInProgressByCurrentThread() : "may only be used for printing diagnostics as the table could be freed at any time";
+        if (table.isNonNull()) {
+            for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
+                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+                if (info.isNonNull()) {
+                    if (info.equal(value)) {
+                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                        printIsCodeInfoObject(log, name);
+                        return true;
+                    }
+
+                    UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo());
+                    if (value.aboveOrEqual((UnsignedWord) info) && value.belowThan(codeInfoEnd)) {
+                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                        printInsideCodeInfo(log, info, name);
+                        return true;
+                    }
+
+                    UnsignedWord codeStart = (UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(info);
+                    UnsignedWord codeEnd = (UnsignedWord) UntetheredCodeInfoAccess.getCodeEnd(info);
+                    if (value.aboveOrEqual(codeStart) && value.belowOrEqual(codeEnd)) {
+                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                        printInsideInstructions(log, value, info, codeStart, name);
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
+    private static void printIsCodeInfoObject(Log log, String name) {
+        log.string("is a CodeInfo object");
+        if (name != null) {
+            log.string(" (").string(name).string(")");
+        }
+    }
+
+    @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
+    private static void printInsideCodeInfo(Log log, UntetheredCodeInfo info, String name) {
+        log.string("points inside the CodeInfo object ").zhex(info);
+        if (name != null) {
+            log.string(" (").string(name).string(")");
+        }
+    }
+
+    @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
+    private static void printInsideInstructions(Log log, UnsignedWord value, UntetheredCodeInfo info, UnsignedWord codeStart, String name) {
+        log.string("is at codeStart+").unsigned(value.subtract(codeStart)).string(" of CodeInfo ").zhex(info);
+        if (name != null) {
+            log.string(" (").string(name).string(")");
+        }
     }
 }

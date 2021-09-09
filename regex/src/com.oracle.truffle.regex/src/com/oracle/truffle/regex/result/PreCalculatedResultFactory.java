@@ -114,17 +114,24 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
         return createFromOffset(end - length);
     }
 
+    public int[] createArrayFromEnd(int end) {
+        int offset = end - length;
+        final int[] realIndices = new int[indices.length];
+        applyOffset(realIndices, offset);
+        return realIndices;
+    }
+
     public int getNumberOfGroups() {
         return indices.length / 2;
     }
 
     private RegexResult createFromOffset(int offset) {
         if (indices.length == 2) {
-            return new SingleResult(indices[0] + offset, indices[1] + offset);
+            return RegexResult.create(indices[0] + offset, indices[1] + offset);
         }
         final int[] realIndices = new int[indices.length];
         applyOffset(realIndices, offset);
-        return new SingleIndexArrayResult(realIndices);
+        return RegexResult.create(realIndices);
     }
 
     public void applyRelativeToEnd(int[] target, int end) {

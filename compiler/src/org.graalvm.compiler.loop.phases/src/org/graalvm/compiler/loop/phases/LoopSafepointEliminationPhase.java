@@ -97,7 +97,9 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 if (hasSafepoint) {
                     if (!loop.counted().counterNeverOverflows()) {
                         // Counter can overflow, need to create a guard.
-                        if (context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions()) && graph.getGuardsStage().allowsFloatingGuards()) {
+                        boolean allowsLoopLimitChecks = context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions());
+                        boolean allowsFloatingGuards = graph.getGuardsStage().allowsFloatingGuards();
+                        if (allowsLoopLimitChecks && allowsFloatingGuards) {
                             loop.counted().createOverFlowGuard();
                         } else {
                             // Cannot disable this safepoint, because the loop could overflow.

@@ -73,8 +73,8 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CLONE};
 
-    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(providers, FOREIGN_CALLS);
+    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(FOREIGN_CALLS);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -171,7 +171,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         ObjectCloneLowering objectCloneLowering = new ObjectCloneLowering();
         lowerings.put(SubstrateObjectCloneNode.class, objectCloneLowering);
         ObjectCloneWithExceptionLowering objectCloneWithExceptionLowering = new ObjectCloneWithExceptionLowering();
-        lowerings.put(ObjectCloneWithExceptionNode.class, objectCloneWithExceptionLowering);
+        lowerings.put(SubstrateObjectCloneWithExceptionNode.class, objectCloneWithExceptionLowering);
     }
 
     final class ObjectCloneLowering implements NodeLoweringProvider<SubstrateObjectCloneNode> {
@@ -190,9 +190,9 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         }
     }
 
-    final class ObjectCloneWithExceptionLowering implements NodeLoweringProvider<ObjectCloneWithExceptionNode> {
+    final class ObjectCloneWithExceptionLowering implements NodeLoweringProvider<SubstrateObjectCloneWithExceptionNode> {
         @Override
-        public void lower(ObjectCloneWithExceptionNode node, LoweringTool tool) {
+        public void lower(SubstrateObjectCloneWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
 
             ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(CLONE, node.getObject()));

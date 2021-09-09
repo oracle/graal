@@ -84,14 +84,29 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.compareAndSetByte(container, byteOffset, (byte) -17, (byte) 121);
     }
 
+    public static boolean unsafeCompareAndSetByteWithIntArgs(int expectedValue, int newValue) {
+        Container container = new Container();
+        return unsafe.compareAndSetByte(container, byteOffset, (byte) expectedValue, (byte) newValue);
+    }
+
     public static boolean unsafeCompareAndSetChar() {
         Container container = new Container();
         return unsafe.compareAndSetChar(container, charOffset, (char) 1025, (char) 1777);
     }
 
+    public static boolean unsafeCompareAndSetCharWithIntArgs(int expectedValue, int newValue) {
+        Container container = new Container();
+        return unsafe.compareAndSetChar(container, charOffset, (char) expectedValue, (char) newValue);
+    }
+
     public static boolean unsafeCompareAndSetShort() {
         Container container = new Container();
         return unsafe.compareAndSetShort(container, shortOffset, (short) -2232, (short) 12111);
+    }
+
+    public static boolean unsafeCompareAndSetShortWithIntArgs(int expectedValue, int newValue) {
+        Container container = new Container();
+        return unsafe.compareAndSetShort(container, shortOffset, (short) expectedValue, (short) newValue);
     }
 
     public static boolean unsafeCompareAndSetInt() {
@@ -118,8 +133,11 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     public void testCompareAndSet() {
         testGraph("unsafeCompareAndSetBoolean");
         testGraph("unsafeCompareAndSetByte");
+        testGraph("unsafeCompareAndSetByteWithIntArgs");
         testGraph("unsafeCompareAndSetChar");
+        testGraph("unsafeCompareAndSetCharWithIntArgs");
         testGraph("unsafeCompareAndSetShort");
+        testGraph("unsafeCompareAndSetShortWithIntArgs");
         testGraph("unsafeCompareAndSetInt");
         testGraph("unsafeCompareAndSetLong");
         testGraph("unsafeCompareAndSetFloat");
@@ -127,8 +145,11 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
         test("unsafeCompareAndSetBoolean");
         test("unsafeCompareAndSetByte");
+        test("unsafeCompareAndSetByteWithIntArgs", -17, 121);
         test("unsafeCompareAndSetChar");
+        test("unsafeCompareAndSetCharWithIntArgs", 1025, 1777);
         test("unsafeCompareAndSetShort");
+        test("unsafeCompareAndSetShortWithIntArgs", -2232, 12111);
         test("unsafeCompareAndSetInt");
         test("unsafeCompareAndSetLong");
         test("unsafeCompareAndSetFloat");

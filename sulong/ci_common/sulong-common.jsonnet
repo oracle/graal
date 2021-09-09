@@ -54,8 +54,8 @@
     },
   },
 
-  labsjdk_ce_16: common["labsjdk-ce-16"] {
-    jdk:: "jdk16",
+  labsjdk_ce_17: common["labsjdk-ce-17"] {
+    jdk:: "jdk17",
     downloads+: {
       # FIXME: do we really need to set EXTRA_JAVA_HOMES to an empty list?
       EXTRA_JAVA_HOMES: { pathlist: [] },
@@ -66,8 +66,8 @@
     jdk:: "jdk11",
   },
 
-  labsjdk_ee_16: common["labsjdk-ee-16"] {
-    jdk:: "jdk16",
+  labsjdk_ee_17: common["labsjdk-ee-17"] {
+    jdk:: "jdk17",
   },
 
   linux_amd64:: linux_amd64 + sulong_deps.linux,

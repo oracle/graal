@@ -42,10 +42,10 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.NativeSource.Content;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
@@ -75,13 +75,8 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
         singleContextAssumption.invalidate();
     }
 
-    static NFILanguage getCurrentLanguage() {
-        CompilerAsserts.neverPartOfCompilation("getCurrentLanguage");
-        return getCurrentLanguage(NFILanguage.class);
-    }
-
     static Assumption getSingleContextAssumption() {
-        return getCurrentLanguage().singleContextAssumption;
+        return get(null).singleContextAssumption;
     }
 
     @Override
@@ -111,5 +106,11 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
+    }
+
+    private static final LanguageReference<NFILanguage> REFERENCE = LanguageReference.create(NFILanguage.class);
+
+    static NFILanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 }

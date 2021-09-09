@@ -170,6 +170,11 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
+    public boolean hasCodeOffsetInImage() {
+        return codeOffsetInImage != 0;
+    }
+
+    @Override
     public int getCodeOffsetInImage() {
         assert codeOffsetInImage != 0;
         return codeOffsetInImage;

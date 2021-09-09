@@ -105,9 +105,9 @@ suite = {
       "sha1": "3ce2e9d96baa6e5de18eb370efc71cbb820021fb",
     },
 
-    "TRUFFLE_ASM_7.2" : {
-      "sha1" : "03ab18f3f0409fbed479c3c1c2cccec0d1b483c1",
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.impl.asm-7.2.0.jar"],
+    "TRUFFLE_ASM_9.1" : {
+      "sha1" : "956cc657b3f1aa2c08ebbb3bbe4092aea1daf54a",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.api.impl.asm-9.1.0.jar"],
     },
 
     "TruffleJSON" : {
@@ -188,7 +188,7 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.exception",
-        "truffle:TRUFFLE_ASM_7.2",
+        "truffle:TRUFFLE_ASM_9.1",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -463,7 +463,7 @@ suite = {
       "sourceDirs": ["src"],
       "dependencies": [
         "com.oracle.truffle.api",
-        "truffle:TRUFFLE_ASM_7.2",
+        "truffle:TRUFFLE_ASM_9.1",
       ],
       "checkstyle": "com.oracle.truffle.api",
       "javaCompliance" : "8+",

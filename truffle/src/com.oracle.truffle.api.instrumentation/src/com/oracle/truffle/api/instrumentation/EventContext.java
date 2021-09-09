@@ -348,13 +348,16 @@ public final class EventContext {
      * suppressed} exception. The notification order relates to the order the bindings were
      * installed.
      * <p>
-     * Example usage: {@link PropagateErrorSnippets#onCreate}
      *
      * @param e the exception to propagate.
+     * @deprecated No substitute. Runtime exceptions can now be thrown directly and will be
+     *             observable by the guest language application.
      * @since 20.0
      */
+    @Deprecated
+    @SuppressWarnings("static-method")
     public RuntimeException createError(RuntimeException e) {
-        return new InstrumentException(this, e);
+        return e;
     }
 
     /** @since 0.12 */
@@ -488,32 +491,6 @@ public final class EventContext {
 
 }
 
-class PropagateErrorSnippets extends TruffleInstrument {
-
-    // Checkstyle: stop
-    // @formatter:off
-    @Override
-    // BEGIN: PropagateErrorSnippets#onCreate
-    protected void onCreate(TruffleInstrument.Env env) {
-        env.getInstrumenter().attachExecutionEventListener(
-            SourceSectionFilter.newBuilder().
-                                tagIs(StandardTags.CallTag.class).build(),
-            new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame f) {
-                    throw context.createError(
-                          new RuntimeException("propagated to the guest"));
-                }
-                public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {
-                }
-                public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
-            });
-    }
-    // END: PropagateErrorSnippets#onCreate
-    // @formatter:on
-}
-
 class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
 
     // @formatter:off
@@ -526,7 +503,7 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
             SourceSectionFilter.newBuilder().
                                 tagIs(StandardTags.CallTag.class).build(),
             new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame f) {}
+                public void onEnter(EventContext context, VirtualFrame f) { }
                 public void onReturnValue(EventContext context,
                                           VirtualFrame f, Object result) {
                     if (!Objects.equals(result, 42)) {
@@ -540,7 +517,7 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
                     return info;
                 }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
     }
     // END: UnwindInstrumentationReturnSnippets#onCreate
@@ -566,11 +543,11 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
                     // Reenters on unwind.
                     return ProbeNode.UNWIND_ACTION_REENTER;
                 }
-                public void onEnter(EventContext context, VirtualFrame f) {}
+                public void onEnter(EventContext context, VirtualFrame f) { }
                 public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {}
+                                          VirtualFrame f, Object result) { }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
 
         // Listener that initiates unwind at line 20, attached to statements.
@@ -587,9 +564,9 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
                     }
                 }
                 public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {}
+                                          VirtualFrame f, Object result) { }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
     }
     // END: UnwindInstrumentationReenterSnippets#onCreate

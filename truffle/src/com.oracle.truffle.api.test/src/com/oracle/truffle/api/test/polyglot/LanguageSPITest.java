@@ -112,6 +112,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -752,12 +753,15 @@ public class LanguageSPITest {
             return null;
         }
 
-        public static OneContextLanguage getCurrentLanguage() {
-            return getCurrentLanguage(OneContextLanguage.class);
+        private static final LanguageReference<OneContextLanguage> REFERENCE = LanguageReference.create(OneContextLanguage.class);
+        private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(OneContextLanguage.class);
+
+        public static OneContextLanguage get(Node node) {
+            return REFERENCE.get(node);
         }
 
-        public static LanguageContext getCurrentContext() {
-            return getCurrentContext(OneContextLanguage.class);
+        public static LanguageContext getContext() {
+            return CONTEXT_REF.get(null);
         }
 
     }
@@ -795,8 +799,15 @@ public class LanguageSPITest {
             return super.createContext(env);
         }
 
-        public static LanguageContext getCurrentContext() {
-            return getCurrentContext(MultiContextLanguage.class);
+        private static final LanguageReference<MultiContextLanguage> REFERENCE = LanguageReference.create(MultiContextLanguage.class);
+        private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(MultiContextLanguage.class);
+
+        public static MultiContextLanguage get(Node node) {
+            return REFERENCE.get(node);
+        }
+
+        public static LanguageContext getContext() {
+            return CONTEXT_REF.get(null);
         }
 
         @Override
@@ -819,14 +830,14 @@ public class LanguageSPITest {
             return contextCachingEnabled;
         }
 
-        static MultiContextLanguage getInstance() {
-            return MultiContextLanguage.getCurrentLanguage(MultiContextLanguage.class);
-        }
-
         static MultiContextLanguage getInstance(Class<? extends MultiContextLanguage> lang, Context context) {
             context.enter();
             try {
-                return MultiContextLanguage.getCurrentLanguage(lang);
+                if (lang == MultiContextLanguage.class) {
+                    return REFERENCE.get(null);
+                } else {
+                    return OneContextLanguage.REFERENCE.get(null);
+                }
             } finally {
                 context.leave();
             }
@@ -891,7 +902,7 @@ public class LanguageSPITest {
 
         TruffleContext innerContext = env.newContextBuilder().build();
         Object prev = innerContext.enter(null);
-        Env innerEnv = MultiContextLanguage.getCurrentContext().env;
+        Env innerEnv = MultiContextLanguage.getContext().env;
         innerEnv.parsePublic(truffleSource1);
         assertEquals(1, lang.parseCalled.size());
         assertEquals(1, lang.initializeMultiContextCalled.size());
@@ -944,10 +955,10 @@ public class LanguageSPITest {
         TruffleContext innerContext = env.newContextBuilder().build();
         Object prev = innerContext.enter(null);
 
-        MultiContextLanguage innerLang = OneContextLanguage.getCurrentLanguage();
+        MultiContextLanguage innerLang = OneContextLanguage.get(null);
         assertNotSame(innerLang, lang);
 
-        Env innerEnv = OneContextLanguage.getCurrentContext().env;
+        Env innerEnv = OneContextLanguage.getContext().env;
         innerEnv.parsePublic(truffleSource1);
         assertEquals(1, innerLang.parseCalled.size());
         assertEquals(0, innerLang.initializeMultiContextCalled.size());
@@ -1341,7 +1352,7 @@ public class LanguageSPITest {
         Context c = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
         c.initialize(ProxyLanguage.ID);
         c.enter();
-        Env env = ProxyLanguage.getCurrentContext().getEnv();
+        Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv();
         env.exportSymbol("symbol", env.asGuestValue(1));
         assertTrue(c.getPolyglotBindings().hasMember("symbol"));
         env.exportSymbol("symbol", null);
@@ -1837,7 +1848,7 @@ public class LanguageSPITest {
                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        return lookupContextReference(ProxyLanguage.class).get().env.getPolyglotBindings();
+                        return LanguageContext.get(this).env.getPolyglotBindings();
                     }
                 });
             }
@@ -1875,7 +1886,7 @@ public class LanguageSPITest {
                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        return lookupContextReference(ProxyLanguage.class).get().env.getPolyglotBindings();
+                        return LanguageContext.get(this).env.getPolyglotBindings();
                     }
                 });
             }
@@ -1988,7 +1999,7 @@ public class LanguageSPITest {
     }
 
     private static boolean lookupLanguage(Class<?> serviceClass) {
-        Env env = ProxyLanguage.getCurrentContext().env;
+        Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).env;
         LanguageInfo languageInfo = env.getInternalLanguages().get(SERVICE_LANGUAGE);
         return env.lookup(languageInfo, serviceClass) != null;
     }
@@ -2092,7 +2103,7 @@ public class LanguageSPITest {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 try {
-                    getCurrentContext().env.registerService(new LanguageSPITestLanguageService3() {
+                    com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).env.registerService(new LanguageSPITestLanguageService3() {
                     });
                     fail("Illegal state exception should be thrown when calling Env.registerService outside createContext");
                 } catch (IllegalStateException e) {
@@ -2193,7 +2204,7 @@ public class LanguageSPITest {
                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+                        Env env = LanguageContext.get(this).getEnv();
                         LanguageInfo languageToInitialize = languageResolver.apply(env);
                         assertNotNull(languageToInitialize);
                         try {
@@ -2231,7 +2242,7 @@ public class LanguageSPITest {
                 return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+                        Env env = LanguageContext.get(this).getEnv();
                         LanguageInfo languageProvidingService = languageResolver.apply(env);
                         assertNotNull(languageProvidingService);
                         InitializeTestBaseLanguage.Service service = env.lookup(languageProvidingService, InitializeTestBaseLanguage.Service.class);

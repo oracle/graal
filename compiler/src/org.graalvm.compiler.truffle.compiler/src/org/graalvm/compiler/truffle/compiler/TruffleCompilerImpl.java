@@ -133,7 +133,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     UseTypeCheckHints);
 
     public TruffleCompilerImpl(TruffleCompilerConfiguration config) {
-
         this.config = config;
         this.codeInstallationTaskFactory = new TrufflePostCodeInstallationTaskFactory();
         for (Backend backend : config.backends()) {

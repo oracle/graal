@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.except.LLVMException;
 
@@ -51,7 +52,11 @@ public final class LLVMUnsupportedException extends LLVMException {
          * Indicates that a value is valid in terms of LLVM language spec, but it is unsupported by
          * this implementation.
          */
-        UNSUPPORTED_VALUE_RANGE("unsupported value range");
+        UNSUPPORTED_VALUE_RANGE("unsupported value range"),
+        /**
+         * Missing LLVM builtin.
+         */
+        MISSING_BUILTIN("missing LLVM builtin");
 
         private final String description;
 
@@ -68,10 +73,17 @@ public final class LLVMUnsupportedException extends LLVMException {
         super(location, reason.getDescription());
     }
 
+    @TruffleBoundary
     public LLVMUnsupportedException(Node location, UnsupportedReason reason, String details) {
         super(location, reason.getDescription() + ": " + details);
     }
 
+    @TruffleBoundary
+    public LLVMUnsupportedException(Node location, UnsupportedReason reason, String format, Object... args) {
+        this(location, reason, String.format(format, args));
+    }
+
+    @TruffleBoundary
     public LLVMUnsupportedException(Node location, UnsupportedReason reason, Throwable cause) {
         super(location, reason.getDescription() + ": " + cause.getMessage(), cause);
     }

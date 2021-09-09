@@ -40,6 +40,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.CastValue;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.Variable;
@@ -211,6 +212,31 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     public Value emitXor(Value a, Value b) {
         assert isNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.XOR, true, a, b);
+    }
+
+    @Override
+    public Value emitXorFP(Value a, Value b) {
+        assert (a.getPlatformKind() == AArch64Kind.SINGLE || a.getPlatformKind() == AArch64Kind.DOUBLE) &&
+                        a.getPlatformKind() == b.getPlatformKind();
+
+        /*
+         * Use the ASIMD XOR instruction to perform this operation. This requires casting the
+         * operands to SIMD kinds of the equivalent size.
+         */
+        LIRKind simdKind;
+        if (a.getPlatformKind() == AArch64Kind.SINGLE) {
+            simdKind = LIRKind.value(AArch64Kind.V32_BYTE);
+        } else {
+            simdKind = LIRKind.value(AArch64Kind.V64_BYTE);
+        }
+        Variable result = getLIRGen().newVariable(simdKind);
+
+        CastValue castA = new CastValue(simdKind, asAllocatable(a));
+        CastValue castB = new CastValue(simdKind, asAllocatable(b));
+        getLIRGen().append(AArch64ArithmeticOp.generateASIMDBinaryInstruction(AArch64ArithmeticOp.XOR, result, castA, castB));
+
+        // Must cast SIMD result back to appropriate FP type
+        return new CastValue(LIRKind.combine(a, b), result);
     }
 
     @Override
@@ -388,9 +414,10 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     protected void emitBinary(AllocatableValue result, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
-        if (isValidBinaryConstant(op, b)) {
+        AArch64Kind opKind = (AArch64Kind) result.getPlatformKind();
+        if (isValidBinaryConstant(op, opKind, b)) {
             emitBinaryConst(result, op, asAllocatable(a), asJavaConstant(b));
-        } else if (commutative && isValidBinaryConstant(op, a)) {
+        } else if (commutative && isValidBinaryConstant(op, opKind, a)) {
             emitBinaryConst(result, op, asAllocatable(b), asJavaConstant(a));
         } else {
             emitBinaryVar(result, op, asAllocatable(a), asAllocatable(b));
@@ -416,16 +443,16 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         getLIRGen().append(new AArch64ArithmeticOp.BinaryConstOp(op, result, x, b));
     }
 
-    public static boolean isValidBinaryConstant(AArch64ArithmeticOp op, Value val) {
+    private static boolean isValidBinaryConstant(AArch64ArithmeticOp op, AArch64Kind opKind, Value val) {
         if (!isJavaConstant(val)) {
             return false;
         }
         JavaConstant constValue = asJavaConstant(val);
         switch (op.category) {
             case LOGICAL:
-                return isLogicalConstant(constValue);
-            case ARITHMETIC:
-                return isArithmeticConstant(constValue);
+                return isLogicalConstant(opKind, constValue);
+            case ADDSUBTRACT:
+                return isAddSubtractConstant(constValue);
             case SHIFT:
                 return true;
             case NONE:
@@ -435,26 +462,27 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    private static boolean isLogicalConstant(JavaConstant constValue) {
-        switch (constValue.getJavaKind()) {
-            case Int:
-                return AArch64MacroAssembler.isLogicalImmediate(32, constValue.asInt());
-            case Long:
-                return AArch64MacroAssembler.isLogicalImmediate(64, constValue.asLong());
+    private static boolean isLogicalConstant(AArch64Kind kind, JavaConstant constValue) {
+        long value = constValue.asLong();
+        switch (kind) {
+            case DWORD:
+                return AArch64MacroAssembler.isLogicalImmediate(32, value);
+            case QWORD:
+                return AArch64MacroAssembler.isLogicalImmediate(64, value);
             default:
-                return false;
+                throw GraalError.shouldNotReachHere();
         }
     }
 
-    protected static boolean isArithmeticConstant(JavaConstant constValue) {
-        switch (constValue.getJavaKind()) {
+    public static boolean isAddSubtractConstant(JavaConstant constValue) {
+        switch (constValue.getJavaKind().getStackKind()) {
             case Int:
             case Long:
-                return AArch64MacroAssembler.isArithmeticImmediate(constValue.asLong());
+                return AArch64MacroAssembler.isAddSubtractImmediate(constValue.asLong(), true);
             case Object:
                 return constValue.isNull();
             default:
-                return false;
+                throw GraalError.shouldNotReachHere();
         }
     }
 

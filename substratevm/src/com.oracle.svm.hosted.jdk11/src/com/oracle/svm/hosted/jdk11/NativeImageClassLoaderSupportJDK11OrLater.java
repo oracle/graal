@@ -31,11 +31,13 @@ import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -52,6 +54,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.ModuleSupport;
 
 import jdk.internal.module.Modules;
 
@@ -73,6 +76,8 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
         classLoader = getSingleClassloader(moduleLayer);
+
+        adjustLibrarySupportReadAllUnnamed();
     }
 
     private static ModuleLayer createModuleLayer(Path[] modulePaths, ClassLoader parent) {
@@ -123,9 +128,35 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         return singleClassloader;
     }
 
+    private void adjustLibrarySupportReadAllUnnamed() {
+        /*
+         * org.graalvm.nativeimage.librarysupport depends on junit. Unfortunately using junit as
+         * automatic module is not possible because we have to support non-modularized tests as
+         * well. Thus, we have to explicitly allow org.graalvm.nativeimage.librarysupport to read
+         * ALL-UNNAMED so that junit from classpath is accessible to it.
+         *
+         * This workaround can be replaced with --add-reads use once GR-33504 is implemented.
+         */
+        Optional<Module> librarySupportModule = findModule("org.graalvm.nativeimage.librarysupport");
+        if (!librarySupportModule.isEmpty()) {
+            try {
+                Module moduleLibrarySupport = librarySupportModule.get();
+                Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
+                ModuleSupport.openModuleByClass(Module.class, NativeImageClassLoaderSupportJDK11OrLater.class);
+                implAddReadsAllUnnamed.setAccessible(true);
+                implAddReadsAllUnnamed.invoke(moduleLibrarySupport);
+            } catch (ReflectiveOperationException | NoSuchElementException e) {
+                VMError.shouldNotReachHere("Could not adjust org.graalvm.nativeimage.librarysupport to read all unnamed modules", e);
+            }
+        } else {
+            VMError.guarantee(!org.graalvm.compiler.options.ModuleSupport.USE_NI_JPMS,
+                            "Image-builder on module-path requires module org.graalvm.nativeimage.librarysupport");
+        }
+    }
+
     @Override
     protected List<Path> modulepath() {
-        return Stream.concat(buildmp.stream(), imagemp.stream()).collect(Collectors.toList());
+        return Stream.concat(imagemp.stream(), buildmp.stream()).collect(Collectors.toList());
     }
 
     @Override

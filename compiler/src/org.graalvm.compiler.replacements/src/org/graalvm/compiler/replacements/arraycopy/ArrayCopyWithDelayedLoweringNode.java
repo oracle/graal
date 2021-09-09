@@ -35,6 +35,23 @@ import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * A version of {@link BasicArrayCopyNode} that delays lowering.
+ *
+ * The {@link #snippet} which will be used for lowering is already known up front, but applying it
+ * is delayed to avoid unfavorable interaction with other phases (floating guards, frame state
+ * assignment, etc.).
+ *
+ * Depending on the {@link #snippet}, lowering is delayed until either
+ * {@linkplain org.graalvm.compiler.nodes.StructuredGraph.GuardsStage#areDeoptsFixed() floating
+ * guards are fixed} or
+ * {@linkplain org.graalvm.compiler.nodes.StructuredGraph.GuardsStage#areFrameStatesAtDeopts() frame
+ * states are assigned to deoptimization points}. See
+ * {@link ArrayCopySnippets.Templates#lower(ArrayCopyWithDelayedLoweringNode, boolean, org.graalvm.compiler.nodes.spi.LoweringTool)}
+ * for more details.
+ *
+ * @see ArrayCopyNode
+ */
 @NodeInfo(allowedUsageTypes = InputType.Memory)
 public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode {
 

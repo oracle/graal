@@ -114,8 +114,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
 
                                     @CompilerDirectives.TruffleBoundary
                                     private void callHostSleep() {
-                                        ContextReference<LanguageContext> languageContext = lookupContextReference(ProxyLanguage.class);
-                                        Object javaThread = languageContext.get().getEnv().lookupHostSymbol("java.lang.Thread");
+                                        Object javaThread = LanguageContext.get(this).getEnv().lookupHostSymbol("java.lang.Thread");
                                         beforeSleep.countDown();
                                         try {
                                             library.invokeMember(javaThread, "sleep", 10000);
@@ -185,8 +184,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
 
                                     @Override
                                     public Object execute(VirtualFrame frame) {
-                                        TruffleLanguage.ContextReference<ProxyLanguage.LanguageContext> languageContext = lookupContextReference(ProxyLanguage.class);
-                                        Object thisTestClass = languageContext.get().getEnv().lookupHostSymbol(ContextInterruptStandaloneTest.class.getName());
+                                        Object thisTestClass = ProxyLanguage.LanguageContext.get(this).getEnv().lookupHostSymbol(ContextInterruptStandaloneTest.class.getName());
                                         try {
                                             library.invokeMember(thisTestClass, "callStaticContextCancel", nestedContextEntered);
                                         } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {

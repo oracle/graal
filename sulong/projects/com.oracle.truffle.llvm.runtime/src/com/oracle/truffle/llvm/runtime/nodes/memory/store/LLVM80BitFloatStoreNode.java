@@ -30,13 +30,11 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -82,15 +80,13 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
         public abstract void executeWithTarget(LLVMPointer receiver, long offset, LLVM80BitFloat value);
 
-        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-        protected void doOp(LLVMNativePointer addr, long offset, LLVM80BitFloat value,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().put80BitFloat(this, addr.asNative() + offset, value);
+        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        protected void doOp(LLVMNativePointer addr, long offset, LLVM80BitFloat value) {
+            getLanguage().getLLVMMemory().put80BitFloat(this, addr.asNative() + offset, value);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        @Specialization(guards = "isAutoDerefHandle(addr)")
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, LLVM80BitFloat value,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
@@ -110,15 +106,13 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
-    protected void doOp(LLVMNativePointer addr, LLVM80BitFloat value,
-                    @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().put80BitFloat(this, addr, value);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected void doOp(LLVMNativePointer addr, LLVM80BitFloat value) {
+        getLanguage().getLLVMMemory().put80BitFloat(this, addr, value);
     }
 
-    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(language, addr)"})
+    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(addr)"})
     protected static void doOpDerefHandle(LLVMNativePointer addr, LLVM80BitFloat value,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached("createRecursive()") LLVM80BitFloatStoreNode store) {
         store.executeWithTarget(getReceiver.execute(addr), value);

@@ -24,13 +24,17 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+//Checkstyle: allow reflection
+
 import java.util.IdentityHashMap;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
+import java.lang.reflect.Field;
 
 /**
  * Fields that contain native pointers can not be part of the image heap, because the native
@@ -39,6 +43,9 @@ import com.oracle.svm.util.ClassUtil;
 public final class NativeObjectReplacer implements Function<Object, Object> {
 
     private final IdentityHashMap<Class<?>, Object> disallowedClasses;
+
+    private final Class<?> nativePointer;
+    private final Field nativePointerField;
 
     NativeObjectReplacer(DuringSetupAccess access) {
         disallowedClasses = new IdentityHashMap<>(16);
@@ -49,12 +56,33 @@ public final class NativeObjectReplacer implements Function<Object, Object> {
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFISymbol"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativeAllocation$FreeDestructor"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativePointer"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativeString"), Boolean.FALSE);
+
+        nativePointer = access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativePointer");
+        disallowedClasses.put(nativePointer, Boolean.FALSE);
+
+        try {
+            nativePointerField = nativePointer.getDeclaredField("nativePointer");
+            nativePointerField.setAccessible(true);
+        } catch (NoSuchFieldException | SecurityException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 
     @Override
     public Object apply(Object obj) {
+        if (obj.getClass() == nativePointer) {
+            long ptr;
+            try {
+                ptr = nativePointerField.getLong(obj);
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+            if (ptr == 0) {
+                // special case: the NULL pointer can be safely stored
+                return obj;
+            }
+        }
         if (disallowedClasses.containsKey(obj.getClass())) {
             throw new UnsupportedFeatureException(String.format("Native object (%s) stored in pre-initialized context.", ClassUtil.getUnqualifiedName(obj.getClass())));
         }

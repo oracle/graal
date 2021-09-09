@@ -29,9 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -43,7 +44,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMAccessForeignObjectNode.ForeignDummy;
@@ -55,8 +55,6 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-
-import java.nio.ByteOrder;
 
 @NodeChild(value = "foreign", type = ForeignDummy.class, implicit = true)
 @NodeChild(value = "offset", type = OffsetDummy.class, implicit = true)
@@ -71,9 +69,8 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         public abstract void execute(Object foreign, long offset, byte value);
 
         @Specialization
-        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, byte value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI8(this, resolved, value);
+        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, byte value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type) {
+            getLanguage().getLLVMMemory().putI8(this, resolved, value);
         }
 
         @Specialization(limit = "3")
@@ -121,9 +118,8 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         public abstract void execute(Object foreign, long offset, short value);
 
         @Specialization
-        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, short value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI16(this, resolved, value);
+        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, short value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type) {
+            getLanguage().getLLVMMemory().putI16(this, resolved, value);
         }
 
         @Specialization(limit = "3")
@@ -171,9 +167,8 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         public abstract void execute(Object foreign, long offset, int value);
 
         @Specialization
-        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, int value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI32(this, resolved, value);
+        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, int value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type) {
+            getLanguage().getLLVMMemory().putI32(this, resolved, value);
         }
 
         @Specialization(limit = "3")
@@ -221,9 +216,8 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         public abstract void execute(Object foreign, long offset, float value);
 
         @Specialization
-        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, float value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putFloat(this, resolved, value);
+        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, float value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type) {
+            getLanguage().getLLVMMemory().putFloat(this, resolved, value);
         }
 
         @Specialization(limit = "3")
@@ -271,9 +265,8 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         public abstract void execute(Object foreign, long offset, double value);
 
         @Specialization
-        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, double value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putDouble(this, resolved, value);
+        void doNative(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, double value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type) {
+            getLanguage().getLLVMMemory().putDouble(this, resolved, value);
         }
 
         @Specialization(limit = "3")
@@ -325,16 +318,14 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         public abstract void executePointer(Object foreign, long offset, LLVMPointer value);
 
         @Specialization
-        void doNativeLong(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, long value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI64(this, resolved, value);
+        void doNativeLong(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, long value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type) {
+            getLanguage().getLLVMMemory().putI64(this, resolved, value);
         }
 
         @Specialization
         void doNativePointer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, Object value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putPointer(this, resolved, toNativePointer.execute(value));
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer) {
+            getLanguage().getLLVMMemory().putPointer(this, resolved, toNativePointer.execute(value));
         }
 
         @Specialization

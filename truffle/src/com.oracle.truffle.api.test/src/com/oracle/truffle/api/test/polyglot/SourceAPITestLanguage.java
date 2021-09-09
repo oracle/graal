@@ -63,8 +63,10 @@ public class SourceAPITestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     public static LanguageContext getContext() {
-        return getCurrentContext(SourceAPITestLanguage.class);
+        return CONTEXT_REF.get(null);
     }
+
+    private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(SourceAPITestLanguage.class);
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {

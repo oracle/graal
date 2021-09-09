@@ -29,14 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64Error;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNode;
@@ -58,8 +55,8 @@ public final class LLVMPThreadThreadIntrinsics {
         @Specialization
         @TruffleBoundary
         protected int doIntrinsic(LLVMPointer thread, LLVMPointer startRoutine, LLVMPointer arg,
-                        @Cached LLVMI64StoreNode store,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @Cached LLVMI64StoreNode store) {
+            LLVMContext context = getContext();
             LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(startRoutine, arg, context);
             final Thread t = context.getpThreadContext().createThread(init);
             if (t == null) {
@@ -75,9 +72,8 @@ public final class LLVMPThreadThreadIntrinsics {
     public abstract static class LLVMPThreadExit extends LLVMBuiltin {
 
         @Specialization
-        protected int doIntrinsic(Object returnValue,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            setThreadReturnValue(returnValue, context);
+        protected int doIntrinsic(Object returnValue) {
+            setThreadReturnValue(returnValue, getContext());
             throw new PThreadExitException();
         }
 
@@ -92,14 +88,13 @@ public final class LLVMPThreadThreadIntrinsics {
 
         @Specialization
         @TruffleBoundary
-        protected Object doIntrinsic(long threadID,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
+        protected Object doIntrinsic(long threadID) {
+            LLVMContext context = getContext();
             final Thread thread = context.getpThreadContext().getThread(threadID);
             if (thread != null) {
                 try {
                     thread.join();
                 } catch (InterruptedException e) {
-                    CompilerDirectives.transferToInterpreter();
                     throw new LLVMThreadException(this, "Failed to join thread", e);
                 }
             }
@@ -131,11 +126,10 @@ public final class LLVMPThreadThreadIntrinsics {
 
         @Specialization
         protected int doIntrinsic(long id, LLVMPointer namePointer,
-                        @Cached LLVMReadStringNode readString,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @Cached LLVMReadStringNode readString) {
 
             String name = readString.executeWithTarget(namePointer);
-            final LLVMPThreadContext threadContext = context.getpThreadContext();
+            final LLVMPThreadContext threadContext = getContext().getpThreadContext();
             Thread thread = threadContext.getThread(id);
             if (thread == null) {
                 return LLVMAMD64Error.ERANGE;
@@ -160,9 +154,8 @@ public final class LLVMPThreadThreadIntrinsics {
         @Child private LLVMI8OffsetStoreNode write = LLVMI8OffsetStoreNode.create();
 
         @Specialization
-        protected int doIntrinsic(long threadID, LLVMPointer buffer, long targetLen,
-                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
-            Thread thread = context.getpThreadContext().getThread(threadID);
+        protected int doIntrinsic(long threadID, LLVMPointer buffer, long targetLen) {
+            Thread thread = getContext().getpThreadContext().getThread(threadID);
             if (thread == null) {
                 return LLVMAMD64Error.ERANGE;
             }
