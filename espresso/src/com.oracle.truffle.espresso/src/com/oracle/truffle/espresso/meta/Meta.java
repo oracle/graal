@@ -2065,6 +2065,35 @@ public final class Meta implements ContextAccess {
         return (StaticObject) java_lang_Long_valueOf.invokeDirect(null, value);
     }
 
+    public StaticObject boxPrimitive(Object hostPrimitive) {
+        if (hostPrimitive instanceof Integer) {
+            return (StaticObject) getMeta().java_lang_Integer_valueOf.invokeDirect(null, (int) hostPrimitive);
+        }
+        if (hostPrimitive instanceof Boolean) {
+            return (StaticObject) getMeta().java_lang_Boolean_valueOf.invokeDirect(null, (boolean) hostPrimitive);
+        }
+        if (hostPrimitive instanceof Byte) {
+            return (StaticObject) getMeta().java_lang_Byte_valueOf.invokeDirect(null, (byte) hostPrimitive);
+        }
+        if (hostPrimitive instanceof Character) {
+            return (StaticObject) getMeta().java_lang_Character_valueOf.invokeDirect(null, (char) hostPrimitive);
+        }
+        if (hostPrimitive instanceof Short) {
+            return (StaticObject) getMeta().java_lang_Short_valueOf.invokeDirect(null, (short) hostPrimitive);
+        }
+        if (hostPrimitive instanceof Float) {
+            return (StaticObject) getMeta().java_lang_Float_valueOf.invokeDirect(null, (float) hostPrimitive);
+        }
+        if (hostPrimitive instanceof Double) {
+            return (StaticObject) getMeta().java_lang_Double_valueOf.invokeDirect(null, (double) hostPrimitive);
+        }
+        if (hostPrimitive instanceof Long) {
+            return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirect(null, (long) hostPrimitive);
+        }
+
+        throw EspressoError.shouldNotReachHere("Not a boxed type ", hostPrimitive);
+    }
+
     // endregion Guest boxing
 
     // region Type conversions

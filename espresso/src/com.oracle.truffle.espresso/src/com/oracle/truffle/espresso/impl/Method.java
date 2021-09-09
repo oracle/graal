@@ -1238,7 +1238,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         /* modifiers */ getMethodModifiers(),
                         /* slot */ getVTableIndex(),
                         /* signature */ guestGenericSignature,
-
                         /* annotations */ runtimeVisibleAnnotations,
                         /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
                         /* annotationDefault */ annotationDefault);

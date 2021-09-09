@@ -30,7 +30,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -38,6 +37,7 @@ import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @ReportPolymorphism
@@ -74,7 +74,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         MethodVersion target = methodLookup(receiver);
         if (!target.getMethod().hasCode()) {
             enterExceptionProfile();
-            Meta meta = receiver.getKlass().getMeta();
+            Meta meta = getMeta();
             throw meta.throwException(meta.java_lang_AbstractMethodError);
         }
         return indirectCallNode.call(target.getCallTarget(), arguments);

@@ -51,7 +51,7 @@ public final class CheckCastNode extends QuickNode {
             return 0;
         }
         enterExceptionProfile();
-        Meta meta = typeToCheck.getMeta();
+        Meta meta = getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
                         getExceptionMessage(root, receiver));
     }
