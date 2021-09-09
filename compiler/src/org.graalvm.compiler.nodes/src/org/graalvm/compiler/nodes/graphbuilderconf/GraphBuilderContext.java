@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PluginReplacementNode;
+import org.graalvm.compiler.nodes.PluginReplacementWithExceptionNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -473,6 +474,18 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * @param replacementFunction
      */
     default void replacePlugin(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args, PluginReplacementNode.ReplacementFunction replacementFunction) {
+        throw GraalError.unimplemented();
+    }
+
+    /**
+     *
+     * @param plugin
+     * @param targetMethod
+     * @param args
+     * @param replacementFunction
+     */
+    default void replacePluginWithException(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args,
+                    PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction replacementFunction) {
         throw GraalError.unimplemented();
     }
 }

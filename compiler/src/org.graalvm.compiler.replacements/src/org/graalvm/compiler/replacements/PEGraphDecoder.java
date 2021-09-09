@@ -85,6 +85,7 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PluginReplacementNode;
+import org.graalvm.compiler.nodes.PluginReplacementWithExceptionNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.SimplifyingGraphDecoder;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -120,6 +121,7 @@ import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
@@ -633,10 +635,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     protected class PEPluginGraphBuilderContext extends PENonAppendGraphBuilderContext {
-        protected FixedWithNextNode insertBefore;
+        protected final FixedNode insertBefore;
         protected ValueNode pushedNode;
 
-        public PEPluginGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode insertBefore) {
+        public PEPluginGraphBuilderContext(PEMethodScope inlineScope, FixedNode insertBefore) {
             super(inlineScope, inlineScope.invokeData != null ? inlineScope.invokeData.invoke : null);
             this.insertBefore = insertBefore;
         }
@@ -685,9 +687,22 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (value instanceof FixedWithNextNode) {
                 FixedWithNextNode fixed = (FixedWithNextNode) value;
                 graph.addBeforeFixed(insertBefore, fixed);
+            } else if (value instanceof WithExceptionNode) {
+                WithExceptionNode withExceptionNode = (WithExceptionNode) value;
+                GraalError.guarantee(insertBefore instanceof WithExceptionNode, "Cannot replace %s with %s which is a %s", insertBefore, value, WithExceptionNode.class.getSimpleName());
+                WithExceptionNode replacee = (WithExceptionNode) insertBefore;
+                graph.replaceWithExceptionSplit(replacee, withExceptionNode);
+                AbstractBeginNode next = withExceptionNode.next();
+                if (withExceptionNode instanceof MemoryKill) {
+                    /* Insert the correct memory killing begin node at the next edge. */
+                    GraalError.guarantee(next instanceof BeginNode, "Not a BeginNode %s", next);
+                    AbstractBeginNode beginNode = graph.add(withExceptionNode.createNextBegin());
+                    withExceptionNode.setNext(beginNode);
+                    beginNode.setNext(next);
+                }
             } else if (value instanceof FixedNode) {
                 // Block terminating fixed nodes shouldn't be inserted
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(String.format("value: %s, insertBefore: %s", value, insertBefore));
             }
         }
     }
@@ -1484,6 +1499,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
         if (node instanceof PluginReplacementNode) {
             PluginReplacementNode pluginReplacementNode = (PluginReplacementNode) node;
+            PEPluginGraphBuilderContext graphBuilderContext = new PEPluginGraphBuilderContext(methodScope,
+                            pluginReplacementNode);
+            boolean success = pluginReplacementNode.replace(graphBuilderContext, providers.getReplacements());
+            if (success) {
+                replacedNode = graphBuilderContext.pushedNode;
+            } else if (pluginReplacementMustSucceed()) {
+                throw new GraalError("Plugin failed:" + node);
+            }
+        } else if (node instanceof PluginReplacementWithExceptionNode) {
+            PluginReplacementWithExceptionNode pluginReplacementNode = (PluginReplacementWithExceptionNode) node;
             PEPluginGraphBuilderContext graphBuilderContext = new PEPluginGraphBuilderContext(methodScope,
                             pluginReplacementNode);
             boolean success = pluginReplacementNode.replace(graphBuilderContext, providers.getReplacements());

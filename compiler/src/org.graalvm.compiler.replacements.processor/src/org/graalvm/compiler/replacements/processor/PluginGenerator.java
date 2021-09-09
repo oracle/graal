@@ -158,7 +158,11 @@ public class PluginGenerator {
             extra.add("org.graalvm.compiler.nodes.graphbuilderconf." + plugin.pluginSuperclass());
             if (plugin.needsReplacement(processor)) {
                 extra.add("org.graalvm.compiler.graph.NodeInputList");
-                extra.add("org.graalvm.compiler.nodes.PluginReplacementNode");
+                if (plugin.isWithExceptionReplacement(processor)) {
+                    extra.add("org.graalvm.compiler.nodes.PluginReplacementWithExceptionNode");
+                } else {
+                    extra.add("org.graalvm.compiler.nodes.PluginReplacementNode");
+                }
             }
         }
         Pattern packageClassBoundary = Pattern.compile("\\.([A-Z])");

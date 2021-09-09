@@ -74,7 +74,7 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
         List<? extends VariableElement> params = intrinsicMethod.getParameters();
 
         out.printf("        if (b.shouldDeferPlugin(this)) {\n");
-        out.printf("            b.replacePlugin(this, targetMethod, args, %s.FUNCTION);\n", getReplacementName());
+        out.printf("            b.replacePlugin%s(this, targetMethod, args, %s.FUNCTION);\n", getReplacementFunctionSuffix(processor), getReplacementName());
         out.printf("            return true;\n");
         out.printf("        }\n");
 
