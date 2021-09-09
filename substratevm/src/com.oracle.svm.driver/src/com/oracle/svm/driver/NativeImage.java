@@ -504,6 +504,12 @@ public class NativeImage {
 
             for (String line : flagsForVersion) {
                 if (!modulePathBuild && line.startsWith("--add-exports=")) {
+                    /*-
+                     * Turns e.g.
+                     * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder
+                     * into:
+                     * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=ALL-UNNAMED
+                     */
                     builderJavaArgs.add(line.substring(0, line.lastIndexOf('=') + 1) + "ALL-UNNAMED");
                 } else {
                     builderJavaArgs.add(line);
