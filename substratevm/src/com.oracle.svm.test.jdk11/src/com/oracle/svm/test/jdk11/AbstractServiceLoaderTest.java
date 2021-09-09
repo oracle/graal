@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,7 @@ public class AbstractServiceLoaderTest {
     public static class ConcreteService implements ServiceInterface {
     }
 
-    public static abstract class AbstractService implements ServiceInterface {
+    public abstract static class AbstractService implements ServiceInterface {
     }
 
     private static final Set<String> EXPECTED = Set.of(ConcreteService.class.getSimpleName(), AbstractService.class.getSimpleName());

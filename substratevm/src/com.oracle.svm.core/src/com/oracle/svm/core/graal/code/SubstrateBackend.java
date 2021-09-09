@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 
@@ -152,4 +153,24 @@ public abstract class SubstrateBackend extends Backend {
 
     public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
                     RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset);
+
+    /**
+     * Returns whether the backend can fold the stack overflow check into the method prologue for
+     * the provided method.
+     * 
+     * @param method The method that is compiled.
+     */
+    public boolean stackOverflowCheckedInPrologue(SharedMethod method) {
+        return false;
+    }
+
+    /**
+     * Returns whether the backend can fold the safepoint check into the method epilogue for the
+     * provided method.
+     *
+     * @param method The method that is compiled.
+     */
+    public boolean safepointCheckedInEpilogue(SharedMethod method) {
+        return false;
+    }
 }

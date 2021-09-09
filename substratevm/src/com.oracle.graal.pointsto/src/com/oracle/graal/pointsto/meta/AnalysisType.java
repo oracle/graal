@@ -39,12 +39,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.PointsToAnalysis.ConstantObjectsProfiler;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
@@ -873,56 +873,40 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return universe.lookup(wrapped.findInstanceFieldWithOffset(offset, expectedKind));
     }
 
-    /**
-     * Cache to ensure that the final contents of AnalysisField[] are visible after the array gets
-     * visible.
+    /*
+     * Cache is volatile to ensure that the final contents of AnalysisField[] are visible after the
+     * array gets visible.
      */
-    private static class InstanceFieldsCache {
-        private volatile AnalysisField[] withSuper;
-        private volatile AnalysisField[] local;
-
-        public AnalysisField[] get(boolean includeSuperclasses) {
-            if (includeSuperclasses) {
-                return withSuper;
-            } else {
-                return local;
-            }
-        }
-
-        public AnalysisField[] put(boolean includeSuperclasses, AnalysisField[] value) {
-            if (includeSuperclasses) {
-                withSuper = value;
-            } else {
-                local = value;
-            }
-            return value;
-        }
-    }
-
-    private final InstanceFieldsCache instanceFieldsCache = new InstanceFieldsCache();
+    private volatile AnalysisField[] instanceFieldsWithSuper;
+    private volatile AnalysisField[] instanceFieldsWithoutSuper;
 
     public void clearInstanceFieldsCache() {
-        instanceFieldsCache.withSuper = null;
-        instanceFieldsCache.local = null;
+        instanceFieldsWithSuper = null;
+        instanceFieldsWithoutSuper = null;
     }
 
     @Override
     public AnalysisField[] getInstanceFields(boolean includeSuperclasses) {
-        InstanceFieldsCache cache = instanceFieldsCache;
-        AnalysisField[] result = cache.get(includeSuperclasses);
+        AnalysisField[] result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
         if (result != null) {
             return result;
         } else {
-            return cache.put(includeSuperclasses, convertInstanceFields(includeSuperclasses));
+            return initializeInstanceFields(includeSuperclasses);
         }
     }
 
-    private AnalysisField[] convertInstanceFields(boolean includeSupeclasses) {
+    private AnalysisField[] initializeInstanceFields(boolean includeSuperclasses) {
         List<AnalysisField> list = new ArrayList<>();
-        if (includeSupeclasses && getSuperclass() != null) {
+        if (includeSuperclasses && getSuperclass() != null) {
             list.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
         }
-        return convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSupeclasses);
+        AnalysisField[] result = convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSuperclasses);
+        if (includeSuperclasses) {
+            instanceFieldsWithSuper = result;
+        } else {
+            instanceFieldsWithoutSuper = result;
+        }
+        return result;
     }
 
     private AnalysisField[] convertFields(ResolvedJavaField[] original, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {

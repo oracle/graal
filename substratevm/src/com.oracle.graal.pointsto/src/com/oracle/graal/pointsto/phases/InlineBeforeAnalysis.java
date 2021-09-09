@@ -77,7 +77,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class InlineBeforeAnalysis {
 
     public static class Options {
-        @Option(help = "Experimental: Inline methods before static analysis")//
+        @Option(help = "Inline methods before static analysis")//
         public static final OptionKey<Boolean> InlineBeforeAnalysis = new OptionKey<>(true);
     }
 

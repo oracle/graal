@@ -2400,6 +2400,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitInt((int) (disp - longSize));
     }
 
+    /**
+     * Conditional jump to a target that will be patched in later. Therefore, no jump target is
+     * provided to this method.
+     */
+    public final void jcc(ConditionFlag cc) {
+        annotatePatchingImmediate(2, 4);
+        emitByte(0x0F);
+        emitByte(0x80 | cc.getValue());
+        emitInt(0);
+    }
+
     public final void jcc(ConditionFlag cc, Label l) {
         assert (0 <= cc.getValue()) && (cc.getValue() < 16) : "illegal cc";
         if (l.isBound()) {

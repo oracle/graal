@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.identityhashcode;
+package com.oracle.svm.core.annotate;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@AutomaticFeature
-final class SubstrateIdentityHashCodeFeature implements GraalFeature {
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 
-    @Override
-    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(SubstrateIdentityHashCodeSnippets.GENERATE_IDENTITY_HASH_CODE);
-    }
+/**
+ * Annotation that overrides the default calling convention used for a method.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value = {ElementType.METHOD})
+public @interface ExplicitCallingConvention {
+    SubstrateCallingConventionKind value();
 }

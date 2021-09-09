@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.identityhashcode;
+package com.oracle.svm.core.graal.code;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+public enum SubstrateCallingConventionKind {
+    /**
+     * A Java-to-Java call. The majority of calls are like that.
+     */
+    Java,
+    /**
+     * A method whose only parameter is passed in the register also used to return values. This
+     * allows tail calls that take the value returned by the caller as the parameter.
+     */
+    ForwardReturnValue,
+    /**
+     * A call between Java and native code, which must use the platform ABI.
+     */
+    Native;
 
-@AutomaticFeature
-final class SubstrateIdentityHashCodeFeature implements GraalFeature {
-
-    @Override
-    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(SubstrateIdentityHashCodeSnippets.GENERATE_IDENTITY_HASH_CODE);
+    public SubstrateCallingConventionType toType(boolean outgoing) {
+        return (outgoing ? SubstrateCallingConventionType.outgoingTypes : SubstrateCallingConventionType.incomingTypes).get(this);
     }
 }

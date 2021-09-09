@@ -28,8 +28,10 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
+import com.oracle.svm.core.annotate.ExplicitCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -43,6 +45,17 @@ public interface SharedMethod extends ResolvedJavaMethod {
      * must not be called from Java code then.
      */
     boolean isEntryPoint();
+
+    default SubstrateCallingConventionKind getCallingConventionKind() {
+        ExplicitCallingConvention explicitCallingConvention = getAnnotation(ExplicitCallingConvention.class);
+        if (explicitCallingConvention != null) {
+            return explicitCallingConvention.value();
+        } else if (isEntryPoint()) {
+            return SubstrateCallingConventionKind.Native;
+        } else {
+            return SubstrateCallingConventionKind.Java;
+        }
+    }
 
     boolean hasCalleeSavedRegisters();
 
