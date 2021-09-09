@@ -86,6 +86,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         TypeResult<ConfigurationCondition> conditionResult = delegate.resolveCondition(parseCondition(data).getTypeName());
         if (!conditionResult.isPresent()) {
             handleError("Could not resolve condition " + parseCondition(data).getTypeName() + " for reflection.", conditionResult.getException());
+            return;
         }
         ConfigurationCondition condition = conditionResult.get();
 
