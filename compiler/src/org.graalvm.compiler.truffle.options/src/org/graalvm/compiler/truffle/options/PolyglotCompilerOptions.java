@@ -430,7 +430,8 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> OSR = new OptionKey<>(true);
 
     @Option(help = "Number of loop iterations until on-stack-replacement compilation is triggered.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(100000);
+    // Note: default value is a multiple of the bytecode OSR polling interval.
+    public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(100352);
 
     @Option(help = "Enable partial compilation for BlockNode.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> PartialBlockCompilation = new OptionKey<>(true);

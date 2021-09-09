@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.word.Word;
@@ -87,6 +88,8 @@ public final class HeapImpl extends Heap {
     private static final VMMutex REF_MUTEX = new VMMutex("referencePendingList");
     private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
 
+    private final int pageSize;
+
     // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration = new YoungGeneration("YoungGeneration");
     private final OldGeneration oldGeneration = new OldGeneration("OldGeneration");
@@ -111,7 +114,8 @@ public final class HeapImpl extends Heap {
     private List<Class<?>> classList;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public HeapImpl(FeatureAccess access) {
+    public HeapImpl(FeatureAccess access, int pageSize) {
+        this.pageSize = pageSize;
         this.gcImpl = new GCImpl(access);
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.heapPolicy = new HeapPolicy();
@@ -421,15 +425,34 @@ public final class HeapImpl extends Heap {
     @Fold
     @Override
     public int getPreferredAddressSpaceAlignment() {
-        if (usesImageHeapChunks()) {
-            return UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
-        }
-        return ConfigurationValues.getObjectLayout().getAlignment();
+        return UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
     }
 
     @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
+        if (SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseNullRegion.getValue() && CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
+            /*
+             * The image heap will be mapped in a way that there is a memory protected gap between
+             * the heap base and the start of the image heap. The gap won't need any memory in the
+             * native image file.
+             */
+            return NumUtil.safeToInt(HeapPolicyOptions.AlignedHeapChunkSize.getValue());
+        }
+        return 0;
+    }
+
+    @Fold
+    @Override
+    public int getImageHeapNullRegionSize() {
+        if (SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseNullRegion.getValue() && !CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
+            /*
+             * Prepend a single null page to the image heap so that there is a memory protected gap
+             * between the heap base and the start of the image heap. The null page is placed
+             * directly into the native image file, so it makes the file slightly larger.
+             */
+            return pageSize;
+        }
         return 0;
     }
 
@@ -605,9 +628,15 @@ public final class HeapImpl extends Heap {
 
     @Override
     public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
-        if (SubstrateOptions.SpawnIsolates.getValue() && value.equal(KnownIntrinsics.heapBase())) {
-            log.string("is the heap base");
-            return true;
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            Pointer heapBase = KnownIntrinsics.heapBase();
+            if (value.equal(heapBase)) {
+                log.string("is the heap base");
+                return true;
+            } else if (value.aboveThan(heapBase) && value.belowThan(getImageHeapStart())) {
+                log.string("points into the protected memory between the heap base and the image heap");
+                return true;
+            }
         }
 
         Pointer ptr = (Pointer) value;
@@ -621,6 +650,16 @@ public final class HeapImpl extends Heap {
             return true;
         }
         return false;
+    }
+
+    static Pointer getImageHeapStart() {
+        int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
+        if (imageHeapOffsetInAddressSpace > 0) {
+            return KnownIntrinsics.heapBase().add(imageHeapOffsetInAddressSpace);
+        } else {
+            int nullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
+            return KnownIntrinsics.heapBase().add(nullRegionSize);
+        }
     }
 
     private boolean printLocationInfo(Log log, Pointer ptr) {

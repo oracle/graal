@@ -24,37 +24,37 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import java.util.EnumMap;
+
 import jdk.vm.ci.code.CallingConvention;
 
-public enum SubstrateCallingConventionType implements CallingConvention.Type {
-    /**
-     * A request for the outgoing argument locations at a call site to Java code.
-     */
-    JavaCall(true, false),
-
-    /**
-     * A request for the incoming argument locations.
-     */
-    JavaCallee(false, false),
-
-    /**
-     * A request for the outgoing argument locations at a call site to external native code that
-     * complies with the platform ABI.
-     */
-    NativeCall(true, true),
-
-    /**
-     * A request for the incoming argument locations that complies with the platform ABI.
-     */
-    NativeCallee(false, true);
-
+/**
+ * Augments the {@link SubstrateCallingConventionKind} with additional flags, to avoid duplications
+ * of the enum values. Use {@link SubstrateCallingConventionKind#toType} to get an instance.
+ */
+public final class SubstrateCallingConventionType implements CallingConvention.Type {
+    public final SubstrateCallingConventionKind kind;
     /** Determines if this is a request for the outgoing argument locations at a call site. */
     public final boolean outgoing;
 
-    public final boolean nativeABI;
+    static final EnumMap<SubstrateCallingConventionKind, SubstrateCallingConventionType> outgoingTypes;
+    static final EnumMap<SubstrateCallingConventionKind, SubstrateCallingConventionType> incomingTypes;
 
-    SubstrateCallingConventionType(boolean outgoing, boolean nativeABI) {
+    static {
+        outgoingTypes = new EnumMap<>(SubstrateCallingConventionKind.class);
+        incomingTypes = new EnumMap<>(SubstrateCallingConventionKind.class);
+        for (SubstrateCallingConventionKind kind : SubstrateCallingConventionKind.values()) {
+            outgoingTypes.put(kind, new SubstrateCallingConventionType(kind, true));
+            incomingTypes.put(kind, new SubstrateCallingConventionType(kind, false));
+        }
+    }
+
+    private SubstrateCallingConventionType(SubstrateCallingConventionKind kind, boolean outgoing) {
+        this.kind = kind;
         this.outgoing = outgoing;
-        this.nativeABI = nativeABI;
+    }
+
+    public boolean nativeABI() {
+        return kind == SubstrateCallingConventionKind.Native;
     }
 }

@@ -51,15 +51,15 @@ final class EventContextObject extends AbstractContextObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    RuntimeException wrap(Object target, int arity, InteropException ex) {
+    static RuntimeException wrap(Object target, int arity, InteropException ex) {
         IllegalStateException ill = new IllegalStateException("Cannot invoke " + target + " with " + arity + " arguments: " + ex.getMessage());
         ill.initCause(ex);
-        return context.createError(ill);
+        return ill;
     }
 
-    RuntimeException rethrow(RuntimeException ex, InteropLibrary interopLib) {
+    static RuntimeException rethrow(RuntimeException ex, InteropLibrary interopLib) {
         if (interopLib.isException(ex)) {
-            throw context.createError(ex);
+            throw ex;
         }
         throw ex;
     }
@@ -88,7 +88,7 @@ final class EventContextObject extends AbstractContextObject {
     @ExportMessage
     static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         if ("returnNow".equals(member)) {
-            throw AgentExecutionNode.returnNow(obj.context, args);
+            throw InsightHookNode.returnNow(args);
         }
         if ("returnValue".equals(member)) {
             if (args.length == 0 || !(args[0] instanceof VariablesObject)) {

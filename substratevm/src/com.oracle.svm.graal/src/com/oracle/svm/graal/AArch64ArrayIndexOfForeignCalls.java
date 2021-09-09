@@ -27,9 +27,7 @@ package com.oracle.svm.graal;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.nativeimage.Platform.AARCH64;
@@ -41,7 +39,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -69,8 +66,8 @@ class AArch64ArrayIndexOfForeignCallsFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, AArch64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(AArch64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
     }
 }
 

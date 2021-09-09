@@ -68,7 +68,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -534,7 +534,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             returnStamp = b.getInvokeReturnStamp(null).getTrustedStamp();
         }
         CallTargetNode indirectCallTargetNode = b.add(new IndirectCallTargetNode(methodAddress, argsWithoutReceiver,
-                        StampPair.createSingle(returnStamp), parameterTypes, null, SubstrateCallingConventionType.JavaCall, InvokeKind.Static));
+                        StampPair.createSingle(returnStamp), parameterTypes, null, SubstrateCallingConventionKind.Java.toType(true), InvokeKind.Static));
 
         b.handleReplacedInvoke(indirectCallTargetNode, b.getInvokeReturnType().getJavaKind());
         return true;

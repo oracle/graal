@@ -91,7 +91,14 @@ abstract class HostToGuestRootNode extends RootNode {
     public final Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         PolyglotLanguageContext languageContext = (PolyglotLanguageContext) args[0];
-        PolyglotContextImpl context = profileContext(languageContext);
+        PolyglotContextImpl constantContext = engine.singleContextValue.getConstant();
+        if (constantContext == null) {
+            constantContext = languageContext.context;
+        } else {
+            assert languageContext.context == constantContext;
+        }
+
+        PolyglotContextImpl context = constantContext;
 
         Object[] prev;
         boolean needsEnter;
@@ -131,16 +138,6 @@ abstract class HostToGuestRootNode extends RootNode {
                 }
             }
         }
-    }
-
-    private PolyglotContextImpl profileContext(PolyglotLanguageContext languageContext) {
-        PolyglotContextImpl context = engine.singleContextValue.getConstant();
-        if (context == null) {
-            context = languageContext.context;
-        } else {
-            assert languageContext.context == context;
-        }
-        return context;
     }
 
     @SuppressWarnings({"unchecked", "unused"})

@@ -1467,7 +1467,7 @@ public final class DebuggerSession implements Closeable {
             throw new IllegalArgumentException("Cannot evaluate in context using a without an associated TruffleLanguage.");
         }
 
-        final Source source = Source.newBuilder(info.getId(), code, "eval in context").internal(true).build();
+        final Source source = Source.newBuilder(info.getId(), code, "eval in context").internal(false).build();
         ExecutableNode fragment = ev.getSession().getDebugger().getEnv().parseInline(source, node, frame);
         if (fragment != null) {
             ev.getInsertableNode().setParentOf(fragment);

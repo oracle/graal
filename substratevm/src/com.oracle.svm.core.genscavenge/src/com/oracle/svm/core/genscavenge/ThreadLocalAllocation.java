@@ -55,6 +55,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -142,18 +143,29 @@ public final class ThreadLocalAllocation {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewInstance(Word objectHeader, UnsignedWord size) {
-        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
-        UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
+        /*
+         * Avoid stack overflow errors while producing memory chunks, because that could leave the
+         * heap in an inconsistent state.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+            UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
 
-        // the instance either is a frame instance or the size can be read from the hub
-        if (!hub.isStoredContinuationClass()) {
-            assert size.equal(hub.getLayoutEncoding());
+            // the instance either is a frame instance or the size can be read from the hub
+            if (!hub.isStoredContinuationClass()) {
+                assert size.equal(hub.getLayoutEncoding());
+            }
+            Object result = slowPathNewInstanceWithoutAllocating(hub, size);
+            /*
+             * If a collection happened, do follow-up tasks now that allocation, etc., is allowed.
+             */
+            HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
+            runSlowPathHooks();
+            return result;
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
         }
-        Object result = slowPathNewInstanceWithoutAllocating(hub, size);
-        /* If a collection happened, do follow-up tasks now that allocation, etc., is allowed. */
-        HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
-        runSlowPathHooks();
-        return result;
     }
 
     /** Use the end of slow-path allocation as a place to run periodic hook code. */
@@ -177,27 +189,38 @@ public final class ThreadLocalAllocation {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object slowPathNewArray(Word objectHeader, int length, int fillStartOffset) {
-        if (length < 0) { // must be done before allocation-restricted code
-            throw new NegativeArraySizeException();
-        }
-
-        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
-        UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
         /*
-         * Check if the array is too big. This is an optimistic check because the heap probably has
-         * other objects in it, and the next collection could throw an OutOfMemoryError if this
-         * object is allocated and survives.
+         * Avoid stack overflow errors while producing memory chunks, because that could leave the
+         * heap in an inconsistent state.
          */
-        if (size.aboveOrEqual(HeapPolicy.getMaximumHeapSize())) {
-            throw new OutOfMemoryError("Array allocation too large.");
-        }
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            if (length < 0) { // must be done before allocation-restricted code
+                throw new NegativeArraySizeException();
+            }
 
-        UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
-        Object result = slowPathNewArrayWithoutAllocating(hub, length, size, fillStartOffset);
-        /* If a collection happened, do follow-up tasks now that allocation, etc., is allowed. */
-        HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
-        runSlowPathHooks();
-        return result;
+            DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+            UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
+            /*
+             * Check if the array is too big. This is an optimistic check because the heap probably
+             * has other objects in it, and the next collection could throw an OutOfMemoryError if
+             * this object is allocated and survives.
+             */
+            if (size.aboveOrEqual(HeapPolicy.getMaximumHeapSize())) {
+                throw new OutOfMemoryError("Array allocation too large.");
+            }
+
+            UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
+            Object result = slowPathNewArrayWithoutAllocating(hub, length, size, fillStartOffset);
+            /*
+             * If a collection happened, do follow-up tasks now that allocation, etc., is allowed.
+             */
+            HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
+            runSlowPathHooks();
+            return result;
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")

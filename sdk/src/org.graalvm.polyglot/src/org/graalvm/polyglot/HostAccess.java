@@ -72,6 +72,9 @@ import java.util.function.Predicate;
  * <ul>
  * <li>{@link #EXPLICIT} - Java host methods or fields, must be public and be annotated with
  * {@link Export @Export} to make them accessible to the guest language.
+ * <li>{@link #SCOPED} - Java host methods or fields, must be public and be annotated with
+ * {@link Export @Export} to make them accessible to the guest language. Guest-to-host callback
+ * parameter validity is scoped to the duration of the callback by default.
  * <li>{@link #NONE} - Does not allow any access to methods or fields of host objects. Java host
  * objects may still be passed into a context, but they cannot be accessed.
  * <li>{@link #ALL} - Does allow full unrestricted access to public methods or fields of host
@@ -101,9 +104,12 @@ public final class HostAccess {
     final boolean allowIterableAccess;
     final boolean allowIteratorAccess;
     final boolean allowMapAccess;
+    private final boolean methodScopingDefault;
+    private final EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations;
+    private final EconomicSet<Executable> disableMethodScoping;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, null, null);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -125,6 +131,30 @@ public final class HostAccess {
                     allowImplementationsAnnotatedBy(HostAccess.Implementable.class).//
                     allowImplementationsAnnotatedBy(FunctionalInterface.class).//
                     name("HostAccess.EXPLICIT").build();
+
+    /**
+     * Predefined host access policy that is the same as EXPLICIT and enables method scoping of
+     * callback parameter values on top. Methods that are annotated with
+     * {@link HostAccess.DisableMethodScoping} are exempt from scoping.
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).//
+     *                 allowImplementationsAnnotatedBy(HostAccess.Implementable.class).//
+     *                 methodScoping(true).//
+     *                 disableMethodScopingAnnotatedBy(HostAccess.DisableMethodScoping.class).build();
+     * </pre>
+     *
+     * @since 21.3
+     */
+    public static final HostAccess SCOPED = newBuilder().//
+                    allowAccessAnnotatedBy(HostAccess.Export.class).//
+                    allowImplementationsAnnotatedBy(HostAccess.Implementable.class).//
+                    allowImplementationsAnnotatedBy(FunctionalInterface.class).//
+                    methodScoping(true).//
+                    disableMethodScopingAnnotatedBy(HostAccess.DisableMethodScoping.class).//
+                    name("HostAccess.SCOPED").build();
 
     /**
      * Predefined host access policy that allows full unrestricted access to public methods or
@@ -175,7 +205,8 @@ public final class HostAccess {
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
                     boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
-                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess) {
+                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess,
+                    boolean methodScopingDefault, EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations, EconomicSet<Executable> disableMethodScoping) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
@@ -193,6 +224,9 @@ public final class HostAccess {
         this.allowIterableAccess = allowListAccess || allowIterableAccess;
         this.allowMapAccess = allowMapAccess;
         this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowMapAccess || allowIteratorAccess;
+        this.methodScopingDefault = methodScopingDefault;
+        this.disableMethodScopingAnnotations = disableMethodScopingAnnotations;
+        this.disableMethodScoping = disableMethodScoping;
     }
 
     /**
@@ -402,6 +436,29 @@ public final class HostAccess {
         return false;
     }
 
+    boolean isMethodScoped(Executable e) {
+        if (!isMethodScopingEnabled()) {
+            return false;
+        }
+        if (disableMethodScoping != null) {
+            if (disableMethodScoping.contains(e)) {
+                return false;
+            }
+        }
+        if (disableMethodScopingAnnotations != null) {
+            for (Class<? extends Annotation> ann : disableMethodScopingAnnotations) {
+                if (e.getAnnotation(ann) != null) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    boolean isMethodScopingEnabled() {
+        return methodScopingDefault;
+    }
+
     /**
      * {@inheritDoc}
      *
@@ -495,6 +552,20 @@ public final class HostAccess {
     }
 
     /**
+     * If {@link HostAccess#SCOPED} is used, placing this annotation on an exported host function
+     * excludes it from parameter scoping, i.e. parameters will not be released after invocation of
+     * a callback.
+     *
+     * @see HostAccess#SCOPED
+     * @since 21.3
+     *
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.CONSTRUCTOR, ElementType.METHOD})
+    public @interface DisableMethodScoping {
+    }
+
+    /**
      * Represents the precedence of a target type mapping. The precedence influences target type
      * mappings in two ways:
      * <ul>
@@ -572,6 +643,9 @@ public final class HostAccess {
         private boolean allowMapAccess;
         private boolean allowAllImplementations;
         private boolean allowAllClassImplementations;
+        private boolean methodScopingDefault;
+        private EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations;
+        private EconomicSet<Executable> disableMethodScoping;
         private String name;
 
         Builder() {
@@ -585,8 +659,6 @@ public final class HostAccess {
             this.implementableTypes = copySet(access.implementableTypes, Equivalence.IDENTITY);
             this.targetMappings = access.targetMappings != null ? new ArrayList<>(access.targetMappings) : null;
             this.excludeTypes = access.excludeTypes;
-            this.members = access.members;
-            this.targetMappings = access.targetMappings;
             this.allowPublic = access.allowPublic;
             this.allowListAccess = access.allowListAccess;
             this.allowArrayAccess = access.allowArrayAccess;
@@ -596,6 +668,9 @@ public final class HostAccess {
             this.allowMapAccess = access.allowMapAccess;
             this.allowAllImplementations = access.allowAllInterfaceImplementations;
             this.allowAllClassImplementations = access.allowAllClassImplementations;
+            this.methodScopingDefault = access.methodScopingDefault;
+            this.disableMethodScopingAnnotations = copySet(access.disableMethodScopingAnnotations, Equivalence.IDENTITY);
+            this.disableMethodScoping = copySet(access.disableMethodScoping, Equivalence.IDENTITY);
         }
 
         /**
@@ -1003,6 +1078,47 @@ public final class HostAccess {
         }
 
         /**
+         * Sets the default scoping of callback function parameters. Parameters escape from the
+         * scope of a function, if a reference to them is kept after the function returns. To use a
+         * value beyond the method scope {@link Value#pin()} may be used.
+         *
+         * @see Value#pin()
+         * @since 21.3
+         */
+        public Builder methodScoping(boolean scopingDefault) {
+            methodScopingDefault = scopingDefault;
+            return this;
+        }
+
+        /**
+         * Function parameters of a method annotated with the specified annotation are not scoped.
+         *
+         * @since 21.3
+         */
+        public Builder disableMethodScopingAnnotatedBy(Class<? extends Annotation> annotation) {
+            Objects.requireNonNull(annotation);
+            if (disableMethodScopingAnnotations == null) {
+                disableMethodScopingAnnotations = EconomicSet.create(Equivalence.IDENTITY);
+            }
+            disableMethodScopingAnnotations.add(annotation);
+            return this;
+        }
+
+        /**
+         * Function parameters of the specified executable escape the executable's scope.
+         *
+         * @since 21.3
+         */
+        public Builder disableMethodScoping(Executable e) {
+            Objects.requireNonNull(e);
+            if (disableMethodScoping == null) {
+                disableMethodScoping = EconomicSet.create(Equivalence.IDENTITY);
+            }
+            disableMethodScoping.add(e);
+            return this;
+        }
+
+        /**
          * Creates an instance of the custom host access configuration.
          *
          * @since 19.0
@@ -1010,7 +1126,7 @@ public final class HostAccess {
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
                             allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess,
-                            allowIteratorAccess, allowMapAccess);
+                            allowIteratorAccess, allowMapAccess, methodScopingDefault, disableMethodScopingAnnotations, disableMethodScoping);
         }
     }
 

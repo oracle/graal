@@ -64,7 +64,7 @@ public class GuestToHostService extends AbstractHostService {
     }
 
     @Override
-    public Object toGuestValue(Object context, Object hostValue) {
+    public Object toGuestValue(Object context, Object hostValue, boolean asValue) {
 
         return hostValue;
     }
@@ -174,6 +174,11 @@ public class GuestToHostService extends AbstractHostService {
     @Override
     public int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
         return -1;
+    }
+
+    @Override
+    public void pin(Object receiver) {
+        throw new UnsupportedOperationException();
     }
 
 }

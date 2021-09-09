@@ -416,6 +416,8 @@ public abstract class Node implements NodeInterface, Cloneable {
             boolean consumed = false;
             if (node instanceof ReplaceObserver) {
                 consumed = ((ReplaceObserver) node).nodeReplaced(oldNode, newNode, reason);
+            } else if (node instanceof BytecodeOSRNode) {
+                NodeAccessor.RUNTIME.onOSRNodeReplaced((BytecodeOSRNode) node, oldNode, newNode, reason);
             } else if (node instanceof RootNode) {
                 CallTarget target = ((RootNode) node).getCallTarget();
                 if (target instanceof ReplaceObserver) {

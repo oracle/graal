@@ -38,7 +38,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
-import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode.OSRRootNode;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -337,8 +336,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.rootNode = rootNode;
         this.engine = GraalTVMCI.getEngineData(rootNode);
         this.resetCompilationProfile();
-        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
-        this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
+        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
+        // node(s).
+        this.uninitializedNodeCount = !(rootNode instanceof BaseOSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
         GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
@@ -527,6 +527,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return true;
     }
 
+    // This call method is hidden from stack traces.
     public final Object callOSR(Object... args) {
         return doInvoke(args);
     }
@@ -590,10 +591,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return !compilationFailed //
                         && !isSubmittedForCompilation() //
                         /*
-                         * Compilation of OSR loop call target is scheduled in
-                         * OptimizedOSRLoopNode#compileImpl.
+                         * Compilation of OSR loop nodes is managed separately.
                          */
-                        && !(getRootNode() instanceof OSRRootNode) //
+                        && !(getRootNode() instanceof BaseOSRRootNode) //
                         && intCallCount >= engine.callThresholdInInterpreter //
                         && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
     }

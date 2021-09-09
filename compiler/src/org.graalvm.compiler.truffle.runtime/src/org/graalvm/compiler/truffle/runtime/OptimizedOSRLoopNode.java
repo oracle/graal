@@ -83,12 +83,12 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     /**
      * @param rootFrameDescriptor may be {@code null}.
      */
-    protected OSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
+    protected LoopOSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
         /*
          * Use a new frame descriptor, because the frame that this new root node creates is not
          * used.
          */
-        return new OSRRootNode(this, new FrameDescriptor(), clazz);
+        return new LoopOSRRootNode(this, new FrameDescriptor(), clazz);
     }
 
     @Override
@@ -252,7 +252,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         });
     }
 
-    private OSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
+    private LoopOSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
         return createRootNode(root == null ? null : root.getFrameDescriptor(), frameClass);
     }
 
@@ -406,7 +406,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
 
-        private VirtualizingOSRRootNode previousRoot;
+        private VirtualizingLoopOSRRootNode previousRoot;
 
         private OptimizedVirtualizingOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, boolean firstTierBackedgeCounts, FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
             super(repeatableNode, osrThreshold, firstTierBackedgeCounts);
@@ -415,17 +415,17 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         }
 
         @Override
-        protected OSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
+        protected LoopOSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
             if (readFrameSlots == null || writtenFrameSlots == null) {
                 return super.createRootNode(rootFrameDescriptor, clazz);
             } else {
                 FrameDescriptor frameDescriptor = rootFrameDescriptor == null ? new FrameDescriptor() : rootFrameDescriptor;
                 if (previousRoot == null) {
-                    previousRoot = new VirtualizingOSRRootNode(this, frameDescriptor, clazz, readFrameSlots, writtenFrameSlots);
+                    previousRoot = new VirtualizingLoopOSRRootNode(this, frameDescriptor, clazz, readFrameSlots, writtenFrameSlots);
                 } else {
                     // we want to reuse speculations from a previous compilation so no rewrite loops
                     // occur.
-                    previousRoot = new VirtualizingOSRRootNode(previousRoot, this, frameDescriptor, clazz);
+                    previousRoot = new VirtualizingLoopOSRRootNode(previousRoot, this, frameDescriptor, clazz);
                 }
                 return previousRoot;
             }
@@ -433,14 +433,17 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
     }
 
-    public static class OSRRootNode extends RootNode {
+    public static class LoopOSRRootNode extends BaseOSRRootNode {
 
         protected final Class<? extends VirtualFrame> clazz;
 
-        /** Not adopted by the OSRRootNode; belongs to another RootNode. */
+        /**
+         * Not adopted by the OSRRootNode; belongs to another RootNode. OptimizedCallTarget treats
+         * OSRRootNodes specially, skipping adoption of child nodes.
+         */
         @Child protected OptimizedOSRLoopNode loopNode;
 
-        OSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
+        LoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
             super(null, frameDescriptor);
             this.loopNode = loop;
             this.clazz = clazz;
@@ -451,11 +454,8 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             return loopNode.getSourceSection();
         }
 
-        public static Object callProxy(OSRRootNode target, VirtualFrame frame) {
-            return target.executeImpl(frame);
-        }
-
-        protected Object executeImpl(VirtualFrame frame) {
+        @Override
+        protected Object executeOSR(VirtualFrame frame) {
             VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
             Object status;
             while (loopNode.repeatingNode.shouldContinue(status = loopNode.getRepeatingNode().executeRepeatingWithValue(parentFrame))) {
@@ -465,11 +465,6 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
                 TruffleSafepoint.poll(this);
             }
             return status;
-        }
-
-        @Override
-        public final Object execute(VirtualFrame frame) {
-            return callProxy(this, frame);
         }
 
         @Override
@@ -483,7 +478,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         }
     }
 
-    private static final class VirtualizingOSRRootNode extends OSRRootNode {
+    private static final class VirtualizingLoopOSRRootNode extends LoopOSRRootNode {
 
         @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
@@ -492,7 +487,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         @CompilationFinal(dimensions = 1) private final byte[] writtenFrameSlotsTags;
         private final int maxTagsLength;
 
-        VirtualizingOSRRootNode(VirtualizingOSRRootNode previousRoot, OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
+        VirtualizingLoopOSRRootNode(VirtualizingLoopOSRRootNode previousRoot, OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
                         Class<? extends VirtualFrame> clazz) {
             super(loop, frameDescriptor, clazz);
             this.readFrameSlots = previousRoot.readFrameSlots;
@@ -502,7 +497,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             this.maxTagsLength = previousRoot.maxTagsLength;
         }
 
-        VirtualizingOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
+        VirtualizingLoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
                         Class<? extends VirtualFrame> clazz,
                         FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
             super(loop, frameDescriptor, clazz);
@@ -534,7 +529,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         }
 
         @Override
-        protected Object executeImpl(VirtualFrame originalFrame) {
+        protected Object executeOSR(VirtualFrame originalFrame) {
             FrameWithoutBoxing loopFrame = (FrameWithoutBoxing) (originalFrame);
             FrameWithoutBoxing parentFrame = (FrameWithoutBoxing) (loopFrame.getArguments()[0]);
             executeTransfer(parentFrame, loopFrame, readFrameSlots, readFrameSlotsTags);

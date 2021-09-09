@@ -103,22 +103,22 @@ final class HostAccessor extends Accessor {
 
         @Override
         public boolean isDisconnectedHostProxy(Object value) {
-            return HostProxy.isProxyGuestObject(value);
+            return HostProxy.isProxyGuestObject(null, value);
         }
 
         @Override
         public boolean isDisconnectedHostObject(Object obj) {
-            return HostObject.isInstance(obj);
+            return HostObject.isInstance(null, obj);
         }
 
         @Override
         public Object unboxDisconnectedHostObject(Object hostValue) {
-            return HostObject.valueOf(hostValue);
+            return HostObject.valueOf(null, hostValue);
         }
 
         @Override
         public Object unboxDisconnectedHostProxy(Object hostValue) {
-            return HostProxy.toProxyHostObject(hostValue);
+            return HostProxy.toProxyHostObject(null, hostValue);
         }
 
         @Override

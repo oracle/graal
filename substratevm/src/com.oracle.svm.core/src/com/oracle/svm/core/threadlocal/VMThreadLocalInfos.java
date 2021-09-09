@@ -114,7 +114,7 @@ public class VMThreadLocalInfos {
         }
     }
 
-    public static long getOffset(FastThreadLocal threadLocal) {
+    public static int getOffset(FastThreadLocal threadLocal) {
         VMThreadLocalInfos singleton = ImageSingletons.lookup(VMThreadLocalInfos.class);
         for (VMThreadLocalInfo info : singleton.infos) {
             if (threadLocal.getLocationIdentity().equals(info.locationIdentity)) {

@@ -141,7 +141,7 @@ public abstract class NativeImage extends AbstractImage {
 
         uniqueEntryPoints.addAll(entryPoints);
 
-        int pageSize = NativeImageOptions.getPageSize();
+        int pageSize = SubstrateOptions.getPageSize();
         objectFile = ObjectFile.getNativeObjectFile(pageSize);
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
         wordSize = FrameAccess.wordSize();

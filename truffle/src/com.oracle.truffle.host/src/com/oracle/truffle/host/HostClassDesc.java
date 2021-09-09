@@ -173,7 +173,8 @@ final class HostClassDesc {
                     if (!hostAccess.allowsAccess(c)) {
                         continue;
                     }
-                    SingleMethod overload = SingleMethod.unreflect(c);
+                    boolean scoped = hostAccess.methodScoped(c);
+                    SingleMethod overload = SingleMethod.unreflect(c, scoped);
                     ctor = ctor == null ? overload : merge(ctor, overload);
                 }
             }
@@ -284,7 +285,8 @@ final class HostClassDesc {
             if (!hostAccess.allowsAccess(m)) {
                 return;
             }
-            SingleMethod method = SingleMethod.unreflect(m);
+            boolean scoped = hostAccess.methodScoped(m);
+            SingleMethod method = SingleMethod.unreflect(m, scoped);
             Map<String, HostMethodDesc> map = Modifier.isStatic(m.getModifiers()) ? staticMethodMap : methodMap;
             map.merge(m.getName(), method, MERGE);
         }

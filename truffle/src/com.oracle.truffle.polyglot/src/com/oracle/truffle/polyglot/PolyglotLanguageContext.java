@@ -787,8 +787,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return getAPIAccess().newValue(cache, this, guestValue);
     }
 
-    public Object toGuestValue(Object receiver) {
-        return context.toGuestValue(receiver);
+    public Object toGuestValue(Node node, Object receiver) {
+        return context.toGuestValue(node, receiver, false);
     }
 
     static final class ToHostValueNode {
@@ -980,18 +980,18 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         @Specialization(guards = "receiver == null")
         Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
-            return context.toGuestValue(receiver);
+            return context.toGuestValue(this, receiver);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
         Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
-            return context.toGuestValue(cachedReceiver.cast(receiver));
+            return context.toGuestValue(this, cachedReceiver.cast(receiver));
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         Object doUncached(PolyglotLanguageContext context, Object receiver) {
-            return context.toGuestValue(receiver);
+            return context.toGuestValue(this, receiver);
         }
     }
 
@@ -1010,9 +1010,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 nodes = new ToGuestValueNode[args.length];
                 for (int i = 0; i < nodes.length; i++) {
-                    nodes[i] = PolyglotLanguageContextFactory.ToGuestValueNodeGen.create();
+                    nodes[i] = insert(PolyglotLanguageContextFactory.ToGuestValueNodeGen.create());
                 }
-                toGuestValue = insert(nodes);
+                toGuestValue = nodes;
             }
             if (args.length == nodes.length) {
                 // fast path
@@ -1027,9 +1027,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     nodes = Arrays.copyOf(nodes, 1);
                     if (nodes[0] == null) {
-                        nodes[0] = PolyglotLanguageContextFactory.ToGuestValueNodeGen.create();
+                        nodes[0] = insert(PolyglotLanguageContextFactory.ToGuestValueNodeGen.create());
                     }
-                    this.toGuestValue = insert(nodes);
+                    this.toGuestValue = nodes;
                     this.generic = true;
                 }
                 if (args.length == 0) {

@@ -26,7 +26,6 @@ package com.oracle.svm.core.thread;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -46,6 +45,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -62,6 +62,7 @@ import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -371,7 +372,7 @@ public final class Safepoint {
         return safepointRequested.getLocationIdentity();
     }
 
-    public static long getThreadLocalSafepointRequestedOffset() {
+    public static int getThreadLocalSafepointRequestedOffset() {
         return VMThreadLocalInfos.getOffset(safepointRequested);
     }
 
@@ -379,6 +380,12 @@ public final class Safepoint {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathSafepointCheck() throws Throwable {
+        slowPathSafepointCheck();
+    }
+
+    @AlwaysInline("Always inline into foreign call stub")
+    @Uninterruptible(reason = "Must not contain safepoint checks")
+    public static void slowPathSafepointCheck() throws Throwable {
         if (StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread())) {
             /* The thread is detaching so it won't ever need to execute a safepoint again. */
             Safepoint.setSafepointRequested(THREAD_REQUEST_RESET);
