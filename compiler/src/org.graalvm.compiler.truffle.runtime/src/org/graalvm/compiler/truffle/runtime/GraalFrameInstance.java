@@ -26,8 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode.OSRRootNode;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
@@ -37,20 +35,18 @@ import com.oracle.truffle.api.nodes.Node;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
 
-public final class GraalFrameInstance implements FrameInstance {
+public class GraalFrameInstance implements FrameInstance {
+    static final int CALL_TARGET_INDEX = 0;
+    static final int FRAME_INDEX = 1;
+    static final int OPTIMIZATION_TIER_FRAME_INDEX = 2;
 
-    private static final int CALL_TARGET_INDEX = 0;
-    private static final int CALL_TARGET_FRAME_INDEX = 1;
-    private static final int OPTIMIZATION_TIER_FRAME_INDEX = 2;
+    static final int CALL_NODE_NOTIFY_INDEX = 1;
 
-    private static final int CALL_NODE_NOTIFY_INDEX = 1;
-
-    public static final Method CALL_TARGET_METHOD;
-    public static final Method CALL_DIRECT;
-    public static final Method CALL_INLINED;
-    public static final Method CALL_INLINED_CALL;
-    public static final Method CALL_INDIRECT;
-    public static final Method CALL_OSR_METHOD;
+    static final Method CALL_TARGET_METHOD;
+    static final Method CALL_DIRECT;
+    static final Method CALL_INLINED;
+    static final Method CALL_INLINED_CALL;
+    static final Method CALL_INDIRECT;
 
     static {
         try {
@@ -58,9 +54,7 @@ public final class GraalFrameInstance implements FrameInstance {
             CALL_INLINED = OptimizedCallTarget.class.getDeclaredMethod("callInlined", Node.class, Object[].class);
             CALL_INLINED_CALL = GraalRuntimeSupport.class.getDeclaredMethod(GraalRuntimeSupport.CALL_INLINED_METHOD_NAME, Node.class, CallTarget.class, Object[].class);
             CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
-
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class, CompilationState.class);
-            CALL_OSR_METHOD = OptimizedOSRLoopNode.OSRRootNode.class.getDeclaredMethod("callProxy", OSRRootNode.class, VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
             throw new InternalError(e);
         }
@@ -69,25 +63,23 @@ public final class GraalFrameInstance implements FrameInstance {
     private final InspectedFrame callTargetFrame;
     private final InspectedFrame callNodeFrame;
 
-    public GraalFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
+    GraalFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
         this.callTargetFrame = callTargetFrame;
         this.callNodeFrame = callNodeFrame;
     }
 
-    @Override
     @TruffleBoundary
-    public Frame getFrame(FrameAccess access) {
+    protected Frame getFrameFrom(InspectedFrame inspectedFrame, FrameAccess access) {
         if (access == FrameAccess.READ_WRITE || access == FrameAccess.MATERIALIZE) {
-            if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
+            if (inspectedFrame.isVirtual(FRAME_INDEX)) {
                 final OptimizedCallTarget callTarget = (OptimizedCallTarget) getCallTarget();
                 if (callTarget.engine.traceDeoptimizeFrame) {
                     GraalTruffleRuntime.StackTraceHelper.logHostAndGuestStacktrace("FrameInstance#getFrame(MATERIALIZE)", callTarget);
                 }
-
-                callTargetFrame.materializeVirtualObjects(false);
+                inspectedFrame.materializeVirtualObjects(false);
             }
         }
-        Frame frame = (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
+        Frame frame = (Frame) inspectedFrame.getLocal(FRAME_INDEX);
         if (access == FrameAccess.MATERIALIZE) {
             frame = frame.materialize();
         }
@@ -95,8 +87,13 @@ public final class GraalFrameInstance implements FrameInstance {
     }
 
     @Override
+    public Frame getFrame(FrameAccess access) {
+        return getFrameFrom(callTargetFrame, access);
+    }
+
+    @Override
     public boolean isVirtualFrame() {
-        return callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX);
+        return callTargetFrame.isVirtual(FRAME_INDEX);
     }
 
     @Override
@@ -115,7 +112,7 @@ public final class GraalFrameInstance implements FrameInstance {
     }
 
     @Override
-    public Node getCallNode() {
+    public final Node getCallNode() {
         if (callNodeFrame != null) {
             Object receiver = callNodeFrame.getLocal(CALL_NODE_NOTIFY_INDEX);
             if (receiver instanceof Node) {

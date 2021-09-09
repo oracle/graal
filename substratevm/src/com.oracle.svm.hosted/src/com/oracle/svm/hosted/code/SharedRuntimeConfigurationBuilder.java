@@ -102,6 +102,12 @@ public abstract class SharedRuntimeConfigurationBuilder {
     }
 
     public SharedRuntimeConfigurationBuilder build() {
+        EnumMap<ConfigKind, RegisterConfig> registerConfigs = new EnumMap<>(ConfigKind.class);
+        for (ConfigKind config : ConfigKind.values()) {
+            registerConfigs.put(config, ImageSingletons.lookup(SubstrateRegisterConfigFactory.class).newRegisterFactory(config, metaAccess, ConfigurationValues.getTarget(),
+                            SubstrateOptions.PreserveFramePointer.getValue()));
+        }
+
         wordTypes = new SubstrateWordTypes(metaAccess, FrameAccess.getWordKind());
         Providers p = createProviders(null, null, null, null, null, null, null, null, null, null, null);
         StampProvider stampProvider = createStampProvider(p);
@@ -110,7 +116,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         p = createProviders(null, constantReflection, null, null, null, null, stampProvider, null, null, null, null);
         ConstantFieldProvider constantFieldProvider = createConstantFieldProvider(p);
         SnippetReflectionProvider snippetReflection = createSnippetReflectionProvider();
-        ForeignCallsProvider foreignCalls = createForeignCallsProvider();
+        ForeignCallsProvider foreignCalls = createForeignCallsProvider(registerConfigs.get(ConfigKind.NORMAL));
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null, null);
         BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(metaAccess);
         PlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
@@ -126,9 +132,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
-            RegisterConfig registerConfig = ImageSingletons.lookup(SubstrateRegisterConfigFactory.class).newRegisterFactory(config, metaAccess, ConfigurationValues.getTarget(),
-                            SubstrateOptions.PreserveFramePointer.getValue());
-            CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfig);
+            CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfigs.get(config));
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,
                             snippetReflection, platformConfig, metaAccessExtensionProvider, loopsDataProvider);
@@ -166,8 +170,8 @@ public abstract class SharedRuntimeConfigurationBuilder {
         return new SubstrateSnippetReflectionProvider(getWordTypes());
     }
 
-    protected ForeignCallsProvider createForeignCallsProvider() {
-        return new SubstrateForeignCallsProvider();
+    protected ForeignCallsProvider createForeignCallsProvider(RegisterConfig registerConfig) {
+        return new SubstrateForeignCallsProvider(metaAccess, registerConfig);
     }
 
     protected LoweringProvider createLoweringProvider(Providers p) {

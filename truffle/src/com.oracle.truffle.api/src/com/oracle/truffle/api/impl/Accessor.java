@@ -102,9 +102,11 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -978,6 +980,39 @@ public abstract class Accessor {
          * @param iterations the number iterations to report to the runtime system
          */
         public abstract void onLoopCount(Node source, int iterations);
+
+        /**
+         * Reports a back edge to the target location. This information can be used to trigger
+         * on-stack replacement (OSR) for a {@link BytecodeOSRNode}.
+         *
+         * @param osrNode the node which can be on-stack replaced
+         * @return result if OSR was performed, or {@code null}.
+         */
+        public abstract boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode);
+
+        public abstract Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame);
+
+        /**
+         * Reports that a child node of an {@link BytecodeOSRNode} was replaced. Allows the runtime
+         * system to invalidate any OSR targets it has created.
+         *
+         * @param osrNode the node whose child was replaced
+         * @param oldNode the replaced node
+         * @param newNode the replacement node
+         * @param reason the replacement reason
+         */
+        public abstract void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason);
+
+        /**
+         * Transfers state from the {@code source} frame into the {@code target} frame. This method
+         * should only be used inside OSR code. The frames must have the same layout as the frame
+         * passed when executing the {@code osrNode}.
+         *
+         * @param osrNode the node being on-stack replaced.
+         * @param source the frame to transfer state from
+         * @param target the frame to transfer state into
+         */
+        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target);
 
         /**
          * Returns the compiler options specified available from the runtime.

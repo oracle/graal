@@ -112,6 +112,11 @@ final class InsightException extends AbstractTruffleException {
     }
 
     @TruffleBoundary
+    static InsightException alreadyClosed() {
+        throw new InsightException("The script has already been closed", null, -1);
+    }
+
+    @TruffleBoundary
     static void throwWhenExecuted(Instrumenter instrumenter, Source source, Exception ex) {
         TruffleStackTrace.getStackTrace(ex);
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(source).build();

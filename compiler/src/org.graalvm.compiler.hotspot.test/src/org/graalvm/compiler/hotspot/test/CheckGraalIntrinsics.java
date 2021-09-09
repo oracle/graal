@@ -55,6 +55,7 @@ import org.junit.Test;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMField;
@@ -349,7 +350,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK11OrHigher()) {
-            if (!(arch instanceof AArch64)) {
+            if (arch instanceof AMD64) {
                 add(toBeInvestigated,
                                 "java/lang/Math.abs(I)I",
                                 "java/lang/Math.abs(J)J",
@@ -357,10 +358,11 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "java/lang/Math.max(FF)F",
                                 "java/lang/Math.min(DD)D",
                                 "java/lang/Math.min(FF)F");
-                // The AMD64 implementations are less efficient and deactivated.
-                add(ignore,
-                                "java/lang/Math.copySign(DD)D",
-                                "java/lang/Math.copySign(FF)F");
+                if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX512VL)) {
+                    add(ignore,
+                                    "java/lang/Math.copySign(DD)D",
+                                    "java/lang/Math.copySign(FF)F");
+                }
             }
             add(toBeInvestigated,
                             "java/lang/CharacterDataLatin1.isDigit(I)Z",

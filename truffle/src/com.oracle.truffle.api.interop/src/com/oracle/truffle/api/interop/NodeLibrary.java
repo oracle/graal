@@ -104,6 +104,10 @@ public abstract class NodeLibrary extends Library {
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
      * also {@link #hasScope(Object, Frame)} must be implemented.
+     * <p>
+     * A returned scope is only valid while the regular guest language execution on this thread is
+     * suspended. If the guest execution is continued e.g. if a new instrumentation event occurs,
+     * the scope is invalid and should be discarded.
      *
      * @param node a Node, never <code>null</code>
      * @param frame a {@link Frame}, can be <code>null</code> in case of lexical access.
