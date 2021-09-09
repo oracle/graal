@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 
@@ -87,18 +88,20 @@ public final class ExtensionFieldsMetadata {
     }
 
     public Field getStaticFieldAtSlot(int slot) throws IndexOutOfBoundsException {
-        try {
-            return binarySearch(addedStaticFields, slot);
-        } catch (NoSuchFieldException e) {
-            throw new IndexOutOfBoundsException("Index out of range: " + slot);
+        Field field = binarySearch(addedStaticFields, slot);
+        if (field != null) {
+            return field;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new IndexOutOfBoundsException("index out of range: " + slot);
         }
     }
 
-    public Field getInstanceFieldAtSlot(int slot) throws NoSuchFieldException {
+    public Field getInstanceFieldAtSlot(int slot) {
         return binarySearch(addedInstanceFields, slot);
     }
 
-    private static Field binarySearch(Field[] arr, int slot) throws NoSuchFieldException {
+    private static Field binarySearch(Field[] arr, int slot) {
         int firstIndex = 0;
         int lastIndex = arr.length - 1;
 
@@ -113,6 +116,6 @@ public final class ExtensionFieldsMetadata {
                 lastIndex = middleIndex - 1;
             }
         }
-        throw new NoSuchFieldException("Index out of range: " + slot);
+        return null;
     }
 }

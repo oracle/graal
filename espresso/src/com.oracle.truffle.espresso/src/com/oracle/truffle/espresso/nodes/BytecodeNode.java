@@ -2271,6 +2271,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             // we're OK with a slow path here with full re-resolution on each hit,
             // because we're executing obsolete, but still active code.
             // try if there's a fully compatible new field
+            CompilerDirectives.transferToInterpreter();
             try {
                 field = getConstantPool().resolvedFieldAtNoCache(getMethod().getDeclaringKlass(), cpi);
             } catch (EspressoException e) {

@@ -129,6 +129,7 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public Field resolvedFieldAtNoCache(Klass accessingKlass, int index) {
+        CompilerAsserts.neverPartOfCompilation();
         Resolvable.ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index, "field");
         return ((Field) resolved.value());
     }

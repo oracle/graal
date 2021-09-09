@@ -862,12 +862,11 @@ public final class ObjectKlass extends Klass {
         } else { // negative values used for extension fields
             ObjectKlass objectKlass = this;
             while (objectKlass != null) {
-                try {
-                    if (objectKlass.extensionFieldsMetadata != null) {
-                        return objectKlass.extensionFieldsMetadata.getInstanceFieldAtSlot(slot);
+                if (objectKlass.extensionFieldsMetadata != null) {
+                    Field field = objectKlass.extensionFieldsMetadata.getInstanceFieldAtSlot(slot);
+                    if (field != null) {
+                        return field;
                     }
-                } catch (NoSuchFieldException e) {
-                    // continue search in super
                 }
                 objectKlass = objectKlass.getSuperKlass();
             }
@@ -1451,6 +1450,7 @@ public final class ObjectKlass extends Klass {
             synchronized (extensionField) {
                 object = extensionField.getHiddenObject(getStatics());
                 if (object == StaticObject.NULL) {
+                    CompilerDirectives.transferToInterpreter();
                     object = new ExtensionFieldObject();
                     extensionField.setHiddenObject(getStatics(), object);
                 }
