@@ -358,6 +358,30 @@ public final class SubprocessUtil {
             }
         }
         command.addAll(mainClassAndArgs);
+        try {
+            return process(command, env, workingDir, timeout);
+        } finally {
+            if (packageOpeningOptionsArgumentsFile != null) {
+                if (!Boolean.getBoolean(KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
+                    Files.delete(packageOpeningOptionsArgumentsFile);
+                }
+            }
+        }
+    }
+
+    /**
+     * Executes a command in a subprocess.
+     *
+     * @param command the command to be executed in a separate process.
+     * @param env environment variables of the subprocess. If null, no environment variables are
+     *            passed.
+     * @param workingDir the working directory of the subprocess. If null, the working directory of
+     *            the current process is used.
+     * @param timeout the duration to wait for the process to finish. When the timeout is reached,
+     *            the subprocess is terminated forcefully. If the timeout is null, the calling
+     *            thread waits for the process indefinitely.
+     */
+    public static Subprocess process(List<String> command, Map<String, String> env, File workingDir, Duration timeout) throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         if (workingDir != null) {
             processBuilder.directory(workingDir);
@@ -367,40 +391,32 @@ public final class SubprocessUtil {
             processBuilderEnv.putAll(env);
         }
         processBuilder.redirectErrorStream(true);
-        try {
-            Process process = processBuilder.start();
-            BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            List<String> output = new ArrayList<>();
-            if (timeout == null) {
-                String line;
-                while ((line = stdout.readLine()) != null) {
-                    output.add(line);
-                }
-                return new Subprocess(command, env, process.waitFor(), output, false);
-            } else {
-                // The subprocess might produce output forever. We need to grab the output in a
-                // separate thread, so we can terminate the process after the timeout if necessary.
-                Thread outputReader = new Thread(() -> {
-                    try {
-                        String line;
-                        while ((line = stdout.readLine()) != null) {
-                            output.add(line);
-                        }
-                    } catch (IOException e) {
-                        // happens when the process ends
+        Process process = processBuilder.start();
+        BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        List<String> output = new ArrayList<>();
+        if (timeout == null) {
+            String line;
+            while ((line = stdout.readLine()) != null) {
+                output.add(line);
+            }
+            return new Subprocess(command, env, process.waitFor(), output, false);
+        } else {
+            // The subprocess might produce output forever. We need to grab the output in a
+            // separate thread, so we can terminate the process after the timeout if necessary.
+            Thread outputReader = new Thread(() -> {
+                try {
+                    String line;
+                    while ((line = stdout.readLine()) != null) {
+                        output.add(line);
                     }
-                });
-                outputReader.start();
-                boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
-                int exitCode = process.destroyForcibly().waitFor();
-                return new Subprocess(command, env, exitCode, output, !finishedOnTime);
-            }
-        } finally {
-            if (packageOpeningOptionsArgumentsFile != null) {
-                if (!Boolean.getBoolean(KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
-                    Files.delete(packageOpeningOptionsArgumentsFile);
+                } catch (IOException e) {
+                    // happens when the process ends
                 }
-            }
+            });
+            outputReader.start();
+            boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
+            int exitCode = process.destroyForcibly().waitFor();
+            return new Subprocess(command, env, exitCode, output, !finishedOnTime);
         }
     }
 
