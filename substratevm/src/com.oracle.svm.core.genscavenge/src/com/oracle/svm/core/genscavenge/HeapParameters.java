@@ -34,10 +34,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
@@ -130,6 +132,14 @@ public final class HeapParameters {
     /*
      * Memory configuration
      */
+
+    public static void setMaximumHeapSize(UnsignedWord value) {
+        RuntimeOptionValues.singleton().update(SubstrateGCOptions.MaxHeapSize, value.rawValue());
+    }
+
+    public static void setMinimumHeapSize(UnsignedWord value) {
+        RuntimeOptionValues.singleton().update(SubstrateGCOptions.MinHeapSize, value.rawValue());
+    }
 
     static int getMaximumYoungGenerationSizePercent() {
         int result = Options.MaximumYoungGenerationSizePercent.getValue();
