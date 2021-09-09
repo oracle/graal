@@ -381,11 +381,13 @@ public class StaticObject implements TruffleObject, Cloneable {
         }
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
         for (Field f : ((ObjectKlass) getKlass()).getFieldTable()) {
-            // Also prints hidden fields
+            // Also prints hidden fields except for the extension field
             if (!f.isHidden()) {
                 str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
             } else {
-                str.append("\n    ").append(f.getName()).append(": ").append((f.getHiddenObject(this)).toString());
+                if (f != getKlass().getMeta().HIDDEN_OBJECT_EXTENSION_FIELD) {
+                    str.append("\n    ").append(f.getName()).append(": ").append((f.getHiddenObject(this)).toString());
+                }
             }
         }
         return str.toString();
