@@ -1999,6 +1999,7 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
     mx.logv("Composing classpath for " + str(dependencies) + ". Entries:\n" + '\n'.join(('- {}:{}'.format(d.suite, d.name) for d in mx.classpath_entries(dependencies))))
     cp_entries = mx.classpath_entries(dependencies)
 
+    # Compute the set-difference of the transitive dependencies of `dependencies` and the transitive dependencies of `exclude_names`
     if exclude_names:
         for exclude_entry in mx.classpath_entries(names=exclude_names):
             if exclude_entry in cp_entries:
