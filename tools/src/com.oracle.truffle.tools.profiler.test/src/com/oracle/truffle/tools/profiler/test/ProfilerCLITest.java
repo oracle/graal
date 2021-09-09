@@ -427,7 +427,5 @@ public class ProfilerCLITest {
         options.put("cpusampler.Output", "flamegraph");
         String[] output = runSampler(options);
         Assert.assertTrue(output[0].startsWith("<?xml"));
-        Assert.assertTrue(output[1].startsWith("<!DOCTYPE"));
-        Assert.assertTrue(output[2].startsWith("<svg"));
     }
 }
