@@ -752,6 +752,13 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         assertFalse(record.isPresent());
     }
 
+    @Test
+    public void testInvalidScheme() {
+        assertFails(() -> languageEnv.getPublicTruffleFile(URI.create("http://127.0.0.1/foo.js")), UnsupportedOperationException.class);
+        assertFails(() -> languageEnv.getInternalTruffleFile(URI.create("http://127.0.0.1/foo.js")), UnsupportedOperationException.class);
+        assertFails(() -> languageEnv.getTruffleFileInternal(URI.create("http://127.0.0.1/foo.js"), (f) -> false), UnsupportedOperationException.class);
+    }
+
     private static void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
