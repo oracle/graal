@@ -24,8 +24,6 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -81,11 +79,11 @@ public final class ExtensionFieldsMetadata {
         return toAdd;
     }
 
-    public Collection<Field> getDeclaredAddedFields() {
-        List<Field> result = new ArrayList<>();
-        result.addAll(Arrays.asList(addedInstanceFields));
-        result.addAll(Arrays.asList(addedStaticFields));
-        return Collections.unmodifiableList(result);
+    public Field[] getDeclaredAddedFields() {
+        Field[] result = new Field[addedInstanceFields.length + addedStaticFields.length];
+        System.arraycopy(addedStaticFields, 0, result, 0, addedStaticFields.length);
+        System.arraycopy(addedInstanceFields, 0, result, addedStaticFields.length, addedInstanceFields.length);
+        return result;
     }
 
     public Field getStaticFieldAtSlot(int slot) throws IndexOutOfBoundsException {

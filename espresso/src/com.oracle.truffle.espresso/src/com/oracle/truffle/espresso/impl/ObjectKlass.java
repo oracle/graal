@@ -717,37 +717,24 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Field[] getDeclaredFields() {
-        if (noAddedFields.isValid()) {
-            // Speculate that there are no hidden fields
-            Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex);
-            int insertionIndex = staticFieldTable.length;
-            for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
-                Field f = fieldTable[i];
-                if (!f.isHidden() && !f.isRemoved()) {
-                    declaredFields[insertionIndex++] = f;
-                }
+        // Speculate that there are no hidden fields
+        Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex);
+        int insertionIndex = staticFieldTable.length;
+        for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
+            Field f = fieldTable[i];
+            if (!f.isHidden() && !f.isRemoved()) {
+                declaredFields[insertionIndex++] = f;
             }
-            return insertionIndex == declaredFields.length ? declaredFields : Arrays.copyOf(declaredFields, insertionIndex);
-        } else {
-            ArrayList<Field> fields = new ArrayList<>();
-
-            // static fields
-            for (Field f : getStaticFieldTable()) {
-                if (!f.isHidden() && !f.isRemoved()) {
-                    fields.add(f);
-                }
-            }
-            // instance fields
-            for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
-                Field f = fieldTable[i];
-                if (!f.isHidden() && !f.isRemoved()) {
-                    fields.add(f);
-                }
-            }
-            // extension fields
-            fields.addAll(extensionFieldsMetadata.getDeclaredAddedFields());
-            return fields.toArray(new Field[fields.size()]);
         }
+        declaredFields = insertionIndex == declaredFields.length ? declaredFields : Arrays.copyOf(declaredFields, insertionIndex);
+        if (!noAddedFields.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // add from extension fields too
+            Field[] extensionFields = extensionFieldsMetadata.getDeclaredAddedFields();
+            declaredFields = Arrays.copyOf(declaredFields, insertionIndex + extensionFields.length);
+            System.arraycopy(extensionFields, 0, declaredFields, insertionIndex, extensionFields.length);
+        }
+        return declaredFields;
     }
 
     public EnclosingMethodAttribute getEnclosingMethod() {
