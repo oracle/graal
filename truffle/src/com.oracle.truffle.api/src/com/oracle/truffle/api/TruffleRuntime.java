@@ -43,6 +43,7 @@ package com.oracle.truffle.api;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -167,6 +168,14 @@ public interface TruffleRuntime {
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
      * frame iteration should stop.
      *
+     * <p>
+     * Note that this method can cause deoptimization if
+     * {@link FrameInstance#getFrame(FrameInstance.FrameAccess)} is called with
+     * {@link FrameAccess#READ_WRITE} or {@link FrameAccess#MATERIALIZE} on the fast path.
+     * Instructions and flags for debugging such deoptimizations can be found in <a href=
+     * "https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md#debugging-deoptimizations">/truffle/docs/Optimizing.md#debugging-deoptimizations</a>
+     *
+     * <p>
      * To get possible asynchronous stack frames, use
      * {@link TruffleStackTrace#getAsynchronousStackTrace(CallTarget, Frame)} and provide call
      * target and frame from the last {@link FrameInstance}.
