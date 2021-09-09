@@ -471,6 +471,8 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
     dacapo_gate_iterations.update({'fop': 8})
+    mx.warn("Disabling gate for dacapo:tradesoap (GR-33605)")
+    dacapo_gate_iterations.update({'tradesoap': -1})
     for name, iterations in sorted(dacapo_gate_iterations.items()):
         if name == "batik" and not _is_batik_supported(jdk):
             continue
