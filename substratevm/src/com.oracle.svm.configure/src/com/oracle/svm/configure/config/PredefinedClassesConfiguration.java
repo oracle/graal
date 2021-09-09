@@ -32,25 +32,28 @@ import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 
 public class PredefinedClassesConfiguration implements ConfigurationBase {
     private final Path[] classDestinationDirs;
-    private final ConcurrentHashMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
-    private final Predicate<String> shouldExcludeClassWithHash;
+    private final ConcurrentHashMap<ConditionalElement<String>, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
+    private final Predicate<ConditionalElement<String>> shouldExcludeClassWithHash;
 
-    public PredefinedClassesConfiguration(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassWithHash) {
+    public PredefinedClassesConfiguration(Path[] classDestinationDirs, Predicate<ConditionalElement<String>> shouldExcludeClassWithHash) {
         this.classDestinationDirs = classDestinationDirs;
         this.shouldExcludeClassWithHash = shouldExcludeClassWithHash;
     }
 
-    public void add(String nameInfo, byte[] classData) {
+    public void add(ConfigurationCondition condition, String nameInfo, byte[] classData) {
         ensureDestinationDirsExist();
         String hash = PredefinedClassesSupport.hash(classData, 0, classData.length);
-        if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(hash)) {
+        if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(new ConditionalElement<>(condition, hash))) {
             return;
         }
         if (classDestinationDirs != null) {
@@ -62,12 +65,12 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
                 }
             }
         }
-        ConfigurationPredefinedClass clazz = new ConfigurationPredefinedClass(nameInfo, hash);
-        classes.put(hash, clazz);
+        ConfigurationPredefinedClass clazz = new ConfigurationPredefinedClass(condition, nameInfo, hash);
+        classes.put(new ConditionalElement<>(condition, hash), clazz);
     }
 
-    public void add(String nameInfo, String hash, Path directory) {
-        if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(hash)) {
+    public void add(ConfigurationCondition condition, String nameInfo, String hash, Path directory) {
+        if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(new ConditionalElement<>(condition, hash))) {
             return;
         }
         if (classDestinationDirs != null) {
@@ -89,8 +92,8 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
                 }
             }
         }
-        ConfigurationPredefinedClass clazz = new ConfigurationPredefinedClass(nameInfo, hash);
-        classes.put(hash, clazz);
+        ConfigurationPredefinedClass clazz = new ConfigurationPredefinedClass(condition, nameInfo, hash);
+        classes.put(new ConditionalElement<>(condition, hash), clazz);
     }
 
     private void ensureDestinationDirsExist() {
@@ -139,7 +142,7 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
         return classes.values().stream().anyMatch(clazz -> clazz.getNameInfo().equals(className));
     }
 
-    public boolean containsClassWithHash(String hash) {
-        return classes.containsKey(hash);
+    public boolean containsClassWithHash(ConditionalElement<String> conditionalElement) {
+        return classes.containsKey(conditionalElement);
     }
 }

@@ -52,6 +52,7 @@ import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
+import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -278,7 +279,7 @@ public class ConfigurationTool {
             for (URI pathUri : outputSet.getPredefinedClassesConfigPaths()) {
                 predefinedClassDestDirs.add(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
             }
-            Predicate<String> shouldExcludeClassesWithHash = omittedInputTraceProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
+            Predicate<ConditionalElement<String>> shouldExcludeClassesWithHash = omittedInputTraceProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
             p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
                             inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
                             inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION),

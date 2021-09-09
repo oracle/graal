@@ -25,9 +25,11 @@
  */
 package com.oracle.svm.core.configure;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import java.nio.file.Path;
 
 public interface PredefinedClassesRegistry {
 
-    void add(String nameInfo, String hash, Path basePath);
+    void add(ConfigurationCondition condition, String nameInfo, String hash, Path basePath);
 }

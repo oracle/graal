@@ -26,16 +26,22 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.Objects;
+
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 
 public final class ConfigurationPredefinedClass implements JsonPrintable {
 
+    private final ConfigurationCondition condition;
     private final String nameInfo;
     private final String hash;
 
-    public ConfigurationPredefinedClass(String nameInfo, String hash) {
+    public ConfigurationPredefinedClass(ConfigurationCondition condition, String nameInfo, String hash) {
+        Objects.requireNonNull(condition);
+        this.condition = condition;
         this.nameInfo = nameInfo;
         this.hash = hash;
     }
@@ -47,6 +53,7 @@ public final class ConfigurationPredefinedClass implements JsonPrintable {
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append("{ ");
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
         if (nameInfo != null) {
             writer.quote("nameInfo").append(':').quote(nameInfo).append(", ");
         }

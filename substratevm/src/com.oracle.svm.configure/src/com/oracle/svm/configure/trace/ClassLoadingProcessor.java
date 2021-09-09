@@ -28,6 +28,8 @@ package com.oracle.svm.configure.trace;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 
 public class ClassLoadingProcessor extends AbstractProcessor {
@@ -54,7 +56,8 @@ public class ClassLoadingProcessor extends AbstractProcessor {
             expectSize(args, 2);
             String nameInfo = (String) args.get(0);
             byte[] classData = asBinary(args.get(1));
-            configuration.add(nameInfo, classData);
+            ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+            configuration.add(condition, nameInfo, classData);
         }
     }
 }

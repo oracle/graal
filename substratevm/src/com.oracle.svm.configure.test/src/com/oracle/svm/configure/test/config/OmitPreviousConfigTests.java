@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.configure.ConditionalElement;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
@@ -82,7 +83,7 @@ public class OmitPreviousConfigTests {
                 Assert.fail("Exception occurred while loading configuration: " + e + System.lineSeparator() + sw);
                 return e;
             };
-            Predicate<String> shouldExcludeClassesWithHash = null;
+            Predicate<ConditionalElement<String>> shouldExcludeClassesWithHash = null;
             if (previous != null) {
                 shouldExcludeClassesWithHash = previous.getPredefinedClassesConfiguration()::containsClassWithHash;
             }

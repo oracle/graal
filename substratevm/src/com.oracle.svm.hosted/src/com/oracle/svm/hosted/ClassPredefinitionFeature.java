@@ -31,14 +31,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -55,6 +57,7 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 
 @AutomaticFeature
 public class ClassPredefinitionFeature implements Feature {
+    private PredefinedClassesRegistryImpl registry;
     private final Map<String, PredefinedClass> nameToRecord = new HashMap<>();
     private boolean sealed = false;
 
@@ -67,7 +70,8 @@ public class ClassPredefinitionFeature implements Feature {
          * so that their classes are already known for other configuration (reflection, proxies).
          */
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
-        PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
+        registry = new PredefinedClassesRegistryImpl(
+                        new ConfigurationTypeResolver("predefined classes configuration", access.getImageClassLoader(), NativeImageOptions.AllowIncompleteClasspath.getValue()));
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);
         PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry, ConfigurationFiles.Options.StrictConfiguration.getValue());
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
@@ -78,22 +82,15 @@ public class ClassPredefinitionFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         sealed = true;
+        registry.flushConditionalConfiguration(access);
+    }
 
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
         List<String> skipped = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         nameToRecord.forEach((name, record) -> {
-            if (record.definedClass != null) {
-                /*
-                 * Initialization of a class at image build time can have unintended side effects
-                 * when the class is not supposed to be loaded yet, so we generally disallow it.
-                 *
-                 * Exempt are annotations, which must be initialized at image build time, and enums,
-                 * which are initialized during the image build if they are used in an annotation.
-                 */
-                if (!record.definedClass.isAnnotation() && !record.definedClass.isEnum()) {
-                    RuntimeClassInitialization.initializeAtRunTime(record.definedClass);
-                }
-            } else if (record.pendingSubtypes != null) {
+            if (record.pendingSubtypes != null) {
                 StringBuilder msg = new StringBuilder();
                 msg.append("Type ").append(name).append(" is neither on the classpath nor predefined and prevents the predefinition of these subtypes (and potentially their subtypes): ");
                 boolean first = true;
@@ -102,7 +99,7 @@ public class ClassPredefinitionFeature implements Feature {
                     first = false;
                 }
                 errors.add(msg.toString());
-            } else if (record.data == null) {
+            } else if (record.definedClass == null && record.data == null) {
                 skipped.add(record.name);
             }
         });
@@ -119,15 +116,25 @@ public class ClassPredefinitionFeature implements Feature {
         }
     }
 
-    private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
+    private class PredefinedClassesRegistryImpl extends ConditionalConfigurationRegistry implements PredefinedClassesRegistry {
+        private final ConfigurationTypeResolver typeResolver;
+
+        private PredefinedClassesRegistryImpl(ConfigurationTypeResolver typeResolver) {
+            this.typeResolver = typeResolver;
+        }
+
         @Override
-        public void add(String nameInfo, String providedHash, Path basePath) {
+        public void add(ConfigurationCondition condition, String nameInfo, String providedHash, Path basePath) {
             if (!PredefinedClassesSupport.supportsBytecodes()) {
                 throw UserError.abort("Cannot predefine class with hash %s from %s because class predefinition is disabled. Enable this feature using option %s.",
                                 providedHash, basePath, PredefinedClassesSupport.ENABLE_BYTECODES_OPTION);
             }
-            UserError.guarantee(!sealed, "Too late to add predefined classes. Registration must happen in a Feature before the analysis has started.");
+            Class<?> conditionClazz = typeResolver.resolveType(condition.getTypeName());
+            if (conditionClazz == null) {
+                return;
+            }
 
+            UserError.guarantee(!sealed, "Too late to add predefined classes. Registration must happen in a Feature before the analysis has started.");
             try {
                 Path path = basePath.resolve(providedHash + ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
                 byte[] data = Files.readAllBytes(path);
@@ -142,46 +149,45 @@ public class ClassPredefinitionFeature implements Feature {
                 ClassReader reader = new ClassReader(data);
                 ClassWriter writer = new ClassWriter(0);
                 reader.accept(writer, ClassReader.SKIP_DEBUG);
+                String className = transformClassName(reader.getClassName());
+                List<String> superTypes = Stream.concat(Stream.of(reader.getSuperName()), Arrays.stream(reader.getInterfaces())).collect(Collectors.toList());
                 byte[] canonicalData = writer.toByteArray();
                 String canonicalHash = PredefinedClassesSupport.hash(canonicalData, 0, canonicalData.length);
 
-                String className = transformClassName(reader.getClassName());
-                PredefinedClass record = nameToRecord.computeIfAbsent(className, PredefinedClass::new);
-                if (record.canonicalHash != null) {
-                    if (!canonicalHash.equals(record.canonicalHash)) {
-                        throw UserError.abort("More than one predefined class with the same name provided: " + className);
-                    }
-                    if (record.definedClass != null) {
-                        PredefinedClassesSupport.registerClass(hash, record.definedClass);
-                    } else {
-                        record.addAliasHash(hash);
-                    }
-                    return;
+                registerConditionalConfiguration(condition, () -> predefineClass(className, hash, canonicalHash, superTypes, data));
+            } catch (IOException t) {
+                throw UserError.abort(t, "Failed to prepare class with hash %s from %s for pre-definition", providedHash, basePath);
+            }
+        }
+
+        private synchronized void predefineClass(String className, String hash, String canonicalHash, List<String> superTypes, byte[] data) {
+            PredefinedClass record = nameToRecord.computeIfAbsent(className, PredefinedClass::new);
+            if (record.canonicalHash != null) {
+                UserError.guarantee(canonicalHash.equals(record.canonicalHash), "More than one predefined class with the same name provided: %s", className);
+
+                if (record.definedClass != null) {
+                    PredefinedClassesSupport.registerClass(hash, record.definedClass);
+                } else {
+                    record.addAliasHash(hash);
                 }
+            } else {
                 record.canonicalHash = canonicalHash;
                 record.data = data;
                 record.addAliasHash(hash);
-
+                addPendingSuperTypes(record, superTypes);
                 // A class cannot be defined unless its superclass and all interfaces are loaded
-                boolean pendingSupertypes = false;
-                String superclassName = transformClassName(reader.getSuperName());
-                if (NativeImageSystemClassLoader.singleton().forNameOrNull(superclassName, false) == null) {
-                    addPendingSupertype(record, superclassName);
-                    pendingSupertypes = true;
-                }
-                for (String intf : reader.getInterfaces()) {
-                    String interfaceName = transformClassName(intf);
-                    if (NativeImageSystemClassLoader.singleton().forNameOrNull(interfaceName, false) == null) {
-                        addPendingSupertype(record, interfaceName);
-                        pendingSupertypes = true;
-                    }
-                }
-
-                if (!pendingSupertypes) {
+                if (!record.hasPendingSupertypes()) {
                     defineClass(record);
                 }
-            } catch (IOException t) {
-                throw UserError.abort(t, "Failed to prepare class with hash %s from %s for predefinition", providedHash, basePath);
+            }
+        }
+
+        private void addPendingSuperTypes(PredefinedClass record, List<String> superTypes) {
+            for (String type : superTypes) {
+                String typeName = transformClassName(type);
+                if (NativeImageSystemClassLoader.singleton().forNameOrNull(typeName, false) == null) {
+                    addPendingSupertype(record, typeName);
+                }
             }
         }
 
@@ -195,7 +201,6 @@ public class ClassPredefinitionFeature implements Feature {
         private void defineClass(PredefinedClass record) {
             if (NativeImageSystemClassLoader.singleton().forNameOrNull(record.name, false) == null) {
                 record.definedClass = NativeImageSystemClassLoader.singleton().predefineClass(record.name, record.data, 0, record.data.length);
-
                 if (record.aliasHashes != null) {
                     /*
                      * Note that we don't register the class with the canonical hash because we only
@@ -216,7 +221,7 @@ public class ClassPredefinitionFeature implements Feature {
                 for (PredefinedClass subtype : record.pendingSubtypes) {
                     boolean removed = subtype.pendingSupertypes.remove(record);
                     assert removed : "must have been in list";
-                    if (subtype.pendingSupertypes.isEmpty()) {
+                    if (!subtype.hasPendingSupertypes()) {
                         record.pendingSupertypes = null;
                         defineClass(subtype);
                     }
@@ -277,6 +282,10 @@ public class ClassPredefinitionFeature implements Feature {
                 pendingSupertypes = new ArrayList<>();
             }
             pendingSupertypes.add(record);
+        }
+
+        public boolean hasPendingSupertypes() {
+            return pendingSupertypes != null && !pendingSupertypes.isEmpty();
         }
     }
 }
