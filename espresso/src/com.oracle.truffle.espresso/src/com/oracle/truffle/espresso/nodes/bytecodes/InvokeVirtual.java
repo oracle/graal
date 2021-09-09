@@ -98,11 +98,10 @@ public abstract class InvokeVirtual extends Node {
         Object callLeaf(StaticObject receiver, Object[] args,
                         @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
-
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             assert resolvedMethod.getMethod() == resolutionSeed;
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitialized();
+            assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
             return directCallNode.call(args);
         }
 
@@ -117,7 +116,7 @@ public abstract class InvokeVirtual extends Node {
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitialized();
+            assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
             return directCallNode.call(args);
         }
 
@@ -129,7 +128,7 @@ public abstract class InvokeVirtual extends Node {
             assert !StaticObject.isNull(receiver);
             // vtable lookup.
             Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
-            assert target.getMethod().getDeclaringKlass().isInitialized();
+            assert InvokeStatic.isInitializedOrInitializing(target.getMethod().getDeclaringKlass());
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }

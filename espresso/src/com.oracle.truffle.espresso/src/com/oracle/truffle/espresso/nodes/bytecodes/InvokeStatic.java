@@ -66,14 +66,6 @@ public abstract class InvokeStatic extends Node {
 
         public abstract Object execute(Method staticMethod, Object[] args);
 
-        static boolean isInitializedOrInitializing(ObjectKlass klass) {
-            int state = klass.getState();
-            return state == ObjectKlass.INITIALIZED ||
-                            state == ObjectKlass.ERRONEOUS ||
-                            state >= ObjectKlass.PREPARED && Thread.holdsLock(klass); // initializing
-                                                                                      // thread
-        }
-
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
                         guards = {
@@ -107,5 +99,13 @@ public abstract class InvokeStatic extends Node {
             }
             return staticMethod.getMethodVersion();
         }
+    }
+
+    static boolean isInitializedOrInitializing(ObjectKlass klass) {
+        int state = klass.getState();
+        return state == ObjectKlass.INITIALIZED ||
+                        state == ObjectKlass.ERRONEOUS ||
+                        // initializing thread
+                        state == ObjectKlass.INITIALIZING && Thread.holdsLock(klass);
     }
 }

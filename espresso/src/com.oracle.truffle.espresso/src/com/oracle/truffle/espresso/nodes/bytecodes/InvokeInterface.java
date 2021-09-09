@@ -97,7 +97,7 @@ public abstract class InvokeInterface extends Node {
                         @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitialized();
+            assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
             return directCallNode.call(args);
         }
 
@@ -109,7 +109,7 @@ public abstract class InvokeInterface extends Node {
             assert !StaticObject.isNull(receiver);
             // itable lookup.
             Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
-            assert target.getMethod().getDeclaringKlass().isInitialized();
+            assert InvokeStatic.isInitializedOrInitializing(target.getMethod().getDeclaringKlass());
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
@@ -176,7 +176,7 @@ public abstract class InvokeInterface extends Node {
                 assert args[0] == receiver;
                 assert !StaticObject.isNull(receiver);
                 Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
-                assert target.getMethod().getDeclaringKlass().isInitialized();
+                assert InvokeStatic.isInitializedOrInitializing(target.getMethod().getDeclaringKlass());
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }
