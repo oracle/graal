@@ -451,16 +451,25 @@ public class OptionProcessor extends AbstractProcessor {
         builder.end(); // newBuilder call
         if (info.deprecated) {
             builder.startCall("", "deprecated").string("true").end();
-            builder.startCall("", "deprecationMessage").doubleQuote(info.deprecationMessage).end();
+            addCallWithStringWithPossibleNewlines(builder, context, "deprecationMessage", info.deprecationMessage);
         } else {
             builder.startCall("", "deprecated").string("false").end();
         }
-        builder.startCall("", "help").doubleQuote(info.help).end();
+        addCallWithStringWithPossibleNewlines(builder, context, "help", info.help);
+
         builder.startCall("", "category").staticReference(types.OptionCategory, info.category).end();
         builder.startCall("", "stability").staticReference(types.OptionStability, info.stability).end();
 
         builder.startCall("", "build").end();
         return builder.build();
+    }
+
+    private static void addCallWithStringWithPossibleNewlines(CodeTreeBuilder builder, ProcessorContext context, String callName, String value) {
+        if (value.contains("%n")) {
+            builder.startCall("", callName).startStaticCall(context.getType(String.class), "format").doubleQuote(value).end().end();
+        } else {
+            builder.startCall("", callName).doubleQuote(value).end();
+        }
     }
 
     static class OptionInfo implements Comparable<OptionInfo> {
