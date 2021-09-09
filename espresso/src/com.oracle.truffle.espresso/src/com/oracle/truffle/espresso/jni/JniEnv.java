@@ -153,37 +153,26 @@ public final class JniEnv extends NativeEnv {
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
 
-    private final JniThreadLocalPendingException threadLocalPendingException = new JniThreadLocalPendingException();
-
-    public JniThreadLocalPendingException getThreadLocalPendingException() {
-        return threadLocalPendingException;
-    }
-
-    @TruffleBoundary
     public StaticObject getPendingException() {
-        return threadLocalPendingException.get();
+        return getContext().getLanguage().getThreadLocalState().getPendingExceptionObject();
     }
 
-    @TruffleBoundary
     public EspressoException getPendingEspressoException() {
-        return threadLocalPendingException.getEspressoException();
+        return getContext().getLanguage().getThreadLocalState().getpendingException();
     }
 
-    @TruffleBoundary
     public void clearPendingException() {
-        threadLocalPendingException.clear();
+        getContext().getLanguage().getThreadLocalState().clearPendingException();
     }
 
-    @TruffleBoundary
     public void setPendingException(StaticObject ex) {
         Meta meta = getMeta();
         assert StaticObject.notNull(ex) && meta.java_lang_Throwable.isAssignableFrom(ex.getKlass());
         setPendingException(EspressoException.wrap(ex, meta));
     }
 
-    @TruffleBoundary
     public void setPendingException(EspressoException ex) {
-        threadLocalPendingException.set(ex);
+        getContext().getLanguage().getThreadLocalState().setPendingException(ex);
     }
 
     private class VarArgsImpl implements VarArgs {
@@ -385,7 +374,6 @@ public final class JniEnv extends NativeEnv {
         assert jniEnvPtr != null : "JNIEnv already disposed";
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
-            threadLocalPendingException.dispose();
             this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");

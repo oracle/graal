@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
@@ -102,6 +104,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilerDirectives.CompilationFinal //
     private static StaticShape<StaticObjectFactory> foreignShape;
 
+    private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal(EspressoThreadLocalState::new);
+
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
         JavaKind.ensureInitialized();
@@ -122,6 +126,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new EspressoOptionsOptionDescriptors();
+    }
+
+    public EspressoThreadLocalState getThreadLocalState() {
+        return threadLocalState.get();
     }
 
     @Override
