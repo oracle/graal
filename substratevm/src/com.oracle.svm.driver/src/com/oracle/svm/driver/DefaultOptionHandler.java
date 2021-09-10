@@ -35,11 +35,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import jdk.vm.ci.runtime.JVMCI;
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -211,7 +211,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--list-cpu-features":
                 args.poll();
-                Architecture arch = GraalAccess.getOriginalTarget().arch;
+                Architecture arch = JVMCI.getRuntime().getHostJVMCIBackend().getTarget().arch;
                 if (arch instanceof AMD64) {
                     nativeImage.showMessage("All AMD64 CPUFeatures: " + Arrays.toString(AMD64.CPUFeature.values()));
                     nativeImage.showNewline();
