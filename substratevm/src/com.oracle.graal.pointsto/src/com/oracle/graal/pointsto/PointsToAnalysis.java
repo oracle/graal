@@ -43,7 +43,9 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
+import java.util.function.Function;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -701,6 +703,62 @@ public abstract class PointsToAnalysis implements BigBang {
     @Override
     public HostVM getHostVM() {
         return hostVM;
+    }
+
+    /**
+     * Iterate until analysis reaches a fixpoint.
+     *
+     *
+     * @param debugContext debug context
+     * @param duringAnalysisAction  The action handler taken during analysis, return true if no more iteration is required.
+     *                              It could be the {@link org.graalvm.nativeimage.hosted.Feature#duringAnalysis}
+     *                              for Native Image generation, but also can be other similar actions for standalone pointsto
+     *                              analysis that does not dependent on {@link com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl}
+     *                              and {@link com.oracle.svm.hosted.NativeImageGenerator.AnalysisFeatureHandler}.
+     *
+     * @return The error message during the analysis. If the analysis ends successfully, an empty String is returned, otherwise
+     * the actual error message is returned.
+     * @throws InterruptedException
+     */
+    @SuppressWarnings("try")
+    @Override
+    public void runAnalysis(DebugContext debugContext, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException {
+        int numIterations = 0;
+        while (true) {
+            try (Indent indent2 = debugContext.logAndIndent("new analysis iteration")) {
+                /*
+                 * Do the analysis (which itself is done in a similar iterative process)
+                 */
+                boolean analysisChanged = finish();
+
+                numIterations++;
+                if (numIterations > 1000) {
+                    /*
+                     * Usually there are < 10 iterations. If we have so many iterations, we
+                     * probably have an endless loop (but at least we have a performance
+                     * problem because we re-start the analysis so often).
+                     */
+                    AnalysisError.shouldNotReachHere(String.format("Static analysis did not reach a fix point after %d iterations because a Feature keeps requesting new analysis iterations. " +
+                                    "The analysis itself %s find a change in type states in the last iteration.",
+                            numIterations, analysisChanged ? "DID" : "DID NOT"));
+                }
+
+                /*
+                 * Allow features to change the universe.
+                 */
+                try (StopTimer t2 = getProcessFeaturesTimer().start()) {
+                    int numTypes = universe.getTypes().size();
+                    int numMethods = universe.getMethods().size();
+                    int numFields = universe.getFields().size();
+                    if (duringAnalysisAction.apply(universe)) {
+                        if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
+                            AnalysisError.shouldNotReachHere("When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
+                        }
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")

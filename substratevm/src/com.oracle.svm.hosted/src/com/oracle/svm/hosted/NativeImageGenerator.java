@@ -59,6 +59,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -693,51 +694,16 @@ public class NativeImageGenerator {
             }
 
             try (StopTimer t = bb.getAnalysisTimer().start()) {
-
-                /*
-                 * Iterate until analysis reaches a fixpoint.
-                 */
                 DuringAnalysisAccessImpl config = new DuringAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
-                int numIterations = 0;
-                while (true) {
-                    try (Indent indent2 = debug.logAndIndent("new analysis iteration")) {
-                        /*
-                         * Do the analysis (which itself is done in a similar iterative process)
-                         */
-                        boolean analysisChanged = bb.finish();
-
-                        numIterations++;
-                        if (numIterations > 1000) {
-                            /*
-                             * Usually there are < 10 iterations. If we have so many iterations, we
-                             * probably have an endless loop (but at least we have a performance
-                             * problem because we re-start the analysis so often).
-                             */
-                            throw UserError.abort("Static analysis did not reach a fix point after %d iterations because a Feature keeps requesting new analysis iterations. " +
-                                            "The analysis itself %s find a change in type states in the last iteration.",
-                                            numIterations, analysisChanged ? "DID" : "DID NOT");
-                        }
-
-                        /*
-                         * Allow features to change the universe.
-                         */
-                        try (StopTimer t2 = bb.getProcessFeaturesTimer().start()) {
-                            int numTypes = aUniverse.getTypes().size();
-                            int numMethods = aUniverse.getMethods().size();
-                            int numFields = aUniverse.getFields().size();
-
-                            bb.getHostVM().notifyClassReachabilityListener(aUniverse, config);
-                            featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
-
-                            if (!config.getAndResetRequireAnalysisIteration()) {
-                                if (numTypes != aUniverse.getTypes().size() || numMethods != aUniverse.getMethods().size() || numFields != aUniverse.getFields().size()) {
-                                    throw UserError.abort(
-                                                    "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
-                                }
-                                break;
-                            }
-                        }
-                    }
+                try {
+                    bb.runAnalysis(debug,
+                            (aUniverse) -> {
+                                bb.getHostVM().notifyClassReachabilityListener(aUniverse, config);
+                                featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                                return !config.getAndResetRequireAnalysisIteration();
+                            });
+                } catch (AnalysisError e) {
+                    throw UserError.abort(e, "Analysis step failed. Reason: %s.", e.getMessage());
                 }
                 assert verifyAssignableTypes(imageName);
 
