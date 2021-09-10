@@ -624,13 +624,6 @@ suite = {
             "spotbugs": "false",
         },
 
-        "svm-compiler-flags-builder": {
-            "class" : "SubstrateCompilerFlagsBuilder",
-            "dependencies" : [
-                "SVM",
-            ],
-        },
-
         "com.oracle.svm.junit": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1174,6 +1167,11 @@ suite = {
                     "com.oracle.svm.jvmtiagentbase",
                     "com.oracle.svm.jvmtiagentbase.jvmti",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
             },
         },
 
@@ -1220,6 +1218,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.objectfile.io",
                 "com.oracle.objectfile.debuginfo",
+                "com.oracle.objectfile.macho",
               ],
 
               "requires" : ["jdk.unsupported"],
@@ -1323,6 +1322,11 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.agent",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
                 "requiresConcealed" : {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
@@ -1347,6 +1351,11 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.diagnosticsagent",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
             },
         },
 
@@ -1366,6 +1375,11 @@ suite = {
                 "exports" : [
                     "* to org.graalvm.nativeimage.agent.tracing",
                     "com.oracle.svm.configure",
+                ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
                 ],
             },
         },
