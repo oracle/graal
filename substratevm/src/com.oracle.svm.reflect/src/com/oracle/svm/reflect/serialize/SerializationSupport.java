@@ -126,8 +126,10 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     @Override
-    public Object getSerializationConstructorAccessor(Class<?> declaringClass, Class<?> rawTargetConstructorClass) {
-        if (declaringClass.getName().contains("$$Lambda$")) {
+    public Object getSerializationConstructorAccessor(Class<?> rawDeclaringClass, Class<?> rawTargetConstructorClass) {
+        Class<?> declaringClass = rawDeclaringClass;
+
+        if (rawDeclaringClass.getName().contains("$$Lambda$")) {
             try {
                 //Checkstyle: stop
                 declaringClass = Class.forName("java.lang.invoke.SerializedLambda");
