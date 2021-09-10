@@ -150,7 +150,7 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    @Substitution
+    @Substitution(isTrivial = true)
     public static @JavaType(Thread.class) StaticObject currentThread(@Inject EspressoContext context) {
         return context.getCurrentThread();
     }
@@ -316,7 +316,7 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @Substitution
+    @Substitution(isTrivial = true)
     public static void yield() {
         Thread.yield();
     }

@@ -47,4 +47,8 @@ public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode 
     public WrapperNode createWrapper(ProbeNode probeNode) {
         return new EspressoBaseMethodNodeWrapper(this, probeNode);
     }
+
+    protected boolean isTrivial() {
+        return false;
+    }
 }

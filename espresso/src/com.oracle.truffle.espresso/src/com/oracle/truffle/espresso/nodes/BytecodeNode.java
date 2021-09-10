@@ -363,6 +363,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
     private static final DebugCounter[] BYTECODE_HISTOGRAM;
 
+    private static final byte TRIVIAL_UNINITIALIZED = -1;
+    private static final byte TRIVIAL_NO = 0;
+    private static final byte TRIVIAL_YES = 1;
+
     private static final int REPORT_LOOP_STRIDE = 1 << 8;
 
     static {
@@ -408,6 +412,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private final LivenessAnalysis livenessAnalysis;
 
+    private byte trivialBytecodesCache = -1;
+
     @CompilationFinal private Object osrMetadata;
 
     public BytecodeNode(MethodVersion methodVersion, FrameDescriptor frameDescriptor) {
@@ -422,6 +428,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = LivenessAnalysis.analyze(method);
+        /*
+         * The "triviality" is partially computed here since isTrivial is called from a compiler
+         * thread where the context is not accessible.
+         */
+        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().TrivialMethodSize
+                        ? TRIVIAL_UNINITIALIZED
+                        : TRIVIAL_NO;
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -2973,5 +2986,66 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             CompilerAsserts.partialEvaluationConstant(node);
             return ((WrapperNode) node);
         }
+    }
+
+    private boolean trivialBytecodes() {
+        byte[] originalCode = getMethodVersion().getOriginalCode();
+        /*
+         * originalCode.length < TrivialMethodSize is checked in the constructor because this method
+         * is called from a compiler thread where the context is not accessible.
+         */
+        BytecodeStream stream = new BytecodeStream(originalCode);
+        for (int bci = 0; bci < stream.endBCI(); bci = stream.nextBCI(bci)) {
+            int bc = stream.currentBC(bci);
+            // Trivial methods should be leaves.
+            if (Bytecodes.isInvoke(bc)) {
+                return false;
+            }
+            if (Bytecodes.LOOKUPSWITCH == bc || Bytecodes.TABLESWITCH == bc) {
+                return false;
+            }
+            if (Bytecodes.ANEWARRAY == bc || MULTIANEWARRAY == bc) {
+                // The allocated array is Arrays.fill-ed with StaticObject.NULL but loops are not
+                // allowed in trivial methods.
+                return false;
+            }
+            if (Bytecodes.isBranch(bc)) {
+                int dest = stream.readBranchDest(bci);
+                if (dest <= bci) {
+                    // Back-edge (probably a loop) but loops are not allowed in trivial methods.
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
+    protected boolean isTrivial() {
+        CompilerAsserts.neverPartOfCompilation();
+        /**
+         * These two checks are dynamic and must be performed on every compilation. In the worst
+         * case (a race):
+         * 
+         * - A trivial "block" (interop operation or implicit exception creation and throw) is
+         * introduced => the method will be inlined, which may or may not blow-up compilation. The
+         * compiler checks that trivial methods have <= 500 Graal nodes, which reduces the chances
+         * of choking the compiler with huge graphs.
+         * 
+         * - A non-trivial "block" (interop operation or implicit exception creation and throw) is
+         * introduced => the compiler "triviality" checks fail, the call is not inlined and a
+         * warning is printed.
+         * 
+         * The compiler checks that trivial methods have no guest calls, no loops and a have <= 500
+         * Graal nodes.
+         */
+        if (!noForeignObjects.isValid() || implicitExceptionProfile) {
+            return false;
+        }
+        if (trivialBytecodesCache == TRIVIAL_UNINITIALIZED) {
+            // Cache "triviality" of original bytecodes.
+            trivialBytecodesCache = trivialBytecodes() ? TRIVIAL_YES : TRIVIAL_NO;
+        }
+        return trivialBytecodesCache == TRIVIAL_YES;
     }
 }

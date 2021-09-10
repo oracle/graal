@@ -64,7 +64,7 @@ public final class Target_java_lang_System {
 
     // endregion Profile values
 
-    @Substitution
+    @Substitution(isTrivial = true)
     public static int identityHashCode(@JavaType(Object.class) StaticObject self) {
         SYSTEM_IDENTITY_HASH_CODE_COUNT.inc();
         return VM.JVM_IHashCode(self);
@@ -248,13 +248,13 @@ public final class Target_java_lang_System {
     }
 
     @TruffleBoundary(allowInlining = true)
-    @Substitution
+    @Substitution(isTrivial = true)
     public static long currentTimeMillis() {
         return System.currentTimeMillis();
     }
 
     @TruffleBoundary(allowInlining = true)
-    @Substitution
+    @Substitution(isTrivial = true)
     public static long nanoTime() {
         return System.nanoTime();
     }

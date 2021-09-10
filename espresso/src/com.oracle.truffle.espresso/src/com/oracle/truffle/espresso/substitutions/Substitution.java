@@ -74,4 +74,22 @@ import java.lang.annotation.Target;
     Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
 
     Class<? extends VersionFilter> versionFilter() default VersionFilter.NoFilter.class;
+
+    /**
+     * If the substitution is trivial.
+     *
+     * <p>
+     * Trivial methods are considered part of the caller and will be inlined whenever possible (even
+     * if inlining is disabled).
+     * </p>
+     *
+     * Inlining a trivial method should not increase code size compared to the call, in general
+     * trivial methods should:
+     * <ul>
+     * <li>Be reasonably small</li>
+     * <li>Not contain guest calls (leaf method)</li>
+     * <li>Not contain loops</li>
+     * </ul>
+     */
+    boolean isTrivial() default false;
 }
