@@ -25,9 +25,11 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -81,7 +83,20 @@ public final class HeapParameters {
         public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false);
 
         @Option(help = "Maximum number of survivor spaces.") //
-        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(15);
+        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<Integer>(null) {
+            @Override
+            public Integer getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+                Integer value = (Integer) values.get(this);
+                UserError.guarantee(value == null || value >= 0, "%s value must be greater than or equal to 0", getName());
+                return CollectionPolicy.getMaxSurvivorSpaces(value);
+            }
+
+            @Override
+            public Integer getValue(OptionValues values) {
+                assert checkDescriptorExists();
+                return getValueOrDefault(values.getMap());
+            }
+        };
 
         @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation.") //
         public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(false);

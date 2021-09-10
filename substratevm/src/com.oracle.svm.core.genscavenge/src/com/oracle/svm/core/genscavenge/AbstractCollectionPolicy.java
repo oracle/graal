@@ -42,6 +42,13 @@ import com.oracle.svm.core.util.VMError;
 
 abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
+    protected static final int MAX_TENURING_THRESHOLD = 15;
+
+    static int getMaxSurvivorSpaces(Integer userValue) {
+        assert userValue == null || userValue >= 0;
+        return (userValue != null) ? userValue : AbstractCollectionPolicy.MAX_TENURING_THRESHOLD;
+    }
+
     /*
      * Constants that can be made options if desirable. These are -XX options in HotSpot, refer to
      * their descriptions for details. The values are HotSpot defaults unless labeled otherwise.

@@ -43,17 +43,23 @@ public interface CollectionPolicy {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static CollectionPolicy getInitialPolicy() {
+    static String getInitialPolicyName() {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
-            return new BasicCollectionPolicies.NeverCollect();
+            return "NeverCollect";
         } else if (!SubstrateOptions.useRememberedSet()) {
-            return new BasicCollectionPolicies.OnlyCompletely();
+            return "OnlyCompletely";
         }
         String name = Options.InitialCollectionPolicy.getValue();
         String legacyPrefix = "com.oracle.svm.core.genscavenge.CollectionPolicy$";
         if (name.startsWith(legacyPrefix)) {
-            name = name.substring(legacyPrefix.length());
+            return name.substring(legacyPrefix.length());
         }
+        return name;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static CollectionPolicy getInitialPolicy() {
+        String name = getInitialPolicyName();
         switch (name) {
             case "Adaptive":
                 return new AdaptiveCollectionPolicy();
@@ -69,6 +75,15 @@ public interface CollectionPolicy {
                 return new BasicCollectionPolicies.NeverCollect();
         }
         throw UserError.abort("Policy %s does not exist.", name);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static int getMaxSurvivorSpaces(Integer userValue) {
+        String name = getInitialPolicyName();
+        if ("Adaptive".equals(name) || "Proportionate".equals(name)) {
+            return AbstractCollectionPolicy.getMaxSurvivorSpaces(userValue);
+        }
+        return BasicCollectionPolicies.getMaxSurvivorSpaces(userValue);
     }
 
     String getName();

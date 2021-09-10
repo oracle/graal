@@ -50,6 +50,11 @@ final class BasicCollectionPolicies {
         public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L);
     }
 
+    static int getMaxSurvivorSpaces(Integer userValue) {
+        assert userValue == null || userValue >= 0;
+        return 0; // override option (if set): survivor spaces not supported
+    }
+
     private BasicCollectionPolicies() {
     }
 
