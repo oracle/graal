@@ -770,6 +770,53 @@ public class InsightObjectTest {
     }
 
     @Test
+    public void closeOfInsightHandleIsChecked() throws Exception {
+        try (Context c = InsightObjectFactory.newContext()) {
+            AutoCloseable[] handle = {null};
+            Value agent = InsightObjectFactory.readInsight(c, null, handle);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(meaning,\n" +
+                "    EXPRESSION(\n" +
+                "      CONSTANT(6),\n" +
+                "      CONSTANT(7)\n" +
+                "    )\n" +
+                "  ),\n" +
+                "  CALL(meaning)\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+
+            final InsightAPI.OnEventHandler return42 = (ctx, frame) -> {
+                try {
+                    ctx.returnValue(Collections.emptyMap());
+                } catch (RuntimeException ex) {
+                    assertTrue("Expecting TruffleException: " + ex, ex instanceof AbstractTruffleException);
+                }
+                ctx.returnNow(42);
+            };
+            agentAPI.on("return", return42, createConfig(true, false, false, "meaning.*", null));
+            Value fourtyTwo = c.eval(sampleScript);
+            assertEquals(42, fourtyTwo.asInt());
+            handle[0].close();
+            Value sixSeven = c.eval(sampleScript);
+            assertEquals("Hook is no longer active", "(6+7)", sixSeven.asString());
+
+            try {
+                agentAPI.on("enter", return42, createConfig(true, false, false, "meaning.*", null));
+                fail("Expecting exception");
+            } catch (PolyglotException ex) {
+                assertEquals("insight: The script has already been closed", ex.getMessage());
+            }
+        }
+    }
+
+    @Test
     public void unknownLanguageCall() throws Exception {
         try (Context c = InsightObjectFactory.newContext()) {
             Instrument insight = c.getEngine().getInstruments().get(Insight.ID);
@@ -797,6 +844,7 @@ public class InsightObjectTest {
 
             @SuppressWarnings("unchecked")
             Object script = insight.lookup(Function.class).apply(insightScript);
+            assertNotNull("Handle returned", script);
 
             try {
                 Value fourtyTwo = c.eval(sampleScript);

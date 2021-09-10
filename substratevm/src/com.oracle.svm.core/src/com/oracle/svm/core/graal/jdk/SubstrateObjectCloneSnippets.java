@@ -73,8 +73,8 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CLONE};
 
-    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(providers, FOREIGN_CALLS);
+    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(FOREIGN_CALLS);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)

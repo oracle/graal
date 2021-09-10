@@ -57,7 +57,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
@@ -147,13 +146,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.reports.AnalysisHeapHistogramPrinter;
-import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
-import com.oracle.graal.pointsto.reports.CallTreePrinter;
-import com.oracle.graal.pointsto.reports.ObjectTreePrinter;
+import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.pointsto.reports.StatisticsPrinter;
-import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
@@ -774,35 +768,7 @@ public class NativeImageGenerator {
              * Execute analysis reporting here. This code is executed even if unsupported features
              * are reported or the analysis fails due to any other reasons.
              */
-            if (bb != null) {
-                if (AnalysisReportsOptions.PrintAnalysisStatistics.getValue(options)) {
-                    StatisticsPrinter.print(bb, SubstrateOptions.reportsPath(), ReportUtils.extractImageName(imageName));
-                }
-
-                if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
-                    CallTreePrinter.print(bb, SubstrateOptions.reportsPath(), ReportUtils.extractImageName(imageName));
-                }
-
-                if (AnalysisReportsOptions.PrintImageObjectTree.getValue(options)) {
-                    ObjectTreePrinter.print(bb, SubstrateOptions.reportsPath(), ReportUtils.extractImageName(imageName));
-                    AnalysisHeapHistogramPrinter.print(bb, SubstrateOptions.reportsPath(), ReportUtils.extractImageName(imageName));
-                }
-
-                if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {
-                    PointsToStats.report(bb, ReportUtils.extractImageName(imageName));
-                }
-
-                if (PointstoOptions.PrintSynchronizedAnalysis.getValue(options)) {
-                    TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
-                    String typesString = allSynchronizedTypeState.closeToAllInstantiated(bb) ? "close to all instantiated" : //
-                                    StreamSupport.stream(allSynchronizedTypeState.types().spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
-                    System.out.println();
-                    System.out.println("AllSynchronizedTypes");
-                    System.out.println("Synchronized types #: " + allSynchronizedTypeState.typesCount());
-                    System.out.println("Types: " + typesString);
-                    System.out.println();
-                }
-            }
+            AnalysisReporter.printAnalysisReports(imageName, options, SubstrateOptions.reportsPath(), bb);
         }
         if (NativeImageOptions.ReturnAfterAnalysis.getValue()) {
             return true;
@@ -881,7 +847,7 @@ public class NativeImageGenerator {
                 WordTypes aWordTypes = new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind());
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(aWordTypes);
 
-                ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider();
+                ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
                 bb = createBigBang(options, target, aUniverse, analysisExecutor, watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
                                 annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders);
                 aUniverse.setBigBang(bb);
@@ -1248,12 +1214,11 @@ public class NativeImageGenerator {
                     SnippetReflectionProvider snippetReflection, boolean hosted, boolean initForeignCalls) {
         OptionValues options = hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton();
 
-        Providers runtimeCallProviders = runtimeConfig != null ? runtimeConfig.getBackendForNormalMethod().getProviders() : providers;
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) providers.getForeignCalls();
         if (initForeignCalls) {
-            SnippetRuntime.registerForeignCalls(runtimeCallProviders, foreignCallsProvider);
+            SnippetRuntime.registerForeignCalls(foreignCallsProvider);
         }
-        featureHandler.forEachGraalFeature(feature -> feature.registerForeignCalls(runtimeConfig, runtimeCallProviders, snippetReflection, foreignCallsProvider, hosted));
+        featureHandler.forEachGraalFeature(feature -> feature.registerForeignCalls(foreignCallsProvider));
         try (DebugContext.Scope s = debug.scope("RegisterLowerings", new DebugDumpScope("RegisterLowerings"))) {
             SubstrateLoweringProvider lowerer = (SubstrateLoweringProvider) providers.getLowerer();
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();

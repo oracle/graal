@@ -110,6 +110,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -338,6 +339,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     private static void registerJNIConfiguration(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport registry, ImageClassLoader loader) {
         try (JNIConfigSource source = new JNIConfigSource(loader)) {
             Map<String, Class<?>> classes = new HashMap<>();
+            ConfigurationCondition condition = ConfigurationCondition.objectReachable();
             for (String line : source.lines) {
                 source.lineNo++;
                 String[] tokens = line.split(" ");
@@ -346,8 +348,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                 Class<?> clazz = classes.get(className);
                 if (clazz == null) {
                     clazz = source.findClass(className);
-                    registry.register(clazz);
-                    registry.register(Array.newInstance(clazz, 0).getClass());
+                    registry.register(condition, clazz);
+                    registry.register(condition, Array.newInstance(clazz, 0).getClass());
                     classes.put(className, clazz);
                 }
 
@@ -356,7 +358,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         source.check(tokens.length == 4, "Expected 4 tokens for a field");
                         String fieldName = tokens[2];
                         try {
-                            registry.register(false, clazz.getDeclaredField(fieldName));
+                            registry.register(condition, false, clazz.getDeclaredField(fieldName));
                         } catch (NoSuchFieldException e) {
                             throw source.error("Field %s.%s not found", clazz.getTypeName(), fieldName);
                         } catch (NoClassDefFoundError e) {
@@ -375,7 +377,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         try {
                             if ("<init>".equals(methodName)) {
                                 Constructor<?> cons = clazz.getDeclaredConstructor(parameters);
-                                registry.register(cons);
+                                registry.register(condition, cons);
                                 if (Throwable.class.isAssignableFrom(clazz) && !Modifier.isAbstract(clazz.getModifiers())) {
                                     if (usedInTranslatedException(parameters)) {
                                         RuntimeReflection.register(clazz);
@@ -383,7 +385,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                                     }
                                 }
                             } else {
-                                registry.register(clazz.getDeclaredMethod(methodName, parameters));
+                                registry.register(condition, clazz.getDeclaredMethod(methodName, parameters));
                             }
                         } catch (NoSuchMethodException e) {
                             throw source.error("Method %s.%s%s not found: %e", clazz.getTypeName(), methodName, descriptor, e);

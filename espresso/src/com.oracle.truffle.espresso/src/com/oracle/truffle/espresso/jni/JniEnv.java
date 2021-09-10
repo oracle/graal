@@ -78,7 +78,6 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateNativeEnv(target = JniImpl.class)
@@ -2143,9 +2142,9 @@ public final class JniEnv extends NativeEnv {
 
         StaticObject methods = null;
         if (method.isConstructor()) {
-            methods = Target_java_lang_Class.getDeclaredConstructors0(method.getDeclaringKlass().mirror(), false, getMeta());
+            methods = getVM().JVM_GetClassDeclaredConstructors(method.getDeclaringKlass().mirror(), false);
         } else {
-            methods = Target_java_lang_Class.getDeclaredMethods0(method.getDeclaringKlass().mirror(), false, getMeta());
+            methods = getVM().JVM_GetClassDeclaredMethods(method.getDeclaringKlass().mirror(), false);
         }
 
         for (StaticObject declMethod : methods.<StaticObject[]> unwrap()) {
@@ -2180,7 +2179,7 @@ public final class JniEnv extends NativeEnv {
                     @SuppressWarnings("unused") boolean isStatic) {
         Field field = fieldIds.getObject(fieldId);
         assert field.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass());
-        StaticObject fields = Target_java_lang_Class.getDeclaredFields0(field.getDeclaringKlass().mirror(), false, getMeta());
+        StaticObject fields = getVM().JVM_GetClassDeclaredFields(field.getDeclaringKlass().mirror(), false);
         for (StaticObject declField : fields.<StaticObject[]> unwrap()) {
             assert InterpreterToVM.instanceOf(declField, getMeta().java_lang_reflect_Field);
             Field f = (Field) getMeta().HIDDEN_FIELD_KEY.getHiddenObject(declField);
@@ -2561,7 +2560,8 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     public static @JavaType(Class.class) StaticObject GetSuperclass(@JavaType(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
-        if (klass.isInterface() || klass.isJavaLangObject()) {
+        if (klass.isInterface() || klass.getSuperClass() == null) {
+            /* also handles primitive classes */
             return StaticObject.NULL;
         }
         return klass.getSuperKlass().mirror();
@@ -2661,7 +2661,7 @@ public final class JniEnv extends NativeEnv {
             if (StaticObject.isNull(loader) && Type.java_lang_ClassLoader$NativeLibrary.equals(callerKlass.getType())) {
                 StaticObject result = (StaticObject) getMeta().java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
                 loader = result.getMirrorKlass().getDefiningClassLoader();
-                protectionDomain = Target_java_lang_Class.getProtectionDomain0(result, getMeta());
+                protectionDomain = getVM().JVM_GetProtectionDomain(result);
             }
         } else {
             loader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);

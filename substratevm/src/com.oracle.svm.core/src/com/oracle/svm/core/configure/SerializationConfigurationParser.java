@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.core.util.json.JSONParser;
@@ -58,10 +59,17 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     }
 
     private void parseSerializationDescriptorObject(Map<String, Object> data) {
+<<<<<<< HEAD
         checkMultipleOptionsAttributes(data, "serialization descriptor object", Collections.unmodifiableCollection(Arrays.asList(NAME_KEY, LAMBDA_CAPTURING_CLASS_KEY)), Collections.singleton(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY));
         String targetSerializationClass = data.containsKey(NAME_KEY) ? asString(data.get(NAME_KEY)) : asString(data.get(LAMBDA_CAPTURING_CLASS_KEY)) + "$$Lambda$";
+=======
+        checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
+        ConfigurationCondition unresolvedCondition = parseCondition(data);
+        String targetSerializationClass = asString(data.get(NAME_KEY));
+>>>>>>> 9757a3ce49407d349cfb412c37c1b7cb4a9d1658
         Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
         String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-        serializationSupport.registerWithTargetConstructorClass(targetSerializationClass, customTargetConstructorClass);
+
+        serializationSupport.registerWithTargetConstructorClass(unresolvedCondition, targetSerializationClass, customTargetConstructorClass);
     }
 }

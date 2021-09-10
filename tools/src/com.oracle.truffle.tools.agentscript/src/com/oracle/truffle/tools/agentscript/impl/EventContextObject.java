@@ -88,7 +88,7 @@ final class EventContextObject extends AbstractContextObject {
     @ExportMessage
     static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         if ("returnNow".equals(member)) {
-            throw AgentExecutionNode.returnNow(obj.context, args);
+            throw InsightHookNode.returnNow(args);
         }
         if ("returnValue".equals(member)) {
             if (args.length == 0 || !(args[0] instanceof VariablesObject)) {

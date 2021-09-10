@@ -225,6 +225,8 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
                 byte propertyKind = staticProperty.getInternalKind();
                 int index;
                 if (propertyKind == StaticPropertyKind.Object.toByte()) {
+                    // These offsets are re-computed for SVM:
+                    // TruffleBaseFeature.Target_com_oracle_truffle_api_staticobject_StaticProperty
                     index = Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * objArraySize++;
                 } else {
                     index = primitiveFieldIndexes.getIndex(propertyKind);

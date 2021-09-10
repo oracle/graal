@@ -63,7 +63,11 @@ public class NoProviderConstructorServiceLoaderTest {
     public static class ProperService implements ServiceInterface {
     }
 
+<<<<<<< HEAD
     public static class NoProviderConstructorService implements ServiceInterface {
+=======
+    public abstract static class NoProviderConstructorService implements ServiceInterface {
+>>>>>>> 9757a3ce49407d349cfb412c37c1b7cb4a9d1658
         /**
          * Not a provider constructor. This violates the contract of {@link ServiceLoader}.
          */

@@ -44,7 +44,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -549,11 +548,7 @@ final class LanguageAccessor extends Accessor {
         @Override
         public TruffleFile getTruffleFile(Object fileSystemContext, URI uri) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
-            try {
-                return new TruffleFile(ctx, ctx.fileSystem.parsePath(uri));
-            } catch (UnsupportedOperationException e) {
-                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
-            }
+            return new TruffleFile(ctx, ctx.fileSystem.parsePath(uri));
         }
 
         @Override

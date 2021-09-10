@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -145,8 +146,8 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestExpectedMissingTypes(TypeConfiguration typeConfig) {
-        Assert.assertNull(typeConfig.get("FlagTestA"));
-        Assert.assertNull(typeConfig.get("FlagTestB"));
+        Assert.assertNull(typeConfig.get(ConfigurationCondition.objectReachable(), "FlagTestA"));
+        Assert.assertNull(typeConfig.get(ConfigurationCondition.objectReachable(), "FlagTestB"));
     }
 
     private static void doTestTypeFlags(TypeConfiguration typeConfig) {
@@ -194,12 +195,13 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestSerializationConfig(SerializationConfiguration serializationConfig) {
-        Assert.assertFalse(serializationConfig.contains("seenType", null));
-        Assert.assertTrue(serializationConfig.contains("unseenType", null));
+        ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+        Assert.assertFalse(serializationConfig.contains(condition, "seenType", null));
+        Assert.assertTrue(serializationConfig.contains(condition, "unseenType", null));
     }
 
     private static ConfigurationType getConfigTypeOrFail(TypeConfiguration typeConfig, String typeName) {
-        ConfigurationType type = typeConfig.get(typeName);
+        ConfigurationType type = typeConfig.get(ConfigurationCondition.objectReachable(), typeName);
         Assert.assertNotNull(type);
         return type;
     }
@@ -259,11 +261,11 @@ class TypeMethodsWithFlagsTest {
     }
 
     void populateConfig() {
-        ConfigurationType oldType = new ConfigurationType(getTypeName());
+        ConfigurationType oldType = new ConfigurationType(ConfigurationCondition.objectReachable(), getTypeName());
         setFlags(oldType);
         previousConfig.add(oldType);
 
-        ConfigurationType newType = new ConfigurationType(getTypeName());
+        ConfigurationType newType = new ConfigurationType(ConfigurationCondition.objectReachable(), getTypeName());
         for (Map.Entry<ConfigurationMethod, ConfigurationMemberKind> methodEntry : methodsThatMustExist.entrySet()) {
             newType.addMethod(methodEntry.getKey().getName(), methodEntry.getKey().getInternalSignature(), methodEntry.getValue());
         }
@@ -294,7 +296,7 @@ class TypeMethodsWithFlagsTest {
 
     void doTest() {
         String name = getTypeName();
-        ConfigurationType configurationType = currentConfig.get(name);
+        ConfigurationType configurationType = currentConfig.get(ConfigurationCondition.objectReachable(), name);
         if (methodsThatMustExist.size() == 0) {
             Assert.assertNull("Generated configuration type " + name + " exists. Expected it to be cleared as it is empty.", configurationType);
         } else {

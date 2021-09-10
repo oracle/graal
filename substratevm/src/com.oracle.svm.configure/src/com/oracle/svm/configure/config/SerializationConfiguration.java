@@ -32,10 +32,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
+<<<<<<< HEAD
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+=======
+>>>>>>> 9757a3ce49407d349cfb412c37c1b7cb4a9d1658
 
 public class SerializationConfiguration implements ConfigurationBase, RuntimeSerializationSupport {
 
@@ -52,8 +58,8 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
         serializations.removeAll(other.serializations);
     }
 
-    public boolean contains(String serializationTargetClass, String customTargetConstructorClass) {
-        return serializations.contains(createConfigurationType(serializationTargetClass, customTargetConstructorClass));
+    public boolean contains(ConfigurationCondition condition, String serializationTargetClass, String customTargetConstructorClass) {
+        return serializations.contains(createConfigurationType(condition, serializationTargetClass, customTargetConstructorClass));
     }
 
     @Override
@@ -72,21 +78,26 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
     }
 
     @Override
-    public void register(Class<?>... classes) {
+    public void register(ConfigurationCondition condition, Class<?>... classes) {
         for (Class<?> clazz : classes) {
-            registerWithTargetConstructorClass(clazz, null);
+            registerWithTargetConstructorClass(condition, clazz, null);
         }
     }
 
     @Override
-    public void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        registerWithTargetConstructorClass(clazz.getName(), customTargetConstructorClazz == null ? null : customTargetConstructorClazz.getName());
+    public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz) {
+        registerWithTargetConstructorClass(condition, clazz.getName(), customTargetConstructorClazz == null ? null : customTargetConstructorClazz.getName());
     }
 
     @Override
+<<<<<<< HEAD
     public void registerWithTargetConstructorClass(String rawClassName, String customTargetConstructorClassName) {
         String className = rawClassName.contains("$$Lambda$") ? rawClassName.split(LambdaUtils.SPLIT_BY_LAMBDA)[0] + "$$Lambda$" : rawClassName;
         serializations.add(createConfigurationType(className, customTargetConstructorClassName));
+=======
+    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName) {
+        serializations.add(createConfigurationType(condition, className, customTargetConstructorClassName));
+>>>>>>> 9757a3ce49407d349cfb412c37c1b7cb4a9d1658
     }
 
     @Override
@@ -94,9 +105,9 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
         return serializations.isEmpty();
     }
 
-    private static SerializationConfigurationType createConfigurationType(String className, String customTargetConstructorClassName) {
+    private static SerializationConfigurationType createConfigurationType(ConfigurationCondition condition, String className, String customTargetConstructorClassName) {
         String convertedClassName = SignatureUtil.toInternalClassName(className);
         String convertedCustomTargetConstructorClassName = customTargetConstructorClassName == null ? null : SignatureUtil.toInternalClassName(customTargetConstructorClassName);
-        return new SerializationConfigurationType(convertedClassName, convertedCustomTargetConstructorClassName);
+        return new SerializationConfigurationType(condition, convertedClassName, convertedCustomTargetConstructorClassName);
     }
 }

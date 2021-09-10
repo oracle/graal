@@ -60,7 +60,11 @@ public class AbstractServiceLoaderTest {
     public static class ConcreteService implements ServiceInterface {
     }
 
+<<<<<<< HEAD
     public static class AbstractService implements ServiceInterface {
+=======
+    public abstract static class AbstractService implements ServiceInterface {
+>>>>>>> 9757a3ce49407d349cfb412c37c1b7cb4a9d1658
     }
 
     private static final Set<String> EXPECTED = Set.of(ConcreteService.class.getSimpleName(), AbstractService.class.getSimpleName());

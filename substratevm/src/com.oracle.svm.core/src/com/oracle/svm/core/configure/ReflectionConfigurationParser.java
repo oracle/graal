@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
@@ -50,7 +52,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private final boolean allowIncompleteClasspath;
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "allDeclaredClasses", "allPublicClasses", "methods", "fields");
+                    "allDeclaredClasses", "allPublicClasses", "methods", "fields", CONDITIONAL_KEY);
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
         this(delegate, false, true);
@@ -81,7 +83,13 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         Object classObject = data.get("name");
         String className = asString(classObject, "name");
 
-        TypeResult<T> result = delegate.resolveTypeResult(className);
+        TypeResult<ConfigurationCondition> conditionResult = delegate.resolveCondition(parseCondition(data).getTypeName());
+        if (!conditionResult.isPresent()) {
+            handleError("Could not resolve condition " + parseCondition(data).getTypeName() + " for reflection.", conditionResult.getException());
+        }
+        ConfigurationCondition condition = conditionResult.get();
+
+        TypeResult<T> result = delegate.resolveType(condition, className);
         if (!result.isPresent()) {
             handleError("Could not resolve " + className + " for reflection configuration.", result.getException());
             return;
@@ -179,8 +187,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         List<T> methodParameterTypes = null;
         Object parameterTypes = data.get("parameterTypes");
         if (parameterTypes != null) {
-            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(parameterTypes,
-                            "Attribute 'parameterTypes' must be a list of type names"));
+            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(parameterTypes, "Attribute 'parameterTypes' must be a list of type names"));
             if (methodParameterTypes == null) {
                 return;
             }
@@ -220,7 +227,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveTypeResult(typeName);
+            TypeResult<T> typeResult = delegate.resolveType(ConfigurationCondition.objectReachable(), typeName);
             if (!typeResult.isPresent()) {
                 handleError("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;
@@ -257,10 +264,10 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         if (cause != null) {
             message += " Reason: " + formatError(cause) + '.';
         }
-        if (this.allowIncompleteClasspath) {
-            System.out.println("Warning: " + message);
+        if (allowIncompleteClasspath) {
+            System.err.println("Warning: " + message);
         } else {
-            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath");
+            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option --allow-incomplete-classpath");
         }
         // Checkstyle: resume
     }

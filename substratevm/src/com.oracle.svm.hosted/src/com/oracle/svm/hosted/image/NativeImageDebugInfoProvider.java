@@ -364,7 +364,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         void addField(String name, String valueType, int offset, @SuppressWarnings("hiding") int size) {
-            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, typeName, valueType, offset, size);
+            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, valueType, offset, size);
             fieldInfos.add(fieldinfo);
         }
 
@@ -416,15 +416,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private class NativeImageDebugHeaderFieldInfo implements DebugFieldInfo {
         private final String name;
-        private final String ownerType;
         private final String valueType;
         private final int offset;
         private final int size;
         private final int modifiers;
 
-        NativeImageDebugHeaderFieldInfo(String name, String ownerType, String valueType, int offset, int size) {
+        NativeImageDebugHeaderFieldInfo(String name, String valueType, int offset, int size) {
             this.name = name;
-            this.ownerType = ownerType;
             this.valueType = valueType;
             this.offset = offset;
             this.size = size;
@@ -434,11 +432,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String name() {
             return name;
-        }
-
-        @Override
-        public String ownerType() {
-            return ownerType;
         }
 
         @Override
@@ -586,11 +579,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public String ownerType() {
-                return typeName();
-            }
-
-            @Override
             public String valueType() {
                 HostedType valueType = field.getType();
                 return toJavaName(valueType);
@@ -656,18 +644,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public String ownerType() {
-                return typeName();
-            }
-
-            @Override
             public String valueType() {
                 return hostedMethod.getSignature().getReturnType(null).toJavaName();
-            }
-
-            @Override
-            public String paramSignature() {
-                return hostedMethod.format("%P");
             }
 
             @Override
@@ -740,7 +718,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         void addField(String name, String valueType, int offset, @SuppressWarnings("hiding") int size) {
-            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, typeName(), valueType, offset, size);
+            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, valueType, offset, size);
             fieldInfos.add(fieldinfo);
         }
 
@@ -861,8 +839,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String ownerType() {
-            return getDeclaringClass(hostedMethod, true).toJavaName();
+        public ResolvedJavaType ownerType() {
+            return getDeclaringClass(hostedMethod, true);
         }
 
         @Override
@@ -889,11 +867,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String symbolNameForMethod() {
             return NativeImage.localSymbolNameForMethod(hostedMethod);
-        }
-
-        @Override
-        public String paramSignature() {
-            return hostedMethod.format("%P");
         }
 
         @Override
@@ -995,15 +968,21 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private static boolean filterLineInfoSourceMapping(SourceMapping sourceMapping) {
-        if (!SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue()) {
-            return true;
+        NodeSourcePosition sourcePosition = sourceMapping.getSourcePosition();
+        /* Don't report line info for zero length ranges. */
+        if (sourceMapping.getStartOffset() == sourceMapping.getEndOffset()) {
+            return false;
         }
-        return sourceMapping.getSourcePosition().getCaller() == null;
+        /* Don't report inline line info unless the user has configured it. */
+        if (SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue() && sourcePosition.getCaller() != null) {
+            return false;
+        }
+        return true;
     }
 
     /**
-     * Implementation of the DebugLineInfo API interface that allows line number info to be passed
-     * to an ObjectFile when generation of debug info is enabled.
+     * Implementation of the DebugLineInfo API interface that allows line number info (and more) to
+     * be passed to an ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugLineInfo implements DebugLineInfo {
         private final int bci;
@@ -1012,15 +991,32 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private final int hi;
         private Path cachePath;
         private Path fullFilePath;
+        private DebugLineInfo callersLineInfo;
 
         NativeImageDebugLineInfo(SourceMapping sourceMapping) {
-            NodeSourcePosition position = sourceMapping.getSourcePosition();
-            int posbci = position.getBCI();
-            this.bci = (posbci >= 0 ? posbci : 0);
+            this(sourceMapping.getSourcePosition(), sourceMapping.getStartOffset(), sourceMapping.getEndOffset());
+        }
+
+        NativeImageDebugLineInfo(DebugLineInfo lineInfo, NodeSourcePosition position) {
+            this(position, lineInfo.addressLo(), lineInfo.addressHi());
+        }
+
+        NativeImageDebugLineInfo(NodeSourcePosition position, int lo, int hi) {
+            this.bci = position.getBCI();
             this.method = position.getMethod();
-            this.lo = sourceMapping.getStartOffset();
-            this.hi = sourceMapping.getEndOffset();
+            this.lo = lo;
+            this.hi = hi;
             this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
+            NodeSourcePosition callerPosition = position.getCaller();
+            /* Skip substitutions with bytecode index -1 */
+            while (callerPosition != null && callerPosition.isSubstitution() && callerPosition.getBCI() == -1) {
+                callerPosition = callerPosition.getCaller();
+            }
+            if (callerPosition != null) {
+                callersLineInfo = new NativeImageDebugLineInfo(this, callerPosition);
+            } else {
+                callersLineInfo = null;
+            }
             computeFullFilePath();
         }
 
@@ -1049,12 +1045,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String ownerType() {
+        public ResolvedJavaType ownerType() {
             if (method instanceof HostedMethod) {
-                return getDeclaringClass((HostedMethod) method, true).toJavaName();
-            } else {
-                return method.getDeclaringClass().toJavaName();
+                return getDeclaringClass((HostedMethod) method, true);
             }
+            return method.getDeclaringClass();
         }
 
         @Override
@@ -1094,11 +1089,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String paramSignature() {
-            return method.format("%P");
-        }
-
-        @Override
         public String symbolNameForMethod() {
             return NativeImage.localSymbolNameForMethod(method);
         }
@@ -1124,7 +1114,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int line() {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
-            if (lineNumberTable != null) {
+            if (lineNumberTable != null && bci >= 0) {
                 return lineNumberTable.getLineNumber(bci);
             }
             return -1;
@@ -1157,6 +1147,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int modifiers() {
             return method.getModifiers();
+        }
+
+        @Override
+        public DebugLineInfo getCaller() {
+            return callersLineInfo;
         }
 
         @SuppressWarnings("try")

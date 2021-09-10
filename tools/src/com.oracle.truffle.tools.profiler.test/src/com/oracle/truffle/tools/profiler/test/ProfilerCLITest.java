@@ -36,6 +36,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
@@ -292,6 +293,7 @@ public class ProfilerCLITest {
     }
 
     @Test
+    @Ignore("GR-33497")
     public void testDefaultHistogramMultiThreadedNoSummary() {
         Assume.assumeTrue(checkRuntime());
         HashMap<String, String> options = new HashMap<>();

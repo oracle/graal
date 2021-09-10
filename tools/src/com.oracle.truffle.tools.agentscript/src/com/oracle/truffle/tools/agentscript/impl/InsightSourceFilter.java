@@ -32,12 +32,14 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
 import java.util.function.Predicate;
 
-final class AgentSourceFilter implements Predicate<Source> {
-    private final Object fn;
+final class InsightSourceFilter implements Predicate<Source> {
+    private final InsightInstrument insight;
     private final ThreadLocal<Boolean> querying;
+    private final InsightInstrument.Key key;
 
-    AgentSourceFilter(Object fn) {
-        this.fn = fn;
+    InsightSourceFilter(InsightInstrument insight, InsightInstrument.Key key) {
+        this.insight = insight;
+        this.key = key;
         this.querying = new ThreadLocal<>();
     }
 
@@ -54,12 +56,36 @@ final class AgentSourceFilter implements Predicate<Source> {
             }
             this.querying.set(true);
             final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-            Object res = iop.execute(fn, new SourceEventObject(src));
-            return (Boolean) res;
-        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
+            final int len = key.functionsMaxCount();
+            InsightPerContext ctx = insight.findCtx();
+            for (int i = 0; i < len; i++) {
+                InsightFilter.Data data = (InsightFilter.Data) ctx.functionFor(key, i);
+                if (data == null || data.sourceFilterFn == null) {
+                    continue;
+                }
+                if (checkSource(iop, data, src)) {
+                    return true;
+                }
+            }
             return false;
         } finally {
             this.querying.set(prev);
         }
+    }
+
+    static boolean checkSource(final InteropLibrary iop, InsightFilter.Data data, Source src) {
+        final SourceEventObject srcObj = new SourceEventObject(src);
+        Object res;
+        try {
+            res = iop.execute(data.sourceFilterFn, srcObj);
+        } catch (UnsupportedTypeException ex) {
+            return false;
+        } catch (ArityException ex) {
+            return false;
+        } catch (UnsupportedMessageException ex) {
+            return false;
+        }
+        final boolean is = Boolean.TRUE.equals(res);
+        return is;
     }
 }

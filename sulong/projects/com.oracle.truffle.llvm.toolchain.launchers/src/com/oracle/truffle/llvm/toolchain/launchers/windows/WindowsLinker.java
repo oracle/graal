@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
 public final class WindowsLinker extends Driver {
 
     public static final String LLD_LINK = "lld-link.exe";
+    public static final String LLD_LINK_NO_EXE = "lld-link";
 
     private WindowsLinker() {
         super(LLD_LINK);

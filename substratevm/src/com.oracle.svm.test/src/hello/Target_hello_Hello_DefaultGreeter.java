@@ -26,6 +26,8 @@
 
 package hello;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -34,6 +36,25 @@ final class Target_hello_Hello_DefaultGreeter {
     @SuppressWarnings("static-method")
     @Substitute
     public void greet() {
+        SubstituteHelperClass substituteHelperClass = new SubstituteHelperClass();
+        substituteHelperClass.inlineGreet();
+    }
+
+}
+
+class SubstituteHelperClass {
+    @AlwaysInline("For testing purposes")
+    void inlineGreet() {
+        staticInlineGreet();
+    }
+
+    @AlwaysInline("For testing purposes")
+    private static void staticInlineGreet() {
+        nestedGreet();
+    }
+
+    @NeverInline("For testing purposes")
+    private static void nestedGreet() {
         // Checkstyle: stop
         System.out.println("Hello, substituted world!");
         // Checkstyle: resume

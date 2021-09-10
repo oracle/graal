@@ -26,19 +26,15 @@ package com.oracle.svm.core.configure;
 
 import java.util.List;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.core.TypeResult;
 
 public interface ReflectionConfigurationParserDelegate<T> {
 
-    /**
-     * @deprecated use {@link #resolveTypeResult(String)} instead.
-     */
-    @Deprecated
-    default T resolveType(String typeName) {
-        return resolveTypeResult(typeName).get();
-    }
+    TypeResult<ConfigurationCondition> resolveCondition(String typeName);
 
-    TypeResult<T> resolveTypeResult(String typeName);
+    TypeResult<T> resolveType(ConfigurationCondition condition, String typeName);
 
     void registerType(T type);
 
