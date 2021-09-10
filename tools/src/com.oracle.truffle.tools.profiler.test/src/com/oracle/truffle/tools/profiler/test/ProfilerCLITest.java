@@ -421,4 +421,13 @@ public class ProfilerCLITest {
         }
         return null;
     }
+
+    @Test
+    public void testSamplerFlameGraph() {
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        options.put("cpusampler.Output", "flamegraph");
+        String[] output = runSampler(options);
+        Assert.assertTrue(output[0].startsWith("<?xml"));
+    }
 }

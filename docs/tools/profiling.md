@@ -100,7 +100,17 @@ algorithm.
      Primes            |               20ms   0.2% ||                0ms   0.0% || primes.js~25-38:424-739
     ----------------------------------------------------------------------------------------------------
     ```
-    The sampler prints an execution time histogram for each JavaScript function.
+    By default the sampler prints an execution time histogram for each JavaScript function.
+    You can produce a flame graph in SVG format by doing 
+    ```shell
+    js primes.js --cpusampler --cpusampler.Output=flamegraph --cpusampler.OutputFile=primes.svg
+    ```
+    which should produce something like this
+    
+    ![](img/profiler_flamegraph.png)
+    
+    You can zoom into the graph by clicking on elements.
+
     By default, CPU sampling takes a sample every 10 milliseconds. From the
     result, we can see that roughly 89% of the time is spent
     in the `DivisibleByFilter.accept` function.
@@ -200,7 +210,7 @@ program roots, for example, `Math.*`. The default is &lowast;.
     - `exclude_inlined_roots`: samples roots excluding inlined functions (enabled by default)
     - `roots`: samples roots including inlined functions
     - `statements`: samples all statements
-- `--cpusampler.Output=<Output>`: prints a `histogram` or `calltree` as output.
+- `--cpusampler.Output=<Output>`: prints a `histogram`, `calltree`, `json`, or `flamegraph` as output.
 The default is `histogram`.
 - `--cpusampler.Period=<Long>`: specifies the period, in milliseconds, to
 sample the stack.

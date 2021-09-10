@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle Tools versions.
 * Added the --cpusampler.ShowTiers option that shows time spend in each optimization tier.
 * Support for hash interoperability in Insight - no need to use `Truffle::Interop.hash_keys_as_members` anymore
 * [Cooperative heap dumping](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/heap/package-summary.html) when embedding Insight into Java applications
+* Add an SVG flamegraph output format to the CPUSampler, use option `--cpusampler.OutputFormat=flamegraph`.
 
 
 ## Version 21.1.0
