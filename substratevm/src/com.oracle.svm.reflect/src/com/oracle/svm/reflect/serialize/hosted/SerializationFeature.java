@@ -322,8 +322,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
                 UserError.guarantee(customTargetConstructorClass.isAssignableFrom(serializationTargetClass),
-                        "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",
-                        customTargetConstructorClass, serializationTargetClass);
+                         "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",
+                                customTargetConstructorClass, serializationTargetClass);
             }
             registerConditionalConfiguration(condition, () -> {
                 Class<?> targetConstructor = addConstructorAccessor(serializationTargetClass, customTargetConstructorClass);

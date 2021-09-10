@@ -59,7 +59,8 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     }
 
     private void parseSerializationDescriptorObject(Map<String, Object> data) {
-        checkMultipleOptionsAttributes(data, "serialization descriptor object", Collections.unmodifiableCollection(Arrays.asList(NAME_KEY, LAMBDA_CAPTURING_CLASS_KEY)), Collections.singleton(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY));
+        checkMultipleOptionsAttributes(data, "serialization descriptor object", Collections.unmodifiableCollection(Arrays.asList(NAME_KEY, LAMBDA_CAPTURING_CLASS_KEY)),
+                 Collections.singleton(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY));
         ConfigurationCondition unresolvedCondition = parseCondition(data);
         String targetSerializationClass = data.containsKey(NAME_KEY) ? asString(data.get(NAME_KEY)) : asString(data.get(LAMBDA_CAPTURING_CLASS_KEY)) + "$$Lambda$";
         Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
