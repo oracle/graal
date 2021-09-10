@@ -47,8 +47,8 @@ import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
 import com.oracle.graal.pointsto.standalone.util.Timer;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.PointsToOptionParser;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.ModuleSupport;
@@ -71,7 +71,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import java.io.File;
 import java.lang.reflect.Method;
-
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
