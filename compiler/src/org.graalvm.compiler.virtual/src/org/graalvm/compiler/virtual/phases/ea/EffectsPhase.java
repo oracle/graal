@@ -34,12 +34,12 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
+import org.graalvm.compiler.phases.common.util.LoopUtility;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -82,7 +82,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
 
     @SuppressWarnings("try")
     public boolean runAnalysis(StructuredGraph graph, CoreProvidersT context) {
-        LoopEx.removeObsoleteProxies(graph, context);
+        LoopUtility.removeObsoleteProxies(graph, context, canonicalizer);
         assert unscheduled || strategy != null;
         boolean changed = false;
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
@@ -115,7 +115,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
 
                             new DeadCodeEliminationPhase(Required).apply(graph);
                         }
-                        LoopEx.removeObsoleteProxies(graph, context);
+                        LoopUtility.removeObsoleteProxies(graph, context, canonicalizer);
                         postIteration(graph, context, listener.getNodes());
                     }
 
