@@ -254,7 +254,7 @@ public class InsightContextTest {
                 assertNotEquals(c1LanguageInfo, c2LanguageInfo);
 
                 assertEquals("Executed second time for second context", 2, itl.executingCounter);
-                assertEquals("Parsed once as the source is cached - but it is not yet", 2, itl.parsingCounter);
+                assertEquals("Parsed once as the source is cache", 1, itl.parsingCounter);
 
                 assertAgentNodes(sampleNode, 1);
                 assertAgentNodes(anotherNode, 1);
