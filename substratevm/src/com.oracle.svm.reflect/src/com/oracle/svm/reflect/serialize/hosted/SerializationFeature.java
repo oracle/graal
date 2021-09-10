@@ -332,13 +332,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
     }
 
-//    public void duringAnalysis(Feature.DuringAnalysisAccess a) {
-//        System.err.println("USAO SAM OVDE!!!");
-//
-//
-//        a.requireAnalysisIteration();
-//    }
-
     public void afterAnalysis() {
         sealed = true;
     }
