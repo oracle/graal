@@ -42,8 +42,8 @@ public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
     @Override
     Object executeBody(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        if (getMethod().isStatic()) {
-            Method method = getMethod();
+        Method method = getMethod();
+        if (method.isStatic()) {
             int parameterCount = method.getParameterCount();
             Object[] newArgs = new Object[parameterCount + 1];
             newArgs[0] = method.getDeclaringKlass().mirror();

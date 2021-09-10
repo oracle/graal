@@ -54,7 +54,7 @@ JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle() {
   V(AttachCurrentThreadAsDaemon)
 
 
-JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *, void* closure_ptr)) {
+JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *, void*)) {
 
   MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(*moka_env));
  
