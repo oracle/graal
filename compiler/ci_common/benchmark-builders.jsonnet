@@ -137,8 +137,8 @@
   // Microservices
   local microservice_builds = std.flattenArrays([
     [
-    c.daily + hw.x52 + jdk + cc.libgraal + suite,
-    c.daily + hw.x52 + jdk + cc.jargraal + suite
+    c.daily  + hw.x52 + jdk + cc.libgraal + suite,
+    c.weekly + hw.x52 + jdk + cc.jargraal + suite
     ]
   for jdk in amd64_jdks
   for suite in bench.groups.microservice_suites
@@ -147,10 +147,7 @@
 
   // intensive weekly benchmarking
   local weekly_forks_builds = std.flattenArrays([
-    std.flattenArrays([
-    cc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.libgraal + suite),
-    cc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.jargraal + suite)
-    ])
+    cc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.libgraal + suite)
   for jdk in amd64_jdks
   for suite in bench.groups.weekly_forks_suites
   if suite.is_jdk_supported(jdk.jdk_version)
