@@ -274,6 +274,11 @@ public class StandardGraphBuilderPlugins {
             Registration sr = new Registration(plugins, StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
                 @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
                     ValueNode object = b.nullCheckedValue(value);
@@ -309,6 +314,11 @@ public class StandardGraphBuilderPlugins {
             Registration sr = new Registration(plugins, JDK9StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
                 @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
                     ValueNode object = b.nullCheckedValue(value);
@@ -319,6 +329,11 @@ public class StandardGraphBuilderPlugins {
             });
             sr.register1("getCoder", String.class, new InvocationPlugin() {
                 @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_CODER_FIELD);
                     b.addPush(JavaKind.Int, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
@@ -327,6 +342,11 @@ public class StandardGraphBuilderPlugins {
                 }
             });
             sr.register2("getByte", byte[].class, int.class, new InvocationPlugin() {
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                     b.addPush(JavaKind.Byte, new JavaReadNode(JavaKind.Byte,

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
+import static org.graalvm.compiler.replacements.ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.STRING_VALUE_FIELD;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
@@ -44,6 +45,8 @@ import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CopySignNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -56,6 +59,7 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.ArrayIndexOfDispatchNode;
 import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
@@ -66,6 +70,8 @@ import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.BitCountNode;
+import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
+import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -90,8 +96,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public void run() {
                 registerThreadPlugins(invocationPlugins, arch);
-                registerIntegerLongPlugins(invocationPlugins, AMD64IntegerSubstitutions.class, JavaKind.Int, arch, replacements);
-                registerIntegerLongPlugins(invocationPlugins, AMD64LongSubstitutions.class, JavaKind.Long, arch, replacements);
+                registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, arch, replacements);
+                registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, arch, replacements);
                 if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
                     if (JavaVersionUtil.JAVA_SPEC <= 8) {
                         registerStringPlugins(invocationPlugins, replacements);
@@ -121,12 +127,60 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         }
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, AMD64 arch, Replacements replacements) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, AMD64 arch, Replacements replacements) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass, replacements);
-        r.registerMethodSubstitution(substituteDeclaringClass, "numberOfLeadingZeros", type);
-        r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
+        r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                // @formatter:off
+                //    public static int numberOfLeadingZeros(int i) {
+                //        if (lzcnt(INJECTED_TARGET)) {
+                //            return AMD64CountLeadingZerosNode.countLeadingZeros(i);
+                //        }
+                //        if (i == 0) {
+                //            return 32;
+                //        }
+                //        return 31 - BitScanReverseNode.unsafeScan(i);
+                //    }
+                // @formatter:on
+                if (arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) && arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
+                    b.addPush(JavaKind.Int, new AMD64CountLeadingZerosNode(arg));
+                } else {
+                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        helper.emitReturnIf(arg, Condition.EQ, ConstantNode.forIntegerKind(kind, 0), ConstantNode.forInt(kind.getBitCount()), GraalDirectives.UNLIKELY_PROBABILITY);
+                        helper.emitFinalReturn(JavaKind.Int, helper.sub(ConstantNode.forInt(kind.getBitCount() - 1), new BitScanReverseNode(arg)));
+                    }
+                }
+                return true;
+            }
+        });
+        r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                // @formatter:off
+                //    public static int numberOfTrailingZeros(int i) {
+                //        if (tzcnt(INJECTED_TARGET)) {
+                //            return AMD64CountTrailingZerosNode.countTrailingZeros(i);
+                //        }
+                //        if (i == 0) {
+                //            return 32;
+                //        }
+                //        return BitScanForwardNode.unsafeScan(i);
+                //    }
+                // @formatter:on
+                if (arch.getFeatures().contains(AMD64.CPUFeature.BMI1) && arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
+                    b.addPush(JavaKind.Int, new AMD64CountTrailingZerosNode(arg));
+                } else {
+                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        helper.emitReturnIf(arg, Condition.EQ, ConstantNode.forIntegerKind(kind, 0), ConstantNode.forInt(kind.getBitCount()), GraalDirectives.UNLIKELY_PROBABILITY);
+                        helper.emitFinalReturn(JavaKind.Int, b.add(new BitScanForwardNode(arg)));
+                    }
+                }
+                return true;
+            }
+        });
 
         r.registerConditional1(arch.getFeatures().contains(AMD64.CPUFeature.POPCNT),
                         "bitCount", type, new InvocationPlugin() {
@@ -465,7 +519,15 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
         r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class);
         r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfLatin1Unsafe", byte[].class, int.class, byte[].class, int.class, int.class);
-        r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfCharUnsafe", byte[].class, int.class, int.class, int.class);
+        r.register4("indexOfCharUnsafe", byte[].class, int.class, int.class, int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
+                ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
+                b.addPush(JavaKind.Int, new ArrayIndexOfDispatchNode(STUB_INDEX_OF_1_CHAR_COMPACT, JavaKind.Byte, JavaKind.Char, false, value, max, fromIndex,
+                                toChar));
+                return true;
+            }
+        });
         Registration r2 = new Registration(plugins, StringUTF16Substitutions.class, replacements);
         r2.register2("getChar", byte[].class, int.class, new InvocationPlugin() {
             @Override

@@ -31,8 +31,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.COUNTERMODE_IMPL_CRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK_WITH_ORIGINAL_KEY;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_WITH_ORIGINAL_KEY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
@@ -570,7 +568,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                 // These stubs do callee saving
                 registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall);
                 registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall);
-                registerForeignCall(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, c.aescryptDecryptBlockStub, NativeCall);
             } catch (GraalError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;
@@ -580,7 +577,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                 // These stubs do callee saving
                 registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall);
                 registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall);
-                registerForeignCall(DECRYPT_WITH_ORIGINAL_KEY, c.cipherBlockChainingDecryptAESCryptStub, NativeCall);
             } catch (GraalError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;

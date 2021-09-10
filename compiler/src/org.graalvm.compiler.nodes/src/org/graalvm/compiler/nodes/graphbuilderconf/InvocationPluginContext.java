@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements;
+package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
-import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.ValueNode;
 
-// JaCoCo Exclude
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@ClassSubstitution(Long.class)
-public class LongSubstitutions {
+public class InvocationPluginContext {
 
-    @MethodSubstitution
-    public static int numberOfLeadingZeros(long i) {
-        if (i == 0) {
-            return 64;
-        }
-        return 63 - BitScanReverseNode.unsafeScan(i);
-    }
+    public final CallTargetNode.InvokeKind invokeKind;
+    public final ValueNode[] args;
+    public final JavaKind resultType;
+    /**
+     * Plugin current being processed.
+     */
+    public final InvocationPlugin plugin;
 
-    @MethodSubstitution
-    public static int numberOfTrailingZeros(long i) {
-        if (i == 0) {
-            return 64;
-        }
-        return BitScanForwardNode.unsafeScan(i);
+    /**
+     * Method being intrinsified.
+     */
+    public final ResolvedJavaMethod targetMethod;
+
+    public InvocationPluginContext(CallTargetNode.InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, InvocationPlugin plugin) {
+        this.invokeKind = invokeKind;
+        this.args = args;
+        this.resultType = resultType;
+        this.plugin = plugin;
+        this.targetMethod = targetMethod;
     }
 }

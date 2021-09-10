@@ -350,6 +350,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return needsExplicitException;
         }
 
+        @Override
+        public boolean isParsingInvocationPlugin() {
+            throw GraalError.shouldNotReachHere();
+        }
+
         /**
          * {@link Fold} and {@link NodeIntrinsic} can be deferred during parsing/decoding. Only by
          * the end of {@linkplain SnippetTemplate#instantiate Snippet instantiation} do they need to
@@ -484,16 +489,23 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         protected boolean exceptionEdgeConsumed;
         protected final InvokeKind invokeKind;
         protected final JavaType invokeReturnType;
+        protected final boolean parsingInvocationPlugin;
 
         public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
-            this(inlineScope, lastInstr, null, null);
+            this(inlineScope, lastInstr, null, null, false);
         }
 
-        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, InvokeKind invokeKind, JavaType invokeReturnType) {
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, InvokeKind invokeKind, JavaType invokeReturnType, boolean parsingInvocationPlugin) {
             super(inlineScope, inlineScope.invokeData != null ? inlineScope.invokeData.invoke : null);
             this.lastInstr = lastInstr;
             this.invokeKind = invokeKind;
             this.invokeReturnType = invokeReturnType;
+            this.parsingInvocationPlugin = parsingInvocationPlugin;
+        }
+
+        @Override
+        public boolean isParsingInvocationPlugin() {
+            return parsingInvocationPlugin;
         }
 
         @Override
@@ -1047,7 +1059,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             PEMethodScope inlineScope = createMethodScope(graph, methodScope, loopScope, null, targetMethod, invokeData, methodScope.inliningDepth + 1, arguments);
 
             JavaType returnType = targetMethod.getSignature().getReturnType(methodScope.method.getDeclaringClass());
-            PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType);
+            PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType, true);
             InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
 
             if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {

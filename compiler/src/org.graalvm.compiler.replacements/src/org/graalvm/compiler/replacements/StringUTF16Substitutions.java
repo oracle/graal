@@ -74,11 +74,6 @@ public class StringUTF16Substitutions {
     private static native char getChar(byte[] value, int i);
 
     @MethodSubstitution
-    public static int indexOfCharUnsafe(byte[] value, int ch, int fromIndex, int max) {
-        return ArrayIndexOf.indexOf1CharCompact(value, max, fromIndex, (char) ch);
-    }
-
-    @MethodSubstitution
     public static int indexOfUnsafe(byte[] source, int sourceCount, byte[] target, int targetCount, int fromIndex) {
         ReplacementsUtil.dynamicAssert(fromIndex >= 0, "StringUTF16.indexOfUnsafe invalid args: fromIndex negative");
         ReplacementsUtil.dynamicAssert(targetCount > 0, "StringUTF16.indexOfUnsafe invalid args: targetCount <= 0");
