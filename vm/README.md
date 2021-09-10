@@ -1,4 +1,4 @@
-# VM suite
+# VM Suite
 
 The VM suite allows you to build custom GraalVM distributions, as well as installable components.
 It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the GraalVM SDK, Truffle, and the GraalVM component installer.
@@ -10,7 +10,7 @@ This can be done either by:
 
 After the compilation:
 - the `latest_graalvm` symbolic link points to the latest built GraalVM
-- `$ mx [build-time arguments] graalvm-home` prints the path to the GraalVM home directory
+- `mx [build-time arguments] graalvm-home` prints the path to the GraalVM home directory
 
 Note that the build dependencies of each component are specified in the README file of the corresponding repository.
 A common requirement is that the `JAVA_HOME` environment variable must point to the latest JVMCI-enabled JDK8 ([pre-built archives](https://github.com/graalvm/openjdk8-jvmci-builder/releases); [build instructions](https://github.com/graalvm/openjdk8-jvmci-builder)).
@@ -19,7 +19,7 @@ A common requirement is that the `JAVA_HOME` environment variable must point to 
 
 In any of the build commands, replace `build` with `graalvm-show`:
 ```bash
-mx ... graalvm-show
+$ mx ... graalvm-show
 ```
 
 This will show a list of components, launchers and libraries to be built.
@@ -127,12 +127,12 @@ builds the native SubstrateVM launcher for native-image, and creates bash launch
 
 ### Example: build only TruffleRuby with bash launchers
 ```bash
-mx --dy truffleruby --components='TruffleRuby' build
+$ mx --dy truffleruby --components='TruffleRuby' build
 ```
 
 ### Example: build only the TruffleRuby launcher
 ```bash
-mx --dy truffleruby,/substratevm,/tools --components='TruffleRuby,Native Image,suite:tools' --native-images=truffleruby build
+$ mx --dy truffleruby,/substratevm,/tools --components='TruffleRuby,Native Image,suite:tools' --native-images=truffleruby build
 ```
 or as env file (e.g., in `mx.vm/ruby`):
 ```

@@ -1,3 +1,5 @@
+# GraalVM Compiler
+
 The GraalVM compiler is a dynamic compiler written in Java that integrates with the HotSpot JVM. It has a focus on high performance and extensibility.
 In addition, it provides optimized performance for languages implemented with [Truffle Framework](https://github.com/graalvm/graal/tree/master/truffle)-based languages running on the JVM.
 For brevity, the GraalVM compiler is often referred to as "the compiler" below.
@@ -7,9 +9,9 @@ For brevity, the GraalVM compiler is often referred to as "the compiler" below.
 Working with the GraalVM compiler will mean cloning more than one repository and so it's
 recommended to create and use a separate directory:
 
-```
-mkdir graal
-cd graal
+```bash
+$ mkdir graal
+$ cd graal
 ```
 
 ## Building the GraalVM compiler
@@ -17,9 +19,9 @@ cd graal
 To simplify development, a separate Python tool called [mx](https://github.com/graalvm/mx) has been co-developed.
 This tool must be downloaded and put onto your PATH:
 
-```
-git clone https://github.com/graalvm/mx.git
-export PATH=$PWD/mx:$PATH
+```bash
+$ git clone https://github.com/graalvm/mx.git
+$ export PATH=$PWD/mx:$PATH
 ```
 
 The compiler depends on a JDK that supports a compatible version of JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
@@ -34,32 +36,32 @@ These sources are in [versioned projects](https://github.com/graalvm/mx#versioni
 If you don't have a JDK that satisfies the requirement of a versioned project, the project is ignored by mx.
 
 If you want to develop on a single JDK version, you only need to define `JAVA_HOME`. For example:
-```
-export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-20-b01
+```bash
+$ export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-20-b01
 ```
 or:
-```
-export JAVA_HOME=/usr/lib/jvm/jdk-11
+```bash
+$ export JAVA_HOME=/usr/lib/jvm/jdk-11
 ```
 
 If you want to ensure your changes will pass both JDK 8 and JDK 11 gates, you can specify the secondary JDK(s) in `EXTRA_JAVA_HOMES`.
 For example, to develop for JDK 8 while ensuring `mx build` still works with the JDK 11 specific sources:
 
-```
-export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-20-b01
-export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-11
+```bash
+$ export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-20-b01
+$ export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-11
 ```
 And on macOS:
-```
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/oraclejdk1.8.0_212-jvmci-20-b01/Contents/Home
-export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
+```bash
+$ export JAVA_HOME=/Library/Java/JavaVirtualMachines/oraclejdk1.8.0_212-jvmci-20-b01/Contents/Home
+$ export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
 ```
 If you omit `EXTRA_JAVA_HOMES` in the above examples, versioned projects depending on the specified JDK(s) will be ignored.
 Note that `JAVA_HOME` defines the *primary* JDK for development. For instance, when running `mx vm`, this is the JDK that will be used so if you want to run on JDK 11, swap JDK 8 and JDK 11 in `JAVA_HOME` and `EXTRA_JAVA_HOMES`.
 
 Now change to the `graal/compiler` directory:
-```
-cd graal/compiler
+```bash
+$ cd graal/compiler
 ```
 
 Changing to the `graal/compiler` directory informs mx that the focus of development (called the _primary suite_) is the GraalVM compiler.
@@ -67,9 +69,9 @@ All subsequent mx commands should be executed from this directory.
 
 Here's the recipe for building and running the GraalVM compiler:
 
-```
-mx build
-mx vm
+```bash
+$ mx build
+$ mx vm
 ```
 
 When running `mx vm`, the GraalVM compiler is used as the top tier JIT compiler by default. To revert to using C2 instead,
@@ -84,8 +86,8 @@ When applying above steps on Windows, replace `export` with `set`.
 
 You can generate IDE project configurations by running:
 
-```
-mx ideinit
+```bash
+$ mx ideinit
 ```
 
 This will generate Eclipse, IntelliJ, and NetBeans project configurations.
@@ -97,8 +99,8 @@ You can get a quick insight into this tool by running the commands below.
 The first command launches the tool and the second runs one of the unit tests included in the code base with extra options to dump the compiler IR for all methods compiled.
 You should wait for the GUI to appear before running the second command.
 
-```
-$GRAALVM_EE_HOME/bin/idealgraphvisualizer &
+```bash
+$ $GRAALVM_EE_HOME/bin/idealgraphvisualizer &
 mx unittest -Dgraal.Dump BC_athrow0
 ```
 
@@ -131,17 +133,17 @@ compilers such as C1 and C2.
 
 To build libgraal:
 
-```
-cd graal/vm
-mx --env libgraal build
+```bash
+$ cd graal/vm
+$ mx --env libgraal build
 ```
 The newly built GraalVM image containing libgraal is available at:
-```
-mx --env libgraal graalvm-home
+```bash
+$ mx --env libgraal graalvm-home
 ```
 or following this symlink:
-```
-./latest_graalvm_home
+```bash
+$ ./latest_graalvm_home
 ```
 For more information about building GraalVM images, see the [README file of the vm suite](../vm/README.md).
 
@@ -149,23 +151,23 @@ Without leaving the `graal/vm` directory, you can now run libgraal as follows:
 
 1. Use the GraalVM image that you just built:
 
-    ```
-    ./latest_graalvm_home/bin/java -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+    ```bash
+    $ ./latest_graalvm_home/bin/java -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
     ```
 
 2. Use `mx`:
     - On linux:
-        ```
-        mx -p ../compiler vm -XX:JVMCILibPath=latest_graalvm_home/jre/lib/amd64 -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+        ```bash
+        $ mx -p ../compiler vm -XX:JVMCILibPath=latest_graalvm_home/jre/lib/amd64 -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
         ```
     - On macOS:
-        ```
-        mx -p ../compiler vm -XX:JVMCILibPath=latest_graalvm_home/jre/lib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
+        ```bash
+        $ mx -p ../compiler vm -XX:JVMCILibPath=latest_graalvm_home/jre/lib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
         ```
 
 ## Publications and Presentations
 
-For video tutorials, presentations and publications on the GraalVM compiiler visit the [Publications](../docs/Publications.md) page.
+For video tutorials, presentations and publications on the GraalVM compiler visit the [Publications](../docs/Publications.md) page.
 
 ## Building JVMCI JDK 8
 
