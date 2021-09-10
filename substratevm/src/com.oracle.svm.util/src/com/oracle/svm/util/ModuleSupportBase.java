@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.options;
 
-import java.util.ServiceLoader;
+package com.oracle.svm.util;
 
-public class ModuleSupport {
+public class ModuleSupportBase {
 
-    static Iterable<OptionDescriptors> getOptionsLoader() {
-        // On JDK 8, Graal and its extensions are loaded by the same class loader.
-        return ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
-    }
+    public static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
+
+    public static final boolean modulePathBuild = Boolean.parseBoolean(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+
 }

@@ -150,7 +150,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
                 VMError.shouldNotReachHere("Could not adjust org.graalvm.nativeimage.librarysupport to read all unnamed modules", e);
             }
         } else {
-            VMError.guarantee(!org.graalvm.compiler.options.ModuleSupport.USE_NI_JPMS,
+            VMError.guarantee(!ModuleSupport.modulePathBuild,
                             "Image-builder on module-path requires module org.graalvm.nativeimage.librarysupport");
         }
     }
