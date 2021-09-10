@@ -30,7 +30,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -112,7 +112,7 @@ public class ConfigurationSet {
 
     public ProxyConfiguration loadProxyConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(Arrays.asList(types)), true), exceptionHandler);
+        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(types.getCondition(), new ArrayList<>(types.getElement())), true), exceptionHandler);
         return proxyConfiguration;
     }
 

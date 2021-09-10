@@ -26,20 +26,20 @@ package com.oracle.svm.reflect.proxy.hosted;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.proxy.DynamicProxySupport;
@@ -60,27 +60,27 @@ public final class DynamicProxyFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(imageClassLoader.getClassLoader());
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
-
-        Consumer<String[]> adapter = interfaceNames -> {
-            Class<?>[] interfaces = new Class<?>[interfaceNames.length];
-            for (int i = 0; i < interfaceNames.length; i++) {
-                String className = interfaceNames[i];
-                Class<?> clazz = imageClassLoader.findClass(className).get();
-                if (clazz == null) {
-                    throw UserError.abort("Class " + className + " not found");
-                }
-                if (!clazz.isInterface()) {
-                    throw UserError.abort("The class \"" + className + "\" is not an interface.");
-                }
-                interfaces[i] = clazz;
-            }
-            /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-            dynamicProxySupport.addProxyClass(interfaces);
-        };
-        ProxyConfigurationParser parser = new ProxyConfigurationParser(adapter, ConfigurationFiles.Options.StrictConfiguration.getValue());
+        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
+        ProxyRegistry proxyRegistry = new ProxyRegistry(typeResolver, dynamicProxySupport, imageClassLoader);
+        ImageSingletons.add(ProxyRegistry.class, proxyRegistry);
+        ProxyConfigurationParser parser = new ProxyConfigurationParser(proxyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                         ConfigurationFile.DYNAMIC_PROXY.getFileName());
+    }
+
+    private static ProxyRegistry proxyRegistry() {
+        return ImageSingletons.lookup(ProxyRegistry.class);
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        proxyRegistry().flushConditionalConfiguration(access);
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        proxyRegistry().flushConditionalConfiguration(access);
     }
 
     @Override

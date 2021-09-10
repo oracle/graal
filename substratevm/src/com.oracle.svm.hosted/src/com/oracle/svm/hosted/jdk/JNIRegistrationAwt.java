@@ -24,16 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import java.awt.*;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ResourcesRegistry;
@@ -43,6 +33,15 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
+import java.awt.GraphicsEnvironment;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticFeature

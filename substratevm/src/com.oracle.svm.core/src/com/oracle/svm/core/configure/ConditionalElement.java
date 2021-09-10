@@ -72,4 +72,11 @@ public class ConditionalElement<T> {
                         .thenComparing(ConditionalElement::getCondition)
                         .compare(o1, o2);
     }
+
+    public static <T> Comparator<ConditionalElement<T>> comparator(Comparator<T> elementComparator) {
+        return (o1, o2) -> Comparator
+                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::getElement, elementComparator)
+                        .thenComparing(ConditionalElement::getCondition)
+                        .compare(o1, o2);
+    }
 }

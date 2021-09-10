@@ -182,8 +182,9 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestProxyConfig(ProxyConfiguration proxyConfig) {
-        Assert.assertFalse(proxyConfig.contains("testProxySeenA", "testProxySeenB", "testProxySeenC"));
-        Assert.assertTrue(proxyConfig.contains("testProxyUnseen"));
+        ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+        Assert.assertFalse(proxyConfig.contains(condition, "testProxySeenA", "testProxySeenB", "testProxySeenC"));
+        Assert.assertTrue(proxyConfig.contains(condition, "testProxyUnseen"));
     }
 
     private static void doTestResourceConfig(ResourceConfiguration resourceConfig) {

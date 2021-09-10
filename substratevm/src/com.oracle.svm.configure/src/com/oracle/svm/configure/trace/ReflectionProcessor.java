@@ -268,7 +268,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 return;
             }
         }
-        proxyConfiguration.add(interfaces);
+        proxyConfiguration.add(ConfigurationCondition.objectReachable(), interfaces);
     }
 
     private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass) {
@@ -285,6 +285,6 @@ class ReflectionProcessor extends AbstractProcessor {
         List<String> interfaces = new ArrayList<>();
         interfaces.addAll(checkedInterfaces);
         interfaces.addAll(uncheckedInterfaces);
-        proxyConfiguration.add(interfaces);
+        proxyConfiguration.add(ConfigurationCondition.objectReachable(), interfaces);
     }
 }
