@@ -74,9 +74,25 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(errorMessage);
     }
 
+    protected void checkMultipleOptionsAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
+        Set<String> unseenRequired = new HashSet<>(requiredAttrs);
+        for (String attribute : map.keySet()) {
+            if (unseenRequired.contains(attribute)) {
+                unseenRequired.removeAll(requiredAttrs);
+                break;
+            }
+        }
+
+        checkRemainingAttributes(map, type, requiredAttrs, optionalAttrs, unseenRequired);
+    }
+
     protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
         Set<String> unseenRequired = new HashSet<>(requiredAttrs);
         unseenRequired.removeAll(map.keySet());
+        checkRemainingAttributes(map, type, requiredAttrs, optionalAttrs, unseenRequired);
+    }
+
+    private void checkRemainingAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs, Set<String> unseenRequired) {
         if (!unseenRequired.isEmpty()) {
             throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
         }

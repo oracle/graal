@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -85,7 +86,8 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
     }
 
     @Override
-    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName) {
+    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String rawClassName, String customTargetConstructorClassName) {
+        String className = rawClassName.contains("$$Lambda$") ? rawClassName.split(LambdaUtils.SPLIT_BY_LAMBDA)[0] + "$$Lambda$" : rawClassName;
         serializations.add(createConfigurationType(condition, className, customTargetConstructorClassName));
     }
 

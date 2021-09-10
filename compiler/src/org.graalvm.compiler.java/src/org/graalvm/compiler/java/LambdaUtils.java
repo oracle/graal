@@ -51,6 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class LambdaUtils {
     private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/\\.][^/]+;");
     private static final char[] HEX = "0123456789abcdef".toCharArray();
+    public static final String SPLIT_BY_LAMBDA = "\\$\\$Lambda\\$";
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());

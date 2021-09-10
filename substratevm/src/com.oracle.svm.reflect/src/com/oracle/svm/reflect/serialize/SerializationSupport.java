@@ -127,6 +127,16 @@ public class SerializationSupport implements SerializationRegistry {
 
     @Override
     public Object getSerializationConstructorAccessor(Class<?> declaringClass, Class<?> rawTargetConstructorClass) {
+        if (declaringClass.getName().contains("$$Lambda$")) {
+            try {
+                //Checkstyle: stop
+                declaringClass = Class.forName("java.lang.invoke.SerializedLambda");
+                //Checkstyle: resume
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
         Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;
 
         Object constructorAccessor = constructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));
@@ -135,9 +145,6 @@ public class SerializationSupport implements SerializationRegistry {
             return constructorAccessor;
         } else {
             String targetConstructorClassName = targetConstructorClass.getName();
-            if (targetConstructorClassName.contains("$$Lambda$")) {
-                throw VMError.unsupportedFeature("Can't serialize " + targetConstructorClassName + ". Lambda class serialization is currently not supported");
-            }
             throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
                             " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
                             " to serialization-config.json fixes the problem.");
