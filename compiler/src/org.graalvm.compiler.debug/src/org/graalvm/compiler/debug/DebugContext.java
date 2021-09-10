@@ -42,7 +42,6 @@ import static org.graalvm.compiler.debug.DebugOptions.Timers;
 import static org.graalvm.compiler.debug.DebugOptions.TrackMemUse;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -608,13 +607,13 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    public Path getDumpPath(String extension, boolean createMissingDirectory) {
+    public String getDumpPath(String extension, boolean createMissingDirectory) {
         try {
             String id = description == null ? null : description.identifier;
             String label = description == null ? null : description.getLabel();
-            Path result = PathUtilities.createUnique(immutable.options, DumpPath, id, label, extension, createMissingDirectory);
+            String result = PathUtilities.createUnique(immutable.options, DumpPath, id, label, extension, createMissingDirectory);
             if (ShowDumpFiles.getValue(immutable.options)) {
-                TTY.println("Dumping debug output to %s", result.toAbsolutePath().toString());
+                TTY.println("Dumping debug output to %s", result);
             }
             return result;
         } catch (IOException ex) {
@@ -2208,12 +2207,14 @@ public final class DebugContext implements AutoCloseable {
             synchronized (PRINT_METRICS_LOCK) {
                 if (!metricsFileDeleteCheckPerformed) {
                     metricsFileDeleteCheckPerformed = true;
-                    File file = new File(metricsFile);
-                    if (file.exists()) {
+                    if (PathUtilities.exists(metricsFile)) {
                         // This can return false in case something like /dev/stdout
                         // is specified. If the file is unwriteable, the file open
                         // below will fail.
-                        file.delete();
+                        try {
+                            PathUtilities.deleteFile(metricsFile);
+                        } catch (IOException e) {
+                        }
                     }
                 }
                 if (compilations == null) {

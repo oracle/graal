@@ -138,7 +138,7 @@ public final class IsolatedGraalUtils {
          * of users. Always setting the DumpPath option in the compilation isolates is the easiest
          * way to achieve that.
          */
-        map.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()).toString());
+        map.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()));
         return OptionValuesEncoder.encode(map);
     }
 
