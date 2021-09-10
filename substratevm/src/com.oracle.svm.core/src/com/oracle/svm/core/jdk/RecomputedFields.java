@@ -33,10 +33,8 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.net.SocketPermission;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
-import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -48,7 +46,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -361,118 +358,6 @@ final class Target_java_util_concurrent_ForkJoinPool {
     @TargetElement(onlyWith = JDK11OrLater.class) //
     Target_java_util_concurrent_ForkJoinPool(byte forCommonPoolOnly) {
     }
-}
-
-/**
- * Since AccessControlContextFeature replaces all AccessControlContext objects with
- * NO_CONTEXT_SINGLETON, we need to reinitialize them in runtime.
- */
-
-@TargetClass(className = "java.security.AccessController$AccHolder", onlyWith = JDK11OrLater.class)
-@SuppressWarnings("unused") //
-final class Target_java_security_AccessController_AccHolder {
-    @Alias @InjectAccessors(AccessControllerUtil.INNOCUOUS_ACC.class) static AccessControlContext innocuousAcc;
-}
-
-@TargetClass(className = "java.util.Calendar$CalendarAccessControlContext")
-@SuppressWarnings("unused") //
-final class Target_java_util_Calendar_CalendarAccessControlContext {
-    @Alias @InjectAccessors(CalendarAccessControlContextAcc.class) static AccessControlContext INSTANCE;
-}
-
-class CalendarAccessControlContextAcc {
-    static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(
-                    new RuntimePermission("accessClassInPackage.sun.util.calendar")));
-
-    static AccessControlContext get() {
-        return acc.get();
-    }
-}
-
-@TargetClass(className = "java.util.concurrent.ForkJoinPool$DefaultForkJoinWorkerThreadFactory", onlyWith = JDK11OrLater.class)
-@SuppressWarnings("unused") //
-final class Target_java_util_concurrent_ForkJoinPool_DefaultForkJoinWorkerThreadFactory {
-    @Alias @InjectAccessors(DefaultForkJoinWorkerThreadFactoryAcc.class) static AccessControlContext ACC;
-}
-
-class DefaultForkJoinWorkerThreadFactoryAcc {
-    static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(
-                    new RuntimePermission("getClassLoader"),
-                    new RuntimePermission("setContextClassLoader")));
-
-    static AccessControlContext get() {
-        return acc.get();
-    }
-}
-
-@TargetClass(className = "java.util.concurrent.ForkJoinPool$InnocuousForkJoinWorkerThreadFactory", onlyWith = JDK11OrLater.class)
-@SuppressWarnings("unused") //
-final class Target_java_util_concurrent_ForkJoinPool_InnocuousForkJoinWorkerThreadFactory {
-    @Alias @InjectAccessors(InnocuousForkJoinWorkerThreadFactoryAcc.class) static AccessControlContext ACC;
-}
-
-class InnocuousForkJoinWorkerThreadFactoryAcc {
-    static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(
-                    new RuntimePermission("modifyThread"),
-                    new RuntimePermission("enableContextClassLoaderOverride"),
-                    new RuntimePermission("modifyThreadGroup"),
-                    new RuntimePermission("getClassLoader"),
-                    new RuntimePermission("setContextClassLoader")));
-
-    static AccessControlContext get() {
-        return acc.get();
-    }
-}
-
-@TargetClass(className = "java.util.concurrent.ForkJoinWorkerThread")
-@SuppressWarnings("unused") //
-final class Target_java_util_concurrent_ForkJoinWorkerThread {
-    @Alias @InjectAccessors(AccessControllerUtil.INNOCUOUS_ACC.class) static AccessControlContext INNOCUOUS_ACC;
-}
-
-@TargetClass(className = "sun.misc.InnocuousThread", onlyWith = JDK8OrEarlier.class)
-@SuppressWarnings("unused") //
-final class Target_sun_misc_InnocuousThread {
-    @Alias @InjectAccessors(AccessControllerUtil.INNOCUOUS_ACC.class) static AccessControlContext ACC;
-}
-
-@TargetClass(className = "jdk.internal.misc.InnocuousThread", onlyWith = JDK11OrLater.class)
-@SuppressWarnings("unused") //
-final class Target_jdk_internal_misc_InnocuousThread {
-    @Alias @InjectAccessors(AccessControllerUtil.INNOCUOUS_ACC.class) static AccessControlContext ACC;
-}
-
-@TargetClass(className = "javax.management.Monitor", onlyWith = PlatformHasClass.class)
-@SuppressWarnings("unused") //
-final class Target_javax_management_Monitor {
-    @Alias @InjectAccessors(AccessControllerUtil.NO_PERMISSIONS_CONTEXT.class) static AccessControlContext noPermissionsACC;
-}
-
-@TargetClass(className = "java.rmi.activation.ActivationID")
-@SuppressWarnings("unused") //
-final class Target_java_rmi_activation_ActivationID {
-    @Alias @InjectAccessors(AccessControllerUtil.NO_PERMISSIONS_CONTEXT.class) static AccessControlContext NOPERMS_ACC;
-}
-
-@TargetClass(className = "sun.rmi.transport.DGCCClient", onlyWith = PlatformHasClass.class)
-@SuppressWarnings("unused") //
-final class Target_sun_rmi_transport_DGCCClient {
-    @Alias @InjectAccessors(SocketAcc.class) static AccessControlContext SOCKET_ACC;
-}
-
-class SocketAcc {
-    static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(
-                    new SocketPermission("*", "connect,resolve")));
-
-    static AccessControlContext get() {
-        return acc.get();
-    }
-}
-
-@TargetClass(className = "sun.rmi.transport.tcp.TCPTransport")
-@SuppressWarnings("unused") //
-final class Target_sun_rmi_transport_tcp_TCPTransport {
-    @Alias @InjectAccessors(AccessControllerUtil.NO_PERMISSIONS_CONTEXT.class) static AccessControlContext NOPERMS_ACC;
 }
 
 /**

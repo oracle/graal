@@ -40,6 +40,7 @@ import java.security.ProtectionDomain;
 import java.security.Provider;
 import java.security.SecureRandom;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,7 +49,7 @@ import java.util.function.Predicate;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.compiler.phases.common.LazyValue;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -160,7 +161,8 @@ final class Target_java_security_AccessController {
         }
 
         if (context != null && context.equals(AccessControllerUtil.NO_CONTEXT_SINGLETON)) {
-            VMError.shouldNotReachHere("Invoked AccessControlContext was replaced at build time but wasn't reinitialized at run time.");
+            VMError.shouldNotReachHere("Invoked AccessControlContext was replaced at build time but wasn't reinitialized at run time.\n" +
+                            "This might be an indicator of improper build time initialization, or of a non-compatible JDK version.");
         }
 
         AccessControllerUtil.PrivilegedStack.push(context, caller);
@@ -199,50 +201,6 @@ class AccessControllerUtil {
         }
     }
 
-    static class INNOCUOUS_ACC {
-        static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> new AccessControlContext(new ProtectionDomain[]{new ProtectionDomain(null, null)}));
-
-        static AccessControlContext get() {
-            return acc.get();
-        }
-
-        static void set(AccessControlContext ctx) {
-        }
-    }
-
-    static class NO_PERMISSIONS_CONTEXT {
-        static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(new Permission[0]));
-
-        static AccessControlContext get() {
-            return acc.get();
-        }
-
-        static void set(AccessControlContext ctx) {
-        }
-    }
-
-    static class GET_CLASS_LOADER_CONTEXT {
-        static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(new RuntimePermission("getClassLoader")));
-
-        static AccessControlContext get() {
-            return acc.get();
-        }
-
-        static void set(AccessControlContext ctx) {
-        }
-    }
-
-    static class GET_LOOKUP_CONTEXT {
-        static LazyValue<AccessControlContext> acc = new LazyValue<>(() -> AccessControllerUtil.contextWithPermissions(new RuntimePermission("dynalink.getLookup")));
-
-        static AccessControlContext get() {
-            return acc.get();
-        }
-
-        static void set(AccessControlContext ctx) {
-        }
-    }
-
     public static class PrivilegedStack {
 
         public static class StackElement {
@@ -263,7 +221,7 @@ class AccessControllerUtil {
             }
         }
 
-        @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ArrayDeque> stack = FastThreadLocalFactory.createObject(ArrayDeque.class);
+        @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ArrayDeque> stack = FastThreadLocalFactory.createObject(ArrayDeque.class, "accStack");
 
         @SuppressWarnings("unchecked")
         private static ArrayDeque<StackElement> getStack() {
@@ -296,14 +254,6 @@ class AccessControllerUtil {
         }
     }
 
-    public static AccessControlContext contextWithPermissions(Permission... perms) {
-        Permissions permissions = new Permissions();
-        for (Permission perm : perms) {
-            permissions.add(perm);
-        }
-        return new AccessControlContext(new ProtectionDomain[]{new ProtectionDomain(null, permissions)});
-    }
-
     static Throwable wrapCheckedException(Throwable ex) {
         if (ex instanceof Exception && !(ex instanceof RuntimeException)) {
             return new PrivilegedActionException((Exception) ex);
@@ -316,14 +266,78 @@ class AccessControllerUtil {
 @AutomaticFeature
 @SuppressWarnings({"unused"})
 class AccessControlContextFeature implements Feature {
+
+    static List<Pair<String, AccessControlContext>> allowedContexts;
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        // Following AccessControlContexts are allowed in the image heap since they cannot leak
+        // sensitive information.
+        // They mostly originate from JDK's static final fields, and they do not feature
+        // CodeSources, DomainCombiners etc.
+        // New JDK versions can feature new or remove old contexts, so this method should be kept
+        // up-to-date.
+        allowContextIfExists(access, "java.util.Calendar$CalendarAccessControlContext", "INSTANCE");
+        allowContextIfExists(access, "javax.management.monitor.Monitor", "noPermissionsACC");
+
+        if (JavaVersionUtil.JAVA_SPEC < 9) {
+            allowContextIfExists(access, "sun.misc.InnocuousThread", "ACC");
+        }
+        if (JavaVersionUtil.JAVA_SPEC >= 9) {
+            allowContextIfExists(access, "java.security.AccessController$AccHolder", "innocuousAcc");
+            allowContextIfExists(access, "java.util.concurrent.ForkJoinPool$DefaultForkJoinWorkerThreadFactory", "ACC");
+        }
+        if (JavaVersionUtil.JAVA_SPEC < 17) {
+            allowContextIfExists(access, "java.util.concurrent.ForkJoinWorkerThread", "INNOCUOUS_ACC");
+        }
+        if (JavaVersionUtil.JAVA_SPEC >= 9 && JavaVersionUtil.JAVA_SPEC < 17) {
+            allowContextIfExists(access, "java.util.concurrent.ForkJoinPool$InnocuousForkJoinWorkerThreadFactory", "ACC");
+        }
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            allowContextIfExists(access, "java.util.concurrent.ForkJoinPool$WorkQueue", "INNOCUOUS_ACC");
+            allowContextIfExists(access, "java.util.concurrent.ForkJoinPool$DefaultCommonPoolForkJoinWorkerThreadFactory", "ACC");
+        }
+    }
+
+    static void allowContextIfExists(BeforeAnalysisAccess access, String className, String fieldName) {
+        if (allowedContexts == null) {
+            allowedContexts = new ArrayList<>();
+        }
+        try {
+            // Checkstyle: stop
+            Class<?> clazz = Class.forName(className);
+            // Checkstyle: resume
+            String description = className + "." + fieldName;
+            access.registerReachabilityHandler(access1 -> { // Use only reachable
+                                                            // AccessControlContexts
+                try {
+                    AccessControlContext acc = ReflectionUtil.readStaticField(clazz, fieldName);
+                    allowedContexts.add(Pair.create(description, acc));
+                } catch (ReflectionUtil.ReflectionUtilError e) {
+                    VMError.shouldNotReachHere("Following field isn't present in JDK" + JavaVersionUtil.JAVA_SPEC + ": " + description);
+                }
+            }, clazz);
+
+        } catch (ReflectiveOperationException e) {
+            VMError.shouldNotReachHere("Following class isn't present in JDK" + JavaVersionUtil.JAVA_SPEC + ": " + className);
+        }
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         access.registerObjectReplacer(AccessControlContextFeature::replaceAccessControlContext);
     }
 
     private static Object replaceAccessControlContext(Object obj) {
-        if (obj instanceof AccessControlContext) {
-            return AccessControllerUtil.NO_CONTEXT_SINGLETON;
+        if (allowedContexts == null) { // allowedContexts wasn't populated yet
+            return obj;
+        }
+        if (obj instanceof AccessControlContext && obj != AccessControllerUtil.NO_CONTEXT_SINGLETON) {
+            if (allowedContexts.stream().anyMatch((e) -> obj.equals(e.getRight()))) {
+                return obj;
+            } else {
+                return AccessControllerUtil.NO_CONTEXT_SINGLETON;
+            }
         }
         return obj;
     }
