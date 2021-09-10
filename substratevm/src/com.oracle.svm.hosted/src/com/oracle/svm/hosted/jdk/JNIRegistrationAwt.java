@@ -24,6 +24,16 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.awt.*;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ResourcesRegistry;
@@ -33,14 +43,6 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
-import java.awt.GraphicsEnvironment;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticFeature
@@ -175,33 +177,33 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
     private static void registerColorProfiles(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("sun.java2d.cmm.profiles.*");
+        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "sun.java2d.cmm.profiles.*");
     }
 
     private static void registerFlavorMapProps(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("sun.datatransfer.resources.flavormap.properties");
+        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "sun.datatransfer.resources.flavormap.properties");
     }
 
     private static void registerRTFReaderCharsets(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("javax.swing.text.rtf.charsets.*");
+        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.text.rtf.charsets.*");
     }
 
     private static void registerOceanThemeIcons(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("javax.swing.plaf.metal.icons.*");
-        resourcesRegistry.addResources("javax.swing.plaf.basic.icons.*");
+        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.plaf.metal.icons.*");
+        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.plaf.basic.icons.*");
     }
 
     private static void registerHtml32bdtd(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("javax.swing.text.html.parser.html32.bdtd");
+        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.text.html.parser.html32.bdtd");
     }
 
     private static void registerDefaultCSS(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("javax.swing.text.html.default.css");
+        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.text.html.default.css");
     }
 
     private static NativeLibraries getNativeLibraries(DuringAnalysisAccess access) {

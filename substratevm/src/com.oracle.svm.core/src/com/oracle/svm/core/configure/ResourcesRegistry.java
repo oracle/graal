@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.configure;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 public interface ResourcesRegistry {
-    void addResources(String pattern);
+    void addResources(ConfigurationCondition condition, String pattern);
 
-    void ignoreResources(String pattern);
+    void ignoreResources(ConfigurationCondition condition, String pattern);
 
-    void addResourceBundles(String name);
+    void addResourceBundles(ConfigurationCondition condition, String name);
 }

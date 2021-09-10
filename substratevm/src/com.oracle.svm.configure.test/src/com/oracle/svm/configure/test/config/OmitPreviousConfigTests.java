@@ -190,8 +190,9 @@ public class OmitPreviousConfigTests {
         Assert.assertFalse(resourceConfig.anyResourceMatches("seenResource.txt"));
         Assert.assertTrue(resourceConfig.anyResourceMatches("unseenResource.txt"));
 
-        Assert.assertFalse(resourceConfig.anyBundleMatches("seenBundle"));
-        Assert.assertTrue(resourceConfig.anyBundleMatches("unseenBundle"));
+        ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+        Assert.assertFalse(resourceConfig.anyBundleMatches(condition, "seenBundle"));
+        Assert.assertTrue(resourceConfig.anyBundleMatches(condition, "unseenBundle"));
     }
 
     private static void doTestSerializationConfig(SerializationConfiguration serializationConfig) {

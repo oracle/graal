@@ -54,6 +54,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -119,28 +120,55 @@ public final class ResourcesFeature implements Feature {
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
 
-    private class ResourcesRegistryImpl implements ResourcesRegistry {
-        @Override
-        public void addResources(String pattern) {
-            UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
-            resourcePatternWorkSet.add(pattern);
+    private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
+        private ConfigurationTypeResolver configurationTypeResolver;
+
+        ResourcesRegistryImpl(ConfigurationTypeResolver configurationTypeResolver) {
+            this.configurationTypeResolver = configurationTypeResolver;
         }
 
         @Override
-        public void ignoreResources(String pattern) {
-            UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
-            excludedResourcePatterns.add(pattern);
+        public void addResources(ConfigurationCondition condition, String pattern) {
+            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> {
+                UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
+                resourcePatternWorkSet.add(pattern);
+            });
         }
 
         @Override
-        public void addResourceBundles(String name) {
-            ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name);
+        public void ignoreResources(ConfigurationCondition condition, String pattern) {
+            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> {
+                UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
+
+                excludedResourcePatterns.add(pattern);
+            });
+        }
+
+        @Override
+        public void addResourceBundles(ConfigurationCondition condition, String name) {
+            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
         }
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ResourcesRegistry.class, new ResourcesRegistryImpl());
+    public void afterRegistration(AfterRegistrationAccess a) {
+        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
+        ImageClassLoader imageClassLoader = access.getImageClassLoader();
+        ImageSingletons.add(ResourcesRegistry.class,
+                        new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue())));
+    }
+
+    private static ResourcesRegistryImpl resourceRegistryImpl() {
+        return (ResourcesRegistryImpl) ImageSingletons.lookup(ResourcesRegistry.class);
     }
 
     @Override
@@ -153,10 +181,12 @@ public final class ResourcesFeature implements Feature {
 
         resourcePatternWorkSet.addAll(Options.IncludeResources.getValue().values());
         excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());
+        resourceRegistryImpl().flushConditionalConfiguration(access);
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
+        resourceRegistryImpl().flushConditionalConfiguration(access);
         if (resourcePatternWorkSet.isEmpty()) {
             return;
         }

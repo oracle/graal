@@ -90,7 +90,7 @@ class ReflectionProcessor extends AbstractProcessor {
             case "getSystemResources":
                 String literal = singleElement(args);
                 String regex = Pattern.quote(literal);
-                resourceConfiguration.addResourcePattern(regex);
+                resourceConfiguration.addResourcePattern(condition, regex);
                 return;
         }
         String callerClass = (String) entry.get("caller_class");
@@ -238,12 +238,12 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "getBundleImplJDK8OrEarlier": {
                 expectSize(args, 4);
-                resourceConfiguration.addBundle((String) args.get(0));
+                resourceConfiguration.addBundle(condition, (String) args.get(0));
                 break;
             }
             case "getBundleImplJDK11OrLater": {
                 expectSize(args, 5);
-                resourceConfiguration.addBundle((String) args.get(2));
+                resourceConfiguration.addBundle(condition, (String) args.get(2));
                 break;
             }
             default:

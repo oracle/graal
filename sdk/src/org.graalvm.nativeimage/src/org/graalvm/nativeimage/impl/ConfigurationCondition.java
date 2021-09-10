@@ -87,4 +87,9 @@ public final class ConfigurationCondition implements Comparable<ConfigurationCon
     public int compareTo(ConfigurationCondition o) {
         return this.typeName.compareTo(o.typeName);
     }
+
+    @Override
+    public String toString() {
+        return "[typeReachable: \"" + typeName + "\"" + "]";
+    }
 }
