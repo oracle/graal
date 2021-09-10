@@ -26,6 +26,7 @@ package com.oracle.svm.reflect.hosted;
 
 // Checkstyle: allow reflection
 
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -83,9 +84,9 @@ public class ReflectionFeature implements GraalFeature {
 
     final Map<Executable, Object> accessors = new ConcurrentHashMap<>();
 
-    private static final Method invokePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototype", Object.class, Object[].class);
+    private static final Method invokePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototype", boolean.class, Object.class, Object[].class);
     private static final Method newInstancePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "newInstancePrototype", Object[].class);
-    private static final Method invokeSpecialErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokeSpecialError", Object.class, Object[].class);
+    private static final Method methodHandleInvokeErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "methodHandleInvokeError", boolean.class, Object.class, Object[].class);
     private static final Method newInstanceErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "newInstanceError", Object[].class);
 
     FeatureImpl.BeforeAnalysisAccessImpl analysisAccess;
@@ -119,28 +120,15 @@ public class ReflectionFeature implements GraalFeature {
     private Object createAccessor(Executable member) {
         String name = SubstrateUtil.uniqueShortName(member);
         if (member instanceof Method) {
-            ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(invokePrototype).getWrapped();
-            ResolvedJavaMethod invokeMethod = createReflectiveInvokeMethod(name, prototype, member, false);
-
-            ResolvedJavaMethod invokeSpecialMethod;
-            AnalysisMethod targetMethod = analysisAccess.getMetaAccess().lookupJavaMethod(member);
-            if (targetMethod.isStatic() || targetMethod.isAbstract()) {
-                /*
-                 * Static / abstract methods cannot be invoked using an invokeSpecial. Such direct
-                 * calls (instead of virtual calls) are not available via the Java reflection API,
-                 * but used by our method handle implementation.
-                 */
-                invokeSpecialMethod = analysisAccess.getMetaAccess().lookupJavaMethod(invokeSpecialErrorMethod);
-            } else if (targetMethod.canBeStaticallyBound()) {
-                /*
-                 * Methods that can be statically bound are always de-virtualized to a special
-                 * invoke, so no separate invocation stub is necessary.
-                 */
-                invokeSpecialMethod = invokeMethod;
+            ResolvedJavaMethod invokeMethod;
+            if (member.getDeclaringClass() == MethodHandle.class && (member.getName().equals("invoke") || member.getName().equals("invokeExact"))) {
+                /* Method handles must not be invoked via reflection. */
+                invokeMethod = analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod);
             } else {
-                invokeSpecialMethod = createReflectiveInvokeMethod("invokeSpecial_" + name, prototype, member, true);
+                ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(invokePrototype).getWrapped();
+                invokeMethod = createReflectiveInvokeMethod(name, prototype, (Method) member);
             }
-            return ImageSingletons.lookup(SubstrateReflectionAccessorFactory.class).createMethodAccessor(member, register(invokeMethod), register(invokeSpecialMethod));
+            return ImageSingletons.lookup(SubstrateReflectionAccessorFactory.class).createMethodAccessor(member, register(invokeMethod));
 
         } else {
             ResolvedJavaMethod newInstanceMethod;
@@ -167,8 +155,8 @@ public class ReflectionFeature implements GraalFeature {
         return MethodPointer.factory(aMethod);
     }
 
-    protected ResolvedJavaMethod createReflectiveInvokeMethod(String name, ResolvedJavaMethod prototype, Executable member, boolean specialInvoke) {
-        return new ReflectiveInvokeMethod(name, prototype, (Method) member, specialInvoke);
+    protected ResolvedJavaMethod createReflectiveInvokeMethod(String name, ResolvedJavaMethod prototype, Method method) {
+        return new ReflectiveInvokeMethod(name, prototype, method);
     }
 
     protected ResolvedJavaMethod createReflectiveNewInstanceMethod(String name, ResolvedJavaMethod prototype, Constructor<?> constructor) {

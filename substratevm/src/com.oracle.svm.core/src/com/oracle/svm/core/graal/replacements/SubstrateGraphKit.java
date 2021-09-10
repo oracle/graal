@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -84,7 +85,6 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -148,8 +148,8 @@ public class SubstrateGraphKit extends GraphKit {
         return append(LoadFieldNode.create(null, object, field));
     }
 
-    public ValueNode createLoadIndexed(ValueNode array, int index, JavaKind kind) {
-        ValueNode loadIndexed = LoadIndexedNode.create(null, array, ConstantNode.forInt(index, getGraph()), null, kind, getMetaAccess(), getConstantReflection());
+    public ValueNode createLoadIndexed(ValueNode array, int index, JavaKind kind, GuardingNode boundsCheck) {
+        ValueNode loadIndexed = LoadIndexedNode.create(null, array, ConstantNode.forInt(index, getGraph()), boundsCheck, kind, getMetaAccess(), getConstantReflection());
         if (loadIndexed instanceof FixedNode) {
             return append((FixedNode) loadIndexed);
         }
@@ -160,8 +160,8 @@ public class SubstrateGraphKit extends GraphKit {
         return append(new StoreIndexedNode(array, ConstantNode.forInt(index, getGraph()), null, null, kind, value));
     }
 
-    public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind, MetaAccessProvider metaAccess) {
-        return append(new UnboxNode(boxed, targetKind, metaAccess));
+    public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind) {
+        return append(new UnboxNode(boxed, targetKind, getMetaAccess()));
     }
 
     public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
