@@ -406,21 +406,27 @@ public final class VM extends NativeEnv implements ContextAccess {
         return NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
     }
 
+    /**
+     * Registers this known VM method's function pointer. Later native method bindings can perform a
+     * lookup when trying to bind to a function pointer, and if a match happens, this is a known VM
+     * method, and we can link directly to it thus bypassing native calls.
+     * 
+     * @param name The name of the VM method, previously extracted from {@code args[0]}.
+     * @param factory The node factory of the requested VM method.
+     * @param args A length {@linkplain #lookupCallBackArgsCount() 2} arguments array: At position 0
+     *            is a native pointer to the name of the method. At position 1 is the address of the
+     *            {@code JVM_*} symbol exported by {@code mokapot}.
+     */
     @Override
     @TruffleBoundary
     protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
         assert args.length == lookupCallBackArgsCount();
         try {
-            /*
-             * Registers this known VM method's function pointer. Later native method bindings can
-             * perform a lookup when trying to bind to a function pointer, and if a match happensm
-             * this is a known VM method, and we can link directly to it, bypassing native calls.
-             */
             InteropLibrary uncached = InteropLibrary.getUncached();
             Object ptr = args[1];
             if (factory != null && !uncached.isNull(ptr) && uncached.isPointer(ptr)) {
-                long closurePointer = uncached.asPointer(ptr);
-                knownVmMethods.put(closurePointer, factory);
+                long jvmMethodAddress = uncached.asPointer(ptr);
+                knownVmMethods.put(jvmMethodAddress, factory);
             }
         } catch (UnsupportedMessageException e) {
             /* Ignore */
