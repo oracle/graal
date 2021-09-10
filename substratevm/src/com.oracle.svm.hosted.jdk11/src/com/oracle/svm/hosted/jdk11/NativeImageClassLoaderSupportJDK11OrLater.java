@@ -127,29 +127,14 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         return singleClassloader;
     }
 
-    private void adjustLibrarySupportReadAllUnnamed() {
-        /*
-         * org.graalvm.nativeimage.librarysupport depends on junit. Unfortunately using junit as
-         * automatic module is not possible because we have to support non-modularized tests as
-         * well. Thus, we have to explicitly allow org.graalvm.nativeimage.librarysupport to read
-         * ALL-UNNAMED so that junit from classpath is accessible to it.
-         *
-         * This workaround can be replaced with --add-reads use once GR-33504 is implemented.
-         */
-        Optional<Module> librarySupportModule = findModule("org.graalvm.nativeimage.librarysupport");
-        if (!librarySupportModule.isEmpty()) {
-            try {
-                Module moduleLibrarySupport = librarySupportModule.get();
-                Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
-                ModuleSupport.openModuleByClass(Module.class, NativeImageClassLoaderSupportJDK11OrLater.class);
-                implAddReadsAllUnnamed.setAccessible(true);
-                implAddReadsAllUnnamed.invoke(moduleLibrarySupport);
-            } catch (ReflectiveOperationException | NoSuchElementException e) {
-                VMError.shouldNotReachHere("Could not adjust org.graalvm.nativeimage.librarysupport to read all unnamed modules", e);
-            }
-        } else {
-            VMError.guarantee(!ModuleSupport.modulePathBuild,
-                            "Image-builder on module-path requires module org.graalvm.nativeimage.librarysupport");
+    private void implAddReadsAllUnnamed(Module module) {
+        try {
+            Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
+            ModuleSupport.openModuleByClass(Module.class, NativeImageClassLoaderSupportJDK11OrLater.class);
+            implAddReadsAllUnnamed.setAccessible(true);
+            implAddReadsAllUnnamed.invoke(module);
+        } catch (ReflectiveOperationException | NoSuchElementException e) {
+            VMError.shouldNotReachHere("Could reflectively call Module.implAddReadsAllUnnamed", e);
         }
     }
 
@@ -191,27 +176,44 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
             }
         });
 
-        /* TODO: Implement real --add-reads instead */
-        adjustLibrarySupportReadAllUnnamed();
+        LocatableMultiOptionValue.Strings addReads = NativeImageClassLoaderOptions.AddReads.getValue(parsedHostedOptions);
+        addReads.getValuesWithOrigins().map(this::asAddReadsFormatValue).forEach(val -> {
+            if (val.targetModules.isEmpty()) {
+                implAddReadsAllUnnamed(val.module);
+            } else {
+                for (Module targetModule : val.targetModules) {
+                    Modules.addReads(val.module, targetModule);
+                }
+            }
+        });
     }
 
-    private static final class AddExportsAndOpensFormatValue {
+    private static final class AddExportsAndOpensAndReadsFormatValue {
         private final Module module;
         private final String packageName;
         private final List<Module> targetModules;
 
-        private AddExportsAndOpensFormatValue(Module module, String packageName, List<Module> targetModules) {
+        private AddExportsAndOpensAndReadsFormatValue(Module module, String packageName, List<Module> targetModules) {
             this.module = module;
             this.packageName = packageName;
             this.targetModules = targetModules;
         }
     }
 
-    private AddExportsAndOpensFormatValue asAddExportsAndOpensFormatValue(Pair<String, String> valueOrigin) {
+    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensFormatValue(Pair<String, String> valueOrigin) {
+        return asAddExportsAndOpensAndReadsFormatValue(valueOrigin, false);
+    }
+
+    private AddExportsAndOpensAndReadsFormatValue asAddReadsFormatValue(Pair<String, String> valueOrigin) {
+        return asAddExportsAndOpensAndReadsFormatValue(valueOrigin, true);
+    }
+
+    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(Pair<String, String> valueOrigin, boolean reads) {
         String optionOrigin = valueOrigin.getRight();
         String optionValue = valueOrigin.getLeft();
 
-        String syntaxErrorMessage = " Allowed value format: " + NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
+        String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
+        String syntaxErrorMessage = " Allowed value format: " + format;
 
         String[] modulePackageAndTargetModules = optionValue.split("=", 2);
         if (modulePackageAndTargetModules.length != 2) {
@@ -221,11 +223,11 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         String targetModuleNames = modulePackageAndTargetModules[1];
 
         String[] moduleAndPackage = modulePackage.split("/");
-        if (moduleAndPackage.length != 2) {
+        if (moduleAndPackage.length > 1 + (reads ? 0 : 1)) {
             throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
         }
         String moduleName = moduleAndPackage[0];
-        String packageName = moduleAndPackage[1];
+        String packageName = moduleAndPackage.length > 1 ? moduleAndPackage[1] : null;
 
         List<String> targetModuleNamesList = Arrays.asList(targetModuleNames.split(","));
         if (targetModuleNamesList.isEmpty()) {
@@ -245,7 +247,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
                 });
             }).collect(Collectors.toList());
         }
-        return new AddExportsAndOpensFormatValue(module, packageName, targetModules);
+        return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules);
     }
 
     private static UserError.UserException userErrorAddExportsAndOpens(String origin, String value, String detailMessage) {

@@ -645,7 +645,10 @@ suite = {
 
         "com.oracle.svm.junit": {
             "subDir": "src",
-            "sourceDirs": ["src"],
+            "sourceDirs": [
+                "src",
+                "resources",
+            ],
             "dependencies": [
                 "com.oracle.svm.reflect",
                 "mx:JUNIT_TOOL",
