@@ -27,17 +27,16 @@ package com.oracle.svm.hosted.option;
 import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionDescriptorsMap;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.Platforms;
@@ -47,7 +46,6 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.ImageClassLoader;
 
 public class HostedOptionParser implements HostedOptionProvider {
 
@@ -56,24 +54,14 @@ public class HostedOptionParser implements HostedOptionProvider {
     private EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
     private EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
 
-    public HostedOptionParser(ImageClassLoader imageClassLoader) {
-        collectOptions(imageClassLoader.findSubclasses(OptionDescriptors.class, true), allHostedOptions, allRuntimeOptions);
+    public HostedOptionParser(ClassLoader imageClassLoader) {
+        collectOptions(ServiceLoader.load(OptionDescriptors.class, imageClassLoader), allHostedOptions, allRuntimeOptions);
     }
 
-    public static void collectOptions(List<Class<? extends OptionDescriptors>> optionsClasses, EconomicMap<String, OptionDescriptor> allHostedOptions,
+    public static void collectOptions(ServiceLoader<OptionDescriptors> optionDescriptors, EconomicMap<String, OptionDescriptor> allHostedOptions,
                     EconomicMap<String, OptionDescriptor> allRuntimeOptions) {
-        for (Class<? extends OptionDescriptors> optionsClass : optionsClasses) {
-            if (Modifier.isAbstract(optionsClass.getModifiers()) || OptionDescriptorsMap.class.isAssignableFrom(optionsClass)) {
-                continue;
-            }
-
-            OptionDescriptors descriptors;
-            try {
-                descriptors = optionsClass.getDeclaredConstructor().newInstance();
-            } catch (Exception ex) {
-                throw shouldNotReachHere(ex);
-            }
-            for (OptionDescriptor descriptor : descriptors) {
+        for (OptionDescriptors optionDescriptor : optionDescriptors) {
+            for (OptionDescriptor descriptor : optionDescriptor) {
                 String name = descriptor.getName();
 
                 if (descriptor.getDeclaringClass().getAnnotation(Platforms.class) != null) {

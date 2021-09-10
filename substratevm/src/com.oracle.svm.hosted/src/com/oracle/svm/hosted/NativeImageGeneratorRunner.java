@@ -118,8 +118,12 @@ public class NativeImageGeneratorRunner {
         int exitStatus;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, modulePath);
-            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), imageClassLoader);
+            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, modulePath, arguments);
+            List<String> remainingArguments = imageClassLoader.classLoaderSupport.getRemainingArguments();
+            if (!remainingArguments.isEmpty()) {
+                throw UserError.abort("Unknown options: %s", String.join(" ", remainingArguments));
+            }
+            exitStatus = new NativeImageGeneratorRunner().build(imageClassLoader);
         } finally {
             uninstallNativeImageClassLoader();
             Thread.currentThread().setContextClassLoader(applicationClassLoader);
@@ -149,12 +153,14 @@ public class NativeImageGeneratorRunner {
      *
      * @param classpath for the application and image should be built for.
      * @param modulepath for the application and image should be built for (only for Java >= 11).
+     * @param arguments
      * @return NativeImageClassLoaderSupport that exposes the {@code ClassLoader} for image building
      *         via {@link NativeImageClassLoaderSupport#getClassLoader()}.
      */
-    public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath) {
+    public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath, List<String> arguments) {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
         AbstractNativeImageClassLoaderSupport nativeImageClassLoaderSupport = createNativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
+        nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
         ClassLoader nativeImageClassLoader = nativeImageClassLoaderSupport.getClassLoader();
         Thread.currentThread().setContextClassLoader(nativeImageClassLoader);
         /*
@@ -259,32 +265,24 @@ public class NativeImageGeneratorRunner {
     }
 
     @SuppressWarnings("try")
-    private int buildImage(String[] arguments, ImageClassLoader classLoader) {
+    private int buildImage(ImageClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
             return 1;
         }
         String imageName = null;
         Timer totalTimer = new Timer("[total]", false);
+
+        HostedOptionParser optionParser = classLoader.classLoaderSupport.getHostedOptionParser();
+        OptionValues parsedHostedOptions = classLoader.classLoaderSupport.getParsedHostedOptions();
+
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
-        OptionValues parsedHostedOptions = null;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
                 classLoader.initAllClasses();
             }
 
-            HostedOptionParser optionParser = new HostedOptionParser(classLoader);
-            String[] remainingArgs = optionParser.parse(arguments);
-            if (remainingArgs.length > 0) {
-                throw UserError.abort("Unknown options: %s", Arrays.toString(remainingArgs));
-            }
-
-            /*
-             * We do not have the VMConfiguration and the HostedOptionValues set up yet, so we need
-             * to pass the OptionValues explicitly when accessing options.
-             */
-            parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
             DebugContext debug = new DebugContext.Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
 
             imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
@@ -322,8 +320,6 @@ public class NativeImageGeneratorRunner {
                 throw UserError.abort("Must specify main entry point class when building %s native image. Use '%s'.", imageKind,
                                 SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
             }
-
-            classLoader.processAddExportsAndAddOpens(parsedHostedOptions);
 
             if (!className.isEmpty() || !moduleName.isEmpty()) {
                 Method mainEntryPoint;
@@ -565,8 +561,8 @@ public class NativeImageGeneratorRunner {
         System.err.println("Warning: " + msg);
     }
 
-    public int build(String[] args, ImageClassLoader imageClassLoader) {
-        return buildImage(args, imageClassLoader);
+    public int build(ImageClassLoader imageClassLoader) {
+        return buildImage(imageClassLoader);
     }
 
     /**

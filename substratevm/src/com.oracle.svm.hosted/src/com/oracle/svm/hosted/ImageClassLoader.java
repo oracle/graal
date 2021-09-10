@@ -44,7 +44,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -426,9 +425,5 @@ public final class ImageClassLoader {
 
     public Optional<? extends Object> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
-    }
-
-    public void processAddExportsAndAddOpens(OptionValues parsedHostedOptions) {
-        classLoaderSupport.processAddExportsAndAddOpens(parsedHostedOptions);
     }
 }

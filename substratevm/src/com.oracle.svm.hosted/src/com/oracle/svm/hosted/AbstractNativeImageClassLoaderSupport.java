@@ -62,6 +62,7 @@ import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 
 public abstract class AbstractNativeImageClassLoaderSupport {
 
@@ -109,7 +110,30 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     protected abstract Optional<? extends Object> findModule(String moduleName);
 
-    protected abstract void processAddExportsAndAddOpens(OptionValues parsedHostedOptions);
+    private HostedOptionParser hostedOptionParser;
+    private OptionValues parsedHostedOptions;
+    private List<String> remainingArguments;
+
+    public void setupHostedOptionParser(List<String> arguments) {
+        hostedOptionParser = new HostedOptionParser(getClassLoader());
+        remainingArguments = Collections.unmodifiableList(Arrays.asList(hostedOptionParser.parse(arguments.toArray(new String[0]))));
+        parsedHostedOptions = new OptionValues(hostedOptionParser.getHostedValues());
+        processClassLoaderOptions(parsedHostedOptions);
+    }
+
+    public HostedOptionParser getHostedOptionParser() {
+        return hostedOptionParser;
+    };
+
+    public List<String> getRemainingArguments() {
+        return remainingArguments;
+    }
+
+    public OptionValues getParsedHostedOptions() {
+        return parsedHostedOptions;
+    }
+
+    protected abstract void processClassLoaderOptions(OptionValues parsedHostedOptions);
 
     protected abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 

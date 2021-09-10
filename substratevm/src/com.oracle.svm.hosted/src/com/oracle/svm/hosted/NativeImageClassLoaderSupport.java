@@ -54,7 +54,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
-    protected void processAddExportsAndAddOpens(OptionValues parsedHostedOptions) {
+    protected void processClassLoaderOptions(OptionValues parsedHostedOptions) {
         /* Nothing to do for Java 8 */
     }
 
