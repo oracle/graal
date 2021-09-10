@@ -2087,9 +2087,17 @@ public final class JniEnv extends NativeEnv {
 
     private Substitutions.EspressoRootNodeFactory lookupKnownVmMethods(@Pointer TruffleObject closure, Method targetMethod) {
         try {
-            long functionPointer = InteropLibrary.getUncached().asPointer(closure);
-            CallableFromNative.Factory knownVmMethod = getVM().lookupKnownVmMethod(functionPointer);
-            if (knownVmMethod != null && IntrinsifiedNativeMethodNode.validParameterCount(knownVmMethod, targetMethod)) {
+            long jvmMethodAddress = InteropLibrary.getUncached().asPointer(closure);
+            CallableFromNative.Factory knownVmMethod = getVM().lookupKnownVmMethod(jvmMethodAddress);
+            if (knownVmMethod != null) {
+                if (!IntrinsifiedNativeMethodNode.validParameterCount(knownVmMethod, targetMethod)) {
+                    getLogger().warning("Implicit intrinsification of VM method does not have matching parameter counts:");
+                    getLogger().warning("VM method " + knownVmMethod.methodName() + " has " + knownVmMethod.parameterCount() + " parameters,");
+                    getLogger().warning(
+                                    "Bound to " + (targetMethod.isStatic() ? "static" : "instance") + " method " + targetMethod.getNameAsString() + " which has " + targetMethod.getParameterCount() +
+                                                    " parameters");
+                    return null;
+                }
                 return createJniRootNodeFactory(() -> new IntrinsifiedNativeMethodNode(knownVmMethod, targetMethod, getVM()), targetMethod);
             }
         } catch (UnsupportedMessageException e) {

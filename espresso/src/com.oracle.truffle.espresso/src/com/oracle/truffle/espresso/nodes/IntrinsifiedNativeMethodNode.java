@@ -31,19 +31,18 @@ import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
     @Child private CallableFromNative nativeMethod;
     private final Object env;
-    private final boolean prependClass;
 
     public IntrinsifiedNativeMethodNode(CallableFromNative.Factory factory, Method method, Object env) {
         super(method.getMethodVersion());
+        assert validParameterCount(factory, method);
         this.nativeMethod = insert(factory.create(getMeta()));
         this.env = env;
-        this.prependClass = shouldPrependClass(factory, method);
     }
 
     @Override
     Object executeBody(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        if (prependClass) {
+        if (getMethod().isStatic()) {
             Method method = getMethod();
             int parameterCount = method.getParameterCount();
             Object[] newArgs = new Object[parameterCount + 1];
@@ -64,12 +63,11 @@ public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
         return -2;
     }
 
-    /* Static native methods may prepend the Class in the arg array */
-    private static boolean shouldPrependClass(CallableFromNative.Factory factory, Method method) {
-        return method.isStatic() && (factory.parameterCount()) == method.getParameterCount() + 1;
-    }
-
     public static boolean validParameterCount(CallableFromNative.Factory factory, Method method) {
-        return factory.parameterCount() == method.getParameterCount() || shouldPrependClass(factory, method);
+        /*
+         * Static native methods prepends the Class in the arg array, and instance methods do not
+         * include the receiver in the parameter count.
+         */
+        return (factory.parameterCount() == method.getParameterCount() + 1);
     }
 }
