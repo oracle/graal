@@ -105,6 +105,7 @@ static int linux_active_processor_count() {
   int configured_cpus = sysconf(_SC_NPROCESSORS_CONF);  // upper bound on available cpus
   int cpu_count = 0;
 
+#if 0 /* Disabled due to GR-33678 */
   if (configured_cpus >= CPU_SETSIZE) {
     // kernel may use a mask bigger than cpu_set_t
     cpus_p = CPU_ALLOC(configured_cpus);
@@ -119,6 +120,7 @@ static int linux_active_processor_count() {
       return online_cpus;
     }
   }
+#endif /* GR-33678 */
 
   // pid 0 means the current thread - which we have to assume represents the process
   if (sched_getaffinity(0, cpus_size, cpus_p) == 0) {
@@ -133,9 +135,11 @@ static int linux_active_processor_count() {
     cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
   }
 
+#if 0 /* Disabled due to GR-33678 */
   if (cpus_p != &cpus) {
     CPU_FREE(cpus_p);
   }
+#endif /* GR-33678 */
 
   assert(cpu_count > 0 && cpu_count <= configured_cpus, "sanity check");
   return cpu_count;
