@@ -290,7 +290,7 @@ final class UnsafeSupport {
         }
 
         static void do2(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
-            assert elemSize == 1;
+            assert elemSize == 2 : elemSize;
             Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
             char tmp;
 
@@ -309,7 +309,7 @@ final class UnsafeSupport {
         }
 
         static void do4(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
-            assert elemSize == 1;
+            assert elemSize == 4 : elemSize;
             Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
             int tmp;
 
@@ -327,7 +327,7 @@ final class UnsafeSupport {
         }
 
         static void do8(Object src, long srcOffset, Object dst, long destOffset, long bytes, long elemSize) {
-            assert elemSize == 1;
+            assert elemSize == 8 : elemSize;
             Direction d = getDirection(src, srcOffset, dst, destOffset, bytes);
             long tmp;
 
