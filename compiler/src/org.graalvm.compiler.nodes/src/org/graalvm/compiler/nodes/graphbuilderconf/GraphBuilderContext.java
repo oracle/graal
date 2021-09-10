@@ -385,16 +385,21 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * {@link org.graalvm.compiler.nodes.MergeNode} to handle multiple return paths but not all
      * contexts can do this.
      *
-     * @return false if {@link #getIntrinsicReturnState(JavaKind, ValueNode)} will throw an
-     *         exception is called
+     * @return false if {@link #getIntrinsicReturnState(JavaKind, ValueNode)} cannot be called (i.e.
+     *         it unconditionally raises an error)
      */
-    boolean canMergeIntrinsicReturns();
+    default boolean canMergeIntrinsicReturns() {
+        return false;
+    }
 
     /**
      * Build a FrameState that represents the return from an intrinsic with {@code returnValue} on
      * the top of stack. Usually this will be a state in the caller after the call site.
      */
-    FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode returnValue);
+    @SuppressWarnings("unused")
+    default FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode returnValue) {
+        throw new GraalError("Cannot be called on a " + getClass().getName() + " object");
+    }
 
     /**
      * When this returns true, the parser will report an error if an {@link InvocationPlugin}

@@ -2240,9 +2240,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         if (!needsExplicitException()) {
             return true;
         }
-        boolean check = false;
-        assert (check = true) == true;
-        if (StrictDeoptInsertionChecks.getValue(getOptions()) || (check && disallowDeoptInPlugins())) {
+        if (StrictDeoptInsertionChecks.getValue(getOptions()) || (Assertions.assertionsEnabled() && disallowDeoptInPlugins())) {
             for (Node node : graph.getNewNodes(mark)) {
                 if (node instanceof FixedGuardNode || node instanceof DeoptimizeNode) {
                     throw new AssertionError("node " + node + " may not be used by plugin in graphs with explicit exceptions for " + targetMethod);

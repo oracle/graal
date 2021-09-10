@@ -35,7 +35,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
