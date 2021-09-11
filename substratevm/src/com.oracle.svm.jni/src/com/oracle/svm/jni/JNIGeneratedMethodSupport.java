@@ -81,11 +81,11 @@ public final class JNIGeneratedMethodSupport {
         return JNIAccessibleField.getOffsetFromId(fieldId);
     }
 
-    static byte[] getStaticPrimitiveFieldsArray() {
+    static Object getStaticPrimitiveFieldsArray() {
         return StaticFieldsSupport.getStaticPrimitiveFields();
     }
 
-    static Object[] getStaticObjectFieldsArray() {
+    static Object getStaticObjectFieldsArray() {
         return StaticFieldsSupport.getStaticObjectFields();
     }
 
