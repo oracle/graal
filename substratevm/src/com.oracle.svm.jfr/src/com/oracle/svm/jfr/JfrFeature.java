@@ -178,9 +178,7 @@ public class JfrFeature implements Feature {
             Set<Class<?>> s = access.reachableSubtypes(eventClass);
             for (Class<?> c : s) {
                 // Use canonical name for package private AbstractJDKEvent
-                if (c.getCanonicalName().equals("jdk.jfr.Event")
-                        || c.getCanonicalName().equals("jdk.internal.event.Event")
-                        || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent")) {
+                if (c.getCanonicalName().equals("jdk.jfr.Event") || c.getCanonicalName().equals("jdk.internal.event.Event") || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent")) {
                     continue;
                 }
                 try {

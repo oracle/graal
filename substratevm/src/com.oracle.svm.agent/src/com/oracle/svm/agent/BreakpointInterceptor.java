@@ -878,6 +878,76 @@ final class BreakpointInterceptor {
         return result;
     }
 
+    private static boolean registerCapturingClass(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle serializeTargetObject = getObjectArgument(1);
+        JNIObjectHandle clazz = NativeImageAgent.singleton().handles().findClass(jni, "java/lang/invoke/SerializedLambda");
+        JNIFieldId getCapturingClassFieldId = NativeImageAgent.singleton().handles().getFieldId(jni, clazz, "capturingClass", "Ljava/lang/Class;", false);
+        JNIObjectHandle capturingClass = jniFunctions().getGetObjectField().invoke(jni, serializeTargetObject, getCapturingClassFieldId);
+
+        String serializeTargetClassName = getClassNameOrNull(jni, capturingClass);
+
+        JNIMethodId initMethodId = NativeImageAgent.singleton().handles().getMethodId(jni, bp.clazz, "<init>", "(Ljava/lang/Class;)V", false);
+        JNIObjectHandle objectStreamClassInstance = newObjectL(jni, bp.clazz, initMethodId, capturingClass);
+
+        boolean validObjectStreamClassInstance = nullHandle().notEqual(objectStreamClassInstance);
+        if (clearException(jni)) {
+            validObjectStreamClassInstance = false;
+        }
+
+        List<String> transitiveSerializeTargets = new ArrayList<>();
+        transitiveSerializeTargets.add(serializeTargetClassName.replace("/", ".") + "$$Lambda$");
+
+        /*
+         * When the ObjectStreamClass instance is created for the given serializeTargetClass, some
+         * additional ObjectStreamClass instances (usually the super classes) are created
+         * recursively. Call ObjectStreamClass.getClassDataLayout0() can get all of them.
+         */
+
+        JNIMethodId getClassDataLayout0MId = agent.handles().getJavaIoObjectStreamClassGetClassDataLayout0(jni, bp.clazz);
+        JNIObjectHandle dataLayoutArray = callObjectMethod(jni, objectStreamClassInstance, getClassDataLayout0MId);
+
+        if (!clearException(jni) && nullHandle().notEqual(dataLayoutArray)) {
+            int length = jniFunctions().getGetArrayLength().invoke(jni, dataLayoutArray);
+            // If only 1 element is got from getClassDataLayout0(). it is base ObjectStreamClass
+            // instance itself.
+            if (!clearException(jni) && length > 1) {
+                JNIFieldId hasDataFId = agent.handles().getJavaIOObjectStreamClassClassDataSlotHasData(jni);
+                JNIFieldId descFId = agent.handles().getJavaIOObjectStreamClassClassDataSlotDesc(jni);
+                JNIMethodId javaIoObjectStreamClassForClassMId = agent.handles().getJavaIoObjectStreamClassForClass(jni, bp.clazz);
+                for (int i = 0; i < length; i++) {
+                    JNIObjectHandle classDataSlot = jniFunctions().getGetObjectArrayElement().invoke(jni, dataLayoutArray, i);
+                    boolean hasData = jniFunctions().getGetBooleanField().invoke(jni, classDataSlot, hasDataFId);
+                    if (hasData) {
+                        JNIObjectHandle oscInstanceInSlot = jniFunctions().getGetObjectField().invoke(jni, classDataSlot, descFId);
+                        if (!jniFunctions().getIsSameObject().invoke(jni, oscInstanceInSlot, serializeTargetObject)) {
+                            JNIObjectHandle oscClazz = callObjectMethod(jni, oscInstanceInSlot, javaIoObjectStreamClassForClassMId);
+                            String oscClassName = getClassNameOrNull(jni, oscClazz);
+                            transitiveSerializeTargets.add(oscClassName);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (String className : transitiveSerializeTargets) {
+            if (tracer != null) {
+                tracer.traceCall("serialization",
+                                "ObjectStreamClass.invokeReadResolve",
+                                null,
+                                null,
+                                null,
+                                validObjectStreamClassInstance,
+                                state.getFullStackTraceOrNull(),
+                                /*- String serializationTargetClass, String customTargetConstructorClass */
+                                className, null);
+
+                guarantee(!testException(jni));
+            }
+        }
+
+        return true;
+    }
+
     private static boolean objectStreamClassConstructor(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
 
         JNIObjectHandle serializeTargetClass = getObjectArgument(1);
@@ -1280,6 +1350,7 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Proxy", "newProxyInstance",
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
 
+                    brk("java/io/ObjectStreamClass", "invokeReadResolve", "(Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::registerCapturingClass),
                     brk("java/io/ObjectStreamClass", "<init>", "(Ljava/lang/Class;)V", BreakpointInterceptor::objectStreamClassConstructor),
                     brk(Package_jdk_internal_reflect.getQualifiedName().replace(".", "/") + "/ReflectionFactory",
                                     "newConstructorForSerialization",

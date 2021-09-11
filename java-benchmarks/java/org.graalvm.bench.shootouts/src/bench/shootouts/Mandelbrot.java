@@ -80,8 +80,7 @@ public class Mandelbrot {
     static double[] Crb;
     static double[] Cib;
 
-    @Param("500")
-    static int mandelbrotN;
+    @Param("500") static int mandelbrotN;
 
     static int getByte(int x, int y) {
         int res = 0;
@@ -107,11 +106,13 @@ public class Mandelbrot {
 
                 if (Zr1 * Zr1 + Zi1 * Zi1 > 4) {
                     b |= 2;
-                    if (b == 3) break;
+                    if (b == 3)
+                        break;
                 }
                 if (Zr2 * Zr2 + Zi2 * Zi2 > 4) {
                     b |= 1;
-                    if (b == 3) break;
+                    if (b == 3)
+                        break;
                 }
             } while (--j > 0);
             res = (res << 2) + b;

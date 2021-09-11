@@ -74,26 +74,22 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(errorMessage);
     }
 
+    protected void checkMultipleOptionsAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
+        Set<String> unseenRequired = new HashSet<>(requiredAttrs);
+        for (String attribute : map.keySet()) {
+            if (unseenRequired.contains(attribute)) {
+                unseenRequired.removeAll(requiredAttrs);
+                break;
+            }
+        }
+
+        checkRemainingAttributes(map, type, requiredAttrs, optionalAttrs, unseenRequired);
+    }
+
     protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
         Set<String> unseenRequired = new HashSet<>(requiredAttrs);
         unseenRequired.removeAll(map.keySet());
-        if (!unseenRequired.isEmpty()) {
-            throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
-        }
-        Set<String> unknownAttributes = new HashSet<>(map.keySet());
-        unknownAttributes.removeAll(requiredAttrs);
-        unknownAttributes.removeAll(optionalAttrs);
-
-        if (seenUnknownAttributesByType.containsKey(type)) {
-            unknownAttributes.removeAll(seenUnknownAttributesByType.get(type));
-        }
-
-        if (unknownAttributes.size() > 0) {
-            String message = "Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
-            warnOrFail(message);
-            Set<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> new HashSet<>());
-            unknownAttributesForType.addAll(unknownAttributes);
-        }
+        checkRemainingAttributes(map, type, requiredAttrs, optionalAttrs, unseenRequired);
     }
 
     protected void warnOrFail(String message) {
@@ -108,6 +104,32 @@ public abstract class ConfigurationParser {
 
     protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
         checkAttributes(map, type, requiredAttrs, Collections.emptyList());
+    }
+
+    private void checkRemainingAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs, Set<String> unseenRequired) {
+        if (!unseenRequired.isEmpty()) {
+            throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
+        }
+        Set<String> unknownAttributes = new HashSet<>(map.keySet());
+        unknownAttributes.removeAll(requiredAttrs);
+        unknownAttributes.removeAll(optionalAttrs);
+
+        if (seenUnknownAttributesByType.containsKey(type)) {
+            unknownAttributes.removeAll(seenUnknownAttributesByType.get(type));
+        }
+
+        if (unknownAttributes.size() > 0) {
+            String message = "Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
+            if (strictConfiguration) {
+                throw new JSONParserException(message);
+            } else {
+                // Checkstyle: stop
+                System.err.println("WARNING: " + message);
+                // Checkstyle: resume
+            }
+            Set<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> new HashSet<>());
+            unknownAttributesForType.addAll(unknownAttributes);
+        }
     }
 
     protected static String asString(Object value) {

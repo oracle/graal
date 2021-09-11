@@ -54,7 +54,7 @@ final class Target_jdk_internal_loader_BootLoader_JDK11OrLater {
     static Package getDefinedPackage(String name) {
         if (name != null) {
             Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
-                    null, null, null, null, null);
+                            null, null, null, null, null);
             return SubstrateUtil.cast(pkg, Package.class);
         } else {
             return null;
@@ -90,8 +90,8 @@ final class Target_jdk_internal_loader_BootLoader_JDK11OrLater {
 
     /**
      * All ClassLoaderValue are reset at run time for now. See also
-     * {@link Target_java_lang_ClassLoader_JDK11OrLater#classLoaderValueMap} for resetting of individual class
-     * loaders.
+     * {@link Target_java_lang_ClassLoader_JDK11OrLater#classLoaderValueMap} for resetting of
+     * individual class loaders.
      */
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//

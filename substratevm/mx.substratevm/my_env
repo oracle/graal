@@ -1,0 +1,5 @@
+DYNAMIC_IMPORTS=
+DISABLE_INSTALLABLES=true
+EXCLUDE_COMPONENTS=pbm
+#NATIVE_IMAGES=native-image
+NATIVE_IMAGES=native-image,lib:native-image-agent
