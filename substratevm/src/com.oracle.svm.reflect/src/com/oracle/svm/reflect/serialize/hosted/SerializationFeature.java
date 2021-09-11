@@ -120,7 +120,7 @@ public class SerializationFeature implements Feature {
 
         for (AnalysisType type : types) {
             if (type.getName().contains("$$Lambda$") && type.isReachable()) {
-                Class<?> capturingClass = accesseclipse.findClassByName(type.getJavaClass().getName().split(LambdaUtils.SPLIT_BY_LAMBDA)[0]);
+                Class<?> capturingClass = access.findClassByName(type.getJavaClass().getName().split(LambdaUtils.SPLIT_BY_LAMBDA)[0]);
                 if (SerializationFeature.capturingClasses.contains(capturingClass)) {
                     try {
                         Method serializeLambdaMethod = type.getJavaClass().getDeclaredMethod("writeReplace");
