@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,32 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk15;
 
-package com.oracle.svm.test.jdk11.jfr;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import static org.junit.Assert.assertNotNull;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.HiddenClassSupport;
 
-import org.junit.Test;
+final class HiddenClassSupportImpl extends HiddenClassSupport {
+    @Override
+    public boolean isHidden(Class<?> clazz) {
+        return clazz.isHidden();
+    }
+}
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordingFile;
-
-public class TestClassEvent {
-    @Test
-    public void test() throws Exception {
-        JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestClassEvent");
-
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
-
-        jfr.endRecording(recording);
-        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
-            assertNotNull(recordingFile);
-        } finally {
-            jfr.cleanupRecording(recording);
-        }
+@AutomaticFeature
+final class HiddenClassFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC >= 15;
     }
 
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(HiddenClassSupport.class, new HiddenClassSupportImpl());
+    }
 }

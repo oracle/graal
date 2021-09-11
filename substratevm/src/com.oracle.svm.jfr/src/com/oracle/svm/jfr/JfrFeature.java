@@ -32,12 +32,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -47,6 +47,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.jfr.events.ClassLoadingStatistics;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
@@ -60,7 +61,6 @@ import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.jfc.JFC;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 /**
  * Provides basic JFR support. As this support is both platform-dependent and JDK-specific, the
@@ -149,8 +149,8 @@ public class JfrFeature implements Feature {
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
         RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
         JfrManager manager = JfrManager.get();
-        runtime.addStartupHook(manager::setup);
-        runtime.addShutdownHook(manager::teardown);
+        runtime.addStartupHook(manager.startupHook());
+        runtime.addShutdownHook(manager.shutdownHook());
     }
 
     @Override
@@ -178,9 +178,8 @@ public class JfrFeature implements Feature {
             Set<Class<?>> s = access.reachableSubtypes(eventClass);
             for (Class<?> c : s) {
                 // Use canonical name for package private AbstractJDKEvent
-                if (c.getCanonicalName().equals("jdk.jfr.Event")
-                        || c.getCanonicalName().equals("jdk.internal.event.Event")
-                        || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent")) {
+                if (c.getCanonicalName().equals("jdk.jfr.Event") || c.getCanonicalName().equals("jdk.internal.event.Event") || c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent") ||
+                                c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent")) {
                     continue;
                 }
                 try {

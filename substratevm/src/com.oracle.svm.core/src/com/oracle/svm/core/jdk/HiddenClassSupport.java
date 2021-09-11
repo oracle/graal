@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jfr;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 
-@TargetClass(className = "jdk.jfr.internal.dcmd.DCmdStart", onlyWith = JfrEnabled.class)
-public final class Target_jdk_jfr_internal_dcmd_DCmdStart {
-    @Alias
-    public Target_jdk_jfr_internal_dcmd_DCmdStart() {
+import com.oracle.svm.core.util.VMError;
+
+/**
+ * Abstracts the information about hidden classes, which are not available in Java 11 and Java 8.
+ * This class provides all information about hidden classes without exposing any JDK types and
+ * methods that are not yet present in the old JDKs.
+ */
+public abstract class HiddenClassSupport {
+    @Fold
+    public static HiddenClassSupport singleton() {
+        return ImageSingletons.lookup(HiddenClassSupport.class);
     }
 
-    @Alias
-    public native String execute(String name, String[] settings, Long delay, Long duration, Boolean disk, String path, Long maxAge, Long maxSize, Boolean dumpOnExit, Boolean pathToGcRoots)
-                    throws Exception;
+    @Fold
+    public static boolean isAvailable() {
+        return ImageSingletons.contains(HiddenClassSupport.class);
+    }
+
+    /** Same as {@code Class.isHidden()}. */
+    public boolean isHidden(@SuppressWarnings("unused") Class<?> clazz) {
+        throw VMError.shouldNotReachHere();
+    }
 }
