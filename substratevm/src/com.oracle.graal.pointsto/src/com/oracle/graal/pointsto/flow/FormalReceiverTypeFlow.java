@@ -90,10 +90,10 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
     }
 
     @Override
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("FormalReceiverFlow").append("[").append(method.format("%H.%n")).append("]").append("<").append(getState()).append(">");
-        return str.toString();
+    public String format(boolean withState, boolean withSource) {
+        return "Formal receiver of " + method.format("%H.%n(%p)") +
+                        (withSource ? " at " + formatSource() : "") +
+                        (withState ? " with state <" + getState() + ">" : "");
     }
 
 }
