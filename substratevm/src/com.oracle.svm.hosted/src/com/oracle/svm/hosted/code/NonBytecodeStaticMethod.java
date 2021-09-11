@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jni.hosted;
+package com.oracle.svm.hosted.code;
 
 // Checkstyle: allow reflection
 
@@ -34,24 +34,71 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
- * Abstract base class for generated JNI code.
+ * Abstract base class for methods with generated Graal IR, i.e., methods that do not originate from
+ * bytecode.
  */
-abstract class JNIGeneratedMethod implements GraphProvider, ResolvedJavaMethod {
+public abstract class NonBytecodeStaticMethod implements GraphProvider, ResolvedJavaMethod {
+
+    /**
+     * Line numbers are bogus because this is generated code, but we need to include them in our
+     * debug information. Otherwise, when setting a breakpoint, GDB will just pick a "nearby" code
+     * location that has line number information, which can be in a different function.
+     */
+    private static final LineNumberTable lineNumberTable = new LineNumberTable(new int[]{1}, new int[]{0});
+
+    private final String name;
+    private final ResolvedJavaType declaringClass;
+    private final Signature signature;
+    private final ConstantPool constantPool;
 
     private StackTraceElement stackTraceElement;
+
+    public NonBytecodeStaticMethod(String name, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool) {
+        this.name = name;
+        this.declaringClass = declaringClass;
+        this.signature = signature;
+        this.constantPool = constantPool;
+    }
 
     @Override
     public boolean allowRuntimeCompilation() {
         return false;
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public ResolvedJavaType getDeclaringClass() {
+        return declaringClass;
+    }
+
+    @Override
+    public Signature getSignature() {
+        return signature;
+    }
+
+    @Override
+    public Parameter[] getParameters() {
+        throw VMError.unimplemented();
+    }
+
+    @Override
+    public ConstantPool getConstantPool() {
+        return constantPool;
     }
 
     @Override
@@ -159,7 +206,7 @@ abstract class JNIGeneratedMethod implements GraphProvider, ResolvedJavaMethod {
 
     @Override
     public LineNumberTable getLineNumberTable() {
-        return null;
+        return lineNumberTable;
     }
 
     @Override

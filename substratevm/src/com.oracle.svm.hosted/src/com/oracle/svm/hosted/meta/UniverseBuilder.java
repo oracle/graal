@@ -44,6 +44,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -368,6 +369,20 @@ public class UniverseBuilder {
                     BoxedRelocatedPointer.class,
                     ClassInitializerFunctionPointerHolder.class,
                     FillerObject.class));
+
+    static {
+        try {
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateMethodAccessorJDK11"));
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateConstructorAccessorJDK11"));
+            } else {
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateMethodAccessorJDK8"));
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateConstructorAccessorJDK8"));
+            }
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {

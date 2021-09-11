@@ -102,7 +102,7 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
                 declaring.registerAsReachable();
                 AnalysisField analysisField = metaAccess.lookupJavaField((Field) original);
                 if (!GuardedAnnotationAccess.isAnnotationPresent(analysisField, Delete.class)) {
-                    ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).inspectAccessibleField((Field) original);
+                    ImageSingletons.lookup(ReflectionFeature.class).inspectAccessibleField((Field) original);
 
                     if (!analysisField.isUnsafeAccessed()) {
                         analysisField.registerAsAccessed();

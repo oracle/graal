@@ -72,6 +72,7 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
@@ -83,16 +84,15 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
+import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
-import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIValue;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -113,7 +113,7 @@ import jdk.vm.ci.meta.Signature;
  * @see <a href="https://docs.oracle.com/en/java/javase/11/docs/specs/jni/functions.html">Java 11
  *      JNI functions documentation</a>
  */
-public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
+public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
 
     public enum CallVariant {
         VARARGS,
@@ -123,27 +123,27 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
 
     private final NativeLibraries nativeLibs;
 
-    private final ResolvedJavaType declaringClass;
-    private final ConstantPool constantPool;
     private final Executable reflectMethod;
     private final CallVariant callVariant;
     private final boolean nonVirtual;
-    private final ResolvedJavaMethod targetMethod;
-    private final Signature signature;
 
     public JNIJavaCallWrapperMethod(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
+        super(createName(reflectMethod, callVariant, nonVirtual),
+                        metaAccess.lookupJavaType(JNIJavaCallWrappers.class),
+                        createSignature(reflectMethod, callVariant, nonVirtual, metaAccess),
+                        JNIJavaCallWrappers.getConstantPool(metaAccess));
         assert !nonVirtual || !Modifier.isStatic(reflectMethod.getModifiers());
-        this.declaringClass = metaAccess.lookupJavaType(JNIJavaCallWrappers.class);
-        this.constantPool = JNIJavaCallWrappers.getConstantPool(metaAccess);
         this.reflectMethod = reflectMethod;
         this.nativeLibs = nativeLibs;
         this.callVariant = callVariant;
         this.nonVirtual = nonVirtual;
-        this.targetMethod = metaAccess.lookupJavaMethod(reflectMethod);
-        this.signature = createSignature(metaAccess);
     }
 
-    private SimpleSignature createSignature(MetaAccessProvider metaAccess) {
+    private static String createName(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual) {
+        return "jniInvoke_" + callVariant.name() + (nonVirtual ? "_Nonvirtual" : "") + "_" + SubstrateUtil.uniqueShortName(reflectMethod);
+    }
+
+    private static SimpleSignature createSignature(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider metaAccess) {
         ResolvedJavaType objectHandle = metaAccess.lookupJavaType(JNIObjectHandle.class);
         List<JavaType> args = new ArrayList<>();
         args.add(metaAccess.lookupJavaType(JNIEnvironment.class));
@@ -152,6 +152,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             args.add(objectHandle); // class of implementation to invoke
         }
         args.add(metaAccess.lookupJavaType(JNIMethodId.class));
+        ResolvedJavaMethod targetMethod = metaAccess.lookupJavaMethod(reflectMethod);
         Signature targetSignature = targetMethod.getSignature();
         if (callVariant == CallVariant.VARARGS) {
             for (JavaType targetArg : targetSignature.toParameterTypes(null)) {
@@ -474,26 +475,4 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         }
         throw VMError.shouldNotReachHere();
     }
-
-    @Override
-    public Signature getSignature() {
-        return signature;
-    }
-
-    @Override
-    public String getName() {
-        String full = targetMethod.getDeclaringClass().getName() + "." + targetMethod.getName() + targetMethod.getSignature().toMethodDescriptor();
-        return "jniInvoke_" + callVariant.name() + (nonVirtual ? "_Nonvirtual" : "") + ":" + JNINativeLinkage.mangle(full);
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return declaringClass;
-    }
-
-    @Override
-    public ConstantPool getConstantPool() {
-        return constantPool;
-    }
-
 }

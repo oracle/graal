@@ -54,6 +54,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
+import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -65,7 +66,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 
 /**
  * Generated method for operations on an array with a primitive element type via JNI. An accessor is
@@ -120,7 +120,7 @@ import jdk.vm.ci.meta.Signature;
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
  *      Functions</a>
  */
-public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
+public final class JNIPrimitiveArrayOperationMethod extends NonBytecodeStaticMethod {
 
     public enum Operation {
         NEW,
@@ -132,12 +132,9 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
 
     private final JavaKind elementKind;
     private final Operation operation;
-    private final ResolvedJavaType declaringClass;
-    private final ConstantPool constantPool;
-    private final String name;
-    private final Signature signature;
 
     public JNIPrimitiveArrayOperationMethod(JavaKind elementKind, Operation operation, ResolvedJavaType declaringClass, ConstantPool constantPool, MetaAccessProvider metaAccess) {
+        super(createName(elementKind, operation), declaringClass, createSignature(operation, metaAccess), constantPool);
         if (!EnumSet.of(JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short,
                         JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double).contains(elementKind)) {
 
@@ -145,13 +142,9 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         }
         this.elementKind = elementKind;
         this.operation = operation;
-        this.declaringClass = declaringClass;
-        this.constantPool = constantPool;
-        this.name = createName();
-        this.signature = createSignature(metaAccess);
     }
 
-    private String createName() {
+    private static String createName(JavaKind elementKind, Operation operation) {
         StringBuilder sb = new StringBuilder(32);
         String kindName = elementKind.name();
         switch (operation) {
@@ -174,7 +167,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         return sb.toString();
     }
 
-    private SimpleSignature createSignature(MetaAccessProvider metaAccess) {
+    private static SimpleSignature createSignature(Operation operation, MetaAccessProvider metaAccess) {
         ResolvedJavaType objectHandleType = metaAccess.lookupJavaType(JNIObjectHandle.class);
         ResolvedJavaType intType = metaAccess.lookupJavaType(int.class);
         ResolvedJavaType returnType;
@@ -211,10 +204,10 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
 
-        ValueNode vmThread = kit.loadLocal(0, signature.getParameterKind(0));
+        ValueNode vmThread = kit.loadLocal(0, getSignature().getParameterKind(0));
         kit.append(CEntryPointEnterNode.enter(vmThread));
 
-        List<ValueNode> arguments = kit.loadArguments(signature.toParameterTypes(null));
+        List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
 
         ValueNode result = null;
         switch (operation) {
@@ -277,26 +270,6 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
         Stamp handleStamp = providers.getWordTypes().getWordStamp(providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class));
         return kit.unique(new ValuePhiNode(handleStamp, merge, new ValueNode[]{nullHandle, arrayHandle}));
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Signature getSignature() {
-        return signature;
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return declaringClass;
-    }
-
-    @Override
-    public ConstantPool getConstantPool() {
-        return constantPool;
     }
 
     public CEntryPointData createEntryPointData() {
