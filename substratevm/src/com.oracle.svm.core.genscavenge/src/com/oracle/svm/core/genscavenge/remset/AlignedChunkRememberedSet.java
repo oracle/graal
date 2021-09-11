@@ -42,7 +42,7 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
-import com.oracle.svm.core.genscavenge.HeapPolicy;
+import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
@@ -173,7 +173,7 @@ final class AlignedChunkRememberedSet {
     static UnsignedWord getCardTableSize() {
         // We conservatively compute the size as a fraction of the size of the entire chunk.
         UnsignedWord structSize = getStructSize();
-        UnsignedWord available = HeapPolicy.getAlignedHeapChunkSize().subtract(structSize);
+        UnsignedWord available = HeapParameters.getAlignedHeapChunkSize().subtract(structSize);
         UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(available);
         UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(requiredSize, alignment);

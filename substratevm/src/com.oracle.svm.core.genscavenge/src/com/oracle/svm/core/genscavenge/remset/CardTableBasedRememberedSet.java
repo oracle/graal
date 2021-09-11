@@ -37,7 +37,7 @@ import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
-import com.oracle.svm.core.genscavenge.HeapPolicy;
+import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -135,12 +135,12 @@ public class CardTableBasedRememberedSet implements RememberedSet {
             return;
         }
         // We dirty the cards of ...
-        if (HeapPolicy.getMaxSurvivorSpaces() != 0 && !GCImpl.getGCImpl().isCompleteCollection() && HeapImpl.getHeapImpl().getYoungGeneration().contains(object)) {
+        if (HeapParameters.getMaxSurvivorSpaces() != 0 && HeapImpl.getHeapImpl().getYoungGeneration().contains(object)) {
             /*
-             * ...references from the old generation to the young generation, unless there cannot be
-             * any such references if we do not use survivor spaces, or if we do but are doing a
-             * complete collection: in both cases, all objects are promoted to the old generation.
-             * (We avoid an extra old generation check and might remark a few image heap cards, too)
+             * ...references from the old generation to the young generation, unless we do not use
+             * survivor spaces, in which case there will be no such references because all young
+             * objects are promoted to the old generation. (We avoid an extra old generation check
+             * and might remark a few image heap cards, too)
              */
         } else if (HeapImpl.usesImageHeapCardMarking() && GCImpl.getGCImpl().isCompleteCollection() && HeapImpl.getHeapImpl().isInImageHeap(holderObject)) {
             // ...references from the image heap to the runtime heap, but we clean and remark those

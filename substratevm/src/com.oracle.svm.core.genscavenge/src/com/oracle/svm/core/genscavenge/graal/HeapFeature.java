@@ -74,7 +74,7 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        HeapImpl heap = new HeapImpl(access, SubstrateOptions.getPageSize());
+        HeapImpl heap = new HeapImpl(SubstrateOptions.getPageSize());
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(SubstrateAllocationSnippets.class, new GenScavengeAllocationSnippets());
         ImageSingletons.add(RememberedSet.class, createRememberedSet());
