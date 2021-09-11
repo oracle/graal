@@ -126,7 +126,19 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     @Override
-    public Object getSerializationConstructorAccessor(Class<?> declaringClass, Class<?> rawTargetConstructorClass) {
+    public Object getSerializationConstructorAccessor(Class<?> rawDeclaringClass, Class<?> rawTargetConstructorClass) {
+        Class<?> declaringClass = rawDeclaringClass;
+
+        if (declaringClass.getName().contains("$$Lambda$")) {
+            try {
+                // Checkstyle: stop
+                declaringClass = Class.forName("java.lang.invoke.SerializedLambda");
+                // Checkstyle: resume
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
         Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;
 
         Object constructorAccessor = constructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));

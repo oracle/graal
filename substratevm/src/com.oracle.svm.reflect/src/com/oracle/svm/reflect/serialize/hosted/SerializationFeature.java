@@ -27,19 +27,25 @@ package com.oracle.svm.reflect.serialize.hosted;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.capturingClasses;
 import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
 
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
 import java.io.Serializable;
+import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -71,6 +77,7 @@ import jdk.vm.ci.meta.MetaUtil;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
+    public static final HashSet<Class<?>> capturingClasses = new HashSet<>();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
@@ -106,6 +113,25 @@ public class SerializationFeature implements Feature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
+        FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        AnalysisUniverse universe = impl.getUniverse();
+
+        List<AnalysisType> types = universe.getTypes();
+
+        for (AnalysisType type : types) {
+            if (type.getName().contains("$$Lambda$") && type.isReachable()) {
+                Class<?> capturingClass = accesseclipse.findClassByName(type.getJavaClass().getName().split(LambdaUtils.SPLIT_BY_LAMBDA)[0]);
+                if (SerializationFeature.capturingClasses.contains(capturingClass)) {
+                    try {
+                        Method serializeLambdaMethod = type.getJavaClass().getDeclaredMethod("writeReplace");
+                        RuntimeReflection.register(serializeLambdaMethod);
+                    } catch (NoSuchMethodException e) {
+                        VMError.shouldNotReachHere("You have to register class from which you want lambdas to be serialized.");
+                    }
+                }
+            }
+        }
+
         serializationBuilder.flushConditionalConfiguration(access);
     }
 
@@ -248,7 +274,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     @Override
-    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String targetClassName, String customTargetConstructorClassName) {
+    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String rawTargetClassName, String customTargetConstructorClassName) {
         abortIfSealed();
 
         Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
@@ -263,7 +289,20 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             }
         }
 
+        String targetClassName = rawTargetClassName.contains("$$Lambda$") ? rawTargetClassName.split(LambdaUtils.SPLIT_BY_LAMBDA)[0] : rawTargetClassName;
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
+
+        if (rawTargetClassName.contains("$$Lambda$") && !SerializationFeature.capturingClasses.contains(serializationTargetClass)) {
+            capturingClasses.add(serializationTargetClass);
+            RuntimeReflection.register(serializationTargetClass);
+            try {
+                RuntimeReflection.register(serializationTargetClass.getDeclaredMethod("$deserializeLambda$", SerializedLambda.class));
+            } catch (NoSuchMethodException e) {
+                VMError.shouldNotReachHere("Method named $deserializeLambda$ must exist in capturing class (" + serializationTargetClass.getName() + ") of lambdas that have writeReplace method.");
+            }
+            return;
+        }
+
         UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if --allow-incomplete-classpath is set." +
                         " Please make sure it is in the classpath", targetClassName);
 
