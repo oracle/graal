@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -56,6 +55,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -228,8 +228,10 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         AnalysisField aField;
         if (original instanceof AnalysisField) {
             aField = (AnalysisField) original;
-        } else {
+        } else if (original instanceof HostedField) {
             aField = ((HostedField) original).wrapped;
+        } else {
+            throw new InternalError(original.toString());
         }
         SubstrateField sField = fields.get(aField);
 
