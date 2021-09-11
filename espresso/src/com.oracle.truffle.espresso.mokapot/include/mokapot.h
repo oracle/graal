@@ -71,7 +71,7 @@ typedef uint64_t julong;
  * ----------+----------------+---------------------+----------------+
  * reserved0 | NULL           | LibEspressoIsolate* | context handle |
  * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
- * reserved2 | NULL           | JavaVM* (americano) | NULL           |
+ * reserved2 | NULL           | JavaVM* (americano) | JavaVM* (latte)|
  */
 
 #define VM_METHOD_LIST(V) \
