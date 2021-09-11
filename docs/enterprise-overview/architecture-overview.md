@@ -29,9 +29,9 @@ The conceptual overview and advantages of GraalVM Enterprise are described on th
 
 The preceding diagram illustrates a complete high-level architecture of GraalVM Enterprise.
 
-GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](../reference-manual/compiler.md), which is written in Java, to the HotSpot Java Virtual Machine.
+GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](/reference-manual/compiler/), which is written in Java, to the HotSpot Java Virtual Machine.
 
-In addition to running Java and JVM-based languages, GraalVM's [Truffle language implementation framework](../../truffle/docs/README.md) makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
+In addition to running Java and JVM-based languages, GraalVM's [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/) makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
 With GraalVM Truffle, Java and other supported languages can directly interoperate with each other and pass data back and forth in the same memory space.
 
 ## Runtime Modes
