@@ -32,7 +32,6 @@ import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.print
 
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
-import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
