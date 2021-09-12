@@ -321,9 +321,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
-        if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
-            println("Warning: Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
-        } else if (denyRegistry.isAllowed(serializationTargetClass)) {
+        if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
                 UserError.guarantee(customTargetConstructorClass.isAssignableFrom(serializationTargetClass),
                                 "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",
