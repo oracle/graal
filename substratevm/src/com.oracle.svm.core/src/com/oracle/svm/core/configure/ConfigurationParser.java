@@ -74,9 +74,39 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(errorMessage);
     }
 
+    protected void checkMultipleOptionsAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
+        Set<String> unseenRequired = new HashSet<>(requiredAttrs);
+        for (String attribute : map.keySet()) {
+            if (unseenRequired.contains(attribute)) {
+                unseenRequired.removeAll(requiredAttrs);
+                break;
+            }
+        }
+
+        checkRemainingAttributes(map, type, requiredAttrs, optionalAttrs, unseenRequired);
+    }
+
     protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
         Set<String> unseenRequired = new HashSet<>(requiredAttrs);
         unseenRequired.removeAll(map.keySet());
+        checkRemainingAttributes(map, type, requiredAttrs, optionalAttrs, unseenRequired);
+    }
+
+    protected void warnOrFail(String message) {
+        if (strictConfiguration) {
+            throw new JSONParserException(message);
+        } else {
+            // Checkstyle: stop
+            System.err.println("Warning: " + message);
+            // Checkstyle: resume
+        }
+    }
+
+    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
+        checkAttributes(map, type, requiredAttrs, Collections.emptyList());
+    }
+
+    private void checkRemainingAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs, Set<String> unseenRequired) {
         if (!unseenRequired.isEmpty()) {
             throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
         }
@@ -94,20 +124,6 @@ public abstract class ConfigurationParser {
             Set<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> new HashSet<>());
             unknownAttributesForType.addAll(unknownAttributes);
         }
-    }
-
-    protected void warnOrFail(String message) {
-        if (strictConfiguration) {
-            throw new JSONParserException(message);
-        } else {
-            // Checkstyle: stop
-            System.err.println("Warning: " + message);
-            // Checkstyle: resume
-        }
-    }
-
-    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
-        checkAttributes(map, type, requiredAttrs, Collections.emptyList());
     }
 
     protected static String asString(Object value) {
