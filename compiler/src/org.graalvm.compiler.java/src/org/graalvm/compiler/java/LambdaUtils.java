@@ -82,7 +82,7 @@ public final class LambdaUtils {
      */
     @SuppressWarnings("try")
     public static String findStableLambdaName(ClassInitializationPlugin cip, Providers providers, ResolvedJavaType lambdaType, OptionValues options, DebugContext debug, Object ctx)
-                    throws RuntimeException {
+            throws RuntimeException {
         ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods()).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
         assert lambdaProxyMethods.length == 1 : "There must be only one method calling the target.";
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(lambdaProxyMethods[0]).build();

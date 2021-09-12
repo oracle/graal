@@ -148,8 +148,8 @@ public class SerializationSupport implements SerializationRegistry {
         } else {
             String targetConstructorClassName = targetConstructorClass.getName();
             throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
-                            " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
-                            " to serialization-config.json fixes the problem.");
+                    " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
+                    " to serialization-config.json fixes the problem.");
         }
     }
 }
