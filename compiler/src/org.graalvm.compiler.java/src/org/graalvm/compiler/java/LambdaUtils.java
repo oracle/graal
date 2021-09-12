@@ -51,6 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class LambdaUtils {
     private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/\\.][^/]+;");
     private static final char[] HEX = "0123456789abcdef".toCharArray();
+    public static final String SPLIT_BY_LAMBDA = "\\$\\$Lambda\\$";
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
@@ -81,7 +82,7 @@ public final class LambdaUtils {
      */
     @SuppressWarnings("try")
     public static String findStableLambdaName(ClassInitializationPlugin cip, Providers providers, ResolvedJavaType lambdaType, OptionValues options, DebugContext debug, Object ctx)
-                    throws RuntimeException {
+            throws RuntimeException {
         ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods()).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
         assert lambdaProxyMethods.length == 1 : "There must be only one method calling the target.";
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(lambdaProxyMethods[0]).build();
