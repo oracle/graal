@@ -125,7 +125,7 @@ public class CodeReferenceMapDecoder {
                  */
                 Pointer basePtr = baseAddress.isNull() ? objRef : objRef.readWord(0);
 
-                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, null);
                 if (!visitResult) {
                     return false;
                 }
@@ -157,7 +157,7 @@ public class CodeReferenceMapDecoder {
                     Pointer derivedPtr = baseAddress.isNull() ? derivedRef : derivedRef.readWord(0);
                     int innerOffset = NumUtil.safeToInt(derivedPtr.subtract(basePtr).rawValue());
 
-                    final boolean derivedVisitResult = visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed);
+                    final boolean derivedVisitResult = visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed, null);
                     if (!derivedVisitResult) {
                         return false;
                     }
@@ -165,7 +165,7 @@ public class CodeReferenceMapDecoder {
                 objRef = objRef.add(refSize);
             } else {
                 for (long c = 0; c < count; c += 1) {
-                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, null);
                     if (!visitResult) {
                         return false;
                     }

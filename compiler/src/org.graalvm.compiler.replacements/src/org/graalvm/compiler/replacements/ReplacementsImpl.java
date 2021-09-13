@@ -672,4 +672,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         SnippetTemplateCache ret = snippetTemplateCache.get(templatesClass.getName());
         return templatesClass.cast(ret);
     }
+
+    @Override
+    public JavaKind getWordKind() {
+        return getProviders().getWordTypes().getWordKind();
+    }
 }

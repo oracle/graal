@@ -52,7 +52,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.ref.WeakReference;
 import java.net.URI;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
@@ -2817,7 +2816,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return new TruffleFile(fs, fs.fileSystem.parsePath(uri));
             } catch (UnsupportedOperationException e) {
-                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+                throw e;
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
@@ -2876,7 +2875,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return new TruffleFile(fs, fs.fileSystem.parsePath(uri));
             } catch (UnsupportedOperationException e) {
-                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+                throw e;
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }

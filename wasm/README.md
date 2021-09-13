@@ -12,7 +12,7 @@ Feedback, bug reports, and open-source contributions are welcome!
 
 ## Building GraalWasm
 
-### Prerequisits
+### Prerequisites
 
 - Python 3 (required by `mx`)
 - git (to download, update, and locate repositories)
@@ -26,32 +26,32 @@ We summarize the basic steps below:
 
 1. Create a new folder where your repositories `mx` and `graal` should be located
 ```bash
-mkdir graalvm
-cd graalvm
+$ mkdir graalvm
+$ cd graalvm
 ```
 2. Clone `mx` and add it to the PATH
 
 ```bash
-git clone https://github.com/graalvm/mx.git
-export PATH=$PWD/mx:$PATH
+$ git clone https://github.com/graalvm/mx.git
+$ export PATH=$PWD/mx:$PATH
 ```
 
 3. Clone the `graal` repository and enter the wasm directory.
 
 ```bash
-git clone https://github.com/oracle/graal.git
-cd graal/wasm
+$ git clone https://github.com/oracle/graal.git
+$ cd graal/wasm
 ```
 
 4. Set JAVA_HOME
 
 ```bash
-export JAVA_HOME=[path to JDK]
+$ export JAVA_HOME=[path to JDK]
 ```
 
 5. Build the project
 ```bash
-mx --dy /truffle,/compiler build
+$ mx --dy /truffle,/compiler build
 ```
 
 These steps will build the `wasm.jar` file in the `mxbuild/dists/jdk<version>` directory,
@@ -68,14 +68,14 @@ The `build` command will also create the `wasm-tests.jar`, which contains the ma
 2. Set `WABT_DIR`
 
 ```bash
-export WABT_DIR=[path to wabt]/bin
+$ export WABT_DIR=[path to wabt]/bin
 ```
 
 ### Run basic tests
 
 After building GraalWasm, the `WasmTestSuite` can be run as follows:
-```
-mx --dy /truffle,/compiler --jdk jvmci unittest \
+```bash
+$ mx --dy /truffle,/compiler --jdk jvmci unittest \
   -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*\$" \
   WasmTestSuite
@@ -84,8 +84,8 @@ mx --dy /truffle,/compiler --jdk jvmci unittest \
 To run a specific test, you can specify a regex for its name with the `testFilter` flag.
    Here is an example command that runs all the tests that mention `branch` in their name:
 
-```
-mx --dy /truffle,/compiler --jdk jvmci unittest \
+```bash
+$ mx --dy /truffle,/compiler --jdk jvmci unittest \
   -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*branch.*\$" \
   WasmTestSuite
@@ -116,47 +116,42 @@ To build these additional tests and benchmarks, you need to:
 1. Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html). We currently test against Emscripten **1.39.13**.
    
 ```bash
-cd [preferred emsdk install location]
+$ cd [preferred emsdk install location]
 
 # Clone repository
-
-git clone https://github.com/emscripten-core/emsdk.git
+$ git clone https://github.com/emscripten-core/emsdk.git
 
 # Move to folder
-
-cd emsdk
+$ cd emsdk
 
 # Install sdk
-
-./emsdk install [version number]
+$ ./emsdk install [version number]
 
 # Activate sdk
-
-./emsdk activate [version number]
+$ ./emsdk activate [version number]
 
 # Set up environment
-
-source ./emsdk_env.sh
+$ source ./emsdk_env.sh
 ```
 
 2. Set `EMCC_DIR` and `GCC_DIR`
 
 ```bash
-export EMCC_DIR=[path to emsdk]/upstream/emscripten
-export GCC_DIR=[path to gcc (usually /usr/bin)]
+$ export EMCC_DIR=[path to emsdk]/upstream/emscripten
+$ export GCC_DIR=[path to gcc (usually /usr/bin)]
 ```
 
 3. Run `emscripten-init`
 
 ```bash
-cd grallvm/graal/wasm
-mx emscripten-init ~/.emscripten [path to emsdk] --local
+$ cd grallvm/graal/wasm
+$ mx emscripten-init ~/.emscripten [path to emsdk] --local
 ```
 
 4. Build with additional dependencies
 
 ```bash
-mx --dy /truffle,/compiler build --all
+$ mx --dy /truffle,/compiler build --all
 ```
 
 This will build several additional JARs in `mxbuild/dists/jdk<version>`:
@@ -168,8 +163,8 @@ whose source code is in C.
 
 You can run the additional tests as follows:
 
-```
-mx --dy /truffle,/compiler --jdk jvmci unittest \
+```bash
+$ mx --dy /truffle,/compiler --jdk jvmci unittest \
   -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*\$" \
   CSuite
@@ -204,14 +199,14 @@ The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` Mx proje
 For the benchmarks to run `NODE_DIR` has to be set. You can use the node version that is part of emscripten, for example:
 
 ```bash
-export NODE_DIR=[path to emsdk]/node/14.15.5_64bit/bin
+$ export NODE_DIR=[path to emsdk]/node/14.15.5_64bit/bin
 ```
 
 After building the additional benchmarks, as described in the last section,
 they can be executed as follows:
 
-```
-mx --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- \
+```bash
+$ mx --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- \
   -Dwasmbench.benchmarkName=[benchmark-name] -- \
   CMicroBenchmarkSuite
 ```
@@ -260,14 +255,14 @@ For the latest GraalWasm release, see
 If downloading GraalWasm as a separate GraalVM component,
 you can download it as follows (replace JDK and GraalVM versions with appropriate values):
 
-```
-# graalvm-ce-java8-19.3.0/bin/gu install --force -L wasm-installable-java8-linux-<version>.jar
+```bash
+$ graalvm-ce-java8-19.3.0/bin/gu install --force -L wasm-installable-java8-linux-<version>.jar
 ```
 
 This will install a launcher, which runs WebAssembly modules.
 For example, assuming that compiled the following C program with Emscripten:
 
-```
+```c
 #include <stdio.h>
 
 int main() {
@@ -286,8 +281,8 @@ int main() {
 
 You can run the compiled WebAssembly binary as follows:
 
-```
-graalvm/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
+```bash
+$ graalvm/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
 ```
 
 In this example, the flag `--Builtins` specifies built-in modules
@@ -302,7 +297,7 @@ which allows embedding GraalWasm into user programs.
 Here is a simple example of how to run a WebAssembly program using GraalWasm
 from a Java application:
 
-```
+```java
 import org.graalvm.polyglot.*;
 import org.graalvm.polyglot.io.ByteSequence;
 
@@ -318,6 +313,6 @@ Value mainFunction = context.getBindings("wasm").getMember("example").getMember(
 mainFunction.execute();
 ```
 
-For more Polyglot-related examples, consult the documentation at the
+For more polyglot-related examples, consult the documentation at the
 [GraalVM website](https://www.graalvm.org/docs/reference-manual/polyglot/).
 

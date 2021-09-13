@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -266,6 +266,16 @@ public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAbs extends LLVMIntrinsic {
+
+        @Specialization
+        protected byte doByte(byte value) {
+            return (byte) Math.abs(value);
+        }
+
+        @Specialization
+        protected short doShort(short value) {
+            return (short) Math.abs(value);
+        }
 
         @Specialization
         protected int doInt(int value) {

@@ -82,8 +82,9 @@ public class Containers {
 
     /**
      * Calculates an appropriate number of active processors for the VM to use. The calculation is
-     * based on these two inputs:
+     * based on these three inputs:
      * <ul>
+     * <li>cpu affinity
      * <li>cpu quota & cpu period
      * <li>cpu shares
      * </ul>
@@ -93,6 +94,8 @@ public class Containers {
     public static int activeProcessorCount() {
         /*-
          * Algorithm (adapted from `src/hotspot/os/linux/cgroupSubsystem_linux.cpp`):
+         *
+         * Determine the number of available CPUs from sched_getaffinity.
          *
          * If user specified a quota (quota != -1), calculate the number of
          * required CPUs by dividing quota by period.

@@ -26,6 +26,8 @@ package com.oracle.svm.configure.config;
 
 import java.util.List;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 
@@ -33,14 +35,19 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
 
     private final TypeConfiguration configuration;
 
-    public ParserConfigurationAdapter(TypeConfiguration configuration) {
+    ParserConfigurationAdapter(TypeConfiguration configuration) {
         this.configuration = configuration;
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveTypeResult(String typeName) {
-        ConfigurationType type = configuration.get(typeName);
-        ConfigurationType result = type != null ? type : new ConfigurationType(typeName);
+    public TypeResult<ConfigurationCondition> resolveCondition(String typeName) {
+        return TypeResult.forType(typeName, ConfigurationCondition.create(typeName));
+    }
+
+    @Override
+    public TypeResult<ConfigurationType> resolveType(ConfigurationCondition condition, String typeName) {
+        ConfigurationType type = configuration.get(condition, typeName);
+        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeName);
         return TypeResult.forType(typeName, result);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
+import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
@@ -60,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.types.MetaType;
 import java.util.List;
 
 import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgNoaliasScopeDeclInstruction;
 
 public final class DebugInfoFunctionProcessor {
 
@@ -180,6 +182,9 @@ public final class DebugInfoFunctionProcessor {
 
                 case LLVM_DEBUGTRAP_NAME:
                     return visitDebugTrap(call);
+
+                case "llvm.experimental.noalias.scope.decl":
+                    return handleNoaliasScopeDecl(call);
             }
         }
 
@@ -260,6 +265,12 @@ public final class DebugInfoFunctionProcessor {
         }
 
         return null;
+    }
+
+    private static Instruction handleNoaliasScopeDecl(VoidCallInstruction call) {
+        SymbolImpl value = getArg(call, 0);
+        MDNode node = (MDNode) ((MetadataSymbol) value).getNode();
+        return new DbgNoaliasScopeDeclInstruction(node);
     }
 
     private Instruction handleDebugIntrinsic(FunctionDefinition function, VoidCallInstruction call, boolean isDeclaration) {

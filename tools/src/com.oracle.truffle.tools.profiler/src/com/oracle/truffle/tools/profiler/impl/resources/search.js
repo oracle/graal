@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.helpers;
 
-/**
- * Marker interface for generated accessor classes.
- */
-public interface ReflectionProxy {
+var searchbtn, matchedtxt;
+// ctrl-F for search
+graph_register_handler("f", "Search or clear highlighted entries", search_prompt);
+
+function search_prompt() {
+    if (search_matches.length == 0) {
+        var term = prompt("Enter a search term (regexp " +
+                                                 "allowed, eg: ^ext4_)", "");
+        if (term != null) {
+            search(term);
+        }
+    } else {
+        reset_search();
+        searchbtn.style["opacity"] = "0.8";
+        searchbtn.firstChild.nodeValue = "Search"
+        matchedtxt.style["opacity"] = "0.0";
+        matchedtxt.firstChild.nodeValue = ""
+    }
 }

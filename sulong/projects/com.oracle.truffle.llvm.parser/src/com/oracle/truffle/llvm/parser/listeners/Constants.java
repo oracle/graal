@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.SelectConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.UnaryOperationConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.AggregateConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
@@ -53,6 +54,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class Constants implements ParserListener {
 
+    // see llvm/include/llvm/Bitcode/LLVMBitCodes.h, enum ConstantCodes
     private static final int CONSTANT_SETTYPE = 1;
     private static final int CONSTANT_NULL = 2;
     private static final int CONSTANT_UNDEF = 3;
@@ -77,6 +79,8 @@ public final class Constants implements ParserListener {
     private static final int CONSTANT_DATA = 22;
     private static final int CONSTANT_INLINEASM = 23;
     private static final int CONSTANT_CE_GEP_WITH_INRANGE_INDEX = 24;
+    private static final int CONSTANT_CE_UNOP = 25;
+    private static final int CONSTANT_POISON = 26;
 
     private static final BigInteger WIDE_INTEGER_MASK = BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
 
@@ -109,6 +113,7 @@ public final class Constants implements ParserListener {
                 return;
 
             case CONSTANT_UNDEF:
+            case CONSTANT_POISON:
                 scope.addSymbol(new UndefinedConstant(type), type);
                 return;
 
@@ -144,6 +149,13 @@ public final class Constants implements ParserListener {
             case CONSTANT_CSTRING:
                 scope.addSymbol(new StringConstant((ArrayType) type, buffer.readStringAsBytes(true)), type);
                 return;
+
+            case CONSTANT_CE_UNOP: {
+                int op = buffer.readInt();
+                int v = buffer.readInt();
+                scope.addSymbol(UnaryOperationConstant.fromSymbols(scope.getSymbols(), type, op, v), type);
+                return;
+            }
 
             case CONSTANT_CE_BINOP: {
                 int op = buffer.readInt();

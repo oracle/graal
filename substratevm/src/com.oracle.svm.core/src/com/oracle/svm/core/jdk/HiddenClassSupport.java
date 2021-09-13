@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.helpers;
+package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-import java.lang.reflect.InvocationTargetException;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.util.VMError;
 
 /**
- * Interface implemented by reflection proxy classes for concrete methods which allows calling their
- * target without going through virtual dispatch. This is used to implement invokespecial calls
- * through method handles (see Target_java_lang_invoke_MethodHandle#invokeBasic).
+ * Abstracts the information about hidden classes, which are not available in Java 11 and Java 8.
+ * This class provides all information about hidden classes without exposing any JDK types and
+ * methods that are not yet present in the old JDKs.
  */
-public interface InvokeSpecialReflectionProxy {
-    Object invokeSpecial(Object obj, Object[] args)
-                    throws IllegalArgumentException, InvocationTargetException;
+public abstract class HiddenClassSupport {
+    @Fold
+    public static HiddenClassSupport singleton() {
+        return ImageSingletons.lookup(HiddenClassSupport.class);
+    }
+
+    @Fold
+    public static boolean isAvailable() {
+        return ImageSingletons.contains(HiddenClassSupport.class);
+    }
+
+    /** Same as {@code Class.isHidden()}. */
+    public boolean isHidden(@SuppressWarnings("unused") Class<?> clazz) {
+        throw VMError.shouldNotReachHere();
+    }
 }

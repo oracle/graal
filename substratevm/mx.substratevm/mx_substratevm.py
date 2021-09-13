@@ -60,8 +60,6 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO
 
-USE_NI_JPMS = os.environ.get('USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM', 'false').lower() == 'true'
-
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
@@ -71,13 +69,25 @@ def svm_java_compliance():
 def svm_java8():
     return svm_java_compliance() <= mx.JavaCompliance('1.8')
 
-def graal_compiler_flags(all_unnamed=True):
+def graal_compiler_flags():
     version_tag = svm_java_compliance().value
-    compiler_flags = mx.dependency('substratevm:svm-compiler-flags-builder').compute_graal_compiler_flags_map(all_unnamed=all_unnamed)
+    compiler_flags = mx.dependency('substratevm:svm-compiler-flags-builder').compute_graal_compiler_flags_map()
     if version_tag not in compiler_flags:
         missing_flags_message = 'Missing graal-compiler-flags for {0}.\n Did you forget to run "mx build"?'
         mx.abort(missing_flags_message.format(version_tag))
-    return compiler_flags[version_tag]
+    def adjusted_exports(line):
+        """
+        Turns e.g.
+        --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder
+        into:
+        --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=ALL-UNNAMED
+        """
+        if line.startswith('--add-exports='):
+            before, sep, _ = line.rpartition('=')
+            return before + sep + 'ALL-UNNAMED'
+        else:
+            return line
+    return [adjusted_exports(line) for line in compiler_flags[version_tag]]
 
 def svm_unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -839,7 +849,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
-            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            use_modules='image' if not svm_java8() else None,
             main_module="org.graalvm.nativeimage.driver",
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
@@ -850,7 +860,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     library_configs=[
         mx_sdk_vm.LibraryConfig(
-            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            use_modules='image' if not svm_java8() else None,
             destination="<lib:native-image-agent>",
             jvm_library=True,
             jar_distributions=[
@@ -864,7 +874,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             ],
         ),
         mx_sdk_vm.LibraryConfig(
-            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            use_modules='image' if not svm_java8() else None,
             destination="<lib:native-image-diagnostics-agent>",
             jvm_library=True,
             jar_distributions=[
@@ -1017,7 +1027,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
-            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            use_modules='image' if not svm_java8() else None,
             main_module="org.graalvm.nativeimage.configure",
             destination="bin/<exe:native-image-configure>",
             jar_distributions=["substratevm:SVM_CONFIGURE"],
@@ -1088,8 +1098,6 @@ def hellomodule(args):
     """
     if svm_java8():
         mx.abort('Experimental module support requires Java 11+')
-    if os.environ.get('USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM', 'false') != 'true':
-        mx.abort('Experimental module support requires USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=true for "mx build" and "mx hellomodule"')
 
     # Build a helloworld Java module with maven
     module_path = []
@@ -1383,7 +1391,18 @@ JNIEXPORT void JNICALL {0}() {{
     def __str__(self):
         return 'JvmFuncsFallbacksBuildTask {}'.format(self.subject)
 
+def mx_register_dynamic_suite_constituents(register_project, _):
+    register_project(SubstrateCompilerFlagsBuilder())
+
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
+
+    flags_build_dependencies = [
+        'substratevm:SVM'
+    ]
+
+    def __init__(self):
+        mx.ArchivableProject.__init__(self, suite, 'svm-compiler-flags-builder', [], None, None)
+        self.buildDependencies = list(SubstrateCompilerFlagsBuilder.flags_build_dependencies)
 
     def config_file(self, ver):
         return 'graal-compiler-flags-' + str(ver) + '.config'
@@ -1440,7 +1459,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
     # If renaming or moving this method, please update the error message in
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
-    def compute_graal_compiler_flags_map(self, all_unnamed=not USE_NI_JPMS):
+    def compute_graal_compiler_flags_map(self):
         graal_compiler_flags_map = dict()
         graal_compiler_flags_map[8] = [
             '-d64',
@@ -1454,18 +1473,12 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             ]
 
             # Packages to add-export
-            distributions_transitive = mx.classpath_entries(self.deps)
+            distributions_transitive = mx.classpath_entries(self.buildDependencies)
             jdk = mx.get_jdk(tag='default')
             required_exports = mx_javamodules.requiredExports(distributions_transitive, jdk)
-            target_module = 'ALL-UNNAMED' if all_unnamed else None
-            exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports, target_module)
+            exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
             graal_compiler_flags_map[11].extend(exports_flags)
-
-            # Currently JDK 13, 14, 15 and JDK 11 have the same flags
-            graal_compiler_flags_map[13] = graal_compiler_flags_map[11]
-            graal_compiler_flags_map[14] = graal_compiler_flags_map[11]
-            graal_compiler_flags_map[15] = graal_compiler_flags_map[11]
-            graal_compiler_flags_map[16] = graal_compiler_flags_map[11]
+            # Currently JDK 17 and JDK 11 have the same flags
             graal_compiler_flags_map[17] = graal_compiler_flags_map[11]
             # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
             #

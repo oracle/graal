@@ -107,14 +107,15 @@ Here, `reflectconfig` is a JSON file in the following format (use `--expert-opti
       { "name" : "format", "parameterTypes" : ["java.lang.String", "java.lang.Object[]"] }
     ]
   },
-    {
-      "name" : "java.lang.String$CaseInsensitiveComparator",
-      "methods" : [
-        { "name" : "compare" }
-      ]
-    }
+  {
+    "name" : "java.lang.String$CaseInsensitiveComparator",
+    "methods" : [
+      { "name" : "compare" }
+    ]
+  }
 ]
 ```
+
 The native image builder generates reflection metadata for all classes, methods, and fields referenced in that file.
 The `allPublicConstructors`, `allDeclaredConstructors`, `allPublicMethods`, `allDeclaredMethods`, `allPublicFields`, `allDeclaredFields`, `allPublicClasses`, and `allDeclaredClasses` attributes can be used to automatically include an entire set of members of a class.
 
@@ -124,6 +125,28 @@ Code may also write non-static final fields like `String.value` in this example,
 
 More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`.
 Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the native image build's class path, such as from a JAR file.
+
+### Conditional Configuration
+
+With conditional configuraiton, a class configuration entry is applied only if a provided `condition` is satisfied. The only currently supported condition is `typeReachable`, which enables the configuration entry if the specified type is reachable through other code. For example, to support reflective access to `sun.misc.Unsafe.theUnsafe` only when `io.netty.util.internal.PlatformDependent0` is reachable, the configuration should look like:
+
+```json
+{
+  "condition" : { "typeReachable" : "io.netty.util.internal.PlatformDependent0" },
+  "name" : "sun.misc.Unsafe",
+  "fields" : [
+    { "name" : "theUnsafe" }
+  ]
+}
+```
+
+Conditional configuration is the *preferred* way to specify reflection configuration: if code doing a reflective access is not reachable, it is unnecessary to include its corresponding reflection entry. The consistent usage of `condition` results in *smaller binaries* and *better build times* as the image builder can selectively include reflectively accessed code.
+
+If a `condition` is omitted, the element is always included. When the same `condition` is used for two distinct elements in two configuration entries, both elements will be included when the condition is satisfied. When a configuration entry should be enabled if one of several types are reachable, it is necessary to add two configuration entries: one entry for each condition.
+
+When used with [assisted configuration](BuildConfiguration.md#assisted-configuration-of-native-image-builds), conditional entries of existing configuration will not be fused with agent-collected entries as agent-collected entries.
+
+### Configuration with Features
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `RuntimeReflection` class. For example:
 ```java

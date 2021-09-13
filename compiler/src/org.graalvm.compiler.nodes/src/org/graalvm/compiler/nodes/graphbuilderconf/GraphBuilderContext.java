@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static org.graalvm.compiler.core.common.GraalOptions.StrictDeoptInsertionChecks;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -43,6 +44,7 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -302,6 +304,18 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
+     * Emit a range check for an intrinsic. This is different from a normal bytecode range check
+     * since it might be checking a range of indexes for an operation on an array body.
+     */
+    default GuardingNode intrinsicRangeCheck(LogicNode condition, boolean negated) {
+        if (needsExplicitException()) {
+            return emitBytecodeExceptionCheck(condition, negated, BytecodeExceptionKind.INTRINSIC_OUT_OF_BOUNDS);
+        } else {
+            return add(new FixedGuardNode(condition, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.None, !negated));
+        }
+    }
+
+    /**
      * Gets a version of a given value that has a {@linkplain StampTool#isPointerNonNull(ValueNode)
      * non-null} stamp.
      */
@@ -364,6 +378,35 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             }
             addPush(JavaKind.Object, DynamicPiNode.create(getAssumptions(), getConstantReflection(), object, guardingNode, javaClass));
         }
+    }
+
+    /**
+     * Some {@link InvocationPlugin InvocationPlugins} have to build a
+     * {@link org.graalvm.compiler.nodes.MergeNode} to handle multiple return paths but not all
+     * contexts can do this.
+     *
+     * @return false if {@link #getIntrinsicReturnState(JavaKind, ValueNode)} cannot be called (i.e.
+     *         it unconditionally raises an error)
+     */
+    default boolean canMergeIntrinsicReturns() {
+        return false;
+    }
+
+    /**
+     * Build a FrameState that represents the return from an intrinsic with {@code returnValue} on
+     * the top of stack. Usually this will be a state in the caller after the call site.
+     */
+    @SuppressWarnings("unused")
+    default FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode returnValue) {
+        throw new GraalError("Cannot be called on a " + getClass().getName() + " object");
+    }
+
+    /**
+     * When this returns true, the parser will report an error if an {@link InvocationPlugin}
+     * inserts a {@link org.graalvm.compiler.nodes.DeoptimizeNode} or {@link FixedGuardNode}.
+     */
+    default boolean disallowDeoptInPlugins() {
+        return StrictDeoptInsertionChecks.getValue(getOptions());
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jfr;
+package com.oracle.svm.configure.config;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import static com.oracle.svm.core.configure.ConfigurationParser.CONDITIONAL_KEY;
+import static com.oracle.svm.core.configure.ConfigurationParser.TYPE_REACHABLE_KEY;
 
-@TargetClass(className = "jdk.jfr.internal.dcmd.DCmdStart", onlyWith = JfrEnabled.class)
-public final class Target_jdk_jfr_internal_dcmd_DCmdStart {
-    @Alias
-    public Target_jdk_jfr_internal_dcmd_DCmdStart() {
+import java.io.IOException;
+
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
+import com.oracle.svm.configure.json.JsonWriter;
+
+final class ConfigurationConditionPrintable {
+    static void printConditionAttribute(ConfigurationCondition condition, JsonWriter writer) throws IOException {
+        if (!condition.equals(ConfigurationCondition.objectReachable())) {
+            writer.quote(CONDITIONAL_KEY).append(":{");
+            writer.quote(TYPE_REACHABLE_KEY).append(':').quote(condition.getTypeName());
+            writer.append("},").newline();
+        }
     }
-
-    @Alias
-    public native String execute(String name, String[] settings, Long delay, Long duration, Boolean disk, String path, Long maxAge, Long maxSize, Boolean dumpOnExit, Boolean pathToGcRoots)
-                    throws Exception;
 }

@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.time.Year;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import javax.annotation.processing.Messager;
@@ -250,6 +251,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String PUBLIC_FINAL = "public final";
     static final String PRIVATE_FINAL = "private final";
     static final String OVERRIDE = "@Override";
+    static final String IS_TRIVIAL = "isTrivial";
 
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
 
@@ -278,6 +280,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String SHOULD_SPLIT = "shouldSplit";
     static final String SPLIT = "split";
 
+    static final String PUBLIC_BOOLEAN = "public boolean ";
     static final String PUBLIC_FINAL_OBJECT = "public final Object ";
     static final String ARGS_NAME = "args";
     static final String ARG_NAME = "arg";
@@ -632,6 +635,28 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return str.toString();
     }
 
+    private static boolean isTrivial(Element element, TypeElement implAnnotation) {
+        AnnotationMirror mirror = getAnnotation(element, implAnnotation);
+        try {
+            Boolean value = getAnnotationValue(mirror, "isTrivial", Boolean.class);
+            return value != null && value;
+        } catch (NoSuchElementException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Generates isTrivial getter.
+     */
+    private static String generateIsTrivial(SubstitutionHelper helper) {
+        StringBuilder str = new StringBuilder();
+        str.append(TAB_1).append(OVERRIDE).append("\n");
+        str.append(TAB_1).append(PUBLIC_BOOLEAN).append(IS_TRIVIAL).append("() {\n");
+        str.append(TAB_2).append("return ").append(isTrivial(helper.getTarget(), helper.getImplAnnotation())).append(";\n");
+        str.append(TAB_1).append("}\n");
+        return str.toString();
+    }
+
     static boolean injectMeta(StringBuilder str, boolean first) {
         checkFirst(str, first);
         str.append(META_ARG_CALL);
@@ -695,6 +720,11 @@ public abstract class EspressoProcessor extends BaseProcessor {
         classFile.append(generateConstructor(substitutorName, helper)).append("\n");
 
         classFile.append(generateSplittingInformation(helper));
+
+        // Override the isTrivial() getter (returns false by default).
+        if (isTrivial(helper.getTarget(), helper.getImplAnnotation())) {
+            classFile.append(generateIsTrivial(helper));
+        }
 
         classFile.append('\n');
 

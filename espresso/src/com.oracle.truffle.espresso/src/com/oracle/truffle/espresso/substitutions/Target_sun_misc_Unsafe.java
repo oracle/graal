@@ -160,7 +160,7 @@ public final class Target_sun_misc_Unsafe {
      * will be either 4 or 8. Note that the sizes of other primitive types (as stored in native
      * memory blocks) is determined fully by their information content.
      */
-    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class, isTrivial = true)
     public static int addressSize(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self) {
         return ADDRESS_SIZE;
     }
@@ -1352,7 +1352,7 @@ public final class Target_sun_misc_Unsafe {
         InterpreterToVM.monitorUnsafeExit(object.getLock());
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, isTrivial = true)
     public static void throwException(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Throwable.class) StaticObject ee, @Inject Meta meta) {
         throw meta.throwException(ee);
     }

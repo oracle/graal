@@ -60,6 +60,9 @@ class NodeIdAccessor {
      */
     int getNodeId(Node node) {
         assert verifyIdsAreStable();
+        if (!node.isAlive()) {
+            throw new InternalError(node.toString());
+        }
         return node.id();
     }
 }

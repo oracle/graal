@@ -204,6 +204,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.module",
+                    "jdk.internal.reflect",
                     "jdk.internal.misc",
                     "jdk.internal.logger",
                     "jdk.internal.loader",
@@ -267,6 +268,24 @@ suite = {
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
+
+        "com.oracle.svm.core.jdk17": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": ["com.oracle.svm.core"],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.loader",
+                    "jdk.internal.misc",
+                    "jdk.internal.platform",
+                    "sun.invoke.util",
+                ],
+            },
+            "javaCompliance": "17+",
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
+
 
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
@@ -496,7 +515,7 @@ suite = {
                 },
                 "linux": {
                     "<others>" : {
-                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
                     },
                 },
                 "<others>": {
@@ -622,13 +641,6 @@ suite = {
             ],
             "javaCompliance" : "11+",
             "spotbugs": "false",
-        },
-
-        "svm-compiler-flags-builder": {
-            "class" : "SubstrateCompilerFlagsBuilder",
-            "dependencies" : [
-                "SVM",
-            ],
         },
 
         "com.oracle.svm.junit": {
@@ -1055,6 +1067,7 @@ suite = {
                 "com.oracle.svm.core.jdk14",
                 "com.oracle.svm.core.jdk15",
                 "com.oracle.svm.core.jdk16",
+                "com.oracle.svm.core.jdk17",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.posix",
@@ -1174,6 +1187,11 @@ suite = {
                     "com.oracle.svm.jvmtiagentbase",
                     "com.oracle.svm.jvmtiagentbase.jvmti",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
             },
         },
 
@@ -1220,6 +1238,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.objectfile.io",
                 "com.oracle.objectfile.debuginfo",
+                "com.oracle.objectfile.macho",
               ],
 
               "requires" : ["jdk.unsupported"],
@@ -1323,6 +1342,11 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.agent",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
                 "requiresConcealed" : {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
@@ -1347,6 +1371,11 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.diagnosticsagent",
                 ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
+                ],
             },
         },
 
@@ -1366,6 +1395,11 @@ suite = {
                 "exports" : [
                     "* to org.graalvm.nativeimage.agent.tracing",
                     "com.oracle.svm.configure",
+                ],
+                "requires" : [
+                    "static com.oracle.mxtool.junit",
+                    "static junit",
+                    "static hamcrest",
                 ],
             },
         },

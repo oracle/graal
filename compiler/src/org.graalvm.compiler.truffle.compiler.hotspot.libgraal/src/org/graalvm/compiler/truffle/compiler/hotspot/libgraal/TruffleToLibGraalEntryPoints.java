@@ -73,7 +73,6 @@ import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -108,8 +107,8 @@ import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.FromLibGraalCalls;
-import org.graalvm.nativebridge.jni.HSObject;
 import org.graalvm.libgraal.jni.LibGraalUtil;
+import org.graalvm.nativebridge.jni.HSObject;
 import org.graalvm.nativebridge.jni.JNI.JArray;
 import org.graalvm.nativebridge.jni.JNI.JByteArray;
 import org.graalvm.nativebridge.jni.JNI.JClass;
@@ -339,8 +338,8 @@ final class TruffleToLibGraalEntryPoints {
     public static JString getGraphDumpDirectory(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
         JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, GetGraphDumpDirectory, env);
         try (JNIMethodScope s = scope) {
-            Path path = DebugOptions.getDumpDirectory(HotSpotGraalOptionValues.defaultOptions());
-            scope.setObjectResult(createHSString(env, path.toString()));
+            String path = DebugOptions.getDumpDirectory(HotSpotGraalOptionValues.defaultOptions());
+            scope.setObjectResult(createHSString(env, path));
         } catch (IOException ioe) {
             scope.setObjectResult(WordFactory.nullPointer());
         } catch (Throwable t) {

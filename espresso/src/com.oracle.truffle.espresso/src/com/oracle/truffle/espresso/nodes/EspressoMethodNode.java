@@ -116,5 +116,4 @@ public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
     public EspressoMethodNode split() {
         throw EspressoError.shouldNotReachHere();
     }
-
 }

@@ -63,4 +63,8 @@ public class SubstitutionProfiler extends Node {
     public boolean uninitialized() {
         return profiles == 0;
     }
+
+    public boolean isTrivial() {
+        return false;
+    }
 }

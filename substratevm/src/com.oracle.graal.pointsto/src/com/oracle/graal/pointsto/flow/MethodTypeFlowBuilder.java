@@ -1324,13 +1324,13 @@ public class MethodTypeFlowBuilder {
                 /* Create the actual return builder. */
                 AnalysisType returnType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
                 TypeFlowBuilder<?> actualReturnBuilder = TypeFlowBuilder.create(bb, invoke.asNode(), ActualReturnTypeFlow.class, () -> {
-                    ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invoke.asNode(), returnType);
+                    InvokeTypeFlow invokeFlow = invokeBuilder.get();
+                    ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invokeFlow.source, returnType);
                     methodFlow.addMiscEntry(actualReturn);
                     /*
                      * Only set the actual return in the invoke when it is materialized, i.e., it is
                      * used by other flows.
                      */
-                    InvokeTypeFlow invokeFlow = invokeBuilder.get();
                     invokeFlow.setActualReturn(actualReturn);
                     actualReturn.setInvokeFlow(invokeFlow);
                     return actualReturn;

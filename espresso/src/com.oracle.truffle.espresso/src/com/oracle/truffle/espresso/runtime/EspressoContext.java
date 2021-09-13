@@ -180,6 +180,7 @@ public final class EspressoContext {
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
     public final boolean EnableAgents;
+    public final int TrivialMethodSize;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -270,6 +271,7 @@ public final class EspressoContext {
         this.livenessAnalysis = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
+        this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
         String multiThreadingDisabledReason = null;
         if (!env.getOptions().get(EspressoOptions.MultiThreaded)) {
             multiThreadingDisabledReason = "java.MultiThreaded option is set to false";

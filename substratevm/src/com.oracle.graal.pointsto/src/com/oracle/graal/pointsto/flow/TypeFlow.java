@@ -41,6 +41,9 @@ import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.ClassUtil;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 @SuppressWarnings("rawtypes")
 public abstract class TypeFlow<T> {
@@ -195,7 +198,7 @@ public abstract class TypeFlow<T> {
         return usedAsAReceiver;
     }
 
-    /** Some flow have a reciver (e.g., loads, store and invokes). */
+    /** Some flows have a receiver (e.g., loads, store and invokes). */
     public TypeFlow<?> receiver() {
         return null;
     }
@@ -333,7 +336,7 @@ public abstract class TypeFlow<T> {
             return true;
         }
         assert after.verifyDeclaredType(declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
-                        "%nState before: %s. %nState after: %s", formatFlow(false), declaredType.toJavaName(true), formatState(bb, before), formatState(bb, after));
+                        "%nState before: %s. %nState after: %s", format(false, true), declaredType.toJavaName(true), formatState(bb, before), formatState(bb, after));
         return true;
     }
 
@@ -692,13 +695,24 @@ public abstract class TypeFlow<T> {
          */
     }
 
-    private String formatFlow(boolean withState) {
-        return getClass().getName() + '<' + source + (withState ? ": " + getState() : "") + '>';
+    public String formatSource() {
+        if (source instanceof BytecodePosition) {
+            BytecodePosition position = (BytecodePosition) source;
+            return position.getMethod().asStackTraceElement(position.getBCI()).toString();
+        }
+        if (source == null && method() != null) {
+            return method().asStackTraceElement(-1).toString();
+        }
+        return "<unknown-position>";
+    }
+
+    public String format(boolean withState, boolean withSource) {
+        return ClassUtil.getUnqualifiedName(getClass()) + (withSource ? " at " + formatSource() : "") + (withState ? " with state <" + getState() + '>' : "");
     }
 
     @Override
     public String toString() {
-        return formatFlow(true);
+        return format(true, true);
     }
 
     @Override

@@ -171,8 +171,8 @@ class ChunkedImageHeapAllocator {
 
     ChunkedImageHeapAllocator(ImageHeap imageHeap, long position) {
         this.imageHeap = imageHeap;
-        this.alignedChunkSize = UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkSize());
-        this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
+        this.alignedChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+        this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkAlignment());
         this.alignedChunkObjectsOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getObjectsStartOffset());
         this.unalignedChunkObjectsOffset = UnsignedUtils.safeToInt(UnalignedHeapChunk.getObjectStartOffset());
 

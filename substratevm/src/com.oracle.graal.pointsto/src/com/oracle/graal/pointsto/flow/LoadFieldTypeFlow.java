@@ -135,7 +135,8 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects()) {
                 /* Get the field flow corresponding to the receiver object. */
-                FieldTypeFlow fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
+
+                FieldTypeFlow fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
 
                 /* Add the load field flow as a use to the heap sensitive field flow. */
                 fieldFlow.addUse(bb, this);

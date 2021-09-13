@@ -163,7 +163,7 @@ class EspressoThreadManager implements ContextAccess {
             return String.format("unregisterThread([GUEST:%s, %d])", guestName, guestId);
         });
         activeThreads.remove(thread);
-        Thread hostThread = (Thread) thread.getKlass().getMeta().HIDDEN_HOST_THREAD.getHiddenObject(thread);
+        Thread hostThread = (Thread) getMeta().HIDDEN_HOST_THREAD.getHiddenObject(thread);
         int id = Math.toIntExact(hostThread.getId());
         synchronized (activeThreadLock) {
             if (id == mainThreadId) {

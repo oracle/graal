@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.jfr;
 
+//Checkstyle: allow reflection
+import java.lang.reflect.Field;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -65,8 +67,9 @@ class SubstrateJVM {
     private final JfrLogging jfrLogging;
 
     private boolean initialized;
-    // We can't reuse the field JVM.recording because it does not get set in all the cases that we
-    // are interested in.
+    // We need this separate field for all JDK versions, i.e., even for versions where the field
+    // JVM.recording is present (JVM.recording is not set for all the cases that we are interested
+    // in).
     private volatile boolean recording;
     private byte[] metadataDescriptor;
 
@@ -138,6 +141,16 @@ class SubstrateJVM {
     @Fold
     public static JfrLogging getJfrLogging() {
         return get().jfrLogging;
+    }
+
+    public static Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
+        try {
+            Field f = eventClass.getDeclaredField("eventHandler");
+            f.setAccessible(true);
+            return f.get(null);
+        } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
+            throw new InternalError("Could not access event handler");
+        }
     }
 
     public static boolean isInitialized() {
@@ -244,6 +257,11 @@ class SubstrateJVM {
         });
         // After the safepoint, it is guaranteed that all JfrNativeEventWriters finished their job
         // and that no further JFR events will be triggered.
+    }
+
+    /** See {@link JVM#isRecording}. This is not thread safe */
+    public boolean unsafeIsRecording() {
+        return recording;
     }
 
     /** See {@link JVM#getClassId}. */
@@ -380,6 +398,16 @@ class SubstrateJVM {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             return chunkWriter.shouldRotateDisk();
+        } finally {
+            chunkWriter.unlock();
+        }
+    }
+
+    /** See {@link JVM#getChunkStartNanos}. */
+    public long getChunkStartNanos() {
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            return chunkWriter.getChunkStartNanos();
         } finally {
             chunkWriter.unlock();
         }

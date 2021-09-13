@@ -500,8 +500,8 @@ JNIEXPORT jclass JNICALL JVM_GetCallerClass(JNIEnv *env, int depth) {
 }
 
 JNIEXPORT jclass JNICALL JVM_FindPrimitiveClass(JNIEnv *env, const char *utf) {
-  UNIMPLEMENTED(JVM_FindPrimitiveClass);
-  return NULL;
+  IMPLEMENTED(JVM_FindPrimitiveClass);
+  return (*getEnv())->JVM_FindPrimitiveClass(env, utf);
 }
 
 JNIEXPORT void JNICALL JVM_ResolveClass(JNIEnv *env, jclass cls) {
@@ -516,8 +516,8 @@ JNIEXPORT jclass JNICALL JVM_FindClassFromBootLoader(JNIEnv *env, const char *na
 }
 
 JNIEXPORT jclass JNICALL JVM_FindClassFromCaller(JNIEnv *env, const char *name, jboolean init, jobject loader, jclass caller) {
-  UNIMPLEMENTED(JVM_FindClassFromCaller);
-  return NULL;
+  IMPLEMENTED(JVM_FindClassFromCaller);
+  return (*getEnv())->JVM_FindClassFromCaller(env, name, init, loader, caller);
 }
 
 JNIEXPORT jclass JNICALL JVM_FindClassFromClassLoader(JNIEnv *env, const char *name, jboolean init, jobject loader, jboolean throwError) {
@@ -547,28 +547,28 @@ JNIEXPORT jclass JNICALL JVM_DefineClassWithSource(JNIEnv *env, const char *name
 }
 
 JNIEXPORT jstring JNICALL JVM_GetClassName(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassName);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassName);
+  return (*getEnv())->JVM_GetClassName(env, cls);;
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetClassInterfaces(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassInterfaces);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassInterfaces);
+  return (*getEnv())->JVM_GetClassInterfaces(env, cls);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsInterface(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_IsInterface);
-  return 0;
+  IMPLEMENTED(JVM_IsInterface);
+  return (*getEnv())->JVM_IsInterface(env, cls);
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetClassSigners(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassSigners);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassSigners);
+  return (*getEnv())->JVM_GetClassSigners(env, cls);
 }
 
 JNIEXPORT void JNICALL JVM_SetClassSigners(JNIEnv *env, jclass cls, jobjectArray signers) {
-  UNIMPLEMENTED(JVM_SetClassSigners);
-
+  IMPLEMENTED(JVM_SetClassSigners);
+  (*getEnv())->JVM_SetClassSigners(env, cls, signers);
 }
 
 JNIEXPORT jobject JNICALL JVM_GetProtectionDomain(JNIEnv *env, jclass cls) {
@@ -577,18 +577,18 @@ JNIEXPORT jobject JNICALL JVM_GetProtectionDomain(JNIEnv *env, jclass cls) {
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsArrayClass(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_IsArrayClass);
-  return 0;
+  IMPLEMENTED(JVM_IsArrayClass);
+  return (*getEnv())->JVM_IsArrayClass(env, cls);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsPrimitiveClass(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_IsPrimitiveClass);
-  return 0;
+  IMPLEMENTED(JVM_IsPrimitiveClass);
+  return (*getEnv())->JVM_IsPrimitiveClass(env, cls);
 }
 
 JNIEXPORT jclass JNICALL JVM_GetComponentType(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetComponentType);
-  return NULL;
+  IMPLEMENTED(JVM_GetComponentType);
+  return (*getEnv())->JVM_GetComponentType(env, cls);
 }
 
 JNIEXPORT jint JNICALL JVM_GetClassModifiers(JNIEnv *env, jclass cls) {
@@ -597,28 +597,28 @@ JNIEXPORT jint JNICALL JVM_GetClassModifiers(JNIEnv *env, jclass cls) {
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetDeclaredClasses(JNIEnv *env, jclass ofClass) {
-  UNIMPLEMENTED(JVM_GetDeclaredClasses);
-  return NULL;
+  IMPLEMENTED(JVM_GetDeclaredClasses);
+  return (*getEnv())->JVM_GetDeclaredClasses(env, ofClass);
 }
 
 JNIEXPORT jclass JNICALL JVM_GetDeclaringClass(JNIEnv *env, jclass ofClass) {
-  UNIMPLEMENTED(JVM_GetDeclaringClass);
-  return NULL;
+  IMPLEMENTED(JVM_GetDeclaringClass);
+  return (*getEnv())->JVM_GetDeclaringClass(env, ofClass);
 }
 
 JNIEXPORT jstring JNICALL JVM_GetClassSignature(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassSignature);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassSignature);
+  return (*getEnv())->JVM_GetClassSignature(env, cls);
 }
 
 JNIEXPORT jbyteArray JNICALL JVM_GetClassAnnotations(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassAnnotations);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassAnnotations);
+  return (*getEnv())->JVM_GetClassAnnotations(env, cls);
 }
 
 JNIEXPORT jbyteArray JNICALL JVM_GetClassTypeAnnotations(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassTypeAnnotations);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassTypeAnnotations);
+  return (*getEnv())->JVM_GetClassTypeAnnotations(env, cls);
 }
 
 JNIEXPORT jbyteArray JNICALL JVM_GetFieldTypeAnnotations(JNIEnv *env, jobject field) {
@@ -632,18 +632,18 @@ JNIEXPORT jbyteArray JNICALL JVM_GetMethodTypeAnnotations(JNIEnv *env, jobject m
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetClassDeclaredMethods(JNIEnv *env, jclass ofClass, jboolean publicOnly) {
-  UNIMPLEMENTED(JVM_GetClassDeclaredMethods);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassDeclaredMethods);
+  return (*getEnv())->JVM_GetClassDeclaredMethods(env, ofClass, publicOnly);
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetClassDeclaredFields(JNIEnv *env, jclass ofClass, jboolean publicOnly) {
-  UNIMPLEMENTED(JVM_GetClassDeclaredFields);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassDeclaredFields);
+  return (*getEnv())->JVM_GetClassDeclaredFields(env, ofClass, publicOnly);
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetClassDeclaredConstructors(JNIEnv *env, jclass ofClass, jboolean publicOnly) {
-  UNIMPLEMENTED(JVM_GetClassDeclaredConstructors);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassDeclaredConstructors);
+  return (*getEnv())->JVM_GetClassDeclaredConstructors(env, ofClass, publicOnly);
 }
 
 JNIEXPORT jint JNICALL JVM_GetClassAccessFlags(JNIEnv *env, jclass cls) {
@@ -662,8 +662,8 @@ JNIEXPORT jobject JNICALL JVM_NewInstanceFromConstructor(JNIEnv *env, jobject c,
 }
 
 JNIEXPORT jobject JNICALL JVM_GetClassConstantPool(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassConstantPool);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassConstantPool);
+  return (*getEnv())->JVM_GetClassConstantPool(env, cls);
 }
 
 JNIEXPORT jint JNICALL JVM_ConstantPoolGetSize(JNIEnv *env, jobject unused, jobject jcpool) {
@@ -1204,8 +1204,8 @@ JNIEXPORT jstring JNICALL JVM_GetTemporaryDirectory(JNIEnv *env) {
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetEnclosingMethodInfo(JNIEnv *env, jclass ofClass) {
-  UNIMPLEMENTED(JVM_GetEnclosingMethodInfo);
-  return NULL;
+  IMPLEMENTED(JVM_GetEnclosingMethodInfo);
+  return (*getEnv())->JVM_GetEnclosingMethodInfo(env, ofClass);
 }
 
 JNIEXPORT jintArray JNICALL JVM_GetThreadStateValues(JNIEnv *env, jint javaThreadState) {
@@ -1372,8 +1372,8 @@ JNIEXPORT jobjectArray JNICALL JVM_GetNestMembers(JNIEnv *env, jclass current) {
 }
 
 JNIEXPORT jstring JNICALL JVM_GetSimpleBinaryName(JNIEnv *env, jclass ofClass) {
-  UNIMPLEMENTED(JVM_GetSimpleBinaryName);
-  return NULL;
+  IMPLEMENTED(JVM_GetSimpleBinaryName);
+  return (*getEnv())->JVM_GetSimpleBinaryName(env, ofClass);
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
@@ -1387,8 +1387,8 @@ JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env) {
 }
 
 JNIEXPORT jstring JNICALL JVM_InitClassName(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_InitClassName);
-  return NULL;
+  IMPLEMENTED(JVM_InitClassName);
+  return (*getEnv())->JVM_InitClassName(env, cls);
 }
 
 JNIEXPORT void JNICALL JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
@@ -1432,8 +1432,8 @@ JNIEXPORT jboolean JNICALL JVM_IsUseContainerSupport(void) {
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetRecordComponents(JNIEnv *env, jclass ofClass) {
-    UNIMPLEMENTED(JVM_GetRecordComponents);
-    return NULL;
+    IMPLEMENTED(JVM_GetRecordComponents);
+    return (*getEnv())->JVM_GetRecordComponents(env, ofClass);
 }
 
 JNIEXPORT void JNICALL JVM_RegisterLambdaProxyClassForArchiving(JNIEnv* env, jclass caller,
@@ -1493,13 +1493,13 @@ JNIEXPORT void JNICALL JVM_LogLambdaFormInvoker(JNIEnv* env, jstring line) {
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsHiddenClass(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_IsHiddenClass);
-  return JNI_FALSE;
+  IMPLEMENTED(JVM_IsHiddenClass);
+  return (*getEnv())->JVM_IsRecord(env, cls);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsRecord(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_IsRecord);
-  return JNI_FALSE;
+  IMPLEMENTED(JVM_IsRecord);
+  return (*getEnv())->JVM_IsRecord(env, cls);
 }
 
 JNIEXPORT jclass JNICALL JVM_LookupDefineClass(JNIEnv *env, jclass lookup, const char *name, const jbyte *buf,
@@ -1528,13 +1528,14 @@ JNIEXPORT void JNICALL JVM_DefineArchivedModules(JNIEnv *env, jobject platform_l
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetPermittedSubclasses(JNIEnv* env, jclass current) {
-  UNIMPLEMENTED(JVM_GetPermittedSubclasses);
-  return NULL;
+  IMPLEMENTED(JVM_GetPermittedSubclasses);
+  return (*getEnv())->JVM_GetPermittedSubclasses(env, current);
 }
 
 JNIEXPORT void JNICALL JVM_DumpClassListToFile(JNIEnv *env, jstring listFileName) {
   UNIMPLEMENTED(JVM_DumpClassListToFile);
 }
+
 
 JNIEXPORT void JNICALL JVM_DumpDynamicArchive(JNIEnv *env, jstring archiveName) {
   UNIMPLEMENTED(JVM_DumpDynamicArchive);

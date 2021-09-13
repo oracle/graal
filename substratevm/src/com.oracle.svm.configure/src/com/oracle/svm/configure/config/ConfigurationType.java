@@ -31,11 +31,14 @@ import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
 
 public class ConfigurationType implements JsonPrintable {
+    private final ConfigurationCondition condition;
     private final String qualifiedJavaName;
 
     private Map<String, FieldInfo> fields;
@@ -50,18 +53,21 @@ public class ConfigurationType implements JsonPrintable {
     private boolean allDeclaredConstructors;
     private boolean allPublicConstructors;
 
-    public ConfigurationType(String qualifiedJavaName) {
+    public ConfigurationType(ConfigurationCondition condition, String qualifiedJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
         assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
+        this.condition = condition;
         this.qualifiedJavaName = qualifiedJavaName;
     }
 
     public ConfigurationType(ConfigurationType other) {
         qualifiedJavaName = other.qualifiedJavaName;
+        condition = other.condition;
         mergeWith(other);
     }
 
     public void mergeWith(ConfigurationType other) {
+        assert condition.equals(other.condition);
         assert qualifiedJavaName.equals(other.qualifiedJavaName);
         mergeFlagsWith(other);
         mergeFieldsWith(other);
@@ -134,6 +140,8 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     public void removeAll(ConfigurationType other) {
+        assert condition.equals(other.condition);
+        assert qualifiedJavaName.equals(other.qualifiedJavaName);
         removeFlags(other);
         removeFields(other);
         removeMethods(other);
@@ -317,6 +325,9 @@ public class ConfigurationType implements JsonPrintable {
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
+
+        ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
+
         writer.quote("name").append(':').quote(qualifiedJavaName);
         optionallyPrintJsonBoolean(writer, haveAllDeclaredFields(), "allDeclaredFields");
         optionallyPrintJsonBoolean(writer, haveAllPublicFields(), "allPublicFields");
@@ -337,8 +348,8 @@ public class ConfigurationType implements JsonPrintable {
                             Comparator.comparing(ConfigurationMethod::getName).thenComparing(Comparator.nullsFirst(Comparator.comparing(ConfigurationMethod::getInternalSignature))),
                             JsonPrintable::printJson);
         }
-        writer.unindent().newline();
-        writer.append('}');
+
+        writer.append('}').unindent().newline();
     }
 
     private static void printField(Map.Entry<String, FieldInfo> entry, JsonWriter w) throws IOException {
@@ -372,5 +383,9 @@ public class ConfigurationType implements JsonPrintable {
             }
         }
         return map;
+    }
+
+    ConfigurationCondition getCondition() {
+        return condition;
     }
 }

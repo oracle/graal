@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.graalvm.compiler.phases.common.LazyValue;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberKind;
 import com.oracle.svm.configure.config.ConfigurationMethod;
@@ -72,6 +73,7 @@ class ReflectionProcessor extends AbstractProcessor {
     @SuppressWarnings("fallthrough")
     public void processEntry(Map<String, ?> entry) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
+        ConfigurationCondition condition = ConfigurationCondition.objectReachable();
         if (invalidResult) {
             return;
         }
@@ -100,14 +102,14 @@ class ReflectionProcessor extends AbstractProcessor {
             }
             if (!advisor.shouldIgnore(lazyValue(name), lazyValue(callerClass)) &&
                             !(isLoadClass && advisor.shouldIgnoreLoadClass(lazyValue(name), lazyValue(callerClass)))) {
-                configuration.getOrCreateType(name);
+                configuration.getOrCreateType(condition, name);
             }
             return;
         } else if (function.equals("methodTypeDescriptor")) {
             List<String> typeNames = singleElement(args);
             for (String type : typeNames) {
                 if (!advisor.shouldIgnore(lazyValue(type), lazyValue(callerClass))) {
-                    configuration.getOrCreateType(type);
+                    configuration.getOrCreateType(condition, type);
                 }
             }
         }
@@ -119,39 +121,39 @@ class ReflectionProcessor extends AbstractProcessor {
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "getDeclaredFields": {
-                configuration.getOrCreateType(clazz).setAllDeclaredFields();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredFields();
                 break;
             }
             case "getFields": {
-                configuration.getOrCreateType(clazz).setAllPublicFields();
+                configuration.getOrCreateType(condition, clazz).setAllPublicFields();
                 break;
             }
 
             case "getDeclaredMethods": {
-                configuration.getOrCreateType(clazz).setAllDeclaredMethods();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredMethods();
                 break;
             }
             case "asInterfaceInstance":
             case "getMethods": {
-                configuration.getOrCreateType(clazz).setAllPublicMethods();
+                configuration.getOrCreateType(condition, clazz).setAllPublicMethods();
                 break;
             }
 
             case "getDeclaredConstructors": {
-                configuration.getOrCreateType(clazz).setAllDeclaredConstructors();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredConstructors();
                 break;
             }
             case "getConstructors": {
-                configuration.getOrCreateType(clazz).setAllPublicConstructors();
+                configuration.getOrCreateType(condition, clazz).setAllPublicConstructors();
                 break;
             }
 
             case "getDeclaredClasses": {
-                configuration.getOrCreateType(clazz).setAllDeclaredClasses();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredClasses();
                 break;
             }
             case "getClasses": {
-                configuration.getOrCreateType(clazz).setAllPublicClasses();
+                configuration.getOrCreateType(condition, clazz).setAllPublicClasses();
                 break;
             }
 
@@ -162,9 +164,9 @@ class ReflectionProcessor extends AbstractProcessor {
                 memberKind = "findFieldHandle".equals(function) ? ConfigurationMemberKind.PRESENT : ConfigurationMemberKind.DECLARED;
                 // fall through
             case "getField": {
-                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind, false);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addField(singleElement(args), memberKind, false);
                 if (!clazzOrDeclaringClass.equals(clazz)) {
-                    configuration.getOrCreateType(clazz);
+                    configuration.getOrCreateType(condition, clazz);
                 }
                 break;
             }
@@ -180,9 +182,9 @@ class ReflectionProcessor extends AbstractProcessor {
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
                 if (!clazzOrDeclaringClass.equals(clazz)) {
-                    configuration.getOrCreateType(clazz);
+                    configuration.getOrCreateType(condition, clazz);
                 }
                 break;
             }
@@ -198,7 +200,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 }
                 String signature = SignatureUtil.toInternalSignature(parameterTypes);
                 assert clazz.equals(clazzOrDeclaringClass) : "Constructor can only be accessed via declaring class";
-                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, memberKind);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, memberKind);
                 break;
             }
 
@@ -227,9 +229,9 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "newInstance": {
                 if (clazz.equals("java.lang.reflect.Array")) { // reflective array instantiation
-                    configuration.getOrCreateType((String) args.get(0));
+                    configuration.getOrCreateType(condition, (String) args.get(0));
                 } else {
-                    configuration.getOrCreateType(clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberKind.DECLARED);
+                    configuration.getOrCreateType(condition, clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberKind.DECLARED);
                 }
                 break;
             }
@@ -255,7 +257,7 @@ class ReflectionProcessor extends AbstractProcessor {
         String qualifiedClass = descriptor.substring(0, classend);
         String methodName = descriptor.substring(classend + 1, sigbegin);
         String signature = descriptor.substring(sigbegin);
-        configuration.getOrCreateType(qualifiedClass).addMethod(methodName, signature, ConfigurationMemberKind.DECLARED);
+        configuration.getOrCreateType(ConfigurationCondition.objectReachable(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberKind.DECLARED);
     }
 
     private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass) {
