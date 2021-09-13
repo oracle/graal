@@ -116,14 +116,14 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     public void setupHostedOptionParser(List<String> arguments) {
         hostedOptionParser = new HostedOptionParser(getClassLoader());
-        remainingArguments = Collections.unmodifiableList(Arrays.asList(hostedOptionParser.parse(arguments.toArray(new String[0]))));
+        remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse(arguments)));
         parsedHostedOptions = new OptionValues(hostedOptionParser.getHostedValues());
         processClassLoaderOptions(parsedHostedOptions);
     }
 
     public HostedOptionParser getHostedOptionParser() {
         return hostedOptionParser;
-    };
+    }
 
     public List<String> getRemainingArguments() {
         return remainingArguments;
@@ -133,7 +133,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         return parsedHostedOptions;
     }
 
-    protected abstract void processClassLoaderOptions(OptionValues parsedHostedOptions);
+    protected abstract void processClassLoaderOptions(OptionValues optionValues);
 
     protected abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 

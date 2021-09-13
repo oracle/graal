@@ -85,7 +85,7 @@ public class HostedOptionParser implements HostedOptionProvider {
         }
     }
 
-    public String[] parse(String[] args) {
+    public List<String> parse(List<String> args) {
 
         List<String> remainingArgs = new ArrayList<>();
         Set<String> errors = new HashSet<>();
@@ -124,7 +124,7 @@ public class HostedOptionParser implements HostedOptionProvider {
             }
         }
 
-        return remainingArgs.toArray(new String[remainingArgs.size()]);
+        return remainingArgs;
     }
 
     @Override

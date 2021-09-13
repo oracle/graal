@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -54,6 +55,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.NativeImageClassLoaderOptions;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.internal.module.Modules;
@@ -154,9 +156,8 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
     }
 
     @Override
-    protected void processClassLoaderOptions(OptionValues parsedHostedOptions) {
-        LocatableMultiOptionValue.Strings addExports = NativeImageClassLoaderOptions.AddExports.getValue(parsedHostedOptions);
-        addExports.getValuesWithOrigins().map(this::asAddExportsAndOpensFormatValue).forEach(val -> {
+    protected void processClassLoaderOptions(OptionValues optionValues) {
+        processOption(optionValues, NativeImageClassLoaderOptions.AddExports).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addExportsToAllUnnamed(val.module, val.packageName);
             } else {
@@ -165,8 +166,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
                 }
             }
         });
-        LocatableMultiOptionValue.Strings addOpens = NativeImageClassLoaderOptions.AddOpens.getValue(parsedHostedOptions);
-        addOpens.getValuesWithOrigins().map(this::asAddExportsAndOpensFormatValue).forEach(val -> {
+        processOption(optionValues, NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addOpensToAllUnnamed(val.module, val.packageName);
             } else {
@@ -175,9 +175,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
                 }
             }
         });
-
-        LocatableMultiOptionValue.Strings addReads = NativeImageClassLoaderOptions.AddReads.getValue(parsedHostedOptions);
-        addReads.getValuesWithOrigins().map(this::asAddReadsFormatValue).forEach(val -> {
+        processOption(optionValues, NativeImageClassLoaderOptions.AddReads).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 implAddReadsAllUnnamed(val.module);
             } else {
@@ -186,6 +184,28 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
                 }
             }
         });
+    }
+
+    private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionValues parsedHostedOptions, OptionKey<LocatableMultiOptionValue.Strings> specificOption) {
+        Stream<Pair<String, String>> valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
+        Stream<AddExportsAndOpensAndReadsFormatValue> parsedOptions = valuesWithOrigins.flatMap(valWithOrig -> {
+            try {
+                return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
+            } catch (UserError.UserException e) {
+                if (ModuleSupport.modulePathBuild) {
+                    throw e;
+                } else {
+                    /*
+                     * Until we switch to always running the image-builder on module-path we have to
+                     * be tolerant if invalid --add-exports -add-opens or --add-reads options are
+                     * used. GR-30433
+                     */
+                    System.out.println("Warning: " + e.getMessage());
+                    return Stream.empty();
+                }
+            }
+        });
+        return parsedOptions;
     }
 
     private static final class AddExportsAndOpensAndReadsFormatValue {
@@ -200,42 +220,35 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         }
     }
 
-    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensFormatValue(Pair<String, String> valueOrigin) {
-        return asAddExportsAndOpensAndReadsFormatValue(valueOrigin, false);
-    }
-
-    private AddExportsAndOpensAndReadsFormatValue asAddReadsFormatValue(Pair<String, String> valueOrigin) {
-        return asAddExportsAndOpensAndReadsFormatValue(valueOrigin, true);
-    }
-
-    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(Pair<String, String> valueOrigin, boolean reads) {
+    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, Pair<String, String> valueOrigin) {
         String optionOrigin = valueOrigin.getRight();
         String optionValue = valueOrigin.getLeft();
 
+        boolean reads = option.equals(NativeImageClassLoaderOptions.AddReads);
         String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
         String syntaxErrorMessage = " Allowed value format: " + format;
 
         String[] modulePackageAndTargetModules = optionValue.split("=", 2);
         if (modulePackageAndTargetModules.length != 2) {
-            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+            throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
         }
         String modulePackage = modulePackageAndTargetModules[0];
         String targetModuleNames = modulePackageAndTargetModules[1];
 
         String[] moduleAndPackage = modulePackage.split("/");
         if (moduleAndPackage.length > 1 + (reads ? 0 : 1)) {
-            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+            throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
         }
         String moduleName = moduleAndPackage[0];
         String packageName = moduleAndPackage.length > 1 ? moduleAndPackage[1] : null;
 
         List<String> targetModuleNamesList = Arrays.asList(targetModuleNames.split(","));
         if (targetModuleNamesList.isEmpty()) {
-            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+            throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, syntaxErrorMessage);
         }
 
         Module module = findModule(moduleName).orElseThrow(() -> {
-            return userErrorAddExportsAndOpens(optionOrigin, optionValue, " Specified module '" + moduleName + "' is unknown.");
+            return userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, " Specified module '" + moduleName + "' is unknown.");
         });
         List<Module> targetModules;
         if (targetModuleNamesList.contains("ALL-UNNAMED")) {
@@ -243,16 +256,16 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         } else {
             targetModules = targetModuleNamesList.stream().map(mn -> {
                 return findModule(mn).orElseThrow(() -> {
-                    throw userErrorAddExportsAndOpens(optionOrigin, optionValue, " Specified target-module '" + mn + "' is unknown.");
+                    throw userErrorAddExportsAndOpensAndReads(option, optionOrigin, optionValue, " Specified target-module '" + mn + "' is unknown.");
                 });
             }).collect(Collectors.toList());
         }
         return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules);
     }
 
-    private static UserError.UserException userErrorAddExportsAndOpens(String origin, String value, String detailMessage) {
+    private static UserError.UserException userErrorAddExportsAndOpensAndReads(OptionKey<?> option, String origin, String value, String detailMessage) {
         Objects.requireNonNull(detailMessage, "missing detailMessage");
-        return UserError.abort("Invalid option %s provided by %s." + detailMessage, SubstrateOptionsParser.commandArgument(NativeImageClassLoaderOptions.AddExports, value), origin);
+        return UserError.abort("Invalid option %s provided by %s." + detailMessage, SubstrateOptionsParser.commandArgument(option, value), origin);
     }
 
     @Override
