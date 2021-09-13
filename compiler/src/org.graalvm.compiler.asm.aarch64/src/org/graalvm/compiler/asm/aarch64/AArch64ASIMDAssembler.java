@@ -559,6 +559,7 @@ public abstract class AArch64ASIMDAssembler {
         /* Advanced SIMD copy (C4-356). */
         DUPELEM(0b0000 << 11),
         DUPGEN(0b0001 << 11),
+        INSGEN(0b0011 << 11),
         SMOV(0b0101 << 11),
         UMOV(0b0111 << 11),
 
@@ -2058,6 +2059,22 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.FSUB, size, elemSize1X(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.176 Insert vector element from general-purpose register.<br>
+     *
+     * <code>dst[index] = src</code>
+     *
+     * Note the rest of the dst register is unaltered.
+     *
+     * @param eSize size of value to duplicate.
+     * @param dst SIMD register.
+     * @param index offset of value to duplicate
+     * @param src SIMD register.
+     */
+    public void insXG(ElementSize eSize, Register dst, int index, Register src) {
+        copyEncoding(ASIMDInstruction.INSGEN, true, eSize, dst, src, index);
     }
 
     /**
