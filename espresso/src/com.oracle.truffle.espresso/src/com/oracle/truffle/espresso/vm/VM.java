@@ -1415,14 +1415,14 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region JNI Invocation Interface
     @VmImpl
-    public int DestroyJavaVM(@Inject EspressoContext context) {
-        int result = DetachCurrentThread(context);
+    public static int DestroyJavaVM(@Inject EspressoContext context) {
+        assert context.getCurrentThread() != null;
         try {
             context.destroyVM(!context.ExitHost);
         } catch (EspressoExitException exit) {
             // expected
         }
-        return result;
+        return JNI_OK;
     }
 
     /*
