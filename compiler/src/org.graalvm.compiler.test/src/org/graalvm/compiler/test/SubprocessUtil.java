@@ -415,8 +415,11 @@ public final class SubprocessUtil {
             });
             outputReader.start();
             boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
-            int exitCode = process.destroyForcibly().waitFor();
-            return new Subprocess(command, env, exitCode, output, !finishedOnTime);
+            if (!finishedOnTime) {
+                process.destroyForcibly().waitFor();
+            }
+            outputReader.join();
+            return new Subprocess(command, env, process.exitValue(), output, !finishedOnTime);
         }
     }
 
