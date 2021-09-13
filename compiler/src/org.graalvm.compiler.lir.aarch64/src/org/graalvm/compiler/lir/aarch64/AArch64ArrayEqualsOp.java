@@ -24,22 +24,26 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -65,6 +69,11 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     @Temp({REG}) protected Value temp3;
     @Temp({REG}) protected Value temp4;
 
+    @Temp({REG}) protected AllocatableValue vectorTemp1;
+    @Temp({REG}) protected AllocatableValue vectorTemp2;
+    @Temp({REG}) protected AllocatableValue vectorTemp3;
+    @Temp({REG}) protected AllocatableValue vectorTemp4;
+
     public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2, Value length, boolean directPointers) {
         super(TYPE);
 
@@ -86,40 +95,58 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         this.lengthValue = length;
 
         // Allocate some temporaries.
-        this.temp1 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
-        this.temp2 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
-        this.temp3 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
-        this.temp4 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
+        LIRKind archWordKind = LIRKind.value(tool.target().arch.getWordKind());
+        this.temp1 = tool.newVariable(archWordKind);
+        this.temp2 = tool.newVariable(archWordKind);
+        this.temp3 = tool.newVariable(archWordKind);
+        this.temp4 = tool.newVariable(archWordKind);
+
+        LIRKind vectorKind = LIRKind.value(tool.target().arch.getLargestStorableKind(SIMD));
+        vectorTemp1 = tool.newVariable(vectorKind);
+        vectorTemp2 = tool.newVariable(vectorKind);
+        vectorTemp3 = tool.newVariable(vectorKind);
+        vectorTemp4 = tool.newVariable(vectorKind);
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        Register result = asRegister(resultValue);
-        Register array1 = asRegister(temp1);
-        Register array2 = asRegister(temp2);
-        Register length = asRegister(temp3);
+        Register byteArrayLength = asRegister(temp1);
 
-        Label breakLabel = new Label();
-
-        try (ScratchRegister sc1 = masm.getScratchRegister()) {
-            Register rscratch1 = sc1.getRegister();
-            // Load array base addresses.
-            masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
-            masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
+        try (ScratchRegister sc1 = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
+            Label breakLabel = new Label();
+            Label scalarCompare = new Label();
+            Register hasMismatch = sc1.getRegister();
+            Register scratch = sc2.getRegister();
 
             // Get array length in bytes.
-            masm.mov(rscratch1, arrayIndexScale);
-            masm.smaddl(length, asRegister(lengthValue), rscratch1, zr);
-            masm.mov(64, result, length); // copy
+            int shiftAmt = NumUtil.log2Ceil(arrayIndexScale);
+            masm.lsl(64, byteArrayLength, asRegister(lengthValue), shiftAmt);
+            masm.compare(32, asRegister(lengthValue), 32 / arrayIndexScale);
+            masm.branchConditionally(ConditionFlag.LS, scalarCompare);
 
-            emit8ByteCompare(crb, masm, result, array1, array2, length, breakLabel, rscratch1);
-            emitTailCompares(masm, result, array1, array2, breakLabel, rscratch1);
+            emitSimdCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
 
-            // Return: rscratch1 is non-zero iff the arrays differ
+            masm.bind(scalarCompare);
+            emitScalarCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
+
+            // Return: hasMismatch is non-zero iff the arrays differ
             masm.bind(breakLabel);
-            masm.cmp(64, rscratch1, zr);
-            masm.cset(resultValue.getPlatformKind().getSizeInBytes() * Byte.SIZE, result, ConditionFlag.EQ);
+            masm.cmp(64, hasMismatch, zr);
+            masm.cset(resultValue.getPlatformKind().getSizeInBytes() * Byte.SIZE, asRegister(resultValue), ConditionFlag.EQ);
         }
+    }
+
+    private void emitScalarCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label breakLabel) {
+        Register array1 = asRegister(temp2);
+        Register array2 = asRegister(temp3);
+
+        // Load array base addresses.
+        masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
+        masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
+        masm.mov(64, scratch, byteArrayLength); // copy
+
+        emit8ByteCompare(masm, scratch, array1, array2, byteArrayLength, breakLabel, hasMismatch);
+        emitTailCompares(masm, scratch, array1, array2, breakLabel, hasMismatch);
     }
 
     /**
@@ -131,8 +158,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
      * Emits code that uses 8-byte vector compares.
      *
      */
-    private void emit8ByteCompare(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, Register array1, Register array2, Register length, Label breakLabel,
-                    Register rscratch1) {
+    private void emit8ByteCompare(AArch64MacroAssembler masm, Register result, Register array1, Register array2, Register length, Label breakLabel, Register rscratch1) {
         Label loop = new Label();
         Label compareTail = new Label();
 
@@ -147,7 +173,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.sub(64, length, zr, length);
 
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(16);
         masm.bind(loop);
         masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(64, array1, length, false));
         masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(64, array2, length, false));
@@ -221,5 +247,74 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         }
         masm.bind(end);
         masm.mov(64, rscratch1, zr);
+    }
+
+    private void emitSimdCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label endLabel) {
+        Register array1Address = asRegister(temp2);
+        Register array2Address = asRegister(temp3);
+        Register refAddress1 = asRegister(temp4);
+        Register endOfArray1 = scratch;
+
+        Register array1Part1RegV = asRegister(vectorTemp1);
+        Register array1Part2RegV = asRegister(vectorTemp2);
+        Register array2Part1RegV = asRegister(vectorTemp3);
+        Register array2Part2RegV = asRegister(vectorTemp4);
+
+        Label compareByChunkHead = new Label();
+        Label compareByChunkTail = new Label();
+        Label processTail = new Label();
+
+        /* Set 'array1Address' and 'array2Address' to point to start of arrays. */
+        masm.add(64, array1Address, asRegister(array1Value), array1BaseOffset);
+        masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset);
+        /*
+         * 2.1 Set endOfArray1 pointing to byte next to the last valid element in array1 and
+         * 'refAddress1' pointing to the beginning of the last chunk.
+         */
+        masm.add(64, endOfArray1, array1Address, byteArrayLength);
+        masm.bic(64, refAddress1, endOfArray1, 31L);
+
+        masm.align(16);
+        masm.bind(compareByChunkHead);
+        masm.cmp(64, refAddress1, array1Address);
+        masm.branchConditionally(ConditionFlag.LE, processTail);
+        masm.bind(compareByChunkTail);
+
+        masm.fldp(128, array1Part1RegV, array1Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array1Address, 32));
+        masm.fldp(128, array2Part1RegV, array2Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array2Address, 32));
+        /* 3. Compare arrays in the 32-byte chunk */
+        masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.DoubleWord, array1Part1RegV, array1Part1RegV, array2Part1RegV);
+        masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.DoubleWord, array1Part2RegV, array1Part2RegV, array2Part2RegV);
+        /* Determining if they are identical. */
+        /* Combine two registers into 1 register */
+        masm.neon.andVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, array1Part1RegV, array1Part1RegV, array1Part2RegV);
+        /* Reduce 128-bit value to 64-bit value */
+        masm.neon.xtnVV(AArch64ASIMDAssembler.ElementSize.Word, array1Part1RegV, array1Part1RegV);
+        /* If ~value != 0, then there is a mismatch somewhere. */
+        masm.neon.moveFromIndex(AArch64ASIMDAssembler.ElementSize.DoubleWord, AArch64ASIMDAssembler.ElementSize.DoubleWord, hasMismatch, array1Part1RegV, 0);
+        masm.neg(64, hasMismatch, hasMismatch);
+        /* if there is mismatch, then no more searching is necessary */
+        masm.cbnz(64, hasMismatch, endLabel);
+
+        /* No mismatch; jump to next loop iteration. */
+        masm.bic(64, array1Address, array1Address, 31);
+        masm.bic(64, array2Address, array2Address, 31);
+        masm.jmp(compareByChunkHead);
+
+        masm.align(16);
+        masm.bind(processTail);
+        masm.cmp(64, array1Address, endOfArray1);
+        masm.branchConditionally(ConditionFlag.GE, endLabel);
+        /* adjust array1Address and array2Address to access last 32 bytes. */
+        masm.sub(64, array1Address, endOfArray1, 32);
+        masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset - 32);
+        masm.add(64, array2Address, array2Address, byteArrayLength);
+        /*
+         * Move back the 'endOfArray1' by 32-bytes because at the end of 'compareByChunkLoopTail',
+         * the 'chunkToRead' would be reset to 32-byte aligned addressed. Thus, the
+         * compareByChunkLoopHead would never using 'array1Address' >= 'endOfArray1' condition.
+         */
+        masm.mov(64, endOfArray1, array1Address);
+        masm.jmp(compareByChunkTail);
     }
 }
