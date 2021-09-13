@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public abstract class CallableFromNative extends SubstitutionProfiler {
@@ -65,5 +66,24 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
         }
     }
 
+    /**
+     * The method to invoke when coming from native code.
+     * 
+     * @param env The env corresponding to this callable
+     * @param args The arguments to the method. Note that coming from native, the arguments are
+     *            formed as follows: {@code env} is passed first, then java objects arguments are
+     *            passed as JNI handles.
+     */
     public abstract Object invoke(Object env, Object[] args);
+
+    /**
+     * The method to invoke when coming from java code.
+     * 
+     * @param env The env corresponding to this callable
+     * @param args Arguments to the method. In this case, the arguments are directly passed, and
+     *            there is no need to un-handlify.
+     */
+    public Object invokeDirect(Object env, Object[] args) {
+        throw EspressoError.shouldNotReachHere("Native method should not be reachable for java substitution");
+    }
 }

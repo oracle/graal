@@ -61,6 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -167,7 +168,7 @@ import sun.misc.Unsafe;
  * <p>
  * - for new VM methods (/ex: upgrading from java 8 to 11), updating include/jvm.h
  */
-@GenerateNativeEnv(target = VmImpl.class)
+@GenerateNativeEnv(target = VmImpl.class, reachableForAutoSubstitution = true)
 public final class VM extends NativeEnv implements ContextAccess {
 
     private final @Pointer TruffleObject disposeMokapotContext;
@@ -390,10 +391,58 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private static final List<CallableFromNative.Factory> VM_IMPL_FACTORIES = VmImplCollector.getInstances(CallableFromNative.Factory.class);
+    private static final int VM_LOOKUP_CALLBACK_ARGS = 2;
+
+    /**
+     * Maps native function pointers to node factories for VM methods.
+     */
+    private EconomicMap<Long, CallableFromNative.Factory> knownVmMethods = EconomicMap.create();
 
     @Override
     protected List<CallableFromNative.Factory> getCollector() {
         return VM_IMPL_FACTORIES;
+    }
+
+    @Override
+    protected int lookupCallBackArgsCount() {
+        return VM_LOOKUP_CALLBACK_ARGS;
+    }
+
+    @Override
+    protected NativeSignature lookupCallbackSignature() {
+        return NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.POINTER);
+    }
+
+    /**
+     * Registers this known VM method's function pointer. Later native method bindings can perform a
+     * lookup when trying to bind to a function pointer, and if a match happens, this is a known VM
+     * method, and we can link directly to it thus bypassing native calls.
+     * 
+     * @param name The name of the VM method, previously extracted from {@code args[0]}.
+     * @param factory The node factory of the requested VM method.
+     * @param args A length {@linkplain #lookupCallBackArgsCount() 2} arguments array: At position 0
+     *            is a native pointer to the name of the method. At position 1 is the address of the
+     *            {@code JVM_*} symbol exported by {@code mokapot}.
+     */
+    @Override
+    @TruffleBoundary
+    protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
+        assert args.length == lookupCallBackArgsCount();
+        try {
+            InteropLibrary uncached = InteropLibrary.getUncached();
+            Object ptr = args[1];
+            if (factory != null && !uncached.isNull(ptr) && uncached.isPointer(ptr)) {
+                long jvmMethodAddress = uncached.asPointer(ptr);
+                knownVmMethods.put(jvmMethodAddress, factory);
+            }
+        } catch (UnsupportedMessageException e) {
+            /* Ignore */
+        }
+    }
+
+    @TruffleBoundary
+    public CallableFromNative.Factory lookupKnownVmMethod(long functionPointer) {
+        return knownVmMethods.get(functionPointer);
     }
 
     public static VM create(JniEnv jniEnv) {

@@ -731,6 +731,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         // Invoke method
         classFile.append(TAB_1).append(OVERRIDE).append("\n");
         classFile.append(generateInvoke(className, targetMethodName, parameterTypeName, helper));
+        classFile.append("}");
 
         // End
         return classFile.toString();
