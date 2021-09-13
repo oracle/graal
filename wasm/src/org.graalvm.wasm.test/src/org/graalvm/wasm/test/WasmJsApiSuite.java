@@ -1156,6 +1156,144 @@ public class WasmJsApiSuite {
         });
     }
 
+    @Test
+    public void testValidateUnsupportedInstruction() throws IOException {
+        // (module
+        // (func
+        // i32.const 0
+        // 0x06 (* reserved instruction value *)
+        // drop
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x07, (byte) 0x01, (byte) 0x05, (byte) 0x00, (byte) 0x41, (byte) 0x00, (byte) 0x06,
+                        (byte) 0x1A, (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testValidateMalformedInstruction() throws IOException {
+        // (module
+        // (func
+        // i32.const (* missing int constant *)
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00, (byte) 0x41, (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testSetMissingLocal() throws IOException {
+        // (module
+        // (func
+        // i32.const 0
+        // local.set 0
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x08, (byte) 0x01, (byte) 0x06, (byte) 0x00, (byte) 0x41, (byte) 0x00, (byte) 0x21,
+                        (byte) 0x00, (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testMissingStackValue() throws IOException {
+        // (module
+        // (func
+        // i32.const 0
+        // i32.eq
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x07, (byte) 0x01, (byte) 0x05, (byte) 0x00, (byte) 0x41, (byte) 0x00, (byte) 0x46,
+                        (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testBranchToMissingLabel() throws IOException {
+        // (module
+        // (func
+        // br 1
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00, (byte) 0x0C, (byte) 0x01, (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testValidFunctionBody() throws IOException {
+        // (module
+        // (func (export "exp") (param i32 i32) (result i32)
+        // (local i32)
+        // local.get 1
+        // i32.const 0
+        // i32.eq
+        // if
+        // i32.const 1
+        // local.set 2
+        // else
+        // local.get 0
+        // local.set 2
+        // loop
+        // local.get 2
+        // local.get 0
+        // i32.mul
+        // local.set 2
+        //
+        // local.get 1
+        // i32.const 1
+        // i32.sub
+        // local.set 1
+        //
+        // local.get 1
+        // i32.const 0
+        // i32.ne
+        // br_if 0
+        // end
+        // end
+        // local.get 2
+        // return
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x07, (byte) 0x01, (byte) 0x60, (byte) 0x02,
+                        (byte) 0x7F, (byte) 0x7F, (byte) 0x01, (byte) 0x7F, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x07, (byte) 0x01, (byte) 0x03, (byte) 0x65,
+                        (byte) 0x78, (byte) 0x70, (byte) 0x00, (byte) 0x00, (byte) 0x0A, (byte) 0x32, (byte) 0x01, (byte) 0x30, (byte) 0x01, (byte) 0x01, (byte) 0x7F, (byte) 0x20, (byte) 0x01,
+                        (byte) 0x41, (byte) 0x00, (byte) 0x46, (byte) 0x04, (byte) 0x40, (byte) 0x41, (byte) 0x01, (byte) 0x21, (byte) 0x02, (byte) 0x05, (byte) 0x20, (byte) 0x00, (byte) 0x21,
+                        (byte) 0x02, (byte) 0x03, (byte) 0x40, (byte) 0x20, (byte) 0x02, (byte) 0x20, (byte) 0x00, (byte) 0x6C, (byte) 0x21, (byte) 0x02, (byte) 0x20, (byte) 0x01, (byte) 0x41,
+                        (byte) 0x01, (byte) 0x6B, (byte) 0x21, (byte) 0x01, (byte) 0x20, (byte) 0x01, (byte) 0x41, (byte) 0x00, (byte) 0x47, (byte) 0x0D, (byte) 0x00, (byte) 0x0B, (byte) 0x0B,
+                        (byte) 0x20, (byte) 0x02, (byte) 0x0F, (byte) 0x0B,
+        };
+        runValidationValid(data);
+    }
+
+    private static void runValidationInvalid(byte[] data) throws IOException {
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Assert.assertTrue("Should have failed - invalid module", !wasm.moduleValidate(data));
+        });
+    }
+
+    private static void runValidationValid(byte[] data) throws IOException {
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Assert.assertTrue("Should have failed - valid module", wasm.moduleValidate(data));
+        });
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder("wasm");
         contextBuilder.option("wasm.Builtins", "testutil:testutil");

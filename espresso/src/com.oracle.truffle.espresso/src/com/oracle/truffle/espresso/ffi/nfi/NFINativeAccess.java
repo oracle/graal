@@ -60,6 +60,7 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
@@ -212,6 +213,7 @@ public class NFINativeAccess implements NativeAccess {
 
     @ExportLibrary(InteropLibrary.class)
     static final class NativeToJavaWrapper implements TruffleObject {
+        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "NativeToJavaWrapper");
 
         final TruffleObject delegate;
         final NativeSignature nativeSignature;
@@ -273,6 +275,11 @@ public class NFINativeAccess implements NativeAccess {
             } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere(e);
+            } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
+                throw e;
+            } catch (Throwable t) {
+                logger.log(Level.FINE, "Exception seen", t);
+                throw t;
             }
         }
 
@@ -319,6 +326,7 @@ public class NFINativeAccess implements NativeAccess {
 
     @ExportLibrary(InteropLibrary.class)
     static final class JavaToNativeWrapper implements TruffleObject {
+        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "JavaToNativeWrapper");
 
         final TruffleObject delegate;
         final NativeSignature nativeSignature;
@@ -380,6 +388,11 @@ public class NFINativeAccess implements NativeAccess {
             } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere(e);
+            } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
+                throw e;
+            } catch (Throwable t) {
+                logger.log(Level.FINE, "Exception seen", t);
+                throw t;
             }
         }
 

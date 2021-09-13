@@ -639,7 +639,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             str.append(TAB_2).append("return ").append(extractInvocation(targetClass, argIndex, helper));
         }
         str.append(TAB_1).append("}\n");
-        str.append("}");
         return str.toString();
     }
 }

@@ -258,7 +258,7 @@ public class NativeImage {
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
 
-    static class BuildConfiguration {
+    protected static class BuildConfiguration {
 
         boolean modulePathBuild;
 
@@ -273,7 +273,7 @@ public class NativeImage {
             args = new ArrayList<>(original.args);
         }
 
-        BuildConfiguration(List<String> args) {
+        protected BuildConfiguration(List<String> args) {
             this(null, null, args);
         }
 

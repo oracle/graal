@@ -247,7 +247,7 @@ public class WebAssembly extends Dictionary {
         return moduleValidate(toBytes(args[0]));
     }
 
-    private boolean moduleValidate(byte[] bytes) {
+    public boolean moduleValidate(byte[] bytes) {
         try {
             moduleDecode(bytes);
             return true;

@@ -124,10 +124,8 @@ public interface CommittedMemoryProvider {
     /**
      * Called by the garbage collector after a collection has ended, as an opportunity to perform
      * lazy operations, sanity checks or clean-ups.
-     *
-     * @param completeCollection Whether the garbage collector has performed a full collection.
      */
-    default void afterGarbageCollection(boolean completeCollection) {
+    default void afterGarbageCollection() {
     }
 
     enum Access {

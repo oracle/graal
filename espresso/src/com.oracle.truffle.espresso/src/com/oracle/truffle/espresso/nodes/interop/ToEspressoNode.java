@@ -186,7 +186,7 @@ public abstract class ToEspressoNode extends Node {
     Object doForeignException(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
         if (!interop.isException(value)) {
-            throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to " + klass.getNameAsString());
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s", klass.getNameAsString()));
         }
         return StaticObject.createForeignException(klass.getMeta(), value, interop);
     }
@@ -197,7 +197,7 @@ public abstract class ToEspressoNode extends Node {
         try {
             checkHasAllFieldsOrThrow(value, klass, interop, EspressoContext.get(this).getMeta());
         } catch (ClassCastException e) {
-            throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to " + klass.getNameAsString() + ": " + e.getMessage());
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
         }
         return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
     }

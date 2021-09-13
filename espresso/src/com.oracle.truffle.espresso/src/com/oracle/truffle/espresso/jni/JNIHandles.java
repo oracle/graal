@@ -259,12 +259,18 @@ final class GlobalHandles {
     }
 
     public int getObjectRefType(int handle) {
+        if (handle == 0) {
+            return JniEnv.JNIInvalidRefType;
+        }
         assert validHandle(handle);
         Object obj = objects[handle];
-        if (obj instanceof WeakReference) {
+        if (obj == null) {
+            // destroyed
+            return JniEnv.JNIInvalidRefType;
+        } else if (obj instanceof WeakReference) {
             return JniEnv.JNIWeakGlobalRefType;
         } else {
-            assert obj instanceof StaticObject;
+            assert obj instanceof StaticObject : obj;
             return JniEnv.JNIGlobalRefType;
         }
     }

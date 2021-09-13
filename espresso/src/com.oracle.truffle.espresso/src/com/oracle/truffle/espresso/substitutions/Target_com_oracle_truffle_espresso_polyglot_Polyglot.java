@@ -160,7 +160,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             } catch (UnsupportedMessageException e) {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                "Couldn't read " + targetKlass.getTypeAsString() + " value from foreign object");
+                                "Couldn't read % value from foreign object", targetKlass.getType());
             }
         }
 
@@ -267,7 +267,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 if (value.length() != 1) {
                     exceptionProfile.enter();
                     throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                    "Cannot cast string " + value + " to char");
+                                    "Cannot cast string %s to char", value);
                 }
                 return meta.boxCharacter(value.charAt(0));
             case Byte:

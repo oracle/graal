@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
@@ -38,8 +36,8 @@ public class ActualReturnTypeFlow extends TypeFlow<BytecodePosition> {
         super(null, declaredType);
     }
 
-    public ActualReturnTypeFlow(ValueNode source, AnalysisType declaredType) {
-        super(source.getNodeSourcePosition(), declaredType);
+    public ActualReturnTypeFlow(BytecodePosition source, AnalysisType declaredType) {
+        super(source, declaredType);
     }
 
     public ActualReturnTypeFlow(ActualReturnTypeFlow original, MethodFlowsGraph methodFlows) {
@@ -64,6 +62,13 @@ public class ActualReturnTypeFlow extends TypeFlow<BytecodePosition> {
 
     public InvokeTypeFlow invokeFlow() {
         return invokeFlow;
+    }
+
+    @Override
+    public String format(boolean withState, boolean withSource) {
+        return "Actual return of call to " + invokeFlow.targetMethod.format("%H.%n(%p)") +
+                        (withSource ? " at " + formatSource() : "") +
+                        (withState ? " with state <" + getState() + ">" : "");
     }
 
 }
