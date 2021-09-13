@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.ref.PublicFinalReference;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
@@ -93,8 +95,8 @@ public final class FinalizationSupport {
             Class<?> publicFinalReference = injectClassInBootClassLoader("java/lang/ref/PublicFinalReference", PUBLIC_FINAL_REFERENCE_BYTES);
             EspressoError.guarantee("java.lang.ref.FinalReference".equals(publicFinalReference.getSuperclass().getName()),
                             "Injected class does not subclass FinalReference");
-        } catch (Exception e) {
-            throw EspressoError.shouldNotReachHere("Error injecting PublicFinalReference in the host (version " + HostJavaVersionUtil.JAVA_SPEC + ")", e);
+        } catch (Throwable t) {
+            throw EspressoError.shouldNotReachHere("Error injecting PublicFinalReference in the host (version " + HostJavaVersionUtil.JAVA_SPEC + ")", t);
         }
     }
 
@@ -102,7 +104,7 @@ public final class FinalizationSupport {
         /* nop */
     }
 
-    private static Class<?> injectClassInBootClassLoader(String className, byte[] classBytes) throws Exception {
+    private static Class<?> injectClassInBootClassLoader(String className, byte[] classBytes) throws Throwable {
         if (HostJavaVersionUtil.JAVA_SPEC == 8) {
             // Inject class via sun.misc.Unsafe#defineClass.
             // The use of reflection here is deliberate, so the code compiles with both Java 8/11.
@@ -110,25 +112,40 @@ public final class FinalizationSupport {
                             String.class, byte[].class, int.class, int.class, ClassLoader.class, ProtectionDomain.class);
             defineClass.setAccessible(true);
             return (Class<?>) defineClass.invoke(UnsafeAccess.get(), className, classBytes, 0, classBytes.length, null, null);
-        } else if (HostJavaVersionUtil.JAVA_SPEC == 11) {
-            // Inject class via j.l.ClassLoader#defineClass1.
+        } else if (HostJavaVersionUtil.JAVA_SPEC >= 11) {
+            // Inject class via j.l.ClassLoader#defineClass1 (private native method).
             Method defineClass1 = ClassLoader.class.getDeclaredMethod("defineClass1",
                             ClassLoader.class, String.class, byte[].class, int.class, int.class, ProtectionDomain.class, String.class);
 
             if (UnsafeOverride) {
                 /*
-                 * Overwrites the AccessibleObject.override field via Unsafe to force-enable
-                 * reflection access and get rid of illegal access warnings.
+                 * Overwrite the AccessibleObject.override field to enable reflection access and get
+                 * rid of illegal access warnings.
                  */
-                Object unsafeInstance = UnsafeAccess.get();
-                Method putBoolean = unsafeInstance.getClass().getMethod("putBoolean", Object.class, long.class, boolean.class);
-                Method objectFieldOffset = unsafeInstance.getClass().getMethod("objectFieldOffset", Field.class);
+                if (HostJavaVersionUtil.JAVA_SPEC == 11) {
+                    Object unsafeInstance = UnsafeAccess.get();
+                    Method putBoolean = unsafeInstance.getClass().getMethod("putBoolean", Object.class, long.class, boolean.class);
+                    Method objectFieldOffset = unsafeInstance.getClass().getMethod("objectFieldOffset", Field.class);
+                    Field overrideField = AccessibleObject.class.getDeclaredField("override");
+                    long overrideFieldOffset = (long) objectFieldOffset.invoke(unsafeInstance, overrideField);
 
-                Field overrideField = AccessibleObject.class.getDeclaredField("override");
-                long overrideFieldOffset = (long) objectFieldOffset.invoke(unsafeInstance, overrideField);
+                    // Force-enable access to j.l.ClassLoader#defineClass1.
+                    putBoolean.invoke(unsafeInstance, defineClass1, overrideFieldOffset, true);
+                } else if (HostJavaVersionUtil.JAVA_SPEC >= 12) {
+                    // Tested on Java 16.
+                    // In Java 12+, AccessibleObject.override was added to the reflection blocklist.
+                    // Illegal access checks can be circumvented by getting the implementation
+                    // lookup from MethodHandles with Unsafe.
+                    Field implLookupField = MethodHandles.Lookup.class.getDeclaredField("IMPL_LOOKUP");
+                    Unsafe unsafe = UnsafeAccess.get();
+                    long implLookupFieldOffset = unsafe.staticFieldOffset(implLookupField);
+                    Object lookupStaticFieldBase = unsafe.staticFieldBase(implLookupField);
+                    MethodHandles.Lookup implLookup = (MethodHandles.Lookup) unsafe.getObject(lookupStaticFieldBase, implLookupFieldOffset);
+                    final MethodHandle overrideSetter = implLookup.findSetter(AccessibleObject.class, "override", boolean.class);
 
-                // Force-enable access to j.l.ClassLoader#defineClass1.
-                putBoolean.invoke(unsafeInstance, defineClass1, overrideFieldOffset, true);
+                    // Force-enable access to j.l.ClassLoader#defineClass1.
+                    overrideSetter.invokeWithArguments(defineClass1, true);
+                }
             }
 
             return (Class<?>) defineClass1.invoke(null, null, className, classBytes, 0, classBytes.length, null, null);

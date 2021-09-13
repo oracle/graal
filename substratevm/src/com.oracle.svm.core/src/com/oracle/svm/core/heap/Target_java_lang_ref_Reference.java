@@ -197,6 +197,22 @@ public final class Target_java_lang_ref_Reference<T> {
     static void reachabilityFence(Object ref) {
         GraalDirectives.blackhole(ref);
     }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK16OrLater.class) //
+    T getFromInactiveFinalReference() {
+        // assert this instanceof FinalReference;
+        assert next != null; // I.e. FinalReference is inactive
+        return get();
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK16OrLater.class) //
+    void clearInactiveFinalReference() {
+        // assert this instanceof FinalReference;
+        assert next != null; // I.e. FinalReference is inactive
+        clear();
+    }
 }
 
 /** We provide our own {@link com.oracle.svm.core.heap.ReferenceHandler}. */
