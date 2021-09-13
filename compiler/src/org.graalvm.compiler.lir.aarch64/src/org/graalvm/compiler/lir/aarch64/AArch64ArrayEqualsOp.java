@@ -124,7 +124,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             masm.compare(32, asRegister(lengthValue), 32 / arrayIndexScale);
             masm.branchConditionally(ConditionFlag.LS, scalarCompare);
 
-            emitSimdCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
+            emitSIMDCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
 
             masm.bind(scalarCompare);
             emitScalarCompare(masm, byteArrayLength, hasMismatch, scratch, breakLabel);
@@ -249,7 +249,15 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.mov(64, rscratch1, zr);
     }
 
-    private void emitSimdCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label endLabel) {
+    /**
+     * TODO: add more detailed explanation.
+     *
+     * This implementation is very similar to (AArch64ArrayIndexOfOp.emitSIMDCompare). Similar steps
+     * are taken to ensure more of the accesses with array1 are aligned. The main difference is that
+     * it is only necessary to find any mismatch, not a match. In the case of a mismatch, then the
+     * loop is immediately exited.
+     */
+    private void emitSIMDCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label endLabel) {
         Register array1Address = asRegister(temp2);
         Register array2Address = asRegister(temp3);
         Register refAddress1 = asRegister(temp4);
@@ -288,8 +296,13 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         /* Determining if they are identical. */
         /* Combine two registers into 1 register */
         masm.neon.andVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, array1Part1RegV, array1Part1RegV, array1Part2RegV);
-        /* Reduce 128-bit value to 64-bit value */
+        /* Reduce 128-bit value to 32/64-bit value */
         masm.neon.xtnVV(AArch64ASIMDAssembler.ElementSize.Word, array1Part1RegV, array1Part1RegV);
+        if (arrayIndexScale == 1) {
+            masm.neon.umaxvSV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Word, array1Part1RegV, array1Part1RegV);
+        } else {
+            masm.neon.xtnVV(AArch64ASIMDAssembler.ElementSize.Byte, array1Part1RegV, array1Part1RegV);
+        }
         /* If ~value != 0, then there is a mismatch somewhere. */
         masm.neon.moveFromIndex(AArch64ASIMDAssembler.ElementSize.DoubleWord, AArch64ASIMDAssembler.ElementSize.DoubleWord, hasMismatch, array1Part1RegV, 0);
         masm.neg(64, hasMismatch, hasMismatch);
