@@ -197,24 +197,45 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
             "requires" : [
+                "jdk.jfr",
+                "jdk.management",
                 "java.logging",
                 "jdk.unsupported",
                 "java.compiler",
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "jdk.internal.event",
                     "jdk.internal.module",
                     "jdk.internal.reflect",
                     "jdk.internal.misc",
                     "jdk.internal.logger",
                     "jdk.internal.loader",
+                    "jdk.internal.org.xml.sax.helpers",
                     "sun.util.resources",
+                    "jdk.internal.util.xml",
+                    "jdk.internal.util.xml.impl",
                     "sun.text.spi",
                     "jdk.internal.perf",
                     "sun.util.locale.provider",
                     "jdk.internal.loader"
                 ],
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
+                    "jdk.jfr.internal.consumer",
+                    "jdk.jfr.internal.jfc",
+                    "jdk.jfr.internal.handlers",
+                    "jdk.jfr.events"
+                ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.hotspot"
+                ],
             },
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
             "javaCompliance": "11+",
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
@@ -428,10 +449,18 @@ suite = {
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.core.jdk11"
             ],
-            "requires" : ["java.instrument"],
+            "requires" : [
+                "java.instrument",
+                "jdk.jfr",
+                "jdk.unsupported",
+            ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
                 "java.base" : ["jdk.internal.module"],
+                "jdk.jfr" : [
+                    "jdk.jfr.internal",
+                    "jdk.jfr.internal.jfc",
+                ]
             },
             "javaCompliance": "11+",
             "checkstyle" : "com.oracle.svm.hosted",
@@ -568,46 +597,6 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
-        },
-
-        "com.oracle.svm.jfr": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "checkstyle": "com.oracle.svm.core",
-            "javaCompliance": "11+",
-            "requires": [
-                "jdk.jfr",
-                "jdk.management",
-                "jdk.unsupported"
-            ],
-            "requiresConcealed": {
-                "jdk.jfr": [
-                    "jdk.jfr.internal",
-                    "jdk.jfr.internal.consumer",
-                    "jdk.jfr.internal.jfc",
-                    "jdk.jfr.internal.handlers",
-                    "jdk.jfr.events"
-                ],
-                "jdk.internal.vm.ci": [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.hotspot"
-                ],
-                "java.base": [
-                    "jdk.internal.event",
-                    "jdk.internal.misc",
-                    "jdk.internal.util.xml",
-                    "jdk.internal.util.xml.impl",
-                    "jdk.internal.org.xml.sax.helpers"
-                ]
-            },
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "workingSets": "SVM",
         },
 
         "com.oracle.svm.driver": {
@@ -1079,7 +1068,6 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.containers",
                 "com.oracle.svm.jni",
-                "com.oracle.svm.jfr",
                 "com.oracle.svm.reflect",
                 "com.oracle.svm.methodhandles"
             ],
@@ -1100,11 +1088,14 @@ suite = {
                     "com.oracle.svm.core.snippets", # Uses of com.oracle.svm.core.snippets.KnownIntrinsics
                     "com.oracle.svm.core", # Uses of com.oracle.svm.core.TypeResult
                     "com.oracle.svm.core.util", # Uses of com.oracle.svm.core.util.VMError
-                    "com.oracle.svm.jfr", # Uses of com.oracle.svm.jfr.JfrEnabled
+                    "com.oracle.svm.core.jdk11.jfr", # Uses of com.oracle.svm.core.jdk11.jfr.JfrEnabled
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
+                    "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
+                    "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
                     "* to jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
+                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.internal.vm.compiler",
@@ -1453,6 +1444,7 @@ suite = {
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
+            "com.oracle.svm.test.jdk11",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
           ],
@@ -1463,20 +1455,6 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
-        },
-
-        "SVM_TESTS_JDK11" : {
-            "subDir": "src",
-            "relpath" : True,
-            "dependencies" : [
-                "com.oracle.svm.test.jdk11",
-            ],
-            "distDependencies": [
-                "mx:JUNIT_TOOL",
-                "SVM",
-            ],
-            "javaCompliance": "11+",
-            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {

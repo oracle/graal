@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jdk11.jfr;
+package com.oracle.svm.core.jdk11.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+/**
+ * Helper class that holds methods related to {@link JfrNativeEventWriterData}.
+ */
+public final class JfrNativeEventWriterDataAccess {
+    @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
+    public static void initialize(JfrNativeEventWriterData data, JfrBuffer buffer) {
+        assert buffer.isNonNull();
 
-import com.oracle.svm.core.jdk11.jfr.JfrEnabled;
-
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+        data.setJfrBuffer(buffer);
+        data.setStartPos(buffer.getPos());
+        data.setCurrentPos(buffer.getPos());
+        data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
     }
 }

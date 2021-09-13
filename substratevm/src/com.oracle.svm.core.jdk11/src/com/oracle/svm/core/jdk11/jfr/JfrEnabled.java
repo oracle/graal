@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jdk11.jfr;
+package com.oracle.svm.core.jdk11.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.jdk11.jfr.JfrEnabled;
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.VMInspectionOptions;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+/**
+ * Used to include/exclude JFR feature and substitutions.
+ */
+public class JfrEnabled implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return get();
+    }
+
+    public static boolean get() {
+        return VMInspectionOptions.AllowVMInspection.getValue() && jvmVersionSupported() && osSupported();
+    }
+
+    private static boolean jvmVersionSupported() {
+        return JavaVersionUtil.JAVA_SPEC == 11 || JavaVersionUtil.JAVA_SPEC == 16 || JavaVersionUtil.JAVA_SPEC == 17;
+    }
+    private static boolean osSupported() {
+        return OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN;
     }
 }

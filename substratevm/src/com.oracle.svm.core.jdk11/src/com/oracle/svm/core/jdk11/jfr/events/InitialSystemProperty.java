@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jdk11.jfr;
+package com.oracle.svm.core.jdk11.jfr.events;
 
-import static org.junit.Assume.assumeTrue;
+import java.util.Properties;
+import jdk.jfr.Category;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
+import jdk.jfr.Name;
+import jdk.jfr.Period;
+import jdk.jfr.StackTrace;
+import jdk.jfr.internal.Type;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+@Label("Initial System Property")
+@Description("System Property at JVM start")
+@Category("Java Virtual Machine")
+@StackTrace(false)
+@Name(Type.EVENT_NAME_PREFIX + "InitialSystemProperty")
+@Period(value = "endChunk")
+public class InitialSystemProperty extends Event {
+    @Label("Key") public String key;
 
-import com.oracle.svm.core.jdk11.jfr.JfrEnabled;
+    @Label("Value") public String value;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+    public static void emitSystemProperties() {
+        Properties props = System.getProperties();
+
+        for (String key : props.stringPropertyNames()) {
+            InitialSystemProperty pp = new InitialSystemProperty();
+
+            pp.key = key;
+            pp.value = props.getProperty(key);
+            pp.commit();
+        }
     }
 }
