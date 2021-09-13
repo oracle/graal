@@ -38,8 +38,8 @@ import com.oracle.svm.core.util.UserError;
 /** The interface for a garbage collection policy. All sizes are in bytes. */
 public interface CollectionPolicy {
     final class Options {
-        @Option(help = "The garbage collection policy, either Adaptive or BySpaceAndTime (default).")//
-        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("BySpaceAndTime");
+        @Option(help = "The garbage collection policy, either Adaptive (default) or BySpaceAndTime.")//
+        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive");
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
