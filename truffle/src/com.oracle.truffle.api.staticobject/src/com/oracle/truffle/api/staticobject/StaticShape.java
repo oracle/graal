@@ -238,14 +238,13 @@ public abstract class StaticShape<T> {
          *
          * @see DefaultStaticProperty
          * @param property the {@link StaticProperty} to be added
-         * @param type the type of the {@link StaticProperty} to be added. Can only be a primitive
-         *            class or Object.class
+         * @param type the type of the {@link StaticProperty} to be added.
          * @param storeAsFinal if this property value can be stored in a final field
          * @return the Builder instance
-         * @throws IllegalArgumentException if more than 65535 properties are added, if the
+         * @throws IllegalArgumentException if more than 65535 properties are added, or if the
          *             {@linkplain StaticProperty#getId() property id} is an empty string or it is
          *             equal to the id of another static property already registered to this
-         *             builder, or if the type is not a primitive class or Object.class
+         *             builder.
          * @throws IllegalStateException if this method is invoked after building a static shape
          * @throws NullPointerException if the {@linkplain StaticProperty#getId() property id} is
          *             null
