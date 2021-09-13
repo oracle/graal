@@ -252,13 +252,13 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @SuppressWarnings("unused")
         @Override
-        public String getFieldName(Object resolvedJavaField){
+        public String getFieldName(Object resolvedJavaField) {
             throw new UnsupportedOperationException();
         }
 
         @SuppressWarnings("unused")
         @Override
-        public int getFieldOffset(Object resolvedJavaField){
+        public int getFieldOffset(Object resolvedJavaField) {
             throw new UnsupportedOperationException();
         }
 

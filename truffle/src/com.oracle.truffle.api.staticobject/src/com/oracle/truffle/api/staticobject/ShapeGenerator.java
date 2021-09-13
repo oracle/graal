@@ -51,7 +51,6 @@ import com.oracle.truffle.api.staticobject.StaticShape.StorageStrategy;
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
 import sun.misc.Unsafe;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
