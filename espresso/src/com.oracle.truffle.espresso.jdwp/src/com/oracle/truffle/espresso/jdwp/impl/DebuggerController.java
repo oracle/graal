@@ -465,13 +465,17 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void disposeDebugger(boolean prepareReconnect) {
+        if (!prepareReconnect) {
+            // OK, we're closing down the context which is equivalent
+            // to a dead VM from a JDWP client point of view
+            eventListener.vmDied();
+        }
         // Creating a new thread, because the reset method
         // will interrupt all active jdwp threads, which might
         // include the current one if we received a DISPOSE command.
         new Thread(new Runnable() {
             @Override
             public void run() {
-                eventListener.vmDied();
                 instrument.reset(prepareReconnect);
             }
         }).start();
