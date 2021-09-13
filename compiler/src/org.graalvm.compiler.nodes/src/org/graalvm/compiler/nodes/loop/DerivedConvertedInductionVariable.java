@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 
 public class DerivedConvertedInductionVariable extends DerivedInductionVariable {
 
@@ -105,7 +106,8 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     }
 
     public ValueNode op(ValueNode v) {
-        return IntegerConvertNode.convert(v, stamp, graph(), NodeView.DEFAULT);
+        boolean zeroExtend = value instanceof ZeroExtendNode;
+        return IntegerConvertNode.convert(v, stamp, zeroExtend, graph(), NodeView.DEFAULT);
     }
 
     @Override
