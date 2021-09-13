@@ -93,8 +93,8 @@ public abstract class StaticProperty {
     protected StaticProperty() {
     }
 
-    void init(String descriptor, StaticPropertyKind kind, boolean storeAsFinal) {
-        this.descriptor = descriptor;
+    void init(String desc, StaticPropertyKind kind, boolean storeAsFinal) {
+        this.descriptor = desc;
         byte internalKind = getInternalKind(kind);
         assert (internalKind & STORE_AS_FINAL) == 0;
         flags = (byte) (storeAsFinal ? STORE_AS_FINAL | internalKind : internalKind);
@@ -146,7 +146,8 @@ public abstract class StaticProperty {
         byte internalKind = getInternalKind();
         if (internalKind != getInternalKind(kind)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + StaticPropertyKind.valueOf(getInternalKind()) + "' cannot be accessed as '" + StaticPropertyKind.valueOf(getInternalKind(kind)) + "'");
+            throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + StaticPropertyKind.valueOf(getInternalKind()) + "' cannot be accessed as '" +
+                            StaticPropertyKind.valueOf(getInternalKind(kind)) + "'");
         }
     }
 

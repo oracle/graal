@@ -380,10 +380,6 @@ public abstract class StaticShape<T> {
             isActive = false;
         }
 
-        private String getStorageClassDescriptor() {
-            return "L" + storageClassName + ";";
-        }
-
         private GeneratorClassLoader getOrCreateClassLoader(Class<?> referenceClass) {
             ClassLoader cl = SomAccessor.ENGINE.getStaticObjectClassLoader(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language), referenceClass);
             if (cl == null) {
