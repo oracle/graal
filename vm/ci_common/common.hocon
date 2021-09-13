@@ -1,4 +1,5 @@
 common_vm: ${common} ${vm_setup} {
+  python_version: 3,
   logs: [
     "*/mxbuild/dists/stripped/*.map"
     "**/install.packages.R.log"
@@ -158,7 +159,6 @@ fastr_no_recommended: {
 # GRAALPYTHON
 graalpython_linux: ${sulong_linux} {
   packages: {
-    python: "==3.4.1",
     libffi: ">=3.2.1",
     bzip2: ">=1.0.6",
   }
