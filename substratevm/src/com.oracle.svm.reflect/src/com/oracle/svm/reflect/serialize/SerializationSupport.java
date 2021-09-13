@@ -140,7 +140,6 @@ public class SerializationSupport implements SerializationRegistry {
         }
 
         Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;
-
         Object constructorAccessor = constructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));
 
         if (constructorAccessor != null) {

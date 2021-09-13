@@ -32,6 +32,7 @@ import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.print
 
 import java.io.Externalizable;
 import java.io.ObjectStreamClass;
+import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -320,7 +321,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
-        if (denyRegistry.isAllowed(serializationTargetClass)) {
+        if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
+            println("Warning: Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
+        } else if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
                 UserError.guarantee(customTargetConstructorClass.isAssignableFrom(serializationTargetClass),
                                 "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",

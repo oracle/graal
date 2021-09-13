@@ -932,14 +932,14 @@ final class BreakpointInterceptor {
         for (String className : transitiveSerializeTargets) {
             if (tracer != null) {
                 tracer.traceCall("serialization",
-                                "ObjectStreamClass.invokeReadResolve",
-                                null,
-                                null,
-                                null,
-                                validObjectStreamClassInstance,
-                                state.getFullStackTraceOrNull(),
-                                /*- String serializationTargetClass, String customTargetConstructorClass */
-                                className, null);
+                        "ObjectStreamClass.invokeReadResolve",
+                        null,
+                        null,
+                        null,
+                        validObjectStreamClassInstance,
+                        state.getFullStackTraceOrNull(),
+                        /*- String serializationTargetClass, String customTargetConstructorClass */
+                        className, null);
 
                 guarantee(!testException(jni));
             }
