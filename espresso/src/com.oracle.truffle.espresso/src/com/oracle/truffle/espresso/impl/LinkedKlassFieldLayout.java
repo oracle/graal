@@ -50,9 +50,9 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ClassRegistry registry, ParserKlass parserKlass, LinkedKlass superKlass, boolean anonymousClass) {
-        Builder instanceBuilder = anonymousClass ? StaticShape.newBuilder(language) : registry.getOrCreateShapeBuilder(language, parserKlass.getType(), false);
-        Builder staticBuilder = anonymousClass ? StaticShape.newBuilder(language) : registry.getOrCreateShapeBuilder(language, parserKlass.getType(), true);
+    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass) {
+        Builder instanceBuilder = StaticShape.newBuilder(language);
+        Builder staticBuilder = StaticShape.newBuilder(language);
 
         FieldCounter fieldCounter = new FieldCounter(parserKlass, version);
         int nextInstanceFieldIndex = 0;
@@ -66,15 +66,15 @@ final class LinkedKlassFieldLayout {
 
         for (ParserField parserField : parserKlass.getFields()) {
             if (parserField.isStatic()) {
-                createAndRegisterLinkedField(language, registry, parserKlass, parserField, nextStaticFieldSlot++, nextStaticFieldIndex++, idMode, staticBuilder, staticFields);
+                createAndRegisterLinkedField(parserKlass, parserField, nextStaticFieldSlot++, nextStaticFieldIndex++, idMode, staticBuilder, staticFields);
             } else {
-                createAndRegisterLinkedField(language, registry, parserKlass, parserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
+                createAndRegisterLinkedField(parserKlass, parserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
             if (hiddenField.versionRange.contains(version)) {
                 ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenField.name, hiddenField.type, null);
-                createAndRegisterLinkedField(language, registry, parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
+                createAndRegisterLinkedField(parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
         if (superKlass == null) {
@@ -117,14 +117,9 @@ final class LinkedKlassFieldLayout {
         return LinkedField.IdMode.WITH_TYPE;
     }
 
-    private static void createAndRegisterLinkedField(EspressoLanguage language, ClassRegistry registry, ParserKlass parserKlass, ParserField parserField, int slot, int index, LinkedField.IdMode idMode, Builder builder, LinkedField[] linkedFields) {
+    private static void createAndRegisterLinkedField(ParserKlass parserKlass, ParserField parserField, int slot, int index, LinkedField.IdMode idMode, Builder builder, LinkedField[] linkedFields) {
         LinkedField field = new LinkedField(parserField, slot, idMode);
-        Class<?> parserFieldType = parserField.getPropertyType();
-        if (parserFieldType.isPrimitive()) {
-            builder.property(field, parserFieldType, storeAsFinal(parserKlass, parserField));
-        } else {
-            builder.property(field, registry.getOrCreateShapeBuilder(language, parserField.getType(), false), storeAsFinal(parserKlass, parserField));
-        }
+        builder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
         linkedFields[index] = field;
     }
 

@@ -283,44 +283,4 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             Assert.assertEquals(intArray, arrayProperty.getObject(staticObject));
         }
     }
-
-    @Test
-    public void propertyOfShapeType() {
-        try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
-            StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
-            DefaultStaticProperty p1 = new DefaultStaticProperty("intArray");
-            b1.property(p1, int[].class, false);
-            StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
-
-            StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
-            DefaultStaticProperty p2 = new DefaultStaticProperty("shape1");
-            b2.property(p2, s1, false);
-            StaticShape<DefaultStaticObjectFactory> s2 = b2.build();
-
-            s1.getFactory().create();
-            s2.getFactory().create();
-        }
-    }
-
-    @Test
-    public void propertyOfBuilderType() {
-        try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
-            StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
-            DefaultStaticProperty p1 = new DefaultStaticProperty("shape2");
-            StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
-            b1.property(p1, b2, false);
-
-            DefaultStaticProperty p2 = new DefaultStaticProperty("shape1");
-            b2.property(p2, b1, false);
-
-            StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
-            StaticShape<DefaultStaticObjectFactory> s2 = b2.build();
-
-            s1.getFactory().create();
-            s2.getFactory().create();
-        }
-    }
-
 }

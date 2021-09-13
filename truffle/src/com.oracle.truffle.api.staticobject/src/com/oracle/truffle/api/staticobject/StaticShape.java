@@ -259,15 +259,6 @@ public abstract class StaticShape<T> {
             return property(property, descriptor, kind, storeAsFinal);
         }
 
-        public Builder property(StaticProperty property, Builder builder, boolean storeAsFinal) {
-            return property(property, "L" + builder.storageClassName + ";", StaticPropertyKind.Object, storeAsFinal);
-        }
-
-        public Builder property(StaticProperty property, StaticShape<?> shape, boolean storeAsFinal) {
-            String descriptor = Type.getDescriptor(shape.getStorageClass());
-            return property(property, descriptor, StaticPropertyKind.Object, storeAsFinal);
-        }
-
         private Builder property(StaticProperty property, String descriptor, StaticPropertyKind kind, boolean storeAsFinal) {
             CompilerAsserts.neverPartOfCompilation();
             checkStatus();

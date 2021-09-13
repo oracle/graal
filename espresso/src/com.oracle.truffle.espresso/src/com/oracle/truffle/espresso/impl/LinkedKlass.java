@@ -101,8 +101,8 @@ public final class LinkedKlass {
         this.methods = linkedMethods;
     }
 
-    public static LinkedKlass create(EspressoLanguage language, JavaVersion version, ClassRegistry registry, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, boolean anonymousClass) {
-        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(language, version, registry, parserKlass, superKlass, anonymousClass);
+    public static LinkedKlass create(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(language, version, parserKlass, superKlass);
         return new LinkedKlass(
                         parserKlass,
                         superKlass,
