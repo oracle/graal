@@ -21,8 +21,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Language and context references can now be stored in static final fields. See the [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextReference.html) for the new intended usage.
     * All thread local lookups have an efficient implementation on HotSpot and SubstrateVM, interpreted and compiled, eliminating the need to ever cache the value in the AST.
     * Using a compilation final node passed as parameter, the context and language value can be constant folded if it is known that only one language or context instance can exist.
-    * Deprecated all other means of accessing the current context: `TruffleLanguage.getCurrentContext(Class)`, `RootNode.getCurrentContext(Class)`, `ContextReference.get()`, `Node.lookContextReference(Class)` and `@CachedContext`.
+    * Deprecated all other means of accessing the current context: `TruffleLanguage.getCurrentContext(Class)`, `RootNode.getCurrentContext(Class)`, `ContextReference.get()`, `Node.lookupContextReference(Class)` and `@CachedContext`.
     * Deprecated all other means of accessing the current language: `TruffleLanguage.getCurrentLanguage(Class)`,  `LanguageReference.get()`, `Node.lookupLanguageReference(Class)` and `@CachedLanguage`.
+* Removed deprecated `TruffleLanguage.getContextReference()`.
 * Added `--engine.TraceDeoptimizeFrame` to trace frame deoptimizations due to `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)`.
 * Added loop condition profiling to `LoopNode`, so the `RepeatingNode` no longer needs to profile or inject the loop count. Language implementations should remove loop condition profiles from their repeating nodes since they are redundant now.
 * Added `ThreadLocalAction` constructor that allows to configure recurring thread local actions to be performed repeatedly. This allows to build debug tooling that need to gather information in every safepoint poll of a thread.

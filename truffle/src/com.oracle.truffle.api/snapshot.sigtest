@@ -450,10 +450,8 @@ meth protected void initializeContext({com.oracle.truffle.api.TruffleLanguage%0}
 meth protected void initializeMultiThreading({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected void initializeMultipleContexts()
 meth protected void initializeThread({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Thread)
-meth public final com.oracle.truffle.api.TruffleLanguage$ContextReference<{com.oracle.truffle.api.TruffleLanguage%0}> getContextReference()
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds contextLocals,contextThreadLocals,languageInfo,polyglotLanguageInstance,reference
+hfds contextLocals,contextThreadLocals,languageInfo,polyglotLanguageInstance
 
 CLSS protected abstract interface static com.oracle.truffle.api.TruffleLanguage$ContextLocalFactory<%0 extends java.lang.Object, %1 extends java.lang.Object>
  outer com.oracle.truffle.api.TruffleLanguage
