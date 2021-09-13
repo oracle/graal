@@ -218,7 +218,11 @@ public abstract class StaticShape<T> {
 
         Builder(TruffleLanguage<?> language) {
             this.language = language;
-            storageClassName = ShapeGenerator.class.getPackage().getName().replace('.', '/') + "/GeneratedStaticObject" + DELIMITER + counter.incrementAndGet();
+            storageClassName = storageClassName();
+        }
+
+        static String storageClassName() {
+            return ShapeGenerator.class.getPackage().getName().replace('.', '/') + "/GeneratedStaticObject" + DELIMITER + counter.incrementAndGet();
         }
 
         /**

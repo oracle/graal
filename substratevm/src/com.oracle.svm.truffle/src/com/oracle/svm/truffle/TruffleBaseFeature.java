@@ -469,6 +469,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     }
 
     private static final class StaticObjectSupport {
+        private static final Method STORAGE_CLASS_NAME = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "storageClassName");
+
         private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass(
                         "com.oracle.truffle.api.staticobject.GeneratorClassLoader");
         private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil
@@ -477,7 +479,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         private static final Class<?> SHAPE_GENERATOR = loadClass(
                         "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
         private static final Method GET_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(SHAPE_GENERATOR,
-                        "getShapeGenerator", TruffleLanguage.class, GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class);
+                        "getShapeGenerator", TruffleLanguage.class, GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
 
         private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class,
                         "validateClasses", Class.class, Class.class);
@@ -575,7 +577,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             // Checkstyle: resume
             Object generator;
             try {
-                GET_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface);
+                String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
+                GET_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -638,11 +641,11 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
          * We have to use reflection to access private members instead of aliasing them in the
          * substitution class since substitutions are present only at runtime
          */
-        private static final Method staticPropertyGetInternalKind;
+        private static final Method GET_INTERNAL_KIND;
 
         static {
             // Checkstyle: stop
-            staticPropertyGetInternalKind = ReflectionUtil.lookupMethod(StaticProperty.class, "getInternalKindName");
+            GET_INTERNAL_KIND = ReflectionUtil.lookupMethod(StaticProperty.class, "getInternalKind");
             // Checkstyle: resume
         }
 
@@ -660,10 +663,10 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
 
             StaticProperty receiverStaticProperty = (StaticProperty) receiver;
 
-            String internalKindName;
+            byte internalKind;
             try {
                 // Checkstyle: stop
-                internalKindName = (String) staticPropertyGetInternalKind.invoke(receiverStaticProperty);
+                internalKind = (byte) GET_INTERNAL_KIND.invoke(receiverStaticProperty);
                 // Checkstyle: resume
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw VMError.shouldNotReachHere(e);
@@ -672,7 +675,7 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
             int baseOffset;
             int indexScale;
             JavaKind javaKind;
-            if (internalKindName.equals("Object")) {
+            if (internalKind == 8) {
                 javaKind = JavaKind.Object;
                 baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
                 indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
