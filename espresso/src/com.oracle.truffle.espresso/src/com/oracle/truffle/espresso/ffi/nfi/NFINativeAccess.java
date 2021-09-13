@@ -278,7 +278,7 @@ public class NFINativeAccess implements NativeAccess {
             } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 throw e;
             } catch (Throwable t) {
-                logger.log(Level.INFO, "Exception seen", t);
+                logger.log(Level.FINE, "Exception seen", t);
                 throw t;
             }
         }
@@ -391,7 +391,7 @@ public class NFINativeAccess implements NativeAccess {
             } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 throw e;
             } catch (Throwable t) {
-                logger.log(Level.INFO, "Exception seen", t);
+                logger.log(Level.FINE, "Exception seen", t);
                 throw t;
             }
         }
