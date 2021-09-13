@@ -796,7 +796,7 @@ public final class EspressoContext {
             getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
             return;
         }
-        if (vm.DetachCurrentThread() != JNI_OK) {
+        if (vm.DetachCurrentThread(this) != JNI_OK) {
             throw new RuntimeException("Could not detach thread correctly");
         }
     }

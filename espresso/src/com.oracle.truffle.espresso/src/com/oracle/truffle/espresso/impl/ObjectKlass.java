@@ -887,7 +887,7 @@ public final class ObjectKlass extends Klass {
             return getItable()[fastLookup(interfKlass, getiKlassTable())][index];
         } catch (IndexOutOfBoundsException e) {
             Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class " + getName() + " does not implement interface " + interfKlass.getName());
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", getName(), interfKlass.getName());
         }
     }
 

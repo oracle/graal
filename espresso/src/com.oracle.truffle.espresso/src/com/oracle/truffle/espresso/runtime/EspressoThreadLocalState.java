@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,40 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jni;
+package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+public class EspressoThreadLocalState {
+    private EspressoException pendingJniException;
 
-/**
- * Retains one exception per thread that is pending to be handled in that thread (or none).
- */
-public final class JniThreadLocalPendingException {
-    private ThreadLocal<EspressoException> pendingException = new ThreadLocal<>();
+    @SuppressWarnings("unused")
+    public EspressoThreadLocalState(EspressoContext context, Thread thread) {
+    }
 
-    public StaticObject get() {
-        EspressoException espressoException = getEspressoException();
+    public StaticObject getPendingExceptionObject() {
+        EspressoException espressoException = getpendingException();
         if (espressoException == null) {
             return null;
         }
         return espressoException.getExceptionObject();
     }
 
-    public EspressoException getEspressoException() {
-        return pendingException.get();
+    public EspressoException getpendingException() {
+        return pendingJniException;
     }
 
-    public void set(EspressoException t) {
+    public void setPendingException(EspressoException t) {
         // TODO(peterssen): Warn about overwritten pending exceptions.
-        pendingException.set(t);
+        pendingJniException = t;
     }
 
-    public void clear() {
-        set(null);
-    }
-
-    public void dispose() {
-        pendingException.remove();
-        pendingException = null;
+    public void clearPendingException() {
+        setPendingException(null);
     }
 }

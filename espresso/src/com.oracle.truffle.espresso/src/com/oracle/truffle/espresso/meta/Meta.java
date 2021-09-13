@@ -1633,7 +1633,7 @@ public final class Meta implements ContextAccess {
     }
 
     /**
-     * Initializes and throws an exception of the given guest klass.
+     * Initializes and throws an exception of the given guest klass with the given message.
      *
      * <p>
      * A guest instance is allocated and initialized by calling the
@@ -1642,13 +1642,14 @@ public final class Meta implements ContextAccess {
      *
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
+     * @param message the message to be used when initializing the exception
      */
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
         throw throwException(initExceptionWithMessage(exceptionKlass, message));
     }
 
     /**
-     * Initializes and throws an exception of the given guest klass.
+     * Initializes and throws an exception of the given guest klass with the given message.
      *
      * <p>
      * A guest instance is allocated and initialized by calling the
@@ -1657,9 +1658,27 @@ public final class Meta implements ContextAccess {
      *
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
+     * @param message the message to be used when initializing the exception
      */
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass with the given message.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     * @param msgFormat the {@linkplain java.util.Formatter format string} to be used to construct
+     *            the message used when initializing the exception
+     */
+    public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String msgFormat, Object... args) {
+        throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(EspressoError.format(msgFormat, args)));
     }
 
     /**
@@ -1851,6 +1870,7 @@ public final class Meta implements ContextAccess {
         return klass;
     }
 
+    @TruffleBoundary
     public String toHostString(StaticObject str) {
         if (StaticObject.isNull(str)) {
             return null;
@@ -1866,6 +1886,7 @@ public final class Meta implements ContextAccess {
         return str.getKlass().getMeta().toHostString(str);
     }
 
+    @TruffleBoundary
     public StaticObject toGuestString(Symbol<?> hostString) {
         if (hostString == null) {
             return StaticObject.NULL;
@@ -1873,6 +1894,7 @@ public final class Meta implements ContextAccess {
         return toGuestString(hostString.toString());
     }
 
+    @TruffleBoundary
     public StaticObject toGuestString(String hostString) {
         if (hostString == null) {
             return StaticObject.NULL;

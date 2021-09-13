@@ -248,7 +248,7 @@ public abstract class NativeEnv implements ContextAccess {
                                         : (e instanceof StackOverflowError)
                                                         ? getContext().getStackOverflow()
                                                         : getContext().getOutOfMemory();
-                        jni().getThreadLocalPendingException().set(wrappedError);
+                        jni().setPendingException(wrappedError);
                         return defaultValue(factory.returnType());
                     }
                     throw e;

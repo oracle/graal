@@ -44,7 +44,7 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 
 /**
- * An exception thrown if a {@link TruffleObject} does not support the type of one ore more
+ * An exception thrown if a {@link TruffleObject} does not support the type of one or more
  * arguments.
  *
  * @since 0.11

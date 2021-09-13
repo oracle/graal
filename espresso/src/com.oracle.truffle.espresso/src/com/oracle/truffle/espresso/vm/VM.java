@@ -1464,15 +1464,14 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region JNI Invocation Interface
     @VmImpl
-    public int DestroyJavaVM() {
-        int result = DetachCurrentThread();
+    public static int DestroyJavaVM(@Inject EspressoContext context) {
+        assert context.getCurrentThread() != null;
         try {
-            EspressoContext context = getContext();
             context.destroyVM(!context.ExitHost);
         } catch (EspressoExitException exit) {
             // expected
         }
-        return result;
+        return JNI_OK;
     }
 
     /*
@@ -1513,8 +1512,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @TruffleBoundary
-    public int DetachCurrentThread() {
-        EspressoContext context = getContext();
+    public int DetachCurrentThread(@Inject EspressoContext context) {
         StaticObject currentThread = context.getCurrentThread();
         if (currentThread == null) {
             return JNI_OK;
@@ -1933,6 +1931,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
+    @TruffleBoundary
     public @JavaType(Class.class) StaticObject JVM_FindClassFromBootLoader(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         if (name == null) {
@@ -1962,6 +1961,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
+    @TruffleBoundary
     public @JavaType(Class.class) StaticObject JVM_FindClassFromCaller(@Pointer TruffleObject namePtr,
                     boolean init, @JavaType(ClassLoader.class) StaticObject loader,
                     @JavaType(Class.class) StaticObject caller) {
@@ -2912,6 +2912,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl(isJni = true)
+    @TruffleBoundary
     public int JVM_ClassDepth(@JavaType(String.class) StaticObject name) {
         Symbol<Name> className = getContext().getNames().lookup(getMeta().toHostString(name).replace('.', '/'));
         if (className == null) {

@@ -52,6 +52,7 @@ public abstract class AbstractSetFieldNode extends Node implements ContextAccess
         this.fieldName = field.getNameAsString();
     }
 
+    @Override
     public EspressoContext getContext() {
         return EspressoContext.get(this);
     }
@@ -87,12 +88,12 @@ public abstract class AbstractSetFieldNode extends Node implements ContextAccess
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, "Foreign object has no writable field " + fieldName);
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, "Foreign object has no writable field %s", fieldName);
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                            "Could not cast the value to the actual type of the foreign field " + fieldName);
+                            "Could not cast the value to the actual type of the foreign field %s", fieldName);
         }
     }
 }
