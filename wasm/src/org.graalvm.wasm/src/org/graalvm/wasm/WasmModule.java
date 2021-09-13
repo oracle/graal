@@ -41,6 +41,7 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,6 +58,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
     private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     private final ModuleLimits limits;
+    private CodeEntry[] codeEntries;
     @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal private boolean isParsed;
 
@@ -113,5 +115,13 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     @Override
     public String toString() {
         return "wasm-module(" + name + ")";
+    }
+
+    public void setCodeEntries(CodeEntry[] codeEntries) {
+        this.codeEntries = codeEntries;
+    }
+
+    public CodeEntry[] getCodeEntries() {
+        return codeEntries;
     }
 }
