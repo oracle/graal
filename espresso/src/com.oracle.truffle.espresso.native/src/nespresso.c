@@ -461,6 +461,11 @@ jint GetJavaVM(JNIEnv *env, JavaVM **vmPtr) {
   }
 
   moka_env = (MokapotEnv*) (*env)->reserved1;
+  if (moka_env == NULL) {
+    fprintf(stderr, "GetJavaVM: Passed JNIEnv* has no MokapotEnv* associated" OS_NEWLINE_STR);
+    return JNI_ERR;
+  }
+
   vm = (*moka_env)->vm;
 
   // If there's an isolate-aware JavaVM, find it.
