@@ -258,7 +258,6 @@ public class AMD64VectorShuffle {
     public static class ShuffleWordOpWithMask extends ShuffleWordOp implements AVX512Support {
         public static final LIRInstructionClass<ShuffleWordOpWithMask> TYPE = LIRInstructionClass.create(ShuffleWordOpWithMask.class);
 
-        // both used and killed, must be a fixed register
         @Use({REG}) protected AllocatableValue mask;
 
         public ShuffleWordOpWithMask(VexRMIOp op, AllocatableValue result, AllocatableValue source, int selector, AllocatableValue mask) {

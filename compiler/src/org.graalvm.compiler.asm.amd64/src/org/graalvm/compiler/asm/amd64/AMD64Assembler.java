@@ -1398,6 +1398,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
             asm.evexPrefix(dst, mask, Register.None, src, size, pp, mmmmm, wEvex, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
@@ -1405,6 +1406,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
             asm.evexPrefix(dst, mask, Register.None, src, size, pp, mmmmm, wEvex, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 1, getDisp8Scale(true, size));
@@ -1691,6 +1693,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitModRM(dst, src2);
         }
 
+        @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
             assert assertion.check((AMD64) asm.target.arch, LZ, dst, src1, src2, null);
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
@@ -1708,6 +1711,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitOperandHelper(dst, src2, 0);
         }
 
+        @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
             assert assertion.check((AMD64) asm.target.arch, LZ, dst, src1, null, null);
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
