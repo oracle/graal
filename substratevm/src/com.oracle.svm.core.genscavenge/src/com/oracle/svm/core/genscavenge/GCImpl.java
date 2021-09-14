@@ -205,9 +205,7 @@ public final class GCImpl implements GC {
 
     private boolean collectImpl(GCCause cause, boolean forceFullGC) {
         boolean outOfMemory;
-
         precondition();
-        verifyBeforeGC();
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
@@ -225,7 +223,6 @@ public final class GCImpl implements GC {
             nav.close();
         }
 
-        verifyAfterGC();
         postcondition();
         return outOfMemory;
     }
@@ -260,7 +257,11 @@ public final class GCImpl implements GC {
 
         Timer collectionTimer = timers.collection.open();
         try {
+            if (!followsIncremental) { // we would have verified the heap after the incremental GC
+                verifyBeforeGC();
+            }
             scavenge(!complete, followsIncremental);
+            verifyAfterGC();
         } finally {
             collectionTimer.close();
         }

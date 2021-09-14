@@ -140,8 +140,8 @@ final class Timers {
         if (log.isEnabled()) {
             log.newline();
             log.string("  [GC nanoseconds:");
-            logOneTimer(log, "    ", verifyBefore);
             logOneTimer(log, "    ", collection);
+            logOneTimer(log, "      ", verifyBefore);
             logOneTimer(log, "      ", rootScan);
             logOneTimer(log, "        ", cheneyScanFromRoots);
             logOneTimer(log, "        ", cheneyScanFromDirtyRoots);
@@ -156,7 +156,7 @@ final class Timers {
             logOneTimer(log, "      ", cleanCodeCache);
             logOneTimer(log, "      ", referenceObjects);
             logOneTimer(log, "      ", releaseSpaces);
-            logOneTimer(log, "    ", verifyAfter);
+            logOneTimer(log, "      ", verifyAfter);
             logGCLoad(log, "    ", "GCLoad", collection, mutator);
             log.string("]");
         }

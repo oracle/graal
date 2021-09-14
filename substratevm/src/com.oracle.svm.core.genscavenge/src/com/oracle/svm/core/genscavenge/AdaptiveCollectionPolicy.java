@@ -99,6 +99,11 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = ADAPTIVE_TIME_WEIGHT;
     /** Threshold for triggering a complete collection after repeated minor collections. */
     private static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 2;
+    /**
+     * When the total GC cost is above this value, the estimator is ignored and spaces are expanded
+     * to avoid starving the mutator.
+     */
+    private static final double ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT = 0.5;
 
     /* Constants derived from other constants. */
     private static final double THROUGHPUT_GOAL = 1.0 - 1.0 / (1.0 + GC_TIME_RATIO);
@@ -232,7 +237,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     private void computeEdenSpaceSize() {
         boolean expansionReducesCost = true; // general assumption
-        boolean useEstimator = ADAPTIVE_SIZE_USE_COST_ESTIMATORS && youngGenChangeForMinorThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS;
+        boolean useEstimator = shouldUseEstimator(youngGenChangeForMinorThroughput);
         if (useEstimator) {
             expansionReducesCost = minorCostEstimator.getSlope(UnsignedUtils.toDouble(edenSize)) <= 0;
         }
@@ -273,6 +278,10 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             desiredEdenSize = UnsignedUtils.max(edenLimit, edenSize);
         }
         edenSize = desiredEdenSize;
+    }
+
+    private boolean shouldUseEstimator(long genChangeForThroughput) {
+        return ADAPTIVE_SIZE_USE_COST_ESTIMATORS && genChangeForThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS && gcCost() <= ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT;
     }
 
     private static boolean expansionSignificantlyReducesCost(ReciprocalLeastSquareFit estimator, UnsignedWord size, UnsignedWord delta) {
@@ -346,6 +355,12 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private double gcCost() {
+        /*
+         * Because we're dealing with averages, gcCost() can be larger than 1.0 if just the sum of
+         * the minor cost and the major cost is used. Worse than that is the fact that the minor
+         * cost and the major cost each tend toward 1.0 in the extreme of high GC costs. Limit the
+         * value of gcCost() to 1.0 so that the mutator cost stays non-negative.
+         */
         double cost = Math.min(1, minorGcCost() + majorGcCost());
         assert cost >= 0 : "Both minor and major costs are non-negative";
         return cost;
@@ -447,7 +462,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         promoLimit = alignDown(UnsignedUtils.max(promoSize, promoLimit));
 
         boolean expansionReducesCost = true; // general assumption
-        boolean useEstimator = ADAPTIVE_SIZE_USE_COST_ESTIMATORS && oldGenChangeForMajorThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS;
+        boolean useEstimator = shouldUseEstimator(oldGenChangeForMajorThroughput);
         if (useEstimator) {
             expansionReducesCost = majorCostEstimator.getSlope(UnsignedUtils.toDouble(promoSize)) <= 0;
         }
