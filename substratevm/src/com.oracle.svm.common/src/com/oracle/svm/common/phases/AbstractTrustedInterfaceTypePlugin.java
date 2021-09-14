@@ -23,21 +23,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.phases;
 
-import com.oracle.svm.common.phases.AbstractTrustedInterfaceTypePlugin;
-import com.oracle.svm.core.meta.SharedType;
-import jdk.vm.ci.meta.JavaKind;
+package com.oracle.svm.common.phases;
+
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
+import org.graalvm.compiler.nodes.graphbuilderconf.TypePlugin;
 
-public final class TrustedInterfaceTypePlugin extends AbstractTrustedInterfaceTypePlugin {
-
+public abstract class AbstractTrustedInterfaceTypePlugin implements TypePlugin {
     @Override
-    protected SharedType castType(JavaType declaredType) {
-        if (declaredType.getJavaKind() == JavaKind.Object && declaredType instanceof SharedType) {
-            return (SharedType) declaredType;
-        } else {
-            return null;
+    public StampPair interceptType(GraphBuilderTool b, JavaType declaredType, boolean nonNull) {
+        ResolvedJavaType castedType = (ResolvedJavaType) castType(declaredType);
+        if (castedType != null) {
+            /*
+             * We have the static analysis to check interface types, e.g.., if a parameter of field
+             * has a declared interface type and is assigned something that does not implement the
+             * interface, the static analysis reports an error.
+             */
+            TypeReference trusted = TypeReference.createTrustedWithoutAssumptions(castedType);
+            return StampPair.createSingle(StampFactory.object(trusted, nonNull));
         }
+        return null;
     }
+
+    protected abstract JavaType castType(JavaType declaredType);
 }

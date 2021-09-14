@@ -23,21 +23,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.phases;
 
-import com.oracle.svm.common.phases.AbstractTrustedInterfaceTypePlugin;
-import com.oracle.svm.core.meta.SharedType;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
+package com.oracle.graal.pointsto.nodes;
 
-public final class TrustedInterfaceTypePlugin extends AbstractTrustedInterfaceTypePlugin {
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 
-    @Override
-    protected SharedType castType(JavaType declaredType) {
-        if (declaredType.getJavaKind() == JavaKind.Object && declaredType instanceof SharedType) {
-            return (SharedType) declaredType;
-        } else {
-            return null;
-        }
+@NodeInfo(size = NodeSize.SIZE_16, cycles = NodeCycles.CYCLES_2, cyclesRationale = "Class initialization only runs at most once at run time, so the amortized cost is only the is-initialized check")
+public final class DirectMethodHandleEnsureInitializedNode extends FixedWithNextNode {
+
+    public static final NodeClass<DirectMethodHandleEnsureInitializedNode> TYPE = NodeClass.create(DirectMethodHandleEnsureInitializedNode.class);
+
+    private final ResolvedJavaType clazz;
+
+    public DirectMethodHandleEnsureInitializedNode(ResolvedJavaType clazz) {
+        super(TYPE, StampFactory.forVoid());
+        this.clazz = clazz;
+    }
+
+    public ResolvedJavaType instanceClass() {
+        return clazz;
     }
 }
