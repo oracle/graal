@@ -299,7 +299,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         UnsignedWord reducedSize = curEden.subtract(change);
         assert reducedSize.belowOrEqual(curEden);
-        return alignUp(reducedSize);
+        return alignDown(reducedSize);
     }
 
     private static UnsignedWord scaleDown(UnsignedWord change, UnsignedWord part, UnsignedWord total) {
@@ -499,7 +499,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         UnsignedWord reducedSize = curPromo.subtract(change);
         assert reducedSize.belowOrEqual(curPromo);
-        return alignUp(reducedSize);
+        return alignDown(reducedSize);
     }
 
     private static UnsignedWord promoDecrement(UnsignedWord curPromo) {
