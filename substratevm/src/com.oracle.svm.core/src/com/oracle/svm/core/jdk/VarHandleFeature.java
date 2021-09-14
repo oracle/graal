@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +36,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.ToLongFunction;
 
+import com.oracle.svm.common.VarHandleInitializer;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -118,51 +118,9 @@ public class VarHandleFeature implements InternalFeature {
 
     private static Object eagerlyInitializeVarHandle(Object obj) {
         if (obj instanceof VarHandle varHandle) {
-            eagerlyInitializeVarHandle(varHandle);
+            VarHandleInitializer.eagerlyInitializeVarHandle(varHandle, ex -> VMError.shouldNotReachHere(ex));
         }
         return obj;
-    }
-
-    private static final Field varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
-    private static final Method varFormInitMethod = ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm"), "getMethodType_V", int.class);
-    private static final Method varHandleGetMethodHandleMethod = ReflectionUtil.lookupMethod(VarHandle.class, "getMethodHandle", int.class);
-
-    public static void eagerlyInitializeVarHandle(VarHandle varHandle) {
-        try {
-            /*
-             * The field VarHandle.vform.methodType_V_table is a @Stable field but initialized
-             * lazily on first access. Therefore, constant folding can happen only after
-             * initialization has happened. We force initialization by invoking the method
-             * VarHandle.vform.getMethodType_V(0).
-             */
-            Object varForm = varHandleVFormField.get(varHandle);
-            varFormInitMethod.invoke(varForm, 0);
-
-            /*
-             * The AccessMode used for the access that we are going to intrinsify is hidden in a
-             * AccessDescriptor object that is also passed in as a parameter to the intrinsified
-             * method. Initializing all AccessMode enum values is easier than trying to extract the
-             * actual AccessMode.
-             */
-            for (VarHandle.AccessMode accessMode : VarHandle.AccessMode.values()) {
-                /*
-                 * Force initialization of the @Stable field VarHandle.vform.memberName_table.
-                 */
-                boolean isAccessModeSupported = varHandle.isAccessModeSupported(accessMode);
-                /*
-                 * Force initialization of the @Stable field
-                 * VarHandle.typesAndInvokers.methodType_table.
-                 */
-                varHandle.accessModeType(accessMode);
-
-                if (isAccessModeSupported) {
-                    /* Force initialization of the @Stable field VarHandle.methodHandleTable. */
-                    varHandleGetMethodHandleMethod.invoke(varHandle, accessMode.ordinal());
-                }
-            }
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
     }
 
     @Override

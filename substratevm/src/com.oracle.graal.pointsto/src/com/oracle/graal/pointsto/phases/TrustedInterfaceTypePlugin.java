@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,19 +23,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.phases;
+package com.oracle.graal.pointsto.phases;
 
 import com.oracle.svm.common.phases.AbstractTrustedInterfaceTypePlugin;
-import com.oracle.svm.core.meta.SharedType;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class TrustedInterfaceTypePlugin extends AbstractTrustedInterfaceTypePlugin {
 
     @Override
-    protected SharedType castType(JavaType declaredType) {
-        if (declaredType.getJavaKind() == JavaKind.Object && declaredType instanceof SharedType) {
-            return (SharedType) declaredType;
+    protected ResolvedJavaType castType(JavaType declaredType) {
+        if (declaredType.getJavaKind() == JavaKind.Object && declaredType instanceof ResolvedJavaType) {
+            return (ResolvedJavaType) declaredType;
         } else {
             return null;
         }

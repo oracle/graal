@@ -57,6 +57,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
+import com.oracle.graal.pointsto.phases.PointsToMethodHandlePlugin;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureImpl;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureManager;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
@@ -92,6 +93,7 @@ public final class PointsToAnalyzer {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler.management");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.nativeimage");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
@@ -211,6 +213,7 @@ public final class PointsToAnalyzer {
             GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
             NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
             plugins.setClassInitializationPlugin(classInitializationPlugin);
+            plugins.appendNodePlugin(new PointsToMethodHandlePlugin(aProviders, aProviders.getSnippetReflection(), aUniverse, new Providers(originalProviders), classInitializationPlugin));
             aProviders.setGraphBuilderPlugins(plugins);
             registerInvocationPlugins(originalProviders.getSnippetReflection(), plugins.getInvocationPlugins(), originalProviders.getReplacements(),
                             false, true, false, originalProviders.getLowerer());

@@ -62,6 +62,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import com.oracle.svm.util.ModuleSupport;
+
 public class PointstoAnalyzerTester {
     private Set<Executable> expectedReachableMethods = new HashSet<>();
     private Set<Class<?>> expectedReachableTypes = new HashSet<>();
@@ -76,6 +78,11 @@ public class PointstoAnalyzerTester {
     private String testClassName;
     private String testClassJar;
     private Class<?> testClass;
+
+    static {
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler");
+    }
 
     public PointstoAnalyzerTester(Class<?> testClass) {
         this.testClass = testClass;
