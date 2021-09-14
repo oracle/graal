@@ -898,7 +898,8 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeInt(1);
         stream.writeByte(RequestedJDWPEvents.VM_DEATH);
         stream.writeInt(vmDeathRequestId != -1 ? vmDeathRequestId : 0);
-        connection.queuePacket(stream);
+        // don't queue this packet, send immediately
+        connection.sendVMDied(stream);
     }
 
     @Override
