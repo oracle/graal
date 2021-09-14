@@ -67,6 +67,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private int lastCount;
     private long lastTime;
     private double lastWeight;
+    private boolean isOSR;
 
     private final TruffleInlining inliningData = new TruffleInlining();
 
@@ -80,7 +81,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastTime = System.nanoTime();
         lastWeight = target != null ? target.getCallAndLoopCount() : -1;
         engineData = target != null ? target.engine : null;
-
+        isOSR = target != null ? target.isOSR() : false;
     }
 
     static CompilationTask createInitializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
@@ -230,6 +231,9 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     boolean isHigherPriorityThan(CompilationTask other) {
         if (action != COMPILATION_ACTION) {
             // Any non-compilation action (e.g. compiler init) is higher priority.
+            return true;
+        }
+        if (this.isOSR && !other.isOSR) {
             return true;
         }
         int tier = tier();

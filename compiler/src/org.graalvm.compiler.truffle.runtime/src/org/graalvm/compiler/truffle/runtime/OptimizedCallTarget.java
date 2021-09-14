@@ -338,7 +338,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.resetCompilationProfile();
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
-        this.uninitializedNodeCount = !(rootNode instanceof BaseOSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
+        this.uninitializedNodeCount = !isOSR() ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
         GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
@@ -593,7 +593,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                         /*
                          * Compilation of OSR loop nodes is managed separately.
                          */
-                        && !(getRootNode() instanceof BaseOSRRootNode) //
+                        && !isOSR() //
                         && intCallCount >= engine.callThresholdInInterpreter //
                         && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
     }
@@ -1679,5 +1679,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.argumentsProfile = newProfile;
         this.aotInitialized = true;
         return true;
+    }
+
+    boolean isOSR() {
+        return rootNode instanceof BaseOSRRootNode;
     }
 }
