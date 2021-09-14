@@ -33,12 +33,15 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.options.OptionValues;
 
 import java.lang.reflect.Executable;
 import java.util.concurrent.ForkJoinPool;
 
-public class ReachabilityAnalysis extends AbstractReachabilityAnalysis {
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+
+public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis {
 
     public ReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures) {
@@ -46,33 +49,47 @@ public class ReachabilityAnalysis extends AbstractReachabilityAnalysis {
     }
 
     @Override
-    public void checkUserLimitations() {
-
-    }
-
-    @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
-        return null;
+        // todo async
+        try (Indent indent = debug.logAndIndent("add root class %s", type.getName())) {
+            for (AnalysisField field : type.getInstanceFields(false)) {
+                if (addFields) {
+                    field.registerAsAccessed();
+                }
+            }
+            if (type.getSuperclass() != null) {
+                addRootClass(type.getSuperclass(), addFields, addArrayClass);
+            }
+            if (addArrayClass) {
+                addRootClass(type.getArrayClass(), false, false);
+            }
+        }
+        return type;
     }
 
     @Override
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
-        return null;
+        // todo async
+        AnalysisType type = addRootClass(clazz, false, false);
+        for (AnalysisField field : type.getInstanceFields(true)) {
+            if (field.getName().equals(fieldName)) {
+                try (Indent indent = debug.logAndIndent("add root field %s in class %s", fieldName, clazz.getName())) {
+                    field.registerAsAccessed();
+                }
+                return field.getType();
+            }
+        }
+        throw shouldNotReachHere("field not found: " + fieldName);
     }
 
     @Override
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod) {
-        return null;
+        throw new RuntimeException("unfinished");
     }
 
     @Override
     public AnalysisMethod addRootMethod(Executable method) {
-        return null;
-    }
-
-    @Override
-    public AnalysisMethod addRootMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
-        return null;
+        throw new RuntimeException("unfinished");
     }
 
     @Override
@@ -82,21 +99,21 @@ public class ReachabilityAnalysis extends AbstractReachabilityAnalysis {
 
     @Override
     public void cleanupAfterAnalysis() {
-
+        super.cleanupAfterAnalysis();
     }
 
     @Override
     public void forceUnsafeUpdate(AnalysisField field) {
-
+        throw new RuntimeException("unfinished");
     }
 
     @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
-
+        throw new RuntimeException("unfinished");
     }
 
     @Override
     public TypeState getAllSynchronizedTypeState() {
-        return null;
+        throw new RuntimeException("unfinished");
     }
 }

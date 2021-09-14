@@ -32,6 +32,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import org.graalvm.compiler.options.OptionValues;
 
+import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.util.concurrent.ForkJoinPool;
 
@@ -58,5 +59,12 @@ public abstract class AbstractReachabilityAnalysis extends AbstractAnalysisEngin
         } catch (NoSuchMethodException ex) {
             throw shouldNotReachHere(ex);
         }
+    }
+
+    @Override
+    public AnalysisMethod addRootMethod(Executable method) {
+        AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
+        addRootMethod(aMethod);
+        return aMethod;
     }
 }
