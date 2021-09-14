@@ -118,6 +118,7 @@ public final class LLVMParser {
         LLVMGlobal globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),
                         global.isExternalWeak());
         runtime.getFileScope().register(globalSymbol);
+        registerInPublicFileScope(globalSymbol);
     }
 
     private void defineFunction(FunctionSymbol functionSymbol, ModelModule model, DataLayout dataLayout) {
@@ -131,6 +132,7 @@ public final class LLVMParser {
                         functionDefinition.isExported(), runtime.getFile().getPath(), functionDefinition.isExternalWeak());
         lazyConverter.setRootFunction(llvmFunction);
         runtime.getFileScope().register(llvmFunction);
+        registerInPublicFileScope(llvmFunction);
         final boolean cxxInterop = LLVMLanguage.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
         if (cxxInterop) {
             model.getFunctionParser(functionDefinition).parseLinkageName(runtime);
@@ -145,6 +147,12 @@ public final class LLVMParser {
             return;
         }
         defineAlias(alias.getName(), alias.isExported(), alias.getValue(), targetDataLayout);
+    }
+
+    private void registerInPublicFileScope(LLVMSymbol symbol) {
+        if (symbol.isExported()) {
+            runtime.getPublicFileScope().register(symbol);
+        }
     }
 
     private void defineAlias(String aliasName, boolean isAliasExported, SymbolImpl value, DataLayout targetDataLayout) {
@@ -183,5 +191,6 @@ public final class LLVMParser {
         LLVMSymbol aliasTarget = runtime.lookupSymbol(existingName);
         LLVMAlias aliasSymbol = new LLVMAlias(newName, aliasTarget, newExported);
         runtime.getFileScope().register(aliasSymbol);
+        registerInPublicFileScope(aliasSymbol);
     }
 }

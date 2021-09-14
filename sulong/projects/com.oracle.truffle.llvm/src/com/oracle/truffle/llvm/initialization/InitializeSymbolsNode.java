@@ -68,7 +68,6 @@ import java.util.List;
  * them into the symbol table. Alias will be unwrapped before they are inserted into the symbol
  * table.
  *
- * @see InitializeScopeNode
  * @see InitializeGlobalNode
  * @see InitializeModuleNode
  * @see InitializeExternalNode
@@ -218,6 +217,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
                 list.add(descriptor);
                 context.registerSymbolReverseMap(list, ref);
             }
+
         }
     }
 

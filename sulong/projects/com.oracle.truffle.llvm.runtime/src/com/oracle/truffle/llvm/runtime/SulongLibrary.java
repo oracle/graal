@@ -29,10 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Objects;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -56,11 +52,16 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
 
 /**
  * Object that is returned when a bitcode library is parsed.
@@ -70,17 +71,19 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 public final class SulongLibrary implements TruffleObject {
 
     private final String name;
-    private final LLVMScope scope;
+    private final LLVMScopeChain scope;
     private final LLVMContext context;
     final CachedMainFunction main;
     private final LibraryLocator libraryLocator;
+    private final BitcodeID bitcodeID;
 
-    public SulongLibrary(String name, LLVMScope scope, CachedMainFunction main, LLVMContext context, LibraryLocator libraryLocator) {
+    public SulongLibrary(String name, LLVMScopeChain scope, CachedMainFunction main, LLVMContext context, LibraryLocator libraryLocator, BitcodeID bitcodeID) {
         this.name = name;
         this.scope = scope;
         this.main = main;
         this.context = context;
         this.libraryLocator = libraryLocator;
+        this.bitcodeID = bitcodeID;
     }
 
     public static final class CachedMainFunction {
@@ -133,6 +136,10 @@ public final class SulongLibrary implements TruffleObject {
 
     public String getName() {
         return name;
+    }
+
+    public BitcodeID getBitcodeID() {
+        return bitcodeID;
     }
 
     @GenerateUncached

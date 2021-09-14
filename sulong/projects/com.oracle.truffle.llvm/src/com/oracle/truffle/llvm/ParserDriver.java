@@ -317,8 +317,10 @@ final class ParserDriver {
         }
         LLVMFunction newFunction = LLVMFunction.create(name, originalSymbol.getFunction(), originalSymbol.getType(),
                         parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported(), parserResult.getRuntime().getFile().getPath(), external.isExternalWeak());
-        LLVMScope fileScope = parserResult.getRuntime().getFileScope();
-        fileScope.register(newFunction);
+        parserResult.getRuntime().getFileScope().register(newFunction);
+        if (external.isExported()) {
+            parserResult.getRuntime().getPublicFileScope().register(newFunction);
+        }
         it.remove();
         parserResult.getDefinedFunctions().add(external);
     }
@@ -351,8 +353,10 @@ final class ParserDriver {
         TargetTriple targetTriple = TargetTriple.create(module.getTargetInformation(com.oracle.truffle.llvm.parser.model.target.TargetTriple.class).toString());
         verifyBitcodeSource(source, targetDataLayout, targetTriple);
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
+        // Create a new public file scope to be returned inside sulong library.
+        LLVMScope publicFileScope = new LLVMScope();
         LLVMScope fileScope = new LLVMScope();
-        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module),
+        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, publicFileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module),
                         binaryParserResult.getLocator());
         LLVMParser parser = new LLVMParser(source, runtime);
         LLVMParserResult result = parser.parse(module, targetDataLayout);

@@ -44,6 +44,7 @@ import java.util.List;
 
 public final class LLVMParserRuntime {
     private final LLVMScope fileScope;
+    private final LLVMScope publicFileScope;
     private final NodeFactory nodeFactory;
     private final BitcodeID bitcodeID;
     private final TruffleFile file;
@@ -51,9 +52,11 @@ public final class LLVMParserRuntime {
     private final List<LLVMSourceFileReference> sourceFileReferences;
     private final LibraryLocator locator;
 
-    public LLVMParserRuntime(LLVMScope fileScope, NodeFactory nodeFactory, BitcodeID bitcodeID, TruffleFile file, String libName, List<LLVMSourceFileReference> sourceFileReferences,
+    public LLVMParserRuntime(LLVMScope fileScope, LLVMScope publicFileScope, NodeFactory nodeFactory, BitcodeID bitcodeID, TruffleFile file, String libName,
+                    List<LLVMSourceFileReference> sourceFileReferences,
                     LibraryLocator locator) {
         this.fileScope = fileScope;
+        this.publicFileScope = publicFileScope;
         this.nodeFactory = nodeFactory;
         this.bitcodeID = bitcodeID;
         this.file = file;
@@ -72,6 +75,10 @@ public final class LLVMParserRuntime {
 
     public LLVMScope getFileScope() {
         return fileScope;
+    }
+
+    public LLVMScope getPublicFileScope() {
+        return publicFileScope;
     }
 
     public NodeFactory getNodeFactory() {
