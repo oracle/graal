@@ -660,7 +660,8 @@ final class ServiceWatcher {
                 checksum = currentChecksum;
                 return true;
             }
-            return false;
+            // mark as if changed when we can't calculate the checksum
+            return checksum.length == 0 || currentChecksum.length == 0;
         }
     }
 
