@@ -43,7 +43,6 @@ import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.core.util.ExceptionHelpers;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 
@@ -141,7 +140,12 @@ public final class JNIObjectHandles {
             return JNIGlobalHandles.getObject(handle);
         }
 
-        throw ExceptionHelpers.throwIllegalArgumentException("Invalid object handle");
+        throw throwIllegalArgumentException();
+    }
+
+    @NeverInline("Exception slow path")
+    private static IllegalArgumentException throwIllegalArgumentException() {
+        throw new IllegalArgumentException("Invalid object handle");
     }
 
     public static JNIObjectRefType getHandleType(JNIObjectHandle handle) {

@@ -38,6 +38,7 @@ import com.oracle.svm.core.util.VMError;
 public abstract class SubstrateConstructorAccessor {
 
     interface ConstructorNewInstanceFunctionPointer extends CFunctionPointer {
+        /** Must match the signature of {@link ReflectionAccessorHolder#newInstancePrototype}. */
         @InvokeJavaFunctionPointer
         Object invoke(Object[] args);
     }

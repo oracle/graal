@@ -39,8 +39,8 @@ import com.oracle.svm.core.reflect.SubstrateReflectionAccessorFactory;
 
 final class SubstrateReflectionAccessorFactoryJDK8 implements SubstrateReflectionAccessorFactory {
     @Override
-    public SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer) {
-        return new SubstrateMethodAccessorJDK8(member, invokeFunctionPointer, invokeSpecialFunctionPointer);
+    public SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer) {
+        return new SubstrateMethodAccessorJDK8(member, invokeFunctionPointer);
     }
 
     @Override
@@ -58,8 +58,8 @@ final class SubstrateReflectionAccessorFactoryJDK8Feature implements Feature {
 }
 
 final class SubstrateMethodAccessorJDK8 extends SubstrateMethodAccessor implements sun.reflect.MethodAccessor {
-    SubstrateMethodAccessorJDK8(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer) {
-        super(member, invokeFunctionPointer, invokeSpecialFunctionPointer);
+    SubstrateMethodAccessorJDK8(Executable member, CFunctionPointer invokeFunctionPointer) {
+        super(member, invokeFunctionPointer);
     }
 }
 

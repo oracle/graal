@@ -38,18 +38,17 @@ import com.oracle.svm.core.util.VMError;
 public abstract class SubstrateMethodAccessor {
 
     interface MethodInvokeFunctionPointer extends CFunctionPointer {
+        /** Must match the signature of {@link ReflectionAccessorHolder#invokePrototype}. */
         @InvokeJavaFunctionPointer
-        Object invoke(Object obj, Object[] args);
+        Object invoke(boolean invokeSpecial, Object obj, Object[] args);
     }
 
     private final Executable member;
     private final CFunctionPointer invokeFunctionPointer;
-    private final CFunctionPointer invokeSpecialFunctionPointer;
 
-    protected SubstrateMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer) {
+    protected SubstrateMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer) {
         this.member = member;
         this.invokeFunctionPointer = invokeFunctionPointer;
-        this.invokeSpecialFunctionPointer = invokeSpecialFunctionPointer;
     }
 
     public Object invoke(Object obj, Object[] args) {
@@ -57,7 +56,7 @@ public abstract class SubstrateMethodAccessor {
         if (functionPointer.isNull()) {
             throw invokeError();
         }
-        return functionPointer.invoke(obj, args);
+        return functionPointer.invoke(false, obj, args);
     }
 
     private RuntimeException invokeError() {
@@ -65,14 +64,10 @@ public abstract class SubstrateMethodAccessor {
     }
 
     public Object invokeSpecial(Object obj, Object[] args) {
-        MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.invokeSpecialFunctionPointer;
+        MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.invokeFunctionPointer;
         if (functionPointer.isNull()) {
-            throw invokeSpecialError();
+            throw invokeError();
         }
-        return functionPointer.invoke(obj, args);
-    }
-
-    private RuntimeException invokeSpecialError() {
-        throw VMError.shouldNotReachHere("No SubstrateMethodAccessor.invokeSpecialFunctionPointer for " + member);
+        return functionPointer.invoke(true, obj, args);
     }
 }

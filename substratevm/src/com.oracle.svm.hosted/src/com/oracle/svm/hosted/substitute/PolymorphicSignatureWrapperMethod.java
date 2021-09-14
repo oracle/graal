@@ -173,7 +173,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                     retVal = kit.createInvokeWithExceptionAndUnwind(unboxMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), retVal, methodHandleOrMemberName);
                     break;
                 default:
-                    retVal = kit.createUnboxing(invoke, returnKind, metaAccess);
+                    retVal = kit.createUnboxing(invoke, returnKind);
             }
         }
         kit.createReturn(retVal, returnKind);
