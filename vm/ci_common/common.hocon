@@ -432,6 +432,12 @@ deploy_graalvm_plus_ruby: {
   timelimit: "1:45:00"
 }
 
+# this is not really a benchmark, but simply reports the sizes of the selected files to bench server
+record_file_size: [
+  [mx, "benchmark", "file-size:*", "--results-file", "sizes.json"] 
+  [bench-uploader.py, "sizes.json"]
+]
+
 builds += [
   #
   # Gates
@@ -464,27 +470,27 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_8}  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java8-linux-amd64}
-  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java11-linux-amd64}
-  ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java17-linux-amd64}
+  ${vm_java_8}  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]] ${record_file_size} ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java8-linux-amd64}
+  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]] ${record_file_size} ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java11-linux-amd64}
+  ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${record_file_size} ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java17-linux-amd64}
 
   # Linux/AARCH64
-  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64}]]        ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java11-linux-aarch64}
-  ${vm_java_17} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64_java17}]] ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java17-linux-aarch64}
+  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64}]] ${record_file_size} ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java11-linux-aarch64}
+  ${vm_java_17} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64_java17}]] ${record_file_size} ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java17-linux-aarch64}
 
   # Darwin/AMD64
-  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {                                                                                                                 name: deploy-vm-base-java11-darwin-amd64}
-  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java11-darwin-amd64}
-  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {                                                                                                                 name: deploy-vm-base-java17-darwin-amd64}
-  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java17-darwin-amd64}
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {run: ${record_file_size},                                                                                                     name: deploy-vm-base-java11-darwin-amd64}
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]] ${record_file_size} ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java11-darwin-amd64}
+  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {run: ${record_file_size},                                                                                                        name: deploy-vm-base-java17-darwin-amd64}
+  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${record_file_size} ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java17-darwin-amd64}
 
   # Windows/AMD64
-  ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_base_windows_amd64}                       {                                                                                                                          name: deploy-vm-base-java8-windows-amd64}
-  ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_installables_windows_amd64}               {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]]        ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java8-windows-amd64}
-  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {                                                                                                                          name: deploy-vm-base-java11-windows-amd64}
-  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]]        ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java11-windows-amd64}
-  ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {                                                                                                                          name: deploy-vm-base-java17-windows-amd64}
-  ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows_java17}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java17-windows-amd64}
+  ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_base_windows_amd64}                       {run: ${record_file_size},                                                                                                 name: deploy-vm-base-java8-windows-amd64}
+  ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_installables_windows_amd64}               {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${record_file_size} ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java8-windows-amd64}
+  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {run: ${record_file_size},                                                                                                 name: deploy-vm-base-java11-windows-amd64}
+  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${record_file_size} ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java11-windows-amd64}
+  ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {run: ${record_file_size},                                                                                                 name: deploy-vm-base-java17-windows-amd64}
+  ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows_java17}]] ${record_file_size} ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java17-windows-amd64}
 
   #
   # Deploy GraalVM+Ruby images

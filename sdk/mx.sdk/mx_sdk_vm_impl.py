@@ -2679,7 +2679,9 @@ def has_svm_launchers(components, fatalIfMissing=False):
 
 
 def get_native_image_locations(name, image_name):
-    libgraal_libs = [l for l in _get_library_configs(get_component(name)) if image_name in basename(l.destination)]
+    c = name if isinstance(name, mx_sdk.GraalVmComponent) else get_component(name)
+    configs = _get_library_configs(c) + _get_launcher_configs(c)
+    libgraal_libs = [l for l in configs if image_name in basename(l.destination)]
     if libgraal_libs:
         library_config = libgraal_libs[0]
         dist = get_final_graalvm_distribution()

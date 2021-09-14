@@ -1037,6 +1037,92 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         else:
             return "time"
 
+
+class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+    SZ_MSG_PATTERN = "== binary size == {} is {} bytes, path = {}"
+    SZ_RGX_PATTERN = r"== binary size == (?P<interpreter>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) bytes, path = (?P<path>.*)"
+
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "truffle"
+
+    def name(self):
+        return "file-size"
+
+    def version(self):
+        return "0.0.1"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["default"]
+
+    def get_vm_registry(self):
+        return _polybench_vm_registry
+
+    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
+        vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
+        vm.extract_vm_info(self.vmArgs(bmSuiteArgs))
+        host_vm = None
+        if isinstance(vm, mx_benchmark.GuestVm):
+            host_vm = vm.host_vm()
+            assert host_vm
+        dims = {
+            "vm": vm.name(),
+            "host-vm": host_vm.name() if host_vm else vm.name(),
+            "host-vm-config": self.host_vm_config_name(host_vm, vm),
+            "guest-vm": vm.name() if host_vm else "none",
+            "guest-vm-config": self.guest_vm_config_name(host_vm, vm),
+        }
+
+        from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
+        from mx_sdk_vm_impl import get_native_image_locations
+
+        out = ""
+        for gcomponent in graalvm_components():
+            sz_msg = None
+            if isinstance(gcomponent, GraalVmLanguage):
+                mx.log("checking GraalVMLanguage: {}".format(gcomponent))
+                for cfg in gcomponent.launcher_configs:
+                    binary_dst = cfg.destination
+                    binary_name = os.path.split(binary_dst)[-1]
+                    pth = get_native_image_locations(gcomponent, binary_name)
+                    if pth and os.path.exists(pth):
+                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(binary_name, os.path.getsize(pth), pth)
+            elif isinstance(gcomponent, GraalVmJreComponent):
+                mx.log("checking GraalVmJreComponent: {}".format(gcomponent))
+                if gcomponent.name == "LibGraal":
+                    pth = get_native_image_locations(gcomponent, 'jvmcicompiler')
+                    if pth and os.path.exists(pth):
+                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(gcomponent.name, os.path.getsize(pth), pth)
+
+            if sz_msg:
+                mx.log(sz_msg)
+                out += sz_msg + "\n"
+
+        return 0, out, dims
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(
+                FileSizeBenchmarkSuite.SZ_RGX_PATTERN,
+                {
+                    "bench-suite": self.name(),
+                    "benchmark": ("<interpreter>", str),
+                    "benchmark-configuration": ("<path>", str),
+                    "vm": "svm",
+                    "metric.name": "binary-size",
+                    "metric.value": ("<value>", int),
+                    "metric.unit": "B",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                })
+        ]
+
+
 class PolyBenchVm(GraalVm):
     def run(self, cwd, args):
         return self.run_launcher('polybench', args, cwd)
@@ -1046,6 +1132,8 @@ mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', be
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
 mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
 mx_benchmark.add_bm_suite(PolyBenchBenchmarkSuite())
+mx_benchmark.add_bm_suite(FileSizeBenchmarkSuite())
+
 
 def register_graalvm_vms():
     default_host_vm_name = mx_sdk_vm_impl.graalvm_dist_name().lower().replace('_', '-')
