@@ -3085,14 +3085,17 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @TruffleBoundary
     public int JNI_GetCreatedJavaVMs(@Pointer TruffleObject vmBufPtr, int bufLen, @Pointer TruffleObject numVMsPtr) {
-        int err = JNI_OK;
         if (bufLen > 0) {
-            err = getContext().getJNI().GetJavaVM(vmBufPtr);
+            if (getUncached().isNull(vmBufPtr)) {
+                // Pointer should have been pre-null-checked.
+                return JNI_ERR;
+            }
+            NativeUtils.writeToPointerPointer(getUncached(), vmBufPtr, getVM().getJavaVM());
             if (!getUncached().isNull(numVMsPtr)) {
                 NativeUtils.writeToIntPointer(getUncached(), numVMsPtr, 1);
             }
         }
-        return err;
+        return JNI_OK;
     }
 
     // endregion Invocation API
@@ -3564,16 +3567,18 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         assert elements.isArray();
         VM.StackTrace stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwable);
-        if (elements.length() != stackTrace.size) {
-            profiler.profile(1);
-            throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
-        }
-        for (int i = 0; i < stackTrace.size; i++) {
-            if (StaticObject.isNull(elements.get(i))) {
-                profiler.profile(2);
-                throw meta.throwNullPointerException();
+        if (stackTrace != null) {
+            if (elements.length() != stackTrace.size) {
+                profiler.profile(1);
+                throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
             }
-            fillInElement(elements.get(i), stackTrace.trace[i], getMeta().java_lang_Class_getName);
+            for (int i = 0; i < stackTrace.size; i++) {
+                if (StaticObject.isNull(elements.get(i))) {
+                    profiler.profile(2);
+                    throw meta.throwNullPointerException();
+                }
+                fillInElement(elements.get(i), stackTrace.trace[i], getMeta().java_lang_Class_getName);
+            }
         }
     }
 

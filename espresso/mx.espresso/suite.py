@@ -173,6 +173,7 @@ suite = {
             "use_jdk_headers": True,
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
+                "com.oracle.truffle.espresso.mokapot",
             ],
             "os_arch": {
                 "windows": {
