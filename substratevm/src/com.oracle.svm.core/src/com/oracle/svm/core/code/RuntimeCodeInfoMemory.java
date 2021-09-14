@@ -246,8 +246,8 @@ public class RuntimeCodeInfoMemory {
         return (index + 1 < length) ? (index + 1) : 0;
     }
 
-    public void printTable(Log log, boolean allowJavaHeapAccess, boolean allowUnsafeAccess) {
-        if (allowUnsafeAccess || VMOperation.isInProgressAtSafepoint()) {
+    public void printTable(Log log, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
+        if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
             // If we are not at a safepoint, then the table could be freed at any time.
             log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods:").indent(true);
             if (table.isNonNull()) {
@@ -301,14 +301,13 @@ public class RuntimeCodeInfoMemory {
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    public boolean printLocationInfo(Log log, UnsignedWord value, int diagnosticLevel) {
-        if (DiagnosticLevel.isUnsafeAccessAllowed(diagnosticLevel) || VMOperation.isInProgressAtSafepoint()) {
+    public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
+        if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
             // If we are not at a safepoint, then the table could be freed at any time.
             if (table.isNonNull()) {
                 for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
                     UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
                     if (info.isNonNull()) {
-                        boolean allowJavaHeapAccess = DiagnosticLevel.isJavaHeapAccessAllowed(diagnosticLevel);
                         if (info.equal(value)) {
                             String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
                             printIsCodeInfoObject(log, name);

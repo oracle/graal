@@ -606,6 +606,13 @@ public class SubstrateOptions {
         }
     }
 
-    @Option(help = "Determines how much diagnostic information is printed. Supported values range from 0 to 2, where 2 prints the largest amount of information.", type = Expert)//
-    public static final RuntimeOptionKey<Integer> PrintDiagnosticDetails = new RuntimeOptionKey<>(2);
+    @Option(help = "Allows to specify which diagnostic level should be used for a certain diagnostic thunk, e.g.: 'DumpThreads:0,DumpRegisters:2'." +
+                    " The diagnostic levels range from 0 (no information) to 3 (detailed information). By default, the most detailed output is selected for all diagnostic thunks.", type = Expert)//
+    public static final RuntimeOptionKey<String> DiagnosticDetails = new RuntimeOptionKey<String>("") {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            SubstrateDiagnostics.updateDiagnosticLevels(newValue);
+            super.onValueUpdate(values, oldValue, newValue);
+        }
+    };
 }

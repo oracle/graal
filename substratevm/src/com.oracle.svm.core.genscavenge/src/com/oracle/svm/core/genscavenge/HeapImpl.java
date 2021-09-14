@@ -28,6 +28,7 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -43,7 +44,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticLevel;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -612,7 +612,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public boolean printLocationInfo(Log log, UnsignedWord value, int diagnosticLevel) {
+    public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             Pointer heapBase = KnownIntrinsics.heapBase();
             if (value.equal(heapBase)) {
@@ -625,8 +625,8 @@ public final class HeapImpl extends Heap {
         }
 
         Pointer ptr = (Pointer) value;
-        if (printLocationInfo(log, ptr, diagnosticLevel)) {
-            if (DiagnosticLevel.isJavaHeapAccessAllowed(diagnosticLevel) && objectHeaderImpl.pointsToObjectHeader(ptr)) {
+        if (printLocationInfo(log, ptr, allowJavaHeapAccess, allowUnsafeOperations)) {
+            if (allowJavaHeapAccess && objectHeaderImpl.pointsToObjectHeader(ptr)) {
                 DynamicHub hub = objectHeaderImpl.readDynamicHubFromPointer(ptr);
                 log.indent(true);
                 log.string("hub=").string(hub.getName());
@@ -647,7 +647,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private boolean printLocationInfo(Log log, Pointer ptr, int diagnosticLevel) {
+    private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         if (imageHeapInfo.isInReadOnlyPrimitivePartition(ptr)) {
             log.string("points into the image heap (read-only primitives)");
             return true;
@@ -676,7 +676,7 @@ public final class HeapImpl extends Heap {
             return true;
         }
 
-        if (DiagnosticLevel.isJavaHeapAccessAllowed(diagnosticLevel)) {
+        if (allowJavaHeapAccess) {
             // Accessing spaces and chunks is safe if we prevent a GC.
             if (isInYoungGen(ptr)) {
                 log.string("points into the young generation");
@@ -687,7 +687,7 @@ public final class HeapImpl extends Heap {
             }
         }
 
-        if (DiagnosticLevel.isUnsafeAccessAllowed(diagnosticLevel) || VMOperation.isInProgressAtSafepoint()) {
+        if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
             // If we are not at a safepoint, then it is unsafe to access thread locals of another
             // thread as the IsolateThread could be freed at any time.
             return printTlabInfo(log, ptr);
@@ -781,19 +781,19 @@ public final class HeapImpl extends Heap {
 
     @Uninterruptible(reason = "This whole method is unsafe, so it is only uninterruptible to satisfy the checks.")
     private static Descriptor getTlabUnsafe(IsolateThread thread) {
-        assert SubstrateDiagnostics.isInProgressByCurrentThread() : "can cause crashes, so it may only be used while printing diagnostics";
+        assert SubstrateDiagnostics.isFatalErrorHandlingThread() : "can cause crashes, so it may only be used while printing diagnostics";
         return ThreadLocalAllocation.getTlab(thread);
     }
 
     private static class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
         @Override
-        public int baseInvocations() {
+        public int maxInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             GCImpl gc = GCImpl.getGCImpl();
 
             log.string("Heap settings and statistics:").indent(true);
@@ -813,13 +813,13 @@ public final class HeapImpl extends Heap {
 
     private static class DumpChunkInformation extends DiagnosticThunk {
         @Override
-        public int baseInvocations() {
+        public int maxInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             HeapImpl heap = HeapImpl.getHeapImpl();
             heap.logImageHeapPartitionBoundaries(log);
             zapValuesToLog(log).newline();

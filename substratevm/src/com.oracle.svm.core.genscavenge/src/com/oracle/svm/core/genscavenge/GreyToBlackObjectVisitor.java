@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
@@ -33,6 +34,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegister;
 import com.oracle.svm.core.annotate.AlwaysInline;
@@ -132,13 +134,13 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
         }
 
         @Override
-        public int baseInvocations() {
+        public int maxInvocations() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             if (historyCount > 0) {
                 log.string("[GreyToBlackObjectVisitor.RealDiagnosticReporter.invoke:")
                                 .string("  history / count:  ")
