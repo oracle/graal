@@ -677,26 +677,12 @@ public class SubstrateGraphBuilderPlugins {
         return true;
     }
 
-    private static final Function<CoreProviders, JavaConstant> primitiveStaticFieldBaseConstant = new Function<CoreProviders, JavaConstant>() {
-        @Override
-        public JavaConstant apply(CoreProviders providers) {
-            return StaticFieldsSupport.dataAvailable() ? SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticPrimitiveFields()) : null;
-        }
-    };
-    private static final Function<CoreProviders, JavaConstant> objectStaticFieldBaseConstant = new Function<CoreProviders, JavaConstant>() {
-        @Override
-        public JavaConstant apply(CoreProviders providers) {
-            return StaticFieldsSupport.dataAvailable() ? SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticObjectFields()) : null;
-        }
-    };
-
     private static boolean processStaticFieldBase(GraphBuilderContext b, Field targetField, boolean isSunMiscUnsafe) {
         if (!isValidField(targetField, isSunMiscUnsafe)) {
             return false;
         }
 
-        b.addPush(JavaKind.Object, LazyConstantNode.create(StampFactory.objectNonNull(),
-                        targetField.getType().isPrimitive() ? primitiveStaticFieldBaseConstant : objectStaticFieldBaseConstant, b));
+        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(targetField.getType().isPrimitive()));
         return true;
     }
 
