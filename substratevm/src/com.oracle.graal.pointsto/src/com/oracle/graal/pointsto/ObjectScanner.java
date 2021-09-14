@@ -227,7 +227,7 @@ public class ObjectScanner {
             return;
         }
         if (!bb.scanningPolicy().scanConstant(bb, value)) {
-            analysisType(bb, valueObj).registerAsInHeap();
+            bb.markTypeInHeap(analysisType(bb, valueObj));
             return;
         }
         if (scannedObjects.putAndAcquire(valueObj) == null) {

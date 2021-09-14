@@ -316,7 +316,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         registerAsUnsafeAccessed(DefaultUnsafePartition.get());
     }
 
-    public void registerAsUnsafeAccessed(UnsafePartitionKind partitionKind) {
+    public boolean registerAsUnsafeAccessed(UnsafePartitionKind partitionKind) {
+        registerAsAccessed();
         /*
          * A field can potentially be registered as unsafe accessed multiple times. This is
          * especially true for the Graal nodes because FieldsOffsetsFeature.registerFields iterates
@@ -326,7 +327,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
          * only register fields as unsafe accessed with their declaring type once.
          */
 
-        if (isUnsafeAccessedUpdater.getAndSet(this, 1) != 1) {
+        if (AtomicUtils.atomicMark(this, isUnsafeAccessedUpdater)) {
             /*
              * The atomic updater ensures that the field is registered as unsafe accessed with its
              * declaring class only once. However, at the end of this call the registration might
@@ -345,8 +346,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                 AnalysisType declaringType = getDeclaringClass();
                 declaringType.registerUnsafeAccessedField(this, partitionKind);
             }
+            return true;
         }
         notifyUpdateAccessInfo();
+        return false;
     }
 
     public boolean isUnsafeAccessed() {

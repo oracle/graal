@@ -376,6 +376,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk.localization=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED',
+                '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions',
                 '-H:+StackTrace'] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
@@ -2356,7 +2357,7 @@ class ConsoleBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             mx.abort("Must specify exactly one benchmark to run.")
         elif benchmarks[0] not in self.benchmarkList(bmSuiteArgs):
             mx.abort("The specified benchmark doesn't exist. Possible values are: " + ", ".join(self.benchmarkList(bmSuiteArgs)))
-        vmArgs = self.runArgs(bmSuiteArgs)
+        vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         appArgs = self.appArgs(benchmarks[0])
         return vmArgs + self.classpathAndMainClass(benchmarks[0]) + runArgs + appArgs

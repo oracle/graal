@@ -178,13 +178,13 @@ public final class StatisticsPrinter {
             /*- Type check stats are only available if points-to analysis is on. */
             return new long[4];
         }
-        PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
+        PointsToAnalysis pta = (PointsToAnalysis) bb;
         long totalFilters = 0;
         long totalRemovableFilters = 0;
         long appTotalFilters = 0;
         long appTotalRemovableFilters = 0;
 
-        for (AnalysisMethod method : pointsToAnalysis.getUniverse().getMethods()) {
+        for (AnalysisMethod method : pta.getUniverse().getMethods()) {
 
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
@@ -199,8 +199,8 @@ public final class StatisticsPrinter {
                     totalFilters++;
                     InstanceOfTypeFlow originalInstanceOf = cursor.getValue();
 
-                    boolean isSaturated = methodFlow.isSaturated(pointsToAnalysis, originalInstanceOf);
-                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pointsToAnalysis, originalInstanceOf);
+                    boolean isSaturated = methodFlow.isSaturated(pta, originalInstanceOf);
+                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pta, originalInstanceOf);
                     if (!isSaturated && instanceOfTypeState.typesCount() < 2) {
                         totalRemovableFilters++;
                     }

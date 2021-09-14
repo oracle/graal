@@ -194,7 +194,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     @SuppressWarnings("unused") private volatile Object overrideReachableNotifications;
 
-    AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
+    public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
         this.wrapped = javaType;
         isArray = wrapped.isArray();
@@ -471,7 +471,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return false;
     }
 
-    private void onInstantiated(UsageKind usage) {
+    protected void onInstantiated(UsageKind usage) {
         universe.onTypeInstantiated(this, usage);
         processMethodOverrides();
     }
@@ -512,15 +512,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * that the type is registered with all its super types before it is propagated by the analysis
      * through type flows.
      */
+    @SuppressWarnings("unused")
     public void registerAsAssignable(BigBang bb) {
-        TypeState typeState = TypeState.forType(((PointsToAnalysis) bb), this, true);
-        /*
-         * Register the assignable type with its super types. Skip this type, it can lead to a
-         * deadlock when this is called when the type is created.
-         */
-        forAllSuperTypes(t -> t.addAssignableType(bb, typeState), false);
-        /* Register the type as assignable to itself. */
-        this.addAssignableType(bb, typeState);
     }
 
     public boolean registerAsReachable() {
@@ -569,17 +562,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     /**
      * Iterates all super types for this type, where a super type is defined as any type that is
      * assignable from this type, feeding each of them to the consumer.
-     * 
+     *
      * For a class B extends A, the array type A[] is not a superclass of the array type B[]. So
      * there is no strict need to make A[] reachable when B[] is reachable. But it turns out that
      * this is puzzling for users, and there are frameworks that instantiate such arrays
      * programmatically using Array.newInstance(). To reduce the amount of manual configuration that
      * is necessary, we mark all array types of the elemental supertypes and superinterfaces also as
      * reachable.
-     * 
+     *
      * Moreover, even if B extends A doesn't imply that B[] extends A[] it does imply that
      * A[].isAssignableFrom(B[]).
-     * 
+     *
      * NOTE: This method doesn't guarantee that a super type will only be processed once. For
      * example when java.lang.Class is processed its interface java.lang.reflect.AnnotatedElement is
      * reachable directly, but also through java.lang.GenericDeclaration, so it will be processed
@@ -589,7 +582,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         forAllSuperTypes(superTypeConsumer, true);
     }
 
-    private void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer, boolean includeThisType) {
+    protected void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer, boolean includeThisType) {
         forAllSuperTypes(elementalType, dimension, includeThisType, superTypeConsumer);
         for (int i = 0; i < dimension; i++) {
             forAllSuperTypes(this, i, false, superTypeConsumer);
@@ -612,7 +605,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         forAllSuperTypes(elementType.getSuperclass(), arrayDimension, true, superTypeConsumer);
     }
 
-    private synchronized void addAssignableType(BigBang bb, TypeState typeState) {
+    protected synchronized void addAssignableType(BigBang bb, TypeState typeState) {
         assignableTypesState = TypeState.forUnion(((PointsToAnalysis) bb), assignableTypesState, typeState);
         assignableTypesNonNullState = assignableTypesState.forNonNull(((PointsToAnalysis) bb));
     }
@@ -922,6 +915,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     private void addSubType(AnalysisType subType) {
+        assert !this.subTypes.contains(subType) : "Tried to add a " + subType + " which is already registered";
         this.subTypes.add(subType);
     }
 

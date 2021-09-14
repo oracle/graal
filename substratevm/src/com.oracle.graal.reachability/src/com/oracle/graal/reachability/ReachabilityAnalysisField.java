@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
+package com.oracle.graal.reachability;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-/**
- * Extension of StaticAnalysisEngine providing access to more svm specific methods.
- */
-public interface Inflation extends BigBang {
+public class ReachabilityAnalysisField extends AnalysisField {
 
-    @Override
-    SVMHost getHostVM();
-
-    @Override
-    HostedProviders getProviders();
-
-    AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor();
-
-    @Override
-    SubstrateReplacements getReplacements();
-
-    @Override
-    ConstantReflectionProvider getConstantReflectionProvider();
+    public ReachabilityAnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
+        super(universe, wrappedField);
+    }
 }

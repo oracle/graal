@@ -108,6 +108,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
@@ -434,7 +435,8 @@ public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeatur
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        DebugContext debug = impl.getBigBang().getDebug();
+        BigBang bb = impl.getBigBang();
+        DebugContext debug = bb.getDebug();
 
         // Services that will not be loaded if native-image is run
         // with -XX:-UseJVMCICompiler.
@@ -482,7 +484,7 @@ public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeatur
             foreignCalls.lookupForeignCall(stub.getLinkage().getDescriptor());
         }
 
-        hotSpotSubstrateReplacements.encode(impl.getBigBang().getOptions());
+        hotSpotSubstrateReplacements.encode(bb.getOptions());
         if (!RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SnippetParameterInfo.class)) {
             // Clear the saved names if assertions aren't enabled
             hotSpotSubstrateReplacements.clearSnippetParameterNames();
@@ -490,7 +492,7 @@ public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeatur
         // Mark all the Node classes as allocated so they are available during graph decoding.
         EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
-            impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsInHeap();
+            bb.markTypeInHeap(impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()));
         }
     }
 

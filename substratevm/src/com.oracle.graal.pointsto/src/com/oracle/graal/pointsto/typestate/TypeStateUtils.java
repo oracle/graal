@@ -30,11 +30,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
+import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -443,10 +445,18 @@ public class TypeStateUtils {
         return typesBitSet;
     }
 
-    public static boolean closeToAllInstantiated(PointsToAnalysis bb, TypeState state) {
-        if (state.typesCount() > 200) {
-            MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypes();
-            return state.typesCount() * 100L / allInstState.typesCount() > 75;
+    public static boolean closeToAllInstantiated(BigBang bb, TypeState state) {
+        return closeToAllInstantiated(bb, state.typesCount());
+    }
+
+    public static boolean closeToAllInstantiated(BigBang bb, List<AnalysisType> state) {
+        return closeToAllInstantiated(bb, state.size());
+    }
+
+    private static boolean closeToAllInstantiated(BigBang bb, int typeCount) {
+        if (typeCount > 200) {
+            int allInstCount = (int) StreamSupport.stream(bb.getAllInstantiatedTypes().spliterator(), false).count();
+            return typeCount * 100L / allInstCount > 75;
         }
         return false;
     }
