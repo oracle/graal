@@ -96,6 +96,8 @@ final class ServiceWatcher {
                     StandardWatchEventKinds.ENTRY_DELETE,
                     StandardWatchEventKinds.OVERFLOW};
 
+    private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+
     private final Map<String, Set<String>> services = new HashMap<>(4);
     private WatcherThread serviceWatcherThread;
     private URLWatcher urlWatcher;
@@ -593,9 +595,7 @@ final class ServiceWatcher {
 
         private void detectChange(Path path) {
             ServiceWatcher.State state = watchActions.get(path);
-            byte[] existingChecksum = state.getChecksum();
-            byte[] newChecksum = state.updateChecksum(path);
-            if (!MessageDigest.isEqual(existingChecksum, newChecksum)) {
+            if (state.hasChanged(path)) {
                 try {
                     state.getAction().run();
                 } catch (Throwable t) {
@@ -638,7 +638,7 @@ final class ServiceWatcher {
             System.err.println("[HotSwap API]: unable to calculate checksum for watched resource " + resourcePath);
             // Checkstyle: resume warning message from guest code
         }
-        return new byte[]{-1};
+        return EMPTY_BYTE_ARRAY;
     }
 
     private static final class State {
@@ -650,16 +650,17 @@ final class ServiceWatcher {
             this.action = action;
         }
 
-        public byte[] updateChecksum(Path resourcePath) {
-            return checksum = calculateChecksum(resourcePath);
-        }
-
-        public byte[] getChecksum() {
-            return checksum;
-        }
-
         public Runnable getAction() {
             return action;
+        }
+
+        public boolean hasChanged(Path path) {
+            byte[] currentChecksum = calculateChecksum(path);
+            if (!MessageDigest.isEqual(currentChecksum, checksum)) {
+                checksum = currentChecksum;
+                return true;
+            }
+            return false;
         }
     }
 
