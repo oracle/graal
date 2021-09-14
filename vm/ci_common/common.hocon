@@ -354,7 +354,7 @@ deploy_graalvm_linux_amd64: {
     ${mx_vm_common} ${vm_profiles} [build]
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-    [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
   timelimit: "1:30:00"
@@ -426,7 +426,7 @@ deploy_graalvm_plus_ruby: {
     ${mx_vm_common} ${vm_profiles} [build]
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-    [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
   timelimit: "1:45:00"
