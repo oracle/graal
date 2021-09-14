@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -119,6 +121,13 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
             return false;
         }
         if (GuardedAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+            return false;
+        }
+        if (GuardedAnnotationAccess.isAnnotationPresent(callee, Fold.class) || GuardedAnnotationAccess.isAnnotationPresent(callee, NodeIntrinsic.class)) {
+            /*
+             * We should never see a call to such a method. But if we do, do not inline them
+             * otherwise we miss the opportunity later to report it as an error.
+             */
             return false;
         }
         if (GuardedAnnotationAccess.isAnnotationPresent(callee, RestrictHeapAccess.class)) {
