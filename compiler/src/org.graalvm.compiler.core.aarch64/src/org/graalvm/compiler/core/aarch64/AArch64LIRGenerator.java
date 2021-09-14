@@ -539,7 +539,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     protected JavaConstant zapValueForKind(PlatformKind kind) {
         long dead = 0xDEADDEADDEADDEADL;
-        switch ((AArch64Kind) kind) {
+        AArch64Kind aarch64Kind = (AArch64Kind) kind;
+        switch (aarch64Kind) {
             case BYTE:
                 return JavaConstant.forByte((byte) dead);
             case WORD:
@@ -548,12 +549,18 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                 return JavaConstant.forInt((int) dead);
             case QWORD:
                 return JavaConstant.forLong(dead);
-            case SINGLE:
-                return JavaConstant.forFloat(Float.intBitsToFloat((int) dead));
-            case DOUBLE:
-                return JavaConstant.forDouble(Double.longBitsToDouble(dead));
             default:
-                throw GraalError.shouldNotReachHere();
+                /*
+                 * Floating Point and SIMD values are assigned either a float or a double constant
+                 * based on their size. Note that in the case of a 16 byte SIMD value, such as
+                 * V128_Byte, only the bottom 8 bytes are zapped.
+                 */
+                assert aarch64Kind.isSIMD();
+                if (aarch64Kind.getSizeInBytes() <= AArch64Kind.SINGLE.getSizeInBytes()) {
+                    return JavaConstant.forFloat(Float.intBitsToFloat((int) dead));
+                } else {
+                    return JavaConstant.forDouble(Double.longBitsToDouble(dead));
+                }
         }
     }
 

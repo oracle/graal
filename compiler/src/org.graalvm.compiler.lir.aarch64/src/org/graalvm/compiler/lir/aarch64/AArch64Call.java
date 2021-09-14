@@ -25,7 +25,6 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
@@ -180,9 +179,9 @@ public class AArch64Call {
 
         @Override
         protected void emitCall(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            // We can use any scratch register we want, since we know that they have been saved
-            // before calling.
-            directCall(crb, masm, callTarget, r8, state, label);
+            try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
+                directCall(crb, masm, callTarget, scratch.getRegister(), state, label);
+            }
         }
     }
 

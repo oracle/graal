@@ -481,7 +481,7 @@ public final class Deoptimizer {
         NoDeoptStub,
 
         /**
-         * Custom prologue: rescue all of the architecture's return registers into the
+         * Custom prologue: save all of the architecture's return registers into the
          * {@link DeoptimizedFrame}.
          */
         EntryStub,
@@ -489,7 +489,7 @@ public final class Deoptimizer {
         /**
          * Custom prologue: set the stack pointer to the first method parameter.
          *
-         * Custom epilogue:restore all of the architecture's return registers from the
+         * Custom epilogue: restore all of the architecture's return registers from the
          * {@link DeoptimizedFrame}.
          */
         ExitStub
