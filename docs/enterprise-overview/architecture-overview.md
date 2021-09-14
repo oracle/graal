@@ -72,7 +72,7 @@ The following are the certified platforms for GraalVM Enterprise 21:
 | Oracle Linux 	| 6, 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](/getting-started/installation-linux/) 	|
 | Red Hat Enterprise Linux(RHEL) 	| 6, 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](/getting-started/installation-linux/) 	|
 | macOS 	| 10.13 (High Sierra), 10.14 (Mojave)	| x86 64-bit 	| [Installation Guide for macOS](/getting-started/installation-macos/) 	|
-| Microsoft Windows 	| Server 2016, 2019	| x64 (64-bit) 	| [Installation Guide for Windows](/getting-started/installation-windows/) 	|
+| Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](/getting-started/installation-windows/) 	|
 
 > Note: GraalVM Enterprise is certified on Oracle Linux 6 only for x86 64-bit architecture, but not on Oracle Linux 6 ARM 64-bit.
 
