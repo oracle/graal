@@ -22,81 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.reachability;
+package com.oracle.graal.pointsto;
 
-import com.oracle.graal.pointsto.AbstractReachabilityAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import org.graalvm.compiler.options.OptionValues;
 
-import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 import java.util.concurrent.ForkJoinPool;
 
-public class ReachabilityAnalysis extends AbstractReachabilityAnalysis {
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
-    public ReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
+public abstract class AbstractReachabilityAnalysis extends AbstractAnalysisEngine {
+    public AbstractReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures) {
         super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures);
     }
 
     @Override
-    public void checkUserLimitations() {
-
-    }
-
-    @Override
-    public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
-        return null;
-    }
-
-    @Override
-    public AnalysisType addRootField(Class<?> clazz, String fieldName) {
-        return null;
-    }
-
-    @Override
-    public AnalysisMethod addRootMethod(AnalysisMethod aMethod) {
-        return null;
-    }
-
-    @Override
-    public AnalysisMethod addRootMethod(Executable method) {
-        return null;
+    public AnalysisType addRootClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
+        AnalysisType type = metaAccess.lookupJavaType(clazz);
+        type.registerAsReachable();
+        return addRootClass(type, addFields, addArrayClass);
     }
 
     @Override
     public AnalysisMethod addRootMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
-        return null;
-    }
-
-    @Override
-    public boolean finish() throws InterruptedException {
-        return false;
-    }
-
-    @Override
-    public void cleanupAfterAnalysis() {
-
-    }
-
-    @Override
-    public void forceUnsafeUpdate(AnalysisField field) {
-
-    }
-
-    @Override
-    public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
-
-    }
-
-    @Override
-    public TypeState getAllSynchronizedTypeState() {
-        return null;
+        try {
+            Method method = clazz.getDeclaredMethod(methodName, parameterTypes);
+            return addRootMethod(method);
+        } catch (NoSuchMethodException ex) {
+            throw shouldNotReachHere(ex);
+        }
     }
 }

@@ -50,6 +50,8 @@ public interface ReachabilityAnalysis {
      */
     AnalysisType addRootClass(Class<?> clazz, boolean addFields, boolean addArrayClass);
 
+    AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass);
+
     /**
      * Marks given field as accessed.
      */

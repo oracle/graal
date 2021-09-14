@@ -485,7 +485,8 @@ public abstract class PointsToAnalysis implements BigBang {
     }
 
     @SuppressWarnings({"try"})
-    private AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
+    @Override
+    public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         try (Indent indent = debug.logAndIndent("add root class %s", type.getName())) {
             for (AnalysisField field : type.getInstanceFields(false)) {
                 if (addFields) {

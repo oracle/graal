@@ -24,13 +24,12 @@
  */
 package com.oracle.graal.pointsto;
 
-import com.oracle.graal.pointsto.AnalysisPolicy;
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.HeapScanningPolicy;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -53,7 +52,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final Boolean extendedAsserts;
     private final Timer processFeaturesTimer;
     private final Timer analysisTimer;
-    private final AnalysisMetaAccess metaAccess;
+    protected final AnalysisMetaAccess metaAccess;
     private final HostedProviders providers;
     private final HostVM hostVM;
     private final Runnable heartbeatCallback;
@@ -85,6 +84,13 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
                         : HeapScanningPolicy.skipTypes(skippedHeapTypes());
+    }
+
+    @Override
+    public void cleanupAfterAnalysis() {
+        universe.getTypes().forEach(AnalysisType::cleanupAfterAnalysis);
+        universe.getFields().forEach(AnalysisField::cleanupAfterAnalysis);
+        universe.getMethods().forEach(AnalysisMethod::cleanupAfterAnalysis);
     }
 
     @Override
