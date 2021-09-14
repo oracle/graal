@@ -414,7 +414,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      */
     public void mov(int size, Register dst, Register src) {
-        if (dst.equals(sp) || src.equals(sp)) {
+        if (dst.equals(src)) {
+            /* No action necessary */
+        } else if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);
         } else {
             orr(size, dst, zr, src);
@@ -1238,40 +1240,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 % src2. Signed.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or the stackpointer.
-     * @param n numerator. General purpose register. May not be null or the stackpointer.
-     * @param d denominator. General purpose register. Divisor May not be null or the stackpointer.
-     */
-    public void rem(int size, Register dst, Register n, Register d) {
-        assert (!dst.equals(sp) && !n.equals(sp) && !d.equals(sp));
-        // There is no irem or similar instruction. Instead we use the relation:
-        // n % d = n - Floor(n / d) * d if nd >= 0
-        // n % d = n - Ceil(n / d) * d else
-        // Which is equivalent to n - TruncatingDivision(n, d) * d
-        super.sdiv(size, dst, n, d);
-        super.msub(size, dst, dst, d, n);
-    }
-
-    /**
-     * dst = src1 % src2. Unsigned.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or the stackpointer.
-     * @param n numerator. General purpose register. May not be null or the stackpointer.
-     * @param d denominator. General purpose register. Divisor May not be null or the stackpointer.
-     */
-    public void urem(int size, Register dst, Register n, Register d) {
-        // There is no irem or similar instruction. Instead we use the relation:
-        // n % d = n - Floor(n / d) * d
-        // Which is equivalent to n - TruncatingDivision(n, d) * d
-        super.udiv(size, dst, n, d);
-        super.msub(size, dst, dst, d, n);
-    }
-
-    /**
      * Compare instructions are add/subtract instructions and so support unsigned 12-bit immediate
      * values (optionally left-shifted by 12).
      *
@@ -1349,12 +1317,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
      * @param src general purpose register. May not be null or stackpointer.
-     * @param shift amount by which src is rotated. The value depends on the instruction variant, it
-     *            can be 0 to (size - 1).
+     * @param shiftAmt amount by which src is rotated. The value depends on the instruction variant,
+     *            it can be 0 to (size - 1).
      */
-    public void ror(int size, Register dst, Register src, int shift) {
-        assert (0 <= shift && shift <= (size - 1));
-        super.extr(size, dst, src, src, shift);
+    public void ror(int size, Register dst, Register src, long shiftAmt) {
+        int clampedShift = clampShiftAmt(size, shiftAmt);
+        if (clampedShift != 0 || !dst.equals(src)) {
+            super.extr(size, dst, src, src, clampedShift);
+        }
     }
 
     /**
@@ -1648,54 +1618,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void tst(int size, Register x, Register y) {
         ands(size, zr, x, y);
-    }
-
-    /**
-     * Sets overflow flag according to result of x * y.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stack-pointer.
-     * @param x general purpose register. May not be null or stackpointer.
-     * @param y general purpose register. May not be null or stackpointer.
-     */
-    public void mulvs(int size, Register dst, Register x, Register y) {
-        try (ScratchRegister sc1 = getScratchRegister();
-                        ScratchRegister sc2 = getScratchRegister()) {
-            switch (size) {
-                case 64: {
-                    // Be careful with registers: it's possible that x, y, and dst are the same
-                    // register.
-                    Register temp1 = sc1.getRegister();
-                    Register temp2 = sc2.getRegister();
-                    mul(64, temp1, x, y);     // Result bits 0..63
-                    smulh(64, temp2, x, y);  // Result bits 64..127
-                    // Top is pure sign ext
-                    subs(64, zr, temp2, temp1, ShiftType.ASR, 63);
-                    // Copy all 64 bits of the result into dst
-                    mov(64, dst, temp1);
-                    mov(temp1, 0x80000000);
-                    // Develop 0 (EQ), or 0x80000000 (NE)
-                    csel(32, temp1, temp1, zr, ConditionFlag.NE);
-                    compare(32, temp1, 1);
-                    // 0x80000000 - 1 => VS
-                    break;
-                }
-                case 32: {
-                    Register temp1 = sc1.getRegister();
-                    smaddl(temp1, x, y, zr);
-                    // Copy the low 32 bits of the result into dst
-                    mov(32, dst, temp1);
-                    subs(64, zr, temp1, temp1, ExtendType.SXTW, 0);
-                    // NE => overflow
-                    mov(temp1, 0x80000000);
-                    // Develop 0 (EQ), or 0x80000000 (NE)
-                    csel(32, temp1, temp1, zr, ConditionFlag.NE);
-                    compare(32, temp1, 1);
-                    // 0x80000000 - 1 => VS
-                    break;
-                }
-            }
-        }
     }
 
     /**
