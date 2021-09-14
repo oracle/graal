@@ -23,21 +23,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.phases;
 
-import com.oracle.svm.common.phases.AbstractTrustedInterfaceTypePlugin;
-import com.oracle.svm.core.meta.SharedType;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
+package com.oracle.graal.pointsto.standalone.test;
 
-public final class TrustedInterfaceTypePlugin extends AbstractTrustedInterfaceTypePlugin {
+public class StandaloneInvokeDynamicCase {
+    public static void main(String[] args) {
+        String s = "Hello" + args[0];
+        foo(s);
+    }
 
-    @Override
-    protected SharedType castType(JavaType declaredType) {
-        if (declaredType.getJavaKind() == JavaKind.Object && declaredType instanceof SharedType) {
-            return (SharedType) declaredType;
-        } else {
-            return null;
-        }
+    @SuppressWarnings("unused")
+    private static void foo(String s) {
+
     }
 }
