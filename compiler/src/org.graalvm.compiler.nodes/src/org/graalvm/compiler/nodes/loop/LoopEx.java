@@ -566,4 +566,8 @@ public class LoopEx {
         }
         return true;
     }
+
+    public boolean canBecomeLimitTestAfterFloatingReads(@SuppressWarnings("unused") IfNode ifNode) {
+        return false;
+    }
 }
