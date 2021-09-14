@@ -116,6 +116,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk11_on_demand_bench_linux   : base.jdk11  + self.onDemandBench + self.x52,
   jdk11_on_demand_bench_darwin  : base.jdk11  + self.onDemandBench + self.darwin,
   jdk11_on_demand_bench_windows : base.jdk11  + self.onDemandBench + base.windows_11,
+  jdk17_gate_linux              : base.jdk17  + self.gate          + self.linux,
+  jdk17_gate_darwin             : base.jdk17  + self.gate          + self.darwin,
+  jdk17_gate_windows            : base.jdk17  + self.gate          + base.windows_17,
 
   // shared snippets
   eclipse: {
