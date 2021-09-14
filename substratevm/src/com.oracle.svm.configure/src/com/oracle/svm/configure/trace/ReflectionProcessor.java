@@ -73,7 +73,7 @@ class ReflectionProcessor extends AbstractProcessor {
     @SuppressWarnings("fallthrough")
     public void processEntry(Map<String, ?> entry) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
-        ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult) {
             return;
         }
@@ -257,7 +257,7 @@ class ReflectionProcessor extends AbstractProcessor {
         String qualifiedClass = descriptor.substring(0, classend);
         String methodName = descriptor.substring(classend + 1, sigbegin);
         String signature = descriptor.substring(sigbegin);
-        configuration.getOrCreateType(ConfigurationCondition.objectReachable(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberKind.DECLARED);
+        configuration.getOrCreateType(ConfigurationCondition.alwaysTrue(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberKind.DECLARED);
     }
 
     private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass) {
@@ -268,7 +268,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 return;
             }
         }
-        proxyConfiguration.add(ConfigurationCondition.objectReachable(), interfaces);
+        proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
     }
 
     private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass) {
@@ -285,6 +285,6 @@ class ReflectionProcessor extends AbstractProcessor {
         List<String> interfaces = new ArrayList<>();
         interfaces.addAll(checkedInterfaces);
         interfaces.addAll(uncheckedInterfaces);
-        proxyConfiguration.add(ConfigurationCondition.objectReachable(), interfaces);
+        proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
     }
 }

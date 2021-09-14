@@ -176,33 +176,33 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
     private static void registerColorProfiles(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "sun.java2d.cmm.profiles.*");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "sun.java2d.cmm.profiles.*");
     }
 
     private static void registerFlavorMapProps(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "sun.datatransfer.resources.flavormap.properties");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "sun.datatransfer.resources.flavormap.properties");
     }
 
     private static void registerRTFReaderCharsets(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.text.rtf.charsets.*");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.rtf.charsets.*");
     }
 
     private static void registerOceanThemeIcons(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.plaf.metal.icons.*");
-        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.plaf.basic.icons.*");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.plaf.metal.icons.*");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.plaf.basic.icons.*");
     }
 
     private static void registerHtml32bdtd(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.text.html.parser.html32.bdtd");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.html.parser.html32.bdtd");
     }
 
     private static void registerDefaultCSS(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources(ConfigurationCondition.objectReachable(), "javax.swing.text.html.default.css");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.html.default.css");
     }
 
     private static NativeLibraries getNativeLibraries(DuringAnalysisAccess access) {

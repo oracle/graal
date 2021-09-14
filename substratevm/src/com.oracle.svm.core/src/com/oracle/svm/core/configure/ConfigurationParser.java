@@ -156,7 +156,7 @@ public abstract class ConfigurationParser {
                 warnOrFail("'" + TYPE_REACHABLE_KEY + "' should be of type string");
             }
         }
-        return ConfigurationCondition.objectReachable();
+        return ConfigurationCondition.alwaysTrue();
     }
 
 }

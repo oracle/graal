@@ -92,7 +92,7 @@ public class LocalizationSupport {
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
         if (bundle instanceof PropertyResourceBundle) {
             String withLocale = control.toBundleName(bundleName, locale);
-            ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.objectReachable(), withLocale.replace('.', '/') + "\\.properties");
+            ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.alwaysTrue(), withLocale.replace('.', '/') + "\\.properties");
         } else {
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());

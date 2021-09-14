@@ -69,7 +69,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.objectReachable(), classes);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), classes);
     }
 
     /**
@@ -80,7 +80,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Executable... methods) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.objectReachable(), methods);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), methods);
     }
 
     /**
@@ -91,7 +91,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.objectReachable(), false, fields);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, fields);
     }
 
     /**

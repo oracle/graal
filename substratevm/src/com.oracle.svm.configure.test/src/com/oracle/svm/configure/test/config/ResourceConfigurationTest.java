@@ -45,7 +45,7 @@ public class ResourceConfigurationTest {
     @Test
     public void anyResourceMatches() {
         ResourceConfiguration rc = new ResourceConfiguration();
-        ConfigurationCondition defaultCond = ConfigurationCondition.objectReachable();
+        ConfigurationCondition defaultCond = ConfigurationCondition.alwaysTrue();
         rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
 
         Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource0.txt"));
@@ -64,7 +64,7 @@ public class ResourceConfigurationTest {
     @Test
     public void printJson() {
         ResourceConfiguration rc = new ResourceConfiguration();
-        ConfigurationCondition defaultCond = ConfigurationCondition.objectReachable();
+        ConfigurationCondition defaultCond = ConfigurationCondition.alwaysTrue();
         rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
         rc.ignoreResourcePattern(defaultCond, ".*/Resource2.txt$");
         PipedWriter pw = new PipedWriter();

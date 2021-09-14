@@ -64,7 +64,7 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
         for (Object proxyConfigurationObject : proxyConfiguration) {
             if (proxyConfigurationObject instanceof List) {
                 foundInterfaceLists = true;
-                parseInterfaceList(ConfigurationCondition.objectReachable(), asList(proxyConfigurationObject, "<shouldn't reach here>"));
+                parseInterfaceList(ConfigurationCondition.alwaysTrue(), asList(proxyConfigurationObject, "<shouldn't reach here>"));
             } else if (proxyConfigurationObject instanceof Map) {
                 foundProxyConfigurationObjects = true;
                 parseWithConditionalConfig(asMap(proxyConfigurationObject, "<shouldn't reach here>"));

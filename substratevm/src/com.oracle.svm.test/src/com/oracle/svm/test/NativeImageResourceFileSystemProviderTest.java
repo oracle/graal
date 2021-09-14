@@ -80,8 +80,8 @@ public class NativeImageResourceFileSystemProviderTest {
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             ResourcesRegistry registry = ImageSingletons.lookup(ResourcesRegistry.class);
             // Remove leading / for the resource patterns
-            registry.addResources(ConfigurationCondition.objectReachable(), RESOURCE_FILE_1.substring(1));
-            registry.addResources(ConfigurationCondition.objectReachable(), RESOURCE_FILE_2.substring(1));
+            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_1.substring(1));
+            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_2.substring(1));
         }
     }
 
