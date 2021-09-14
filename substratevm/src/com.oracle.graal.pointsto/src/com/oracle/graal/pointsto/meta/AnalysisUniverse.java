@@ -606,12 +606,12 @@ public class AnalysisUniverse implements Universe {
     private void collectMethodImplementations() {
         for (AnalysisMethod method : methods.values()) {
 
-            Set<AnalysisMethod> implementations = getMethodImplementations(bb, method);
+            Set<AnalysisMethod> implementations = getMethodImplementations(bb, method, false);
             method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
         }
     }
 
-    public static Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method) {
+    public static Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method, boolean includeInlinedMethods) {
         Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
             if (method.isImplementationInvoked()) {
@@ -619,7 +619,7 @@ public class AnalysisUniverse implements Universe {
             }
         } else {
             try {
-                collectMethodImplementations(method, method.getDeclaringClass(), implementations);
+                collectMethodImplementations(method, method.getDeclaringClass(), implementations, includeInlinedMethods);
             } catch (UnsupportedFeatureException ex) {
                 String message = String.format("Error while collecting implementations of %s : %s%n", method.format("%H.%n(%p)"), ex.getMessage());
                 bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, null, ex.getCause());
@@ -628,11 +628,11 @@ public class AnalysisUniverse implements Universe {
         return implementations;
     }
 
-    private static boolean collectMethodImplementations(AnalysisMethod method, AnalysisType holder, Set<AnalysisMethod> implementations) {
+    private static boolean collectMethodImplementations(AnalysisMethod method, AnalysisType holder, Set<AnalysisMethod> implementations, boolean includeInlinedMethods) {
         assert holder.subTypes != null : holder;
         boolean holderOrSubtypeInstantiated = holder.isInstantiated();
         for (AnalysisType subClass : holder.subTypes) {
-            holderOrSubtypeInstantiated |= collectMethodImplementations(method, subClass, implementations);
+            holderOrSubtypeInstantiated |= collectMethodImplementations(method, subClass, implementations, includeInlinedMethods);
         }
 
         /*
@@ -646,7 +646,7 @@ public class AnalysisUniverse implements Universe {
                  * aResolved == null means that the method in the base class was called, but never
                  * with this holder.
                  */
-                if (aResolved.isImplementationInvoked()) {
+                if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
                     implementations.add(aResolved);
                 }
             }
