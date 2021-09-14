@@ -119,19 +119,13 @@ public final class LLVMContext {
     @CompilationFinal(dimensions = 1) private ContextExtension[] contextExtensions;
     @CompilationFinal private Env env;
 
-    // The first globalscope is for traversing and finding symbols
+    // The head globalscope is for finding symbols
     private LLVMScopeChain headGlobalScopeChain;
-    // The last globalscope is for adding symbols
+    // Symbols are added to the tail globalscope
     private LLVMScopeChain tailGlobalScopeChain;
-    // the previous of first is always null, and the next of last is always null.
-
-    // private final ArrayList<LLVMLocalScope> localScopes;
 
     private final DynamicLinkChain dynamicLinkChain;
     private final DynamicLinkChain dynamicLinkChainForScopes;
-
-    // Change this to a map, library id -> destructorCallTarget
-    // private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead

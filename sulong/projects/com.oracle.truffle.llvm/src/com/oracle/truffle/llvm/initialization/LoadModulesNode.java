@@ -96,7 +96,6 @@ public final class LoadModulesNode extends LLVMRootNode {
     @Child LLVMStatementNode initContext;
 
     @Child InitializeSymbolsNode initSymbols;
-    // @Child InitializeScopeNode initScopes;
     @Child InitializeExternalNode initExternals;
     @Child InitializeGlobalNode initGlobals;
     @Child InitializeOverwriteNode initOverwrite;
@@ -142,7 +141,6 @@ public final class LoadModulesNode extends LLVMRootNode {
         this.initContext = null;
         String moduleName = parserResult.getRuntime().getLibraryName();
         this.initSymbols = new InitializeSymbolsNode(parserResult, lazyParsing, isInternalSulongLibrary, moduleName);
-        // this.initScopes = new InitializeScopeNode(parserRuntime);
         this.initExternals = new InitializeExternalNode(parserResult);
         this.initGlobals = new InitializeGlobalNode(parserResult, moduleName);
         this.initOverwrite = new InitializeOverwriteNode(parserResult);
@@ -237,6 +235,16 @@ public final class LoadModulesNode extends LLVMRootNode {
                 localOrGlobal = (RTLDFlags) frame.getArguments()[0];
             }
 
+            /*
+             * The arguments in the frames for every loading phase include: 1) The current loading
+             * phase. 2) The visited set. The scope building, the external symbol, and overwriting
+             * symbol phases all require an additional argument: 3) The RTLD flag, if the library is
+             * loaded with RTLD_LOCAL or RTLD_GLOBAL. The scope building phase also have: 4) The
+             * tail of the linked structure for local scope. 5) The que of library dependencies. 6)
+             * The tail of the linked structure for returning result scope. The external symbol and
+             * overwriting symbol phases require instead: 4) The head of the linked structure for
+             * local scope.
+             */
             if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                 phase = (LLVMLoadingPhase) frame.getArguments()[0];
                 visited = (BitSet) frame.getArguments()[1];
@@ -257,9 +265,9 @@ public final class LoadModulesNode extends LLVMRootNode {
             } else if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                 // create first and last of the scope chain.
                 phase = LLVMLoadingPhase.ALL;
-                headResultScopeChain = createLocalScopeChain(bitcodeID, parserRuntime.getFileScope());
+                headResultScopeChain = new LLVMScopeChain(bitcodeID, parserRuntime.getFileScope());
                 tailResultScopeChain = headResultScopeChain;
-                headLocalScopeChain = createLocalScopeChain(bitcodeID, parserRuntime.getPublicFileScope());
+                headLocalScopeChain = new LLVMScopeChain(bitcodeID, parserRuntime.getPublicFileScope());
                 tailLocalScopeChain = headLocalScopeChain;
                 visited = createBitset();
                 que = new ArrayDeque<>();
@@ -275,19 +283,19 @@ public final class LoadModulesNode extends LLVMRootNode {
                 if (!visited.get(id)) {
                     visited.set(id);
                     if (LLVMLoadingPhase.ALL.isActive(phase)) {
-                        context.addGlobalScope(createLocalScopeChain(bitcodeID, parserRuntime.getPublicFileScope()));
+                        context.addGlobalScope(new LLVMScopeChain(bitcodeID, parserRuntime.getPublicFileScope()));
                     } else {
-                        LLVMScopeChain currentLocalScopeChain = createLocalScopeChain(bitcodeID, parserRuntime.getPublicFileScope());
-                        LLVMScopeChain currentResultScopeChain = createLocalScopeChain(bitcodeID, parserRuntime.getFileScope());
+                        LLVMScopeChain currentLocalScopeChain = new LLVMScopeChain(bitcodeID, parserRuntime.getPublicFileScope());
+                        LLVMScopeChain currentResultScopeChain = new LLVMScopeChain(bitcodeID, parserRuntime.getFileScope());
                         if (RTLDFlags.RTLD_OPEN_DEFAULT.isActive(localOrGlobal)) {
-                            context.addGlobalScope(createLocalScopeChain(bitcodeID, parserRuntime.getPublicFileScope()));
+                            context.addGlobalScope(new LLVMScopeChain(bitcodeID, parserRuntime.getPublicFileScope()));
                             tailLocalScopeChain.concatNextChain(currentLocalScopeChain);
                             tailResultScopeChain.concatNextChain(currentResultScopeChain);
                         } else if (RTLDFlags.RTLD_LOCAL.isActive(localOrGlobal)) {
                             tailLocalScopeChain.concatNextChain(currentLocalScopeChain);
                         } else if (RTLDFlags.RTLD_GLOBAL.isActive(localOrGlobal)) {
                             tailLocalScopeChain.concatNextChain(currentLocalScopeChain);
-                            context.addGlobalScope(createLocalScopeChain(bitcodeID, parserRuntime.getPublicFileScope()));
+                            context.addGlobalScope(new LLVMScopeChain(bitcodeID, parserRuntime.getPublicFileScope()));
                         } else {
                             throw new LLVMParserException(this, "Toplevel executable %s does not contain bitcode");
                         }
@@ -498,11 +506,6 @@ public final class LoadModulesNode extends LLVMRootNode {
     @TruffleBoundary
     private BitSet createBitset() {
         return new BitSet(dependencies.length);
-    }
-
-    @TruffleBoundary
-    private static LLVMScopeChain createLocalScopeChain(BitcodeID id, LLVMScope scope) {
-        return new LLVMScopeChain(id, scope);
     }
 
     /**

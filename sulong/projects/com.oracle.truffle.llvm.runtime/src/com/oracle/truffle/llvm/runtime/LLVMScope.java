@@ -39,7 +39,7 @@ import java.util.HashMap;
 
 public class LLVMScope implements TruffleObject {
 
-    private HashMap<String, LLVMSymbol> symbols;
+    private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
     private final HashMap<String, String> linkageNames;
 

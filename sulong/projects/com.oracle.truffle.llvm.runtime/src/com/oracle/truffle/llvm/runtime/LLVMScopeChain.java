@@ -235,13 +235,12 @@ public class LLVMScopeChain implements TruffleObject {
                 while (currentSize <= newIndex) {
                     newIndex = newIndex - currentSize;
                     current = current.getNext();
+                    if (current == null) {
+                        exception.enter();
+                        throw new IllegalStateException();
+                    }
                     currentSize = current.getScope().getFunctionSize();
                 }
-
-                if (currentSize == 0) {
-                    throw InvalidArrayIndexException.create(newIndex);
-                }
-
                 return current.getScope().getKey((int) newIndex);
             } else {
                 exception.enter();
