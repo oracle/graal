@@ -46,7 +46,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -55,19 +54,17 @@ import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JSONParserException;
+import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
+import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.vm.ci.meta.MetaUtil;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
@@ -83,7 +80,7 @@ public class SerializationFeature implements Feature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        SerializationTypeResolver typeResolver = new SerializationTypeResolver(imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
+        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
         serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver);
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
@@ -131,44 +128,12 @@ public class SerializationFeature implements Feature {
     }
 }
 
-final class SerializationTypeResolver {
-
-    private final ImageClassLoader classLoader;
-    private final boolean allowIncompleteClasspath;
-
-    SerializationTypeResolver(ImageClassLoader classLoader, boolean allowIncompleteClasspath) {
-        this.classLoader = classLoader;
-        this.allowIncompleteClasspath = allowIncompleteClasspath;
-    }
-
-    public Class<?> resolveType(String typeName) {
-        String name = typeName;
-        if (name.indexOf('[') != -1) {
-            /* accept "int[][]", "java.lang.String[]" */
-            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
-        }
-        TypeResult<Class<?>> typeResult = classLoader.findClass(name);
-        if (!typeResult.isPresent()) {
-            handleError("Could not resolve " + name + " for serialization configuration.");
-        }
-        return typeResult.get();
-    }
-
-    private void handleError(String message) {
-        if (allowIncompleteClasspath) {
-            println("Warning: " + message);
-        } else {
-            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath");
-        }
-    }
-}
-
 final class SerializationDenyRegistry implements RuntimeSerializationSupport {
 
     private final Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
-    private final SerializationTypeResolver typeResolver;
+    private final ConfigurationTypeResolver typeResolver;
 
-    SerializationDenyRegistry(SerializationTypeResolver typeResolver) {
+    SerializationDenyRegistry(ConfigurationTypeResolver typeResolver) {
         this.typeResolver = typeResolver;
     }
 
@@ -212,11 +177,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     private final SerializationSupport serializationSupport;
     private final SerializationDenyRegistry denyRegistry;
-    private final SerializationTypeResolver typeResolver;
+    private final ConfigurationTypeResolver typeResolver;
 
     private boolean sealed;
 
-    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, SerializationTypeResolver typeResolver) {
+    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver) {
         try {
             Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
             Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
@@ -252,15 +217,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         abortIfSealed();
 
         Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
-        String msg = "Cannot find condition class %s.";
         if (conditionClass == null) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                // Checkstyle: stop
-                System.err.println("Warning: " + String.format(msg, condition.getTypeName()));
-                // Checkstyle: resume
-            } else {
-                throw UserError.abort(msg, condition.getTypeName());
-            }
+            return;
         }
 
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);

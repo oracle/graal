@@ -38,7 +38,7 @@ public abstract class ConditionalConfigurationRegistry {
     private final Map<String, List<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
     protected void registerConditionalConfiguration(ConfigurationCondition condition, Runnable runnable) {
-        if (ConfigurationCondition.objectReachable().equals(condition)) {
+        if (ConfigurationCondition.alwaysTrue().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
             runnable.run();
         } else {

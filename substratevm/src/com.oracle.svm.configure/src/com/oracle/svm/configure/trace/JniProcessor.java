@@ -56,7 +56,7 @@ class JniProcessor extends AbstractProcessor {
     @Override
     @SuppressWarnings("fallthrough")
     void processEntry(Map<String, ?> entry) {
-        ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;

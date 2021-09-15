@@ -29,14 +29,16 @@ import java.io.Reader;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
+
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.util.json.JSONParser;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final ResourcesRegistry registry;
 
-    public <T> ResourceConfigurationParser(ResourcesRegistry registry, boolean strictConfiguration) {
+    public ResourceConfigurationParser(ResourcesRegistry registry, boolean strictConfiguration) {
         super(strictConfiguration);
         this.registry = registry;
     }
@@ -68,35 +70,36 @@ public class ResourceConfigurationParser extends ConfigurationParser {
 
                 List<Object> includes = asList(includesObject, "Attribute 'includes' must be a list of resources");
                 for (Object object : includes) {
-                    parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'includes' list");
+                    parseStringEntry(object, "pattern", registry::addResources, "resource descriptor object", "'includes' list");
                 }
 
                 if (excludesObject != null) {
                     List<Object> excludes = asList(excludesObject, "Attribute 'excludes' must be a list of resources");
                     for (Object object : excludes) {
-                        parseEntry(object, "pattern", registry::ignoreResources, "resource descriptor object", "'excludes' list");
+                        parseStringEntry(object, "pattern", registry::ignoreResources, "resource descriptor object", "'excludes' list");
                     }
                 }
             } else { // Old format: may be deprecated in future versions
                 List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
                 for (Object object : resources) {
-                    parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
+                    parseStringEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
                 }
             }
         }
         if (bundlesObject != null) {
             List<Object> bundles = asList(bundlesObject, "Attribute 'bundles' must be a list of bundles");
             for (Object object : bundles) {
-                parseEntry(object, "name", registry::addResourceBundles, "bundle descriptor object", "'bundles' list");
+                parseStringEntry(object, "name", registry::addResourceBundles, "bundle descriptor object", "'bundles' list");
             }
         }
     }
 
-    private void parseEntry(Object data, String valueKey, Consumer<String> resourceRegistry, String expectedType, String parentType) {
+    private void parseStringEntry(Object data, String valueKey, BiConsumer<ConfigurationCondition, String> resourceRegistry, String expectedType, String parentType) {
         Map<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
-        checkAttributes(resource, "resource and resource bundle descriptor object", Collections.singleton(valueKey));
+        checkAttributes(resource, "resource and resource bundle descriptor object", Collections.singletonList(valueKey), Collections.singletonList(CONDITIONAL_KEY));
+        ConfigurationCondition condition = parseCondition(resource);
         Object valueObject = resource.get(valueKey);
         String value = asString(valueObject, valueKey);
-        resourceRegistry.accept(value);
+        resourceRegistry.accept(condition, value);
     }
 }

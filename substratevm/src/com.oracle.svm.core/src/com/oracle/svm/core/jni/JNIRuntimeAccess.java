@@ -49,11 +49,11 @@ public final class JNIRuntimeAccess {
     }
 
     public static void register(Class<?>... classes) {
-        getSupport().register(ConfigurationCondition.objectReachable(), classes);
+        getSupport().register(ConfigurationCondition.alwaysTrue(), classes);
     }
 
     public static void register(Executable... methods) {
-        getSupport().register(ConfigurationCondition.objectReachable(), methods);
+        getSupport().register(ConfigurationCondition.alwaysTrue(), methods);
     }
 
     public static void register(Field... fields) {
@@ -61,7 +61,7 @@ public final class JNIRuntimeAccess {
     }
 
     public static void register(boolean finalIsWritable, Field... fields) {
-        getSupport().register(ConfigurationCondition.objectReachable(), finalIsWritable, fields);
+        getSupport().register(ConfigurationCondition.alwaysTrue(), finalIsWritable, fields);
     }
 
     private static JNIRuntimeAccessibilitySupport getSupport() {

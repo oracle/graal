@@ -146,8 +146,8 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestExpectedMissingTypes(TypeConfiguration typeConfig) {
-        Assert.assertNull(typeConfig.get(ConfigurationCondition.objectReachable(), "FlagTestA"));
-        Assert.assertNull(typeConfig.get(ConfigurationCondition.objectReachable(), "FlagTestB"));
+        Assert.assertNull(typeConfig.get(ConfigurationCondition.alwaysTrue(), "FlagTestA"));
+        Assert.assertNull(typeConfig.get(ConfigurationCondition.alwaysTrue(), "FlagTestB"));
     }
 
     private static void doTestTypeFlags(TypeConfiguration typeConfig) {
@@ -182,26 +182,28 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestProxyConfig(ProxyConfiguration proxyConfig) {
-        Assert.assertFalse(proxyConfig.contains("testProxySeenA", "testProxySeenB", "testProxySeenC"));
-        Assert.assertTrue(proxyConfig.contains("testProxyUnseen"));
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        Assert.assertFalse(proxyConfig.contains(condition, "testProxySeenA", "testProxySeenB", "testProxySeenC"));
+        Assert.assertTrue(proxyConfig.contains(condition, "testProxyUnseen"));
     }
 
     private static void doTestResourceConfig(ResourceConfiguration resourceConfig) {
         Assert.assertFalse(resourceConfig.anyResourceMatches("seenResource.txt"));
         Assert.assertTrue(resourceConfig.anyResourceMatches("unseenResource.txt"));
 
-        Assert.assertFalse(resourceConfig.anyBundleMatches("seenBundle"));
-        Assert.assertTrue(resourceConfig.anyBundleMatches("unseenBundle"));
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        Assert.assertFalse(resourceConfig.anyBundleMatches(condition, "seenBundle"));
+        Assert.assertTrue(resourceConfig.anyBundleMatches(condition, "unseenBundle"));
     }
 
     private static void doTestSerializationConfig(SerializationConfiguration serializationConfig) {
-        ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         Assert.assertFalse(serializationConfig.contains(condition, "seenType", null));
         Assert.assertTrue(serializationConfig.contains(condition, "unseenType", null));
     }
 
     private static ConfigurationType getConfigTypeOrFail(TypeConfiguration typeConfig, String typeName) {
-        ConfigurationType type = typeConfig.get(ConfigurationCondition.objectReachable(), typeName);
+        ConfigurationType type = typeConfig.get(ConfigurationCondition.alwaysTrue(), typeName);
         Assert.assertNotNull(type);
         return type;
     }
@@ -261,11 +263,11 @@ class TypeMethodsWithFlagsTest {
     }
 
     void populateConfig() {
-        ConfigurationType oldType = new ConfigurationType(ConfigurationCondition.objectReachable(), getTypeName());
+        ConfigurationType oldType = new ConfigurationType(ConfigurationCondition.alwaysTrue(), getTypeName());
         setFlags(oldType);
         previousConfig.add(oldType);
 
-        ConfigurationType newType = new ConfigurationType(ConfigurationCondition.objectReachable(), getTypeName());
+        ConfigurationType newType = new ConfigurationType(ConfigurationCondition.alwaysTrue(), getTypeName());
         for (Map.Entry<ConfigurationMethod, ConfigurationMemberKind> methodEntry : methodsThatMustExist.entrySet()) {
             newType.addMethod(methodEntry.getKey().getName(), methodEntry.getKey().getInternalSignature(), methodEntry.getValue());
         }
@@ -296,7 +298,7 @@ class TypeMethodsWithFlagsTest {
 
     void doTest() {
         String name = getTypeName();
-        ConfigurationType configurationType = currentConfig.get(ConfigurationCondition.objectReachable(), name);
+        ConfigurationType configurationType = currentConfig.get(ConfigurationCondition.alwaysTrue(), name);
         if (methodsThatMustExist.size() == 0) {
             Assert.assertNull("Generated configuration type " + name + " exists. Expected it to be cleared as it is empty.", configurationType);
         } else {

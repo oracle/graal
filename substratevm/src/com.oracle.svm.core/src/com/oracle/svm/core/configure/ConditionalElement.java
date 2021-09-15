@@ -25,7 +25,9 @@
 
 package com.oracle.svm.core.configure;
 
+import java.util.Comparator;
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -62,5 +64,19 @@ public class ConditionalElement<T> {
     @Override
     public int hashCode() {
         return Objects.hash(condition, element);
+    }
+
+    public static <T extends Comparable<T>> Comparator<ConditionalElement<T>> comparator() {
+        return (o1, o2) -> Comparator
+                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::getElement)
+                        .thenComparing(ConditionalElement::getCondition)
+                        .compare(o1, o2);
+    }
+
+    public static <T> Comparator<ConditionalElement<T>> comparator(Comparator<T> elementComparator) {
+        return (o1, o2) -> Comparator
+                        .comparing((Function<ConditionalElement<T>, T>) ConditionalElement::getElement, elementComparator)
+                        .thenComparing(ConditionalElement::getCondition)
+                        .compare(o1, o2);
     }
 }
