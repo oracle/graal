@@ -29,8 +29,8 @@
       self.benchmark_cmd + ["awfy:*", "--"] + self.extra_vm_args
     ],
     timelimit: "30:00",
-    forks_batches:: null, // disables it for now (GR-30956)
-    forks_timelimit:: "3:00:00",
+    forks_batches:: 1,
+    forks_timelimit:: "2:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
