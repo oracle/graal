@@ -41,7 +41,11 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
     public static final String HOTSWAP_MODULE_NAME = "espresso.hotswap";
     public static final String POLYGLOT_MODULE_NAME = "espresso.polyglot";
 
-    @Substitution
+    /**
+     * For JDK >11, boot modules are injected at
+     * {@link Target_jdk_internal_module_ModuleLoaderMap_Modules.Clinit}.
+     */
+    @Substitution(versionFilter = VersionFilter.Java11OrEarlier.class)
     abstract static class BootModules extends SubstitutionNode {
 
         abstract @JavaType(Set.class) StaticObject execute();

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
@@ -809,6 +810,13 @@ public final class Meta implements ContextAccess {
             java_lang_module_ModuleFinder_compose = null;
         }
 
+        jdk_internal_module_ModuleLoaderMap_Modules = diff() //
+                        .klass(VERSION_17_OR_HIGHER, Type.jdk_internal_module_ModuleLoaderMap_Modules) //
+                        .notRequiredKlass();
+        jdk_internal_module_ModuleLoaderMap_Modules_clinit = diff() //
+                        .method(ALL, Name._clinit_, Signature._void) //
+                        .notRequiredMethod(jdk_internal_module_ModuleLoaderMap_Modules);
+
         interopDispatch = new InteropKlassesDispatch(this);
     }
 
@@ -1299,6 +1307,8 @@ public final class Meta implements ContextAccess {
     // Module system
     public final ObjectKlass jdk_internal_module_ModuleLoaderMap;
     public final Method jdk_internal_module_ModuleLoaderMap_bootModules;
+    public final ObjectKlass jdk_internal_module_ModuleLoaderMap_Modules;
+    public final Method jdk_internal_module_ModuleLoaderMap_Modules_clinit;
     public final ObjectKlass jdk_internal_module_SystemModuleFinders;
     public final Method jdk_internal_module_SystemModuleFinders_of;
     public final Method jdk_internal_module_SystemModuleFinders_ofSystem;
