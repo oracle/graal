@@ -94,7 +94,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
         properties.put("QueueSize", runtime.getCompilationQueueSize());
         properties.put("Time", System.nanoTime() - startTime);
-        properties.put("Scale", scale);
+        properties.put("Scale", FixedPointMath.toDouble(scale));
         return properties;
     }
 

@@ -41,4 +41,8 @@ public final class FixedPointMath {
     public static int multiply(int fixedPointValue, int anInteger) {
         return (fixedPointValue * anInteger) >> SCALE;
     }
+
+    public static double toDouble(int fixedPointValue) {
+        return ((double) fixedPointValue) / (1 << SCALE);
+    }
 }
