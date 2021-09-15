@@ -131,7 +131,7 @@ polybench_benchmark_methods = ["_run"]
 ce_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'vvm']
 ce_complete_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'insightheap', 'java', 'js', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'ni', 'nil', 'njs', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'vvm']
 ce_ruby_components = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrn', 'lsp', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'svm', 'svmnfi', 'tfl', 'tflm', 'vvm']
-ce_python_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgu', 'bjs', 'blli', 'bllimul', 'bnative-image', 'bnative-image-configure', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llmulrl', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'ni', 'nic', 'nil', 'nju', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svml', 'svmnfi', 'tfl', 'tflm', 'vvm']
+ce_python_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgu', 'bjs', 'blli', 'bllimul', 'bnative-image', 'bnative-image-configure', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llmulrl', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'ni', 'nic', 'nil', 'nju', 'njucp', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svml', 'svmnfi', 'tfl', 'tflm', 'vvm']
 ce_fastr_components = ce_components + ['R', 'llp', 'bRMain']
 ce_no_native_components = ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgraalvm-native-binutil', 'bnative-image', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lsp', 'nfi', 'ni', 'nil', 'polynative', 'pro', 'rgx', 'sdk', 'llrc', 'llrn', 'llrl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm']
 
@@ -153,9 +153,9 @@ mx_sdk_vm.register_vm_config('ce', ['pbm', 'pmh', 'ni', 'js', 'lg', 'nfi', 'tfl'
 mx_sdk_vm.register_vm_config('ce', ce_components + ['llmulrl'], _suite, env_file='ce-llimul')
 
 if mx.get_os() == 'windows':
-    mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite, env_file=False)
+    mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'njucp', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite, env_file=False)
 else:
-    mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gu', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm'], _suite, env_file=False)
+    mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gu', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'njucp', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm'], _suite, env_file=False)
 # pylint: enable=line-too-long
 
 
