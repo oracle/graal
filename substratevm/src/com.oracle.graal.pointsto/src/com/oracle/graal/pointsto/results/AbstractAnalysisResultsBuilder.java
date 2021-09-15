@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -43,7 +42,7 @@ import jdk.vm.ci.meta.TriState;
 
 public abstract class AbstractAnalysisResultsBuilder {
 
-    protected final PointsToAnalysis bb;
+    protected final BigBang bb;
 
     /**
      * The universe used to convert analysis metadata to hosted metadata, or {@code null} if no
@@ -62,7 +61,7 @@ public abstract class AbstractAnalysisResultsBuilder {
     private final JavaMethodProfile[] methods1;
     private final Map<JavaMethodProfile, JavaMethodProfile> methods;
 
-    protected AbstractAnalysisResultsBuilder(PointsToAnalysis bb, Universe converter) {
+    protected AbstractAnalysisResultsBuilder(BigBang bb, Universe converter) {
         this.bb = bb;
         this.converter = converter;
 

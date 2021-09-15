@@ -58,9 +58,13 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
         super(bb, converter);
     }
 
+    PointsToAnalysis getAnalysis() {
+        return ((PointsToAnalysis) bb);
+    }
+
     @Override
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
-
+        PointsToAnalysis bb = getAnalysis();
         MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
         MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
 

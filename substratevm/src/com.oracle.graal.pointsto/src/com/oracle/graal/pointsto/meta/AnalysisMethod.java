@@ -213,7 +213,13 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     public boolean registerAsInvoked() {
-        return AtomicUtils.atomicMark(isInvoked);
+        if (AtomicUtils.atomicMark(isInvoked)) {
+            getDeclaringClass()
+                    .getInvokedMethods()
+                    .add(this);
+            return true;
+        }
+        return false;
     }
 
     public boolean registerAsImplementationInvoked() {

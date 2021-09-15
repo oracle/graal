@@ -284,6 +284,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {
+            PointsToAnalysis bb = ((PointsToAnalysis) getBigBang());
             FixedNode node = invoke.asFixedNode();
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
@@ -416,6 +417,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private boolean isUnreachable(Node branch) {
+            PointsToAnalysis bb = ((PointsToAnalysis) getBigBang());
             TypeFlow<?> branchFlow = originalFlows.getNodeFlows().get(branch);
             return branchFlow != null &&
                             !methodFlow.isSaturated(bb, branchFlow) &&
@@ -468,6 +470,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private Stamp strengthenStampFromTypeFlow(ValueNode node, TypeFlow<?> nodeFlow, FixedWithNextNode anchorPoint, SimplifierTool tool) {
+            PointsToAnalysis bb = ((PointsToAnalysis) getBigBang());
             if (node.getStackKind() != JavaKind.Object) {
                 return null;
             }

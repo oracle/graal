@@ -39,6 +39,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
@@ -54,7 +55,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final Timer analysisTimer;
     protected final AnalysisMetaAccess metaAccess;
     private final HostedProviders providers;
-    private final HostVM hostVM;
+    protected final HostVM hostVM;
+    protected final ForkJoinPool executorService;
     private final Runnable heartbeatCallback;
     private final UnsupportedFeatures unsupportedFeatures;
     protected final DebugContext debug;
@@ -62,6 +64,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final AnalysisUniverse universe;
     private final List<DebugHandlersFactory> debugHandlerFactories;
     private final HeapScanningPolicy heapScanningPolicy;
+    private final Replacements replacements;
 
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures) {
@@ -72,8 +75,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
         this.providers = providers;
         this.hostVM = hostVM;
+        this.executorService = executorService;
         this.heartbeatCallback = heartbeatCallback;
         this.unsupportedFeatures = unsupportedFeatures;
+        this.replacements = providers.getReplacements();
 
         String imageName = hostVM.getImageName();
         this.processFeaturesTimer = new Timer(imageName, "(features)", false);
@@ -191,4 +196,12 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         return hostVM;
     }
 
+    protected void schedule(Runnable task) {
+        executorService.submit(task);
+    }
+
+    @Override
+    public Replacements getReplacements() {
+        return replacements;
+    }
 }

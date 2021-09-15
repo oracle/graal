@@ -104,6 +104,8 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
 
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
+    Replacements getReplacements();
+
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")
     default boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, NodeSourcePosition srcPosition) {

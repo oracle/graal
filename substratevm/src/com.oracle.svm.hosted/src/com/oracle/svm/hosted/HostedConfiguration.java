@@ -31,6 +31,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.results.DummyResultsBuilder;
+import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -183,7 +186,8 @@ public class HostedConfiguration {
             }
         } else {
             /*- A custom result builder for Reachability analysis will probably have to be created */
-            throw VMError.shouldNotReachHere("Unsupported analysis type: " + bb.getClass());
+            // todo better profiles?
+            return new DummyResultsBuilder(bb, universe);
         }
     }
 
