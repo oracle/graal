@@ -45,7 +45,7 @@ public final class InvokeSpecialQuickNode extends QuickNode {
         this.method = method;
         this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
         this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
-        this.invokeSpecial = InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create();
+        this.invokeSpecial = InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create(method);
     }
 
     @Override
@@ -56,7 +56,7 @@ public final class InvokeSpecialQuickNode extends QuickNode {
          */
         Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getParsedSignature());
         nullCheck((StaticObject) args[0]);
-        Object result = invokeSpecial.execute(method, args);
+        Object result = invokeSpecial.execute(args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }

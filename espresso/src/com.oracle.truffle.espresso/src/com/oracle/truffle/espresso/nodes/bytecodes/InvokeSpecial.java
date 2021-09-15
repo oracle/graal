@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.bytecodes;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -39,8 +40,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * INVOKESPECIAL bytecode.
  *
  * <p>
- * The receiver must be the rist element of the arguments passed to
- * {@link #execute(Method, Object[])}. e.g.
+ * The receiver must be the rist element of the arguments passed to {@link #execute(Object[])}. e.g.
  * </p>
  *
  * <p>
@@ -48,46 +48,61 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * compatible receiver.
  * </p>
  */
-@GenerateUncached
 @NodeInfo(shortName = "INVOKESPECIAL")
 public abstract class InvokeSpecial extends Node {
 
-    public abstract Object execute(Method method, Object[] args);
+    final Method method;
 
-    @Specialization
-    Object executeWithNullCheck(Method method, Object[] args,
-                    @Cached NullCheck nullCheck,
-                    @Cached WithoutNullCheck invokeSpecial) {
-        StaticObject receiver = (StaticObject) args[0];
-        nullCheck.execute(receiver);
-        return invokeSpecial.execute(method, args);
+    InvokeSpecial(Method method) {
+        this.method = method;
     }
 
-    @GenerateUncached
+    public abstract Object execute(Object[] args);
+
+    @Specialization
+    Object executeWithNullCheck(Object[] args,
+                    @Cached NullCheck nullCheck,
+                    @Cached("create(method)") WithoutNullCheck invokeSpecial) {
+        StaticObject receiver = (StaticObject) args[0];
+        nullCheck.execute(receiver);
+        return invokeSpecial.execute(args);
+    }
+
+    static Method.MethodVersion methodLookup(Method method, StaticObject receiver) {
+        if (method.isRemovedByRedefition()) {
+            /*
+             * Accept a slow path once the method has been removed put method behind a boundary to
+             * avoid a deopt loop.
+             */
+            return ClassRedefinition.handleRemovedMethod(method, receiver.getKlass(), receiver).getMethodVersion();
+        }
+        return method.getMethodVersion();
+    }
+
     @ReportPolymorphism
+    @ImportStatic(InvokeSpecial.class)
     @NodeInfo(shortName = "INVOKESPECIAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
 
-        protected static final int LIMIT = 4;
+        final Method method;
 
-        public abstract Object execute(Method method, Object[] args);
+        WithoutNullCheck(Method method) {
+            this.method = method;
+        }
+
+        public abstract Object execute(Object[] args);
 
         static StaticObject getReceiver(Object[] args) {
             return (StaticObject) args[0];
         }
 
         @SuppressWarnings("unused")
-        @Specialization(limit = "LIMIT", //
-                        guards = {
-                                        "method == cachedMethod",
-                        }, //
-                        assumptions = "resolvedMethod.getAssumption()")
-        public Object callDirect(Method method, Object[] args,
+        @Specialization(assumptions = "resolvedMethod.getAssumption()")
+        public Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
-                        @Cached("method") Method cachedMethod,
                         // TODO(peterssen): Use the method's declaring class instead of the first
                         // receiver's class?
-                        @Cached("methodLookup(cachedMethod, receiver)") Method.MethodVersion resolvedMethod,
+                        @Cached("methodLookup(method, receiver)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert !StaticObject.isNull(receiver);
             assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
@@ -96,7 +111,7 @@ public abstract class InvokeSpecial extends Node {
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "callDirect")
-        Object callIndirect(Method method, Object[] args,
+        Object callIndirect(Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
             StaticObject receiver = (StaticObject) args[0];
             assert !StaticObject.isNull(receiver);
@@ -104,16 +119,56 @@ public abstract class InvokeSpecial extends Node {
             assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
             return indirectCallNode.call(resolvedMethod.getCallTarget(), receiver, args);
         }
+    }
 
-        protected static Method.MethodVersion methodLookup(Method method, StaticObject receiver) {
-            if (method.isRemovedByRedefition()) {
-                /*
-                 * Accept a slow path once the method has been removed put method behind a boundary
-                 * to avoid a deopt loop.
-                 */
-                return ClassRedefinition.handleRemovedMethod(method, receiver.getKlass(), receiver).getMethodVersion();
+    @GenerateUncached
+    @NodeInfo(shortName = "INVOKESPECIAL dynamic")
+    public static abstract class Dynamic extends Node {
+
+        public abstract Object execute(Method method, Object[] args);
+
+        @Specialization
+        Object executeWithNullCheck(Method method, Object[] args,
+                        @Cached NullCheck nullCheck,
+                        @Cached WithoutNullCheck invokeSpecial) {
+            StaticObject receiver = (StaticObject) args[0];
+            nullCheck.execute(receiver);
+            return invokeSpecial.execute(method, args);
+        }
+
+        @GenerateUncached
+        @ReportPolymorphism
+        @NodeInfo(shortName = "INVOKESPECIAL dynamic !nullcheck")
+        public abstract static class WithoutNullCheck extends Node {
+
+            protected static final int LIMIT = 4;
+
+            public abstract Object execute(Method method, Object[] args);
+
+            static StaticObject getReceiver(Object[] args) {
+                return (StaticObject) args[0];
             }
-            return method.getMethodVersion();
+
+            @SuppressWarnings("unused")
+            @Specialization(limit = "LIMIT", //
+                            guards = "method == cachedMethod")
+            public Object callDirect(Method method, Object[] args,
+                            @Bind("getReceiver(args)") StaticObject receiver,
+                            @Cached("method") Method cachedMethod,
+                            @Cached("create(method)") InvokeSpecial invokeSpecial) {
+                return invokeSpecial.execute(args);
+            }
+
+            @ReportPolymorphism.Megamorphic
+            @Specialization(replaces = "callDirect")
+            Object callIndirect(Method method, Object[] args,
+                            @Cached IndirectCallNode indirectCallNode) {
+                StaticObject receiver = (StaticObject) args[0];
+                assert !StaticObject.isNull(receiver);
+                Method.MethodVersion resolvedMethod = methodLookup(method, receiver);
+                assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
+                return indirectCallNode.call(resolvedMethod.getCallTarget(), args);
+            }
         }
     }
 }

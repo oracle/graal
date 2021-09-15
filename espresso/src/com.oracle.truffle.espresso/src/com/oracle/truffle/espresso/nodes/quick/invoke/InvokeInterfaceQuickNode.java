@@ -55,7 +55,7 @@ public final class InvokeInterfaceQuickNode extends QuickNode {
          * from `resolutionSeed` instead of the non-constant signature from the resolved method.
          */
         final Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
-        final StaticObject receiver = nullCheck((StaticObject) args[0]);
+        nullCheck((StaticObject) args[0]);
         Object result = invokeInterface.execute(args);
         if (!returnKind.isPrimitive()) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);

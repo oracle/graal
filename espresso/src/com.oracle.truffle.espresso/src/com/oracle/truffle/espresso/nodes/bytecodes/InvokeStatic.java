@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes.bytecodes;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -44,61 +45,69 @@ import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
  * <li>Throws guest {@link AbstractMethodError} if the resolved method is abstract.</li>
  * </ul>
  */
-@GenerateUncached
 @NodeInfo(shortName = "INVOKESTATIC")
 public abstract class InvokeStatic extends Node {
 
-    public abstract Object execute(Method staticMethod, Object[] args);
+    final Method staticMethod;
 
-    @Specialization
-    Object callWithClassInitCheck(Method staticMethod, Object[] args,
-                    @Cached InitCheck initCheck,
-                    @Cached WithoutClassInitCheck invokeVirtual) {
-        initCheck.execute(staticMethod.getDeclaringKlass());
-        return invokeVirtual.execute(staticMethod, args);
+    InvokeStatic(Method staticMethod) {
+        assert staticMethod.isStatic();
+        this.staticMethod = staticMethod;
     }
 
-    @GenerateUncached
+    public abstract Object execute(Object[] args);
+
+    @Specialization
+    Object callWithClassInitCheck(Object[] args,
+                    @Cached InitCheck initCheck,
+                    @Cached("create(staticMethod)") WithoutClassInitCheck invokeVirtual) {
+        initCheck.execute(staticMethod.getDeclaringKlass());
+        return invokeVirtual.execute(args);
+    }
+
+    @ImportStatic(InvokeStatic.class)
     @NodeInfo(shortName = "INVOKESTATIC !initcheck")
     public abstract static class WithoutClassInitCheck extends Node {
 
         protected static final int LIMIT = 2;
 
-        public abstract Object execute(Method staticMethod, Object[] args);
+        final Method staticMethod;
+
+        WithoutClassInitCheck(Method staticMethod) {
+            assert staticMethod.isStatic();
+            this.staticMethod = staticMethod;
+        }
+
+        public abstract Object execute(Object[] args);
 
         @SuppressWarnings("unused")
-        @Specialization(limit = "LIMIT", //
-                        guards = {
-                                        "staticMethod == cachedStaticMethod"
-                        }, //
-                        assumptions = "resolvedMethod.getAssumption()")
-        Object callDirect(Method staticMethod, Object[] args,
-                        @Cached("staticMethod") Method cachedStaticMethod,
-                        @Cached("methodLookup(cachedStaticMethod)") Method.MethodVersion resolvedMethod,
+        @Specialization(assumptions = "resolvedMethod.getAssumption()")
+        Object callDirect(Object[] args,
+                        @Cached("methodLookup(staticMethod)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
             return directCallNode.call(args);
         }
 
         @Specialization(replaces = "callDirect")
-        Object callIndirect(Method staticMethod, Object[] args,
+        Object callIndirect(Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
             Method.MethodVersion target = methodLookup(staticMethod);
             assert isInitializedOrInitializing(target.getMethod().getDeclaringKlass());
             return indirectCallNode.call(target.getCallTarget(), args);
         }
+    }
 
-        protected static Method.MethodVersion methodLookup(Method staticMethod) {
-            assert staticMethod.isStatic();
-            if (staticMethod.isRemovedByRedefition()) {
-                /*
-                 * Accept a slow path once the method has been removed put method behind a boundary
-                 * to avoid a deopt loop.
-                 */
-                return ClassRedefinition.handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass(), null).getMethodVersion();
-            }
-            return staticMethod.getMethodVersion();
+    static Method.MethodVersion methodLookup(Method staticMethod) {
+        assert staticMethod.isStatic();
+        if (staticMethod.isRemovedByRedefition()) {
+            /*
+             * Accept a slow path once the method has been removed put method behind a boundary to
+             * avoid a deopt loop.
+             */
+            return ClassRedefinition.handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass(), null).getMethodVersion();
         }
+        return staticMethod.getMethodVersion();
     }
 
     static boolean isInitializedOrInitializing(ObjectKlass klass) {
@@ -107,5 +116,46 @@ public abstract class InvokeStatic extends Node {
                         state == ObjectKlass.ERRONEOUS ||
                         // initializing thread
                         state == ObjectKlass.INITIALIZING && Thread.holdsLock(klass);
+    }
+
+    @GenerateUncached
+    @NodeInfo(shortName = "INVOKESTATIC dynamic")
+    public abstract static class Dynamic extends Node {
+
+        public abstract Object execute(Method staticMethod, Object[] args);
+
+        @Specialization
+        Object callWithClassInitCheck(Method staticMethod, Object[] args,
+                        @Cached InitCheck initCheck,
+                        @Cached WithoutClassInitCheck invokeStatic) {
+            initCheck.execute(staticMethod.getDeclaringKlass());
+            return invokeStatic.execute(staticMethod, args);
+        }
+
+        @GenerateUncached
+        @NodeInfo(shortName = "INVOKESTATIC dynamic !initcheck")
+        public abstract static class WithoutClassInitCheck extends Node {
+
+            protected static final int LIMIT = 2;
+
+            public abstract Object execute(Method staticMethod, Object[] args);
+
+            @SuppressWarnings("unused")
+            @Specialization(limit = "LIMIT", //
+                            guards = "staticMethod == cachedStaticMethod")
+            Object callDirect(Method staticMethod, Object[] args,
+                            @Cached("staticMethod") Method cachedStaticMethod,
+                            @Cached("create(cachedStaticMethod)") InvokeStatic.WithoutClassInitCheck invokeStatic) {
+                return invokeStatic.execute(args);
+            }
+
+            @Specialization(replaces = "callDirect")
+            Object callIndirect(Method staticMethod, Object[] args,
+                            @Cached IndirectCallNode indirectCallNode) {
+                Method.MethodVersion target = methodLookup(staticMethod);
+                assert isInitializedOrInitializing(target.getMethod().getDeclaringKlass());
+                return indirectCallNode.call(target.getCallTarget(), args);
+            }
+        }
     }
 }

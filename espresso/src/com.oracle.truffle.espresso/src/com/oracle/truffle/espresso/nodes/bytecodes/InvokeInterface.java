@@ -57,7 +57,7 @@ public abstract class InvokeInterface extends Node {
 
     final Method resolutionSeed;
 
-    protected InvokeInterface(Method resolutionSeed) {
+    InvokeInterface(Method resolutionSeed) {
         this.resolutionSeed = resolutionSeed;
     }
 
@@ -85,7 +85,7 @@ public abstract class InvokeInterface extends Node {
 
         final Method resolutionSeed;
 
-        protected WithoutNullCheck(Method resolutionSeed) {
+        WithoutNullCheck(Method resolutionSeed) {
             this.resolutionSeed = resolutionSeed;
         }
 
@@ -169,8 +169,6 @@ public abstract class InvokeInterface extends Node {
             Object doCached(@SuppressWarnings("unused") Method resolutionSeed, Object[] args,
                             @SuppressWarnings("unused") @Cached("resolutionSeed") Method cachedResolutionSeed,
                             @Cached("create(cachedResolutionSeed)") InvokeInterface.WithoutNullCheck invokeInterface) {
-                StaticObject receiver = (StaticObject) args[0];
-                assert !StaticObject.isNull(receiver);
                 return invokeInterface.execute(args);
             }
 

@@ -60,7 +60,7 @@ public abstract class InvokeVirtual extends Node {
 
     final Method resolutionSeed;
 
-    protected InvokeVirtual(Method resolutionSeed) {
+    InvokeVirtual(Method resolutionSeed) {
         this.resolutionSeed = resolutionSeed;
     }
 

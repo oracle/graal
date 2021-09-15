@@ -39,7 +39,7 @@ import com.oracle.truffle.espresso.vm.VM;
 public final class InvokeStaticQuickNode extends QuickNode {
 
     @CompilationFinal Method method;
-    @Child InvokeStatic invokeVirtual;
+    @Child InvokeStatic invokeStatic;
     final boolean callsDoPrivileged;
 
     final int resultAt;
@@ -54,7 +54,7 @@ public final class InvokeStaticQuickNode extends QuickNode {
         this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()); // no
                                                                                           // receiver
         this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
-        this.invokeVirtual = InvokeStaticNodeGen.create();
+        this.invokeStatic = InvokeStaticNodeGen.create(method);
     }
 
     @Override
@@ -68,7 +68,7 @@ public final class InvokeStaticQuickNode extends QuickNode {
             }
         }
         Object[] args = BytecodeNode.popArguments(primitives, refs, top, false, method.getParsedSignature());
-        Object result = invokeVirtual.execute(method, args);
+        Object result = invokeStatic.execute(args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
