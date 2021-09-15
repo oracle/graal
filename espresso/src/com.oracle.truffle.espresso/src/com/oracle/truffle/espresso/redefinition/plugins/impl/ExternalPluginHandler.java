@@ -45,7 +45,7 @@ final class ExternalPluginHandler {
     }
 
     public static ExternalPluginHandler create(StaticObject guestHandler) throws IllegalArgumentException {
-        InteropLibrary library = InteropLibrary.getFactory().create(guestHandler);
+        InteropLibrary library = InteropLibrary.getUncached(guestHandler);
 
         boolean invocable = library.isMemberInvocable(guestHandler, RERUN_CLINIT) &&
                         library.isMemberInvocable(guestHandler, POST_HOTSWAP);
