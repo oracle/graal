@@ -55,8 +55,8 @@ public final class InvokeSpecialQuickNode extends QuickNode {
          * from `method` instead of the non-constant signature from the lookup.
          */
         Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getParsedSignature());
-        StaticObject receiver = nullCheck((StaticObject) args[0]);
-        Object result = invokeSpecial.execute(method, receiver, args);
+        nullCheck((StaticObject) args[0]);
+        Object result = invokeSpecial.execute(method, args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }

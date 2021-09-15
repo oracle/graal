@@ -55,8 +55,8 @@ public final class InvokeVirtualQuickNode extends QuickNode {
          * from `resolutionSeed` instead of the non-constant signature from the resolved method.
          */
         Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
-        StaticObject receiver = nullCheck((StaticObject) args[0]);
-        Object result = invokeVirtual.execute(receiver, args);
+        nullCheck((StaticObject) args[0]);
+        Object result = invokeVirtual.execute(args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }

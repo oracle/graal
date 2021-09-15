@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -38,9 +39,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * INVOKESPECIAL bytecode.
  *
  * <p>
- * The receiver must be included as the first element of the arguments passed to
- * {@link #execute(Method, StaticObject, Object[])}. e.g.
- * <code>invokeVirtual.execute(virtualMethod, args[0], args);</code>
+ * The receiver must be the rist element of the arguments passed to
+ * {@link #execute(Method, Object[])}. e.g.
  * </p>
  *
  * <p>
@@ -52,14 +52,15 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @NodeInfo(shortName = "INVOKESPECIAL")
 public abstract class InvokeSpecial extends Node {
 
-    public abstract Object execute(Method method, StaticObject receiver, Object[] args);
+    public abstract Object execute(Method method, Object[] args);
 
     @Specialization
-    Object executeWithNullCheck(Method method, StaticObject receiver, Object[] args,
+    Object executeWithNullCheck(Method method, Object[] args,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck invokeSpecial) {
-        assert args[0] == receiver;
-        return invokeSpecial.execute(method, nullCheck.execute(receiver), args);
+        StaticObject receiver = (StaticObject) args[0];
+        nullCheck.execute(receiver);
+        return invokeSpecial.execute(method, args);
     }
 
     @GenerateUncached
@@ -69,7 +70,11 @@ public abstract class InvokeSpecial extends Node {
 
         protected static final int LIMIT = 4;
 
-        public abstract Object execute(Method method, StaticObject receiver, Object[] args);
+        public abstract Object execute(Method method, Object[] args);
+
+        static StaticObject getReceiver(Object[] args) {
+            return (StaticObject) args[0];
+        }
 
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
@@ -77,13 +82,13 @@ public abstract class InvokeSpecial extends Node {
                                         "method == cachedMethod",
                         }, //
                         assumptions = "resolvedMethod.getAssumption()")
-        public Object callDirect(Method method, StaticObject receiver, Object[] args,
+        public Object callDirect(Method method, Object[] args,
+                        @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("method") Method cachedMethod,
                         // TODO(peterssen): Use the method's declaring class instead of the first
                         // receiver's class?
                         @Cached("methodLookup(cachedMethod, receiver)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
-            assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
             return directCallNode.call(args);
@@ -91,8 +96,9 @@ public abstract class InvokeSpecial extends Node {
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "callDirect")
-        Object callIndirect(Method method, StaticObject receiver, Object[] args,
+        Object callIndirect(Method method, Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
+            StaticObject receiver = (StaticObject) args[0];
             assert !StaticObject.isNull(receiver);
             Method.MethodVersion resolvedMethod = methodLookup(method, receiver);
             assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());

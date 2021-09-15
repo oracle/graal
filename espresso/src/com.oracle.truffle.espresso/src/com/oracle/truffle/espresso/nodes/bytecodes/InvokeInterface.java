@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -43,9 +44,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * INVOKESPECIAL bytecode.
  *
  * <p>
- * The receiver must be included as the first element of the arguments passed to
- * {@link #execute(StaticObject, Object[])}. e.g.
- * <code>invokeVirtual.execute(virtualMethod, args[0], args);</code>
+ * The receiver must the first element of the arguments passed to {@link #execute(Object[])}.
  * </p>
  *
  * <p>
@@ -62,14 +61,19 @@ public abstract class InvokeInterface extends Node {
         this.resolutionSeed = resolutionSeed;
     }
 
-    public abstract Object execute(StaticObject receiver, Object[] args);
+    public abstract Object execute(Object[] args);
 
     @Specialization
-    Object executeWithNullCheck(StaticObject receiver, Object[] args,
+    Object executeWithNullCheck(Object[] args,
                     @Cached NullCheck nullCheck,
                     @Cached("create(resolutionSeed)") WithoutNullCheck invokeInterface) {
-        assert args[0] == receiver;
-        return invokeInterface.execute(nullCheck.execute(receiver), args);
+        StaticObject receiver = (StaticObject) args[0];
+        nullCheck.execute(receiver);
+        return invokeInterface.execute(args);
+    }
+
+    static StaticObject getReceiver(Object[] args) {
+        return (StaticObject) args[0];
     }
 
     @ReportPolymorphism
@@ -85,17 +89,17 @@ public abstract class InvokeInterface extends Node {
             this.resolutionSeed = resolutionSeed;
         }
 
-        public abstract Object execute(StaticObject receiver, Object[] args);
+        public abstract Object execute(Object[] args);
 
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
                         guards = "receiver.getKlass() == cachedKlass", //
                         assumptions = "resolvedMethod.getAssumption()")
-        Object callDirect(StaticObject receiver, Object[] args,
+        Object callDirect(Object[] args,
+                        @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
                         @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode) {
-            assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             assert InvokeStatic.isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
             return directCallNode.call(args);
@@ -103,9 +107,9 @@ public abstract class InvokeInterface extends Node {
 
         @Specialization
         @ReportPolymorphism.Megamorphic
-        Object callIndirect(StaticObject receiver, Object[] args,
+        Object callIndirect(Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
-            assert args[0] == receiver;
+            StaticObject receiver = (StaticObject) args[0];
             assert !StaticObject.isNull(receiver);
             // itable lookup.
             Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
@@ -140,14 +144,15 @@ public abstract class InvokeInterface extends Node {
 
         protected static final int LIMIT = 4;
 
-        public abstract Object execute(Method resolutionSeed, StaticObject receiver, Object[] args);
+        public abstract Object execute(Method resolutionSeed, Object[] args);
 
         @Specialization
-        Object executeWithNullCheck(Method resolutionSeed, StaticObject receiver, Object[] args,
+        Object executeWithNullCheck(Method resolutionSeed, Object[] args,
                         @Cached NullCheck nullCheck,
                         @Cached WithoutNullCheck invokeInterface) {
-            assert args[0] == receiver;
-            return invokeInterface.execute(resolutionSeed, nullCheck.execute(receiver), args);
+            StaticObject receiver = (StaticObject) args[0];
+            nullCheck.execute(receiver);
+            return invokeInterface.execute(resolutionSeed, args);
         }
 
         @GenerateUncached
@@ -157,23 +162,23 @@ public abstract class InvokeInterface extends Node {
 
             protected static final int LIMIT = 4;
 
-            public abstract Object execute(Method resolutionSeed, StaticObject receiver, Object[] args);
+            public abstract Object execute(Method resolutionSeed, Object[] args);
 
             @Specialization(limit = "LIMIT", //
                             guards = "resolutionSeed == cachedResolutionSeed")
-            Object doCached(@SuppressWarnings("unused") Method resolutionSeed, StaticObject receiver, Object[] args,
+            Object doCached(@SuppressWarnings("unused") Method resolutionSeed, Object[] args,
                             @SuppressWarnings("unused") @Cached("resolutionSeed") Method cachedResolutionSeed,
                             @Cached("create(cachedResolutionSeed)") InvokeInterface.WithoutNullCheck invokeInterface) {
-                assert args[0] == receiver;
+                StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
-                return invokeInterface.execute(receiver, args);
+                return invokeInterface.execute(args);
             }
 
             @ReportPolymorphism.Megamorphic
             @Specialization(replaces = "doCached")
-            Object doGeneric(Method resolutionSeed, StaticObject receiver, Object[] args,
+            Object doGeneric(Method resolutionSeed, Object[] args,
                             @Cached IndirectCallNode indirectCallNode) {
-                assert args[0] == receiver;
+                StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
                 Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
                 assert InvokeStatic.isInitializedOrInitializing(target.getMethod().getDeclaringKlass());
