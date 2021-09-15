@@ -48,8 +48,8 @@ import java.nio.charset.Charset;
 public final class WasmFileDetector implements TruffleFile.FileTypeDetector {
     @Override
     public String findMimeType(TruffleFile file) throws IOException {
-        if (file.getName() != null && file.getName().endsWith(".wasm")) {
-            return "application/wasm";
+        if (file.getName() != null && file.getName().endsWith(WasmLanguage.WASM_SOURCE_NAME_SUFFIX)) {
+            return WasmLanguage.WASM_MIME_TYPE;
         }
         return null;
     }

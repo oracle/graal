@@ -43,6 +43,7 @@ package org.graalvm.wasm.nodes;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
@@ -54,12 +55,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
-@NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
+@NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     protected final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
+    private final SourceSection sourceSection;
     @Child private WasmNode body;
 
     public WasmRootNode(TruffleLanguage<?> language, WasmInstance instance, WasmCodeEntry codeEntry) {
@@ -67,6 +70,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.body = null;
+        this.sourceSection = instance.module().source().createUnavailableSection();
     }
 
     protected final WasmContext getContext() {
@@ -231,5 +235,10 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             return getName();
         }
         return codeEntry.function().moduleName() + "." + getName();
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 }
