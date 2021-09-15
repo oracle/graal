@@ -606,13 +606,14 @@ public class SubstrateOptions {
         }
     }
 
-    @Option(help = "Allows to specify which diagnostic level should be used for a certain diagnostic thunk, e.g.: 'DumpThreads:0,DumpRegisters:2'." +
-                    " The diagnostic levels range from 0 (no information) to 3 (detailed information). By default, the most detailed output is selected for all diagnostic thunks.", type = Expert)//
+    @Option(help = "Allows to specify how many details should be printed for certain diagnostic thunk, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +
+                    "A value of 1 will result in the maximum amount of information, higher values will result in less information. " +
+                    "By default, the most detailed output is enabled for all diagnostic thunks. Wildcards (*) are supported in the name of the diagnostic thunk.", type = Expert)//
     public static final RuntimeOptionKey<String> DiagnosticDetails = new RuntimeOptionKey<String>("") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            SubstrateDiagnostics.updateDiagnosticLevels(newValue);
             super.onValueUpdate(values, oldValue, newValue);
+            SubstrateDiagnostics.updateInitialInvocationCounts(newValue);
         }
     };
 }

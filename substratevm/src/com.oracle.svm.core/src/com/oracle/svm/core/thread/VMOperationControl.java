@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticLevel;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -194,7 +193,7 @@ public final class VMOperationControl {
         }
     }
 
-    public static void printCurrentVMOperation(Log log, boolean isJavaHeapAccessAllowed) {
+    public static void printCurrentVMOperation(Log log, boolean allowJavaHeapAccess) {
         /*
          * All reads in this method are racy as the currently executed VM operation could finish and
          * a different VM operation could start. So, the read data is not necessarily consistent.
@@ -203,7 +202,7 @@ public final class VMOperationControl {
         VMOperation op = control.inProgress.operation;
         if (op == null) {
             log.string("No VMOperation in progress").newline();
-        } else if (isJavaHeapAccessAllowed) {
+        } else if (allowJavaHeapAccess) {
             log.string("VMOperation in progress: ").string(op.getName()).indent(true);
             log.string("Safepoint: ").bool(op.getCausesSafepoint()).newline();
             log.string("QueuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();

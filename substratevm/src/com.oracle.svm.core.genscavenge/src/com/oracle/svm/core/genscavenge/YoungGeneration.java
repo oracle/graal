@@ -62,6 +62,7 @@ public final class YoungGeneration extends Generation {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getMaxSurvivorSpaces() {
         return maxSurvivorSpaces;
     }
