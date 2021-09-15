@@ -1,4 +1,5 @@
 common_vm: ${common} ${vm_setup} {
+  python_version: 3,
   logs: [
     "*/mxbuild/dists/stripped/*.map"
     "**/install.packages.R.log"
@@ -158,7 +159,6 @@ fastr_no_recommended: {
 # GRAALPYTHON
 graalpython_linux: ${sulong_linux} {
   packages: {
-    python: "==3.4.1",
     libffi: ">=3.2.1",
     bzip2: ">=1.0.6",
   }
@@ -354,7 +354,7 @@ deploy_graalvm_linux_amd64: {
     ${mx_vm_common} ${vm_profiles} [build]
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-    [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
   timelimit: "1:30:00"
@@ -426,7 +426,7 @@ deploy_graalvm_plus_ruby: {
     ${mx_vm_common} ${vm_profiles} [build]
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-    [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
   timelimit: "1:45:00"

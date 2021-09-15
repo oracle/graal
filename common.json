@@ -26,12 +26,18 @@
       "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }}
   },
   "deps": {
+    "COMMENT.common": [
+      "pip:isort is a dependency of pip:pylint. The explicit dependency on the pip package works around",
+      "https://bugzilla.redhat.com/show_bug.cgi?id=1710221 on older Redhat-based systems, and doesn't",
+      "hurt on others."
+    ],
     "common": {
       "timelimit": "30:00",
       "environment": {
         "MX_PYTHON": "python3"
       },
       "packages": {
+        "pip:isort": "==4.3.19",
         "pip:logilab-common": "==1.4.4",
         "pip:pylint": "==1.9.3",
         "pip:ninja_syntax": "==1.7.2"

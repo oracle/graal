@@ -762,7 +762,7 @@ suite = {
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "ninja_targets" : ["<lib:c++abi>", "<lib:c++>"],
-      "ninja_install_targets" : ["install-libcxxabi", "install-libcxx"],
+      "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
       "results" : ["native"],
       "cmakeConfig" : {
         "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",

@@ -46,7 +46,7 @@ public final class WindowsLinker extends Driver {
     }
 
     public static List<String> getLinkerFlags() {
-        return Arrays.asList("-mllvm:-lto-embed-bitcode", "-opt:lldlto=0", "-debug:dwarf");
+        return Arrays.asList("-mllvm:-lto-embed-bitcode=optimized", "-opt:lldlto=0", "-debug:dwarf");
     }
 
     public static void link(String[] args) {

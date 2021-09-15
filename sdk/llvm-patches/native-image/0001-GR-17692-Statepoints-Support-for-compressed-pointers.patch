@@ -1,7 +1,7 @@
-From 6ccae83dd6b997f13d07a15071eeee71700657b7 Mon Sep 17 00:00:00 2001
+From c2b0a3b117b6c4c51878ffb9b3e41aae7b35f382 Mon Sep 17 00:00:00 2001
 From: Loic Ottet <loic.ottet@oracle.com>
 Date: Mon, 23 Sep 2019 16:55:33 +0200
-Subject: [PATCH 1/6] [GR-17692] [Statepoints] Support for compressed pointers
+Subject: [PATCH 1/3] [GR-17692] [Statepoints] Support for compressed pointers
  in the statepoint emission pass
 
 ---
@@ -12,10 +12,10 @@ Subject: [PATCH 1/6] [GR-17692] [Statepoints] Support for compressed pointers
  4 files changed, 167 insertions(+), 32 deletions(-)
 
 diff --git a/llvm/include/llvm/IR/IRBuilder.h b/llvm/include/llvm/IR/IRBuilder.h
-index a6252b298001..c48a509cf51f 100644
+index 9cefc9aa764c..effc0051c80d 100644
 --- a/llvm/include/llvm/IR/IRBuilder.h
 +++ b/llvm/include/llvm/IR/IRBuilder.h
-@@ -747,6 +747,16 @@ public:
+@@ -884,6 +884,16 @@ public:
                                     ArrayRef<Value *> GCArgs,
                                     const Twine &Name = "");
  
@@ -23,17 +23,17 @@ index a6252b298001..c48a509cf51f 100644
 +  /// start a new statepoint sequence.
 +  CallInst *CreateGCStatepointCall(uint64_t ID, uint32_t NumPatchBytes,
 +                                   Value *ActualCallee, uint32_t Flags,
-+                                   ArrayRef<Use> CallArgs,
-+                                   ArrayRef<Use> TransitionArgs,
-+                                   ArrayRef<Value *> DeoptArgs,
++                                   ArrayRef<Value *> CallArgs,
++                                   Optional<ArrayRef<Use>> TransitionArgs,
++                                   Optional<ArrayRef<Value *>> DeoptArgs,
 +                                   ArrayRef<Value *> GCArgs,
 +                                   const Twine &Name = "");
 +
    /// Conveninence function for the common case when CallArgs are filled
    /// in using makeArrayRef(CS.arg_begin(), CS.arg_end()); Use needs to be
    /// .get()'ed to get the Value pointer.
-@@ -774,6 +784,15 @@ public:
-       ArrayRef<Use> DeoptArgs, ArrayRef<Value *> GCArgs,
+@@ -911,6 +921,15 @@ public:
+       Optional<ArrayRef<Use>> DeoptArgs, ArrayRef<Value *> GCArgs,
        const Twine &Name = "");
  
 +  /// Create an invoke to the experimental.gc.statepoint intrinsic to
@@ -41,8 +41,8 @@ index a6252b298001..c48a509cf51f 100644
 +  InvokeInst *CreateGCStatepointInvoke(
 +      uint64_t ID, uint32_t NumPatchBytes, Value *ActualInvokee,
 +      BasicBlock *NormalDest, BasicBlock *UnwindDest, uint32_t Flags,
-+      ArrayRef<Use> InvokeArgs, ArrayRef<Use> TransitionArgs,
-+      ArrayRef<Value *> DeoptArgs, ArrayRef<Value *> GCArgs,
++      ArrayRef<Value *> InvokeArgs, Optional<ArrayRef<Use>> TransitionArgs,
++      Optional<ArrayRef<Value *>> DeoptArgs, ArrayRef<Value *> GCArgs,
 +      const Twine &Name = "");
 +
    // Convenience function for the common case when CallArgs are filled in using
@@ -93,35 +93,35 @@ index bfc10cb3fef2..8598b456b14b 100644
  // Provide hook to ensure the containing library is fully loaded.
  void llvm::linkAllBuiltinGCs() {}
 diff --git a/llvm/lib/IR/IRBuilder.cpp b/llvm/lib/IR/IRBuilder.cpp
-index 30b558a655cb..20a610f7b64a 100644
+index 91ca984b755c..a2ea016d84a9 100644
 --- a/llvm/lib/IR/IRBuilder.cpp
 +++ b/llvm/lib/IR/IRBuilder.cpp
-@@ -645,6 +645,15 @@ CallInst *IRBuilderBase::CreateGCStatepointCall(
+@@ -666,6 +666,15 @@ CallInst *IRBuilderBase::CreateGCStatepointCall(
        DeoptArgs, GCArgs, Name);
  }
  
 +CallInst *IRBuilderBase::CreateGCStatepointCall(
 +    uint64_t ID, uint32_t NumPatchBytes, Value *ActualCallee, uint32_t Flags,
-+    ArrayRef<Use> CallArgs, ArrayRef<Use> TransitionArgs,
-+    ArrayRef<Value *> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name) {
-+  return CreateGCStatepointCallCommon<Use, Use, Value *, Value *>(
++    ArrayRef<Value *> CallArgs, Optional<ArrayRef<Use>> TransitionArgs,
++    Optional<ArrayRef<Value *>> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name) {
++  return CreateGCStatepointCallCommon<Value *, Use, Value *, Value *>(
 +      this, ID, NumPatchBytes, ActualCallee, Flags, CallArgs, TransitionArgs,
 +      DeoptArgs, GCArgs, Name);
 +}
 +
  CallInst *IRBuilderBase::CreateGCStatepointCall(
      uint64_t ID, uint32_t NumPatchBytes, Value *ActualCallee,
-     ArrayRef<Use> CallArgs, ArrayRef<Value *> DeoptArgs,
-@@ -698,6 +707,16 @@ InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
+     ArrayRef<Use> CallArgs, Optional<ArrayRef<Value *>> DeoptArgs,
+@@ -723,6 +732,16 @@ InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
        InvokeArgs, TransitionArgs, DeoptArgs, GCArgs, Name);
  }
  
 +InvokeInst *IRBuilderBase::CreateGCStatepointInvoke(
 +    uint64_t ID, uint32_t NumPatchBytes, Value *ActualInvokee,
 +    BasicBlock *NormalDest, BasicBlock *UnwindDest, uint32_t Flags,
-+    ArrayRef<Use> InvokeArgs, ArrayRef<Use> TransitionArgs,
-+    ArrayRef<Value *> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name) {
-+  return CreateGCStatepointInvokeCommon<Use, Use, Value *, Value *>(
++    ArrayRef<Value *> InvokeArgs, Optional<ArrayRef<Use>> TransitionArgs,
++    Optional<ArrayRef<Value *>> DeoptArgs, ArrayRef<Value *> GCArgs, const Twine &Name) {
++  return CreateGCStatepointInvokeCommon<Value *, Use, Value *, Value *>(
 +      this, ID, NumPatchBytes, ActualInvokee, NormalDest, UnwindDest, Flags,
 +      InvokeArgs, TransitionArgs, DeoptArgs, GCArgs, Name);
 +}
@@ -130,7 +130,7 @@ index 30b558a655cb..20a610f7b64a 100644
      uint64_t ID, uint32_t NumPatchBytes, Value *ActualInvokee,
      BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Use> InvokeArgs,
 diff --git a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp b/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
-index b242f100faff..cf50aead9917 100644
+index b7830555bf73..0e6f14031aee 100644
 --- a/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
 +++ b/llvm/lib/Transforms/Scalar/RewriteStatepointsForGC.cpp
 @@ -310,12 +310,12 @@ static void findLiveSetAtInst(Instruction *inst, GCPtrLivenessData &Data,
@@ -225,7 +225,7 @@ index b242f100faff..cf50aead9917 100644
  }
  #endif
  
-@@ -1291,7 +1319,7 @@ static void CreateGCRelocates(ArrayRef<Value *> LiveVariables,
+@@ -1348,7 +1376,7 @@ static void CreateGCRelocates(ArrayRef<Value *> LiveVariables,
    // to an i8* of the right address space.  A bitcast is added later to convert
    // gc_relocate to the actual value's type.
    auto getGCRelocateDecl = [&] (Type *Ty) {
@@ -234,7 +234,7 @@ index b242f100faff..cf50aead9917 100644
      auto AS = Ty->getScalarType()->getPointerAddressSpace();
      Type *NewTy = Type::getInt8PtrTy(M->getContext(), AS);
      if (auto *VT = dyn_cast<VectorType>(Ty))
-@@ -1411,6 +1439,15 @@ static StringRef getDeoptLowering(CallBase *Call) {
+@@ -1468,6 +1496,15 @@ static StringRef getDeoptLowering(CallBase *Call) {
    return "live-through";
  }
  
@@ -250,16 +250,16 @@ index b242f100faff..cf50aead9917 100644
  static void
  makeStatepointExplicitImpl(CallBase *Call, /* to replace */
                             const SmallVectorImpl<Value *> &BasePtrs,
-@@ -1487,9 +1524,22 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
+@@ -1642,9 +1679,22 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
    // Create the statepoint given all the arguments
-   Instruction *Token = nullptr;
+   GCStatepointInst *Token = nullptr;
    if (auto *CI = dyn_cast<CallInst>(Call)) {
 -    CallInst *SPCall = Builder.CreateGCStatepointCall(
 -        StatepointID, NumPatchBytes, CallTarget, Flags, CallArgs,
 -        TransitionArgs, DeoptArgs, GCArgs, "safepoint_token");
 +    CallInst *SPCall;
 +    if (supportsCompressedPointers(*Call)) {
-+      assert(DeoptArgs.empty() &&
++      assert(DeoptArgs->empty() &&
 +             "Deopt args are not supported when using compressed pointers");
 +      std::vector<Value *> CompressedArgsVector;
 +      getCompressedGCArgs(CompressedArgsVector, GCArgs);
@@ -276,7 +276,7 @@ index b242f100faff..cf50aead9917 100644
  
      SPCall->setTailCallKind(CI->getTailCallKind());
      SPCall->setCallingConv(CI->getCallingConv());
-@@ -1513,10 +1563,24 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
+@@ -1669,10 +1719,24 @@ makeStatepointExplicitImpl(CallBase *Call, /* to replace */
      // Insert the new invoke into the old block.  We'll remove the old one in a
      // moment at which point this will become the new terminator for the
      // original block.
@@ -286,7 +286,7 @@ index b242f100faff..cf50aead9917 100644
 -        "statepoint_token");
 +    InvokeInst *SPInvoke;
 +    if (supportsCompressedPointers(*Call)) {
-+      assert(DeoptArgs.empty() &&
++      assert(DeoptArgs->empty() &&
 +             "Deopt args are not supported when using compressed pointers");
 +      std::vector<Value *> CompressedArgsVector;
 +      getCompressedGCArgs(CompressedArgsVector, GCArgs);
@@ -305,7 +305,7 @@ index b242f100faff..cf50aead9917 100644
  
      SPInvoke->setCallingConv(II->getCallingConv());
  
-@@ -2172,6 +2236,7 @@ static void rematerializeLiveValues(CallBase *Call,
+@@ -2327,6 +2391,7 @@ static void rematerializeLiveValues(CallBase *Call,
  static bool insertParsePoints(Function &F, DominatorTree &DT,
                                TargetTransformInfo &TTI,
                                SmallVectorImpl<CallBase *> &ToUpdate) {
@@ -313,7 +313,7 @@ index b242f100faff..cf50aead9917 100644
  #ifndef NDEBUG
    // sanity check the input
    std::set<CallBase *> Uniqued;
-@@ -2206,9 +2271,9 @@ static bool insertParsePoints(Function &F, DominatorTree &DT,
+@@ -2361,9 +2426,9 @@ static bool insertParsePoints(Function &F, DominatorTree &DT,
      SmallVector<Value *, 64> DeoptValues;
  
      for (Value *Arg : GetDeoptBundleOperands(Call)) {
@@ -325,7 +325,7 @@ index b242f100faff..cf50aead9917 100644
          DeoptValues.push_back(Arg);
      }
  
-@@ -2371,7 +2436,7 @@ static bool insertParsePoints(Function &F, DominatorTree &DT,
+@@ -2524,7 +2589,7 @@ static bool insertParsePoints(Function &F, DominatorTree &DT,
  #ifndef NDEBUG
    // sanity check
    for (auto *Ptr : Live)
@@ -334,7 +334,7 @@ index b242f100faff..cf50aead9917 100644
             "must be a gc pointer type");
  #endif
  
-@@ -2496,8 +2561,10 @@ static bool shouldRewriteStatepointsIn(Function &F) {
+@@ -2649,8 +2714,10 @@ static bool shouldRewriteStatepointsIn(Function &F) {
      const auto &FunctionGCName = F.getGC();
      const StringRef StatepointExampleName("statepoint-example");
      const StringRef CoreCLRName("coreclr");
@@ -346,7 +346,7 @@ index b242f100faff..cf50aead9917 100644
    } else
      return false;
  }
-@@ -2638,7 +2705,8 @@ bool RewriteStatepointsForGC::runOnFunction(Function &F, DominatorTree &DT,
+@@ -2808,7 +2875,8 @@ bool RewriteStatepointsForGC::runOnFunction(Function &F, DominatorTree &DT,
  /// the live-out set of the basic block
  static void computeLiveInValues(BasicBlock::reverse_iterator Begin,
                                  BasicBlock::reverse_iterator End,
@@ -356,7 +356,7 @@ index b242f100faff..cf50aead9917 100644
    for (auto &I : make_range(Begin, End)) {
      // KILL/Def - Remove this definition from LiveIn
      LiveTmp.remove(&I);
-@@ -2650,9 +2718,9 @@ static void computeLiveInValues(BasicBlock::reverse_iterator Begin,
+@@ -2820,9 +2888,9 @@ static void computeLiveInValues(BasicBlock::reverse_iterator Begin,
  
      // USE - Add to the LiveIn set for this instruction
      for (Value *V : I.operands()) {
@@ -368,7 +368,7 @@ index b242f100faff..cf50aead9917 100644
          // The choice to exclude all things constant here is slightly subtle.
          // There are two independent reasons:
          // - We assume that things which are constant (from LLVM's definition)
-@@ -2670,6 +2738,7 @@ static void computeLiveInValues(BasicBlock::reverse_iterator Begin,
+@@ -2840,6 +2908,7 @@ static void computeLiveInValues(BasicBlock::reverse_iterator Begin,
  }
  
  static void computeLiveOutSeed(BasicBlock *BB, SetVector<Value *> &LiveTmp) {
@@ -376,7 +376,7 @@ index b242f100faff..cf50aead9917 100644
    for (BasicBlock *Succ : successors(BB)) {
      for (auto &I : *Succ) {
        PHINode *PN = dyn_cast<PHINode>(&I);
-@@ -2677,9 +2746,9 @@ static void computeLiveOutSeed(BasicBlock *BB, SetVector<Value *> &LiveTmp) {
+@@ -2847,9 +2916,9 @@ static void computeLiveOutSeed(BasicBlock *BB, SetVector<Value *> &LiveTmp) {
          break;
  
        Value *V = PN->getIncomingValueForBlock(BB);
@@ -388,7 +388,7 @@ index b242f100faff..cf50aead9917 100644
          LiveTmp.insert(V);
      }
    }
-@@ -2687,8 +2756,9 @@ static void computeLiveOutSeed(BasicBlock *BB, SetVector<Value *> &LiveTmp) {
+@@ -2857,8 +2926,9 @@ static void computeLiveOutSeed(BasicBlock *BB, SetVector<Value *> &LiveTmp) {
  
  static SetVector<Value *> computeKillSet(BasicBlock *BB) {
    SetVector<Value *> KillSet;
@@ -399,7 +399,7 @@ index b242f100faff..cf50aead9917 100644
        KillSet.insert(&I);
    return KillSet;
  }
-@@ -2725,12 +2795,13 @@ static void checkBasicSSA(DominatorTree &DT, GCPtrLivenessData &Data,
+@@ -2895,12 +2965,13 @@ static void checkBasicSSA(DominatorTree &DT, GCPtrLivenessData &Data,
  static void computeLiveInValues(DominatorTree &DT, Function &F,
                                  GCPtrLivenessData &Data) {
    SmallSetVector<BasicBlock *, 32> Worklist;
@@ -414,7 +414,7 @@ index b242f100faff..cf50aead9917 100644
  
  #ifndef NDEBUG
      for (Value *Kill : Data.KillSet[&BB])
-@@ -2802,7 +2873,7 @@ static void findLiveSetAtInst(Instruction *Inst, GCPtrLivenessData &Data,
+@@ -2972,7 +3043,7 @@ static void findLiveSetAtInst(Instruction *Inst, GCPtrLivenessData &Data,
    // (unless they're used again later).  This adjustment is
    // specifically what we need to relocate
    computeLiveInValues(BB->rbegin(), ++Inst->getIterator().getReverse(),
