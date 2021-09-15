@@ -1569,6 +1569,14 @@ suite = {
             },
         },
 
+        "NATIVE_IMAGE_JUNITCP_SUPPORT" : {
+            "native" : True,
+            "description" : "Native-image based junit testing support but with running image-builder on classpath",
+            "layout" : {
+                "native-image.properties" : "file:mx.substratevm/macro-junitcp.properties",
+            },
+        },
+
         "SVM_LLVM" : {
             "subDir" : "src",
             "description" : "LLVM backend for Native Image",
