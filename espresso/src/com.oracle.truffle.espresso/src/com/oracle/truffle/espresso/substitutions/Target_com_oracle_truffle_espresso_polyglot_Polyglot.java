@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -75,6 +76,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached("targetClass.getMirrorKlass()") Klass cachedTargetKlass,
                         @Cached BranchProfile nullTargetClassProfile,
                         @Cached BranchProfile reWrappingProfile,
+                        @Cached InitCheck initCheck,
                         @Cached("createInstanceOf(cachedTargetKlass)") InstanceOf instanceOfTarget,
                         @Cached CastImpl castImpl) {
             if (StaticObject.isNull(targetClass)) {
@@ -86,6 +88,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 return value;
             }
             reWrappingProfile.enter();
+            if (cachedTargetKlass instanceof ObjectKlass) {
+                initCheck.execute((ObjectKlass) cachedTargetKlass);
+            }
             return castImpl.execute(getContext(), cachedTargetKlass, value);
         }
 
