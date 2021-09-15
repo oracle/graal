@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk11.reflect;
 
 import java.lang.reflect.Executable;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -51,6 +52,11 @@ final class SubstrateReflectionAccessorFactoryJDK11 implements SubstrateReflecti
 
 @AutomaticFeature
 final class SubstrateReflectionAccessorFactoryJDK11Feature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC >= 11;
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(SubstrateReflectionAccessorFactory.class, new SubstrateReflectionAccessorFactoryJDK11());
