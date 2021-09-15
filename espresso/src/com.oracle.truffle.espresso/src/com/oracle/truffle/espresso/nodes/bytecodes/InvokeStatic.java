@@ -31,7 +31,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 
 /**
@@ -85,7 +84,7 @@ public abstract class InvokeStatic extends Node {
         Object callDirect(Object[] args,
                         @Cached("methodLookup(staticMethod)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
-            assert isInitializedOrInitializing(resolvedMethod.getMethod().getDeclaringKlass());
+            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
             return directCallNode.call(args);
         }
 
@@ -93,7 +92,7 @@ public abstract class InvokeStatic extends Node {
         Object callIndirect(Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
             Method.MethodVersion target = methodLookup(staticMethod);
-            assert isInitializedOrInitializing(target.getMethod().getDeclaringKlass());
+            assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
@@ -108,14 +107,6 @@ public abstract class InvokeStatic extends Node {
             return ClassRedefinition.handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass(), null).getMethodVersion();
         }
         return staticMethod.getMethodVersion();
-    }
-
-    static boolean isInitializedOrInitializing(ObjectKlass klass) {
-        int state = klass.getState();
-        return state == ObjectKlass.INITIALIZED ||
-                        state == ObjectKlass.ERRONEOUS ||
-                        // initializing thread
-                        state == ObjectKlass.INITIALIZING && Thread.holdsLock(klass);
     }
 
     @GenerateUncached
@@ -153,7 +144,7 @@ public abstract class InvokeStatic extends Node {
             Object callIndirect(Method staticMethod, Object[] args,
                             @Cached IndirectCallNode indirectCallNode) {
                 Method.MethodVersion target = methodLookup(staticMethod);
-                assert isInitializedOrInitializing(target.getMethod().getDeclaringKlass());
+                assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }
