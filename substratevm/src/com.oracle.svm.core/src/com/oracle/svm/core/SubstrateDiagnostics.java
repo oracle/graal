@@ -740,7 +740,7 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Counters:").indent(true);
-            Counter.logValues();
+            Counter.logValues(log);
             log.indent(false);
         }
     }
