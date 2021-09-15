@@ -765,6 +765,17 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return !(this instanceof ObjectKlass) || ((ObjectKlass) this).isInitializedImpl();
     }
 
+    public final boolean isInitializedOrInitializing() {
+        if (!(this instanceof ObjectKlass)) {
+            return true; // primitives or arrays are considered initialized.
+        }
+        int state = ((ObjectKlass) this).getState();
+        return state == ObjectKlass.INITIALIZED ||
+                        state == ObjectKlass.ERRONEOUS ||
+                        // initializing thread
+                        state == ObjectKlass.INITIALIZING && Thread.holdsLock(this);
+    }
+
     /**
      * Initializes this type.
      */

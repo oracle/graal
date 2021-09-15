@@ -228,11 +228,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @SuppressWarnings("unused") Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached BranchProfile exceptionProfile) {
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();
             // Casting to ForeignException skip the field checks.
             Object foreignObject = value.rawForeignObject();
             if (interop.isException(foreignObject)) {
+                initCheck.execute((ObjectKlass) targetKlass);
                 return StaticObject.createForeignException(meta, foreignObject, interop);
             }
             exceptionProfile.enter();

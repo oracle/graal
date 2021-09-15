@@ -185,10 +185,12 @@ public abstract class ToEspressoNode extends Node {
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isForeignException(klass)"})
     Object doForeignException(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached InitCheck initCheck) throws UnsupportedTypeException {
         if (!interop.isException(value)) {
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s", klass.getNameAsString()));
         }
+        initCheck.execute(klass);
         return StaticObject.createForeignException(klass.getMeta(), value, interop);
     }
 
