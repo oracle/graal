@@ -1375,7 +1375,7 @@ public class NativeImageGenerator {
              * Even though this is a verification phase, we want it enabled all the time and not
              * just when assertions are enabled.
              */
-            lirSuites.getPostAllocationOptimizationStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
         }
 
         /* Add phases that just perform assertion checking. */
@@ -1388,7 +1388,7 @@ public class NativeImageGenerator {
         LIRSuites lirSuites = GraalConfiguration.instance().createFirstTierLIRSuites(hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton());
 
         if (hosted) {
-            lirSuites.getPostAllocationOptimizationStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
         }
 
         /* Add phases that just perform assertion checking. */
@@ -1398,7 +1398,7 @@ public class NativeImageGenerator {
 
     private static boolean addAssertionLIRPhases(LIRSuites lirSuites, boolean hosted) {
         if (hosted) {
-            lirSuites.getPostAllocationOptimizationStage().appendPhase(new VerifyDeoptFrameStatesLIRPhase());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyDeoptFrameStatesLIRPhase());
         }
         return true;
     }
