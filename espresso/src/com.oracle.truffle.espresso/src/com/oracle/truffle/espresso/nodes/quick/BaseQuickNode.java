@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -71,7 +72,7 @@ public abstract class BaseQuickNode extends Node implements BciProvider, Instrum
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @SuppressWarnings("static-method")
     public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
         return getBytecodeNode().getScope(frame, nodeEnter);

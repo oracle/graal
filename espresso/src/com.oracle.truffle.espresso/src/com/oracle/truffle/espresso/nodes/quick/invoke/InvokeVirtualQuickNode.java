@@ -52,7 +52,7 @@ public final class InvokeVirtualQuickNode extends QuickNode {
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         /*
          * Method signature does not change across methods. Can safely use the constant signature
-         * from `resolutionSeed` instead of the non-constant signature from the lookup.
+         * from `resolutionSeed` instead of the non-constant signature from the resolved method.
          */
         Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
         StaticObject receiver = nullCheck((StaticObject) args[0]);
