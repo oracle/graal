@@ -123,7 +123,7 @@ public abstract class InvokeSpecial extends Node {
 
     @GenerateUncached
     @NodeInfo(shortName = "INVOKESPECIAL dynamic")
-    public static abstract class Dynamic extends Node {
+    public abstract static class Dynamic extends Node {
 
         public abstract Object execute(Method method, Object[] args);
 
