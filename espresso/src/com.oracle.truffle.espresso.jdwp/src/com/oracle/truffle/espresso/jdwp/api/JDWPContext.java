@@ -488,4 +488,12 @@ public interface JDWPContext {
      * @return the current bci
      */
     long getBCI(Node rawNode, Frame frame);
+
+    /**
+     * Returns the instrumentable delegate node for the language root node or <code>rootNode</code> if no instrumentable node can be found.
+     *
+     * @param rootNode the root node
+     * @return the instrumentable delegate node
+     */
+    Node getInstrumentableNode(RootNode rootNode);
 }

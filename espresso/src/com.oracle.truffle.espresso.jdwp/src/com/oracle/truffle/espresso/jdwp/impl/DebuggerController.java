@@ -725,6 +725,9 @@ public final class DebuggerController implements ContextsListener {
                         currentNode = ((RootCallTarget) callTarget).getRootNode();
                     }
                 }
+                if (currentNode instanceof RootNode) {
+                    currentNode = context.getInstrumentableNode((RootNode) currentNode);
+                }
                 callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context));
                 return null;
             }

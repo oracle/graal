@@ -34,6 +34,7 @@ import java.util.regex.Matcher;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -63,6 +64,7 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BciProvider;
+import com.oracle.truffle.espresso.nodes.EspressoBaseMethodNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
@@ -694,6 +696,19 @@ public final class JDWPContextImpl implements JDWPContext {
             return -1;
         }
         return bciProvider.getBci(frame);
+    }
+
+    @Override
+    public Node getInstrumentableNode(RootNode rootNode) {
+        if (rootNode instanceof EspressoRootNode) {
+            EspressoBaseMethodNode baseMethodNode = ((EspressoRootNode) rootNode).getMethodNode();
+            if (baseMethodNode instanceof InstrumentableNode.WrapperNode) {
+                return ((InstrumentableNode.WrapperNode) baseMethodNode).getDelegateNode();
+            } else {
+                return baseMethodNode;
+            }
+        }
+        return rootNode;
     }
 
     public void rerunclinit(ObjectKlass oldKlass) {
