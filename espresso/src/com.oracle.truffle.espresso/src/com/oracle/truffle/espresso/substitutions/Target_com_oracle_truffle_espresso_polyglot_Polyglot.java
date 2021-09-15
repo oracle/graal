@@ -76,7 +76,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached("targetClass.getMirrorKlass()") Klass cachedTargetKlass,
                         @Cached BranchProfile nullTargetClassProfile,
                         @Cached BranchProfile reWrappingProfile,
-                        @Cached InitCheck initCheck,
                         @Cached("createInstanceOf(cachedTargetKlass)") InstanceOf instanceOfTarget,
                         @Cached CastImpl castImpl) {
             if (StaticObject.isNull(targetClass)) {
@@ -88,9 +87,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 return value;
             }
             reWrappingProfile.enter();
-            if (cachedTargetKlass instanceof ObjectKlass) {
-                initCheck.execute((ObjectKlass) cachedTargetKlass);
-            }
             return castImpl.execute(getContext(), cachedTargetKlass, value);
         }
 
@@ -250,7 +246,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached BranchProfile exceptionProfile) {
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();
             if (targetKlass.isAbstract()) {
                 exceptionProfile.enter();
@@ -262,6 +259,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             try {
                 Object foreignObject = value.rawForeignObject();
                 ToEspressoNode.checkHasAllFieldsOrThrow(foreignObject, targetObjectKlass, interop, meta);
+                initCheck.execute(targetObjectKlass);
                 return StaticObject.createForeign(meta.getEspressoLanguage(), targetKlass, foreignObject, interop);
             } catch (ClassCastException e) {
                 exceptionProfile.enter();
