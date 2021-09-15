@@ -43,7 +43,7 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
 
     /**
      * For JDK >11, boot modules are injected at
-     * {@link Target_jdk_internal_module_ModuleLoaderMap_Modules.Clinit}
+     * {@link Target_jdk_internal_module_ModuleLoaderMap_Modules.Clinit}.
      */
     @Substitution(versionFilter = VersionFilter.Java11OrEarlier.class)
     abstract static class BootModules extends SubstitutionNode {
