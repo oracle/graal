@@ -141,7 +141,7 @@ public class LockFreePrefixTree {
                skips++;
                if(index >= hash.length() || skips > MAX_HASH_SKIPS){
                    //Two cases for growth: (1) We have to wrap around the array, (2) the MAX_HASH_SKIPS have been exceeded.
-                   //Returning null automatically triggers a hash growth.
+                   //Returning null  triggers hash growth.
                    return null;
                }
            }

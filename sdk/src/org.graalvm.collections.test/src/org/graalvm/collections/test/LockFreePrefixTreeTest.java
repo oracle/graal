@@ -1,16 +1,11 @@
 package org.graalvm.collections.test;
 
 
-import org.graalvm.collections.PrefixTree;
 import org.junit.Assert;
 import org.junit.Test;
 import org.graalvm.collections.LockFreePrefixTree;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
 
 
@@ -95,30 +90,31 @@ public class LockFreePrefixTreeTest {
     }
 
 
-    @Test public void flatMultithreaded(){
+    @Test public void hashFlatMultithreaded(){
         final LockFreePrefixTree tree = new LockFreePrefixTree();
-        final int parallelism = 8;
-        final int size = 10;
+        final int parallelism = 10;
+        final int size = 10000;
         inParallel(parallelism,threadIndex -> {
             for(int i = 1;  i < size;++i){
                 tree.root().at(i).incValue();
             }
-//            System.out.println(Thread.currentThread().getName()  + " " + LockFreePrefixTree.Node.count.get());
         });
-
-
-//        for(int i = 1; i < size;++i) {
-//
-//            System.out.println(tree.root().at(i));
-//        }
-
-
-//        LockFreePrefixTree.Node.queue.stream().forEach(s -> System.out.println(s));
-
         for(int i = 1; i < size;++i){
-
             Assert.assertEquals(parallelism, tree.root().at(i).get());
+        }
+    }
 
+    @Test public void linearFlatMultithreaded(){
+        final LockFreePrefixTree tree = new LockFreePrefixTree();
+        final int parallelism = 10;
+        final int size = 7;
+        inParallel(parallelism,threadIndex -> {
+            for(int i = 1;  i < size;++i){
+                tree.root().at(i).incValue();
+            }
+        });
+        for(int i = 1; i < size;++i){
+            Assert.assertEquals(parallelism, tree.root().at(i).get());
         }
     }
 
@@ -159,9 +155,30 @@ public class LockFreePrefixTreeTest {
         }
     }
 
+    private void fillDeepTree(LockFreePrefixTree.Node node, int depth, int numChildren){
+        if(depth == 0){
+            node.incrementAndGet();
+        }else{
+            for (int i = 1; i <= numChildren ; i++) {
+                node.at(i);
+                fillDeepTree(node.at(i),depth - 1,numChildren);
+            }
+        }
+    }
+
+
+    private void checkDeepTree(LockFreePrefixTree.Node node, int depth, int numChildren,int parallelism){
+        if(depth == 0){
+            Assert.assertEquals(parallelism,node.value());
+        }else{
+            for(long i = 1L; i <= numChildren; i++){
+                checkDeepTree(node.at(i),depth -1,numChildren,parallelism);
+            }
+        }
+    }
 
     @Test
-    public void deepMultiThreaded()
+    public void deepHashMultiThreaded()
     {
         final LockFreePrefixTree tree = new LockFreePrefixTree();
         final int depth = 6;
@@ -188,38 +205,35 @@ public class LockFreePrefixTreeTest {
         verifyValue(tree.root(), depth, parallelism);
     }
 
+    @Test public void deepLinearMultiThreaded(){
+        final  LockFreePrefixTree tree = new LockFreePrefixTree();
+        final int depth = 10;
+        final int parallelism = 8;
+        final int numChildren  = 4;
+        inParallel(parallelism, new Consumer<Integer>() {
+            @Override
+            public void accept(Integer integer) {
+                fillDeepTree(tree.root(),depth,numChildren);
+            }
+        });
 
-//    private <T> boolean  checkListUnique(List<T> list) {
-//        Set<T> set = new HashSet<>(list);
-//        return set.size() == list.size();
-//    }
-//
-//    private List<Long> getAllKeys(LockFreePrefixTree tree){
-//        List<Long> keys = new ArrayList<>();
-//        //TODO: general case
-//        AtomicReferenceArray<Node> children =  (AtomicReferenceArray<?>) tree.root().readChildren();
-//
-//        for (long)
-//    }
+        checkDeepTree(tree.root(),depth,numChildren,parallelism);
+    }
 
-//    @Test
-//    public void checkKeyUniqueness(){
-//        final LockFreePrefixTree tree = new LockFreePrefixTree();
-//        int parallelism = 8;
-//        int numKeysPerThread = 3;
-//        inParallel(parallelism, new Consumer<Integer>() {
-//            @Override
-//            public void accept(Integer threadIndex) {
-//                for (int i = threadIndex * numKeysPerThread; i < (threadIndex + 1) * numKeysPerThread ; i++) {
-//                    tree.root().at(i).setValue(2);
-//                }
-//
-//            }
-//        });
-//        for (Object children:) {
-//
-//        }
-//    }
+
+    @Test public void deepHashMultiThreadedv2(){
+        final  LockFreePrefixTree tree = new LockFreePrefixTree();
+        final int depth = 6;
+        final int parallelism = 8;
+        final int numChildren  = 10;
+        inParallel(parallelism, new Consumer<Integer>() {
+            @Override
+            public void accept(Integer integer) {
+                fillDeepTree(tree.root(),depth,numChildren);
+            }
+        });
+        checkDeepTree(tree.root(),depth,numChildren,parallelism);
+    }
 
 
     @Test
