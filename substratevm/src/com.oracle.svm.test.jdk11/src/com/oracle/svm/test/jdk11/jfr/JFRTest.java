@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,25 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.test.jdk11.jfr;
 
-import jdk.jfr.Recording;
+import static org.junit.Assume.assumeTrue;
 
-import org.junit.Test;
+import org.graalvm.nativeimage.ImageInfo;
+import org.junit.BeforeClass;
 
-public class TestJFRCompiles extends JFRTest {
+import com.oracle.svm.jfr.JfrEnabled;
 
-    @Test
-    public void test() throws Exception {
-        JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestSingleEvent");
-
-        StringEvent event = new StringEvent();
-        event.message = "Event has been generated!";
-        event.commit();
-
-        jfr.endRecording(recording);
-        jfr.cleanupRecording(recording);
+/** Base class for JFR unit tests. */
+public class JFRTest {
+    @BeforeClass
+    public static void checkForJFR() {
+        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
     }
 }

@@ -682,6 +682,7 @@ suite = {
             "dependencies": [
                 "mx:JUNIT_TOOL",
                 "sdk:GRAAL_SDK",
+                "SVM",
             ],
             "requires" : [
                 "java.compiler",
