@@ -124,6 +124,9 @@ public class NativeImageGeneratorRunner {
                 throw UserError.abort("Unknown options: %s", String.join(" ", remainingArguments));
             }
             exitStatus = new NativeImageGeneratorRunner().build(imageClassLoader);
+        } catch (UserException e) {
+            reportUserError(e.getMessage());
+            exitStatus = 1;
         } catch (InterruptImageBuilding e) {
             if (e.getReason().isPresent()) {
                 if (!e.getReason().get().isEmpty()) {

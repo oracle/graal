@@ -224,7 +224,7 @@ public class SubstrateOptionsParser {
                     msg.append(' ').append(match.getName());
                 }
             }
-            msg.append(". Use ").append(optionPrefix).append(SubstrateOptions.PrintFlags.getName()).append("= to list all available options.");
+            msg.append(". Use --expert-options-all to list all available options.");
             return OptionParseResult.error(msg.toString());
         }
 
