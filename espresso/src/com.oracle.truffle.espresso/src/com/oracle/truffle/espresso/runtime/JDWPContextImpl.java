@@ -744,16 +744,16 @@ public final class JDWPContextImpl implements JDWPContext {
                     JDWP.LOGGER.warning(() -> "exception while re-running a class initializer!");
                 }
             });
+            // run post redefinition plugins before ending the redefinition transaction
+            try {
+                classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
+            } catch (Throwable t) {
+                JDWP.LOGGER.throwing(JDWPContextImpl.class.getName(), "redefineClasses", t);
+            }
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {
             ClassRedefinition.end();
-        }
-        // run post redefinition plugins
-        try {
-            classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
-        } catch (Throwable t) {
-            JDWP.LOGGER.throwing(JDWPContextImpl.class.getName(), "redefineClasses", t);
         }
         return 0;
     }
