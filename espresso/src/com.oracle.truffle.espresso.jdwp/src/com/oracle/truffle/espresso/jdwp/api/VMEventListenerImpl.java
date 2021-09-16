@@ -186,16 +186,17 @@ public final class VMEventListenerImpl implements VMEventListener {
                 debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, null));
                 debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
                 active = true;
-            }
-            switch (hook.getKind()) {
-                case ONE_TIME:
-                    if (hook.hasFired()) {
-                        method.removedMethodHook(hook);
-                    }
-                    break;
-                case INDEFINITE:
-                    // leave the hook active
-                    break;
+
+                switch (hook.getKind()) {
+                    case ONE_TIME:
+                        if (hook.hasFired()) {
+                            method.removedMethodHook(hook);
+                        }
+                        break;
+                    case INDEFINITE:
+                        // leave the hook active
+                        break;
+                }
             }
         }
         return active;
@@ -211,16 +212,17 @@ public final class VMEventListenerImpl implements VMEventListener {
                 debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, returnValue));
                 debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
                 active = true;
-            }
-            switch (hook.getKind()) {
-                case ONE_TIME:
-                    if (hook.hasFired()) {
-                        method.removedMethodHook(hook);
-                    }
-                    break;
-                case INDEFINITE:
-                    // leave the hook active
-                    break;
+
+                switch (hook.getKind()) {
+                    case ONE_TIME:
+                        if (hook.hasFired()) {
+                            method.removedMethodHook(hook);
+                        }
+                        break;
+                    case INDEFINITE:
+                        // leave the hook active
+                        break;
+                }
             }
         }
         return active;

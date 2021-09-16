@@ -322,7 +322,6 @@ public final class DebuggerController implements ContextsListener {
                                     break;
                                 case SUBMIT_EXCEPTION_BREAKPOINT:
                                 case SUBMIT_LINE_BREAKPOINT:
-                                case SUBMIT_METHOD_ENTRY_BREAKPOINT:
                                 case SPECIAL_STEP:
                                     break;
                                 default:
@@ -724,6 +723,9 @@ public final class DebuggerController implements ContextsListener {
                     if (callTarget instanceof RootCallTarget) {
                         currentNode = ((RootCallTarget) callTarget).getRootNode();
                     }
+                }
+                if (currentNode instanceof RootNode) {
+                    currentNode = context.getInstrumentableNode((RootNode) currentNode);
                 }
                 callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context));
                 return null;
