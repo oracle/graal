@@ -87,12 +87,13 @@ public class LockFreePrefixTree {
                         tryResizeLinear(children0);
                    }
 
-
                }else{
                    //Children0 instanceof HashChildren.
                     Node newChild = tryAddChildToHash(key,children0);
                     if(newChild != null){
                         return newChild;
+                    }else{
+                        growHash();
                     }
                }
            }
@@ -100,7 +101,6 @@ public class LockFreePrefixTree {
 
        //Precondition: childrenArray is full.
        private void tryResizeLinear(AtomicReferenceArray<Node> childrenArray) {
-
 
            AtomicReferenceArray<Node> newChildrenArray;
            if(childrenArray.length() <  MAX_LINEAR_NODE_SIZE){
@@ -123,38 +123,33 @@ public class LockFreePrefixTree {
            int index = hash(key) % hash.length();
            int skips = 0;
 
-           while (true ){
+           while(true){
                if(hash.get(index) == null){
                    Node newNode = new Node(key);
-                   if (cas(hash, index, null, newNode)) {
-                        return newNode;
-                    } else {
-                        Node insertedNode = hash.get(index);
-                        if (insertedNode.getKey() == key) {
-                            // The key we tried to insert has just been inserted by another thread.
-                            return insertedNode;
-                        }
-                        index++;
-                        skips++;
-                    }
-               }else if(hash.get(index).getKey() == key){
+                   if(cas(hash,index,null, newNode)) {
+                       return newNode;
+                   }else{
+                       //Rechecks same index spot if the node has been inserted by other thread.
+                       continue;
+                   }
+               }
+               else if(hash.get(index).getKey() == key){
                    return hash.get(index);
-               }else{
-                   //Case hash.get(index) returns either another node or a FrozenNode (frozen hash)
-                   index++;
-                    skips++;
-                    if (index >= hash.length() || skips > MAX_HASH_SKIPS) {
-                        // We grow in 2 cases: (1) we wrap around, (2) we have more than MAX_HASH_SKIPS skips
-                        growHash();
-                        return null;
-                    }
+               }
+
+               index++;
+               skips++;
+               if(index >= hash.length() || skips > MAX_HASH_SKIPS){
+                   //Two cases for growth: (1) We have to wrap around the array, (2) the MAX_HASH_SKIPS have been exceeded.
+                   //Returning null automatically triggers a hash growth.
+                   return null;
                }
            }
        }
 
 
        //This method can only get called in the grow hash function, or when converting from linear to hash, meaning it is only exposed to a SINGLE thread
-       //Precondition: hash is empty
+       //Precondition: hash is empty, reachable from exactly  one thread
        private void addChildToFreshHash(Node node,AtomicReferenceArray<Node> hash){
            int index = hash(node.key) % hash.length();
             while(hash.get(index) != null){
