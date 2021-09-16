@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
+
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -147,15 +149,15 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_{attempt_scavenge,full_GC}
         guaranteeSizeParametersInitialized();
 
-        if (!followingIncrementalCollection) {
+        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(true)) {
             /*
-             * Always do an incremental collection first because we expect most of the objects in
-             * the young generation to be garbage, and we can reuse their leftover chunks for
-             * copying the live objects in the old generation with fewer allocations.
+             * Default to always doing an incremental collection first because we expect most of the
+             * objects in the young generation to be garbage, and we can reuse their leftover chunks
+             * for copying the live objects in the old generation with fewer allocations.
              */
             return false;
         }
-        if (oldSizeExceededInPreviousCollection) {
+        if (followingIncrementalCollection && oldSizeExceededInPreviousCollection) {
             /*
              * In the preceding incremental collection, we promoted objects to the old generation
              * beyond its current capacity to avoid a promotion failure, but due to the chunked

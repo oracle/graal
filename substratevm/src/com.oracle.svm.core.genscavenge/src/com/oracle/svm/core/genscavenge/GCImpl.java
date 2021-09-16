@@ -209,12 +209,12 @@ public final class GCImpl implements GC {
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            outOfMemory = doCollectImpl(cause, forceFullGC);
+            outOfMemory = doCollectImpl(cause, forceFullGC, false);
             if (outOfMemory) {
                 // Avoid running out of memory with a full GC that reclaims softly reachable objects
                 ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
                 try {
-                    outOfMemory = doCollectImpl(cause, true);
+                    outOfMemory = doCollectImpl(cause, true, true);
                 } finally {
                     ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
                 }
@@ -227,16 +227,15 @@ public final class GCImpl implements GC {
         return outOfMemory;
     }
 
-    private boolean doCollectImpl(GCCause cause, boolean forceFullGC) {
+    private boolean doCollectImpl(GCCause cause, boolean forceFullGC, boolean forceNoIncremental) {
         CommittedMemoryProvider.get().beforeGarbageCollection();
 
-        boolean incremental = HeapParameters.Options.CollectYoungGenerationSeparately.getValue() ||
-                        (!forceFullGC && !policy.shouldCollectCompletely(false));
+        boolean incremental = !forceNoIncremental && !policy.shouldCollectCompletely(false);
         boolean outOfMemory = false;
         if (incremental) {
             outOfMemory = doCollectOnce(cause, false, false);
         }
-        if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(true)) {
+        if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
             if (incremental) { // uncommit unaligned chunks
                 CommittedMemoryProvider.get().afterGarbageCollection();
             }

@@ -27,6 +27,8 @@ package com.oracle.svm.core.genscavenge;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -44,6 +46,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     protected static final int MAX_TENURING_THRESHOLD = 15;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
         assert userValue == null || userValue >= 0;
         return (userValue != null) ? userValue : AbstractCollectionPolicy.MAX_TENURING_THRESHOLD;

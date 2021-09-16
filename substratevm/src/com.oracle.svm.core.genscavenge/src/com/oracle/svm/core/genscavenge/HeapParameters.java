@@ -99,7 +99,7 @@ public final class HeapParameters {
         };
 
         @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation.") //
-        public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(false);
+        public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(null);
 
         private Options() {
         }

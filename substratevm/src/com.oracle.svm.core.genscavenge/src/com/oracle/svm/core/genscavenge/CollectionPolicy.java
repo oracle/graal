@@ -86,6 +86,11 @@ public interface CollectionPolicy {
         return BasicCollectionPolicies.getMaxSurvivorSpaces(userValue);
     }
 
+    static boolean shouldCollectYoungGenSeparately(boolean defaultValue) {
+        Boolean optionValue = HeapParameters.Options.CollectYoungGenerationSeparately.getValue();
+        return (optionValue != null) ? optionValue : defaultValue;
+    }
+
     String getName();
 
     /**
