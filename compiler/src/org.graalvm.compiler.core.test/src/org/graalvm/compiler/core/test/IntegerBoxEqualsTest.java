@@ -30,7 +30,7 @@ import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class IntegerBoxEqualsTest extends SubprocessTest {
+public class IntegerBoxEqualsTest extends GraalCompilerTest {
 
     class Cell {
         private final Integer value;
@@ -65,6 +65,9 @@ public class IntegerBoxEqualsTest extends SubprocessTest {
         test(get, null, cell, value);
         final int equalsCount = lastCompiledGraph.getNodes().filter(ObjectEqualsNode.class).count();
         final int ifCount = lastCompiledGraph.getNodes().filter(IfNode.class).count();
+        if (!(equalsCount == 0 || ifCount > 1)) {
+            lastCompiledGraph.getDebug().forceDump(lastCompiledGraph, "There must be no reference comparisons in the graph, or everything reachable in equals.");
+        }
         assertTrue(equalsCount == 0 || ifCount > 1, "There must be no reference comparisons in the graph, or everything reachable in equals.");
     }
 

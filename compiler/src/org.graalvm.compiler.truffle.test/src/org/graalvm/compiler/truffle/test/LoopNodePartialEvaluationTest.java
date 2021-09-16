@@ -267,8 +267,9 @@ public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
 
         List<LoopBeginNode> loopBegins = graph.getNodes().filter(LoopBeginNode.class).snapshot();
         Assert.assertEquals(loopBegins.toString(), 1, loopBegins.size());
+        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, false, false);
         for (LoopBeginNode loopBegin : loopBegins) {
-            Assert.assertEquals("Expected loop frequency", 10.0, loopBegin.loopFrequency(), 0.01);
+            Assert.assertEquals("Expected loop frequency", 10.0, cfg.localLoopFrequency(loopBegin), 0.01);
         }
     }
 
