@@ -606,8 +606,8 @@ public class SubstrateOptions {
         }
     }
 
-    @Option(help = "Allows to specify how many details should be printed for certain diagnostic thunk, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +
-                    "A value of 1 will result in the maximum amount of information, higher values will result in less information. " +
+    @Option(help = "Specifies how many details are printed for certain diagnostic thunks, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +
+                    "A value of 1 will result in the maximum amount of information, higher values will print less information. " +
                     "By default, the most detailed output is enabled for all diagnostic thunks. Wildcards (*) are supported in the name of the diagnostic thunk.", type = Expert)//
     public static final RuntimeOptionKey<String> DiagnosticDetails = new RuntimeOptionKey<String>("") {
         @Override

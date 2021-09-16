@@ -582,7 +582,7 @@ public abstract class VMThreads {
 
             if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
                 // If we are not at a safepoint, then it is unsafe to access thread locals of
-                // another thread is unsafe as the IsolateThread could be freed at any time.
+                // another thread as the IsolateThread could be freed at any time.
                 UnsignedWord stackBase = StackBase.get(thread);
                 UnsignedWord stackEnd = StackEnd.get(thread);
                 if (value.belowThan(stackBase) && value.aboveOrEqual(stackEnd)) {

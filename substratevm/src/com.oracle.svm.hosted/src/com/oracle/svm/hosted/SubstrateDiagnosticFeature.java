@@ -26,14 +26,12 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.SubstrateDiagnostics.FatalErrorState;
-import com.sun.tools.javac.util.FatalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegister;
+import com.oracle.svm.core.SubstrateDiagnostics.FatalErrorState;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;

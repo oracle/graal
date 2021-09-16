@@ -130,10 +130,8 @@ public class SubstrateDiagnostics {
     }
 
     /**
-     * This method prints diagnostic information. This method prints less information than
-     * {@link #printFatalError} as it only uses reasonably safe operations and memory accesses. So,
-     * as long as all parts of Native Image are fully functional, calling this method will never
-     * cause a crash.
+     * Prints less detailed information than {@link #printFatalError} but this method guarantees
+     * that it won't cause a crash if all parts of Native Image are fully functional.
      */
     public static void printInformation(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
         // Stack allocate an error context.
@@ -162,18 +160,17 @@ public class SubstrateDiagnostics {
     }
 
     /**
-     * This method prints extensive diagnostic information and is only called for fatal errors. This
-     * method may use operations and memory accesses that are not necessarily 100% safe. So, even if
-     * all parts of Native Image are fully functional, this method may cause crashes.
+     * Used to print extensive diagnostic information in case of a fatal error. This method may use
+     * operations and memory accesses that are not necessarily 100% safe. So, even if all parts of
+     * Native Image are fully functional, this method may cause crashes.
      * <p>
-     * If a segfault handler is present, then this method will be called recursively multiple times
+     * If a segfault handler is present, then this method may be called recursively multiple times
      * if further errors happen while printing diagnostics. On each recursive invocation, the level
-     * of detail of the diagnostic output will be reduced gradually. This recursion will terminate
-     * once the maximum amount of information is printed.
+     * of detail of the diagnostic output will be reduced gradually.
      * <p>
      * In scenarios without a segfault handler, it can happen that this method reliably causes a
      * subsequent error that crashes Native Image. In such a case, try to reduce the level of detail
-     * of the diagnostic output (see {@link SubstrateOptions#DiagnosticDetails} to get a reasonably
+     * of the diagnostic output (see {@link SubstrateOptions#DiagnosticDetails}) to get a reasonably
      * complete diagnostic output.
      */
     public static boolean printFatalError(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
@@ -346,6 +343,7 @@ public class SubstrateDiagnostics {
         try {
             initialInvocationCount = Integer.parseInt(entry.substring(pos + 1));
         } catch (NumberFormatException e) {
+            // handled below
         }
 
         if (initialInvocationCount < 1) {
@@ -514,25 +512,29 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             Pointer sp = context.getStackPointer();
+            UnsignedWord stackBase = VMThreads.StackBase.get();
             log.string("Top of stack (sp=").zhex(sp).string("):").indent(true);
 
-            UnsignedWord stackBase = VMThreads.StackBase.get();
+            int bytesToPrint = computeBytesToPrint(sp, stackBase);
+            log.hexdump(sp, 8, bytesToPrint / 8);
+            log.indent(false).newline();
+        }
+
+        private static int computeBytesToPrint(Pointer sp, UnsignedWord stackBase) {
             if (stackBase.equal(0)) {
                 /*
                  * We have to be careful here and not dump too much of the stack: if there are not
                  * many frames on the stack, we segfault when going past the beginning of the stack.
                  */
-                log.hexdump(sp, 8, 16);
-            } else {
-                int bytesToPrint = 512;
-                UnsignedWord availableBytes = stackBase.subtract(sp);
-                if (availableBytes.belowThan(bytesToPrint)) {
-                    bytesToPrint = NumUtil.safeToInt(availableBytes.rawValue());
-                }
-
-                log.hexdump(sp, 8, bytesToPrint / 8);
+                return 128;
             }
-            log.indent(false).newline();
+
+            int bytesToPrint = 512;
+            UnsignedWord availableBytes = stackBase.subtract(sp);
+            if (availableBytes.belowThan(bytesToPrint)) {
+                bytesToPrint = NumUtil.safeToInt(availableBytes.rawValue());
+            }
+            return bytesToPrint;
         }
     }
 
