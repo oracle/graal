@@ -93,7 +93,6 @@ public abstract class LoopFragment {
     public abstract void insertBefore(LoopEx l);
 
     public void disconnect() {
-        // TODO (gd) possibly abstract
         GraalError.unimplemented();
     }
 
