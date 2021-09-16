@@ -322,7 +322,6 @@ public final class DebuggerController implements ContextsListener {
                                     break;
                                 case SUBMIT_EXCEPTION_BREAKPOINT:
                                 case SUBMIT_LINE_BREAKPOINT:
-                                case SUBMIT_METHOD_ENTRY_BREAKPOINT:
                                 case SPECIAL_STEP:
                                     break;
                                 default:
