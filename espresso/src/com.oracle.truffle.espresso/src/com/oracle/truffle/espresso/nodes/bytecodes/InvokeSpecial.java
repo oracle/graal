@@ -105,7 +105,7 @@ public abstract class InvokeSpecial extends Node {
                         @Cached("methodLookup(method, receiver)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert !StaticObject.isNull(receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
             return directCallNode.call(args);
         }
 
@@ -116,7 +116,7 @@ public abstract class InvokeSpecial extends Node {
             StaticObject receiver = (StaticObject) args[0];
             assert !StaticObject.isNull(receiver);
             Method.MethodVersion resolvedMethod = methodLookup(method, receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
             return indirectCallNode.call(resolvedMethod.getCallTarget(), receiver, args);
         }
     }
@@ -166,7 +166,7 @@ public abstract class InvokeSpecial extends Node {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
                 Method.MethodVersion resolvedMethod = methodLookup(method, receiver);
-                assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+                assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(resolvedMethod.getCallTarget(), args);
             }
         }
