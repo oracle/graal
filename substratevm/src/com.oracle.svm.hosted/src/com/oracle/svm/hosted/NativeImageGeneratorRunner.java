@@ -124,6 +124,16 @@ public class NativeImageGeneratorRunner {
                 throw UserError.abort("Unknown options: %s", String.join(" ", remainingArguments));
             }
             exitStatus = new NativeImageGeneratorRunner().build(imageClassLoader);
+        } catch (InterruptImageBuilding e) {
+            if (e.getReason().isPresent()) {
+                if (!e.getReason().get().isEmpty()) {
+                    NativeImageGeneratorRunner.info(e.getReason().get());
+                }
+                exitStatus = 0;
+            } else {
+                /* InterruptImageBuilding without explicit reason is exit code 3 */
+                exitStatus = 3;
+            }
         } finally {
             uninstallNativeImageClassLoader();
             Thread.currentThread().setContextClassLoader(applicationClassLoader);
@@ -405,15 +415,7 @@ public class NativeImageGeneratorRunner {
             if (compilationExecutor != null) {
                 compilationExecutor.shutdownNow();
             }
-            if (e.getReason().isPresent()) {
-                if (!e.getReason().get().isEmpty()) {
-                    NativeImageGeneratorRunner.info(e.getReason().get());
-                }
-                return 0;
-            } else {
-                /* InterruptImageBuilding without explicit reason is exit code 3 */
-                return 3;
-            }
+            throw e;
         } catch (FallbackFeature.FallbackImageRequest e) {
             if (FallbackExecutor.class.getName().equals(SubstrateOptions.Class.getValue())) {
                 NativeImageGeneratorRunner.reportFatalError(e, "FallbackImageRequest while building fallback image.");
