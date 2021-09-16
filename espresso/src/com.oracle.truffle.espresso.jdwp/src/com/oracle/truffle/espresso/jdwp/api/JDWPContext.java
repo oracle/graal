@@ -251,7 +251,7 @@ public interface JDWPContext {
 
     /**
      * Verifies that the array has the expected length.
-     * 
+     *
      * @param array guest language array object
      * @param length expected length of the array
      * @return true if array is equal to or bigger in size than the expected length
@@ -461,7 +461,7 @@ public interface JDWPContext {
 
     /**
      * Exit all monitors that was entered by the frame.
-     * 
+     *
      * @param frame
      */
     void clearFrameMonitors(CallFrame frame);
@@ -490,7 +490,8 @@ public interface JDWPContext {
     long getBCI(Node rawNode, Frame frame);
 
     /**
-     * Returns the instrumentable delegate node for the language root node or <code>rootNode</code> if no instrumentable node can be found.
+     * Returns the instrumentable delegate node for the language root node or <code>rootNode</code>
+     * if no instrumentable node can be found.
      *
      * @param rootNode the root node
      * @return the instrumentable delegate node
