@@ -1087,13 +1087,13 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 for cfg in gcomponent.launcher_configs:
                     binary_dst = cfg.destination
                     binary_name = os.path.split(binary_dst)[-1]
-                    pth = get_native_image_locations(gcomponent, binary_name)
+                    pth = get_native_image_locations(gcomponent, binary_name, fatal_if_missing=False)
                     if pth and os.path.exists(pth):
                         sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(binary_name, os.path.getsize(pth), pth)
             elif isinstance(gcomponent, GraalVmJreComponent):
                 mx.log("checking GraalVmJreComponent: {}".format(gcomponent))
                 if gcomponent.name == "LibGraal":
-                    pth = get_native_image_locations(gcomponent, 'jvmcicompiler')
+                    pth = get_native_image_locations(gcomponent, 'jvmcicompiler', fatal_if_missing=False)
                     if pth and os.path.exists(pth):
                         sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(gcomponent.name, os.path.getsize(pth), pth)
 

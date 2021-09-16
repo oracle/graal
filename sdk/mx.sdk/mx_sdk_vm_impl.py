@@ -2678,7 +2678,7 @@ def has_svm_launchers(components, fatalIfMissing=False):
     return all((has_svm_launcher(component, fatalIfMissing=fatalIfMissing) for component in components))
 
 
-def get_native_image_locations(name, image_name):
+def get_native_image_locations(name, image_name, fatal_if_missing=True):
     c = name if isinstance(name, mx_sdk.GraalVmComponent) else get_component(name)
     configs = _get_library_configs(c) + _get_launcher_configs(c)
     libgraal_libs = [l for l in configs if image_name in basename(l.destination)]
@@ -2686,7 +2686,8 @@ def get_native_image_locations(name, image_name):
         library_config = libgraal_libs[0]
         dist = get_final_graalvm_distribution()
         source_type = 'skip' if _skip_libraries(library_config) else 'dependency'
-        return join(graalvm_output_root(), dist.find_single_source_location(source_type + ':' + GraalVmLibrary.project_name(library_config)))
+        return join(graalvm_output_root(), dist.find_single_source_location(
+            source_type + ':' + GraalVmLibrary.project_name(library_config), fatal_if_missing=fatal_if_missing))
     return None
 
 
