@@ -22,6 +22,12 @@ public class LockFreePrefixTree {
            }
        }
 
+       private static class FrozenNode extends Node{
+            FrozenNode(){
+                super(0);
+            }
+       }
+
 
        //Requires: INITIAL_HASH_NODE_SIZE >= MAX_LINEAR_NODE_SIZE -> otherwise we have an endless loop
        private static final int INITIAL_LINEAR_NODE_SIZE = 3;
@@ -31,11 +37,11 @@ public class LockFreePrefixTree {
 
 
 
-       private static final AtomicReferenceFieldUpdater<Node,Object>childrenUpdater=AtomicReferenceFieldUpdater.newUpdater(Node.class, Object.class, "children");
+       private static final AtomicReferenceFieldUpdater<Node,AtomicReferenceArray>childrenUpdater=AtomicReferenceFieldUpdater.newUpdater(Node.class, AtomicReferenceArray .class, "children");
 
        private  final long key;
 
-       private volatile Object children;
+       private volatile AtomicReferenceArray<Node>  children;
 
 //       public static final ThreadLocal<Integer> count = ThreadLocal.withInitial(() -> new Integer(0));
 //
@@ -44,7 +50,6 @@ public class LockFreePrefixTree {
 
        public Node(long key) {
            this.key = key;
-//           System.out.println(Thread.currentThread().getName() + " -> " + this.key + " " + System.identityHashCode(this) );
        }
 
        public long value() {
@@ -60,7 +65,6 @@ public class LockFreePrefixTree {
         }
         public long incValue() {
 //           count.set(count.get() + 1);
-//
 //           queue.add(Thread.currentThread().getName() + " -> " + this.key + " " + System.identityHashCode(this) );
             return incrementAndGet();
         }
@@ -72,22 +76,21 @@ public class LockFreePrefixTree {
            ensureChildren();
 
            while(true){
-               Object children0 = readChildren();
+               AtomicReferenceArray<Node>  children0 = readChildren();
                if(children0 instanceof LinearChildren) {
-                   AtomicReferenceArray<Node> childrenArray = (AtomicReferenceArray<Node>) children0;
                    // Find first empty slot.
-                   Node newChild = tryAppendChild(key, childrenArray);
+                   Node newChild = tryAppendChild(key, children0);
                    if (newChild != null) {
                        return newChild;
                    }else{
                        //Children array is full, we need to  resize.
-                        tryResizeLinear(childrenArray);
+                        tryResizeLinear(children0);
                    }
 
 
                }else{
-                   AtomicReferenceArray<Node> childrenArray = (AtomicReferenceArray<Node>) children0;
-                    Node newChild = tryAddChildToHash(key,childrenArray);
+                   //Children0 instanceof HashChildren.
+                    Node newChild = tryAddChildToHash(key,children0);
                     if(newChild != null){
                         return newChild;
                     }
@@ -127,17 +130,17 @@ public class LockFreePrefixTree {
                         return newNode;
                     } else {
                         Node insertedNode = hash.get(index);
-                        if (insertedNode.key == key) {
-                            // The key we want to insert has just been inserted by another thread.
+                        if (insertedNode.getKey() == key) {
+                            // The key we tried to insert has just been inserted by another thread.
                             return insertedNode;
                         }
                         index++;
                         skips++;
                     }
-               }else if(hash.get(index).key == key){
+               }else if(hash.get(index).getKey() == key){
                    return hash.get(index);
                }else{
-                   //Case hash.get(index) returns either another node or a DeadNode (frozen hash)
+                   //Case hash.get(index) returns either another node or a FrozenNode (frozen hash)
                    index++;
                     skips++;
                     if (index >= hash.length() || skips > MAX_HASH_SKIPS) {
@@ -169,7 +172,7 @@ public class LockFreePrefixTree {
                Node toCopy = childrenHash.get(i);
                assert(toCopy != null);
 
-               if(!(toCopy instanceof  DeadNode) ){
+               if(!(toCopy instanceof  FrozenNode) ){
                     addChildToFreshHash(toCopy,newChildrenHash);
                }
 
@@ -180,7 +183,7 @@ public class LockFreePrefixTree {
 
        private void freezeHash(AtomicReferenceArray<Node> childrenHash) {
            for (int i = 0; i < childrenHash.length() ; ++i) {
-                cas(childrenHash,i,null,new DeadNode());
+                cas(childrenHash,i,null,new FrozenNode());
            }
        }
 
@@ -222,11 +225,11 @@ public class LockFreePrefixTree {
 
        }
 
-       private boolean casChildren(Object expected, Object updated) {
+       private boolean casChildren(AtomicReferenceArray<Node>  expected, AtomicReferenceArray<Node>  updated) {
            return childrenUpdater.compareAndSet(this, expected, updated);
        }
 
-       private Object readChildren() {
+       private AtomicReferenceArray<Node>  readChildren() {
            return children;
        }
 
@@ -243,20 +246,15 @@ public class LockFreePrefixTree {
         }
    }
 
-   private static class DeadNode extends Node{
-       DeadNode(){
-           super(-1);
-       }
-   }
+
 
    private Node root;
 
    public LockFreePrefixTree(){
-       this.root = new Node(-0);
+       this.root = new Node(0);
    }
    public Node root() {
        return root;
    }
-
 }
 

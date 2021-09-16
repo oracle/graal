@@ -107,10 +107,10 @@ public class LockFreePrefixTreeTest {
         });
 
 
-        for(int i = 1; i < size;++i) {
-
-            System.out.println(tree.root().at(i));
-        }
+//        for(int i = 1; i < size;++i) {
+//
+//            System.out.println(tree.root().at(i));
+//        }
 
 
 //        LockFreePrefixTree.Node.queue.stream().forEach(s -> System.out.println(s));
