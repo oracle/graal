@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,7 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.phases.AllocationPhase;
+import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase;
 
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.Register;
@@ -47,10 +47,10 @@ import jdk.vm.ci.meta.Value;
  * Mark all live references for a frame state. The frame state uses this information to build the
  * {@link ReferenceMap}s.
  */
-public final class LocationMarkerPhase extends AllocationPhase {
+public final class LocationMarkerPhase extends FinalCodeAnalysisPhase {
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, FinalCodeAnalysisContext context) {
         new Marker(lirGenRes.getLIR(), lirGenRes.getFrameMap()).build();
     }
 
