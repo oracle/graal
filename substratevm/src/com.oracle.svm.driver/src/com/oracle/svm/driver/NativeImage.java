@@ -481,12 +481,6 @@ public class NativeImage {
                 }
             }
 
-            if (useJVMCINativeLibrary) {
-                builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
-            } else {
-                builderJavaArgs.add("-XX:-UseJVMCICompiler");
-            }
-
             String javaVersion = String.valueOf(JavaVersionUtil.JAVA_SPEC);
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
             if (flagsForVersion == null) {
@@ -516,6 +510,12 @@ public class NativeImage {
                 }
             }
 
+            if (useJVMCINativeLibrary) {
+                builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
+            } else {
+                builderJavaArgs.add("-XX:-UseJVMCICompiler");
+            }
+
             return builderJavaArgs;
         }
 
@@ -524,11 +524,12 @@ public class NativeImage {
          */
         public List<Path> getBuilderModulePath() {
             List<Path> result = new ArrayList<>();
+            // Non-jlinked JDKs need truffle and graal-sdk on the module path since they
+            // don't have those modules as part of the JDK.
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "enterprise-graal"));
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
             if (modulePathBuild) {
                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
-            } else {
-                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "enterprise-graal"));
-                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
             }
             return result;
         }
