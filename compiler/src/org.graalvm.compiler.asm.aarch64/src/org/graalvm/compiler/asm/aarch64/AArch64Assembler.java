@@ -860,7 +860,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param imm21 Signed 21-bit offset, has to be word aligned.
      */
     protected void cbnz(int size, Register reg, int imm21) {
-        conditionalBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBNZ, -1);
+        compareRegisterAndBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBNZ, -1);
     }
 
     /**
@@ -872,7 +872,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param pos Position at which instruction is inserted into buffer. -1 means insert at end.
      */
     protected void cbnz(int size, Register reg, int imm21, int pos) {
-        conditionalBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBNZ, pos);
+        compareRegisterAndBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBNZ, pos);
     }
 
     /**
@@ -883,7 +883,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param imm21 Signed 21-bit offset, has to be word aligned.
      */
     protected void cbz(int size, Register reg, int imm21) {
-        conditionalBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBZ, -1);
+        compareRegisterAndBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBZ, -1);
     }
 
     /**
@@ -895,7 +895,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param pos Position at which instruction is inserted into buffer. -1 means insert at end.
      */
     protected void cbz(int size, Register reg, int imm21, int pos) {
-        conditionalBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBZ, pos);
+        compareRegisterAndBranchInstruction(reg, imm21, generalFromSize(size), Instruction.CBZ, pos);
     }
 
     /**
@@ -974,7 +974,7 @@ public abstract class AArch64Assembler extends Assembler {
         }
     }
 
-    private void conditionalBranchInstruction(Register reg, int imm21, InstructionType type, Instruction instr, int pos) {
+    private void compareRegisterAndBranchInstruction(Register reg, int imm21, InstructionType type, Instruction instr, int pos) {
         assert reg.getRegisterCategory().equals(CPU);
         int instrEncoding = instr.encoding | CompareBranchOp;
         if (pos == -1) {
