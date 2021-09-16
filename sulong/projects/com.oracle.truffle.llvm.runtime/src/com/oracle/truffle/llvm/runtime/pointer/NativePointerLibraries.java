@@ -47,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 1)
-@SuppressWarnings("deprecation") // needed because the superclass implements ReferenceLibrary
 abstract class NativePointerLibraries extends CommonPointerLibraries {
 
     @ExportMessage
