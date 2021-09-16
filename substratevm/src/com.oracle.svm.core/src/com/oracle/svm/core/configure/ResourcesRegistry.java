@@ -27,6 +27,37 @@ package com.oracle.svm.core.configure;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 public interface ResourcesRegistry {
+
+    /**
+     * @deprecated Use
+     *             {@link ResourcesRegistry#addResources(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void addResources(String pattern) {
+        addResources(ConfigurationCondition.alwaysTrue(), pattern);
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link ResourcesRegistry#ignoreResources(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void ignoreResources(String pattern) {
+        ignoreResources(ConfigurationCondition.alwaysTrue(), pattern);
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link ResourcesRegistry#addResourceBundles(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void addResourceBundles(String name) {
+        addResourceBundles(ConfigurationCondition.alwaysTrue(), name);
+    }
+
     void addResources(ConfigurationCondition condition, String pattern);
 
     void ignoreResources(ConfigurationCondition condition, String pattern);
