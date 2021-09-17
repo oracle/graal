@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk8.reflect;
 
 import java.lang.reflect.Executable;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -51,6 +52,11 @@ final class SubstrateReflectionAccessorFactoryJDK8 implements SubstrateReflectio
 
 @AutomaticFeature
 final class SubstrateReflectionAccessorFactoryJDK8Feature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC == 8;
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(SubstrateReflectionAccessorFactory.class, new SubstrateReflectionAccessorFactoryJDK8());
