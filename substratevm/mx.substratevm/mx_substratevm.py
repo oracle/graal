@@ -36,7 +36,6 @@ from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
-from xml.dom.minidom import parse
 from argparse import ArgumentParser
 import fnmatch
 import collections
@@ -214,7 +213,6 @@ GraalTags = Tags([
     'helloworld_debug',
     'debuginfotest',
     'test',
-    'maven',
     'js',
     'build',
     'benchmarktest',
@@ -420,11 +418,6 @@ def svm_gate_body(args, tasks):
                 js = build_js(native_image)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
-
-    with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
-        if t:
-            maven_plugin_install([])
-            maven_plugin_test([])
 
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
@@ -755,34 +748,6 @@ def native_image_context_run(func, func_args=None, config=None, build_if_missing
     func_args = [] if func_args is None else func_args
     with native_image_context(config=config, build_if_missing=build_if_missing) as native_image:
         func(native_image, func_args)
-
-def pom_from_template(proj_dir, svmVersion):
-    # Create native-image-maven-plugin pom with correct version info from template
-    dom = parse(join(proj_dir, 'template-pom.xml'))
-    for svmVersionElement in dom.getElementsByTagName('svmVersion'):
-        svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
-    with open(join(proj_dir, 'pom.xml'), 'w') as pom_file:
-        dom.writexml(pom_file)
-
-def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid, mvn_nonzero_fatal=True, mvn_out=None, mvn_err=None):
-    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
-    pom_from_template(proj_dir, svmVersion)
-    # Build and install native-image-maven-plugin into local repository
-
-    maven_args = []
-    if keyid:
-        maven_args += ['-Dgpg.keyname=' + keyid]
-    elif not gpg:
-        maven_args += ['-Dgpg.skip=true']
-    if repo == mx.maven_local_repository():
-        maven_args += ['install']
-    else:
-        maven_args += [
-            '-DaltDeploymentRepository={}::default::{}'.format(repo.name, repo.get_url(svmVersion)),
-            'deploy'
-        ]
-    return mx.run_maven(maven_args, nonZeroIsFatal=mvn_nonzero_fatal, out=mvn_out, err=mvn_err, cwd=proj_dir)
-
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1555,99 +1520,6 @@ def native_image_configure_on_jvm(args, **kwargs):
 def native_unittest(args):
     """builds a native image of JUnit tests and runs them."""
     native_image_context_run(_native_unittest, args)
-
-
-@mx.command(suite.name, 'maven-plugin-install')
-def maven_plugin_install(args):
-    parser = ArgumentParser(prog='mx maven-plugin-install')
-    parser.add_argument("--deploy-dependencies", action='store_true', help="This will deploy all the artifacts from all suites before building and deploying the plugin")
-    parser.add_argument('--licenses', help='Comma-separated list of licenses that are cleared for upload. Only used if no url is given. Otherwise licenses are looked up in suite.py')
-    parser.add_argument('--gpg', action='store_true', help='Sign files with gpg before deploying')
-    parser.add_argument('--gpg-keyid', help='GPG keyid to use when signing files (implies --gpg)', default=None)
-    parser.add_argument('--suppress-output-on-success', help='Buffers maven output and prints it only in case of errors', default=False, action='store_true')
-    parser.add_argument('repository_id', metavar='repository-id', nargs='?', action='store', help='Repository ID used for binary deploy. If none is given, mavens local repository is used instead.')
-    parser.add_argument('url', metavar='repository-url', nargs='?', action='store', help='Repository URL used for binary deploy. If no url is given, the repository-id is looked up in suite.py')
-    parsed = parser.parse_args(args)
-
-    if not suite.isSourceSuite():
-        raise mx.abort("maven-plugin-install requires {} to be a source suite, no a binary suite".format(suite.name))
-
-    if parsed.url:
-        if parsed.licenses:
-            licenses = mx.get_license(parsed.licenses.split(','))
-        elif parsed.repository_id:
-            licenses = mx.repository(parsed.repository_id).licenses
-        else:
-            licenses = []
-        repo = mx.Repository(suite, parsed.repository_id, parsed.url, parsed.url, licenses)
-    elif parsed.repository_id:
-        repo = mx.repository(parsed.repository_id)
-    else:
-        repo = mx.maven_local_repository()
-
-    svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
-
-    if parsed.deploy_dependencies:
-        mx.warn("native-image-maven-plugin does not have GraalVM maven dependencies anymore. --deploy-dependencies is obsolete.")
-
-    mvn_out = None
-    mvn_err = None
-    mvn_nonzero_fatal = True
-    if parsed.suppress_output_on_success:
-        mvn_out = mvn_err = mx.LinesOutputCapture()
-        mvn_nonzero_fatal = False
-        mx.log('Installing the maven plugin. Output will be printed only in case of failure.')
-
-    ret = deploy_native_image_maven_plugin(svm_version, repo, parsed.gpg, parsed.gpg_keyid, mvn_nonzero_fatal=mvn_nonzero_fatal, mvn_out=mvn_out, mvn_err=mvn_err)
-
-    if not ret:
-        success_message = [
-            '',
-            'Use the following plugin snippet to enable native-image building for your maven project:',
-            '',
-            '<plugin>',
-            '    <groupId>org.graalvm.nativeimage</groupId>',
-            '    <artifactId>native-image-maven-plugin</artifactId>',
-            '    <version>' + svm_version + '</version>',
-            '    <executions>',
-            '        <execution>',
-            '            <goals>',
-            '                <goal>native-image</goal>',
-            '            </goals>',
-            '            <phase>package</phase>',
-            '        </execution>',
-            '    </executions>',
-            '</plugin>',
-            '',
-            ]
-        mx.log('\n'.join(success_message))
-    else:
-        mx.log_error('maven-plugin-install failed!')
-        mx.log_error('Maven output:')
-        for line in mvn_out.lines:
-            mx.log_error(line)
-        mx.abort(ret)
-
-@mx.command(suite.name, 'maven-plugin-test')
-def maven_plugin_test(args):
-    # Create native-image-maven-plugin-test pom with correct version info from template
-    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin-test')
-    svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
-    pom_from_template(proj_dir, svm_version)
-    # Build native image with native-image-maven-plugin
-    env = os.environ.copy()
-    maven_opts = env.get('MAVEN_OPTS', '').split()
-    if not svm_java8():
-        # On Java 9+ without native-image executable the plugin needs access to jdk.internal.module
-        maven_opts.append('-XX:+UnlockExperimentalVMOptions')
-        maven_opts.append('-XX:+EnableJVMCI')
-        maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
-    env['MAVEN_OPTS'] = ' '.join(maven_opts)
-    config = GraalVMConfig.build(native_images=['native-image'])
-    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config):
-        env['JAVA_HOME'] = _vm_home(config)
-        mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
-    mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
 
 
 @mx.command(suite, 'javac-image', '[image-options]')
