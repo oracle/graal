@@ -52,7 +52,10 @@ public abstract class EspressoInstrumentableNode extends Node implements BciProv
 
     @Override
     public final EspressoContext getContext() {
-        // WARNING: this returns the **current**, thread-local, context; not a context associated with this node.
+        /*
+         * WARNING: this returns the **current**, thread-local, context; not a context associated
+         * with this node.
+         */
         return EspressoContext.get(this);
     }
 
