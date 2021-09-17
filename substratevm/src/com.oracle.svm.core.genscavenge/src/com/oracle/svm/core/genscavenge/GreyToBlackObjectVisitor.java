@@ -34,7 +34,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegister;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -62,7 +62,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
         this.objRefVisitor = greyToBlackObjRefVisitor;
         if (DiagnosticReporter.getHistoryLength() > 0) {
             this.diagnosticReporter = new DiagnosticReporter();
-            DiagnosticThunkRegister.getSingleton().register(diagnosticReporter);
+            DiagnosticThunkRegistry.singleton().register(diagnosticReporter);
         } else {
             this.diagnosticReporter = null;
         }

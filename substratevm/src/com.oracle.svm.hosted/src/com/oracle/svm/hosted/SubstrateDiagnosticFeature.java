@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegister;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.FatalErrorState;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -44,7 +44,7 @@ class SubstrateDiagnosticFeature implements Feature {
         ImageSingletons.add(FatalErrorState.class, new FatalErrorState());
 
         // Ensure that the diagnostic thunks are initialized.
-        DiagnosticThunkRegister.getSingleton();
+        DiagnosticThunkRegistry.singleton();
     }
 
     @Override

@@ -106,7 +106,7 @@ public class SubstrateDiagnostics {
 
     public static int maxInvocations() {
         int result = 0;
-        DiagnosticThunkRegister thunks = DiagnosticThunkRegister.getSingleton();
+        DiagnosticThunkRegistry thunks = DiagnosticThunkRegistry.singleton();
         for (int i = 0; i < thunks.size(); i++) {
             result += thunks.getThunk(i).maxInvocationCount();
         }
@@ -142,10 +142,10 @@ public class SubstrateDiagnostics {
         errorContext.setFrameHasCalleeSavedRegisters(frameHasCalleeSavedRegisters);
 
         // Print all thunks in a reasonably safe way.
-        int numDiagnosticThunks = DiagnosticThunkRegister.getSingleton().size();
+        int numDiagnosticThunks = DiagnosticThunkRegistry.singleton().size();
         for (int i = 0; i < numDiagnosticThunks; i++) {
-            DiagnosticThunk thunk = DiagnosticThunkRegister.getSingleton().getThunk(i);
-            int invocationCount = DiagnosticThunkRegister.getSingleton().getInitialInvocationCount(i);
+            DiagnosticThunk thunk = DiagnosticThunkRegistry.singleton().getThunk(i);
+            int invocationCount = DiagnosticThunkRegistry.singleton().getInitialInvocationCount(i);
             if (invocationCount <= thunk.maxInvocationCount()) {
                 thunk.printDiagnostics(log, errorContext, DiagnosticLevel.SAFE, invocationCount);
             }
@@ -202,14 +202,14 @@ public class SubstrateDiagnostics {
         // Print the various sections of the diagnostics and skip all sections that were already
         // printed earlier.
         ErrorContext errorContext = fatalErrorState.getErrorContext();
-        int numDiagnosticThunks = DiagnosticThunkRegister.getSingleton().size();
+        int numDiagnosticThunks = DiagnosticThunkRegistry.singleton().size();
         while (fatalErrorState.diagnosticThunkIndex < numDiagnosticThunks) {
             int index = fatalErrorState.diagnosticThunkIndex;
-            DiagnosticThunk thunk = DiagnosticThunkRegister.getSingleton().getThunk(index);
+            DiagnosticThunk thunk = DiagnosticThunkRegistry.singleton().getThunk(index);
 
             // Start at the configured initial invocation count.
             if (fatalErrorState.invocationCount == 0) {
-                fatalErrorState.invocationCount = DiagnosticThunkRegister.getSingleton().getInitialInvocationCount(index) - 1;
+                fatalErrorState.invocationCount = DiagnosticThunkRegistry.singleton().getInitialInvocationCount(index) - 1;
             }
 
             while (++fatalErrorState.invocationCount <= thunk.maxInvocationCount()) {
@@ -322,13 +322,13 @@ public class SubstrateDiagnostics {
         int initialInvocationCount = parseInvocationCount(entry, pos);
 
         int matches = 0;
-        int numDiagnosticThunks = DiagnosticThunkRegister.getSingleton().size();
+        int numDiagnosticThunks = DiagnosticThunkRegistry.singleton().size();
         for (int i = 0; i < numDiagnosticThunks; i++) {
-            DiagnosticThunk thunk = DiagnosticThunkRegister.getSingleton().getThunk(i);
+            DiagnosticThunk thunk = DiagnosticThunkRegistry.singleton().getThunk(i);
             // Checkstyle: allow Class.getSimpleName
             if (matches(thunk.getClass().getSimpleName(), pattern)) {
                 // Checkstyle: disallow Class.getSimpleName
-                DiagnosticThunkRegister.getSingleton().setInitialInvocationCount(i, initialInvocationCount);
+                DiagnosticThunkRegistry.singleton().setInitialInvocationCount(i, initialInvocationCount);
                 matches++;
             }
         }
@@ -898,27 +898,22 @@ public class SubstrateDiagnostics {
         public abstract int maxInvocationCount();
     }
 
-    public static class DiagnosticThunkRegister {
+    public static class DiagnosticThunkRegistry {
         private DiagnosticThunk[] diagnosticThunks;
         private int[] initialInvocationCount;
 
-        /**
-         * Get the register.
-         * <p>
-         * This method is @Fold so anyone who uses it ensures there is a register.
-         */
         @Fold
         /* Checkstyle: allow synchronization. */
-        public static synchronized DiagnosticThunkRegister getSingleton() {
-            if (!ImageSingletons.contains(DiagnosticThunkRegister.class)) {
-                ImageSingletons.add(DiagnosticThunkRegister.class, new DiagnosticThunkRegister());
+        public static synchronized DiagnosticThunkRegistry singleton() {
+            if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
+                ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
-            return ImageSingletons.lookup(DiagnosticThunkRegister.class);
+            return ImageSingletons.lookup(DiagnosticThunkRegistry.class);
         }
         /* Checkstyle: disallow synchronization. */
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        DiagnosticThunkRegister() {
+        DiagnosticThunkRegistry() {
             this.diagnosticThunks = new DiagnosticThunk[]{new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(), new DumpTopFrame(),
                             new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
                             new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadDecodedStackTrace(),
