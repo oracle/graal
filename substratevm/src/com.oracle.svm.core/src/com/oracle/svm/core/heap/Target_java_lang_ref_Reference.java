@@ -198,20 +198,16 @@ public final class Target_java_lang_ref_Reference<T> {
         GraalDirectives.blackhole(ref);
     }
 
-    @Substitute //
+    @KeepOriginal
     @TargetElement(onlyWith = JDK16OrLater.class) //
-    T getFromInactiveFinalReference() {
-        // assert this instanceof FinalReference;
-        assert next != null; // I.e. FinalReference is inactive
-        return get();
-    }
+    native T getFromInactiveFinalReference();
 
     @Substitute //
     @TargetElement(onlyWith = JDK16OrLater.class) //
     void clearInactiveFinalReference() {
         // assert this instanceof FinalReference;
         assert next != null; // I.e. FinalReference is inactive
-        clear();
+        ReferenceInternals.clear(SubstrateUtil.cast(this, Reference.class));
     }
 }
 
