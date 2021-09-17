@@ -37,7 +37,7 @@ typedef struct liststruct {
 } List;
 
 List *createNode(int a) {
-    List *l = (List *) malloc(sizeof(List *));
+    List *l = (List *) malloc(sizeof(List));
     l->a = a;
     l->next = NULL;
     return l;

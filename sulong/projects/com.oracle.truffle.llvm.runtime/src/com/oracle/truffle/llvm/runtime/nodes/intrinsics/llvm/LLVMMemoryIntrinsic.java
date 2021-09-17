@@ -157,7 +157,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
                  * the assumption for the alignment here. Sulong does not currently support
                  * alignments that are bigger 16 bytes.
                  */
-                assert ((address.asNative()) & (alignment - 1)) == 0;
+                assert ((address.asNative()) & (alignment - 1)) == 0 : "Memory allocation alignment is not 16 bytes.";
                 writePointer.executeWithTarget(memptr, address);
                 return 0;
             } catch (OutOfMemoryError | ArithmeticException e) {
@@ -181,7 +181,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
                  * the assumption for the alignment here. Sulong does not currently support
                  * alignments that are bigger 16 bytes.
                  */
-                assert ((address.asNative()) & (alignment - 1)) == 0;
+                assert ((address.asNative()) & (alignment - 1)) == 0 : "Memory allocation alignment is not 16 bytes.";
                 writePointer.executeWithTarget(memptr, address);
                 return 0;
             } catch (OutOfMemoryError | ArithmeticException e) {
