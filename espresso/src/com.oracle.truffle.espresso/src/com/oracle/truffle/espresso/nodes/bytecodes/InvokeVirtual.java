@@ -94,7 +94,7 @@ public abstract class InvokeVirtual extends Node {
 
         public abstract Object execute(Object[] args);
 
-        static abstract class LazyDirectCallNode extends Node {
+        abstract static class LazyDirectCallNode extends Node {
 
             final Method.MethodVersion resolvedMethod;
 
