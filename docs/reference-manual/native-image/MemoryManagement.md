@@ -75,7 +75,7 @@ Note that this is just the maximum value.
 Depending on the application, the amount of actually used Java heap memory can be much lower.
 To override this default behavior, either specify a value for `-XX:MaximumHeapSizePercent` or explicitly set the maximum [Java heap size](#java-heap-size).
 
-Be mindful that the GC needs some extra memory when performing a garbage collection (2x is the worst case, usually it significantly less). Therefore, the resident set size, RSS, can increase temporarily during a garbage collection which can be an issue in any environment with memory constraints (having little memory available, such as a container).
+Be mindful that the GC needs some extra memory when performing a garbage collection (2x is the worst case, usually it significantly less). Therefore, the resident set size, RSS, can increase temporarily during a garbage collection which can be an issue in any environment with memory constraints (such as a container).
 
 ### Performance Tuning
 
