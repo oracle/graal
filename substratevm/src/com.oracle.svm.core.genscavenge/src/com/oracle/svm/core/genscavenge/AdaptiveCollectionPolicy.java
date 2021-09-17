@@ -370,18 +370,13 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private double secondsSinceMajorGc() { // time_since_major_gc
-        majorTimer.close();
-        try {
-            return TimeUtils.nanosToSecondsDouble(majorTimer.getMeasuredNanos());
-        } finally {
-            majorTimer.open();
-        }
+        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.getOpenedTime());
     }
 
     @Override
-    public void onCollectionBegin(boolean completeCollection) { // {major,minor}_collection_begin
+    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) { // {major,minor}_collection_begin
         Timer timer = completeCollection ? majorTimer : minorTimer;
-        timer.close();
+        timer.closeAt(requestingNanoTime);
         if (completeCollection) {
             latestMajorMutatorIntervalNanos = timer.getMeasuredNanos();
         } else {

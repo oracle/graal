@@ -168,6 +168,7 @@ public final class GCImpl implements GC {
         data.setNativeVMOperation(collectOperation);
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());
+        data.setRequestingNanoTime(System.nanoTime());
         data.setForceFullGC(forceFullGC);
         enqueueCollectOperation(data);
         return data.getOutOfMemory();
@@ -179,11 +180,11 @@ public final class GCImpl implements GC {
     }
 
     /** The body of the VMOperation to do the collection. */
-    private boolean collectOperation(GCCause cause, UnsignedWord requestingEpoch, boolean forceFullGC) {
+    private void collectOperation(CollectionVMOperationData data) {
         assert VMOperation.isGCInProgress() : "Collection should be a VMOperation.";
-        assert getCollectionEpoch().equal(requestingEpoch);
+        assert getCollectionEpoch().equal(data.getRequestingEpoch());
 
-        timers.mutator.close();
+        timers.mutator.closeAt(data.getRequestingNanoTime());
         startCollectionOrExit();
 
         timers.resetAllExceptMutator();
@@ -192,28 +193,29 @@ public final class GCImpl implements GC {
         /* Flush all TLAB chunks to eden. */
         ThreadLocalAllocation.disableAndFlushForAllThreads();
 
+        GCCause cause = GCCause.fromId(data.getCauseId());
         printGCBefore(cause.getName());
-        boolean outOfMemory = collectImpl(cause, forceFullGC);
+        boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
         printGCAfter(cause.getName());
 
         finishCollection();
         timers.mutator.open();
 
-        return outOfMemory;
+        data.setOutOfMemory(outOfMemory);
     }
 
-    private boolean collectImpl(GCCause cause, boolean forceFullGC) {
+    private boolean collectImpl(GCCause cause, long requestingNanoTime, boolean forceFullGC) {
         boolean outOfMemory;
         precondition();
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            outOfMemory = doCollectImpl(cause, forceFullGC, false);
+            outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
             if (outOfMemory) {
                 // Avoid running out of memory with a full GC that reclaims softly reachable objects
                 ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
                 try {
-                    outOfMemory = doCollectImpl(cause, true, true);
+                    outOfMemory = doCollectImpl(cause, requestingNanoTime, true, true);
                 } finally {
                     ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
                 }
@@ -226,19 +228,19 @@ public final class GCImpl implements GC {
         return outOfMemory;
     }
 
-    private boolean doCollectImpl(GCCause cause, boolean forceFullGC, boolean forceNoIncremental) {
+    private boolean doCollectImpl(GCCause cause, long requestingNanoTime, boolean forceFullGC, boolean forceNoIncremental) {
         CommittedMemoryProvider.get().beforeGarbageCollection();
 
         boolean incremental = !forceNoIncremental && !policy.shouldCollectCompletely(false);
         boolean outOfMemory = false;
         if (incremental) {
-            outOfMemory = doCollectOnce(cause, false, false);
+            outOfMemory = doCollectOnce(cause, requestingNanoTime, false, false);
         }
         if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
             if (incremental) { // uncommit unaligned chunks
                 CommittedMemoryProvider.get().afterGarbageCollection();
             }
-            outOfMemory = doCollectOnce(cause, true, incremental);
+            outOfMemory = doCollectOnce(cause, requestingNanoTime, true, incremental);
         }
 
         HeapImpl.getChunkProvider().freeExcessAlignedChunks();
@@ -246,12 +248,12 @@ public final class GCImpl implements GC {
         return outOfMemory;
     }
 
-    private boolean doCollectOnce(GCCause cause, boolean complete, boolean followsIncremental) {
+    private boolean doCollectOnce(GCCause cause, long requestingNanoTime, boolean complete, boolean followsIncremental) {
         assert !followsIncremental || complete : "An incremental collection cannot be followed by another incremental collection";
         completeCollection = complete;
 
         accounting.beforeCollection();
-        policy.onCollectionBegin(completeCollection);
+        policy.onCollectionBegin(completeCollection, requestingNanoTime);
 
         Timer collectionTimer = timers.collection.open();
         try {
@@ -368,7 +370,7 @@ public final class GCImpl implements GC {
                 UnsignedWord sizeAfter = getChunkBytes();
                 printGCLog.string("[");
                 if (HeapOptions.PrintGCTimeStamps.getValue()) {
-                    long finishNanos = timers.collection.getFinish();
+                    long finishNanos = timers.collection.getClosedTime();
                     printGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 }
                 printGCLog.string(completeCollection ? "Full GC" : "Incremental GC");
@@ -381,7 +383,7 @@ public final class GCImpl implements GC {
             }
             if (SubstrateGCOptions.VerboseGC.getValue()) {
                 verboseGCLog.string(" [");
-                long finishNanos = timers.collection.getFinish();
+                long finishNanos = timers.collection.getClosedTime();
                 if (HeapOptions.PrintGCTimeStamps.getValue()) {
                     verboseGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 } else {
@@ -1175,9 +1177,7 @@ public final class GCImpl implements GC {
              */
             ImplicitExceptions.activateImplicitExceptionsAreFatal();
             try {
-                CollectionVMOperationData d = (CollectionVMOperationData) data;
-                boolean outOfMemory = HeapImpl.getHeapImpl().getGCImpl().collectOperation(GCCause.fromId(d.getCauseId()), d.getRequestingEpoch(), d.getForceFullGC());
-                d.setOutOfMemory(outOfMemory);
+                HeapImpl.getHeapImpl().getGCImpl().collectOperation((CollectionVMOperationData) data);
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere(t);
             } finally {
@@ -1205,6 +1205,12 @@ public final class GCImpl implements GC {
 
         @RawField
         void setRequestingEpoch(UnsignedWord value);
+
+        @RawField
+        long getRequestingNanoTime();
+
+        @RawField
+        void setRequestingNanoTime(long value);
 
         @RawField
         boolean getForceFullGC();

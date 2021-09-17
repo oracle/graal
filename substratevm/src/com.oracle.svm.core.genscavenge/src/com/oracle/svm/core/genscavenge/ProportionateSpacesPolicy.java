@@ -85,7 +85,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
-    public void onCollectionBegin(boolean completeCollection) {
+    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
     }
 
     @Override

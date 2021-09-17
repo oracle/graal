@@ -170,7 +170,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
-        public void onCollectionBegin(boolean completeCollection) {
+        public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
         }
 
         @Override
