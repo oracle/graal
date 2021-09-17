@@ -94,7 +94,7 @@ public abstract class InvokeVirtual extends Node {
 
         public abstract Object execute(Object[] args);
 
-        @Specialization(guards = "!resolutionSeed.isAbstract()", //
+        @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
                         assumptions = { //
                                         "resolutionSeed.getLeafAssumption()",
                                         "resolvedMethod.getAssumption()"
