@@ -2686,8 +2686,10 @@ def get_native_image_locations(name, image_name, fatal_if_missing=True):
         library_config = libgraal_libs[0]
         dist = get_final_graalvm_distribution()
         source_type = 'skip' if _skip_libraries(library_config) else 'dependency'
-        return join(graalvm_output_root(), dist.find_single_source_location(
-            source_type + ':' + GraalVmLibrary.project_name(library_config), fatal_if_missing=fatal_if_missing))
+        source_location = dist.find_single_source_location(
+            source_type + ':' + GraalVmLibrary.project_name(library_config), fatal_if_missing=fatal_if_missing)
+        if source_location:
+            return join(graalvm_output_root(), source_location)
     return None
 
 
