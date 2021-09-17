@@ -124,6 +124,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsicRootNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMCallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMMallocNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMPosixMemalignNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatDivNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatMulNodeGen;
@@ -544,6 +545,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("malloc", (args, nodeFactory) -> LLVMMallocNodeGen.create(args.get(1)));
         add("calloc", (args, nodeFactory) -> LLVMCallocNodeGen.create(nodeFactory.createMemSet(), args.get(1), args.get(2)));
         add("realloc", (args, nodeFactory) -> LLVMReallocNodeGen.create(args.get(1), args.get(2)));
+        add("posix_memalign", (args, nodeFactory) -> LLVMPosixMemalignNodeGen.create(args.get(1), args.get(2), args.get(3)));
         add("free", (args, nodeFactory) -> LLVMFreeNodeGen.create(args.get(1)));
         add("memset", "__memset_chk", (args, nodeFactory) -> LLVMLibcMemsetNodeGen.create(nodeFactory.createMemSet(), args.get(1), args.get(2), args.get(3)));
 
