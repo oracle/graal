@@ -94,7 +94,23 @@ public abstract class InvokeVirtual extends Node {
 
         public abstract Object execute(Object[] args);
 
-        @Specialization(guards = "!resolutionSeed.isAbstract()", //
+        abstract static class LazyDirectCallNode extends Node {
+
+            final Method.MethodVersion resolvedMethod;
+
+            LazyDirectCallNode(Method.MethodVersion resolvedMethod) {
+                this.resolvedMethod = resolvedMethod;
+            }
+
+            public abstract Object execute(Object[] args);
+
+            @Specialization
+            Object doCached(Object[] args, @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
+                return directCallNode.call(args);
+            }
+        }
+
+        @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
                         assumptions = { //
                                         "resolutionSeed.getLeafAssumption()",
                                         "resolvedMethod.getAssumption()"
@@ -102,12 +118,12 @@ public abstract class InvokeVirtual extends Node {
         Object callLeaf(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
+                        @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             assert resolvedMethod.getMethod() == resolutionSeed;
             assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
-            return directCallNode.call(args);
+            return directCallNode.execute(args);
         }
 
         @SuppressWarnings("unused")
