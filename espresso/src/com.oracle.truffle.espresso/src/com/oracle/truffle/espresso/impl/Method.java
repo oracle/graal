@@ -57,6 +57,8 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -260,7 +262,21 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         initRefKind();
         this.proxy = null;
-        this.isLeaf = Truffle.getRuntime().createAssumption();
+
+        if (getDeclaringKlass().isInterface() || isAbstract()) {
+            /*
+             * TODO(peterssen): GR-33781 Leaf method assumption cannot be trusted for default
+             * methods.
+             *
+             * Also disabled for abstract methods to reduce footprint.
+             */
+            this.isLeaf = NeverValidAssumption.INSTANCE;
+        } else if (isStatic() || isPrivate() || isFinalFlagSet() || getDeclaringKlass().isFinalFlagSet()) {
+            // Nothing to assume, spare an assumption.
+            this.isLeaf = AlwaysValidAssumption.INSTANCE;
+        } else {
+            this.isLeaf = Truffle.getRuntime().createAssumption();
+        }
     }
 
     public int getRefKind() {
@@ -851,6 +867,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             }
         }
         return false;
+    }
+
+    public Assumption getLeafAssumption() {
+        return isLeaf;
     }
 
     public boolean leafAssumption() {

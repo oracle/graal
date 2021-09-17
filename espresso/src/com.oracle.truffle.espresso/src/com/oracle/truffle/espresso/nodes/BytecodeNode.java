@@ -301,37 +301,37 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
-import com.oracle.truffle.espresso.nodes.quick.CheckCastNode;
-import com.oracle.truffle.espresso.nodes.quick.InstanceOfNode;
+import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.InstanceOfQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.VolatileArrayAccess;
-import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayLoadNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayStoreNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.CharArrayLoadNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.CharArrayStoreNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.DoubleArrayLoadNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.DoubleArrayStoreNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.FloatArrayLoadNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.FloatArrayStoreNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.IntArrayLoadNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.IntArrayStoreNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.LongArrayLoadNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.LongArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayLoadQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayStoreQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.CharArrayLoadQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.CharArrayStoreQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.DoubleArrayLoadQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.DoubleArrayStoreQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.FloatArrayLoadQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.FloatArrayStoreQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.IntArrayLoadQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.IntArrayStoreQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.LongArrayLoadQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.LongArrayStoreQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedGetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedPutFieldNode;
-import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayStoreNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayStoreNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayStoreQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayStoreQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceNodeGen;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -1972,7 +1972,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == CHECKCAST;
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
+        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
         return quick.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -1984,7 +1984,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == INSTANCEOF;
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
+        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
         return quick.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -2044,7 +2044,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
                 arrayLengthNode = sparseNodes[curBCI];
             } else {
-                arrayLengthNode = injectQuick(curBCI, ArrayLengthNodeGen.create(top, curBCI), SLIM_QUICK);
+                arrayLengthNode = injectQuick(curBCI, new ArrayLengthQuickNode(top, curBCI), SLIM_QUICK);
             }
         }
         return arrayLengthNode.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(ARRAYLENGTH);
@@ -2060,14 +2060,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             } else {
                 // @formatter:off
                 switch (loadOpcode)  {
-                    case BALOAD: arrayLoadNode = ByteArrayLoadNodeGen.create(top, curBCI);   break;
-                    case SALOAD: arrayLoadNode = ShortArrayLoadNodeGen.create(top, curBCI);  break;
-                    case CALOAD: arrayLoadNode = CharArrayLoadNodeGen.create(top, curBCI);   break;
-                    case IALOAD: arrayLoadNode = IntArrayLoadNodeGen.create(top, curBCI);    break;
-                    case FALOAD: arrayLoadNode = FloatArrayLoadNodeGen.create(top, curBCI);  break;
-                    case LALOAD: arrayLoadNode = LongArrayLoadNodeGen.create(top, curBCI);   break;
-                    case DALOAD: arrayLoadNode = DoubleArrayLoadNodeGen.create(top, curBCI); break;
-                    case AALOAD: arrayLoadNode = ReferenceArrayLoadNodeGen.create(top, curBCI); break;
+                    case BALOAD: arrayLoadNode = new ByteArrayLoadQuickNode(top, curBCI);   break;
+                    case SALOAD: arrayLoadNode = new ShortArrayLoadQuickNode(top, curBCI);  break;
+                    case CALOAD: arrayLoadNode = new CharArrayLoadQuickNode(top, curBCI);   break;
+                    case IALOAD: arrayLoadNode = new IntArrayLoadQuickNode(top, curBCI);    break;
+                    case FALOAD: arrayLoadNode = new FloatArrayLoadQuickNode(top, curBCI);  break;
+                    case LALOAD: arrayLoadNode = new LongArrayLoadQuickNode(top, curBCI);   break;
+                    case DALOAD: arrayLoadNode = new DoubleArrayLoadQuickNode(top, curBCI); break;
+                    case AALOAD: arrayLoadNode = new ReferenceArrayLoadQuickNode(top, curBCI); break;
                     default:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
@@ -2089,14 +2089,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             } else {
                 // @formatter:off
                 switch (storeOpcode)  {
-                    case BASTORE: arrayStoreNode = ByteArrayStoreNodeGen.create(top, curBCI);   break;
-                    case SASTORE: arrayStoreNode = ShortArrayStoreNodeGen.create(top, curBCI);  break;
-                    case CASTORE: arrayStoreNode = CharArrayStoreNodeGen.create(top, curBCI);   break;
-                    case IASTORE: arrayStoreNode = IntArrayStoreNodeGen.create(top, curBCI);    break;
-                    case FASTORE: arrayStoreNode = FloatArrayStoreNodeGen.create(top, curBCI);  break;
-                    case LASTORE: arrayStoreNode = LongArrayStoreNodeGen.create(top, curBCI);   break;
-                    case DASTORE: arrayStoreNode = DoubleArrayStoreNodeGen.create(top, curBCI); break;
-                    case AASTORE: arrayStoreNode = ReferenceArrayStoreNodeGen.create(top, curBCI); break;
+                    case BASTORE: arrayStoreNode = new ByteArrayStoreQuickNode(top, curBCI);   break;
+                    case SASTORE: arrayStoreNode = new ShortArrayStoreQuickNode(top, curBCI);  break;
+                    case CASTORE: arrayStoreNode = new CharArrayStoreQuickNode(top, curBCI);   break;
+                    case IASTORE: arrayStoreNode = new IntArrayStoreQuickNode(top, curBCI);    break;
+                    case FASTORE: arrayStoreNode = new FloatArrayStoreQuickNode(top, curBCI);  break;
+                    case LASTORE: arrayStoreNode = new LongArrayStoreQuickNode(top, curBCI);   break;
+                    case DASTORE: arrayStoreNode = new DoubleArrayStoreQuickNode(top, curBCI); break;
+                    case AASTORE: arrayStoreNode = new ReferenceArrayStoreQuickNode(top, curBCI); break;
                     default:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
@@ -2198,20 +2198,20 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             if (resolved.isPrivate()) {
                 assert getJavaVersion().java9OrLater();
                 // Interface private methods do not appear in itables.
-                invoke = new InvokeSpecialNode(resolved, top, curBCI);
+                invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);
             } else {
                 // Can happen in old classfiles that calls j.l.Object on interfaces.
-                invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);
+                invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);
             }
         } else if (opcode == INVOKEVIRTUAL && (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate())) {
-            invoke = new InvokeSpecialNode(resolved, top, curBCI);
+            invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);
         } else {
             // @formatter:off
             switch (opcode) {
-                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolved, top, curBCI);          break;
-                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolved, top, curBCI); break;
-                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);   break;
-                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolved, top, curBCI);         break;
+                case INVOKESTATIC    : invoke = new InvokeStaticQuickNode(resolved, top, curBCI);         break;
+                case INVOKEINTERFACE : invoke = new InvokeInterfaceQuickNode(resolved, top, curBCI); break;
+                case INVOKEVIRTUAL   : invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);   break;
+                case INVOKESPECIAL   : invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);        break;
                 default              :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));

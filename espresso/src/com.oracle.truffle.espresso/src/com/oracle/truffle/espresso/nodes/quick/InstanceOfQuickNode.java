@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,31 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class QuickNode extends BaseQuickNode {
+public final class InstanceOfQuickNode extends QuickNode {
 
-    public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
+    @Child InstanceOf instanceOf;
 
-    protected final int top;
+    static final int stackEffectOf_INSTANCEOF = Bytecodes.stackEffectOf(Bytecodes.INSTANCEOF);
 
-    private final int callerBCI;
-
-    protected QuickNode(int top, int callerBCI) {
-        this.top = top;
-        this.callerBCI = callerBCI;
+    public InstanceOfQuickNode(Klass typeToCheck, int top, int curBCI) {
+        super(top, curBCI);
+        assert !typeToCheck.isPrimitive();
+        this.instanceOf = InstanceOf.create(typeToCheck, true);
     }
 
     @Override
-    public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
-
-    protected final StaticObject nullCheck(StaticObject value) {
-        if (StaticObject.isNull(value)) {
-            getBytecodeNode().enterImplicitExceptionProfile();
-            throw getMeta().throwNullPointerException();
-        }
-        return value;
-    }
-
-    @Override
-    public int getBci(@SuppressWarnings("unused") Frame frame) {
-        return callerBCI;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        return getBytecodeNode().getSourceSectionAtBCI(callerBCI);
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        StaticObject receiver = BytecodeNode.popObject(refs, top - 1);
+        boolean result = StaticObject.notNull(receiver) && instanceOf.execute(receiver.getKlass());
+        BytecodeNode.putKind(primitives, refs, top - 1, result, JavaKind.Boolean);
+        return stackEffectOf_INSTANCEOF;
     }
 }

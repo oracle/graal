@@ -446,9 +446,26 @@ public abstract class EspressoProcessor extends BaseProcessor {
     }
 
     private static StringBuilder signatureSuffixBuilder(List<String> parameterTypes) {
-        StringBuilder str = new StringBuilder();
-        str.append("_").append(parameterTypes.size());
-        return str;
+        StringBuilder sb = new StringBuilder();
+        sb.append("__");
+        for (String param : parameterTypes) {
+            // @formatter:off
+            switch (param) {
+                case "boolean" : sb.append("Z"); break;
+                case "byte"    : sb.append("B"); break;
+                case "char"    : sb.append("C"); break;
+                case "int"     : sb.append("I"); break;
+                case "long"    : sb.append("J"); break;
+                case "float"   : sb.append("F"); break;
+                case "double"  : sb.append("D"); break;
+                case "void"    : sb.append("V"); break;
+                default:
+                    assert (param.startsWith("[") || param.startsWith("L")) && param.endsWith(";");
+                    sb.append("L"); break;
+            }
+            // @formatter:on
+        }
+        return sb;
     }
 
     static String getSubstitutorClassName(String className, String methodName, List<String> parameterTypes) {

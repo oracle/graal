@@ -486,6 +486,7 @@ public final class EspressoContext {
                 for (Symbol<Type> type : Arrays.asList(
                                 Type.java_lang_String,
                                 Type.java_lang_System,
+                                Type.java_lang_Class, // JDK-8069005
                                 Type.java_lang_ThreadGroup,
                                 Type.java_lang_Thread)) {
                     initializeKnownClass(type);
@@ -504,7 +505,6 @@ public final class EspressoContext {
                 initializeKnownClass(Type.java_lang_Object);
 
                 for (Symbol<Type> type : Arrays.asList(
-                                Type.java_lang_Class,
                                 Type.java_lang_reflect_Method,
                                 Type.java_lang_ref_Finalizer)) {
                     initializeKnownClass(type);
