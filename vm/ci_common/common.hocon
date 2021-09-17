@@ -121,6 +121,7 @@ fastr_linux: ${fastr} {
     pcre2: "==10.37",
     zlib: ">=1.2.11",
     curl: ">=7.50.1",
+    gnur: "==4.0.3-gcc4.8.5-pcre8.42"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
