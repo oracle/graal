@@ -118,7 +118,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
     private final ReciprocalLeastSquareFit minorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long minorCount;
-    private long latestMinorMutatorIntervalSeconds;
+    private long latestMinorMutatorIntervalNanos;
     private boolean youngGenPolicyIsReady;
     private UnsignedWord youngGenSizeIncrementSupplement = WordFactory.unsigned(YOUNG_GENERATION_SIZE_SUPPLEMENT);
     private long youngGenChangeForMinorThroughput;
@@ -132,7 +132,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final ReciprocalLeastSquareFit majorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long majorCount;
     private UnsignedWord oldGenSizeIncrementSupplement = WordFactory.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
-    private long latestMajorMutatorIntervalSeconds;
+    private long latestMajorMutatorIntervalNanos;
     private boolean oldSizeExceededInPreviousCollection;
     private long oldGenChangeForMajorThroughput;
 
@@ -383,9 +383,9 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         Timer timer = completeCollection ? majorTimer : minorTimer;
         timer.close();
         if (completeCollection) {
-            latestMajorMutatorIntervalSeconds = timer.getMeasuredNanos();
+            latestMajorMutatorIntervalNanos = timer.getMeasuredNanos();
         } else {
-            latestMinorMutatorIntervalSeconds = timer.getMeasuredNanos();
+            latestMinorMutatorIntervalNanos = timer.getMeasuredNanos();
         }
 
         // Capture the fraction of bytes in aligned chunks at the start to include all allocated
@@ -407,13 +407,13 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         if (completeCollection) {
             updateCollectionEndAverages(avgMajorGcCost, avgMajorPause, majorCostEstimator, avgMajorIntervalSeconds,
-                            cause, latestMajorMutatorIntervalSeconds, timer.getMeasuredNanos(), promoSize);
+                            cause, latestMajorMutatorIntervalNanos, timer.getMeasuredNanos(), promoSize);
             majorCount++;
             minorCountSinceMajorCollection = 0;
 
         } else {
             updateCollectionEndAverages(avgMinorGcCost, avgMinorPause, minorCostEstimator, null,
-                            cause, latestMinorMutatorIntervalSeconds, timer.getMeasuredNanos(), edenSize);
+                            cause, latestMinorMutatorIntervalNanos, timer.getMeasuredNanos(), edenSize);
             minorCount++;
             minorCountSinceMajorCollection++;
 

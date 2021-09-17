@@ -194,7 +194,6 @@ public final class GCImpl implements GC {
 
         printGCBefore(cause.getName());
         boolean outOfMemory = collectImpl(cause, forceFullGC);
-        HeapImpl.getHeapImpl().getAccounting().setEdenAndYoungGenBytes(WordFactory.unsigned(0), accounting.getYoungChunkBytesAfter());
         printGCAfter(cause.getName());
 
         finishCollection();
@@ -265,6 +264,7 @@ public final class GCImpl implements GC {
             collectionTimer.close();
         }
 
+        HeapImpl.getHeapImpl().getAccounting().setEdenAndYoungGenBytes(WordFactory.zero(), accounting.getYoungChunkBytesAfter());
         accounting.afterCollection(completeCollection, collectionTimer);
         policy.onCollectionEnd(completeCollection, cause);
 
