@@ -1105,12 +1105,13 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            boolean entered = controller.enterTruffleContext();
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
                                 writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 // Checkstyle: stop allow error output
                                 if (entered) {
@@ -1286,12 +1287,13 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            boolean entered = controller.enterTruffleContext();
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
                                 writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 // Checkstyle: stop allow error output
                                 if (entered) {
@@ -1783,12 +1785,13 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            boolean entered = controller.enterTruffleContext();
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
                                 writeMethodResult(reply, context, result);
                             } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 // Checkstyle: stop allow error output
                                 if (entered) {
