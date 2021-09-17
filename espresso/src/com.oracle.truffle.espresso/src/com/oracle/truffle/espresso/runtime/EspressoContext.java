@@ -1010,6 +1010,9 @@ public final class EspressoContext {
 
     private static final ContextReference<EspressoContext> REFERENCE = ContextReference.create(EspressoLanguage.class);
 
+    /**
+     * Returns the <em>current</em>, thread-local, context.
+     */
     public static EspressoContext get(Node node) {
         return REFERENCE.get(node);
     }
