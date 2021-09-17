@@ -1330,6 +1330,25 @@ public class MethodTypeFlowBuilder {
                     return actualReturn;
                 });
 
+                ObjectStamp stamp = (ObjectStamp) invoke.stamp(NodeView.DEFAULT);
+                if (stamp.nonNull() && !returnType.equals(stamp.type()) && returnType.isAssignableFrom(stamp.type())) {
+                    /*
+                     * If the invoke stamp has a more precise type than the return type use that to
+                     * filter the returned values. This can happen for example for MacroInvokable
+                     * nodes when more concrete stamp information can be inferred for example from
+                     * parameter types. In that case the Graal graph optimizations may decide to
+                     * remove a checkcast that would normally follow the invoke, so we need to
+                     * introduce the filter to avoid loosing precision.
+                     */
+                    TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, invoke, FilterTypeFlow.class, () -> {
+                        FilterTypeFlow filterFlow = new FilterTypeFlow(invoke, (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
+                        methodFlow.addMiscEntry(filterFlow);
+                        return filterFlow;
+                    });
+                    filterBuilder.addUseDependency(actualReturnBuilder);
+                    actualReturnBuilder = filterBuilder;
+                }
+
                 if (bb.strengthenGraalGraphs()) {
                     typeFlowGraphBuilder.registerSinkBuilder(actualReturnBuilder);
                 }
