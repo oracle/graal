@@ -32,7 +32,7 @@ import jdk.jfr.consumer.RecordingFile;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
 
-public class TestRecordingParsable {
+public class TestRecordingParsable extends JFRTest {
 
     @Test
     public void test() throws Exception {

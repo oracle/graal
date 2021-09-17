@@ -33,7 +33,7 @@ import org.junit.Test;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordingFile;
 
-public class TestClassEvent {
+public class TestClassEvent extends JFRTest {
     @Test
     public void test() throws Exception {
         JFR jfr = new LocalJFR();
