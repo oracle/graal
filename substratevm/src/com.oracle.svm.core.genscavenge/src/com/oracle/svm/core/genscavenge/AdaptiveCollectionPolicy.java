@@ -96,7 +96,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private static final boolean ADAPTIVE_SIZE_USE_COST_ESTIMATORS = true;
     private static final int ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS = ADAPTIVE_SIZE_POLICY_READY_THRESHOLD;
     /** The minimum increase in throughput in percent for expanding a space by 1% of its size. */
-    private static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_THROUGHPUT_TRADEOFF = 0.8;
+    private static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_COST_TRADEOFF = 0.8;
     /** The effective number of most recent data points used by estimator (exponential decay). */
     private static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = ADAPTIVE_TIME_WEIGHT;
     /** Threshold for triggering a complete collection after repeated minor collections. */
@@ -239,9 +239,12 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     private void computeEdenSpaceSize() {
         boolean expansionReducesCost = true; // general assumption
-        boolean useEstimator = shouldUseEstimator(youngGenChangeForMinorThroughput);
-        if (useEstimator) {
-            expansionReducesCost = minorCostEstimator.getSlope(UnsignedUtils.toDouble(edenSize)) <= 0;
+        if (shouldUseEstimator(youngGenChangeForMinorThroughput)) {
+            expansionReducesCost = expansionSignificantlyReducesCost(minorCostEstimator, edenSize);
+            /*
+             * Note that if the estimator thinks expanding does not lead to significant improvement,
+             * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
+             */
         }
 
         UnsignedWord desiredEdenSize = edenSize;
@@ -252,16 +255,9 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             assert scaleByRatio >= 0 && scaleByRatio <= 1;
             UnsignedWord scaledEdenHeapDelta = UnsignedUtils.fromDouble(scaleByRatio * UnsignedUtils.toDouble(edenHeapDelta));
 
-            expansionReducesCost = !useEstimator || expansionSignificantlyReducesCost(minorCostEstimator, edenSize, scaledEdenHeapDelta);
-            if (expansionReducesCost) {
-                desiredEdenSize = alignUp(desiredEdenSize.add(scaledEdenHeapDelta));
-                desiredEdenSize = UnsignedUtils.max(desiredEdenSize, edenSize);
-                youngGenChangeForMinorThroughput++;
-            }
-            /*
-             * If the estimator says expanding by delta does not lead to a significant improvement,
-             * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
-             */
+            desiredEdenSize = alignUp(desiredEdenSize.add(scaledEdenHeapDelta));
+            desiredEdenSize = UnsignedUtils.max(desiredEdenSize, edenSize);
+            youngGenChangeForMinorThroughput++;
         }
         if (!expansionReducesCost || (USE_ADAPTIVE_SIZE_POLICY_FOOTPRINT_GOAL && youngGenPolicyIsReady && adjustedMutatorCost() >= THROUGHPUT_GOAL)) {
             UnsignedWord desiredSum = edenSize.add(promoSize);
@@ -286,20 +282,17 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return ADAPTIVE_SIZE_USE_COST_ESTIMATORS && genChangeForThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS && gcCost() <= ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT;
     }
 
-    private static boolean expansionSignificantlyReducesCost(ReciprocalLeastSquareFit estimator, UnsignedWord size, UnsignedWord delta) {
+    private static boolean expansionSignificantlyReducesCost(ReciprocalLeastSquareFit estimator, UnsignedWord size) {
         double x0 = UnsignedUtils.toDouble(size);
-        double x0Throughput = 1 - estimator.estimate(x0);
-        if (x0 == 0 || x0Throughput == 0) { // division by zero below
+        double deltax = (1.01 - 1) * x0;
+        if (deltax == 0) { // division by zero below
             return false;
         }
-        double x1 = x0 + UnsignedUtils.toDouble(delta);
-        double x1Throughput = 1 - estimator.estimate(x1);
-        if (x0 >= x1 || x0Throughput >= x1Throughput) {
-            return false;
-        }
-        double min = (x1 / x0 - 1) * ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_THROUGHPUT_TRADEOFF;
-        double estimated = x1Throughput / x0Throughput - 1;
-        return (estimated >= min);
+        double y0 = estimator.estimate(x0);
+        double y1 = y0 * (1 - 0.01 * ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_COST_TRADEOFF);
+        double minSlope = (y1 - y0) / deltax;
+        double estimatedSlope = estimator.getSlope(x0);
+        return estimatedSlope <= minSlope;
     }
 
     private static UnsignedWord adjustEdenForFootprint(UnsignedWord curEden, UnsignedWord desiredSum) {
@@ -464,9 +457,12 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         promoLimit = alignDown(UnsignedUtils.max(promoSize, promoLimit));
 
         boolean expansionReducesCost = true; // general assumption
-        boolean useEstimator = shouldUseEstimator(oldGenChangeForMajorThroughput);
-        if (useEstimator) {
-            expansionReducesCost = majorCostEstimator.getSlope(UnsignedUtils.toDouble(promoSize)) <= 0;
+        if (shouldUseEstimator(oldGenChangeForMajorThroughput)) {
+            expansionReducesCost = expansionSignificantlyReducesCost(majorCostEstimator, promoSize);
+            /*
+             * Note that if the estimator thinks expanding does not lead to significant improvement,
+             * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
+             */
         }
 
         UnsignedWord desiredPromoSize = promoSize;
@@ -477,16 +473,9 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             assert scaleByRatio >= 0 && scaleByRatio <= 1;
             UnsignedWord scaledPromoHeapDelta = UnsignedUtils.fromDouble(scaleByRatio * UnsignedUtils.toDouble(promoHeapDelta));
 
-            expansionReducesCost = !useEstimator || expansionSignificantlyReducesCost(majorCostEstimator, promoSize, scaledPromoHeapDelta);
-            if (expansionReducesCost) {
-                desiredPromoSize = alignUp(promoSize.add(scaledPromoHeapDelta));
-                desiredPromoSize = UnsignedUtils.max(desiredPromoSize, promoSize);
-                oldGenChangeForMajorThroughput++;
-            }
-            /*
-             * If the estimator says expanding by delta does not lead to a significant improvement,
-             * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
-             */
+            desiredPromoSize = alignUp(promoSize.add(scaledPromoHeapDelta));
+            desiredPromoSize = UnsignedUtils.max(desiredPromoSize, promoSize);
+            oldGenChangeForMajorThroughput++;
         }
         if (!expansionReducesCost || (USE_ADAPTIVE_SIZE_POLICY_FOOTPRINT_GOAL && youngGenPolicyIsReady && adjustedMutatorCost() >= THROUGHPUT_GOAL)) {
             UnsignedWord desiredSum = edenSize.add(promoSize);
