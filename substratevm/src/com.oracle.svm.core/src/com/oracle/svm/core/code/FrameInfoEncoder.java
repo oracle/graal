@@ -24,15 +24,12 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -42,8 +39,8 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.CodeInfoEncoder.Counters;
+import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -180,24 +177,12 @@ public class FrameInfoEncoder {
     private final Customization customization;
 
     private final List<FrameData> allDebugInfos;
-    private final FrequencyEncoder<JavaConstant> objectConstants;
-    private final FrequencyEncoder<Class<?>> sourceClasses;
-    private final FrequencyEncoder<String> sourceMethodNames;
-    private final FrequencyEncoder<String> names;
+    private final Encoders encoders;
 
-    protected FrameInfoEncoder(Customization customization) {
+    protected FrameInfoEncoder(Customization customization, Encoders encoders) {
         this.customization = customization;
+        this.encoders = encoders;
         this.allDebugInfos = new ArrayList<>();
-        this.objectConstants = FrequencyEncoder.createEqualityEncoder();
-        if (FrameInfoDecoder.encodeDebugNames() || FrameInfoDecoder.encodeSourceReferences()) {
-            this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
-            this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
-            this.names = FrequencyEncoder.createEqualityEncoder();
-        } else {
-            this.sourceClasses = null;
-            this.sourceMethodNames = null;
-            this.names = null;
-        }
     }
 
     protected FrameData addDebugInfo(ResolvedJavaMethod method, Infopoint infopoint, int totalFrameSize) {
@@ -223,15 +208,15 @@ public class FrameInfoEncoder {
             }
 
             for (FrameInfoQueryResult cur = data.frame; cur != null; cur = cur.caller) {
-                sourceClasses.addObject(cur.sourceClass);
-                sourceMethodNames.addObject(cur.sourceMethodName);
+                encoders.sourceClasses.addObject(cur.sourceClass);
+                encoders.sourceMethodNames.addObject(cur.sourceMethodName);
 
                 if (encodeDebugNames) {
                     for (ValueInfo valueInfo : cur.valueInfos) {
                         if (valueInfo.name == null) {
                             valueInfo.name = "";
                         }
-                        names.addObject(valueInfo.name);
+                        encoders.names.addObject(valueInfo.name);
                     }
                 }
             }
@@ -280,7 +265,7 @@ public class FrameInfoEncoder {
         SharedMethod method = (SharedMethod) frame.getMethod();
         if (customization.shouldStoreMethod()) {
             result.deoptMethod = method;
-            objectConstants.addObject(SubstrateObjectConstant.forObject(method));
+            encoders.objectConstants.addObject(SubstrateObjectConstant.forObject(method));
         }
         result.deoptMethodOffset = method.getDeoptOffsetInImage();
 
@@ -383,7 +368,7 @@ public class FrameInfoEncoder {
                      * Collect all Object constants, which will be stored in a separate Object[]
                      * array so that the GC can visit them.
                      */
-                    objectConstants.addObject(constant);
+                    encoders.objectConstants.addObject(constant);
                 }
             }
             ImageSingletons.lookup(Counters.class).constantValueCount.inc();
@@ -394,7 +379,7 @@ public class FrameInfoEncoder {
             result.data = virtualObject.getId();
             makeVirtualObject(data, virtualObject, isDeoptEntry);
         } else {
-            throw shouldNotReachHere();
+            throw VMError.shouldNotReachHere();
         }
         return result;
     }
@@ -576,34 +561,14 @@ public class FrameInfoEncoder {
         return result;
     }
 
-    protected void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
-        JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
-        Class<?>[] sourceClassesArray = null;
-        String[] sourceMethodNamesArray = null;
-        String[] namesArray = null;
-        final boolean encodeDebugNames = FrameInfoDecoder.encodeDebugNames();
-        if (encodeDebugNames || FrameInfoDecoder.encodeSourceReferences()) {
-            sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
-            sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
-        }
-        if (encodeDebugNames) {
-            namesArray = names.encodeAll(new String[names.getLength()]);
-        }
+    protected void encodeAllAndInstall(CodeInfo target) {
         NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas();
-        install(target, frameInfoEncodings, encodedJavaConstants, sourceClassesArray, sourceMethodNamesArray, namesArray, adjuster);
+        install(target, frameInfoEncodings);
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-    private static void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings, JavaConstant[] objectConstantsArray, Class<?>[] sourceClassesArray,
-                    String[] sourceMethodNamesArray, String[] namesArray, ReferenceAdjuster adjuster) {
-
-        NonmovableObjectArray<Object> frameInfoObjectConstants = adjuster.copyOfObjectConstantArray(objectConstantsArray);
-        NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClassesArray != null) ? adjuster.copyOfObjectArray(sourceClassesArray) : NonmovableArrays.nullArray();
-        NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNamesArray != null) ? adjuster.copyOfObjectArray(sourceMethodNamesArray) : NonmovableArrays.nullArray();
-        NonmovableObjectArray<String> frameInfoNames = (namesArray != null) ? adjuster.copyOfObjectArray(namesArray) : NonmovableArrays.nullArray();
-
-        CodeInfoAccess.setFrameInfo(target, frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
-
+    private static void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings) {
+        CodeInfoAccess.setFrameInfo(target, frameInfoEncodings);
         afterInstallation(target);
     }
 
@@ -642,7 +607,7 @@ public class FrameInfoEncoder {
 
                 int deoptMethodIndex;
                 if (cur.deoptMethod != null) {
-                    deoptMethodIndex = -1 - objectConstants.getIndex(SubstrateObjectConstant.forObject(cur.deoptMethod));
+                    deoptMethodIndex = -1 - encoders.objectConstants.getIndex(SubstrateObjectConstant.forObject(cur.deoptMethod));
                     assert deoptMethodIndex < 0;
                     assert cur.deoptMethodOffset == cur.deoptMethod.getDeoptOffsetInImage();
                 } else {
@@ -664,8 +629,8 @@ public class FrameInfoEncoder {
 
             final boolean encodeDebugNames = needLocalValues && FrameInfoDecoder.encodeDebugNames();
             if (encodeDebugNames || FrameInfoDecoder.encodeSourceReferences()) {
-                final int classIndex = sourceClasses.getIndex(cur.sourceClass);
-                final int methodIndex = sourceMethodNames.getIndex(cur.sourceMethodName);
+                final int classIndex = encoders.sourceClasses.getIndex(cur.sourceClass);
+                final int methodIndex = encoders.sourceMethodNames.getIndex(cur.sourceMethodName);
 
                 cur.sourceClassIndex = classIndex;
                 cur.sourceMethodNameIndex = methodIndex;
@@ -677,7 +642,7 @@ public class FrameInfoEncoder {
 
             if (encodeDebugNames) {
                 for (ValueInfo valueInfo : cur.valueInfos) {
-                    valueInfo.nameIndex = names.getIndex(valueInfo.name);
+                    valueInfo.nameIndex = encoders.names.getIndex(valueInfo.name);
                     encodingBuffer.putUV(valueInfo.nameIndex);
                 }
             }
@@ -690,7 +655,7 @@ public class FrameInfoEncoder {
         for (ValueInfo valueInfo : valueInfos) {
             if (valueInfo.type == ValueType.Constant) {
                 if (valueInfo.kind == JavaKind.Object) {
-                    valueInfo.data = objectConstants.getIndex(valueInfo.value);
+                    valueInfo.data = encoders.objectConstants.getIndex(valueInfo.value);
                 } else {
                     valueInfo.data = encodePrimitiveConstant(valueInfo.value);
                 }

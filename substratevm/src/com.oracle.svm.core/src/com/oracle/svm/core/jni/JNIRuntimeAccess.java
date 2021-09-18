@@ -53,7 +53,7 @@ public final class JNIRuntimeAccess {
     }
 
     public static void register(Executable... methods) {
-        getSupport().register(ConfigurationCondition.alwaysTrue(), methods);
+        getSupport().register(ConfigurationCondition.alwaysTrue(), false, methods);
     }
 
     public static void register(Field... fields) {

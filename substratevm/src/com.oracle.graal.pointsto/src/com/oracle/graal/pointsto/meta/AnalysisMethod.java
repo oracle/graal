@@ -554,6 +554,11 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         return OriginalMethodProvider.getJavaMethod(universe.getOriginalSnippetReflection(), wrapped);
     }
 
+    @Override
+    public boolean hasJavaMethod() {
+        return OriginalMethodProvider.hasJavaMethod(universe.getOriginalSnippetReflection(), wrapped);
+    }
+
     /**
      * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
      * receiver type of the method, i.e., its declaring class. Therefore this invoke will link with

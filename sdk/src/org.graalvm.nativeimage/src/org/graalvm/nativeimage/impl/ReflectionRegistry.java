@@ -46,7 +46,7 @@ import java.lang.reflect.Field;
 public interface ReflectionRegistry {
     void register(ConfigurationCondition condition, Class<?>... classes);
 
-    void register(ConfigurationCondition condition, Executable... methods);
+    void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods);
 
     void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields);
 
