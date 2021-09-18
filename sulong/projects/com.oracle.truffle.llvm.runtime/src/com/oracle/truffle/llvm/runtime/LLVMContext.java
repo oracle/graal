@@ -1093,7 +1093,6 @@ public final class LLVMContext {
         }
 
         private void addScope(LLVMScope newScope) {
-            // assert !scopes.contains(newScope);
             if (!scopes.contains(newScope)) {
                 scopes.add(newScope);
             }
