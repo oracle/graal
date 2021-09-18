@@ -460,7 +460,7 @@ public class AArch64Move {
         }
     }
 
-    public static void move(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
+    private static void move(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(crb, masm, result, asAllocatableValue(input));

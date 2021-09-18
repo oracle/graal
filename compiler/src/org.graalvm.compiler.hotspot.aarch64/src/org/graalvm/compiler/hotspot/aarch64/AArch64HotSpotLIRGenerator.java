@@ -570,9 +570,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue scratchValue,
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key,
                     Function<Condition, ConditionFlag> converter) {
-        return new AArch64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, scratchValue, converter);
+        return new AArch64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, converter);
     }
 
     public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {

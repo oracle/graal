@@ -675,6 +675,7 @@ public class AMD64ControlFlow {
         public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
             super(TYPE);
             this.lowKey = lowKey;
+            assert defaultTarget != null;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
             this.index = index;
@@ -703,9 +704,7 @@ public class AMD64ControlFlow {
             }
 
             // Jump to default target if index is not within the jump table
-            if (defaultTarget != null) {
-                masm.jcc(ConditionFlag.Above, defaultTarget.label());
-            }
+            masm.jcc(ConditionFlag.Above, defaultTarget.label());
 
             // Set scratch to address of jump table
             masm.leaq(scratchReg, new AMD64Address(AMD64.rip, 0));

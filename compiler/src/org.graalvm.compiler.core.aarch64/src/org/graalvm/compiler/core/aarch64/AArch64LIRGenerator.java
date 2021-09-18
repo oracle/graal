@@ -485,17 +485,17 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
-        append(createStrategySwitchOp(strategy, keyTargets, defaultTarget, key, newVariable(key.getValueKind()), AArch64LIRGenerator::toIntConditionFlag));
+        append(createStrategySwitchOp(strategy, keyTargets, defaultTarget, key, AArch64LIRGenerator::toIntConditionFlag));
     }
 
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue scratchValue,
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key,
                     Function<Condition, ConditionFlag> converter) {
-        return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, scratchValue, converter);
+        return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, converter);
     }
 
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, key, newVariable(LIRKind.value(target().arch.getWordKind())), newVariable(key.getValueKind())));
+        append(new TableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
     }
 
     @Override
