@@ -89,14 +89,29 @@ final class SubstrateSegfaultHandlerStartupHook implements Runnable {
 }
 
 public abstract class SubstrateSegfaultHandler {
-
     public static class Options {
         @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library.")//
         static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
 
+    private boolean installed;
+
+    @Fold
+    public static SubstrateSegfaultHandler singleton() {
+        return ImageSingletons.lookup(SubstrateSegfaultHandler.class);
+    }
+
+    public static boolean isInstalled() {
+        return singleton().installed;
+    }
+
     /** Installs the platform dependent segfault handler. */
-    protected abstract void install();
+    public void install() {
+        installInternal();
+        installed = true;
+    }
+
+    protected abstract void installInternal();
 
     protected abstract void printSignalInfo(Log log, PointerBase signalInfo);
 
@@ -155,7 +170,7 @@ public abstract class SubstrateSegfaultHandler {
 
             PointerBase sp = RegisterDumper.singleton().getSP(context);
             PointerBase ip = RegisterDumper.singleton().getIP(context);
-            boolean printedDiagnostics = SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context, false);
+            boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, (Pointer) sp, (CodePointer) ip, context, false);
             if (printedDiagnostics) {
                 log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
                 log.newline();

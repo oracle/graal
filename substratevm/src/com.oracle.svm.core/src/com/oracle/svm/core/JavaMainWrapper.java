@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.log.Log;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -170,7 +171,7 @@ public class JavaMainWrapper {
              */
             RuntimeSupport.getRuntimeSupport().shutdown();
 
-            Counter.logValues();
+            Counter.logValues(Log.log());
         }
         return exitCode;
     }

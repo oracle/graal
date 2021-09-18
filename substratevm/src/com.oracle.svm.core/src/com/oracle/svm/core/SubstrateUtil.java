@@ -252,9 +252,9 @@ public class SubstrateUtil {
         void invoke();
     }
 
-    /** Prints extensive diagnostic information to the given Log. */
+    /** Prints extensive diagnostic information for a fatal error to the given log. */
     public static boolean printDiagnostics(Log log, Pointer sp, CodePointer ip) {
-        return SubstrateDiagnostics.print(log, sp, ip, WordFactory.nullPointer(), false);
+        return SubstrateDiagnostics.printFatalError(log, sp, ip, WordFactory.nullPointer(), false);
     }
 
     /**

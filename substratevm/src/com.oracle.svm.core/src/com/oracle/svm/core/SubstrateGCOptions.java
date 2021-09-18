@@ -38,9 +38,6 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
  * Garbage collection-specific options that are supported by all garbage collectors.
  */
 public class SubstrateGCOptions {
-    @Option(help = "Print summary GC information after each collection", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
-
     @Option(help = "Print more information about the heap before and after each collection", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
 
@@ -52,6 +49,9 @@ public class SubstrateGCOptions {
 
     @Option(help = "Ignore calls to System.gc()", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Print summary GC information after each collection", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
 
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
