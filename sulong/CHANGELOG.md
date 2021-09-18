@@ -4,6 +4,11 @@ Changes:
 
 * Updated LLVM toolchain to version 12.0.0.
 
+Removals:
+
+* Removed ReferenceLibrary (deprecated since version 20.2).
+  Implement InteropLibrary.isIdenticalOrUndefined instead.
+
 # Version 21.2.0
 
 Fixes:

@@ -184,8 +184,6 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "jacoco" : "exclude",
-      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
-      "javac.lint.overrides" : "-deprecation",
     },
     "com.oracle.truffle.llvm.tests.native" : {
       "subDir" : "tests",
@@ -335,7 +333,7 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
-      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
+      # Using finalizer in signals implementation. GR-7018
       "javac.lint.overrides" : "-deprecation",
     },
 
