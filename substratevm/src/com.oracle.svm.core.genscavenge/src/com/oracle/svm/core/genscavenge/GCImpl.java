@@ -589,18 +589,17 @@ public final class GCImpl implements GC {
 
             if (followingIncremental) {
                 /*
-                 * We just finished an incremental collection, so we will not be able to reclaim any
-                 * young objects and do not need to copy them (and do not want to age or tenure them
-                 * in the process). We still need to scan them for roots into the old generation.
+                 * We just finished an incremental collection, so we could get away with not
+                 * scavenging the young generation again.
                  *
-                 * There is potential trouble with this: if objects in the young generation are
-                 * reachable only from garbage objects in the old generation, the young objects are
-                 * not reclaimed during this collection. If there is a cycle in which the young
-                 * objects in turn keep the old objects alive, none of the objects can be reclaimed
-                 * until the young objects are eventually tenured, or until a single complete
-                 * collection is done before we would run out of memory.
+                 * However, we don't do this because if objects in the young generation are
+                 * reachable only from garbage objects in the old generation, the young objects
+                 * cannot be reclaimed during this collection. Even worse, if there is a cycle in
+                 * which the young objects in turn keep the old objects alive, none of the objects
+                 * can be reclaimed until these young objects are eventually tenured, or until a
+                 * single complete collection is done before we would run out of memory.
                  */
-                HeapImpl.getHeapImpl().getYoungGeneration().emptyFromSpacesIntoToSpaces();
+                // HeapImpl.getHeapImpl().getYoungGeneration().emptyFromSpacesIntoToSpaces();
             }
 
             /*
