@@ -69,7 +69,6 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected static final int NEW_RATIO = 2; // HotSpot: -XX:NewRatio
     protected static final int LARGE_MEMORY_MAX_HEAP_PERCENT = 25; // -XX:MaxRAMPercentage
     protected static final int SMALL_MEMORY_MAX_HEAP_PERCENT = 50; // -XX:MinRAMPercentage
-    protected static final double INITIAL_HEAP_MEMORY_PERCENT = 1.5625; // -XX:InitialRAMPercentage
 
     protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(DEFAULT_TIME_WEIGHT);
 
@@ -299,12 +298,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         }
         minHeap = UnsignedUtils.clamp(alignUp(minHeap), minAllSpaces, maxHeap);
 
-        UnsignedWord initialHeap;
-        if (PhysicalMemory.isInitialized()) {
-            initialHeap = UnsignedUtils.fromDouble(UnsignedUtils.toDouble(PhysicalMemory.getCachedSize()) / 100 * AbstractCollectionPolicy.INITIAL_HEAP_MEMORY_PERCENT);
-        } else {
-            initialHeap = AbstractCollectionPolicy.SMALL_HEAP_SIZE;
-        }
+        UnsignedWord initialHeap = AbstractCollectionPolicy.SMALL_HEAP_SIZE;
         initialHeap = UnsignedUtils.clamp(alignUp(initialHeap), minHeap, maxHeap);
 
         UnsignedWord initialYoung;
