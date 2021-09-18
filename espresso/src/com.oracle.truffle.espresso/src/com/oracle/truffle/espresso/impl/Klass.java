@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1252,7 +1253,22 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return true;
     }
 
+    @TruffleBoundary(allowInlining = true)
+    protected static int fastLookupBoundary(Klass target, Klass[] klasses) {
+        return fastLookupImpl(target, klasses);
+    }
+
     protected static int fastLookup(Klass target, Klass[] klasses) {
+        if (!CompilerDirectives.isPartialEvaluationConstant(klasses)) {
+            return fastLookupBoundary(target, klasses);
+        }
+        // PE-friendly.
+        CompilerAsserts.partialEvaluationConstant(klasses);
+        return fastLookupImpl(target, klasses);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    protected static int fastLookupImpl(Klass target, Klass[] klasses) {
         assert isSorted(klasses, KLASS_ID_COMPARATOR);
         if (klasses.length <= LINEAR_SEARCH_THRESHOLD) {
             for (int i = 0; i < klasses.length; i++) {

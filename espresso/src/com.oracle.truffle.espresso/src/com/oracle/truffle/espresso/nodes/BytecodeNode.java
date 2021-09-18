@@ -2989,6 +2989,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     private boolean trivialBytecodes() {
+        if (getMethod().isSynchronized()) {
+            return false;
+        }
         byte[] originalCode = getMethodVersion().getOriginalCode();
         /*
          * originalCode.length < TrivialMethodSize is checked in the constructor because this method
@@ -3002,6 +3005,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 return false;
             }
             if (Bytecodes.LOOKUPSWITCH == bc || Bytecodes.TABLESWITCH == bc) {
+                return false;
+            }
+            if (Bytecodes.MONITORENTER == bc || Bytecodes.MONITOREXIT == bc) {
                 return false;
             }
             if (Bytecodes.ANEWARRAY == bc || MULTIANEWARRAY == bc) {
