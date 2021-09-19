@@ -109,21 +109,24 @@ fastr: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
     FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "12", platformspecific: true },
   }
+  catch_files: ${common.catch_files} [
+    "GNUR_CONFIG_LOG = (?P<filename>.+\\.log)",
+    "GNUR_MAKE_LOG = (?P<filename>.+\\.log)",
+  ]
 }
 
 fastr_linux: ${fastr} {
   packages: {
     readline: "==6.3",
-    pcre: "==8.43",
+    pcre2: "==10.37",
     zlib: ">=1.2.11",
     curl: ">=7.50.1",
     gnur: "==4.0.3-gcc4.8.5-pcre8.42"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
-    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/curl/7.50.1/include"
-    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
-    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/4.0.3-gcc4.8.5-pcre8.42/lib64/R",
+    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre2/10.37/include -I/cm/shared/apps/curl/7.50.1/include"
+    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
     FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
   }
   downloads: {
@@ -133,17 +136,16 @@ fastr_linux: ${fastr} {
 
 fastr_darwin: ${fastr} {
   packages: {
-    "pcre": "==8.43",
-    "gnur": "==4.0.3-gcc10.2-pcre8.42"
+    "pcre2": "==10.37",
   }
   environment:  {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
     FASTR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
+    GNUR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
-    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/4.0.3-gcc10.2-pcre8.42/lib/R/"
-    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
-    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib"
+    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre2/pcre2-10.37/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
+    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/pcre2-10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib"
   }
   downloads: {
     BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "8.3.0", platformspecific: true },
