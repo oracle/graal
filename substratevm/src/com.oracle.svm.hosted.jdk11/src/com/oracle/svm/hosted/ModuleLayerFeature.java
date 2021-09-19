@@ -45,13 +45,17 @@ import java.lang.module.ResolvedModule;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This feature:
@@ -87,9 +91,17 @@ import java.util.stream.Collectors;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class ModuleLayerFeature implements Feature {
 
-    private Field moduleNameToModuleField;
-    private Field moduleParentsField;
+    private Module everyoneModule;
+    private Set<Module> everyoneSet;
+    private Constructor<Module> moduleConstructor;
     private Constructor<ModuleLayer> moduleLayerConstructor;
+    private Field moduleLayerField;
+    private Field moduleLayerNameToModuleField;
+    private Field moduleLayerParentsField;
+    private Field moduleReadsField;
+    private Field moduleOpenPackagesField;
+    private Field moduleExportedPackagesField;
+    private Method moduleFindModuleMethod;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -99,17 +111,26 @@ public final class ModuleLayerFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
-        moduleNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
-        moduleParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
+        everyoneModule = ReflectionUtil.readField(Module.class, "EVERYONE_MODULE", null);
+        everyoneSet = Set.of(everyoneModule);
+        moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
         moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
+        moduleLayerField = ReflectionUtil.lookupField(Module.class, "layer");
+        moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
+        moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
+        moduleReadsField = ReflectionUtil.lookupField(Module.class, "reads");
+        moduleOpenPackagesField = ReflectionUtil.lookupField(Module.class, "openPackages");
+        moduleExportedPackagesField = ReflectionUtil.lookupField(Module.class, "exportedPackages");
+        moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        Map<String, Module> baseModules = ModuleLayer.boot().modules()
-                        .stream()
-                        .collect(Collectors.toMap(Module::getName, m -> m));
+        Set<Module> baseModules = ModuleLayer.boot().modules()
+                .stream()
+                .map(Module::getName)
+                .collect(Collectors.toSet());
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
     }
@@ -119,49 +140,183 @@ public final class ModuleLayerFeature implements Feature {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         AnalysisUniverse universe = accessImpl.getUniverse();
 
-        Map<String, Module> reachableModules = universe.getTypes()
-                        .stream()
-                        .filter(t -> t.isReachable() && !t.isArray())
-                        .map(t -> t.getJavaClass().getModule())
-                        .distinct()
-                        .filter(m -> m.isNamed() && !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
-                        .collect(Collectors.toMap(Module::getName, m -> m));
+        Stream<Module> analysisReachableModules = universe.getTypes()
+                .stream()
+                .filter(t -> t.isReachable() && !t.isArray())
+                .map(t -> t.getJavaClass().getModule())
+                .distinct();
 
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, reachableModules);
+        Set<String> allReachableModules = analysisReachableModules
+                .filter(Module::isNamed)
+                .filter(m -> !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
+                .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
+                .collect(Collectors.toSet());
+
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, allReachableModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
     }
 
-    private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Map<String, Module> reachableModules) {
+    private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules) {
         Configuration cf = synthesizeRuntimeBootLayerConfiguration(cl.modulepath(), reachableModules);
         try {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
-            patchRuntimeBootLayer(runtimeBootLayer, reachableModules);
-            // Ensure that the lazy field ModuleLayer.modules gets set
-            runtimeBootLayer.modules();
+            Map<String, Module> nameToModule = synthesizeNameToModule(runtimeBootLayer, cl.getClassLoader());
+            patchRuntimeBootLayer(runtimeBootLayer, nameToModule);
             return runtimeBootLayer;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime boot module layer.", ex);
         }
     }
 
-    private static Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Map<String, Module> reachableModules) {
+    private Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Set<String> reachableModules) {
         ModuleFinder beforeFinder = new BootModuleLayerModuleFinder();
         ModuleFinder afterFinder = ModuleFinder.of(mp.toArray(Path[]::new));
-        Set<String> roots = reachableModules.keySet();
         try {
-            return Configuration.empty().resolve(beforeFinder, afterFinder, roots);
+            return Configuration.empty().resolve(beforeFinder, afterFinder, reachableModules);
         } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime boot module layer configuration.", ex);
         }
     }
 
-    private void patchRuntimeBootLayer(ModuleLayer runtimeBootLayer, Map<String, Module> reachableModules) {
+    private void patchRuntimeBootLayer(ModuleLayer runtimeBootLayer, Map<String, Module> nameToModule) {
         try {
-            moduleNameToModuleField.set(runtimeBootLayer, reachableModules);
-            moduleParentsField.set(runtimeBootLayer, List.of(ModuleLayer.empty()));
+            moduleLayerNameToModuleField.set(runtimeBootLayer, nameToModule);
+            moduleLayerParentsField.set(runtimeBootLayer, List.of(ModuleLayer.empty()));
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to patch the runtime boot module layer.", ex);
         }
+
+        // Ensure that the lazy modules field gets set
+        runtimeBootLayer.modules();
+    }
+
+    /**
+     * This method creates Module instances that will populate the runtime boot module layer of the image.
+     * This implementation is copy-pasted from {@link java.lang.Module#defineModules(Configuration, Function, ModuleLayer)}
+     * with few simplifications (removing multiple classloader support) and removal of VM state updates
+     * (otherwise we would be re-defining modules to the host VM).
+     */
+    private Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer, ClassLoader cl)
+            throws IllegalAccessException, InvocationTargetException, InstantiationException {
+        Configuration cf = runtimeBootLayer.configuration();
+
+        int cap = (int) (cf.modules().size() / 0.75f + 1.0f);
+        Map<String, Module> nameToModule = new HashMap<>(cap);
+
+        /*
+         * Remove mapping of modules to classloaders.
+         * Create module instances without defining them to the VM
+         */
+        for (ResolvedModule resolvedModule : cf.modules()) {
+            ModuleReference mref = resolvedModule.reference();
+            ModuleDescriptor descriptor = mref.descriptor();
+            String name = descriptor.name();
+            Module m = moduleConstructor.newInstance(cl, descriptor);
+            moduleLayerField.set(m, runtimeBootLayer);
+            nameToModule.put(name, m);
+        }
+
+        /*
+         * Setup readability and exports/opens.
+         * This part is unchanged, save for field setters and VM update removals
+         */
+        for (ResolvedModule resolvedModule : cf.modules()) {
+            ModuleReference mref = resolvedModule.reference();
+            ModuleDescriptor descriptor = mref.descriptor();
+
+            String mn = descriptor.name();
+            Module m = nameToModule.get(mn);
+            assert m != null;
+
+            Set<Module> reads = new HashSet<>();
+            for (ResolvedModule other : resolvedModule.reads()) {
+                Module m2 = nameToModule.get(other.name());
+                reads.add(m2);
+            }
+            moduleReadsField.set(m, reads);
+
+            if (!descriptor.isOpen() && !descriptor.isAutomatic()) {
+                if (descriptor.opens().isEmpty()) {
+                    Map<String, Set<Module>> exportedPackages = new HashMap<>();
+                    for (ModuleDescriptor.Exports exports : m.getDescriptor().exports()) {
+                        String source = exports.source();
+                        if (exports.isQualified()) {
+                            Set<Module> targets = new HashSet<>();
+                            for (String target : exports.targets()) {
+                                Module m2 = nameToModule.get(target);
+                                if (m2 != null) {
+                                    targets.add(m2);
+                                }
+                            }
+                            if (!targets.isEmpty()) {
+                                exportedPackages.put(source, targets);
+                            }
+                        } else {
+                            exportedPackages.put(source, everyoneSet);
+                        }
+                    }
+                    moduleExportedPackagesField.set(m, exportedPackages);
+                } else {
+                    Map<String, Set<Module>> openPackages = new HashMap<>();
+                    Map<String, Set<Module>> exportedPackages = new HashMap<>();
+                    for (ModuleDescriptor.Opens opens : descriptor.opens()) {
+                        String source = opens.source();
+                        if (opens.isQualified()) {
+                            Set<Module> targets = new HashSet<>();
+                            for (String target : opens.targets()) {
+                                Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeBootLayer.parents());
+                                if (m2 != null) {
+                                    targets.add(m2);
+                                }
+                            }
+                            if (!targets.isEmpty()) {
+                                openPackages.put(source, targets);
+                            }
+                        } else {
+                            openPackages.put(source, everyoneSet);
+                        }
+                    }
+
+                    for (ModuleDescriptor.Exports exports : descriptor.exports()) {
+                        String source = exports.source();
+                        Set<Module> openToTargets = openPackages.get(source);
+                        if (openToTargets != null && openToTargets.contains(everyoneModule)) {
+                            continue;
+                        }
+
+                        if (exports.isQualified()) {
+                            Set<Module> targets = new HashSet<>();
+                            for (String target : exports.targets()) {
+                                Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeBootLayer.parents());
+                                if (m2 != null) {
+                                    if (openToTargets == null || !openToTargets.contains(m2)) {
+                                        targets.add(m2);
+                                    }
+                                }
+                            }
+                            if (!targets.isEmpty()) {
+                                exportedPackages.put(source, targets);
+                            }
+                        } else {
+                            exportedPackages.put(source, everyoneSet);
+                        }
+                    }
+
+                    moduleOpenPackagesField.set(m, openPackages);
+                    moduleExportedPackagesField.set(m, exportedPackages);
+                }
+            }
+        }
+
+        return nameToModule;
+    }
+
+    /*
+     * Creates a stream of module names that are reachable from a given module through "requires"
+     */
+    private static Stream<String> extractRequiredModuleNames(Module m) {
+        Stream<String> requiredModules = m.getDescriptor().requires().stream().map(ModuleDescriptor.Requires::name);
+        return Stream.concat(Stream.of(m.getName()), requiredModules);
     }
 
     static class BootModuleLayerModuleFinder implements ModuleFinder {
