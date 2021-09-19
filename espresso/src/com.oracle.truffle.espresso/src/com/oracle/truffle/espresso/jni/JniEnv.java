@@ -161,7 +161,7 @@ public final class JniEnv extends NativeEnv {
     }
 
     public EspressoException getPendingEspressoException() {
-        return getContext().getLanguage().getThreadLocalState().getpendingException();
+        return getContext().getLanguage().getThreadLocalState().getPendingException();
     }
 
     public void clearPendingException() {

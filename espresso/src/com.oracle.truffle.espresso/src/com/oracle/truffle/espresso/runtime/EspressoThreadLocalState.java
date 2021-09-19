@@ -22,22 +22,29 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.vm.VM;
+
 public class EspressoThreadLocalState {
     private EspressoException pendingJniException;
+    private final ClassRegistry.TypeStack typeStack;
+    private final VM.PrivilegedStack privilegedStack;
 
     @SuppressWarnings("unused")
-    public EspressoThreadLocalState(EspressoContext context, Thread thread) {
+    public EspressoThreadLocalState(EspressoContext context) {
+        typeStack = new ClassRegistry.TypeStack();
+        privilegedStack = new VM.PrivilegedStack(context);
     }
 
     public StaticObject getPendingExceptionObject() {
-        EspressoException espressoException = getpendingException();
+        EspressoException espressoException = getPendingException();
         if (espressoException == null) {
             return null;
         }
         return espressoException.getExceptionObject();
     }
 
-    public EspressoException getpendingException() {
+    public EspressoException getPendingException() {
         return pendingJniException;
     }
 
@@ -48,5 +55,13 @@ public class EspressoThreadLocalState {
 
     public void clearPendingException() {
         setPendingException(null);
+    }
+
+    public ClassRegistry.TypeStack getTypeStack() {
+        return typeStack;
+    }
+
+    public VM.PrivilegedStack getPrivilegedStack() {
+        return privilegedStack;
     }
 }

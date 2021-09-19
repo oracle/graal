@@ -104,7 +104,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilerDirectives.CompilationFinal //
     private static StaticShape<StaticObjectFactory> foreignShape;
 
-    private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal(EspressoThreadLocalState::new);
+    private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.

@@ -59,7 +59,6 @@ import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
-import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
@@ -2403,7 +2402,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
      */
     @TruffleBoundary
-    private static FrameInstance getCallerFrame(int depth, boolean securityStackWalk, Meta meta) {
+    private FrameInstance getCallerFrame(int depth, boolean securityStackWalk, Meta meta) {
         if (depth == JVM_CALLER_DEPTH) {
             return getCallerFrame(1, securityStackWalk, meta);
         }
@@ -2443,8 +2442,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         throw EspressoError.shouldNotReachHere(String.format("Caller frame not found at depth %d", depth));
     }
 
-    @TruffleBoundary
-    public static EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance) {
+    /**
+     * Returns the espresso root node for this frame, event if it comes from a different context.
+     */
+    private static EspressoRootNode getRawEspressoRootFromFrame(FrameInstance frameInstance) {
         if (frameInstance.getCallTarget() instanceof RootCallTarget) {
             RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
             RootNode rootNode = callTarget.getRootNode();
@@ -2456,14 +2457,34 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @TruffleBoundary
-    public static Method getMethodFromFrame(FrameInstance frameInstance) {
-        // TODO this should take a context as argument and only return the method if the context
-        // matches
-        EspressoRootNode root = getEspressoRootFromFrame(frameInstance);
-        if (root != null) {
-            return root.getMethod();
+    public EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance) {
+        return getEspressoRootFromFrame(frameInstance, getContext());
+    }
+
+    @TruffleBoundary
+    public static EspressoRootNode getEspressoRootFromFrame(FrameInstance frameInstance, EspressoContext context) {
+        EspressoRootNode root = getRawEspressoRootFromFrame(frameInstance);
+        if (root == null) {
+            return null;
         }
-        return null;
+        Method method = root.getMethod();
+        if (method.getContext() != context) {
+            return null;
+        }
+        return root;
+    }
+
+    @TruffleBoundary
+    public Method getMethodFromFrame(FrameInstance frameInstance) {
+        EspressoRootNode root = getRawEspressoRootFromFrame(frameInstance);
+        if (root == null) {
+            return null;
+        }
+        Method method = root.getMethod();
+        if (method.getContext() != getContext()) {
+            return null;
+        }
+        return method;
     }
 
     @VmImpl(isJni = true)
@@ -2566,8 +2587,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region privileged
 
-    private final ThreadLocal<PrivilegedStack> privilegedStackThreadLocal = ThreadLocal.withInitial(PrivilegedStack.supplier);
-
     private @JavaType(AccessControlContext.class) StaticObject createACC(@JavaType(ProtectionDomain[].class) StaticObject context,
                     boolean isPriviledged,
                     @JavaType(AccessControlContext.class) StaticObject priviledgedContext) {
@@ -2590,40 +2609,37 @@ public final class VM extends NativeEnv implements ContextAccess {
         return createACC(context, false, StaticObject.NULL);
     }
 
-    @TruffleBoundary
     public PrivilegedStack getPrivilegedStack() {
-        return privilegedStackThreadLocal.get();
+        return getContext().getLanguage().getThreadLocalState().getPrivilegedStack();
     }
 
-    static private class PrivilegedStack {
-        public static Supplier<PrivilegedStack> supplier = new Supplier<PrivilegedStack>() {
-            @Override
-            public PrivilegedStack get() {
-                return new PrivilegedStack();
-            }
-        };
-
+    public static final class PrivilegedStack {
+        private final EspressoContext espressoContext;
         private Element top;
 
-        public void push(FrameInstance frame, StaticObject context, Klass klass) {
-            top = new Element(frame, context, klass, top);
+        public PrivilegedStack(EspressoContext context) {
+            this.espressoContext = context;
         }
 
-        public void pop() {
-            assert top != null : "poping empty privileged stack !";
+        void push(FrameInstance frame, StaticObject context, Klass klass) {
+            top = new Element(frame, context, klass, top, espressoContext);
+        }
+
+        void pop() {
+            assert top != null : "popping empty privileged stack !";
             top = top.next;
         }
 
-        public boolean compare(FrameInstance frame) {
-            return top != null && top.compare(frame);
+        boolean compare(FrameInstance frame) {
+            return top != null && top.compare(frame, espressoContext);
         }
 
-        public StaticObject peekContext() {
+        StaticObject peekContext() {
             assert top != null;
             return top.context;
         }
 
-        public StaticObject classLoader() {
+        StaticObject classLoader() {
             assert top != null;
             return top.klass.getDefiningClassLoader();
         }
@@ -2634,15 +2650,15 @@ public final class VM extends NativeEnv implements ContextAccess {
             Klass klass;
             Element next;
 
-            public Element(FrameInstance frame, StaticObject context, Klass klass, Element next) {
-                this.frameID = getFrameId(frame);
+            Element(FrameInstance frame, StaticObject context, Klass klass, Element next, EspressoContext espressoContext) {
+                this.frameID = getFrameId(frame, espressoContext);
                 this.context = context;
                 this.klass = klass;
                 this.next = next;
             }
 
-            public boolean compare(FrameInstance other) {
-                EspressoRootNode rootNode = getEspressoRootFromFrame(other);
+            boolean compare(FrameInstance other, EspressoContext espressoContext) {
+                EspressoRootNode rootNode = getEspressoRootFromFrame(other, espressoContext);
                 if (rootNode != null) {
                     Frame readOnlyFrame = other.getFrame(FrameInstance.FrameAccess.READ_ONLY);
                     long frameIdOrZero = rootNode.readFrameIdOrZero(readOnlyFrame);
@@ -2651,8 +2667,8 @@ public final class VM extends NativeEnv implements ContextAccess {
                 return false;
             }
 
-            private static long getFrameId(FrameInstance frame) {
-                EspressoRootNode rootNode = getEspressoRootFromFrame(frame);
+            private static long getFrameId(FrameInstance frame, EspressoContext espressoContext) {
+                EspressoRootNode rootNode = getEspressoRootFromFrame(frame, espressoContext);
                 Frame readOnlyFrame = frame.getFrame(FrameInstance.FrameAccess.READ_ONLY);
                 return rootNode.readFrameIdOrZero(readOnlyFrame);
             }
