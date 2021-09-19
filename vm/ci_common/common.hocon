@@ -354,8 +354,6 @@ deploy_graalvm_linux_amd64: {
   run: [
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, graalvm-show]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, build]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${record_file_sizes}
-    ${upload_file_sizes}
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
   ] ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
@@ -375,8 +373,6 @@ deploy_graalvm_linux_aarch64: {
     [set-export, VM_ENV, "${VM_ENV}-aarch64"]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, graalvm-show]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, build]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${record_file_sizes}
-    ${upload_file_sizes}
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
   ] ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
@@ -406,8 +402,6 @@ deploy_graalvm_installables_darwin_amd64: {
   run: [
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, graalvm-show]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, build]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${record_file_sizes}
-    ${upload_file_sizes}
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ${notify-nexus-deploy}
     ${notify-releaser}
@@ -433,8 +427,6 @@ deploy_graalvm_installables_windows_amd64: {
     [set-export, VM_ENV, "${VM_ENV}-win"]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}, graalvm-show]
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}, build]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}] ${record_file_sizes}
-    ${upload_file_sizes}
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
     ${notify-nexus-deploy}
   ]
