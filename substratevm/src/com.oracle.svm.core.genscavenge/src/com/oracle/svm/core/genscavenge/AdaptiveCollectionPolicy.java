@@ -102,8 +102,8 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     /** Threshold for triggering a complete collection after repeated minor collections. */
     private static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 2;
     /**
-     * When the total GC cost is above this value, the estimator is ignored and spaces are expanded
-     * to avoid starving the mutator.
+     * When the GC cost of a generation is above this value, its estimator is ignored and sizes are
+     * increased to avoid starving the mutator.
      */
     private static final double ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT = 0.5;
 
@@ -239,7 +239,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     private void computeEdenSpaceSize() {
         boolean expansionReducesCost = true; // general assumption
-        if (shouldUseEstimator(youngGenChangeForMinorThroughput)) {
+        if (shouldUseEstimator(youngGenChangeForMinorThroughput, minorGcCost())) {
             expansionReducesCost = expansionSignificantlyReducesCost(minorCostEstimator, edenSize);
             /*
              * Note that if the estimator thinks expanding does not lead to significant improvement,
@@ -278,8 +278,8 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         edenSize = desiredEdenSize;
     }
 
-    private boolean shouldUseEstimator(long genChangeForThroughput) {
-        return ADAPTIVE_SIZE_USE_COST_ESTIMATORS && genChangeForThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS && gcCost() <= ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT;
+    private static boolean shouldUseEstimator(long genChangeForThroughput, double cost) {
+        return ADAPTIVE_SIZE_USE_COST_ESTIMATORS && genChangeForThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS && cost <= ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT;
     }
 
     private static boolean expansionSignificantlyReducesCost(ReciprocalLeastSquareFit estimator, UnsignedWord size) {
@@ -452,7 +452,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         promoLimit = alignDown(UnsignedUtils.max(promoSize, promoLimit));
 
         boolean expansionReducesCost = true; // general assumption
-        if (shouldUseEstimator(oldGenChangeForMajorThroughput)) {
+        if (shouldUseEstimator(oldGenChangeForMajorThroughput, majorGcCost())) {
             expansionReducesCost = expansionSignificantlyReducesCost(majorCostEstimator, promoSize);
             /*
              * Note that if the estimator thinks expanding does not lead to significant improvement,
