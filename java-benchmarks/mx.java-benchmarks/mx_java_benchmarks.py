@@ -1839,16 +1839,27 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         benchmarks = _renaissanceConfig.copy()
         if self.version() == "0.9.0":
             del benchmarks["scala-doku"]  # was introduced in 0.10.0
+        if mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"]:
+            # JDK17 support for Spark benchmarks was added in 0.13.0
+            # See: https://github.com/renaissance-benchmarks/renaissance/issues/295
+            del benchmarks["als"]
+            del benchmarks["chi-square"]
+            del benchmarks["dec-tree"]
+            del benchmarks["gauss-mix"]
+            del benchmarks["log-regression"]
+            del benchmarks["movie-lens"]
+            del benchmarks["naive-bayes"]
+            del benchmarks["page-rank"]
         return benchmarks
 
     def version(self):
         return super(RenaissanceBenchmarkSuite, self).version()
 
     def defaultSuiteVersion(self):
-        return "0.11.0"
+        return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0"]
+        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())

@@ -53,6 +53,16 @@ suite = {
             "sha1" : "8d402c1e7c972badfcffdd6c64ed4e791b0dea02",
             "packedResource": True,
         },
+        "RENAISSANCE_HARNESS_v0.12" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.12.0.tar.gz"],
+            "sha1" : "c061f62ce6f2758ec30b92e69f20f14b93e34b35",
+            "packedResource": True,
+        },
+        "RENAISSANCE_HARNESS_v0.13" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.13.0.tar.gz"],
+            "sha1" : "ca32c080016c5659bbf3eddc184e14b742769372",
+            "packedResource": True,
+        },
         "DACAPO_SVM" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
             "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
