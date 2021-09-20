@@ -79,8 +79,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Snippets for lowering {@link System#arraycopy}.
  *
  * <ul>
- * <li>{@link #arraycopyNativeExceptionSnippet}: this snippet is used when the array copy is know to
- * throw an exception, either because at least one of the objects is not an array, or one is an
+ * <li>{@link #arraycopyNativeExceptionSnippet}: this snippet is used when the array copy is known
+ * to throw an exception, either because at least one of the objects is not an array, or one is an
  * object array and the other one a primitive array.</li>
  * <li>{@link #arraycopyExactStubCallSnippet}: this snippet is used for array copies that do not
  * require a store check. This is the case if the array copy is either
