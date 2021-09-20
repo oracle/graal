@@ -110,6 +110,17 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     )],
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
+    suite=_suite,
+    name='Polybench Instruments',
+    short_name='pbi',
+    dir_name='pbi',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle', 'Polybench Launcher'],
+    truffle_jars=['vm:POLYBENCH_INSTRUMENTS'],
+))
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Polyglot Microbenchmark Harness',

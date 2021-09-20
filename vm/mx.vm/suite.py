@@ -131,6 +131,19 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
         },
+        "org.graalvm.polybench.instruments" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "1.8+",
+            "license" : "GPLv2-CPE",
+            "checkstyle": "org.graalvm.component.installer",
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+        },
         "nfi-native" : {
             "subDir" : "benchmarks",
             "native" : "shared_lib",
@@ -209,6 +222,16 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
+            ],
+            "maven" : False,
+        },
+        "POLYBENCH_INSTRUMENTS": {
+            "subDir": "src",
+            "dependencies": [
+                "org.graalvm.polybench.instruments",
+            ],
+            "distDependencies": [
+                "truffle:TRUFFLE_API",
             ],
             "maven" : False,
         },
