@@ -114,6 +114,7 @@ import org.graalvm.compiler.hotspot.ArrayIndexOfStub;
 import org.graalvm.compiler.hotspot.CompilerRuntimeHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.CheckcastArrayCopyCallNode;
 import org.graalvm.compiler.hotspot.stubs.ArrayStoreExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.ClassCastExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.CreateExceptionStub;
@@ -130,8 +131,8 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.ArrayIndexOf;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
@@ -157,6 +158,25 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     public static final HotSpotForeignCallDescriptor INVOKE_STATIC_METHOD_ONE_ARG = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS,
                     "JVMCIRuntime::invoke_static_method_one_arg", long.class, Word.class, Word.class, long.class);
+
+    /**
+     * Signature of an unsafe {@link System#arraycopy} stub.
+     *
+     * The signature is equivalent to {@link sun.misc.Unsafe#copyMemory(long, long, long)}. For the
+     * semantics refer to {@link sun.misc.Unsafe#copyMemory(Object, long, Object, long, long)}.
+     *
+     * @see sun.misc.Unsafe#copyMemory
+     */
+    public static final ForeignCallSignature UNSAFE_ARRAYCOPY = new ForeignCallSignature("unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
+
+    /**
+     * Signature of a generic {@link System#arraycopy} stub.
+     *
+     * Instead of throwing an {@link ArrayStoreException}, the stub is expected to return the number
+     * of copied elements xor'd with {@code -1}. A return value of {@code 0} indicates that the
+     * operation was successful.
+     */
+    public static final ForeignCallSignature GENERIC_ARRAYCOPY = new ForeignCallSignature("generic_arraycopy", int.class, Word.class, int.class, Word.class, int.class, int.class);
 
     public static class TestForeignCalls {
         public static final HotSpotForeignCallDescriptor BOOLEAN_RETURNS_BOOLEAN = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "boolean returns boolean",
@@ -217,7 +237,11 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         stub.getLinkage().setCompiledStub(stub);
     }
 
-    @Override
+    /**
+     * Looks up the call descriptor for a fast checkcast {@link System#arraycopy} stub.
+     *
+     * @see CheckcastArrayCopyCallNode
+     */
     public ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit) {
         return checkcastArraycopyDescriptors[uninit ? 1 : 0];
     }

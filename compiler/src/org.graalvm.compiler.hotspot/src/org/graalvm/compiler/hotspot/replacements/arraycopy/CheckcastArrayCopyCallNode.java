@@ -23,7 +23,7 @@
  * questions.
  */
 //JaCoCo Exclude
-package org.graalvm.compiler.replacements.arraycopy;
+package org.graalvm.compiler.hotspot.replacements.arraycopy;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -49,6 +50,8 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -60,7 +63,8 @@ import jdk.vm.ci.meta.JavaKind;
  * Implements {@link System#arraycopy} via a {@linkplain ForeignCallNode stub call} that performs a
  * fast {@code CHECKCAST} check.
  *
- * The target of the call is queried via {@link ArrayCopyLookup#lookupCheckcastArraycopyDescriptor}.
+ * The target of the call is queried via
+ * {@link HotSpotHostForeignCallsProvider#lookupCheckcastArraycopyDescriptor}.
  *
  * Instead of throwing an {@link ArrayStoreException}, the stub is expected to return the number of
  * copied elements xor'd with {@code -1}. Users of this node are responsible for converting that
@@ -76,7 +80,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
 
     public static final NodeClass<CheckcastArrayCopyCallNode> TYPE = NodeClass.create(CheckcastArrayCopyCallNode.class);
 
-    private final ArrayCopyForeignCalls foreignCalls;
+    private final HotSpotHostForeignCallsProvider foreignCalls;
     private final JavaKind wordKind;
 
     @Input ValueNode src;
@@ -94,7 +98,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
                     ValueNode destPos, ValueNode length,
                     ValueNode superCheckOffset, ValueNode destElemKlass, boolean uninit) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
-        this.foreignCalls = foreignCalls;
+        this.foreignCalls = (HotSpotHostForeignCallsProvider) foreignCalls;
         this.wordKind = wordTypes.getWordKind();
         this.src = src;
         this.srcPos = srcPos;
