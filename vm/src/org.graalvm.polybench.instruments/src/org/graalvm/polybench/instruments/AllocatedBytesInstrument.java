@@ -35,9 +35,8 @@ import java.util.List;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionStability;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
@@ -45,11 +44,12 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.sun.management.ThreadMXBean;
 
 @TruffleInstrument.Registration(id = AllocatedBytesInstrument.ID, name = "Polybench Allocated Bytes Instrument")
-public class AllocatedBytesInstrument extends TruffleInstrument {
+public final class AllocatedBytesInstrument extends TruffleInstrument {
 
-    @Option(name = "", help = "Enable Simple Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE) static final OptionKey<Boolean> enabled = new OptionKey<>(
-                    false);
-    private Thread socketThread;
+    public static final String ID = "allocated-bytes";
+    @Option(name = "", help = "Enable the Allocated Bytes Instrument (default: false).", category = OptionCategory.EXPERT) static final OptionKey<Boolean> enabled = new OptionKey<>(false);
+    public final List<ThreadContext> threads = new ArrayList<>();
+    final ContextThreadLocal<ThreadContext> sandboxThreadContext = createContextThreadLocal(this::createThreadContext);
     private ServerSocket serverSocket;
 
     @Override
@@ -57,23 +57,15 @@ public class AllocatedBytesInstrument extends TruffleInstrument {
         return new AllocatedBytesInstrumentOptionDescriptors();
     }
 
-    public static final String ID = "allocated-bytes";
-    final ContextThreadLocal<ThreadContext> sandboxThreadContext = createContextThreadLocal(this::createThreadContext);
-    private Env env;
-    public final List<ThreadContext> threads = new ArrayList<>();
-    public static List<AllocatedBytesInstrument> instruments = new ArrayList<>();
-
-    private ThreadContext createThreadContext(TruffleContext context, Thread thread) {
-        return createThreadContext(thread);
-    }
-
-    synchronized ThreadContext createThreadContext(Thread t) {
-        ThreadContext threadContext = new ThreadContext(t);
+    @SuppressWarnings("unused")
+    private synchronized ThreadContext createThreadContext(TruffleContext context, Thread thread) {
+        ThreadContext threadContext = new ThreadContext(thread);
         threads.add(threadContext);
         return threadContext;
     }
 
     public synchronized double getAllocated() {
+        CompilerAsserts.neverPartOfCompilation();
         double report = 0;
         for (ThreadContext thread : threads) {
             report = report + thread.getAllocatedBytes();
@@ -83,7 +75,6 @@ public class AllocatedBytesInstrument extends TruffleInstrument {
 
     @Override
     protected synchronized void onCreate(Env env) {
-        this.env = env;
         new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(6666);
@@ -100,7 +91,6 @@ public class AllocatedBytesInstrument extends TruffleInstrument {
 
     @Override
     protected synchronized void onDispose(Env env) {
-        this.env = env;
         try {
             if (serverSocket != null) {
                 serverSocket.close();
@@ -109,28 +99,25 @@ public class AllocatedBytesInstrument extends TruffleInstrument {
         }
     }
 
-    public static class ThreadContext {
+    private static final class ThreadContext {
 
-        private final Thread thread;
         private static volatile ThreadMXBean threadBean;
-        volatile long lastAllocatedBytesSnapshot;
-        volatile long bytesAllocated;
+        private final Thread thread;
+        private long lastAllocatedBytesSnapshot;
 
-        ThreadContext(Thread thread) {
+        private ThreadContext(Thread thread) {
             this.thread = thread;
             lastAllocatedBytesSnapshot = getThreadAllocatedBytes();
         }
 
-        public long getAllocatedBytes() {
+        private synchronized long getAllocatedBytes() {
             long threadAllocatedBytes = getThreadAllocatedBytes();
             long increase = threadAllocatedBytes - this.lastAllocatedBytesSnapshot;
-            this.bytesAllocated += increase;
             lastAllocatedBytesSnapshot = threadAllocatedBytes;
             return increase;
         }
 
-        @CompilerDirectives.TruffleBoundary
-        long getThreadAllocatedBytes() {
+        private long getThreadAllocatedBytes() {
             Thread t = thread;
             if (t == null) {
                 return 0;

@@ -31,7 +31,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class AllocatedBytesMetric implements Metric {
+public final class AllocatedBytesMetric implements Metric {
+
+    private static Optional<Double> readFromSocket() {
+        try (Socket s = new Socket("localhost", 6666)) {
+            DataInputStream in = new DataInputStream(s.getInputStream());
+            return Optional.of(in.readDouble());
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
 
     @Override
     public String name() {
@@ -58,14 +67,5 @@ public class AllocatedBytesMetric implements Metric {
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
         return readFromSocket();
-    }
-
-    private Optional<Double> readFromSocket() {
-        try (Socket s = new Socket("localhost", 6666)) {
-            DataInputStream in = new DataInputStream(s.getInputStream());
-            return Optional.of(in.readDouble());
-        } catch (IOException e) {
-            return Optional.empty();
-        }
     }
 }
