@@ -72,7 +72,9 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     int maxNumberOfNFAStates,
                     DFAAbstractStateNode[] states,
                     DFACaptureGroupLazyTransition[] cgTransitions,
-                    TRegexDFAExecutorDebugRecorder debugRecorder) {
+                    TRegexDFAExecutorDebugRecorder debugRecorder,
+                    boolean returnLastGroup) {
+        super(returnLastGroup);
         this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
         this.states = states;
@@ -84,8 +86,9 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     TRegexDFAExecutorProperties props,
                     int maxNumberOfNFAStates,
                     DFAAbstractStateNode[] states,
-                    DFACaptureGroupLazyTransition[] cgTransitions) {
-        this(props, maxNumberOfNFAStates, states, cgTransitions, null);
+                    DFACaptureGroupLazyTransition[] cgTransitions,
+                    boolean returnLastGroup) {
+        this(props, maxNumberOfNFAStates, states, cgTransitions, null, returnLastGroup);
     }
 
     private DFAInitialStateNode getInitialState() {
@@ -174,12 +177,16 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         }
     }
 
+    @Override
+    public Object execute(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
+        return addLastGroup(executeInner(abstractLocals, compactString), abstractLocals);
+    }
+
     /**
      * records position of the END of the match found, or -1 if no match exists.
      */
-    @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object execute(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
+    public Object executeInner(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
         TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
         CompilerAsserts.compilationConstant(states);

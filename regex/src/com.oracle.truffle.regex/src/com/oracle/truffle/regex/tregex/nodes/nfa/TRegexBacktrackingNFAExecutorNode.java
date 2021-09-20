@@ -116,7 +116,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Child InputIndexOfStringNode indexOfNode;
     private final CharMatcher loopbackInitialStateMatcher;
 
-    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, CompilationBuffer compilationBuffer) {
+    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, CompilationBuffer compilationBuffer, boolean returnlastGroup) {
+        super(returnlastGroup);
         RegexASTSubtreeRootNode subtree = nfaMap.getASTSubtree(nfa);
         this.nfa = nfa;
         this.writesCaptureGroups = subtree.hasCaptureGroups();
@@ -202,6 +203,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
 
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
+        return addLastGroup(executeInner(abstractLocals, compactString), abstractLocals);
+    }
+
+    public Object executeInner(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
         if (innerLiteral != null) {
@@ -351,7 +356,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
          * will always be pushed to the stack.
          */
         if (curState.isLookAround() && !canInlineLookAroundIntoTransition(curState)) {
-            int[] subMatchResult = runSubMatcher(locals.createSubNFALocals(), compactString, curState);
+            int[] subMatchResult = runSubMatcher(locals, locals.createSubNFALocals(), compactString, curState);
             if (subMatchFailed(curState, subMatchResult)) {
                 return IP_BACKTRACK;
             } else if (!curState.isLookAroundNegated() && getLookAroundExecutor(curState).writesCaptureGroups()) {
@@ -574,12 +579,20 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             locals.setNextIndex(saveNextIndex);
             return result;
         } else {
-            return !subMatchFailed(target, runSubMatcher(locals.createSubNFALocals(transition), compactString, target));
+            return !subMatchFailed(target, runSubMatcher(locals, locals.createSubNFALocals(transition), compactString, target));
         }
     }
 
-    protected int[] runSubMatcher(TRegexBacktrackingNFAExecutorLocals subLocals, boolean compactString, PureNFAState lookAroundState) {
-        return (int[]) getLookAroundExecutor(lookAroundState).execute(subLocals, compactString);
+    protected int[] runSubMatcher(TRegexBacktrackingNFAExecutorLocals locals, TRegexBacktrackingNFAExecutorLocals subLocals, boolean compactString, PureNFAState lookAroundState) {
+        int[] result = (int[]) getLookAroundExecutor(lookAroundState).execute(subLocals, compactString);
+        if (subLocals.getLastGroup() != -1) {
+            // Python regexes can update the state of capture groups from inside negative
+            // lookarounds. We therefore have to update lastGroup regardless of the success of the
+            // sub-matcher.
+            // TODO: We also have to update the capture group data when in Python.
+            locals.setLastGroup(subLocals.getLastGroup());
+        }
+        return result;
     }
 
     protected static boolean subMatchFailed(PureNFAState curState, int[] subMatchResult) {

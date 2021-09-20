@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodes.dfa;
+package com.oracle.truffle.regex.result;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+public class WithLastGroup {
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.RegexBodyNode;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
-import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
+    private final Object result;
+    private final int lastGroup;
 
-public class TRegexTraceFinderRootNode extends RegexBodyNode {
-
-    @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
-    @Child private TRegexExecutorEntryNode entryNode;
-
-    public TRegexTraceFinderRootNode(RegexLanguage language, RegexSource source, PreCalculatedResultFactory[] preCalculatedResults, TRegexExecutorEntryNode entryNode) {
-        super(language, source);
-        this.preCalculatedResults = preCalculatedResults;
-        this.entryNode = insert(entryNode);
+    public WithLastGroup(Object result, int lastGroup) {
+        this.result = result;
+        this.lastGroup = lastGroup;
     }
 
-    @Override
-    public final Object execute(VirtualFrame frame) {
-        final Object[] args = frame.getArguments();
-        assert args.length == 1;
-        final RegexResult receiver = (RegexResult) args[0];
-        assert !entryNode.getExecutor().returnsLastGroup();
-        final int traceFinderResult = (int) entryNode.execute(receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getEnd());
-        final int[] result = preCalculatedResults[traceFinderResult].createArrayFromEnd(receiver.getEnd());
-        final int lastGroup = preCalculatedResults[traceFinderResult].getLastGroup();
-        receiver.setIndices(result);
-        receiver.setLastGroup(lastGroup);
-        return result[0];
+    public Object getResult() {
+        return result;
     }
 
-    @Override
-    public String getEngineLabel() {
-        return "DFA traceFinder";
+    public int getLastGroup() {
+        return lastGroup;
     }
 }

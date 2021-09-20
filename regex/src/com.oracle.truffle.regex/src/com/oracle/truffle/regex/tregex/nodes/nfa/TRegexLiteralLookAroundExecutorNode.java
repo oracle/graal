@@ -63,6 +63,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
     @CompilationFinal(dimensions = 1) private CharMatcher[] matchers;
 
     public TRegexLiteralLookAroundExecutorNode(LookAroundAssertion lookAround, CompilationBuffer compilationBuffer) {
+        super(false);
         assert lookAround.isLiteral();
         forward = lookAround.isLookAheadAssertion();
         negated = lookAround.isNegated();

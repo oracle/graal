@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexProfile;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.result.WithLastGroup;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
 public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
@@ -80,7 +81,15 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
         } else {
             start = receiver.getStart();
         }
-        final int[] result = (int[]) entryNode.execute(receiver.getInput(), receiver.getFromIndex(), start, receiver.getEnd());
+        Object executorResult = entryNode.execute(receiver.getInput(), receiver.getFromIndex(), start, receiver.getEnd());
+        int[] result;
+        if (entryNode.getExecutor().returnsLastGroup()) {
+            WithLastGroup executorResultCast = (WithLastGroup) executorResult;
+            receiver.setLastGroup(executorResultCast.getLastGroup());
+            result = (int[]) executorResultCast.getResult();
+        } else {
+            result = (int[]) executorResult;
+        }
         if (CompilerDirectives.inInterpreter()) {
             RegexProfile profile = profiler.getRegexProfile();
             profile.profileCaptureGroupAccess(result[1] - result[0], result[1] - (receiver.getFromIndex() + 1));

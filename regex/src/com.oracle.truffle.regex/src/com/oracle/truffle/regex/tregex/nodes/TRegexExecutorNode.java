@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.regex.result.WithLastGroup;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
@@ -52,6 +53,11 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
 public abstract class TRegexExecutorNode extends Node {
 
     @CompilationFinal protected TRegexExecNode root;
+    private final boolean returnsLastGroup;
+
+    public TRegexExecutorNode(boolean returnsLastGroup) {
+        this.returnsLastGroup = returnsLastGroup;
+    }
 
     public void setRoot(TRegexExecNode root) {
         this.root = root;
@@ -348,6 +354,22 @@ public abstract class TRegexExecutorNode extends Node {
      * Returns {@code true} if this executor may write any new capture group boundaries.
      */
     public abstract boolean writesCaptureGroups();
+
+    /**
+     * Returns {@code true} if this executor also returns a {@code lastIndex} by wrapping its core
+     * result in {@link WithLastGroup}.
+     */
+    public boolean returnsLastGroup() {
+        return returnsLastGroup;
+    }
+
+    protected Object addLastGroup(Object result, TRegexExecutorLocals locals) {
+        if (result != null && returnsLastGroup()) {
+            return new WithLastGroup(result, locals.getLastGroup());
+        } else {
+            return result;
+        }
+    }
 
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 

@@ -57,19 +57,21 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
 
     @CompilationFinal(dimensions = 1) private final int[] indices;
     @CompilationFinal private int length;
+    @CompilationFinal private int lastGroup = -1;
 
     public PreCalculatedResultFactory(int nGroups) {
         this.indices = new int[nGroups * 2];
         Arrays.fill(this.indices, -1);
     }
 
-    private PreCalculatedResultFactory(int[] indices, int length) {
+    private PreCalculatedResultFactory(int[] indices, int length, int lastGroup) {
         this.indices = indices;
         this.length = length;
+        this.lastGroup = lastGroup;
     }
 
     public PreCalculatedResultFactory copy() {
-        return new PreCalculatedResultFactory(Arrays.copyOf(indices, indices.length), length);
+        return new PreCalculatedResultFactory(Arrays.copyOf(indices, indices.length), length, lastGroup);
     }
 
     public int getStart(int groupNr) {
@@ -98,6 +100,15 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
 
     public void setLength(int length) {
         this.length = length;
+    }
+
+    public int getLastGroup() {
+        return lastGroup;
+    }
+
+    public void setLastGroup(int lastGroup) {
+        // TODO: Update this when building PreCalculatedResultFactories.
+        this.lastGroup = lastGroup;
     }
 
     public void updateIndices(TBitSet updateIndices, int index) {
@@ -131,7 +142,7 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
         }
         final int[] realIndices = new int[indices.length];
         applyOffset(realIndices, offset);
-        return RegexResult.create(realIndices);
+        return RegexResult.create(realIndices, lastGroup);
     }
 
     public void applyRelativeToEnd(int[] target, int end) {
