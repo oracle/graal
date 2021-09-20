@@ -42,7 +42,7 @@
     ],
     timelimit: "45:00",
     forks_batches:: 1,
-    forks_timelimit:: "02:45:00",
+    forks_timelimit:: "04:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
