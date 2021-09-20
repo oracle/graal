@@ -34,8 +34,8 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -43,50 +43,111 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.logging.Handler;
 
 /**
- * This launcher allows for multi-context benchmarking, which is enabled by the
- * <code>--multi-context-runs</code> option. The value of this option determines the number of
- * benchmark runs and can be <code>0</code> or greater. When zero runs is specified, a new context
- * is created and closed right after the source file is parsed without running the benchmark,
- * though. (N.B. This is especially useful for storing auxiliary engine cache containing ASTs
- * created during the parsing of the source file.) On the other hand, if the number of runs is
- * greater than 1, then a new engine is created and used for each context created for each run. If
- * the number of runs is 1 (the default) then no engine is explicitly created.
+ * This launcher is designed for benchmarking Truffle languages. It repeatedly executes the source
+ * file specified by its path, whereas the number of warmup and hot iterations can be specified
+ * either explicitly or determined via interop from the evaluated source value by reading or
+ * executing members <code>iterations</code> and <code>warmupIterations</code>.
+ * <p>
+ * The launcher generates a structured output containing information on individual iterations as
+ * well as the benchmark summary.
+ * <p>
+ * The following options are accepted:
+ * <ul>
+ * <li>--path &lt;script&gt;</li>
+ * <li>--class-name &lt;class&gt;</li> The class name of an Espresso benchmark inside the jar
+ * specified by <code>path</code>.
+ * <li>--mode [interpreter | standard]</li> Indicates whether the benchmark will be run in the
+ * interpreter only or the Graal compiler will be used.
+ * <li>--metric [peak-time | compilation-time | partial-evaluation-time | one-shot | none]</li>
+ * <li>-w &lt;N&gt;</li> The number of warmup iterations
+ * <li>-i &lt;N&gt;</li> The number of hot iterations
+ * <li>--eval-source-only</li> Indicates that the source file will be evaluated only, and the
+ * benchmark execution will be skipped. It can be useful for parsing time benchmarking or for using
+ * the debug auxiliary engine cache. N.B. This option can also be specified for each run in a
+ * multi-context benchmarking. See below.
+ * </ul>
+ * <h3>Multi-context benchmarking</h3>
+ * <p>
+ * This launcher allows for multi-context benchmarking consisting of several consecutive benchmark
+ * <code>runs</code>. Each run is executed using a new context instance, while all contexts can
+ * share a single engine. A multi-context benchmarking can be configured using the following
+ * options:
+ * <ul>
+ * <li>--multi-context-runs</li> The number of runs
+ * <li>--shared-engine</li> Indicates whether the contexts will share a single engine
+ * </ul>
  * <p/>
- * It is possible to specify different arguments for each iteration (N.B. currently for the first
- * two iterations only). The pattern of an iteration specific argument is:
+ * It is possible to specify different arguments for each iteration. The pattern of an iteration
+ * specific argument is:
  * 
  * <pre>
  * &lt;arg_name&gt;.&lt;iteration&gt;=&lt;value&gt;
+ * OR
+ * &lt;arg_name&gt;.&lt;iteration&gt;
  * </pre>
  * <p/>
- * In order to facilitate debugging of benchmarks using auxiliary engine cache, the
- * <code>--use-debug-cache</code> option can be used. Using this option should be accompanied by
- * <code>--multi-context-runs=2</code>. In the first iteration the source is parsed and the
- * in-memory auxiliary engine cache is stored without running the benchmark, while the second
- * iteration will load the in-memory cache and run the benchmark.
- *
+ * <h3>Examples</h3>
+ * <h4>A single run with 5 warmup and 10 hot iterations</h4>
+ * 
+ * <pre>
+ *     polybench --path bench.so -w 5 -i 10
+ * </pre>
+ * 
+ * <h4>Two runs with 5 warmup and 10 hot iterations each (no shared engine)</h4>
+ * 
+ * <pre>
+ *     polybench --path bench.so --multi-context-runs=2 -w 5 -i 10
+ * </pre>
+ * 
+ * <h4>Two runs with 5 warmup and 10 hot iterations each with a shared engine</h4>
+ * 
+ * <pre>
+ *     polybench --path bench.so --multi-context-runs=2 --shared-engine -w 5 -i 10
+ * </pre>
+ * 
+ * <h4>Storing the auxiliary engine cache and skipping the benchmark</h4>
+ * 
+ * <pre>
+ *     polybench --path bench.so --eval-source-only --experimental-options --engine.CacheStore=test.image --engine.CacheCompile=aot
+ * </pre>
+ * 
+ * <h4>Loading the auxiliary engine cache and running the benchmark</h4>
+ * 
+ * <pre>
+ *     polybench --path bench.so --experimental-options --engine.CacheLoad=test.image -w 0 -i 10
+ * </pre>
+ * 
+ * <h4>Using the debug engine cache. The first run only evaluates the source and stores the debug
+ * engine cache, while the second run executes the benchmark with the cache.</h4>
+ * 
+ * <pre>
+ *     polybench --path bench.so --multi-context-runs=2 --eval-source-only.0 -w 0 -i 10 --experimental-options --engine.DebugCacheCompile.0=aot --engine.DebugCacheStore.0=true --engine.DebugCacheStore.1=false --engine.DebugCacheLoad.1=true
+ * </pre>
+ * 
+ * <h4>Reporting the source evaluation time only for 10 runs</h4>
+ * 
+ * <pre>
+ *     polybench --path bench.so --multi-context-runs=10 --eval-source-only
+ * </pre>
  */
 public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     static class ArgumentConsumer {
         private final String prefix;
         private final BiConsumer<String, Config> action;
-        private final Consumer<Config> flagAction;
+        private final boolean isFlag;
 
-        ArgumentConsumer(String prefix, BiConsumer<String, Config> action) {
+        /**
+         * @param isFlag if <code>true</code>, the action is invoked only if the option is present.
+         *            The <code>value</code> is then <code>null</code>.
+         */
+        ArgumentConsumer(String prefix, BiConsumer<String, Config> action, boolean isFlag) {
             this.prefix = prefix;
             this.action = action;
-            this.flagAction = null;
-        }
-
-        ArgumentConsumer(String prefix, Consumer<Config> flagAction) {
-            this.prefix = prefix;
-            this.action = null;
-            this.flagAction = flagAction;
+            this.isFlag = isFlag;
         }
 
         boolean consume(String argument, Iterator<String> args, Config options) {
@@ -97,19 +158,31 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             final String value;
             if (prefix.length() > 2 && argument.contains("=")) {
                 // Only multi-character flags support the equals syntax.
-                value = argument.split("=", 2)[1];
+                String[] argNameValue = argument.split("=", 2);
+                if (!argNameValue[0].equals(prefix)) {
+                    return false;
+                }
+                if (isFlag) {
+                    if (!Boolean.parseBoolean(argNameValue[1])) {
+                        return true;
+                    } else {
+                        value = null;
+                    }
+                } else {
+                    value = argNameValue[1];
+                }
             } else {
                 if (!argument.equals(prefix)) {
                     return false;
                 }
-                if (flagAction != null) {
-                    flagAction.accept(options);
-                    return true;
-                }
-                try {
-                    value = args.next();
-                } catch (NoSuchElementException e) {
-                    throw new IllegalArgumentException("Premature end of arguments for prefix " + prefix + ".");
+                if (isFlag) {
+                    value = null;
+                } else {
+                    try {
+                        value = args.next();
+                    } catch (NoSuchElementException e) {
+                        throw new IllegalArgumentException("Premature end of arguments for prefix " + prefix + ".");
+                    }
                 }
             }
             action.accept(value, options);
@@ -128,13 +201,13 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             this.consumers = new ArrayList<>();
             this.consumers.add(new ArgumentConsumer("--path", (value, config) -> {
                 config.path = value;
-            }));
+            }, false));
             this.consumers.add(new ArgumentConsumer("--class-name", (value, config) -> {
                 config.className = value;
-            }));
+            }, false));
             this.consumers.add(new ArgumentConsumer("--mode", (value, config) -> {
                 config.mode = Config.Mode.parse(value);
-            }));
+            }, false));
             this.consumers.add(new ArgumentConsumer("--metric", (value, config) -> {
                 switch (value) {
                     case "peak-time":
@@ -157,19 +230,22 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     default:
                         throw new IllegalArgumentException("Unknown metric: " + value);
                 }
-            }));
+            }, false));
             this.consumers.add(new ArgumentConsumer("-w", (value, config) -> {
                 config.warmupIterations = Integer.parseInt(value);
-            }));
+            }, false));
             this.consumers.add(new ArgumentConsumer("-i", (value, config) -> {
                 config.iterations = Integer.parseInt(value);
-            }));
-            this.consumers.add(new ArgumentConsumer("--use-debug-cache", (config) -> {
-                config.useDebugCache = true;
-            }));
+            }, false));
+            this.consumers.add(new ArgumentConsumer("--shared-engine", (value, config) -> {
+                config.sharedEngine = true;
+            }, true));
+            this.consumers.add(new ArgumentConsumer("--eval-source-only", (value, config) -> {
+                config.evalSourceOnly = true;
+            }, true));
             this.consumers.add(new ArgumentConsumer("--multi-context-runs", (value, config) -> {
-                config.runCount = Integer.parseInt(value);
-            }));
+                config.numberOfRuns = Integer.parseInt(value);
+            }, false));
         }
 
         Config parse(List<String> arguments) {
@@ -185,6 +261,38 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 config.unrecognizedArguments.add(argument);
             }
             return config;
+        }
+    }
+
+    static class RunOption {
+        final int runIndex;
+        final String name;
+        final String value;
+
+        RunOption(int runIndex, String name, String value) {
+            this.runIndex = runIndex;
+            this.name = name;
+            this.value = value;
+        }
+
+        static RunOption parse(String option) {
+            String[] nameValue = option.split("=", 2);
+            if (nameValue.length < 1) {
+                return null;
+            }
+            String indexedName = nameValue[0];
+            int lastDot = indexedName.lastIndexOf('.');
+            if (lastDot < 0 || lastDot == indexedName.length() - 1) {
+                return null;
+            }
+            String name = indexedName.substring(0, lastDot);
+            String runIndexStr = indexedName.substring(lastDot + 1);
+            try {
+                int runIndex = Integer.parseInt(runIndexStr);
+                return new RunOption(runIndex, name, nameValue.length > 1 ? nameValue[1] : null);
+            } catch (NumberFormatException e) {
+                return null;
+            }
         }
     }
 
@@ -207,19 +315,16 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             throw abort(e.getMessage());
         }
 
-        if (this.config.runCount > 1) {
-            processMultiContextArguments();
-        }
+        processMultiContextArguments();
+
         return this.config.unrecognizedArguments;
     }
 
     private void processMultiContextArguments() {
         List<String> engineArgs = new ArrayList<>();
         // The storage for the iteration-specific arguments
-        List<List<String>> perIterationArgs = new ArrayList<>();
-        // Iteration-specific arguments can be specified for the two first iterations only atm.
-        perIterationArgs.add(new ArrayList<>()); // iteration 0 args
-        perIterationArgs.add(new ArrayList<>()); // iteration 1 args
+        Map<Integer, List<String>> runOptionsMap = new HashMap<>();
+        boolean useExperimental = false;
 
         Iterator<String> iterator = this.config.unrecognizedArguments.iterator();
         while (iterator.hasNext()) {
@@ -227,21 +332,16 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
             // Extract iteration-specific arguments. The pattern of an iteration specific arguments
             // is: <arg_name>.<iteration>=<arg_value>
-            if (option.contains("=")) {
-                String[] nameValue = option.split("=", 2);
-                String indexedArgName = nameValue[0];
-                if (indexedArgName.length() >= 3) {
-                    String argName = indexedArgName.substring(0, indexedArgName.length() - 2);
-                    String argValue = nameValue[1];
-                    if (indexedArgName.endsWith(".0")) {
-                        iterator.remove();
-                        perIterationArgs.get(0).add(argName + "=" + argValue);
-                        continue;
-                    } else if (indexedArgName.endsWith(".1")) {
-                        iterator.remove();
-                        perIterationArgs.get(1).add(argName + "=" + argValue);
-                        continue;
-                    }
+            RunOption runOption = RunOption.parse(option);
+            if (runOption != null) {
+                if ("--eval-source-only".equals(runOption.name)) {
+                    iterator.remove();
+                    config.evalSourceOnlyFlagsMap.put(runOption.runIndex, runOption.value == null || Boolean.parseBoolean(runOption.value));
+                } else {
+                    iterator.remove();
+                    List<String> runOptions = runOptionsMap.computeIfAbsent(runOption.runIndex, (i) -> new ArrayList<>());
+                    runOptions.add(runOption.name + "=" + runOption.value);
+                    continue;
                 }
             }
 
@@ -250,15 +350,22 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 iterator.remove();
                 engineArgs.add(option);
             } else if ("--experimental-options".equals(option)) {
+                useExperimental = true;
                 engineArgs.add(option);
-                perIterationArgs.get(0).add(option);
-                perIterationArgs.get(1).add(option);
             }
         }
 
-        parseUnrecognizedOptions(getLanguageId(config.path), config.multiContextEngineOptions, engineArgs);
-        parseUnrecognizedOptions(getLanguageId(config.path), config.perIterationContextOptions.get(0), perIterationArgs.get(0));
-        parseUnrecognizedOptions(getLanguageId(config.path), config.perIterationContextOptions.get(1), perIterationArgs.get(1));
+        // Parse engine options and store them to config.engineOptions
+        parseUnrecognizedOptions(getLanguageId(config.path), config.engineOptions, engineArgs);
+
+        // Parse run specific options and store them to config.runOptionsMap
+        for (Map.Entry<Integer, List<String>> runOptionsEntry : runOptionsMap.entrySet()) {
+            Map<String, String> runOptions = config.runOptionsMap.computeIfAbsent(runOptionsEntry.getKey(), (i) -> new HashMap<>());
+            if (useExperimental) {
+                runOptionsEntry.getValue().add("--experimental-options");
+            }
+            parseUnrecognizedOptions(getLanguageId(config.path), runOptions, runOptionsEntry.getValue());
+        }
     }
 
     @Override
@@ -275,49 +382,32 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
+        String compilationOptionValue;
+        switch (config.mode) {
+            case interpreter:
+                compilationOptionValue = "false";
+                break;
+            case standard:
+                compilationOptionValue = "true";
+                break;
+            default:
+                throw new AssertionError("Unknown execution-mode: " + config.mode);
+        }
+        config.engineOptions.put("engine.Compilation", compilationOptionValue);
+
+        if (config.sharedEngine) {
+            contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(config.engineOptions).build());
+        } else {
+            contextBuilder.options(config.engineOptions);
+        }
         contextBuilder.allowAllAccess(true);
 
-        contextBuilder.options(config.multiContextEngineOptions);
-        if (!config.useDebugCache && config.runCount > 1) {
-            contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(config.multiContextEngineOptions).build());
-        }
-
-        if (config.runCount == 0) {
-            // Create the context and close it right afterwards to trigger the compilation of AOT
-            // roots
-            try (Context context = contextBuilder.build()) {
-                context.eval(Source.newBuilder(getLanguageId(config.path), Paths.get(config.path).toFile()).build());
-                return;
-            } catch (IOException e) {
-                throw abort(String.format("Error loading file '%s' (%s)", config.path, e.getMessage()));
-            }
-        }
-
-        for (int i = 0; i < config.runCount; i++) {
-            Map<String, String> perIterationOptions = config.perIterationContextOptions.get(i);
+        for (int i = 0; i < config.numberOfRuns; i++) {
+            Map<String, String> perIterationOptions = config.runOptionsMap.get(i);
             if (perIterationOptions != null) {
                 contextBuilder.options(perIterationOptions);
             }
-            if (config.useDebugCache) {
-                // The debug engine cache facilitation
-                if (i == 0) {
-                    contextBuilder.option("engine.DebugCacheCompile", "aot").//
-                                    option("engine.DebugCacheStore", "true").//
-                                    option("engine.MultiTier", "false").//
-                                    option("engine.CompileAOTOnCreate", "false");
-                    try (Context context = contextBuilder.build()) {
-                        context.eval(Source.newBuilder(getLanguageId(config.path), Paths.get(config.path).toFile()).build());
-                    } catch (IOException e) {
-                        throw abort(String.format("Error loading file '%s' (%s)", config.path, e.getMessage()));
-                    }
-                } else {
-                    contextBuilder.option("engine.DebugCacheStore", "false").//
-                                    option("engine.DebugCacheLoad", "true");
-                    runHarness(contextBuilder);
-                }
-            } else {
-                runHarness(contextBuilder);
-            }
+            runHarness(contextBuilder, config.evalSourceOnlyFlagsMap.getOrDefault(i, config.evalSourceOnly));
         }
     }
 
@@ -348,6 +438,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     }
 
     String getLanguageId(String path) {
+        if (path == null) {
+            return null;
+        }
+
         final File file = new File(path);
         if ("jar".equals(getExtension(path))) {
             return "java";
@@ -410,21 +504,11 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private void runHarness(Context.Builder contextBuilder) {
+    private void runHarness(Context.Builder contextBuilder, boolean evalSourceOnly) {
         log("::: Starting " + config.path + " :::");
         log(config.toString());
         log("");
 
-        switch (config.mode) {
-            case interpreter:
-                contextBuilder.option("engine.Compilation", "false");
-                break;
-            case standard:
-                contextBuilder.option("engine.Compilation", "true");
-                break;
-            default:
-                throw new AssertionError("Unknown execution-mode: " + config.mode);
-        }
         contextBuilder.options(config.metric.getEngineOptions(config));
         Handler handler = config.metric.getLogHandler();
         if (handler != null) {
@@ -444,11 +528,15 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         try (Context context = contextBuilder.build()) {
             log("::: Initializing :::");
 
+            PeakTimeMetric evalSourceMetric = new PeakTimeMetric();
+            evalSourceMetric.beforeIteration(false, 0, config);
             EvalResult evalResult = evalSource(context, config.path);
+            evalSourceMetric.afterIteration(false, 0, config);
 
-            log("language: " + evalResult.languageId);
-            log("type:     " + (evalResult.isBinarySource ? "binary" : "source code"));
-            log("length:   " + evalResult.sourceLength + (evalResult.isBinarySource ? " bytes" : " characters"));
+            log("language:   " + evalResult.languageId);
+            log("type:       " + (evalResult.isBinarySource ? "binary" : "source code"));
+            log("length:     " + evalResult.sourceLength + (evalResult.isBinarySource ? " bytes" : " characters"));
+            log("evaluation: " + round(evalSourceMetric.reportAfterAll().get()) + " " + evalSourceMetric.unit());
             log("");
 
             log("::: Bench specific options :::");
@@ -459,9 +547,18 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("Initialization completed.");
             log("");
 
-            log("::: Running warmup :::");
-            repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, true, config.warmupIterations);
-            log("");
+            if (evalSourceOnly) {
+                log("::: Iterations skipped :::");
+            } else {
+                log("::: Running warmup :::");
+                repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, true, config.warmupIterations);
+                log("");
+
+                log("::: Running :::");
+                config.metric.reset();
+                repeatIterations(context, evalResult.languageId, evalResult.sourceName, evalResult.value, false, config.iterations);
+                log("");
+            }
 
             log("::: Running :::");
             config.metric.reset();

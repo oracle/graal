@@ -622,11 +622,13 @@ native_vm_registry.add_vm(SulongMultiContextVm(), _suite, 10)
 
 native_polybench_vm_registry = VmRegistry("NativePolybench", known_host_registries=[java_vm_registry])
 native_polybench_vm_registry.add_vm(PolybenchVm('debug-aux-engine-cache',
-    ['--experimental-options', '--use-debug-cache', '--llvm.AOTCacheStore.0=true', '--llvm.AOTCacheLoad.0=false',
-     '--llvm.AOTCacheStore.1=false', '--llvm.AOTCacheLoad.1=true', '--engine.DebugCachePreinitializeContext=false',
+    ['--experimental-options', '--eval-source-only.0',
+     '--llvm.AOTCacheStore.0=true', '--llvm.AOTCacheLoad.0=false', '--engine.DebugCacheCompile.0=aot', '--engine.DebugCacheStore.0=true',
+     '--llvm.AOTCacheStore.1=false', '--llvm.AOTCacheLoad.1=true', '--engine.DebugCacheStore.1=false', '--engine.DebugCacheLoad.1=true',
+     '--engine.MultiTier=false', '--engine.CompileAOTOnCreate=false', '--engine.DebugCachePreinitializeContext=false',
      '--engine.DebugTraceCache=true', '--multi-context-runs=2', '-w', '0', '-i', '10']), _suite, 10)
 native_polybench_vm_registry.add_vm(PolybenchVm('store-aux-engine-cache',
-    ['--experimental-options', '--multi-context-runs=0', '--engine.CacheStore=' + os.path.join(os.getcwd(), 'test.image'),
+    ['--experimental-options', '--multi-context-runs=1', '--eval-source-only', '--engine.CacheStore=' + os.path.join(os.getcwd(), 'test.image'),
      '--llvm.AOTCacheStore=true', '--engine.CacheCompile=aot', '--engine.CachePreinitializeContext=false',
      '--engine.TraceCache=true']), _suite, 10)
 native_polybench_vm_registry.add_vm(PolybenchVm('load-aux-engine-cache',

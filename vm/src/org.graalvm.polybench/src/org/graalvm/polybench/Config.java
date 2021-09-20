@@ -38,14 +38,17 @@ class Config {
     int iterations;
     Mode mode;
     Metric metric;
-    int runCount = 1;
-    boolean useDebugCache;
-    final Map<String, String> multiContextEngineOptions = new HashMap<>();
-    final List<Map<String, String>> perIterationContextOptions = new ArrayList<>();
+    final Map<String, String> engineOptions = new HashMap<>();
+    boolean evalSourceOnly;
+
+    int numberOfRuns = 1;
+    boolean sharedEngine;
+    final Map<Integer, Map<String, String>> runOptionsMap = new HashMap<>();
+    final Map<Integer, Boolean> evalSourceOnlyFlagsMap = new HashMap<>();
+
     List<String> unrecognizedArguments = new ArrayList<>();
 
     private static final int DEFAULT = -1;
-
     private static final int DEFAULT_WARMUP = 20;
     private static final int DEFAULT_ITERATIONS = 30;
 
@@ -56,8 +59,6 @@ class Config {
         this.iterations = DEFAULT;
         this.mode = Mode.standard;
         this.metric = new PeakTimeMetric();
-        this.perIterationContextOptions.add(new HashMap<>()); // iteration 0 options
-        this.perIterationContextOptions.add(new HashMap<>()); // iteration >0 options
     }
 
     public void parseBenchSpecificDefaults(Value benchmark) {
