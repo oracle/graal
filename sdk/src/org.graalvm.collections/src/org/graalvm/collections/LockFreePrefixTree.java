@@ -1,10 +1,11 @@
 package org.graalvm.collections;
 
-import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.BiConsumer;
 
 public class LockFreePrefixTree {
    public static class Node extends AtomicLong {
@@ -28,25 +29,21 @@ public class LockFreePrefixTree {
             }
        }
 
-
        //Requires: INITIAL_HASH_NODE_SIZE >= MAX_LINEAR_NODE_SIZE -> otherwise we have an endless loop
        private static final int INITIAL_LINEAR_NODE_SIZE = 3;
-       private static final int INITIAL_HASH_NODE_SIZE = 20;
+       private static final int INITIAL_HASH_NODE_SIZE = 12;
        private static final int MAX_LINEAR_NODE_SIZE = 6;
        private  static final int MAX_HASH_SKIPS = 10;
 
-
+       public interface Visitor<R> {
+            R visit(Node n, List<R> childResults);
+        }
 
        private static final AtomicReferenceFieldUpdater<Node,AtomicReferenceArray>childrenUpdater=AtomicReferenceFieldUpdater.newUpdater(Node.class, AtomicReferenceArray .class, "children");
 
        private  final long key;
 
        private volatile AtomicReferenceArray<Node>  children;
-
-//       public static final ThreadLocal<Integer> count = ThreadLocal.withInitial(() -> new Integer(0));
-//
-//       public static final ConcurrentLinkedQueue<String> queue = new ConcurrentLinkedQueue<>();
-
 
        public Node(long key) {
            this.key = key;
@@ -64,12 +61,8 @@ public class LockFreePrefixTree {
             set(value);
         }
         public long incValue() {
-//           count.set(count.get() + 1);
-//           queue.add(Thread.currentThread().getName() + " -> " + this.key + " " + System.identityHashCode(this) );
             return incrementAndGet();
         }
-
-
 
        @SuppressWarnings("unchecked")
        public Node at(long key){
@@ -93,6 +86,7 @@ public class LockFreePrefixTree {
                     if(newChild != null){
                         return newChild;
                     }else{
+                        //Two cases for growth: (1) We have to wrap around the array, (2) the MAX_HASH_SKIPS have been exceeded.
                         growHash();
                     }
                }
@@ -111,7 +105,7 @@ public class LockFreePrefixTree {
            }
            else{
                newChildrenArray = new HashChildren(INITIAL_HASH_NODE_SIZE);
-               for(int i = 0; i < childrenArray.length();++i){
+               for(int i = 0; i < childrenArray.length();i++){
                    addChildToFreshHash(childrenArray.get(i),newChildrenArray);
                }
            }
@@ -140,13 +134,11 @@ public class LockFreePrefixTree {
                index++;
                skips++;
                if(index >= hash.length() || skips > MAX_HASH_SKIPS){
-                   //Two cases for growth: (1) We have to wrap around the array, (2) the MAX_HASH_SKIPS have been exceeded.
                    //Returning null  triggers hash growth.
                    return null;
                }
            }
        }
-
 
        //This method can only get called in the grow hash function, or when converting from linear to hash, meaning it is only exposed to a SINGLE thread
        //Precondition: hash is empty, reachable from exactly  one thread
@@ -160,12 +152,12 @@ public class LockFreePrefixTree {
 
 
        private void growHash() {
-           AtomicReferenceArray<Node> childrenHash = (AtomicReferenceArray<Node>) children;
+           AtomicReferenceArray<Node> childrenHash = children;
            freezeHash(childrenHash);
+           //All elements of childrenHash  are non-null => ensures no updates are made to old children while we are copying to new children.
            AtomicReferenceArray<Node> newChildrenHash = new HashChildren(2 * childrenHash.length());
-           for (int i = 0; i < childrenHash.length(); ++i) {
+           for (int i = 0; i < childrenHash.length(); i++) {
                Node toCopy = childrenHash.get(i);
-               assert(toCopy != null);
 
                if(!(toCopy instanceof  FrozenNode) ){
                     addChildToFreshHash(toCopy,newChildrenHash);
@@ -176,8 +168,9 @@ public class LockFreePrefixTree {
        }
 
 
+       //Postcondition: Forall element in childrenHash => element != null.
        private void freezeHash(AtomicReferenceArray<Node> childrenHash) {
-           for (int i = 0; i < childrenHash.length() ; ++i) {
+           for (int i = 0; i < childrenHash.length() ; i++) {
                 cas(childrenHash,i,null,new FrozenNode());
            }
        }
@@ -235,21 +228,41 @@ public class LockFreePrefixTree {
             return 0x7fff_ffff & (int) (v ^ (v >> 32));
         }
 
+
+        public synchronized <C> void topDown(C currentContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
+           AtomicReferenceArray<Node> childrenSnapshot = readChildren();
+           consumeValue.accept(currentContext,get());
+           if(childrenSnapshot == null){
+               return;
+           }
+           for(int i = 0; i < childrenSnapshot.length();i++){
+                Node child = childrenSnapshot.get(i);
+                if(child!=null){
+                    long key = child.getKey();
+                    C extendedContext = createContext.apply(currentContext,key);
+                    child.topDown(extendedContext,createContext,consumeValue);
+                }
+           }
+        }
+
        @Override
         public String toString() {
             return "Node<" + value() + ">";
         }
    }
 
-
-
    private Node root;
 
    public LockFreePrefixTree(){
        this.root = new Node(0);
    }
+
    public Node root() {
        return root;
    }
+
+   public <C> void topDown(C initialContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
+        root.topDown(initialContext, createContext, consumeValue);
+    }
 }
 

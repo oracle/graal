@@ -4,10 +4,7 @@ package org.graalvm.collections.test;
 import org.junit.Assert;
 import org.junit.Test;
 import org.graalvm.collections.LockFreePrefixTree;
-
-import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
-
 
 public class LockFreePrefixTreeTest {
 
@@ -44,8 +41,6 @@ public class LockFreePrefixTreeTest {
             Assert.assertEquals(i * 10, tree.root().at(1L).at(2L).at(i).value());
         }
     }
-
-
 
     @Test
     public void largeAlphabet() {
@@ -88,7 +83,6 @@ public class LockFreePrefixTreeTest {
             }
         }
     }
-
 
     @Test public void hashFlatMultithreaded(){
         final LockFreePrefixTree tree = new LockFreePrefixTree();
@@ -166,7 +160,6 @@ public class LockFreePrefixTreeTest {
         }
     }
 
-
     private void checkDeepTree(LockFreePrefixTree.Node node, int depth, int numChildren,int parallelism){
         if(depth == 0){
             Assert.assertEquals(parallelism,node.value());
@@ -235,7 +228,6 @@ public class LockFreePrefixTreeTest {
         checkDeepTree(tree.root(),depth,numChildren,parallelism);
     }
 
-
     @Test
     public void manyMultiThreaded() {
             final LockFreePrefixTree tree = new LockFreePrefixTree();
@@ -265,7 +257,6 @@ public class LockFreePrefixTreeTest {
                 Assert.assertEquals(parallelism * multiplier / 2, tree.root().at(i).value());
             }
         }
-
 }
 
 
