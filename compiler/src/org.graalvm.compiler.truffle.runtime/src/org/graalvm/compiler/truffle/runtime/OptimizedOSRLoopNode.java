@@ -83,7 +83,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     /**
      * @param rootFrameDescriptor may be {@code null}.
      */
-    protected LoopOSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
+    protected AbstractLoopOSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
         /*
          * Use a new frame descriptor, because the frame that this new root node creates is not
          * used.
@@ -252,7 +252,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         });
     }
 
-    private LoopOSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
+    private AbstractLoopOSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
         return createRootNode(root == null ? null : root.getFrameDescriptor(), frameClass);
     }
 
@@ -415,7 +415,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         }
 
         @Override
-        protected LoopOSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
+        protected AbstractLoopOSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
             if (readFrameSlots == null || writtenFrameSlots == null) {
                 return super.createRootNode(rootFrameDescriptor, clazz);
             } else {
@@ -433,7 +433,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
     }
 
-    public static class LoopOSRRootNode extends BaseOSRRootNode {
+    abstract static class AbstractLoopOSRRootNode extends BaseOSRRootNode {
 
         protected final Class<? extends VirtualFrame> clazz;
 
@@ -443,7 +443,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
          */
         @Child protected OptimizedOSRLoopNode loopNode;
 
-        LoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
+        AbstractLoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
             super(null, frameDescriptor);
             this.loopNode = loop;
             this.clazz = clazz;
@@ -457,10 +457,11 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         @Override
         protected Object executeOSR(VirtualFrame frame) {
             VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
+            RepeatingNode loopBody = loopNode.repeatingNode;
             Object status;
-            while (loopNode.repeatingNode.shouldContinue(status = loopNode.getRepeatingNode().executeRepeatingWithValue(parentFrame))) {
+            while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(parentFrame))) {
                 if (CompilerDirectives.inInterpreter()) {
-                    return loopNode.repeatingNode.initialLoopStatus();
+                    return loopBody.initialLoopStatus();
                 }
                 TruffleSafepoint.poll(this);
             }
@@ -478,7 +479,13 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         }
     }
 
-    private static final class VirtualizingLoopOSRRootNode extends LoopOSRRootNode {
+    static final class LoopOSRRootNode extends AbstractLoopOSRRootNode {
+        LoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
+            super(loop, frameDescriptor, clazz);
+        }
+    }
+
+    private static final class VirtualizingLoopOSRRootNode extends AbstractLoopOSRRootNode {
 
         @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
@@ -534,10 +541,11 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             FrameWithoutBoxing parentFrame = (FrameWithoutBoxing) (loopFrame.getArguments()[0]);
             executeTransfer(parentFrame, loopFrame, readFrameSlots, readFrameSlotsTags);
             try {
+                RepeatingNode loopBody = loopNode.repeatingNode;
                 Object status;
-                while (loopNode.repeatingNode.shouldContinue(status = loopNode.getRepeatingNode().executeRepeatingWithValue(loopFrame))) {
+                while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(loopFrame))) {
                     if (CompilerDirectives.inInterpreter()) {
-                        return loopNode.repeatingNode.initialLoopStatus();
+                        return loopBody.initialLoopStatus();
                     }
                     TruffleSafepoint.poll(this);
                 }

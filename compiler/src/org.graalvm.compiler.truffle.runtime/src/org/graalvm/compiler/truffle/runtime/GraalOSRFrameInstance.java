@@ -25,6 +25,8 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.RootNode;
+
 import jdk.vm.ci.code.stack.InspectedFrame;
 
 /**
@@ -42,7 +44,15 @@ public final class GraalOSRFrameInstance extends GraalFrameInstance {
 
     @Override
     public Frame getFrame(FrameAccess access) {
-        return getFrameFrom(osrFrame, access);
+        Frame materializedOSRFrame = getFrameFrom(osrFrame, access);
+        if (getOSRRootNode() instanceof OptimizedOSRLoopNode.LoopOSRRootNode) {
+            return (Frame) materializedOSRFrame.getArguments()[0];
+        }
+        return materializedOSRFrame;
+    }
+
+    private RootNode getOSRRootNode() {
+        return ((OptimizedCallTarget) osrFrame.getLocal(GraalFrameInstance.CALL_TARGET_INDEX)).getRootNode();
     }
 
     @Override
