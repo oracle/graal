@@ -123,8 +123,7 @@ Run _app.js_ on GraalVM Enterprise using the `node` command:
 node app.js
 ```
 
-For more detailed documentation and information on compatibility with Node.js,
-proceed to [JavaScript and Node.js](../../reference-manual/js/README.md).
+For more detailed documentation and information on compatibility with Node.js, proceed to [JavaScript and Node.js](../../reference-manual/js/README.md).
 
 ## Run LLVM Languages
 
