@@ -176,10 +176,11 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     }
 
     final void reportChildLoopCount(int iterations) {
-        baseLoopCount += iterations;
-        if (baseLoopCount < 0) {
-            baseLoopCount = Integer.MAX_VALUE;
+        int newBaseLoopCount = baseLoopCount + iterations;
+        if (newBaseLoopCount < 0) { // overflowed
+            newBaseLoopCount = Integer.MAX_VALUE;
         }
+        baseLoopCount = newBaseLoopCount;
     }
 
     /**
