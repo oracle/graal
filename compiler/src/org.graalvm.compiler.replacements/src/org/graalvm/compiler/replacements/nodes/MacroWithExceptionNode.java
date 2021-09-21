@@ -173,6 +173,9 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
         return true;
     }
 
+    /**
+     * @see MacroNode#getKilledLocationIdentity()
+     */
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();

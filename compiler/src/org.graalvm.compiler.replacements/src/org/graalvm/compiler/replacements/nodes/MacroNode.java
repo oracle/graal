@@ -173,6 +173,12 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return true;
     }
 
+    /**
+     * Returns {@link LocationIdentity#any()}. This node needs to kill any location because it might
+     * get {@linkplain #replaceWithInvoke() replaced with an invoke} and
+     * {@link InvokeNode#getKilledLocationIdentity()} kills {@link LocationIdentity#any()} and the
+     * kill location must not get broader.
+     */
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
