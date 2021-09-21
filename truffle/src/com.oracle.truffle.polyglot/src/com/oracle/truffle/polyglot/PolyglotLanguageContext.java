@@ -304,8 +304,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     Object getContextImpl() {
-        if (env != null) {
-            return LANGUAGE.getContext(env);
+        Env localEnv = env;
+        if (localEnv != null) {
+            return LANGUAGE.getContext(localEnv);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             return null;
