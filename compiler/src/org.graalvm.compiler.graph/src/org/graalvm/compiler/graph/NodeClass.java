@@ -222,6 +222,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         try (DebugCloseable t1 = Init_AllowedUsages.start(debug)) {
             allowedUsageTypes = superNodeClass == null ? EnumSet.noneOf(InputType.class) : superNodeClass.allowedUsageTypes.clone();
             allowedUsageTypes.addAll(Arrays.asList(info.allowedUsageTypes()));
+            GraalError.guarantee(!allowedUsageTypes.contains(InputType.Memory) || MemoryKillMarker.class.isAssignableFrom(clazz),
+                            "Node of type %s with allowedUsageType of memory must inherit from MemoryKill", clazz);
         }
 
         if (presetIterableIds != null) {
@@ -503,6 +505,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     } else {
                         inputType = optionalInputAnnotation.value();
                     }
+                    GraalError.guarantee(inputType != InputType.Memory || MemoryKillMarker.class.isAssignableFrom(type) || NodeInputList.class.isAssignableFrom(type),
+                                    "field type of input annotated with Memory must inherit from MemoryKill: %s", field);
                     inputs.add(new InputInfo(offset, field.getName(), type, field.getDeclaringClass(), inputType, field.isAnnotationPresent(Node.OptionalInput.class)));
                 } else if (successorAnnotation != null) {
                     if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
