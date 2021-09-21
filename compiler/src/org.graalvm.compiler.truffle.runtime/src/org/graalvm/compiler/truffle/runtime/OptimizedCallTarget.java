@@ -339,7 +339,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
         this.uninitializedNodeCount = !isOSR() ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
-        GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
     final Assumption getNodeRewritingAssumption() {
@@ -840,7 +839,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
         }
-        return runtime().createClonedCallTarget(clonedRoot, this);
+        return runtime().newCallTarget(clonedRoot, this);
     }
 
     /**

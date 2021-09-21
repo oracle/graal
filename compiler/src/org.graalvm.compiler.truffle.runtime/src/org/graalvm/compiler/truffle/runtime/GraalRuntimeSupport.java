@@ -32,6 +32,7 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
@@ -53,6 +54,14 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     GraalRuntimeSupport(Object permission) {
         super(permission);
+    }
+
+    @Override
+    public RootCallTarget newCallTarget(RootNode rootNode) {
+        CompilerAsserts.neverPartOfCompilation();
+        final OptimizedCallTarget target = GraalTruffleRuntime.getRuntime().newCallTarget(rootNode, null);
+        TruffleSplittingStrategy.newTargetCreated(target);
+        return target;
     }
 
     @ExplodeLoop

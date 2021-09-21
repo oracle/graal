@@ -70,7 +70,9 @@ public interface TruffleRuntime {
     String getName();
 
     /**
-     * Creates a new call target for a given root node.
+     * Creates a new call target for a given root node if none exists. Otherwise, the existing call
+     * target is returned. Note that this method is only kept for backward compatibility and will
+     * soon be deprecated. Please use {@link RootNode#getCallTarget()} instead.
      *
      * @param rootNode the root node whose
      *            {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method

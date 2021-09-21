@@ -63,7 +63,6 @@ public final class DefaultCallTarget implements RootCallTarget {
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
-        DefaultRuntimeAccessor.NODES.setCallTarget(function, this);
     }
 
     @Override

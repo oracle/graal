@@ -47,6 +47,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
@@ -345,7 +346,21 @@ public abstract class RootNode extends ExecutableNode {
 
     /** @since 0.8 or earlier */
     public final RootCallTarget getCallTarget() {
-        return callTarget;
+        RootCallTarget target = this.callTarget;
+        if (target == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ReentrantLock l = getLazyLock();
+            l.lock();
+            try {
+                target = this.callTarget;
+                if (target == null) {
+                    this.callTarget = target = NodeAccessor.RUNTIME.newCallTarget(this);
+                }
+            } finally {
+                l.unlock();
+            }
+        }
+        return target;
     }
 
     /** @since 0.8 or earlier */
@@ -353,8 +368,16 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    /** @since 19.0 */
+    /**
+     * @throws UnsupportedOperationException if a call target already exists.
+     * @since 19.0
+     * @deprecated in 22.0, call targets are lazily initialized in {@link #getCallTarget()} now.
+     */
+    @Deprecated
     protected final void setCallTarget(RootCallTarget callTarget) {
+        if (this.callTarget != null) {
+            throw new UnsupportedOperationException();
+        }
         this.callTarget = callTarget;
     }
 

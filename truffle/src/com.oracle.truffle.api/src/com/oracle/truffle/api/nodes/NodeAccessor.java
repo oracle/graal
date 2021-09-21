@@ -74,11 +74,6 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public void setCallTarget(RootNode rootNode, RootCallTarget callTarget) {
-            rootNode.setCallTarget(callTarget);
-        }
-
-        @Override
         public boolean isCloneUninitializedSupported(RootNode rootNode) {
             return rootNode.isCloneUninitializedSupported();
         }
