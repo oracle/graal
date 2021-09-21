@@ -370,7 +370,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
 
         @Override
         public void run(StructuredGraph graph) {
-            schedulePhase.apply(graph, false);
+            schedulePhase.apply(graph, context, false);
             schedule = graph.getLastSchedule();
             schedule.getCFG().computePostdominators();
             Block startBlock = schedule.getCFG().getStartBlock();
