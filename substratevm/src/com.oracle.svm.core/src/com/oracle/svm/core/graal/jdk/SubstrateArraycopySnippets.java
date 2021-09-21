@@ -30,7 +30,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -61,7 +60,6 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
     protected SubstrateArraycopySnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, factories, providers, snippetReflection);
-        lowerings.put(SubstrateArraycopyNode.class, new SubstrateArraycopyLowering());
         lowerings.put(SubstrateArraycopyWithExceptionNode.class, new SubstrateArraycopyWithExceptionLowering());
     }
 
@@ -109,18 +107,6 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
     private static void boundsCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
         if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > ArrayLengthNode.arrayLength(fromArray) - length || toIndex > ArrayLengthNode.arrayLength(toArray) - length) {
             throw new ArrayIndexOutOfBoundsException();
-        }
-    }
-
-    static final class SubstrateArraycopyLowering implements NodeLoweringProvider<SubstrateArraycopyNode> {
-        @Override
-        public void lower(SubstrateArraycopyNode node, LoweringTool tool) {
-            StructuredGraph graph = node.graph();
-            ForeignCallNode call = graph.add(new ForeignCallNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
-                            node.getDestinationPosition(), node.getLength()));
-            call.setStateAfter(node.stateAfter());
-            call.setBci(node.getBci());
-            graph.replaceFixedWithFixed(node, call);
         }
     }
 
