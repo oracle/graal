@@ -118,10 +118,12 @@ function zoom_child(sample) {
     let r = e.children[1];
     let t = e.lastElementChild;
     let name = name_for_sample(sample);
+    let source = source_for_sample(sample);
 
-    title.textContent = "Function: " + name + "\n" +
-        sample.h + " samples (" + sample.i + " interpreted, " + sample.c + " compiled).\n" +
-        (100 * (sample.c + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "% of displayed samples.\n";
+    title.textContent = name + "\n" +
+        "Self samples: " + (sample.i + sample.c) + " (" + (100 * (sample.c + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
+        "Total samples: " + (sample.h) + " (" + (100 * (sample.h + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
+        "Source location: " + source + ":" + sample.fl + "\n";
 
     r.x.baseVal.value = x;
     t.x.baseVal[0].value = x + 3;

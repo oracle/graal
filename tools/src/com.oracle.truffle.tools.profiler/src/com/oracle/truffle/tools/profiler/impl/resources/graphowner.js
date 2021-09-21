@@ -208,6 +208,10 @@ function name_for_sample(sample) {
     return profileNames[sample.n];
 }
 
+function source_for_sample(sample) {
+    return sourceNames[sample.f];
+}
+
 function function_name(e) {
     return title(e);
 }
