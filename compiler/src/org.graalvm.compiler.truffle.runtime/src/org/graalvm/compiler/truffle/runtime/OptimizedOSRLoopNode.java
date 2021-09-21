@@ -100,10 +100,11 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
     @Override
     public Object execute(VirtualFrame frame) {
+        RepeatingNode loopBody = repeatingNode;
         if (CompilerDirectives.inInterpreter()) {
             try {
-                Object status = repeatingNode.initialLoopStatus();
-                while (repeatingNode.shouldContinue(status)) {
+                Object status = loopBody.initialLoopStatus();
+                while (loopBody.shouldContinue(status)) {
                     if (compiledOSRLoop == null) {
                         status = profilingLoop(frame);
                     } else {
@@ -118,7 +119,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             long iterationsCompleted = 0;
             Object status;
             try {
-                while (inject(repeatingNode.shouldContinue((status = repeatingNode.executeRepeatingWithValue(frame))))) {
+                while (inject(loopBody.shouldContinue((status = loopBody.executeRepeatingWithValue(frame))))) {
                     iterationsCompleted++;
                     if (CompilerDirectives.inInterpreter()) {
                         // compiled method got invalidated. We might need OSR again.
@@ -134,7 +135,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             return status;
         } else {
             Object status;
-            while (inject(repeatingNode.shouldContinue((status = repeatingNode.executeRepeatingWithValue(frame))))) {
+            while (inject(loopBody.shouldContinue((status = loopBody.executeRepeatingWithValue(frame))))) {
                 if (CompilerDirectives.inInterpreter()) {
                     // compiled method got invalidated. We might need OSR again.
                     return execute(frame);
@@ -150,10 +151,11 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     }
 
     private Object profilingLoop(VirtualFrame frame) {
+        RepeatingNode loopBody = repeatingNode;
         long iterations = 0;
         try {
             Object status;
-            while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame))) {
+            while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(frame))) {
                 // the baseLoopCount might be updated from a child loop during an iteration.
                 if (++iterations + baseLoopCount > osrThreshold && !compilationDisabled) {
                     compileLoop(frame);
@@ -198,24 +200,25 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     }
 
     private Object compilingLoop(VirtualFrame frame) {
+        RepeatingNode loopBody = repeatingNode;
         long iterations = 0;
         try {
             Object status;
             do {
                 OptimizedCallTarget target = compiledOSRLoop;
                 if (target == null) {
-                    return repeatingNode.initialLoopStatus();
+                    return loopBody.initialLoopStatus();
                 }
                 if (!target.isSubmittedForCompilation()) {
                     if (target.isValid()) {
                         return callOSR(target, frame);
                     }
                     invalidateOSRTarget("OSR compilation failed or cancelled");
-                    return repeatingNode.initialLoopStatus();
+                    return loopBody.initialLoopStatus();
                 }
                 iterations++;
                 TruffleSafepoint.poll(this);
-            } while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame)));
+            } while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(frame)));
             return status;
         } finally {
             reportLoopIterations(iterations);
