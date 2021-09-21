@@ -39,6 +39,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -223,7 +224,7 @@ final class SVGSamplerOutput {
         public int sourceCounter = 0;
         public final JSONArray sampleNames = new JSONArray();
         public final JSONArray sourceNames = new JSONArray();
-        public final JSONObject sampleData = new JSONObject();
+        public final JSONArray sampleData = new JSONArray();
 
         GraphOwner(StringBuilder output, Map<TruffleContext, CPUSamplerData> data) {
             svg = new SVGSamplerOutput(output);
@@ -295,19 +296,36 @@ final class SVGSamplerOutput {
             return result.toString();
         }
 
+        private static final class Task {
+            final ProfilerNode<CPUSampler.Payload> sample;
+            final JSONArray siblings;
+            final long x;
+            final int parent;
+
+            Task(ProfilerNode<CPUSampler.Payload> sample, JSONArray siblings, long x, int parent) {
+                this.sample = sample;
+                this.siblings = siblings;
+                this.x = x;
+                this.parent = parent;
+            }
+        }
+
         private void buildSampleData() {
-            sampleData.put("n", nameCounter);
-            sampleData.put("f", sourceCounter);
-            sampleData.put("fl", 0);
+            ArrayDeque<Task> tasks = new ArrayDeque<>();
+            JSONObject root = new JSONObject();
+            sampleData.put(root);
+            root.put("n", nameCounter);
+            root.put("f", sourceCounter);
+            root.put("fl", 0);
             nameHash.put("<top>", nameCounter++);
             sampleNames.put("<top>");
             sourceHash.put("<none>", sourceCounter++);
             sourceNames.put("<none>");
-            sampleData.put("id", sampleId++);
-            sampleData.put("i", 0);
-            sampleData.put("c", 0);
-            sampleData.put("x", 0);
-            sampleData.put("l", GraphColorMap.GRAY.ordinal());
+            root.put("id", sampleId++);
+            root.put("i", 0);
+            root.put("c", 0);
+            root.put("x", 0);
+            root.put("l", GraphColorMap.GRAY.ordinal());
             long totalSamples = 0;
             JSONArray children = new JSONArray();
             for (CPUSamplerData value : data.values()) {
@@ -315,48 +333,200 @@ final class SVGSamplerOutput {
                     Thread thread = node.getKey();
                     // Output the thread node itself...
                     // Optput the samples under that node...
-                    List<ProfilerNode<CPUSampler.Payload>> samples = new ArrayList<>(node.getValue());
-                    children.put(threadSampelData(thread, samples, totalSamples));
-                    for (ProfilerNode<CPUSampler.Payload> sample : samples) {
-                        totalSamples += sample.getPayload().getHitCount();
-                    }
+                    totalSamples = threadSampleData(thread, node.getValue(), tasks, children, totalSamples);
                 }
             }
-            sampleData.put("h", totalSamples);
-            sampleData.put("s", children);
-            buildColorData(sampleData);
+            root.put("h", totalSamples);
+            root.put("s", children);
+
+            Task task = tasks.poll();
+            while (task != null) {
+                processSample(task, tasks);
+                task = tasks.poll();
+            }
+            buildColorData();
+            buildRecursiveData();
         }
 
-        private JSONObject threadSampelData(Thread thread, List<ProfilerNode<CPUSampler.Payload>> samples, long x) {
-            JSONObject result = new JSONObject();
-            result.put("n", nameHash.computeIfAbsent(thread.getName(), k -> {
+        private static final class SampleKey {
+            int nameId;
+            int sourceId;
+            int sourceLine;
+
+            SampleKey(int nameId, int sourceId, int sourceLine) {
+                this.nameId = nameId;
+                this.sourceId = sourceId;
+                this.sourceLine = sourceLine;
+            }
+
+            @Override
+            public int hashCode() {
+                final int prime = 31;
+                int result = 1;
+                result = prime * result + nameId;
+                result = prime * result + sourceId;
+                result = prime * result + sourceLine;
+                return result;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj)
+                    return true;
+                if (obj == null)
+                    return false;
+                if (getClass() != obj.getClass())
+                    return false;
+                SampleKey other = (SampleKey) obj;
+                if (nameId != other.nameId)
+                    return false;
+                if (sourceId != other.sourceId)
+                    return false;
+                if (sourceLine != other.sourceLine)
+                    return false;
+                return true;
+            }
+        }
+
+        private HashMap<Integer, HashMap<SampleKey, JSONObject>> recursiveChildMap = new HashMap<>();
+
+        private HashMap<SampleKey, JSONObject> childrenByKeyForSample(JSONObject sample) {
+            return recursiveChildMap.computeIfAbsent(sample.getInt("id"), k -> {
+                    HashMap<SampleKey, JSONObject> childMap = new HashMap<>();
+                    return childMap;
+                });
+        }
+
+        private static final class RecursivePositionTask {
+            JSONObject sample;
+            long x;
+
+            public RecursivePositionTask(JSONObject sample, long x) {
+                this.sample = sample;
+                this.x = x;
+            }
+        }
+
+        private void buildRecursiveData() {
+            // Merge all the collapsed recursive relationships and hit counts
+            for (Object sample : sampleData) {
+                calculateRecursiveData((JSONObject) sample);
+            }
+            // Work out the collapsed recursive x positions.
+            ArrayDeque<RecursivePositionTask> tasks = new ArrayDeque<>();
+            RecursivePositionTask task = new RecursivePositionTask(sampleDataForId(0), 0);
+            while (task != null) {
+                task.sample.put("rx", task.x);
+                if (task.sample.has("rs")) {
+                    long offset = task.x + task.sample.getInt("ri") + task.sample.getInt("rc");
+                    for (Object childId : task.sample.getJSONArray("rs")) {
+                        JSONObject child = sampleDataForId((Integer) childId);
+                        tasks.add(new RecursivePositionTask(child, offset));
+                        offset += child.getInt("rh");
+                    }
+                }
+                task = tasks.poll();
+            }
+        }
+
+        private void calculateRecursiveData(JSONObject sample) {
+            if (sample.has("p")) {
+                JSONObject parent = sampleDataForId(sample.getInt("p"));
+                final JSONObject owner;
+                if (parent.has("ro")) {
+                    owner = sampleDataForId(parent.getInt("ro"));
+                } else {
+                    owner = parent;
+                }
+                if (parent.getInt("n") == sample.getInt("n")) {
+                    mergeCounts(owner, sample, true);
+                } else {
+                    HashMap<SampleKey, JSONObject> siblings = childrenByKeyForSample(owner);
+                    SampleKey key = new SampleKey(sample.getInt("n"), sample.getInt("f"), sample.getInt("fl"));
+                    if (siblings.containsKey(key)) {
+                        JSONObject sibling = siblings.get(key);
+                        mergeCounts(sibling, sample, false);
+                    } else {
+                        siblings.put(key, sample);
+                        addRecursiveChild(owner, sample);
+                    }
+                    sample.put("rp", owner.getInt("id"));
+                }
+            } else {
+                // The root sample needs rc, ri, and rh set.
+                sample.put("rc", sample.getInt("c"));
+                sample.put("ri", sample.getInt("i"));
+                sample.put("rh", sample.getInt("h"));
+            }
+        }
+
+        private void addRecursiveChild(JSONObject sample, JSONObject child) {
+            final JSONArray children;
+            if (!sample.has("rs")) {
+                children = new JSONArray();
+                sample.put("rs", children);
+            } else {
+                children = sample.getJSONArray("rs");
+            }
+            children.put(child.getInt("id"));
+            child.put("rc", child.getInt("c"));
+            child.put("ri", child.getInt("i"));
+            child.put("rh", child.getInt("h"));
+        }
+        
+        private void mergeCounts(JSONObject a, JSONObject b, boolean child) {
+            int aRI = a.has("ri") ? a.getInt("ri") : a.getInt("i");
+            int aRC = a.has("rc") ? a.getInt("rc") : a.getInt("c");
+            int aRH = a.has("rh") ? a.getInt("rh") : a.getInt("h");
+            aRI += b.getInt("i");
+            aRC += b.getInt("c");
+            // Siblings should have their hit counts combined, but
+            // children should not increase their parent's hit count.
+            if (!child) {
+                aRH += b.getInt("h");
+            }
+            a.put("ri", aRI);
+            a.put("rc", aRC);
+            a.put("rh", aRH);
+            b.put("ro", a.getInt("id"));
+        }
+
+        private long threadSampleData(Thread thread, Collection<ProfilerNode<CPUSampler.Payload>> samples, ArrayDeque<Task> tasks, JSONArray siblings, long x) {
+            JSONObject threadSample = new JSONObject();
+            long totalSamples = x;
+            int id = sampleId++;
+            threadSample.put("n", nameHash.computeIfAbsent(thread.getName(), k -> {
                 sampleNames.put(thread.getName());
                 return nameCounter++;
             }));
-            result.put("f", sourceHash.computeIfAbsent("<none>", k -> {
+            threadSample.put("f", sourceHash.computeIfAbsent("<none>", k -> {
                 sourceNames.put("<none>");
                 return sourceCounter++;
             }));
-            result.put("fl", 0);
-            result.put("id", sampleId++);
-            result.put("i", 0);
-            result.put("c", 0);
-            result.put("l", GraphColorMap.GRAY.ordinal());
-            result.put("x", x);
-            long totalSamples = 0;
+            threadSample.put("fl", 0);
+            threadSample.put("id", id);
+            threadSample.put("p", 0);
+            sampleData.put(threadSample);
+            threadSample.put("i", 0);
+            threadSample.put("c", 0);
+            threadSample.put("l", GraphColorMap.GRAY.ordinal());
+            threadSample.put("x", x);
             JSONArray children = new JSONArray();
+            long childCount = 0;
             for (ProfilerNode<CPUSampler.Payload> sample : samples) {
-                children.put(sampleData(sample, totalSamples + x));
+                tasks.addLast(new Task(sample, children, totalSamples, id));
                 totalSamples += sample.getPayload().getHitCount();
+                childCount++;
             }
-            result.put("h", totalSamples);
-            if (children.length() > 0) {
-                result.put("s", children);
+            threadSample.put("h", totalSamples);
+            if (childCount > 0) {
+                threadSample.put("s", children);
             }
-            return result;
+            siblings.put(threadSample.getInt("id"));
+            return totalSamples;
         }
 
-        public String samples() {
+        private String samples() {
             StringBuilder result = new StringBuilder();
 
             result.append("var profileNames = ");
@@ -400,16 +570,16 @@ final class SVGSamplerOutput {
             return result.toString();
         }
 
-        public JSONObject sampleData(ProfilerNode<CPUSampler.Payload> sample, long x) {
+        private void processSample(Task task, ArrayDeque<Task> tasks) {
             JSONObject result = new JSONObject();
-            final int nameId = nameHash.computeIfAbsent(sample.getRootName(), k -> {
-                sampleNames.put(sample.getRootName());
+            final int nameId = nameHash.computeIfAbsent(task.sample.getRootName(), k -> {
+                sampleNames.put(task.sample.getRootName());
                 return nameCounter++;
             });
             result.put("n", nameId);
             final String sourceName;
             int sourceLine = 0;
-            SourceSection section = sample.getSourceSection();
+            SourceSection section = task.sample.getSourceSection();
             if (section != null && section.isAvailable()) {
                 sourceLine = section.getStartLine();
                 Source source = section.getSource();
@@ -431,62 +601,46 @@ final class SVGSamplerOutput {
                 return sourceCounter++;
             }));
             result.put("fl", sourceLine);
-            result.put("id", sampleId++);
-            result.put("i", sample.getPayload().getTierSelfCount(0));
+            int id = sampleId++;
+            result.put("id", id);
+            result.put("p", task.parent);
+            sampleData.put(result);
+            result.put("i", task.sample.getPayload().getTierSelfCount(0));
             int compiledSelfHits = 0;
-            for (int i = 1; i < sample.getPayload().getNumberOfTiers(); i++) {
-                compiledSelfHits += sample.getPayload().getTierSelfCount(i);
+            for (int i = 1; i < task.sample.getPayload().getNumberOfTiers(); i++) {
+                compiledSelfHits += task.sample.getPayload().getTierSelfCount(i);
             }
             result.put("c", compiledSelfHits);
-            result.put("h", sample.getPayload().getHitCount());
-            result.put("l", colorMapForLanguage(sample).ordinal());
-            result.put("x", x);
+            result.put("h", task.sample.getPayload().getHitCount());
+            result.put("l", colorMapForLanguage(task.sample).ordinal());
+            result.put("x", task.x);
             JSONArray children = new JSONArray();
-            long offset = sample.getPayload().getSelfHitCount();
-            for (ProfilerNode<CPUSampler.Payload> child : sample.getChildren()) {
-                children.put(sampleData(child, x + offset));
+            int childCount = 0;
+            long offset = task.sample.getPayload().getSelfHitCount();
+            for (ProfilerNode<CPUSampler.Payload> child : task.sample.getChildren()) {
+                tasks.addLast(new Task(child, children, task.x + offset, id));
                 offset += child.getPayload().getHitCount();
+                childCount++;
             }
-            if (children.length() > 0) {
+            if (childCount > 0) {
                 result.put("s", children);
             }
-            return result;
-        }
-
-        private JSONObject findSampleInTree(JSONObject tree, int id) {
-            if (tree.getInt("id") == id) {
-                return tree;
-            } else if (tree.has("s")) {
-                JSONArray children = tree.getJSONArray("s");
-                JSONObject lastChild = null;
-                for (Object c : children) {
-                    JSONObject child = (JSONObject) c;
-                    if (child.getInt("id") == id) {
-                        return child;
-                    } else if (child.getInt("id") > id) {
-                        return findSampleInTree(lastChild, id);
-                    } else {
-                        lastChild = child;
-                    }
-                }
-                return findSampleInTree(lastChild, id);
-            }
-            return null;
+            task.siblings.put(result.getInt("id"));
         }
 
         protected JSONObject sampleDataForId(int id) {
-            return findSampleInTree(sampleData, id);
+            return (JSONObject) sampleData.get(id);
         }
 
-        private void buildColorData(JSONObject sample) {
+        private void buildColorData() {
+            for (Object sample : sampleData) {
+                buildColorDataForSample((JSONObject) sample);
+            }
+        }
+
+        private void buildColorDataForSample(JSONObject sample) {
             colorForName(sample.getInt("n"), GraphColorMap.FLAME);
             colorForName(sample.getInt("n"), GraphColorMap.values()[sample.getInt("l")]);
-            if (sample.has("s")) {
-                for (Object child : sample.getJSONArray("s")) {
-                    buildColorData((JSONObject) child);
-                }
-            }
-
         }
 
         public String initFunction(String argName) {
@@ -728,9 +882,9 @@ final class SVGSamplerOutput {
             this.owner = owner;
             this.bottomPadding = 2 * owner.fontSize() + 10;
             this.topPadding = 3 * owner.fontSize();
-            this.sampleCount = owner.sampleData.getInt("h");
+            this.sampleCount = owner.sampleDataForId(0).getInt("h");
             widthPerTime = (width() - 2 * XPAD) / sampleCount;
-            maxDepth = maxDepth(owner.sampleData);
+            maxDepth = maxDepth(owner.sampleDataForId(0));
         }
 
         private int maxDepth(JSONObject samples) {
@@ -739,9 +893,9 @@ final class SVGSamplerOutput {
                 return 0;
             } else {
                 int childDepth = 0;
-                if (samples.has("s")) {
-                    for (Object child : samples.getJSONArray("s")) {
-                        childDepth = Integer.max(childDepth, maxDepth((JSONObject) child));
+                if (samples.has("rs")) {
+                    for (Object child : samples.getJSONArray("rs")) {
+                        childDepth = Integer.max(childDepth, maxDepth(owner.sampleDataForId((Integer) child)));
                     }
                 }
                 return childDepth + 1;
@@ -801,22 +955,48 @@ final class SVGSamplerOutput {
         private String drawTree() {
             StringBuilder output = new StringBuilder();
             double baseY = -FRAMEHEIGHT - bottomPadding;
-            output.append(drawSample(baseY, owner.sampleData));
+            output.append(drawSamples(baseY, owner.sampleDataForId(0)));
             return output.toString();
         }
 
         private double sampleWidth(JSONObject sample) {
-            long hitCount = sample.getInt("h");
+            long hitCount = sample.getInt("rh");
             return widthPerTime * hitCount;
         }
 
         private double sampleX(JSONObject sample) {
-            long x = sample.getInt("x");
+            long x = sample.getInt("rx");
             return widthPerTime * x + XPAD;
         }
 
-        private String drawSample(double y, JSONObject sample) {
+        private static final class DrawTask {
+            final JSONObject sample;
+            final int depth;
+
+            DrawTask(JSONObject sample, int depth) {
+                this.sample = sample;
+                this.depth = depth;
+            }
+        }
+
+        private String drawSamples(double y, JSONObject root) {
+            ArrayDeque<DrawTask> tasks = new ArrayDeque<>();
+
             StringBuilder output = new StringBuilder();
+            DrawTask task = new DrawTask(root, 0);
+            while (task != null) {
+                output.append(drawSample(y, task, tasks));
+                task = tasks.poll();
+            }
+            return output.toString();
+        }
+
+        private String drawSample(double baseY, DrawTask task, ArrayDeque<DrawTask> tasks) {
+            // Redesign this to use a task deque.
+            StringBuilder output = new StringBuilder();
+            JSONObject sample = task.sample;
+            int depth = task.depth;
+            double y = baseY - depth * FRAMEHEIGHT;
             double width = sampleWidth(sample);
             double x = sampleX(sample);
             if (width < MINWIDTH) {
@@ -851,10 +1031,11 @@ final class SVGSamplerOutput {
 
             output.append(ttfString(black(), owner.fontName(), owner.fontSize(), x + 3, y - 5 + FRAMEHEIGHT, owner.abbreviate(fullText, width), null, ""));
             output.append(endGroup(groupAttrs));
-            if (sample.has("s")) {
-                JSONArray children = sample.getJSONArray("s");
-                for (Object child : children) {
-                    output.append(drawSample(y - FRAMEHEIGHT, (JSONObject) child));
+            if (sample.has("rs")) {
+                JSONArray children = sample.getJSONArray("rs");
+                for (Object childId : children) {
+                    JSONObject child = owner.sampleDataForId((Integer) childId);
+                    tasks.add(new DrawTask(child, depth + 1));
                 }
             }
             return output.toString();
@@ -903,7 +1084,7 @@ final class SVGSamplerOutput {
 
             this.titlePadding = owner.fontSize() * 3.0;
             this.bottomPadding = owner.fontSize() * 2 + 10.0;
-            histogram = buildHistogram(owner.sampleData);
+            histogram = buildHistogram(owner.sampleDataForId(0));
             timeMax = histogram.get(0).getInt("i") + histogram.get(0).getInt("c");
             widthPerTime = (width() - 2 * XPAD) / timeMax;
             double minTime = MINWIDTH / widthPerTime;
@@ -917,13 +1098,20 @@ final class SVGSamplerOutput {
 
         private List<JSONObject> buildHistogram(JSONObject sample) {
             Map<String, JSONObject> bars = new HashMap<>();
-            buildHistogram(sample, bars);
+            ArrayDeque<JSONObject> samples = new ArrayDeque<>();
+
+            JSONObject next = sample;
+            while (next != null) {
+                buildHistogram(next, samples, bars);
+                next = samples.poll();
+            }
+
             ArrayList<JSONObject> lines = new ArrayList<>(bars.values());
             Collections.sort(lines, (a, b) -> Integer.compare(b.getInt("i") + b.getInt("c"), a.getInt("i") + a.getInt("c")));
             return lines;
         }
 
-        private void buildHistogram(JSONObject sample, Map<String, JSONObject> bars) {
+        private void buildHistogram(JSONObject sample, ArrayDeque<JSONObject> samples, Map<String, JSONObject> bars) {
             JSONObject bar = bars.computeIfAbsent(owner.sampleNames.getString(sample.getInt("n")),
                             k -> {
                                 JSONObject entry = new JSONObject();
@@ -938,8 +1126,8 @@ final class SVGSamplerOutput {
             bar.put("c", bar.getInt("c") + sample.getInt("c"));
             if (sample.has("s")) {
                 JSONArray children = sample.getJSONArray("s");
-                for (Object child : children) {
-                    buildHistogram((JSONObject) child, bars);
+                for (Object childId : children) {
+                    samples.add(owner.sampleDataForId((Integer)childId));
                 }
             }
         }

@@ -31,8 +31,8 @@ function fg_init(evt) {
     flamegraph = document.getElementById("flamegraph");
     search_matches = [];
     fg_xmin = 0;
-    fg_xmax = profileData.h;
-    fg_zoomed_sample = profileData;
+    fg_xmax = profileData[0].h;
+    fg_zoomed_sample = profileData[0];
     var el = flamegraph.getElementsByTagName("g");
     for(let i=0;i<el.length;i++)
         update_text(el[i]);
@@ -220,11 +220,11 @@ function unzoom() {
     unzoombtn.style["opacity"] = "0.1";
 
     fg_xmin = 0;
-    fg_xmax = profileData.h
+    fg_xmax = profileData[0].h
     fg_max_depth = 0;
-    fg_zoomed_sample = profileData;
+    fg_zoomed_sample = profileData[0];
 
-    zoom_internal(profileData, [], []);
+    zoom_internal(profileData[0], [], []);
 }
 
 // search
@@ -233,7 +233,7 @@ function fg_search(term) {
 
     search_matches = []
 
-    let iter = sample_and_children_depth_first(profileData);
+    let iter = sample_and_children_depth_first(profileData[0]);
     let c = iter.next();
     while (!c.done) {
         let sample = c.value;
@@ -332,7 +332,7 @@ function fg_reset_search() {
 }
 
 function fg_update_color(color_type) {
-    let iter = sample_and_children_depth_first(profileData);
+    let iter = sample_and_children_depth_first(profileData[0]);
     let c = iter.next();
     while (!c.done) {
         let sample = c.value;
@@ -367,7 +367,7 @@ function fg_resize(new_width) {
     viewbox.width = new_width
     let fg_canvas = document.getElementById("fg_canvas");
     fg_canvas.width.baseVal.value = new_width;
-    if (fg_zoomed_sample == profileData) {
+    if (fg_zoomed_sample == profileData[0]) {
         unzoom();
     } else {
         zoom(fg_element_for_sample(fg_zoomed_sample));

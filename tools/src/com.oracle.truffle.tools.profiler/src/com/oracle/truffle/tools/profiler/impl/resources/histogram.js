@@ -251,10 +251,8 @@ function calculate_histogram_bars(bars, sample) {
     }
     bar["i"] = bar["i"] + sample["i"];
     bar["c"] = bar["c"] + sample["c"];
-    if (sample.hasOwnProperty("s")) {
-        for (const child of sample["s"]) {
-            calculate_histogram_bars(bars, child);
-        }
+    for (const child of direct_children(sample)) {
+        calculate_histogram_bars(bars, child);
     }
 }
 

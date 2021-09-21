@@ -70,37 +70,21 @@ function restore_attr(e, attr) {
     e.removeAttribute("_orig_"+attr);
 }
 
-function find_sample_in_tree(tree, id, parents, unrelated) {
-    if (tree.id == id) {
-        return tree;
-    } else if (tree.hasOwnProperty('s')) {
-        parents.push(tree)
-        let children = tree.s;
-        for (let i = 0; i < children.length; i++) {
-            if (children[i].id == id) {
-                for (let j = 0; j < i; j++) {
-                    unrelated.push(children[j]);
-                }
-                for (let j = i + 1; j < children.length; j++) {
-                    unrelated.push(children[j]);
-                }
-                return children[i];
-            } else if(children[i].id > id) {
-                for (let j = 0; j < i - 1; j++) {
-                    unrelated.push(children[j]);
-                }
-                for (let j = i; j < children.length; j++) {
-                    unrelated.push(children[j]);
-                }
-                return find_sample_in_tree(children[i - 1], id, parents, unrelated);
+function find_sample_in_tree(id, parents, unrelated) {
+    let result = profileData[id];
+    let sample = result;
+    let parent = sample.p
+    while (parent != null) {
+        parents.push(profileData[parent]);
+        for (const sibling of profileData[parent].s) {
+            if (sibling != sample.id) {
+                unrelated.push(profileData[sibling]);
             }
         }
-        for (let j = 0; j < children.length - 1; j++) {
-            unrelated.push(children[j]);
-        }
-        return find_sample_in_tree(children[children.length - 1], id, parents, unrelated);
+        sample = profileData[parent];
+        parent = sample.p;
     }
-    return null;
+    return result;
 }
 
 function validate_no_overlap(sample, parents, unrelated) {
@@ -149,12 +133,12 @@ function validate_no_overlap(sample, parents, unrelated) {
 function sample_parents_and_unrelated_for_id(id) {
     let parents = [];
     let unrelated = [];
-    let result =  [find_sample_in_tree(profileData, id, parents, unrelated), parents, unrelated];
+    let result =  [find_sample_in_tree(id, parents, unrelated), parents, unrelated];
     return result
 }
 
 function sample_for_id(id) {
-    return find_sample_in_tree(profileData, id, [], []);
+    return profileData[id];
 }
 
 function depth_for_id_in_tree(tree, id) {
@@ -176,7 +160,7 @@ function depth_for_id_in_tree(tree, id) {
 
 function depth_for_sample(sample) {
     if (!sample.hasOwnProperty("depth")) {
-        sample.depth = depth_for_id_in_tree(profileData, sample.id);
+        sample.depth = depth_for_id_in_tree(profileData[0], sample.id);
     }
     return sample.depth;
 }
@@ -191,21 +175,27 @@ function sample_and_children_depth_first(sample) {
                 let result = stack.pop();
 
                 let rdepth = depth_for_sample(result);
-                if (result.hasOwnProperty("s")) {
-                    let children = result.s.slice();
-                    children.reverse();
-
-                    for(const child of children) {
-                        if (!child.hasOwnProperty("depth")) {
-                            child.depth = rdepth + 1;
-                        }
-                        stack.push(child);
+                for(const child of direct_children(result).reverse()) {
+                    if (!child.hasOwnProperty("depth")) {
+                        child.depth = rdepth + 1;
                     }
+                    stack.push(child);
                 }
                 return {value: result, done: false}
             }
         }
     }
+}
+
+function direct_children(sample) {
+    let result = [];
+    if (sample.hasOwnProperty("s")) {
+        for (const childId of sample["s"]) {
+            let child = sample_for_id(childId);
+            result.push(child);
+        }
+    }
+    return result;
 }
 
 function title(e) {
