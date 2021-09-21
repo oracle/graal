@@ -40,10 +40,7 @@
  */
 package org.graalvm.collections;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
@@ -98,7 +95,7 @@ public class PrefixTree {
         R visit(Node n, List<R> childResults);
     }
 
-    public static class Node extends AtomicLong {
+    public static final class Node extends AtomicLong {
         private volatile long seqlock;
         private volatile long[] keys;
         private volatile Node[] children;

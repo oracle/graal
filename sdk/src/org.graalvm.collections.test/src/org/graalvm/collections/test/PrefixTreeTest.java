@@ -185,7 +185,7 @@ public class PrefixTreeTest {
         });
 
         verifyValue(tree.root(), depth, parallelism);
-//        Assert.assertEquals("The root node has 13 children.", 26, tree.root().seqlockValue());
+// Assert.assertEquals("The root node has 13 children.", 26, tree.root().seqlockValue());
     }
 
     @Test
