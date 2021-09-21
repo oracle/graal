@@ -25,6 +25,7 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
@@ -65,9 +66,8 @@ public class ResourceConfiguration implements ConfigurationBase {
     }
 
     private final ConcurrentMap<ConditionalElement<String>, Pattern> addedResources = new ConcurrentHashMap<>();
-
     private final ConcurrentMap<ConditionalElement<String>, Pattern> ignoredResources = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap.KeySetView<ConditionalElement<String>, Boolean> bundles = ConcurrentHashMap.newKeySet();
+    private final Set<ConditionalElement<String>> bundles = ConcurrentHashMap.newKeySet();
 
     public ResourceConfiguration() {
     }
