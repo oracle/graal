@@ -464,7 +464,7 @@ final class SVGSamplerOutput {
         public String resizeFunction() {
             StringBuilder result = new StringBuilder();
             result.append("function resize() {\n");
-            result.append("owner_resize(window.innerWidth);\n");
+            result.append("owner_resize(document.firstElementChild.clientWidth);\n");
             for (SVGComponent component : components) {
                 result.append(component.resizeFunction());
             }
@@ -828,7 +828,7 @@ final class SVGSamplerOutput {
         }
 
         public String resizeFunction() {
-            return "fg_resize(window.innerWidth);\n";
+            return "fg_resize(document.firstElementChild.clientWidth);\n";
         }
 
         public String initFunction(String argName) {
@@ -1018,7 +1018,7 @@ final class SVGSamplerOutput {
         }
 
         public String resizeFunction() {
-            return "h_resize(window.innerWidth);\n";
+            return "h_resize(document.firstElementChild.clientWidth);\n";
         }
 
         public String initFunction(String argName) {
