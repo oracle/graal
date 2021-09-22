@@ -1601,6 +1601,17 @@ public class SnippetTemplate {
      */
     @SuppressWarnings("try")
     public UnmodifiableEconomicMap<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args, boolean killReplacee) {
+        if (!(replacee instanceof ControlSinkNode)) {
+            /*
+             * For all use cases of this, the replacee is killed sooner ({@code killReplacee ==
+             * true}) or later (by the caller of this method). However, we cannot do that if the
+             * snippet does not have a return node we because that means we kill the {@code
+             * replacee.next()} which might be connected to a merge whose next node has not yet been
+             * lowered [GR-33909].
+             */
+            GraalError.guarantee(this.returnNode != null, "Cannot kill %s because snippet %s does not have a return node", replacee, this);
+        }
+
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(debug)) {
