@@ -231,12 +231,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     protected void processMethodMetadata(DuringAnalysisAccessImpl access) {
         if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
-            /* Trigger creation of the AnalysisMethod objects needed to store metadata */
             Set<Executable> newQueriedMethods = new HashSet<>();
             for (Executable method : queriedMethods) {
                 if (!SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
-                    access.getMetaAccess().lookupJavaMethod(method);
-                    registerMetadataForReflection(access, method);
+                    registerMetadataForReflection(access, access.getMetaAccess().lookupJavaMethod(method), method);
                     newQueriedMethods.add(method);
                 }
             }
@@ -248,7 +246,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                  * method.
                  */
                 if (method.isReachable() && method.hasJavaMethod()) {
-                    registerMetadataForReflection(access, method.getJavaMethod());
+                    registerMetadataForReflection(access, method, method.getJavaMethod());
                 }
             }
         }
@@ -256,18 +254,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private static final Method parseAllTypeAnnotations = ReflectionUtil.lookupMethod(TypeAnnotationParser.class, "parseAllTypeAnnotations", AnnotatedElement.class);
 
-    private void registerMetadataForReflection(DuringAnalysisAccessImpl access, Executable reflectMethod) {
+    private void registerMetadataForReflection(DuringAnalysisAccessImpl access, AnalysisMethod analysisMethod, Executable reflectMethod) {
         /*
          * Reflection signature parsing will try to instantiate classes via Class.forName().
          */
-        makeTypeReachable(access, reflectMethod.getDeclaringClass(), false);
+        makeTypeReachable(access, analysisMethod.getDeclaringClass().getJavaClass(), false);
         for (TypeVariable<?> type : reflectMethod.getTypeParameters()) {
             makeTypeReachable(access, type, true);
         }
-        for (Type paramType : reflectMethod.getGenericParameterTypes()) {
+        for (Type paramType : analysisMethod.getGenericParameterTypes()) {
             makeTypeReachable(access, paramType, true);
         }
-        if (reflectMethod instanceof Method) {
+        if (!analysisMethod.isConstructor()) {
             makeTypeReachable(access, ((Method) reflectMethod).getGenericReturnType(), true);
         }
         for (Type exceptionType : reflectMethod.getGenericExceptionTypes()) {
@@ -277,7 +275,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         /*
          * Enable runtime parsing of annotations
          */
-        for (Annotation annotation : GuardedAnnotationAccess.getDeclaredAnnotations(reflectMethod)) {
+        for (Annotation annotation : GuardedAnnotationAccess.getDeclaredAnnotations(analysisMethod)) {
             makeTypeReachable(access, annotation.annotationType(), false);
         }
         for (Annotation[] parameterAnnotations : reflectMethod.getParameterAnnotations()) {
@@ -304,7 +302,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return;
         }
         seenTypes.add(type);
-        if (type instanceof Class<?>) {
+        if (type instanceof Class<?> && !SubstitutionReflectivityFilter.shouldExclude((Class<?>) type, access.getMetaAccess(), access.getUniverse())) {
             Class<?> clazz = (Class<?>) type;
             if (access.getMetaAccess().lookupJavaType(clazz).registerAsReachable()) {
                 access.requireAnalysisIteration();

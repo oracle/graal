@@ -41,8 +41,8 @@ public interface RuntimeReflectionConstructors {
                     byte[] parameterAnnotations,
                     byte[] annotationDefault,
                     byte[] typeAnnotations,
-                    String[] parameterNames,
-                    int[] parameterModifiers);
+                    String[] reflectParameterNames,
+                    int[] reflectParameterModifiers);
 
     Constructor<?> newConstructor(Class<?> declaringClass,
                     Class<?>[] parameterTypes,
@@ -52,6 +52,6 @@ public interface RuntimeReflectionConstructors {
                     byte[] annotations,
                     byte[] parameterAnnotations,
                     byte[] typeAnnotations,
-                    String[] parameterNames,
-                    int[] parameterModifiers);
+                    String[] reflectParameterNames,
+                    int[] reflectParameterModifiers);
 }
