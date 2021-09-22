@@ -106,8 +106,12 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     }
 
     private ValueNode op(ValueNode v, boolean allowZeroExtend) {
+        return op(v, allowZeroExtend, true);
+    }
+
+    private ValueNode op(ValueNode v, boolean allowZeroExtend, boolean gvn) {
         boolean zeroExtend = allowZeroExtend && value instanceof ZeroExtendNode;
-        return IntegerConvertNode.convert(v, stamp, zeroExtend, graph(), NodeView.DEFAULT);
+        return IntegerConvertNode.convert(v, stamp, zeroExtend, graph(), NodeView.DEFAULT, gvn);
     }
 
     @Override
@@ -125,4 +129,8 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
         return op(newBase.valueNode(), true);
     }
 
+    @Override
+    public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
+        return op(newBase.valueNode(), true, gvn);
+    }
 }

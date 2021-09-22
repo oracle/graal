@@ -141,15 +141,19 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     public ValueNode op(ValueNode b, ValueNode o) {
+        return op(b, o, true);
+    }
+
+    public ValueNode op(ValueNode b, ValueNode o, boolean gvn) {
         if (value instanceof AddNode) {
-            return add(graph(), b, o);
+            return add(graph(), b, o, gvn);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return sub(graph(), b, o);
+                return sub(graph(), b, o, gvn);
             } else {
                 assert base.valueNode() == value.getY();
-                return sub(graph(), o, b);
+                return sub(graph(), o, b, gvn);
             }
         }
         throw GraalError.shouldNotReachHere();
@@ -197,7 +201,12 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public ValueNode copyValue(InductionVariable newBase) {
-        return op(newBase.valueNode(), offset);
+        return copyValue(newBase, true);
+    }
+
+    @Override
+    public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
+        return op(newBase.valueNode(), offset, gvn);
     }
 
     @Override
