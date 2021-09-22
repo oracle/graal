@@ -462,7 +462,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
                  */
                 registerAsAllocated(null);
             }
-            universe.hostVM.executor().execute(initializationTask);
+            ensureInitialized();
         }
     }
 

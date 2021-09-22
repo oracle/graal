@@ -841,7 +841,7 @@ public class NativeImageGenerator {
                 AnnotationSubstitutionProcessor annotationSubstitutions = createDeclarativeSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
                 aUniverse = createAnalysisUniverse(options, target, loader, originalMetaAccess, originalSnippetReflection, annotationSubstitutions, cEnumProcessor,
-                                classInitializationSupport, Collections.singletonList(harnessSubstitutions), analysisExecutor);
+                                classInitializationSupport, Collections.singletonList(harnessSubstitutions));
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
                 AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(
@@ -891,12 +891,12 @@ public class NativeImageGenerator {
 
     public static AnalysisUniverse createAnalysisUniverse(OptionValues options, TargetDescription target, ImageClassLoader loader, MetaAccessProvider originalMetaAccess,
                     SnippetReflectionProvider originalSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SubstitutionProcessor cEnumProcessor,
-                    ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions, ForkJoinPool buildExecutor) {
+                    ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions) {
         UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(originalSnippetReflection, annotationSubstitutions);
         SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
                         annotationSubstitutions, additionalSubstitutions);
 
-        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, buildExecutor, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions, loader.platform);
+        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions, loader.platform);
 
         automaticSubstitutions.init(loader, originalMetaAccess);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
