@@ -169,12 +169,14 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     }
 
     @Override
-    public boolean hasSideEffect() {
+    public final boolean hasSideEffect() {
         return true;
     }
 
     /**
      * @see MacroNode#getKilledLocationIdentity()
+     *
+     *      FIXME: make this final once [GR-32638] is fixed
      */
     @Override
     public LocationIdentity getKilledLocationIdentity() {

@@ -169,7 +169,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     }
 
     @Override
-    public boolean hasSideEffect() {
+    public final boolean hasSideEffect() {
         return true;
     }
 
@@ -180,7 +180,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
      * kill location must not get broader.
      */
     @Override
-    public LocationIdentity getKilledLocationIdentity() {
+    public final LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 
