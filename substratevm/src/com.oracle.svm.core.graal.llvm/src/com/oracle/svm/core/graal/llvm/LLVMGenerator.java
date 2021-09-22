@@ -90,8 +90,6 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointBuiltins;
-import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -118,7 +116,6 @@ import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMStackSlot;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -166,11 +163,9 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private final LIRKindTool lirKindTool;
     private final DebugInfoPrinter debugInfoPrinter;
 
-    private final ResolvedJavaType prologueType;
-
     private final String functionName;
     private final boolean isEntryPoint;
-    private final boolean canModifySpecialRegisters;
+    private final boolean modifiesSpecialRegisters;
     private final boolean returnsEnum;
     private final boolean returnsCEnum;
 
@@ -192,11 +187,9 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.lirKindTool = new LLVMUtils.LLVMKindTool(builder);
         this.debugInfoPrinter = new DebugInfoPrinter(this, debugLevel);
 
-        this.prologueType = providers.getMetaAccess().lookupJavaType(CEntryPointOptions.Prologue.class);
-
         this.functionName = SubstrateUtil.uniqueShortName(method);
         this.isEntryPoint = isEntryPoint(method);
-        this.canModifySpecialRegisters = canModifySpecialRegisters(method);
+        this.modifiesSpecialRegisters = modifiesSpecialRegisters(method);
 
         ResolvedJavaType returnType = method.getSignature().getReturnType(null).resolve(null);
         this.returnsEnum = returnType.isEnum();
@@ -306,13 +299,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return ((HostedMethod) method).isEntryPoint();
     }
 
-    private boolean canModifySpecialRegisters(ResolvedJavaMethod method) {
-        CEntryPointOptions entryPointOptions = GuardedAnnotationAccess.getAnnotation(method, CEntryPointOptions.class);
-        return prologueType.isAssignableFrom(method.getDeclaringClass()) ||
-                        entryPointOptions != null && entryPointOptions.prologue() == CEntryPointOptions.NoPrologue.class ||
-                        method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointSnippets.class)) ||
-                        method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointNativeFunctions.class)) ||
-                        method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointBuiltins.class));
+    private static boolean modifiesSpecialRegisters(ResolvedJavaMethod method) {
+        return ((HostedMethod) method).compilationInfo.modifiesSpecialRegisters();
     }
 
     /* Basic blocks */
@@ -483,7 +471,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         if (!isEntryPoint(method) && SpecialRegister.count() > 0) {
             newParameterTypes = new LLVMTypeRef[SpecialRegister.count() + parameterTypes.length];
             for (SpecialRegister reg : SpecialRegister.registers()) {
-                newParameterTypes[reg.index] = !LLVMOptions.ReturnSpecialRegs.getValue() && canModifySpecialRegisters(method) ? builder.pointerType(builder.wordType()) : builder.wordType();
+                newParameterTypes[reg.index] = !LLVMOptions.ReturnSpecialRegs.getValue() && modifiesSpecialRegisters(method) ? builder.pointerType(builder.wordType()) : builder.wordType();
             }
             System.arraycopy(parameterTypes, 0, newParameterTypes, SpecialRegister.count(), parameterTypes.length);
         }
@@ -764,12 +752,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public Variable emitReadRegister(Register register, ValueKind<?> kind) {
         LLVMValueRef value;
         if (register.equals(ReservedRegisters.singleton().getThreadRegister())) {
-            if (isEntryPoint || canModifySpecialRegisters) {
+            if (isEntryPoint || modifiesSpecialRegisters) {
                 return new LLVMPendingSpecialRegisterRead(this, SpecialRegister.ThreadPointer);
             }
             value = getSpecialRegister(SpecialRegister.ThreadPointer);
         } else if (register.equals(ReservedRegisters.singleton().getHeapBaseRegister())) {
-            if (isEntryPoint || canModifySpecialRegisters) {
+            if (isEntryPoint || modifiesSpecialRegisters) {
                 return new LLVMPendingSpecialRegisterRead(this, SpecialRegister.HeapBase);
             }
             value = getSpecialRegister(SpecialRegister.HeapBase);
@@ -784,7 +772,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public void emitWriteRegister(Register dst, Value src, ValueKind<?> kind) {
         if (dst.equals(ReservedRegisters.singleton().getThreadRegister())) {
-            VMError.guarantee(isEntryPoint || canModifySpecialRegisters, "Can only write to registers in a method where it is expected.");
+            VMError.guarantee(isEntryPoint || modifiesSpecialRegisters, "Can only write to registers in a method where it is expected.");
             if (LLVMOptions.ReturnSpecialRegs.getValue()) {
                 setSpecialRegisterValue(SpecialRegister.ThreadPointer, getVal(src));
             } else {
@@ -792,7 +780,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             }
             return;
         } else if (dst.equals(ReservedRegisters.singleton().getHeapBaseRegister())) {
-            VMError.guarantee(isEntryPoint || canModifySpecialRegisters, "Can only write to registers in a method where it is expected.");
+            VMError.guarantee(isEntryPoint || modifiesSpecialRegisters, "Can only write to registers in a method where it is expected.");
             if (LLVMOptions.ReturnSpecialRegs.getValue()) {
                 setSpecialRegisterValue(SpecialRegister.HeapBase, getVal(src));
             } else {
@@ -1186,7 +1174,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         LLVMValueRef specialRegister;
-        if (isEntryPoint || canModifySpecialRegisters) {
+        if (isEntryPoint || modifiesSpecialRegisters) {
             LLVMValueRef specialRegisterPointer = getSpecialRegisterPointer(register);
             specialRegister = builder.buildLoad(specialRegisterPointer, builder.wordType());
         } else {
@@ -1199,7 +1187,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         assert !LLVMOptions.ReturnSpecialRegs.getValue();
         if (isEntryPoint) {
             return stackSlots[register.index];
-        } else if (canModifySpecialRegisters) {
+        } else if (modifiesSpecialRegisters) {
             return builder.getFunctionParam(register.index);
         } else {
             throw VMError.shouldNotReachHere();
@@ -1212,8 +1200,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         LLVMValueRef specialRegisterArg;
-        if (targetMethod != null && canModifySpecialRegisters(targetMethod)) {
-            if (isEntryPoint || canModifySpecialRegisters) {
+        if (targetMethod != null && modifiesSpecialRegisters(targetMethod)) {
+            if (isEntryPoint || modifiesSpecialRegisters) {
                 specialRegisterArg = getSpecialRegisterPointer(register);
             } else {
                 /*
@@ -1224,7 +1212,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 assert Uninterruptible.Utils.isUninterruptible(targetMethod);
                 specialRegisterArg = builder.constantNull(builder.pointerType(builder.wordType()));
             }
-        } else if (isEntryPoint || canModifySpecialRegisters) {
+        } else if (isEntryPoint || modifiesSpecialRegisters) {
             specialRegisterArg = builder.buildLoad(getSpecialRegisterPointer(register), builder.wordType());
         } else {
             specialRegisterArg = getSpecialRegister(register);
