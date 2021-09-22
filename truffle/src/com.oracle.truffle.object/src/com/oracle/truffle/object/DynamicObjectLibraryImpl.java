@@ -1736,7 +1736,8 @@ abstract class DynamicObjectLibraryImpl {
 
         @Override
         protected boolean isValid() {
-            return newShapeValidAssumption == neverValidAssumption() || newShapeValidAssumption == alwaysValidAssumption() || newShapeValidAssumption.isValid();
+            Assumption newShapeValid = newShapeValidAssumption;
+            return newShapeValid == neverValidAssumption() || newShapeValid == alwaysValidAssumption() || newShapeValid.isValid();
         }
 
         protected void maybeUpdateShape(DynamicObject store) {
