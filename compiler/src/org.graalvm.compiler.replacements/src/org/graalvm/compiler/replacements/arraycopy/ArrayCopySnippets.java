@@ -48,7 +48,6 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
-import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -246,8 +245,11 @@ public abstract class ArrayCopySnippets implements Snippets {
         counters.systemArraycopyCopiedCounter.add(length);
 
         System.arraycopy(src, srcPos, dest, destPos, length);
-        // the call will never return
-        UnreachableNode.unreachable();
+        /*
+         * Since the call will never return, we would want an Unreachable here. Unfortunately
+         * unconditional deopts are not yet supported in snippets [GR-33909].
+         */
+        // UnreachableNode.unreachable();
     }
 
     /**
