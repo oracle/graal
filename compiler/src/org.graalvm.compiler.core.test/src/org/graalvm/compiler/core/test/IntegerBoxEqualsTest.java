@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.junit.Test;
@@ -40,11 +41,16 @@ public class IntegerBoxEqualsTest extends GraalCompilerTest {
         }
 
         public String check(Integer i) {
-            if (value == i || value.equals(i)) {
-                return "";
-            } else {
+            b: {
+                if (GraalDirectives.injectBranchProbability(0.01, value == i)) {
+                    break b;
+                }
+                if (value.equals(i)) {
+                    break b;
+                }
                 return "nope";
             }
+            return "";
         }
     }
 
