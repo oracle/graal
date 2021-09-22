@@ -70,7 +70,8 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         super(defaultSystemClassLoader, classpath);
 
         imagemp = Arrays.stream(modulePath).map(Paths::get).collect(Collectors.toUnmodifiableList());
-        buildmp = Arrays.stream(System.getProperty("jdk.module.path", "").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toUnmodifiableList());
+        buildmp = Optional.ofNullable(System.getProperty("jdk.module.path")).stream()
+                        .flatMap(s -> Arrays.stream(s.split(File.pathSeparator))).map(Paths::get).collect(Collectors.toUnmodifiableList());
 
         ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
         adjustBootLayerQualifiedExports(moduleLayer);
