@@ -973,9 +973,12 @@ public abstract class Launcher {
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
         String indent = spaces(indentStart);
-        String desc = wrap(description != null ? description : "");
+        String desc = description != null ? description : "";
         String nl = System.lineSeparator();
         String[] descLines = desc.split(nl);
+        for (int i = 0; i < descLines.length; i++) {
+            descLines[i] = wrap(descLines[i]);
+        }
         if (option.length() >= optionWidth && description != null) {
             out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
         } else {

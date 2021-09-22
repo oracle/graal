@@ -2149,8 +2149,9 @@ def _gen_gu_manifest(components, formatter, bundled=False):
     dependencies = sorted(dependencies)
     if dependencies:
         manifest["Require-Bundle"] = ','.join(("org.graalvm." + d for d in dependencies))
-    if isinstance(main_component, mx_sdk.GraalVmLanguage):
-        _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
+    if isinstance(main_component, (mx_sdk.GraalVmLanguage, mx_sdk.GraalVmTool)):
+        _component_type_base = 'languages' if isinstance(main_component, mx_sdk.GraalVmLanguage) else 'tools'
+        _wd_base = join('jre', _component_type_base) if _src_jdk_version < 9 else _component_type_base
         manifest["x-GraalVM-Working-Directories"] = join(_wd_base, main_component.dir_name)
 
     post_install_msg = None
