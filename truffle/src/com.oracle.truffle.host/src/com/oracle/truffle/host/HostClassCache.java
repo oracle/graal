@@ -42,6 +42,7 @@ package com.oracle.truffle.host;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
@@ -260,5 +261,9 @@ final class HostClassCache {
 
     boolean allowsImplementation(Class<?> type) {
         return apiAccess.allowsImplementation(hostAccess, type);
+    }
+
+    boolean methodScoped(Executable e) {
+        return apiAccess.isMethodScoped(hostAccess, e);
     }
 }

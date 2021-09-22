@@ -41,9 +41,12 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,6 +68,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -82,10 +86,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
-import java.io.File;
-import java.lang.reflect.Field;
-import java.nio.file.Files;
-import org.junit.Assume;
 
 public class LoggingTest {
 
@@ -1520,20 +1520,21 @@ public class LoggingTest {
             return new LoggingContext(env);
         }
 
+        protected abstract ContextReference<LoggingContext> getReference();
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            Class<? extends AbstractLoggingLanguage> language = getClass();
             final RootNode root = new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     boolean doDefaultLogging = true;
                     if (action != null) {
-                        doDefaultLogging = action.test(lookupContextReference(language).get(), allLoggers);
+                        doDefaultLogging = action.test(getReference().get(this), allLoggers);
                     }
                     if (doDefaultLogging) {
                         doLog();
                     }
-                    return lookupContextReference(language).get().getEnv().asGuestValue(null);
+                    return getReference().get(this).getEnv().asGuestValue(null);
                 }
             };
             return Truffle.getRuntime().createCallTarget(root);
@@ -1555,6 +1556,13 @@ public class LoggingTest {
         public LoggingLanguageFirst() {
             super(ID);
         }
+
+        @Override
+        protected ContextReference<LoggingContext> getReference() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<LoggingContext> CONTEXT_REF = ContextReference.create(LoggingLanguageFirst.class);
     }
 
     @TruffleLanguage.Registration(id = LoggingLanguageSecond.ID, name = LoggingLanguageSecond.ID, version = "1.0")
@@ -1564,6 +1572,13 @@ public class LoggingTest {
         public LoggingLanguageSecond() {
             super(ID);
         }
+
+        @Override
+        protected ContextReference<LoggingContext> getReference() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<LoggingContext> CONTEXT_REF = ContextReference.create(LoggingLanguageSecond.class);
     }
 
     private static final class TestHandler extends Handler {

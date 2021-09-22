@@ -65,6 +65,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -73,11 +74,9 @@ import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.ContextLocal;
-import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.TruffleLogger;
+import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -89,6 +88,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.Assert;
@@ -97,23 +97,23 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import org.graalvm.collections.Pair;
 
 public class ContextPreInitializationTest {
 
@@ -141,8 +141,6 @@ public class ContextPreInitializationTest {
         ContextPreInitializationTestSecondLanguage.lookupService = false;
         ContextPreInitializationFirstInstrument.actions = null;
         BaseLanguage.actions.clear();
-        BaseLanguage.parseStdOutOutput.clear();
-        BaseLanguage.parseStdErrOutput.clear();
         resetSystemPropertiesOptions();
         resetLanguageHomes();
         patchableLanguages.clear();
@@ -154,8 +152,10 @@ public class ContextPreInitializationTest {
         setPatchable();
         final String stdOutContent = "output";
         final String stdErrContent = "error";
-        BaseLanguage.parseStdOutOutput.put(FIRST, stdOutContent);
-        BaseLanguage.parseStdErrOutput.put(FIRST, stdErrContent);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), stdOutContent);
+            write(env.err(), stdErrContent);
+        });
         doContextPreinitialize();
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(0, contexts.size());
@@ -176,10 +176,14 @@ public class ContextPreInitializationTest {
         final String firstStdErrContent = "first-error";
         final String secondStdOutContent = "second-output";
         final String secondStdErrContent = "second-error";
-        BaseLanguage.parseStdOutOutput.put(FIRST, firstStdOutContent);
-        BaseLanguage.parseStdErrOutput.put(FIRST, firstStdErrContent);
-        BaseLanguage.parseStdOutOutput.put(SECOND, secondStdOutContent);
-        BaseLanguage.parseStdErrOutput.put(SECOND, secondStdErrContent);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), firstStdOutContent);
+            write(env.err(), firstStdErrContent);
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestSecondLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), secondStdOutContent);
+            write(env.err(), secondStdErrContent);
+        });
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(1, contexts.size());
@@ -1008,6 +1012,59 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    public void testRedirectedLogging() throws Exception {
+        setPatchable(FIRST);
+        String origLogFile = System.getProperty("polyglot.log.file");
+        Path preInitLogFile = Files.createTempFile("preinit", ".log");
+        Path patchLogFile = Files.createTempFile("patch", ".log");
+        try {
+            System.setProperty("polyglot.log.engine.level", "FINE");
+            System.setProperty("polyglot.log.file", preInitLogFile.toString());
+            doContextPreinitialize(FIRST);
+            assertFalse(getActiveFileHandlers().contains(preInitLogFile));
+            List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            final CountingContext firstLangCtx = findContext(FIRST, contexts);
+            assertNotNull(firstLangCtx);
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(0, firstLangCtx.patchContextCount);
+            assertEquals(0, firstLangCtx.disposeContextCount);
+            assertEquals(1, firstLangCtx.initializeThreadCount);
+            assertEquals(1, firstLangCtx.disposeThreadCount);
+            assertTrue(new String(Files.readAllBytes(preInitLogFile)).contains("Pre-initialized context for language: ContextPreInitializationFirst"));
+            System.setProperty("polyglot.log.file", patchLogFile.toString());
+            try (Context ctx = Context.newBuilder().option("log.engine.level", "FINE").build()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+                contexts = new ArrayList<>(emittedContexts);
+                assertEquals(1, contexts.size());
+                assertEquals(1, firstLangCtx.createContextCount);
+                assertEquals(1, firstLangCtx.initializeContextCount);
+                assertEquals(1, firstLangCtx.patchContextCount);
+                assertEquals(0, firstLangCtx.disposeContextCount);
+                assertEquals(2, firstLangCtx.initializeThreadCount);
+                assertEquals(1, firstLangCtx.disposeThreadCount);
+                assertTrue(new String(Files.readAllBytes(patchLogFile)).contains("Successfully patched context of language: ContextPreInitializationFirst"));
+            }
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            assertEquals(1, firstLangCtx.disposeContextCount);
+            assertEquals(2, firstLangCtx.initializeThreadCount);
+            assertEquals(2, firstLangCtx.disposeThreadCount);
+        } finally {
+            System.clearProperty("polyglot.log.engine.level");
+            System.clearProperty("polyglot.log.file");
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
+        }
+    }
+
+    @Test
     public void testEngineBoundLoggers() throws Exception {
         String loggerName = "engine";
         String loggerLevelOptionName = String.format("log.%s.level", loggerName);
@@ -1587,6 +1644,61 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    @SuppressWarnings("try")
+    public void testAuxImageStore() throws Exception {
+        setPatchable(FIRST);
+        Path testFolder = Files.createTempDirectory("testSources").toRealPath();
+        try {
+            Path home = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
+            Path resource = Files.write(home.resolve("testImageStore.test"), Collections.singleton("test"));
+            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), home.toString());
+            AtomicReference<com.oracle.truffle.api.source.Source> buildTimeSourceRef = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                buildTimeSourceRef.set(createSource(env, resource, true));
+            });
+            doContextPreinitialize(FIRST);
+            List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            CountingContext firstLangCtx = findContext(FIRST, contexts);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertNotNull(buildTimeSourceRef.get());
+
+            Engine engine = Engine.create();
+            AbstractPolyglotImpl impl = findImpl();
+            Object engineImpl = impl.getAPIAccess().getReceiver(engine);
+            AtomicReference<com.oracle.truffle.api.source.Source> storeTimeSourceRef = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                storeTimeSourceRef.set(createSource(env, resource, true));
+            });
+            setPreInitializeOption(FIRST);
+            try {
+                TestAPIAccessor.engineAccess().preinitializeContext(engineImpl);
+            } finally {
+                clearPreInitializeOption();
+            }
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(2, contexts.size());
+            AtomicReference<com.oracle.truffle.api.source.Source> runtimeSourceRef = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+                runtimeSourceRef.set(createSource(env, resource, true));
+            });
+            try (Context ctx = Context.create()) {
+                assertEquals(1, firstLangCtx.patchContextCount);
+                assertSame(buildTimeSourceRef.get(), storeTimeSourceRef.get());
+                assertSame(buildTimeSourceRef.get(), runtimeSourceRef.get());
+            }
+        } finally {
+            delete(testFolder);
+        }
+    }
+
+    AbstractPolyglotImpl findImpl() throws ReflectiveOperationException {
+        Method getImplMethod = Engine.class.getDeclaredMethod("getImpl");
+        getImplMethod.setAccessible(true);
+        return (AbstractPolyglotImpl) getImplMethod.invoke(null);
+    }
+
+    @Test
     public void testAccessPriviledgePatching() throws ReflectiveOperationException {
         setPatchable(FIRST, SECOND);
 
@@ -1806,6 +1918,14 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testThreadLocalActions() throws Exception {
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            env.submitThreadLocal(new Thread[]{Thread.currentThread()}, new ThreadLocalAction(false, false) {
+                @Override
+                protected void perform(Access access) {
+                    // Empty action just to do TraceStackTraceInterval logging
+                }
+            });
+        });
         setPatchable(FIRST);
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -1826,6 +1946,52 @@ public class ContextPreInitializationTest {
         }
         Optional<String> message = handler.logs.stream().map((r) -> r.getMessage()).filter((m) -> m.contains("[tl]")).findAny();
         assertTrue(message.isPresent());
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testRestrictedPermittedLanguagesMatched() throws Exception {
+        setPatchable(FIRST, SECOND, INTERNAL);
+        ContextPreInitializationTestFirstLanguage.callDependentLanguage = true;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = true;
+        doContextPreinitialize(FIRST, SECOND);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(3, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        CountingContext secondLangCtx = findContext(SECOND, contexts);
+        assertNotNull(secondLangCtx);
+        CountingContext internalLangCtx = findContext(INTERNAL, contexts);
+        assertNotNull(internalLangCtx);
+        try (Context ctx = Context.newBuilder(SECOND).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            ctx.eval(Source.create(SECOND, "test"));
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(3, contexts.size());
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testRestrictedPermittedLanguagesUnmatched() throws Exception {
+        setPatchable(FIRST, SECOND, INTERNAL, SHARED);
+        ContextPreInitializationTestFirstLanguage.callDependentLanguage = true;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = true;
+        doContextPreinitialize(FIRST, SECOND, SHARED);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(4, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        CountingContext secondLangCtx = findContext(SECOND, contexts);
+        assertNotNull(secondLangCtx);
+        CountingContext internalLangCtx = findContext(INTERNAL, contexts);
+        assertNotNull(internalLangCtx);
+        CountingContext sharedLangCtx = findContext(SHARED, contexts);
+        assertNotNull(sharedLangCtx);
+        try (Context ctx = Context.newBuilder(SECOND).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            ctx.eval(Source.create(SECOND, "test"));
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(7, contexts.size());
+        }
     }
 
     private static IsSameFileResult testIsSameFileImpl(boolean allowIO, FileSystem fs) throws ReflectiveOperationException {
@@ -1914,7 +2080,19 @@ public class ContextPreInitializationTest {
     }
 
     private static void doContextPreinitialize(String... languages) throws ReflectiveOperationException {
-        final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
+        setPreInitializeOption(languages);
+        try {
+            final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
+            final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
+            preInitMethod.setAccessible(true);
+            preInitMethod.invoke(null);
+        } finally {
+            // PreinitializeContexts should only be set during pre-initialization, not at runtime
+            clearPreInitializeOption();
+        }
+    }
+
+    private static void setPreInitializeOption(String... languages) {
         final StringBuilder languagesOptionValue = new StringBuilder();
         for (String language : languages) {
             languagesOptionValue.append(language).append(',');
@@ -1923,14 +2101,18 @@ public class ContextPreInitializationTest {
             languagesOptionValue.replace(languagesOptionValue.length() - 1, languagesOptionValue.length(), "");
             System.setProperty("polyglot.image-build-time.PreinitializeContexts", languagesOptionValue.toString());
         }
-        final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
-        preInitMethod.setAccessible(true);
-        try {
-            preInitMethod.invoke(null);
-        } finally {
-            // PreinitializeContexts should only be set during pre-initialization, not at runtime
-            System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
-        }
+    }
+
+    private static void clearPreInitializeOption() {
+        System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Set<Path> getActiveFileHandlers() throws ReflectiveOperationException {
+        Class<?> polyglotLoggersClass = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers");
+        Method m = polyglotLoggersClass.getDeclaredMethod("getActiveFileHandlers");
+        m.setAccessible(true);
+        return (Set<Path>) m.invoke(null);
     }
 
     private static Collection<? extends CountingContext> findContexts(
@@ -1960,6 +2142,15 @@ public class ContextPreInitializationTest {
     private static int nextId() {
         int id = NEXT_ORDER_INDEX.getAndIncrement();
         return id;
+    }
+
+    private static void write(final OutputStream out, final String content) {
+        try {
+            out.write(content.getBytes("UTF-8"));
+            out.flush();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
     }
 
     static class CountingContext {
@@ -2020,12 +2211,12 @@ public class ContextPreInitializationTest {
     enum ActionKind {
         ON_INITIALIZE_CONTEXT,
         ON_PATCH_CONTEXT,
+        ON_EXECUTE,
         ON_FINALIZE_CONTEXT
     }
 
-    static class BaseLanguage extends TruffleLanguage<CountingContext> {
-        static Map<String, String> parseStdOutOutput = new HashMap<>();
-        static Map<String, String> parseStdErrOutput = new HashMap<>();
+    abstract static class BaseLanguage extends TruffleLanguage<CountingContext> {
+
         static Map<Pair<Class<? extends BaseLanguage>, ActionKind>, Consumer<TruffleLanguage.Env>> actions = new HashMap<>();
 
         static void registerAction(Class<? extends BaseLanguage> languageClass, ActionKind kind, Consumer<TruffleLanguage.Env> action) {
@@ -2060,7 +2251,7 @@ public class ContextPreInitializationTest {
 
         @Override
         protected boolean patchContext(CountingContext context, TruffleLanguage.Env newEnv) {
-            assertNotNull(getCurrentContext(getClass()));
+            assertNotNull(getContextReference0().get(null));
             assertTrue(context.preInitialized);
             assertFalse(context.env.isPreInitialization());
             context.patchContextCount++;
@@ -2102,15 +2293,16 @@ public class ContextPreInitializationTest {
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
-            Class<? extends TruffleLanguage<CountingContext>> languageClass = getClass();
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    executeImpl(lookupContextReference(languageClass).get(), getLanguageInfo());
+                    executeImpl(getContextReference0().get(this));
                     return result;
                 }
             });
         }
+
+        protected abstract ContextReference<CountingContext> getContextReference0();
 
         protected void useLanguage(CountingContext context, String id) {
             com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(id, "", "").internal(true).build();
@@ -2118,31 +2310,9 @@ public class ContextPreInitializationTest {
         }
 
         @CompilerDirectives.TruffleBoundary
-        private static void executeImpl(CountingContext ctx, LanguageInfo info) {
-            ctx.environment().submitThreadLocal(new Thread[]{Thread.currentThread()}, new ThreadLocalAction(false, false) {
-                @Override
-                protected void perform(Access access) {
-                    // Empty action just to do TraceStackTraceInterval logging
-                }
-            });
-            String msg = parseStdOutOutput.get(info.getId());
-            if (msg != null) {
-                write(ctx.environment().out(), msg);
-            }
-            msg = parseStdErrOutput.get(info.getId());
-            if (msg != null) {
-                write(ctx.environment().err(), msg);
-            }
-            assertEquals(0, ctx.disposeContextCount);
-        }
-
-        private static void write(final OutputStream out, final String content) {
-            try {
-                out.write(content.getBytes("UTF-8"));
-                out.flush();
-            } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
-            }
+        private void executeImpl(CountingContext context) {
+            findAction(ActionKind.ON_EXECUTE).ifPresent((c) -> c.accept(context.environment()));
+            assertEquals(0, context.disposeContextCount);
         }
 
         Optional<Consumer<Env>> findAction(ActionKind kind) {
@@ -2190,12 +2360,20 @@ public class ContextPreInitializationTest {
             state = createContextLocal((context) -> new AtomicInteger());
         }
 
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final LanguageReference<ContextPreInitializationTestFirstLanguage> REFERENCE = LanguageReference.create(ContextPreInitializationTestFirstLanguage.class);
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestFirstLanguage.class);
+
         static ContextThreadLocal<AtomicInteger> getThreadStateReference() {
-            return getCurrentLanguage(ContextPreInitializationTestFirstLanguage.class).threadState;
+            return REFERENCE.get(null).threadState;
         }
 
         static ContextLocal<AtomicInteger> getStateReference() {
-            return getCurrentLanguage(ContextPreInitializationTestFirstLanguage.class).state;
+            return REFERENCE.get(null).state;
         }
 
         @Override
@@ -2269,8 +2447,15 @@ public class ContextPreInitializationTest {
         }
 
         public static Env getCurrentContext() {
-            return getCurrentContext(ContextPreInitializationTestSecondLanguage.class).env;
+            return CONTEXT_REF.get(null).env;
         }
+
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestSecondLanguage.class);
 
         @Override
         protected boolean patchContext(CountingContext context, Env newEnv) {
@@ -2294,6 +2479,13 @@ public class ContextPreInitializationTest {
 
     @TruffleLanguage.Registration(id = INTERNAL, name = INTERNAL, version = "1.0", internal = true)
     public static final class ContextPreInitializationTestInternalLanguage extends BaseLanguage {
+
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestInternalLanguage.class);
     }
 
     private static final class TestHandler extends Handler {
@@ -2359,18 +2551,57 @@ public class ContextPreInitializationTest {
         protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
             return firstOptions.equals(newOptions);
         }
+
+        @Override
+        protected ContextReference<CountingContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestSharedLanguage.class);
     }
 
     public abstract static class BaseInstrument extends TruffleInstrument implements ContextsListener {
 
         private Env environment;
         private EventBinding<BaseInstrument> contextsListenerBinding;
+        private EventBinding<?> verifyContextLocalBinding;
+
+        final ContextLocal<TruffleContext> contextLocal = createContextLocal((c) -> c);
 
         @Override
         protected void onCreate(Env env) {
             if (getActions() != null) {
                 environment = env;
                 contextsListenerBinding = env.getInstrumenter().attachContextsListener(this, true);
+                verifyContextLocalBinding = env.getInstrumenter().attachContextsListener(new ContextsListener() {
+
+                    public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+                        assertSame(context, contextLocal.get(context));
+                    }
+
+                    public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+                        assertSame(context, contextLocal.get(context));
+
+                    }
+
+                    public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+                        assertSame(context, contextLocal.get(context));
+
+                    }
+
+                    public void onContextCreated(TruffleContext context) {
+                        assertSame(context, contextLocal.get(context));
+                    }
+
+                    public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+                        assertSame(context, contextLocal.get(context));
+                    }
+
+                    public void onContextClosed(TruffleContext context) {
+                        assertSame(context, contextLocal.get(context));
+
+                    }
+                }, false);
                 performAction(null, null);
             }
         }
@@ -2378,6 +2609,7 @@ public class ContextPreInitializationTest {
         @Override
         protected void onDispose(Env env) {
             if (contextsListenerBinding != null) {
+                verifyContextLocalBinding.dispose();
                 contextsListenerBinding.dispose();
                 contextsListenerBinding = null;
                 environment = null;

@@ -30,10 +30,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeConstructorAccessorImpl.SharedNativeConstructorAccessorImpl.class)
-public class Target_sun_reflect_NativeConstructorAccessorImpl {
+public final class Target_sun_reflect_NativeConstructorAccessorImpl {
     @Substitution
-    public static @Host(Object.class) StaticObject newInstance0(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0,
-                    @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject newInstance0(@JavaType(Constructor.class) StaticObject constructor, @JavaType(Object[].class) StaticObject args0,
+                    @Inject Meta meta) {
         Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass();
         klass.safeInitialize();
         if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {

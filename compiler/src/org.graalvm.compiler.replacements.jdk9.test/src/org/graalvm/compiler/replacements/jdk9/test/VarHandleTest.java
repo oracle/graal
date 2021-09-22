@@ -107,6 +107,12 @@ public class VarHandleTest extends GraalCompilerTest {
 
     void testAccess(String name, int expectedReads, int expectedWrites, int expectedMembars, int expectedAnyKill) {
         ResolvedJavaMethod method = getResolvedJavaMethod(name);
+
+        // Ensures that all VarHandles in the snippet are fully resolved.
+        // Works around outlining of methods in VarHandle resolution (JDK-8265135).
+        Holder h = new Holder();
+        executeExpected(method, null, h);
+
         StructuredGraph graph = parseForCompile(method);
         compile(method, graph);
         Assert.assertEquals(expectedReads, graph.getNodes().filter(ReadNode.class).count());

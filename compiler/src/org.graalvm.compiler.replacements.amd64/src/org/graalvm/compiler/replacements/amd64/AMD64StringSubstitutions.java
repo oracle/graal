@@ -33,11 +33,9 @@ import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayIndexS
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.StringSubstitutions;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -108,7 +106,8 @@ public class AMD64StringSubstitutions {
     @MethodSubstitution(isStatic = false, optional = true)
     public static int indexOf(String source, int ch, int origFromIndex) {
         int fromIndex = origFromIndex;
-        final int sourceCount = source.length();
+        char[] sourceArray = StringSubstitutions.getValue(source);
+        final int sourceCount = sourceArray.length;
         if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex >= sourceCount)) {
             // Note: fromIndex might be near -1>>>1.
             return -1;
@@ -118,22 +117,9 @@ public class AMD64StringSubstitutions {
         }
 
         if (injectBranchProbability(LIKELY_PROBABILITY, ch < Character.MIN_SUPPLEMENTARY_CODE_POINT)) {
-            char[] sourceArray = StringSubstitutions.getValue(source);
             return ArrayIndexOf.indexOf1Char(sourceArray, sourceCount, fromIndex, (char) ch);
         } else {
             return indexOf(source, ch, origFromIndex);
         }
     }
-
-    @MethodSubstitution(isStatic = false)
-    @SuppressFBWarnings(value = "ES_COMPARING_PARAMETER_STRING_WITH_EQ", justification = "reference equality on the receiver is what we want")
-    public static int compareTo(String receiver, String anotherString) {
-        if (receiver == anotherString) {
-            return 0;
-        }
-        char[] value = StringSubstitutions.getValue(receiver);
-        char[] other = StringSubstitutions.getValue(anotherString);
-        return ArrayCompareToNode.compareTo(value, other, value.length << 1, other.length << 1, JavaKind.Char, JavaKind.Char);
-    }
-
 }

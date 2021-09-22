@@ -48,6 +48,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.analysis.RegexUnifier;
@@ -304,7 +305,7 @@ public final class TRegexCompilationRequest {
 
     private void debugAST() {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexLanguage.getCurrentContext().getEnv();
+            Env env = RegexContext.get(null).getEnv();
             TruffleFile file = env.getPublicTruffleFile("./ast.tex");
             ASTLaTexExportVisitor.exportLatex(ast, file);
             file = env.getPublicTruffleFile("ast.json");
@@ -314,7 +315,7 @@ public final class TRegexCompilationRequest {
 
     private void debugPureNFA() {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexLanguage.getCurrentContext().getEnv();
+            Env env = RegexContext.get(null).getEnv();
             TruffleFile file = env.getPublicTruffleFile("pure_nfa.json");
             Json.obj(Json.prop("dfa", Json.obj(
                             Json.prop("pattern", source.toString()),
@@ -324,7 +325,7 @@ public final class TRegexCompilationRequest {
 
     private void debugNFA() {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexLanguage.getCurrentContext().getEnv();
+            Env env = RegexContext.get(null).getEnv();
             TruffleFile file = env.getPublicTruffleFile("./nfa.gv");
             NFAExport.exportDot(nfa, file, true, false);
             file = env.getPublicTruffleFile("./nfa.tex");
@@ -338,7 +339,7 @@ public final class TRegexCompilationRequest {
 
     private void debugTraceFinder() {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexLanguage.getCurrentContext().getEnv();
+            Env env = RegexContext.get(null).getEnv();
             TruffleFile file = env.getPublicTruffleFile("./trace_finder.gv");
             NFAExport.exportDotReverse(traceFinderNFA, file, true, false);
             file = env.getPublicTruffleFile("nfa_trace_finder.json");
@@ -348,7 +349,7 @@ public final class TRegexCompilationRequest {
 
     private void debugDFA(DFAGenerator dfa, String debugDumpName) {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexLanguage.getCurrentContext().getEnv();
+            Env env = RegexContext.get(null).getEnv();
             TruffleFile file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".gv");
             DFAExport.exportDot(dfa, file, false);
             file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".json");
@@ -382,9 +383,13 @@ public final class TRegexCompilationRequest {
                         Json.prop("pureNfaStates", pureNFA == null ? 0 : pureNFA.getRoot().getNumberOfStates()),
                         Json.prop("nfaStates", nfa == null ? 0 : nfa.getNumberOfStates()),
                         Json.prop("nfaTransitions", nfa == null ? 0 : nfa.getNumberOfTransitions()),
-                        Json.prop("dfaStatesFwd", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfStates()),
-                        Json.prop("dfaStatesBck", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfStates()),
-                        Json.prop("dfaStatesCG", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfStates()),
+                        Json.prop("dfaFwdStates", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfStates()),
+                        Json.prop("dfaFwdTransitions", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfTransitions()),
+                        Json.prop("dfaBckStates", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfStates()),
+                        Json.prop("dfaBckTransitions", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfTransitions()),
+                        Json.prop("dfaCGStates", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfStates()),
+                        Json.prop("dfaCGTransitions", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfTransitions()),
+                        Json.prop("dfaCGTransitionsCG", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfCGTransitions()),
                         Json.prop("traceFinder", traceFinderNFA != null),
                         Json.prop("compilerResult", compilerResultToString(result))).toString() + ",");
     }

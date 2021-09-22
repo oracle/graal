@@ -36,11 +36,16 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -79,7 +84,8 @@ public class ReportUtils {
     public static String timeStampedFileName(String name, String extension) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
         String timeStamp = LocalDateTime.now().format(formatter);
-        return name + "_" + timeStamp + "." + extension;
+        String fileName = name + "_" + timeStamp;
+        return extension.isEmpty() ? fileName : fileName + "." + extension;
     }
 
     public static File reportFile(String path, String name, String extension) {
@@ -184,12 +190,23 @@ public class ReportUtils {
     }
 
     public static String parsingContext(AnalysisMethod method) {
-        return parsingContext(method, "   ");
+        return parsingContext(method, 0, "   ");
     }
 
     public static String parsingContext(AnalysisMethod method, String indent) {
+        return parsingContext(method, 0, indent);
+    }
+
+    public static String parsingContext(BytecodePosition context) {
+        return parsingContext((AnalysisMethod) context.getMethod(), context.getBCI(), "   ");
+    }
+
+    public static String parsingContext(AnalysisMethod method, int bci, String indent) {
         StringBuilder msg = new StringBuilder();
         if (method.getTypeFlow().getParsingContext().length > 0) {
+            /* Include target method first. */
+            msg.append(String.format("%n%sat %s", indent, method.asStackTraceElement(bci)));
+            /* Then add the parsing context. */
             for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
                 msg.append(String.format("%n%sat %s", indent, e));
             }
@@ -198,5 +215,34 @@ public class ReportUtils {
             msg.append(String.format(" <no parsing context available> %n"));
         }
         return msg.toString();
+    }
+
+    public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type) {
+        return typePropagationTrace(bb, flow, type, "   ");
+    }
+
+    public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type, String indent) {
+        if (bb.trackTypeFlowInputs()) {
+            StringBuilder msg = new StringBuilder(String.format("Propagation trace through type flows for type %s: %n", type.toJavaName()));
+            followInput(flow, type, indent, new HashSet<>(), msg);
+            return msg.toString();
+        } else {
+            return String.format("To print the propagation trace through type flows for type %s set the -H:+TrackInputFlows option. %n", type.toJavaName());
+        }
+    }
+
+    private static void followInput(TypeFlow<?> flow, AnalysisType type, String indent, HashSet<TypeFlow<?>> seen, StringBuilder msg) {
+        seen.add(flow);
+        if (flow instanceof AllInstantiatedTypeFlow) {
+            msg.append(String.format("AllInstantiated(%s)%n", flow.getDeclaredType().toJavaName(true)));
+        } else {
+            msg.append(String.format("%sat %s: %s%n", indent, flow.formatSource(), flow.format(false, false)));
+            for (TypeFlow<?> input : flow.getInputs()) {
+                if (!seen.contains(input) && input.getState().containsType(type)) {
+                    followInput(input, type, indent, seen, msg);
+                    break;
+                }
+            }
+        }
     }
 }

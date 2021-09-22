@@ -71,7 +71,7 @@ typedef uint64_t julong;
  * ----------+----------------+---------------------+----------------+
  * reserved0 | NULL           | LibEspressoIsolate* | context handle |
  * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
- * reserved2 | NULL           | JavaVM* (americano) | NULL           |
+ * reserved2 | NULL           | JavaVM* (americano) | JavaVM* (latte)|
  */
 
 #define VM_METHOD_LIST(V) \
@@ -322,13 +322,33 @@ typedef uint64_t julong;
     V(JVM_MoreStackWalk) \
     /* V(JVM_RegisterJDKInternalMiscUnsafeMethods) */ \
     V(JVM_SetBootLoaderUnnamedModule) \
-    V(JVM_WaitForReferencePendingList)
+    V(JVM_WaitForReferencePendingList) \
+    /* Java 16 VM methods */ \
+    V(JVM_DefineArchivedModules) \
+    V(JVM_GetExtendedNPEMessage) \
+    V(JVM_GetPermittedSubclasses) \
+    V(JVM_GetProperties) \
+    V(JVM_GetRandomSeedForDumping) \
+    V(JVM_GetRecordComponents) \
+    V(JVM_IsCDSDumpingEnabled) \
+    V(JVM_IsDumpingClassList) \
+    V(JVM_IsHiddenClass) \
+    V(JVM_IsRecord) \
+    V(JVM_IsSharingEnabled) \
+    V(JVM_IsUseContainerSupport) \
+    V(JVM_LogLambdaFormInvoker) \
+    V(JVM_LookupDefineClass) \
+    V(JVM_LookupLambdaProxyClassFromArchive) \
+    V(JVM_PhantomReferenceRefersTo) \
+    V(JVM_ReferenceClear) \
+    V(JVM_ReferenceRefersTo) \
+    V(JVM_RegisterLambdaProxyClassForArchiving)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *));
+JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *, void*));
 
 JNIEXPORT void JNICALL disposeMokapotContext(MokapotEnv* moka_env, void (*release_closure)(void *));
 
@@ -337,6 +357,8 @@ JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env);
 JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env);
 
 JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT();
+
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle();
 
 JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
 
@@ -858,6 +880,55 @@ void (*JVM_SetBootLoaderUnnamedModule)(JNIEnv *env, jobject module);
 void (*JVM_WaitForReferencePendingList)(JNIEnv *env);
 
 jboolean (*JVM_IsUseContainerSupport)(void);
+
+void (*JVM_DefineArchivedModules)(JNIEnv *env, jobject platform_loader, jobject system_loader);
+
+jstring (*JVM_GetExtendedNPEMessage)(JNIEnv *env, jthrowable throwable);
+
+jobjectArray (*JVM_GetPermittedSubclasses)(JNIEnv *env, jclass current);
+
+jobjectArray (*JVM_GetProperties)(JNIEnv *env);
+
+jobjectArray (*JVM_GetRecordComponents)(JNIEnv *env, jclass ofClass);
+
+void (*JVM_RegisterLambdaProxyClassForArchiving)(JNIEnv* env, jclass caller,
+                                         jstring invokedName,
+                                         jobject invokedType,
+                                         jobject methodType,
+                                         jobject implMethodMember,
+                                         jobject instantiatedMethodType,
+                                         jclass lambdaProxyClass);
+
+jclass (*JVM_LookupLambdaProxyClassFromArchive)(JNIEnv* env, jclass caller,
+                                      jstring invokedName,
+                                      jobject invokedType,
+                                      jobject methodType,
+                                      jobject implMethodMember,
+                                      jobject instantiatedMethodType);
+
+jboolean (*JVM_IsCDSDumpingEnabled)(JNIEnv* env);
+
+jboolean (*JVM_IsSharingEnabled)(JNIEnv* env);
+
+jboolean (*JVM_IsDumpingClassList)(JNIEnv* env);
+
+jlong (*JVM_GetRandomSeedForDumping)();
+
+void (*JVM_LogLambdaFormInvoker)(JNIEnv* env, jstring line);
+
+jboolean (*JVM_IsHiddenClass)(JNIEnv *env, jclass cls);
+
+jboolean (*JVM_IsRecord)(JNIEnv *env, jclass cls);
+
+jclass (*JVM_LookupDefineClass)(JNIEnv *env, jclass lookup, const char *name, const jbyte *buf,
+                      jsize len, jobject pd, jboolean init, int flags, jobject classData);
+
+jboolean (*JVM_PhantomReferenceRefersTo)(JNIEnv *env, jobject ref, jobject o);
+
+jboolean (*JVM_ReferenceRefersTo)(JNIEnv *env, jobject ref, jobject o);
+
+void (*JVM_ReferenceClear)(JNIEnv *env, jobject ref);
+
 
 };
 

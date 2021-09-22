@@ -13,12 +13,14 @@ permalink: /reference-manual/embed-languages/
 * [Access Java from Guest Languages](#access-java-from-guest-languages)
 * [Lookup Java Types from Guest Languages](#lookup-java-types-from-guest-languages)
 * [Computed Arrays Using Polyglot Proxies](#computed-arrays-using-polyglot-proxies)
-* [Access Restrictions](#access-restrictions)
+* [Host Access](#host-access)
 * [Build Native Images from Polyglot Applications](#build-native-images-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
+* [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
 * [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
 * [Configure Sandbox Resource Limits](#configure-sandbox-resource-limits)
+
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -256,16 +258,16 @@ converted to 0-based indices for proxy arrays.
 For more information about the polyglot proxy interfaces, see the
 [Polyglot API JavaDoc](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/package-summary.html).
 
-## Access Restrictions
+## Host Access
 
 The Polyglot API by default restricts access to certain critical functionality, such as file I/O.
 These restrictions can be lifted entirely by setting `allowAllAccess` to `true`.
 
 Note: The access restrictions are currently only supported with JavaScript.
 
-### Configuring Host Access
+### Controlling Access to Host Functions
 
-It might be desirable to limit the access of guest applications to the host.
+It might be desireable to limit the access of guest applications to the host.
 For example, if a Java method is exposed that calls `System.exit` then the guest
 application will be able to exit the host process.
 In order to avoid accidentally exposed methods, no host access is allowed by
@@ -287,6 +289,96 @@ tab1type="java" tab1id="ExplicitHostAccess_js" tab1name="JavaScript" tab1path="e
 - A second script is evaluated that calls the `exitVM` method on the services object. This fails with a `PolyglotException` as the exitVM method is not exposed to the guest application.
 
 Host access is fully customizable by creating a custom [`HostAccess`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) policy.
+
+### Controlling Host Callback Parameter Scoping
+
+By default, a `Value` lives as long as the corresponding `Context`.
+However, it may be desireable to change this default behavior and bind a value to a scope, such that when execution leaves the scope, the value is invalidated.
+An example for such a scope are guest-to-host callbacks, where a `Value` may be passed as a callback parameter.
+We have already seen above how this works with the default `HostAccess.EXPLICIT`:
+
+```java
+public class Services {
+    Value lastResult;
+
+    @HostAccess.Export
+    public void callback(Value result) {
+        this.lastResult = result;
+    }
+
+    String getResult() {
+        return this.lastResult.asString();
+    }
+}
+
+public static void main(String[] args) {
+    Services s = new Services()
+    try (Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build()) {
+        context.getBindings("js").putMember("services", s);
+        context.eval("js", "services.callback('Hello from JS');");
+        System.out.println(s.getResult());
+    }
+}
+```
+
+In this example, `lastResult` maintains a reference to the value from the guest is stored on the host and remains accessible until after the scope of `callback()` has ended.
+
+However, this is not always desireable, as keeping the value alive may block resources unnecessarily or not reflect the behavior of ephemeral values correctly.
+For these cases, `HostAccess.SCOPED` can be used, which changes the default behavior for all callbacks, such that values that are passed as callback parameters are only valid for the duration of the callback.
+
+To make the above code work with `HostAccess.SCOPED`, individual values passed as a callback parameters can be pinned to extend their validity until after the callback returns:
+```java
+public class Services {
+    Value lastResult;
+
+    @HostAccess.Export
+    void callback(Value result, Value notneeded) {
+        this.lastResult = result;
+        this.lastResult.pin();
+    }
+
+    String getResult() {
+        return this.lastResult.asString();
+    }
+}
+
+public static void main(String[] args) {
+    Services s = new Services()
+    try (Context context = Context.newBuilder().allowHostAccess(HostAccess.SCOPED).build()) {
+        context.getBindings("js").putMember("services", s);
+        context.eval("js", "services.callback('Hello from JS', 'foobar');");
+        System.out.println(services.getResult());
+    }
+}
+```
+
+Alternatively, the entire callback method can opt out from scoping if annotated with `@HostAccess.DisableMethodScope`, maintaining regular semantics for all parameters of the callback:
+```java
+public class Services {
+    Value lastResult;
+    Value metaInfo;
+
+    @HostAccess.Export
+    @HostAccess.DisableMethodScope
+    void callback(Value result, Value metaInfo) {
+        this.lastResult = result;
+        this.metaInfo = metaInfo;
+    }
+
+    String getResult() {
+        return this.lastResult.asString() + this.metaInfo.asString();
+    }
+}
+
+public static void main(String[] args) {
+    Services s = new Services()
+    try (Context context = Context.newBuilder().allowHostAccess(HostAccess.SCOPED).build()) {
+        context.getBindings("js").putMember("services", s);
+        context.eval("js", "services.callback('Hello from JS', 'foobar');");
+        System.out.println(services.getResult());
+    }
+}
+```
 
 ### Access Privilege Configuration
 
@@ -401,9 +493,7 @@ Caching may be disabled explicitly by setting [cached(boolean cached)](https://
 
 Consider the following code snippet as an example:
 
-```java
-import org.graalvm.polyglot.*;
-
+```
 public class Main {
     public static void main(String[] args) {
         try (Engine engine = Engine.create()) {
@@ -433,6 +523,46 @@ with "js" language, which is the language identifier for JavaScript.
 - `Context.newBuilder().engine(engine).build()` builds a new context with
 an explicit engine assigned to it. All contexts associated with an engine share the code.
 - `context.eval(source).asInt()` evaluates the source and returns the result as `Value` instance.
+
+## Embed Guest languages in Guest Languages
+
+The GraalVM Polyglot API can be used from within a guest language using Java interoperability.
+This can be useful if a script needs to run isolated from the parent context.
+In Java as a host language a call to `Context.eval(Source)` returns an instance of `Value`, but since we executing this code as part of a guest language we can use the language-specific interoperability API instead.
+It is therefore possible to use values returned by contexts created inside of a language, like regular values of the language.
+In the example below we can conveniently write `value.data` instead of `value.getMember("data")`.
+Please refer to the individual language documentation for details on how to interoperate with foreign values.
+More information on value sharing between multiple contexts can be found [here](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowValueSharing-boolean-).
+
+Consider the following code snippet as an example:
+
+```java
+import org.graalvm.polyglot.*;
+
+public class Main {
+    public static void main(String[] args) {
+        try (Context outer = Context.newBuilder()
+                                   .allowAllAccess(true)
+                               .build()) {            
+            outer.eval("js", "inner = Java.type('org.graalvm.polyglot.Context').create()");
+            outer.eval("js", "value = inner.eval('js', '({data:42})')");
+            int result = outer.eval("js", "value.data").asInt();
+            outer.eval("js", "inner.close()");
+            
+            System.out.println("Valid " + (result == 42));
+        }
+    }
+}
+```
+
+In this code: 
+- `Context.newBuilder().allowAllAccess(true).build()` builds a new outer context with all privileges.
+- `outer.eval` evaluates a JavaScript snippet in the outer context.
+- `inner = Java.type('org.graalvm.polyglot.Context').create()` the first JS script line looks up the Java host type Context and creates a new inner context instance with no privileges (default).
+- `inner.eval('js', '({data:42})');` evaluates the JavaScript code `({data:42})` in the inner context and returns stores the result.
+- `"value.data"` this line reads the member `data` from the result of the inner context. Note that this result can only be read as long as the inner context is not yet closed.
+- `context.eval("js", "c.close()")` this snippet closes the inner context. Inner contexts need to be closed manually and are not automatically closed with the parent context.
+- Finally the example is expected to print `Valid true` to the console.
 
 ## Build a Shell for Many Languages
 

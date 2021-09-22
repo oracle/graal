@@ -33,7 +33,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
@@ -58,11 +57,13 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Split
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceDeoptimizeFrame;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueWeightingBothTiers;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierBonus;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierPriority;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueWeightingBothTiers;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.getRuntime;
 
 import java.util.ArrayList;
@@ -83,6 +84,7 @@ import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -135,12 +137,15 @@ public final class EngineData {
     @CompilationFinal public boolean callTargetStatisticDetails;
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
+    @CompilationFinal public boolean traceDeoptimizeFrame;
     @CompilationFinal public boolean compileAOTOnCreate;
+    @CompilationFinal public boolean firstTierOnly;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
     @CompilationFinal public boolean weightingBothTiers;
     @CompilationFinal public boolean traversingFirstTierPriority;
+    @CompilationFinal public double traversingFirstTierBonus;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -254,7 +259,7 @@ public final class EngineData {
         this.splittingGrowthLimit = options.get(SplittingGrowthLimit);
 
         // inlining options
-        this.inlining = options.get(Inlining) && options.get(Mode) != EngineModeEnum.LATENCY;
+        this.inlining = options.get(Inlining);
 
         // compilation options
         this.compilation = options.get(Compilation);
@@ -262,11 +267,14 @@ public final class EngineData {
         this.compileImmediately = options.get(CompileImmediately);
         this.multiTier = !compileImmediately && options.get(MultiTier);
         this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
+        this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
 
         // compilation queue options
         priorityQueue = options.get(PriorityQueue);
         weightingBothTiers = options.get(TraversingQueueWeightingBothTiers);
         traversingFirstTierPriority = options.get(TraversingQueueFirstTierPriority);
+        // See usage of traversingFirstTierBonus for explanation of this formula.
+        traversingFirstTierBonus = options.get(TraversingQueueFirstTierBonus) * options.get(LastTierCompilationThreshold) / options.get(FirstTierCompilationThreshold);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
@@ -282,6 +290,7 @@ public final class EngineData {
         this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
         this.profilingEnabled = options.get(Profiling);
         this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
+        this.traceDeoptimizeFrame = options.get(TraceDeoptimizeFrame);
         this.compilationFailureAction = computeCompilationFailureAction(options);
         validateOptions();
         parsedCompileOnly = null;
@@ -404,10 +413,6 @@ public final class EngineData {
         if (multiTier) {
             return options.get(FirstTierCompilationThreshold);
         } else {
-            // TODO: GR-29467 - Legacy behaviour, should be removed
-            if (options.hasBeenSet(CompilationThreshold)) {
-                return options.get(CompilationThreshold);
-            }
             return options.get(SingleTierCompilationThreshold);
         }
     }
@@ -423,10 +428,6 @@ public final class EngineData {
         if (compileImmediately) {
             return 0;
         }
-        // TODO: GR-29467 - Legacy behaviour, should be removed
-        if (options.hasBeenSet(CompilationThreshold)) {
-            return options.get(CompilationThreshold);
-        }
         return options.get(LastTierCompilationThreshold);
     }
 
@@ -441,6 +442,22 @@ public final class EngineData {
     @SuppressWarnings("static-method")
     public void mergeLoadedSources(Source[] sources) {
         GraalRuntimeAccessor.SOURCE.mergeLoadedSources(sources);
+    }
+
+    @SuppressWarnings("static-method")
+    public Object enterLanguage(TruffleLanguage<?> language) {
+        return GraalRuntimeAccessor.ENGINE.enterLanguageFromRuntime(language);
+    }
+
+    @SuppressWarnings("static-method")
+    public void leaveLanguage(TruffleLanguage<?> language, Object prev) {
+        GraalRuntimeAccessor.ENGINE.leaveLanguageFromRuntime(language, prev);
+    }
+
+    @SuppressWarnings("static-method")
+    public TruffleLanguage<?> getLanguage(OptimizedCallTarget target) {
+        RootNode root = target.getRootNode();
+        return GraalRuntimeAccessor.NODES.getLanguage(root);
     }
 
 }

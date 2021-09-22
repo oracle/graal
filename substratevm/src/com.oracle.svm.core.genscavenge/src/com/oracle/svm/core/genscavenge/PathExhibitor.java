@@ -293,13 +293,13 @@ public final class PathExhibitor {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer stackSlot, boolean compressed) {
+        public boolean visitObjectReference(Pointer stackSlot, boolean compressed, Object holderObject) {
             Log trace = Log.noopLog();
             if (stackSlot.isNull()) {
                 return true;
             }
             Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(stackSlot, compressed);
-            trace.string("  referentPointer: ").hex(referentPointer);
+            trace.string("  referentPointer: ").zhex(referentPointer);
             if (target.matches(referentPointer.toObject())) {
                 result.fill(new StackElement(stackSlot, ip, deoptFrame), new LeafElement(referentPointer.toObject()));
                 return false;
@@ -320,7 +320,7 @@ public final class PathExhibitor {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed) {
+        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             if (objRef.isNull()) {
                 return true;
             }
@@ -363,7 +363,7 @@ public final class PathExhibitor {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed) {
+        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             if (objRef.isNull()) {
                 return true;
             }
@@ -425,7 +425,7 @@ public final class PathExhibitor {
             Pointer objPointer = Word.objectToUntrackedPointer(base);
             Pointer fieldObjRef = objPointer.add(offset);
             Pointer fieldPointer = fieldObjRef.readWord(0);
-            log.string("  field: ").hex(fieldPointer);
+            log.string("  field: ").zhex(fieldPointer);
             log.string("]");
             return log;
         }
@@ -454,10 +454,10 @@ public final class PathExhibitor {
         @Override
         public Log toLog(Log log) {
             log.string("[stack:");
-            log.string("  slot: ").hex(stackSlot);
-            log.string("  deoptSourcePC: ").hex(deoptSourcePC);
-            log.string("  ip: ").hex(ip);
-            log.string("  value: ").hex(slotValue);
+            log.string("  slot: ").zhex(stackSlot);
+            log.string("  deoptSourcePC: ").zhex(deoptSourcePC);
+            log.string("  ip: ").zhex(ip);
+            log.string("  value: ").zhex(slotValue);
             log.string("]");
             return log;
         }

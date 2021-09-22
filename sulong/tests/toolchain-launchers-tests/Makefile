@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -185,7 +185,7 @@ fembed-bitcode:
 
 fuse-ld:
 	$(PRINT_TEST)
-	$(QUIETLY) $(CLANG) -fuse-ld=ld bla.c 2> $@.err ; test $$? -eq 1
+	$(QUIETLY) $(CLANG) -fuse-ld=foo bla.c 2> $@.err ; test $$? -eq 1
 	$(QUIETLY) cat $@.err $(QUIETLY_REDIR)
 	$(QUIETLY) grep "Using \`-fuse-ld\` is not supported." $@.err $(QUIETLY_REDIR)
 

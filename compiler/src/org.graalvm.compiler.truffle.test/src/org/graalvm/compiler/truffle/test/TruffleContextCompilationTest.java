@@ -53,7 +53,7 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
     public void testInnerContextsDeoptimize() {
         setupContext();
         getContext().initialize(LANGUAGE);
-        Env env = Language.getCurrentContext();
+        Env env = Language.REFERENCE.get(null);
 
         TruffleContext context = env.newContextBuilder().build();
         OptimizedCallTarget target = assertCompiling(new RootNode(null) {
@@ -95,14 +95,7 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
             return env;
         }
 
-        public static Env getCurrentContext() {
-            return getCurrentContext(Language.class);
-        }
-
-        public static TruffleLanguage<?> get() {
-            return getCurrentLanguage(Language.class);
-        }
-
+        private static final ContextReference<Env> REFERENCE = ContextReference.create(Language.class);
     }
 
 }

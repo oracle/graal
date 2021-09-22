@@ -66,11 +66,11 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Immutable, shareable constant-pool representation.
@@ -165,31 +165,31 @@ public abstract class ConstantPool {
 
     public abstract byte[] getRawBytes();
 
-    static @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
+    static @JavaType(ClassFormatError.class) EspressoException unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
         CompilerDirectives.transferToInterpreter();
         throw classFormatError("Constant pool entry" + (description == null ? "" : " for " + description) + " at " + index + " is a " + tag + ", expected " + Arrays.toString(expected));
     }
 
-    final @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, String description, ConstantPool.Tag... expected) {
+    final @JavaType(ClassFormatError.class) EspressoException unexpectedEntry(int index, String description, ConstantPool.Tag... expected) {
         CompilerDirectives.transferToInterpreter();
         throw unexpectedEntry(index, tagAt(index), description, expected);
     }
 
-    static @Host(VerifyError.class) EspressoException verifyError(String message) {
+    static @JavaType(VerifyError.class) EspressoException verifyError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
     }
 
-    public static @Host(ClassFormatError.class) EspressoException classFormatError(String message) {
+    public static @JavaType(ClassFormatError.class) EspressoException classFormatError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
     }
 
-    static @Host(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
+    static @JavaType(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
         throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
     }
 
@@ -568,8 +568,8 @@ public abstract class ConstantPool {
 
         final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, rawPoolLength);
 
-        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched class is
-        // meaningless anyway.
+        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched/hidden class
+        // is meaningless anyway.
         assert patches != null || sameRawPool(constantPool, stream, rawPoolStartPosition, rawPoolLength);
 
         // Validation
@@ -586,5 +586,10 @@ public abstract class ConstantPool {
 
     private static boolean existsAt(StaticObject[] patches, int index) {
         return patches != null && 0 <= index && index < patches.length && StaticObject.notNull(patches[index]);
+    }
+
+    @SuppressWarnings("unused")
+    ConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
+        return this;
     }
 }

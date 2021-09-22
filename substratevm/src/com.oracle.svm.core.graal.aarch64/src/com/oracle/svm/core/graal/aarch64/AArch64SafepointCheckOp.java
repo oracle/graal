@@ -57,7 +57,7 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
         int safepointSize = 32; // safepoint is an integer
         AArch64Address safepointAddress = AArch64Address.createImmediateAddress(safepointSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED,
                         ReservedRegisters.singleton().getThreadRegister(),
-                        Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset()));
+                        Safepoint.getThreadLocalSafepointRequestedOffset());
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register scratch = scratchRegister.getRegister();
             masm.ldr(safepointSize, scratch, safepointAddress);

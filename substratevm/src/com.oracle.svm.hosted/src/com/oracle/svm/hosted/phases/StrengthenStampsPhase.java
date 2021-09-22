@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.phases.Phase;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -86,7 +85,7 @@ public class StrengthenStampsPhase extends Phase {
 
                 Stamp newStamp = strengthen(node.stamp(NodeView.DEFAULT));
                 if (newStamp != null) {
-                    VMError.guarantee(!parseOnce, "Must be done by StrengthenGraphs");
+                    assert !parseOnce : "Must be done by StrengthenGraphs";
                     node.setStamp(newStamp);
                 }
             }
@@ -99,7 +98,7 @@ public class StrengthenStampsPhase extends Phase {
                 InstanceOfNode node = (InstanceOfNode) n;
                 ObjectStamp newStamp = (ObjectStamp) strengthen(node.getCheckedStamp());
                 if (newStamp != null) {
-                    VMError.guarantee(!parseOnce, "Must be done by StrengthenGraphs");
+                    assert !parseOnce : "Must be done by StrengthenGraphs";
                     node.replaceAndDelete(graph.addOrUniqueWithInputs(InstanceOfNode.createHelper(newStamp, node.getValue(), node.profile(), node.getAnchor())));
                 }
 
@@ -107,7 +106,7 @@ public class StrengthenStampsPhase extends Phase {
                 PiNode node = (PiNode) n;
                 Stamp newStamp = strengthen(node.piStamp());
                 if (newStamp != null) {
-                    VMError.guarantee(!parseOnce, "Must be done by StrengthenGraphs");
+                    assert !parseOnce : "Must be done by StrengthenGraphs";
                     node.strengthenPiStamp(newStamp);
                 }
             }
@@ -167,7 +166,7 @@ public class StrengthenStampsPhase extends Phase {
         if (typeProfile != null) {
             Stamp newStamp = strengthenStamp(node, typeProfile);
             if (!newStamp.equals(node.stamp(NodeView.DEFAULT))) {
-                VMError.guarantee(!parseOnce, "Must be done by StrengthenGraphs");
+                assert !parseOnce : "Must be done by StrengthenGraphs";
                 node.getDebug().log("STAMP UPDATE  method %s  node %s  old %s  new %s\n", node.graph().method().format("%H.%n(%p)"), node, node.stamp(NodeView.DEFAULT), newStamp);
                 node.setStamp(newStamp);
             }

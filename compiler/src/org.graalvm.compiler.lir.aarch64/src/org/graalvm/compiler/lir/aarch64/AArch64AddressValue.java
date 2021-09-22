@@ -27,12 +27,12 @@ package org.graalvm.compiler.lir.aarch64;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.isImmediateScaled;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.REGISTER_OFFSET;
 
 import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.CompositeValue;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
@@ -52,16 +52,22 @@ public final class AArch64AddressValue extends CompositeValue {
 
     @Component({OperandFlag.REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
     @Component({OperandFlag.REG, OperandFlag.ILLEGAL}) protected AllocatableValue offset;
+    private final int bitMemoryTransferSize;
     private final int displacement;
 
     /**
-     * Whether register offset should be scaled or not.
+     * How the offset or displacement should be scaled.
      */
     private final int scaleFactor;
     private final AddressingMode addressingMode;
 
-    public AArch64AddressValue(ValueKind<?> kind, AllocatableValue base, AllocatableValue offset, int displacement, int scaleFactor, AddressingMode addressingMode) {
+    public AArch64AddressValue(ValueKind<?> kind, int bitMemoryTransferSize, AllocatableValue base, AllocatableValue offset, int displacement, int scaleFactor, AddressingMode addressingMode) {
         super(kind);
+
+        /* If scale factor is present, it must be equal to the memory operation size. */
+        assert scaleFactor == 1 || bitMemoryTransferSize / Byte.SIZE == scaleFactor;
+
+        this.bitMemoryTransferSize = bitMemoryTransferSize;
         this.base = base;
         this.offset = offset;
         this.displacement = displacement;
@@ -72,8 +78,8 @@ public final class AArch64AddressValue extends CompositeValue {
     /**
      * Generates an AArch64AddressValue of the form {@code base}.
      */
-    public static AArch64AddressValue makeAddress(ValueKind<?> kind, int size, AllocatableValue base) {
-        return makeAddress(kind, size, base, 0);
+    public static AArch64AddressValue makeAddress(ValueKind<?> kind, int bitMemoryTransferSize, AllocatableValue base) {
+        return makeAddress(kind, bitMemoryTransferSize, base, 0);
     }
 
     /**
@@ -81,22 +87,21 @@ public final class AArch64AddressValue extends CompositeValue {
      *
      * Will fail if displacement cannot be represented directly as an immediate address.
      */
-    public static AArch64AddressValue makeAddress(ValueKind<?> kind, int size, AllocatableValue base, int displacement) {
-        assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128;
+    public static AArch64AddressValue makeAddress(ValueKind<?> kind, int bitMemoryTransferSize, AllocatableValue base, int displacement) {
+        assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
 
         if (displacement == 0) {
-            return new AArch64AddressValue(kind, base, Value.ILLEGAL, 0, 1, AddressingMode.BASE_REGISTER_ONLY);
+            return new AArch64AddressValue(kind, bitMemoryTransferSize, base, Value.ILLEGAL, 0, 1, AddressingMode.BASE_REGISTER_ONLY);
 
         } else {
-            int byteSize = size / 8;
-            int log2TransferSize = NumUtil.log2Ceil(byteSize);
+            int byteMemoryTransferSize = bitMemoryTransferSize / Byte.SIZE;
             /* Addresses using IMMEDIATE_UNSIGNED_SCALED must be non-negative and shiftable. */
             boolean canScale = displacement >= 0 &&
-                            (displacement & (NumUtil.getNbitNumberInt(log2TransferSize))) == 0;
+                            AArch64Address.isOffsetAligned(bitMemoryTransferSize, displacement);
             AArch64Address.AddressingMode mode = canScale ? IMMEDIATE_UNSIGNED_SCALED : IMMEDIATE_SIGNED_UNSCALED;
-            if (AArch64Address.isValidImmediateAddress(size, mode, displacement)) {
-                int scalingFactor = isImmediateScaled(mode) ? byteSize : 1;
-                return new AArch64AddressValue(kind, base, Value.ILLEGAL, displacement, scalingFactor, mode);
+            if (AArch64Address.isValidImmediateAddress(bitMemoryTransferSize, mode, displacement)) {
+                int scalingFactor = isImmediateScaled(mode) ? byteMemoryTransferSize : 1;
+                return new AArch64AddressValue(kind, bitMemoryTransferSize, base, Value.ILLEGAL, displacement, scalingFactor, mode);
             } else {
                 throw GraalError.shouldNotReachHere("Could not create AddressValue with requested displacement.");
             }
@@ -123,10 +128,6 @@ public final class AArch64AddressValue extends CompositeValue {
         return displacement;
     }
 
-    public boolean isScaled() {
-        return scaleFactor != 1;
-    }
-
     public int getScaleFactor() {
         return scaleFactor;
     }
@@ -135,11 +136,16 @@ public final class AArch64AddressValue extends CompositeValue {
         return addressingMode;
     }
 
+    public int getBitMemoryTransferSize() {
+        return bitMemoryTransferSize;
+    }
+
     public AArch64Address toAddress() {
         assert addressingMode != AddressingMode.EXTENDED_REGISTER_OFFSET;
         Register baseReg = toRegister(base);
         Register offsetReg = toRegister(offset);
-        return AArch64Address.createAddress(addressingMode, baseReg, offsetReg, displacement / scaleFactor, isScaled(), null);
+        boolean registerOffsetScaled = addressingMode == REGISTER_OFFSET && scaleFactor > 1;
+        return AArch64Address.createAddress(bitMemoryTransferSize, addressingMode, baseReg, offsetReg, displacement / scaleFactor, registerOffsetScaled, null);
     }
 
     @Override
@@ -147,7 +153,7 @@ public final class AArch64AddressValue extends CompositeValue {
         AllocatableValue newBase = (AllocatableValue) proc.doValue(inst, base, mode, flags);
         AllocatableValue newOffset = (AllocatableValue) proc.doValue(inst, offset, mode, flags);
         if (!base.identityEquals(newBase) || !offset.identityEquals(newOffset)) {
-            return new AArch64AddressValue(getValueKind(), newBase, newOffset, displacement, scaleFactor, addressingMode);
+            return new AArch64AddressValue(getValueKind(), bitMemoryTransferSize, newBase, newOffset, displacement, scaleFactor, addressingMode);
         }
         return this;
     }

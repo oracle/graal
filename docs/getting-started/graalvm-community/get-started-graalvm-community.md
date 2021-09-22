@@ -42,15 +42,14 @@ GraalVM's `/bin` directory is similar to that of a standard JDK, but includes a 
 Check the versions of the runtimes provided by default:
 ```shell
 java -version
-openjdk version "11.0.11" 2021-04-20
-OpenJDK Runtime Environment GraalVM CE 21.1.0 (build 11.0.11+5-jvmci-21.1-b03)
-OpenJDK 64-Bit Server VM GraalVM CE 21.1.0 (build 11.0.11+5-jvmci-21.1-b03, mixed mode, sharing)
-
+openjdk version "11.0.12" 2021-07-20
+OpenJDK Runtime Environment GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b06)
+OpenJDK 64-Bit Server VM GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b06, mixed mode, sharing)
 js -version
-GraalVM JavaScript (GraalVM CE Native 21.1.0)
+GraalVM JavaScript (GraalVM CE Native 21.2.0)
 
 lli --version
-LLVM 10.0.0 (GraalVM CE Native 21.1.0)
+LLVM 10.0.0 (GraalVM CE Native 21.2.0)
 ```
 
 Further below you will find information on how to add other optionally available GraalVM runtimes including Node.js, Ruby, R, Python, and WebAssembly.
@@ -270,9 +269,8 @@ For more information on running polyglot applications, see [Polyglot Programming
 
 ## Native Images
 
-With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and a smaller footprint for your application.
-The [Native Image](/reference-manual/native-image/) functionality is not available by
-default, but can be easily installed with the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
+With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and smaller footprint for your application.
+The [Native Image](/reference-manual/native-image/) functionality is not available by default, but can be easily installed with the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
 ```shell
 gu install native-image
 ```
@@ -286,6 +284,8 @@ public class HelloWorld {
   }
 }
 ```
+
+> Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](/reference-manual/native-image/#prerequisites).
 
 Compile _HelloWorld.java_ to bytecode and then build a native image:
 ```shell

@@ -22,15 +22,19 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-
+import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
-import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
-import com.oracle.truffle.espresso.staticobject.StaticShape;
 
 final class LinkedKlassFieldLayout {
     final StaticShape<StaticObjectFactory> instanceShape;
@@ -45,11 +49,11 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(ClassLoaderCache clc, ParserKlass parserKlass, LinkedKlass superKlass) {
-        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(clc);
-        StaticShape.Builder staticBuilder = StaticShape.newBuilder(clc);
+    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass) {
+        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(language);
+        StaticShape.Builder staticBuilder = StaticShape.newBuilder(language);
 
-        FieldCounter fieldCounter = new FieldCounter(parserKlass);
+        FieldCounter fieldCounter = new FieldCounter(parserKlass, version);
         int nextInstanceFieldIndex = 0;
         int nextStaticFieldIndex = 0;
         int nextInstanceFieldSlot = superKlass == null ? 0 : superKlass.getFieldTableLength();
@@ -57,22 +61,26 @@ final class LinkedKlassFieldLayout {
         instanceFields = new LinkedField[fieldCounter.instanceFields];
         staticFields = new LinkedField[fieldCounter.staticFields];
 
+        LinkedField.IdMode idMode = getIdMode(parserKlass);
+
         for (ParserField parserField : parserKlass.getFields()) {
             if (parserField.isStatic()) {
-                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, storeAsFinal(parserKlass, parserField));
-                staticBuilder.property(field);
+                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, idMode);
+                staticBuilder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
                 staticFields[nextStaticFieldIndex++] = field;
             } else {
-                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, parserField));
-                instanceBuilder.property(field);
+                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, idMode);
+                instanceBuilder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
                 instanceFields[nextInstanceFieldIndex++] = field;
             }
         }
-        for (Symbol<Name> hiddenFieldName : fieldCounter.hiddenFieldNames) {
-            ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenFieldName, Type.java_lang_Object, null);
-            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, hiddenParserField));
-            instanceBuilder.property(field);
-            instanceFields[nextInstanceFieldIndex++] = field;
+        for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
+            if (hiddenField.versionRange.contains(version)) {
+                ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenField.name, hiddenField.type, null);
+                LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, idMode);
+                instanceBuilder.property(field, hiddenParserField.getPropertyType(), storeAsFinal(parserKlass, hiddenParserField));
+                instanceFields[nextInstanceFieldIndex++] = field;
+            }
         }
         if (superKlass == null) {
             instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
@@ -81,6 +89,37 @@ final class LinkedKlassFieldLayout {
         }
         staticShape = staticBuilder.build(StaticObject.class, StaticObjectFactory.class);
         fieldTableLength = nextInstanceFieldSlot;
+    }
+
+    /**
+     * Makes sure that the field IDs passed to the shape builder are all unique.
+     */
+    private static LinkedField.IdMode getIdMode(ParserKlass parserKlass) {
+        ParserField[] parserFields = parserKlass.getFields();
+
+        boolean noDup = true;
+        Set<String> present = new HashSet<>(parserFields.length);
+        for (ParserField parserField : parserFields) {
+            if (!present.add(parserField.getName().toString())) {
+                noDup = false;
+                break;
+            }
+        }
+        if (noDup) {
+            // All fields have unique names, we can use said names as ID.
+            return LinkedField.IdMode.REGULAR;
+        }
+        present.clear();
+        for (ParserField parserField : parserFields) {
+            String id = LinkedField.idFromNameAndType(parserField.getName(), parserField.getType());
+            if (!present.add(id)) {
+                // Concatenating name and type does not result in no duplicates. Give up giving
+                // meaningful information as an ID, and fall back to field{n}
+                return LinkedField.IdMode.OBFUSCATED;
+            }
+        }
+        // All fields have unique {name, type} pairs, use the concatenation of both for the ID.
+        return LinkedField.IdMode.WITH_TYPE;
     }
 
     private static boolean storeAsFinal(ParserKlass klass, ParserField field) {
@@ -97,13 +136,13 @@ final class LinkedKlassFieldLayout {
     }
 
     private static final class FieldCounter {
-        final Symbol<Name>[] hiddenFieldNames;
+        final HiddenField[] hiddenFieldNames;
 
         // Includes hidden fields
         final int instanceFields;
         final int staticFields;
 
-        FieldCounter(ParserKlass parserKlass) {
+        FieldCounter(ParserKlass parserKlass, JavaVersion version) {
             int iFields = 0;
             int sFields = 0;
             for (ParserField f : parserKlass.getFields()) {
@@ -114,75 +153,130 @@ final class LinkedKlassFieldLayout {
                 }
             }
             // All hidden fields are of Object kind
-            hiddenFieldNames = getHiddenFieldNames(parserKlass);
+            hiddenFieldNames = HiddenField.getHiddenFields(parserKlass.getType(), version);
             instanceFields = iFields + hiddenFieldNames.length;
             staticFields = sFields;
         }
+    }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        private static Symbol<Name>[] getHiddenFieldNames(ParserKlass parserKlass) {
-            Symbol<Type> type = parserKlass.getType();
-            if (type == Type.java_lang_invoke_MemberName) {
-                return new Symbol[]{
-                                Name.HIDDEN_VMTARGET,
-                                Name.HIDDEN_VMINDEX
-                };
-            } else if (type == Type.java_lang_reflect_Method) {
-                return new Symbol[]{
-                                Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
-                                Name.HIDDEN_METHOD_KEY
-                };
-            } else if (type == Type.java_lang_reflect_Constructor) {
-                return new Symbol[]{
-                                Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
-                                Name.HIDDEN_CONSTRUCTOR_KEY
-                };
-            } else if (type == Type.java_lang_reflect_Field) {
-                return new Symbol[]{
-                                Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
-                                Name.HIDDEN_FIELD_KEY
-                };
-            } else if (type == Type.java_lang_ref_Reference) {
-                return new Symbol[]{
-                                // All references (including strong) get an extra hidden field, this
-                                // simplifies the code for weak/soft/phantom/final references.
-                                Name.HIDDEN_HOST_REFERENCE
-                };
-            } else if (type == Type.java_lang_Throwable) {
-                return new Symbol[]{
-                                Name.HIDDEN_FRAMES,
-                                Name.HIDDEN_EXCEPTION_WRAPPER
-                };
-            } else if (type == Type.java_lang_Thread) {
-                return new Symbol[]{
-                                Name.HIDDEN_HOST_THREAD,
-                                Name.HIDDEN_IS_ALIVE,
-                                Name.HIDDEN_INTERRUPTED,
-                                Name.HIDDEN_DEATH,
-                                Name.HIDDEN_DEATH_THROWABLE,
-                                Name.HIDDEN_SUSPEND_LOCK,
+    private static class HiddenField {
 
-                                // Only used for j.l.management bookkeeping.
-                                Name.HIDDEN_THREAD_BLOCKED_OBJECT,
-                                Name.HIDDEN_THREAD_BLOCKED_COUNT,
-                                Name.HIDDEN_THREAD_WAITED_COUNT
-                };
-            } else if (type == Type.java_lang_Class) {
-                return new Symbol[]{
-                                Name.HIDDEN_SIGNERS,
-                                Name.HIDDEN_MIRROR_KLASS,
-                                Name.HIDDEN_PROTECTION_DOMAIN
-                };
-            } else if (type == Type.java_lang_ClassLoader) {
-                return new Symbol[]{
-                                Name.HIDDEN_CLASS_LOADER_REGISTRY
-                };
-            } else if (type == Type.java_lang_Module) {
-                return new Symbol[]{
-                                Name.HIDDEN_MODULE_ENTRY
+        private final Symbol<Name> name;
+        private final Symbol<Type> type;
+        private final VersionRange versionRange;
+
+        HiddenField(Symbol<Name> name) {
+            this(name, Type.java_lang_Object, VersionRange.ALL);
+        }
+
+        HiddenField(Symbol<Name> name, Symbol<Type> type, VersionRange versionRange) {
+            this.name = name;
+            this.type = type;
+            this.versionRange = versionRange;
+        }
+
+        private boolean appliesTo(JavaVersion version) {
+            return versionRange.contains(version);
+        }
+
+        static final HiddenField[] EMPTY = new HiddenField[0];
+
+        static HiddenField[] getHiddenFields(Symbol<Type> holder, JavaVersion version) {
+            return applyFilter(getHiddenFieldsFull(holder), version);
+        }
+
+        private static HiddenField[] applyFilter(HiddenField[] hiddenFields, JavaVersion version) {
+            int filtered = 0;
+            for (HiddenField f : hiddenFields) {
+                if (!f.appliesTo(version)) {
+                    filtered++;
+                }
+            }
+            if (filtered == 0) {
+                return hiddenFields;
+            }
+            HiddenField[] result = new HiddenField[hiddenFields.length - filtered];
+            int pos = 0;
+            for (int i = 0; i < hiddenFields.length; i++) {
+                HiddenField f = hiddenFields[i];
+                if (f.appliesTo(version)) {
+                    result[pos++] = f;
+                }
+            }
+            return result;
+        }
+
+        private static HiddenField[] getHiddenFieldsFull(Symbol<Type> holder) {
+            if (holder == Type.java_lang_invoke_MemberName) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_VMTARGET),
+                                new HiddenField(Name.HIDDEN_VMINDEX)
                 };
             }
-            return Symbol.EMPTY_ARRAY;
+            if (holder == Type.java_lang_reflect_Method) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS),
+                                new HiddenField(Name.HIDDEN_METHOD_KEY)
+                };
+            }
+            if (holder == Type.java_lang_reflect_Constructor) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS),
+                                new HiddenField(Name.HIDDEN_CONSTRUCTOR_KEY)
+                };
+            }
+            if (holder == Type.java_lang_reflect_Field) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS),
+                                new HiddenField(Name.HIDDEN_FIELD_KEY)
+                };
+            }
+            if (holder == Type.java_lang_ref_Reference) {
+                return new HiddenField[]{
+                                // All references (including strong) get an extra hidden field, this
+                                // simplifies the code for weak/soft/phantom/final references.
+                                new HiddenField(Name.HIDDEN_HOST_REFERENCE)
+                };
+            }
+            if (holder == Type.java_lang_Throwable) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_FRAMES),
+                                new HiddenField(Name.HIDDEN_EXCEPTION_WRAPPER)
+                };
+            }
+            if (holder == Type.java_lang_Thread) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_INTERRUPTED, Type._boolean, VersionRange.lower(13)),
+                                new HiddenField(Name.HIDDEN_HOST_THREAD),
+                                new HiddenField(Name.HIDDEN_DEATH),
+                                new HiddenField(Name.HIDDEN_DEATH_THROWABLE),
+                                new HiddenField(Name.HIDDEN_SUSPEND_LOCK),
+
+                                // Only used for j.l.management bookkeeping.
+                                new HiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT),
+                                new HiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT),
+                                new HiddenField(Name.HIDDEN_THREAD_WAITED_COUNT)
+                };
+            }
+            if (holder == Type.java_lang_Class) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_SIGNERS),
+                                new HiddenField(Name.HIDDEN_MIRROR_KLASS),
+                                new HiddenField(Name.HIDDEN_PROTECTION_DOMAIN)
+                };
+            }
+            if (holder == Type.java_lang_ClassLoader) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY)
+                };
+            }
+            if (holder == Type.java_lang_Module) {
+                return new HiddenField[]{
+                                new HiddenField(Name.HIDDEN_MODULE_ENTRY)
+                };
+            }
+
+            return EMPTY;
         }
     }
 }

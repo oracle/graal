@@ -39,12 +39,12 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Implementation of the Espresso object model.
@@ -118,12 +118,15 @@ public class StaticObject implements TruffleObject, Cloneable {
         ObjectKlass guestClass = klass.getMeta().java_lang_Class;
         StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
         newObj.initInstanceFields(guestClass);
+        klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
         if (klass.getContext().getJavaVersion().modulesEnabled()) {
-            klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
             newObj.setModule(klass);
         }
+        if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
+            klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().mirror());
+        }
         klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
-        // Will be overriden by JVM_DefineKlass if necessary.
+        // Will be overriden if necessary, but should be initialized to non-host null.
         klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
         return trackAllocation(klass, newObj);
     }
@@ -141,7 +144,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        StaticObject newObj = EspressoLanguage.getArrayShape().getFactory().create(klass);
+        StaticObject newObj = klass.getEspressoLanguage().getArrayShape().getFactory().create(klass);
         EspressoLanguage.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
@@ -150,30 +153,32 @@ public class StaticObject implements TruffleObject, Cloneable {
      * Wraps a foreign {@link InteropLibrary#isException(Object) exception} as a guest
      * ForeignException.
      */
-    public static @Host(typeName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject, InteropLibrary interopLibrary) {
+    public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject,
+                    InteropLibrary interopLibrary) {
         assert meta.polyglot != null;
         assert meta.getContext().Polyglot;
         assert interopLibrary.isException(foreignObject);
         assert !(foreignObject instanceof StaticObject);
-        return createForeign(meta.polyglot.ForeignException, foreignObject, interopLibrary);
+        return createForeign(meta.getEspressoLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
     }
 
-    public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
+    public static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
         if (interopLibrary.isNull(foreignObject)) {
-            return createForeignNull(foreignObject);
+            return createForeignNull(lang, foreignObject);
         }
-        return createForeign(klass, foreignObject);
+        return createForeign(lang, klass, foreignObject);
     }
 
-    public static StaticObject createForeignNull(Object foreignObject) {
+    public static StaticObject createForeignNull(EspressoLanguage lang, Object foreignObject) {
         assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(null, foreignObject);
+        return createForeign(lang, null, foreignObject);
     }
 
-    private static StaticObject createForeign(Klass klass, Object foreignObject) {
+    private static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
         assert foreignObject != null;
-        StaticObject newObj = EspressoLanguage.getForeignShape().getFactory().create(klass, true);
+        StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
+        assert klass == null || klass.isInitializedOrInitializing();
         return trackAllocation(klass, newObj);
     }
 
@@ -309,15 +314,25 @@ public class StaticObject implements TruffleObject, Cloneable {
         return this == getKlass().getStatics();
     }
 
-    // Given a guest Class, get the corresponding Klass.
+    /**
+     * Given a guest Class, get the corresponding Klass. This method has the disadvantage of not
+     * being able to constant fold the {@link Meta} object that is extracted from {@code this} if
+     * {@code this} is not constant. If performance is a concern, rather use
+     * {@link #getMirrorKlass(Meta)}, passing a constant {@link Meta} object.
+     */
     public Klass getMirrorKlass() {
+        return getMirrorKlass(getKlass().getMeta());
+    }
+
+    /**
+     * Same as {@link #getMirrorKlass()}, but passing a {@code meta} argument allows some constant
+     * folding, even if {@code this} is not constant.
+     */
+    public Klass getMirrorKlass(Meta meta) {
         assert getKlass().getType() == Type.java_lang_Class;
         checkNotForeign();
-        Klass result = (Klass) getKlass().getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(this);
-        if (result == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere("Uninitialized mirror class");
-        }
+        Klass result = (Klass) meta.HIDDEN_MIRROR_KLASS.getHiddenObject(this);
+        assert result != null : "Uninitialized mirror class";
         return result;
     }
 
@@ -514,81 +529,4 @@ public class StaticObject implements TruffleObject, Cloneable {
         StaticObject create(Klass klass, boolean isForeign);
     }
     // endregion Factory interface.
-
-    // This class mimics the layout of generated storage classes
-    public static final class DefaultArrayBasedStaticObject extends StaticObject {
-        public final Object shape;
-        public final byte[] primitive;
-        public final Object[] object;
-
-        private DefaultArrayBasedStaticObject(Klass klass, Object shape, int primitiveArraySize, int objectArraySize) {
-            super(klass);
-            this.shape = shape;
-            this.primitive = new byte[primitiveArraySize];
-            this.object = new Object[objectArraySize];
-        }
-
-        private DefaultArrayBasedStaticObject(Klass klass, boolean isForeign, Object shape, int primitiveArraySize, int objectArraySize) {
-            super(klass, isForeign);
-            this.shape = shape;
-            this.primitive = new byte[primitiveArraySize];
-            this.object = new Object[objectArraySize];
-        }
-
-        private DefaultArrayBasedStaticObject(DefaultArrayBasedStaticObject other) {
-            super(other.getKlass(), other.isForeignObject());
-            this.shape = other.shape;
-            this.primitive = other.primitive == null ? null : other.primitive.clone();
-            this.object = other.object == null ? null : other.object.clone();
-        }
-
-        /**
-         * The implementation for clone differs from the generated storage class, because we are
-         * writing this in actual Java, rather than Bytecode.
-         * <p>
-         * The generated code exploits a difference in the handling of final fields in the reference
-         * implementation between Java and Java Bytecode. In Java, final fields can only be written
-         * to from the constructor, while, in classfiles with version less than 9, this restriction
-         * is relaxed to any method of the class.
-         * <p>
-         * If we were to implement it exactly as the generated Bytecodes, the code would look like:
-         * 
-         * <pre>
-         * &#064;Override
-         * public Object clone() {
-         *     DefaultArrayBasedStaticObject clone = (DefaultArrayBasedStaticObject) super.clone();
-         *     clone.primitive = primitive == null ? null : primitive.clone();
-         *     clone.object = object == null ? null : object.clone();
-         *     return clone;
-         * }
-         * </pre>
-         */
-        @Override
-        public Object clone() {
-            return new DefaultArrayBasedStaticObject(this);
-        }
-    }
-
-    // This class mimics the layout of generated storage factory classes
-    public static final class DefaultArrayBasedStaticObjectFactory implements StaticObjectFactory {
-        private final Object shape;
-        private final int primitiveArraySize;
-        private final int objectArraySize;
-
-        public DefaultArrayBasedStaticObjectFactory(Object shape, int primitiveArraySize, int objectArraySize) {
-            this.shape = shape;
-            this.primitiveArraySize = primitiveArraySize;
-            this.objectArraySize = objectArraySize;
-        }
-
-        @Override
-        public StaticObject create(Klass klass) {
-            return new DefaultArrayBasedStaticObject(klass, shape, primitiveArraySize, objectArraySize);
-        }
-
-        @Override
-        public StaticObject create(Klass klass, boolean isForeign) {
-            return new DefaultArrayBasedStaticObject(klass, isForeign, shape, primitiveArraySize, objectArraySize);
-        }
-    }
 }

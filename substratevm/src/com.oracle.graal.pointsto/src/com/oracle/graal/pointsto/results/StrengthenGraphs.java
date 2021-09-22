@@ -72,7 +72,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomSimplificatio
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
@@ -82,6 +82,8 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+
+import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -107,7 +109,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
-    public StrengthenGraphs(BigBang bb, Universe converter) {
+    public StrengthenGraphs(PointsToAnalysis bb, Universe converter) {
         super(bb, converter);
     }
 
@@ -141,6 +143,24 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         return null;
     }
 
+    /*
+     * Returns a type that can replace the original type in stamps as an exact type. When the
+     * returned type is the original type itself, the original type has no subtype and can be used
+     * as an exact type.
+     * 
+     * Returns null if there is no single implementor type.
+     */
+    protected abstract AnalysisType getSingleImplementorType(AnalysisType originalType);
+
+    /*
+     * Returns a type that can replace the original type in stamps.
+     * 
+     * Returns null if the original type has no assignable type that is instantiated, i.e., the code
+     * using the type is unreachable.
+     * 
+     * Returns the original type itself if there is no optimization potential, i.e., if the original
+     * type itself is instantiated or has more than one instantiated direct subtype.
+     */
     protected abstract AnalysisType getStrengthenStampType(AnalysisType originalType);
 
     protected abstract FixedNode createUnreachable(StructuredGraph graph, CoreProviders providers, Supplier<String> message);
@@ -380,6 +400,10 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
          * allows later inlining of the callee.
          */
         private void devirtualizeInvoke(AnalysisMethod singleCallee, Invoke invoke) {
+            if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(graph.getOptions())) {
+                ImageBuildStatistics.counters().incDevirtualizedInvokeCounter();
+            }
+
             Stamp anchoredReceiverStamp = StampFactory.object(TypeReference.createWithoutAssumptions(singleCallee.getDeclaringClass()));
             ValueNode piReceiver = insertPi(invoke.getReceiver(), anchoredReceiverStamp, (FixedWithNextNode) invoke.asNode().predecessor());
             if (piReceiver != null) {
@@ -488,6 +512,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             } else if (typeStateTypes.size() == 1) {
                 AnalysisType exactType = typeStateTypes.get(0);
+                assert getSingleImplementorType(exactType) == null || exactType.equals(getSingleImplementorType(exactType)) : "exactType=" + exactType + ", singleImplementor=" +
+                                getSingleImplementorType(exactType);
                 assert exactType.equals(getStrengthenStampType(exactType));
 
                 if (!oldStamp.isExactType() || !exactType.equals(oldType)) {
@@ -513,6 +539,14 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                      */
                     baseType = oldType;
                 }
+
+                /*
+                 * With more than one type in the type state, there cannot be a single implementor.
+                 * Because that single implementor would need to be the only type in the type state.
+                 */
+                assert getSingleImplementorType(baseType) == null || baseType.equals(getSingleImplementorType(baseType)) : "baseType=" + baseType + ", singleImplementor=" +
+                                getSingleImplementorType(baseType);
+
                 AnalysisType newType = getStrengthenStampType(baseType);
 
                 assert typeStateTypes.stream().map(typeStateType -> newType.isAssignableFrom(typeStateType)).reduce(Boolean::logicalAnd).get();
@@ -558,6 +592,16 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             if (originalType == null) {
                 return null;
             }
+
+            AnalysisType singleImplementorType = getSingleImplementorType(originalType);
+            if (singleImplementorType != null && (!stamp.isExactType() || !singleImplementorType.equals(originalType))) {
+                ResolvedJavaType targetType = toTarget(singleImplementorType);
+                if (targetType != null) {
+                    TypeReference typeRef = TypeReference.createExactTrusted(targetType);
+                    return StampFactory.object(typeRef, stamp.nonNull());
+                }
+            }
+
             AnalysisType strengthenType = getStrengthenStampType(originalType);
             if (originalType.equals(strengthenType)) {
                 /* Nothing to strengthen. */

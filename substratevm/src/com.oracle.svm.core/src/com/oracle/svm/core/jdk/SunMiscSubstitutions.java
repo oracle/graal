@@ -206,7 +206,9 @@ final class Target_Unsafe_Core {
         return PredefinedClassesSupport.loadClass(loader, name, b, off, len, protectionDomain);
     }
 
+    // JDK-8243287
     @Substitute
+    @TargetElement(onlyWith = JDK16OrEarlier.class)
     private Class<?> defineAnonymousClass(Class<?> hostClass, byte[] data, Object[] cpPatches) {
         throw VMError.unsupportedFeature("Defining anonymous classes at runtime is not supported.");
     }
@@ -286,8 +288,9 @@ final class Target_Unsafe_Core {
         throw VMError.unsupportedFeature("Target_Unsafe_Core.defineClass0(String, byte[], int, int, ClassLoader, ProtectionDomain)");
     }
 
+    // JDK-8243287
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @TargetElement(onlyWith = JDK11To16.class)
     private native Class<?> defineAnonymousClass0(Class<?> hostClass, byte[] data, Object[] cpPatches);
 
     @Delete

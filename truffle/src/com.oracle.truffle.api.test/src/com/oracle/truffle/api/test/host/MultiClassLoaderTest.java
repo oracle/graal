@@ -85,7 +85,7 @@ public class MultiClassLoaderTest {
                 String req = request.getSource().getCharacters().toString();
                 if (req.startsWith("get:")) {
                     String name = req.substring(4);
-                    RootCallTarget reader = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.getCurrentLanguage()) {
+                    RootCallTarget reader = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
                         @Override
                         public Object execute(VirtualFrame frame) {
                             Object obj = frame.getArguments()[0];

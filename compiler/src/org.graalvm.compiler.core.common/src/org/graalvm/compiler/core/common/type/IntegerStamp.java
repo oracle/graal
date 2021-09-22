@@ -1297,6 +1297,8 @@ public final class IntegerStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant value, int amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
                             switch (c.getJavaKind()) {
+                                case Short:
+                                    return JavaConstant.forShort((short) (c.asLong() << amount));
                                 case Int:
                                     return JavaConstant.forInt(c.asInt() << amount);
                                 case Long:
@@ -1375,6 +1377,8 @@ public final class IntegerStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant value, int amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
                             switch (c.getJavaKind()) {
+                                case Short:
+                                    return JavaConstant.forShort((short) (c.asLong() >> amount));
                                 case Int:
                                     return JavaConstant.forInt(c.asInt() >> amount);
                                 case Long:

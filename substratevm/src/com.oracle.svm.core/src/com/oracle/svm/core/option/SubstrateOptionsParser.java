@@ -50,6 +50,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 /**
  * This class contains methods for parsing options and matching them against
@@ -70,28 +71,30 @@ public class SubstrateOptionsParser {
         private final EnumSet<OptionType> printFlags;
         private final Set<String> optionNameFilter;
         private final String error;
+        private final OptionKey<?> optionKey;
         private static final String EXTRA_HELP_OPTIONS_WILDCARD = "*";
 
-        private OptionParseResult(EnumSet<OptionType> printFlags, String error, Set<String> optionNameFilter) {
+        private OptionParseResult(EnumSet<OptionType> printFlags, String error, Set<String> optionNameFilter, OptionKey<?> optionKey) {
             this.printFlags = printFlags;
             this.error = error;
             this.optionNameFilter = optionNameFilter;
+            this.optionKey = optionKey;
         }
 
-        private OptionParseResult(EnumSet<OptionType> printFlags, String error) {
-            this(printFlags, error, new HashSet<>());
+        private OptionParseResult(EnumSet<OptionType> printFlags, String error, OptionKey<?> optionKey) {
+            this(printFlags, error, new HashSet<>(), optionKey);
         }
 
         static OptionParseResult error(String message) {
-            return new OptionParseResult(EnumSet.noneOf(OptionType.class), message);
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), message, null);
         }
 
-        static OptionParseResult correct() {
-            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null);
+        static OptionParseResult correct(OptionKey<?> optionKey) {
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null, optionKey);
         }
 
         static OptionParseResult printFlags(EnumSet<OptionType> selectedOptionTypes) {
-            return new OptionParseResult(selectedOptionTypes, null);
+            return new OptionParseResult(selectedOptionTypes, null, null);
         }
 
         static OptionParseResult printFlagsWithExtraHelp(Set<String> optionNameFilter) {
@@ -100,7 +103,7 @@ public class SubstrateOptionsParser {
                 optionNames = new HashSet<>();
                 optionNames.add(EXTRA_HELP_OPTIONS_WILDCARD);
             }
-            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null, optionNames);
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null, optionNames, null);
         }
 
         boolean printFlags() {
@@ -112,11 +115,17 @@ public class SubstrateOptionsParser {
         }
 
         public boolean isValid() {
-            return printFlags.isEmpty() && optionNameFilter.isEmpty() && error == null;
+            boolean result = optionKey != null;
+            assert result == (printFlags.isEmpty() && optionNameFilter.isEmpty() && error == null);
+            return result;
         }
 
         public String getError() {
             return error;
+        }
+
+        public OptionKey<?> getOptionKey() {
+            return optionKey;
         }
 
         private boolean matchesFlags(OptionDescriptor d, boolean svmOption) {
@@ -286,7 +295,7 @@ public class SubstrateOptionsParser {
             return OptionParseResult.printFlagsWithExtraHelp(selectedOptionNames);
         }
 
-        return OptionParseResult.correct();
+        return OptionParseResult.correct(optionKey);
     }
 
     private static Class<?> getMultiOptionValueElementType(OptionKey<?> optionKey) {
@@ -323,7 +332,7 @@ public class SubstrateOptionsParser {
         } else if (optionType.isEnum()) {
             value = Enum.valueOf(optionType.asSubclass(Enum.class), valueString);
         } else {
-            throw VMError.shouldNotReachHere(option + " uses unsupported option value class: " + optionType.getSimpleName());
+            throw VMError.shouldNotReachHere(option + " uses unsupported option value class: " + ClassUtil.getUnqualifiedName(optionType));
         }
         return value;
     }
@@ -355,6 +364,21 @@ public class SubstrateOptionsParser {
         }
         if (!optionParseResult.isValid()) {
             errors.add(optionParseResult.getError());
+            return true;
+        }
+
+        // Print a warning if the option is deprecated.
+        OptionKey<?> option = optionParseResult.getOptionKey();
+        OptionDescriptor descriptor = option.getDescriptor();
+        if (descriptor != null && descriptor.isDeprecated()) {
+            String message = "Warning: Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions";
+            String deprecationMessage = descriptor.getDeprecationMessage();
+            if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
+                message += ": " + deprecationMessage;
+            }
+            // Checkstyle: stop
+            System.err.println(message);
+            // Checkstyle: resume
         }
         return true;
     }

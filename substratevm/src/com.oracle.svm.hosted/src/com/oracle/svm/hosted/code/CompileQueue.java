@@ -29,7 +29,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -110,7 +109,7 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.nodes.MacroNode;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -156,9 +155,11 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
+import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -199,6 +200,8 @@ public class CompileQueue {
     private final FeatureHandler featureHandler;
 
     private volatile boolean inliningProgress;
+
+    private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
 
     public abstract static class CompileReason {
         /**
@@ -260,19 +263,12 @@ public class CompileQueue {
 
         public final HostedMethod method;
         protected final CompileReason reason;
-        protected final List<CompileReason> allReasons;
         public CompilationResult result;
         public final CompilationIdentifier compilationIdentifier;
 
         public CompileTask(HostedMethod method, CompileReason reason) {
             this.method = method;
             this.reason = reason;
-            if (NativeImageOptions.PrintMethodHistogram.getValue()) {
-                this.allReasons = Collections.synchronizedList(new ArrayList<CompileReason>());
-                this.allReasons.add(reason);
-            } else {
-                this.allReasons = null;
-            }
             compilationIdentifier = new SubstrateHostedCompilationIdentifier(method);
         }
 
@@ -373,6 +369,15 @@ public class CompileQueue {
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
 
+            /*
+             * The graph in the analysis universe is no longer necessary. This clears the graph for
+             * methods that were not "parsed", i.e., method that were reached by the static analysis
+             * but are no longer reachable now.
+             */
+            for (HostedMethod method : universe.getMethods()) {
+                method.wrapped.setAnalyzedGraph(null);
+            }
+
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
                     inlineTrivialMethods(debug);
@@ -387,7 +392,7 @@ public class CompileQueue {
         } catch (InterruptedException ie) {
             throw new InterruptImageBuilding();
         }
-        if (NativeImageOptions.PrintMethodHistogram.getValue()) {
+        if (printMethodHistogram) {
             printMethodHistogram();
         }
     }
@@ -418,6 +423,10 @@ public class CompileQueue {
         phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new OptimizeExceptionPathsPhase());
+        if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(universe.hostVM().options())) {
+            phaseSuite.appendPhase(CanonicalizerPhase.create());
+            phaseSuite.appendPhase(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.AFTER_PARSE_CANONICALIZATION));
+        }
         return phaseSuite;
     }
 
@@ -472,14 +481,10 @@ public class CompileQueue {
                 } else {
                     sizeNonDeoptMethods += result.getTargetCodeSize();
                     numberOfNonDeopt += 1;
-                    System.out.format("  ; %6d; %5d; %5d; %4d; %4d;", 0, 0, 0, 0, 0);
+                    System.out.format("  ; %6d; %5d; %5d; %5d; %4d; %4d;", 0, 0, 0, 0, 0, 0);
                 }
 
-                System.out.format(" %4d; %4d; %4d; %s\n",
-                                task.allReasons.stream().filter(t -> t instanceof EntryPointReason).count(),
-                                task.allReasons.stream().filter(t -> t instanceof DirectCallReason).count(),
-                                task.allReasons.stream().filter(t -> t instanceof VirtualCallReason).count(),
-                                method.format("%H.%n(%p) %r"));
+                System.out.format(" %4d; %4d; %4d; %s%n", ci.numEntryPointCalls.get(), ci.numDirectCalls.get(), ci.numVirtualCalls.get(), method.format("%H.%n(%p) %r"));
             }
         }
         System.out.println();
@@ -935,7 +940,6 @@ public class CompileQueue {
                 }
 
                 method.compilationInfo.graph = graph;
-
                 afterParse(method);
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
                 afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
@@ -951,13 +955,13 @@ public class CompileQueue {
                     ensureParsed(method, reason, targetNode, (HostedMethod) targetNode.targetMethod(), targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode);
                 }
                 for (Node n : graph.getNodes()) {
-                    if (n instanceof MacroNode) {
+                    if (n instanceof MacroInvokable) {
                         /*
-                         * A MacroNode might be lowered back to a regular invoke. At this point we
-                         * do not know if that happens, but we need to prepared and have the graph
-                         * of the potential callee parsed as if the MacroNode was an Invoke.
+                         * A MacroInvokable might be lowered back to a regular invoke. At this point
+                         * we do not know if that happens, but we need to prepared and have the
+                         * graph of the potential callee parsed as if the MacroNode was an Invoke.
                          */
-                        MacroNode macroNode = (MacroNode) n;
+                        MacroInvokable macroNode = (MacroInvokable) n;
                         ensureParsed(method, reason, null, (HostedMethod) macroNode.getTargetMethod(), macroNode.getInvokeKind().isIndirect());
                     }
                 }
@@ -1109,21 +1113,39 @@ public class CompileQueue {
     }
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
+        CompilationInfo compilationInfo = method.compilationInfo;
+
+        if (printMethodHistogram) {
+            if (reason instanceof DirectCallReason) {
+                compilationInfo.numDirectCalls.incrementAndGet();
+            } else if (reason instanceof VirtualCallReason) {
+                compilationInfo.numVirtualCalls.incrementAndGet();
+            } else if (reason instanceof EntryPointReason) {
+                compilationInfo.numEntryPointCalls.incrementAndGet();
+            }
+        }
+
+        /*
+         * Fast non-atomic check if method is already scheduled for compilation, to avoid frequent
+         * access of the ConcurrentHashMap.
+         */
+        if (compilationInfo.inCompileQueue) {
+            return;
+        }
+
         CompileTask task = new CompileTask(method, reason);
         CompileTask oldTask = compilations.putIfAbsent(method, task);
         if (oldTask != null) {
-            // Method is already scheduled for compilation.
-            if (oldTask.allReasons != null) {
-                oldTask.allReasons.add(reason);
-            }
             return;
         }
-        if (method.compilationInfo.specializedArguments != null) {
+        compilationInfo.inCompileQueue = true;
+
+        if (compilationInfo.specializedArguments != null) {
             // Do the specialization: replace the argument locals with the constant arguments.
-            StructuredGraph graph = method.compilationInfo.graph;
+            StructuredGraph graph = compilationInfo.graph;
 
             int idx = 0;
-            for (ConstantNode argument : method.compilationInfo.specializedArguments) {
+            for (ConstantNode argument : compilationInfo.specializedArguments) {
                 ParameterNode local = graph.getParameter(idx++);
                 if (local != null) {
                     local.replaceAndDelete(ConstantNode.forConstant(argument.asJavaConstant(), runtimeConfig.getProviders().getMetaAccess(), graph));
@@ -1161,7 +1183,7 @@ public class CompileQueue {
             SubstrateBackend backend = config.lookupBackend(method);
 
             StructuredGraph graph = method.compilationInfo.graph;
-            assert graph != null : method;
+            VMError.guarantee(graph != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: " + method);
             /* Operate on a copy, to keep the original graph intact for later inlining. */
             graph = graph.copyWithIdentifier(compilationIdentifier, debug);
 

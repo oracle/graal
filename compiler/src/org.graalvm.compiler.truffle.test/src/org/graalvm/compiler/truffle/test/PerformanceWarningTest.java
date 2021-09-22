@@ -62,7 +62,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final SubClass object3 = new SubClass();
     @SuppressWarnings("unused") private static final L9a object4 = new L9a();
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
-    @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.inFirstTier();
+    @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.hasNextTier();
 
     private ByteArrayOutputStream outContent;
 
@@ -153,6 +153,11 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
                                     @Override
                                     public TruffleInliningData inliningData() {
                                         return inlining;
+                                    }
+
+                                    @Override
+                                    public boolean hasNextTier() {
+                                        return false;
                                     }
                                 }), null);
                 assertTrue(compilable.isValid());

@@ -1180,6 +1180,19 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
     }
 
+    @Override
+    public void pin(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            engine.host.pin(receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
     @TruffleBoundary
     static final RuntimeException getHashValuesIteratorUnsupported(PolyglotLanguageContext context, Object receiver) {
         throw unsupported(context, receiver, "getHashValuesIterator()", "hasHashEntries()");
@@ -1199,7 +1212,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     private static Value asValue(PolyglotLanguageContext context, Object value) {
         if (context == null) {
-            return PolyglotImpl.getInstance().asValue(PolyglotContextImpl.currentNotEntered(), value);
+            return PolyglotImpl.getInstance().asValue(PolyglotFastThreadLocals.getContext(null), value);
         } else {
             return context.asValue(value);
         }
@@ -2000,17 +2013,12 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget getHashKeysIterator;
         final CallTarget getHashValuesIterator;
 
-        final boolean isProxy;
-        final boolean isHost;
-
         final CallTarget asClassLiteral;
         final CallTarget asTypeLiteral;
         final Class<?> receiverType;
 
         InteropValue(AbstractPolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
             super(polyglot, languageInstance.getEngine());
-            this.isProxy = engine.host.isHostProxy(receiverObject);
-            this.isHost = engine.host.isHostObject(receiverObject);
             this.receiverType = receiverType;
             this.asClassLiteral = createTarget(new AsClassLiteralNode(this));
             this.asTypeLiteral = createTarget(new AsTypeLiteralNode(this));
@@ -2294,17 +2302,33 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         @Override
         public boolean isHostObject(Object languageContext, Object receiver) {
-            return this.isHost;
+            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+            Object prev = hostEnter(context);
+            try {
+                return engine.host.isHostObject(receiver);
+            } catch (Throwable e) {
+                throw guestToHostException(context, e, true);
+            } finally {
+                hostLeave(context, prev);
+            }
         }
 
         @Override
         public boolean isProxyObject(Object languageContext, Object receiver) {
-            return this.isProxy;
+            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+            Object prev = hostEnter(context);
+            try {
+                return engine.host.isHostProxy(receiver);
+            } catch (Throwable e) {
+                throw guestToHostException(context, e, true);
+            } finally {
+                hostLeave(context, prev);
+            }
         }
 
         @Override
         public Object asProxyObject(Object languageContext, Object receiver) {
-            if (this.isProxy) {
+            if (isProxyObject(languageContext, receiver)) {
                 return engine.host.unboxProxyObject(receiver);
             } else {
                 return super.asProxyObject(languageContext, receiver);
@@ -2313,7 +2337,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         @Override
         public Object asHostObject(Object languageContext, Object receiver) {
-            if (this.isHost) {
+            if (isHostObject(languageContext, receiver)) {
                 return engine.host.unboxHostObject(receiver);
             } else {
                 return super.asHostObject(languageContext, receiver);
@@ -4192,7 +4216,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         private abstract static class AbstractExecuteNode extends InteropNode {
 
             @Child private InteropLibrary executables = InteropLibrary.getFactory().createDispatched(CACHE_LIMIT);
-            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
+            @Child private ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
             private final BranchProfile invalidArgument = BranchProfile.create();
             private final BranchProfile arity = BranchProfile.create();
             private final BranchProfile unsupported = BranchProfile.create();
@@ -4323,7 +4347,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         abstract static class NewInstanceNode extends InteropNode {
 
-            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
+            @Child private ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
             private final ToHostValueNode toHostValue;
 
             protected NewInstanceNode(InteropValue interop) {
@@ -4402,7 +4426,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
         private static class InvokeNode extends AbstractInvokeNode {
 
-            private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
+            @Child private ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
 
             protected InvokeNode(InteropValue interop) {
                 super(interop);

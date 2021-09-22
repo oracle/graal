@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.293.0",
+  "mxversion" : "5.305.3",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -184,8 +184,6 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "jacoco" : "exclude",
-      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
-      "javac.lint.overrides" : "-deprecation",
     },
     "com.oracle.truffle.llvm.tests.native" : {
       "subDir" : "tests",
@@ -331,10 +329,11 @@ suite = {
       "checkstyleVersion" : "8.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8+",
+      "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
-      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
+      # Using finalizer in signals implementation. GR-7018
       "javac.lint.overrides" : "-deprecation",
     },
 
@@ -761,7 +760,7 @@ suite = {
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "ninja_targets" : ["<lib:c++abi>", "<lib:c++>"],
-      "ninja_install_targets" : ["install-libcxxabi", "install-libcxx"],
+      "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
       "results" : ["native"],
       "cmakeConfig" : {
         "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
@@ -892,7 +891,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulong.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
-      "variants" : ["bitcode-O0", "bitcode-O0-MISC_OPTS", "bitcode-O1", "bitcode-O2", "bitcode-O3", "gcc-O0"],
+      "variants" : ["bitcode-O0", "bitcode-O1", "bitcode-O2", "bitcode-O3", "gcc-O0"],
       "cmakeConfig" : {
         "CMAKE_EXE_LINKER_FLAGS" : "-lm",
       },

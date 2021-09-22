@@ -123,6 +123,7 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
         return original.isLinked();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();
@@ -186,6 +187,11 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
     @Override
     public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         return original.resolveMethod(method, callerType);
+    }
+
+    @Override
+    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        return original.resolveConcreteMethod(method, callerType);
     }
 
     @Override

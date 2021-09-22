@@ -35,7 +35,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
-import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.graal.BarrierSnippets;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -167,14 +166,18 @@ final class CardTable {
         if (referencedObject.isNonNull() && !HeapImpl.getHeapImpl().isInImageHeap(referencedObject)) {
             Object obj = referencedObject.toObject();
             HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
-            Space chunkSpace = HeapChunk.getSpace(objChunk);
-            // Fail if we find a reference to the young generation.
-            if (chunkSpace.isYoungSpace()) {
+            // Fail if we find a reference from the image heap to the runtime heap, or from the
+            // old generation (which is the only one with remembered sets) to the young generation.
+            boolean fromImageHeap = HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(parentObject);
+            if (fromImageHeap || HeapChunk.getSpace(objChunk).isYoungSpace()) {
                 UnsignedWord cardTableIndex = memoryOffsetToIndex(Word.objectToUntrackedPointer(parentObject).subtract(objectsStart));
                 Pointer cardTableAddress = cardTableStart.add(indexToTableOffset(cardTableIndex));
-                Log.log().string("Object ").hex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).string(") has an object reference at ")
-                                .hex(reference).string(" that points to ").hex(referencedObject).string(" (").string(obj.getClass().getName())
-                                .string("), which is in the young generation. However, the card table at ").hex(cardTableAddress).string(" is clean.").newline();
+                Log.log().string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
+                                .string(fromImageHeap ? ", which is in the image heap, " : " ")
+                                .string("has an object reference at ")
+                                .zhex(reference).string(" that points to ").zhex(referencedObject).string(" (").string(obj.getClass().getName()).string("), ")
+                                .string("which is in the ").string(fromImageHeap ? "runtime heap" : "young generation").string(". ")
+                                .string("However, the card table at ").zhex(cardTableAddress).string(" is clean.").newline();
                 return false;
             }
         }
@@ -197,7 +200,7 @@ final class CardTable {
 
         @Override
         @SuppressFBWarnings(value = {"NS_DANGEROUS_NON_SHORT_CIRCUIT"}, justification = "Non-short circuit logic is used on purpose here.")
-        public boolean visitObjectReference(Pointer reference, boolean compressed) {
+        public boolean visitObjectReference(Pointer reference, boolean compressed, Object holderObject) {
             Pointer referencedObject = ReferenceAccess.singleton().readObjectAsUntrackedPointer(reference, compressed);
             success &= verifyReference(parentObject, cardTableStart, objectsStart, reference, referencedObject);
             return true;

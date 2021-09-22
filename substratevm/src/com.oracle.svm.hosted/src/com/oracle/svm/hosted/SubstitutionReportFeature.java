@@ -29,6 +29,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -115,7 +116,7 @@ public class SubstitutionReportFeature implements Feature {
     }
 
     private void reportSubstitutions() {
-        ReportUtils.report("substitutions performed by native-image", "reports", "substitutions", "csv", pw -> {
+        ReportUtils.report("substitutions performed by native-image", SubstrateOptions.reportsPath(), "substitutions", "csv", pw -> {
             pw.println("location, category (type/method/field), original, annotated");
             for (Map.Entry<String, Substitutions> g : substitutions.entrySet()) {
                 for (Map.Entry<ResolvedJavaType, ResolvedJavaType> e : g.getValue().getSubstitutedTypes().entrySet()) {

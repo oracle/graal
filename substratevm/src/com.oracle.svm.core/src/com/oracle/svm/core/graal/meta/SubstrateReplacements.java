@@ -80,6 +80,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.util.DirectAnnotationAccess;
 
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.VMError;
 
@@ -156,8 +157,16 @@ public class SubstrateReplacements extends ReplacementsImpl {
         access.registerAsImmutable(snippetEncoding);
         access.registerAsImmutable(snippetObjects);
         access.registerAsImmutable(snippetNodeClasses);
-        access.registerAsImmutable(snippetStartOffsets, o -> true);
-        access.registerAsImmutable(snippetInvocationPlugins, o -> true);
+        access.registerAsImmutable(snippetStartOffsets, SubstrateReplacements::isImmutable);
+        access.registerAsImmutable(snippetInvocationPlugins, SubstrateReplacements::isImmutable);
+    }
+
+    /**
+     * Manual list of mutable classes that are reachable from object graphs that are manually marked
+     * as immutable.
+     */
+    private static boolean isImmutable(Object o) {
+        return !(o instanceof SubstrateForeignCallLinkage) && !(o instanceof SubstrateTargetDescription);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -282,6 +291,9 @@ public class SubstrateReplacements extends ReplacementsImpl {
         snippetNodeClasses = encoder.getNodeClasses();
 
         snippetInvocationPlugins = makeInvocationPlugins(getGraphBuilderPlugins(), builder, Function.identity());
+
+        /* Original graphs are no longer necessary, release memory. */
+        builder.graphs.clear();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

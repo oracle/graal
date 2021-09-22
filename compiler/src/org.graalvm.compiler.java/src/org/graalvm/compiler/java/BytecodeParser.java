@@ -248,6 +248,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining
 import static org.graalvm.compiler.core.common.GraalOptions.PrintProfilingInformation;
 import static org.graalvm.compiler.core.common.GraalOptions.StressExplicitExceptionCode;
 import static org.graalvm.compiler.core.common.GraalOptions.StressInvokeWithExceptionNode;
+import static org.graalvm.compiler.core.common.GraalOptions.StrictDeoptInsertionChecks;
 import static org.graalvm.compiler.core.common.GraalOptions.TraceInlining;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
@@ -494,6 +495,28 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private boolean bciCanBeDuplicated = false;
 
+    @Override
+    public FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode returnVal) {
+        FrameStateBuilder frameStateBuilder = frameState;
+        if (returnVal != null) {
+            // Push the return value on the top of stack
+            FrameState newFrameState = frameStateBuilder.create(stream.nextBCI(), getNonIntrinsicAncestor(), false,
+                            new JavaKind[]{returnKind}, new ValueNode[]{returnVal});
+            return newFrameState;
+        } else if (returnKind != JavaKind.Void) {
+            throw new InternalError();
+        } else {
+            // An intrinsic for a void method.
+            FrameState newFrameState = frameStateBuilder.create(stream.nextBCI(), null);
+            return newFrameState;
+        }
+    }
+
+    @Override
+    public boolean canMergeIntrinsicReturns() {
+        return true;
+    }
+
     /**
      * A scoped object for tasks to be performed after inlining during parsing such as processing
      * {@linkplain BytecodeFrame#isPlaceholderBci(int) placeholder} frames states.
@@ -598,7 +621,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                         // namely the exception object.
                         assert frameState.rethrowException();
                         ValueNode exceptionValue = frameState.stackAt(0);
-                        ExceptionObjectNode exceptionNode = (ExceptionObjectNode) GraphUtil.unproxify(exceptionValue);
+                        StateSplit exceptionNode = (StateSplit) GraphUtil.unproxify(exceptionValue);
                         FrameStateBuilder dispatchState = parser.frameState.copy();
                         dispatchState.clearStack();
                         dispatchState.push(JavaKind.Object, exceptionValue);
@@ -1981,9 +2004,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void emitCheckForInvokeSuperSpecial(ValueNode[] args) {
         ResolvedJavaType callingClass = method.getDeclaringClass();
-        if (callingClass.getHostClass() != null) {
-            callingClass = callingClass.getHostClass();
-        }
+        callingClass = getHostClass(callingClass);
         if (callingClass.isInterface()) {
             ValueNode receiver = args[0];
             TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), callingClass);
@@ -1991,6 +2012,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
             args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static ResolvedJavaType getHostClass(ResolvedJavaType type) {
+        ResolvedJavaType hostClass = type.getHostClass();
+        return hostClass != null ? hostClass : type;
     }
 
     protected JavaTypeProfile getProfileForInvoke(InvokeKind invokeKind) {
@@ -2194,7 +2221,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
         try (DebugCloseable context = openNodeContext(targetMethod)) {
+            Mark mark = graph.getMark();
             if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
+                checkDeoptAfterPlugin(mark, targetMethod);
                 assert assertions.check(true);
                 return true;
             } else {
@@ -2202,6 +2231,23 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             }
         }
         return false;
+    }
+
+    /**
+     * Check that plugins aren't inserting deopts into graphs that aren't expecting them.
+     */
+    private boolean checkDeoptAfterPlugin(Mark mark, ResolvedJavaMethod targetMethod) {
+        if (!needsExplicitException()) {
+            return true;
+        }
+        if (StrictDeoptInsertionChecks.getValue(getOptions()) || (Assertions.assertionsEnabled() && disallowDeoptInPlugins())) {
+            for (Node node : graph.getNewNodes(mark)) {
+                if (node instanceof FixedGuardNode || node instanceof DeoptimizeNode) {
+                    throw new AssertionError("node " + node + " may not be used by plugin in graphs with explicit exceptions for " + targetMethod);
+                }
+            }
+        }
+        return true;
     }
 
     private boolean tryNodePluginForInvocation(ValueNode[] args, ResolvedJavaMethod targetMethod) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,7 @@ import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
+import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
@@ -65,7 +65,7 @@ import jdk.vm.ci.code.TargetDescription;
  * or while transitioning between those two calls. Having different reference maps would lead to
  * wrong roots and therefore a crash of the GC.
  */
-public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimizationPhase {
+public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase {
 
     @Override
     protected CharSequence createName() {
@@ -73,7 +73,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, FinalCodeAnalysisContext context) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /*
              * We only have explicit thread state transitions with a slow path in multi-threaded

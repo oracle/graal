@@ -36,8 +36,8 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -57,10 +57,10 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
     private final ConcurrentHashMap<ResolvedJavaType, LambdaSubstitutionType> typeSubstitutions;
     private final Set<String> uniqueLambdaProxyNames;
 
-    LambdaProxyRenamingSubstitutionProcessor(BigBang bigBang) {
+    LambdaProxyRenamingSubstitutionProcessor(BigBang bb) {
         this.typeSubstitutions = new ConcurrentHashMap<>();
         this.uniqueLambdaProxyNames = new HashSet<>();
-        this.bb = bigBang;
+        this.bb = bb;
     }
 
     @Override

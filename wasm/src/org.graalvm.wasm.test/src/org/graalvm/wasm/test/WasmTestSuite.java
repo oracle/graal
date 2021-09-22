@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.test;
 
+import org.graalvm.wasm.test.suites.WasmImplementationLimitationsSuite;
 import org.graalvm.wasm.test.suites.arithmetic.Float32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Float64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer32Suite;
@@ -81,6 +82,7 @@ import org.junit.runners.Suite;
                 WasmJsApiSuite.class,
                 ValidationSuite.class,
                 WasmLateLinkingSuite.class,
+                WasmImplementationLimitationsSuite.class,
 })
 public class WasmTestSuite {
     @Test

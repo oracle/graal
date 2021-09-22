@@ -28,6 +28,7 @@ package org.graalvm.compiler.replacements;
 import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
+import static org.graalvm.compiler.replacements.JDK9StringSubstitutions.getByte;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayIndexScale;
 
@@ -117,26 +118,30 @@ public class StringUTF16Substitutions {
         ReplacementsUtil.dynamicAssert(targetCount <= target.length, "StringUTF16.indexOfLatin1Unsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfLatin1Unsafe invalid args: sourceCount < targetCount");
         if (targetCount == 1) {
-            return ArrayIndexOf.indexOf1CharCompact(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(target[0]));
+            return ArrayIndexOf.indexOf1CharCompact(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(getByte(target, 0)));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
-            while (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength)) {
-                int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, offset, (char) Byte.toUnsignedInt(target[0]), (char) Byte.toUnsignedInt(target[1]));
-                if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
-                    return -1;
-                }
-                offset = indexOfResult;
-                if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 2)) {
-                    return offset;
-                } else {
-                    Pointer cmpSourcePointer = charOffsetPointer(source, offset);
-                    Pointer targetPointer = pointer(target);
-                    if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char, JavaKind.Byte))) {
-                        return offset;
+            if (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength)) {
+                char c1 = (char) Byte.toUnsignedInt(getByte(target, 0));
+                char c2 = (char) Byte.toUnsignedInt(getByte(target, 1));
+                do {
+                    int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, offset, c1, c2);
+                    if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
+                        return -1;
                     }
-                }
-                offset++;
+                    offset = indexOfResult;
+                    if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 2)) {
+                        return offset;
+                    } else {
+                        Pointer cmpSourcePointer = charOffsetPointer(source, offset);
+                        Pointer targetPointer = pointer(target);
+                        if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char, JavaKind.Byte))) {
+                            return offset;
+                        }
+                    }
+                    offset++;
+                } while (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength));
             }
             return -1;
         }

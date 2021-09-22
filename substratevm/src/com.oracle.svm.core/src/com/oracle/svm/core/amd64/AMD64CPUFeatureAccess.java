@@ -72,7 +72,7 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
      * the CPUFeatures available vary across different JDK versions, the features are queried via
      * their name, as opposed to the actual enum.
      */
-    private static boolean isFeaturePresent(String featureName, AMD64LibCHelper.CPUFeatures cpuFeatures) {
+    private static boolean isFeaturePresent(String featureName, AMD64LibCHelper.CPUFeatures cpuFeatures, List<String> unknownFeatures) {
         switch (featureName) {
             case "CX8":
                 return cpuFeatures.fCX8();
@@ -108,6 +108,8 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
                 return cpuFeatures.fTSC();
             case "TSCINV":
                 return cpuFeatures.fTSCINV();
+            case "TSCINV_BIT":
+                return cpuFeatures.fTSCINVBIT();
             case "AVX":
                 return cpuFeatures.fAVX();
             case "AVX2":
@@ -144,8 +146,31 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
                 return cpuFeatures.fSHA();
             case "FMA":
                 return cpuFeatures.fFMA();
+            case "VZEROUPPER":
+                return cpuFeatures.fVZEROUPPER();
+            case "AVX512_VPOPCNTDQ":
+                return cpuFeatures.fAVX512VPOPCNTDQ();
+            case "AVX512_VPCLMULQDQ":
+                return cpuFeatures.fAVX512VPCLMULQDQ();
+            case "AVX512_VAES":
+                return cpuFeatures.fAVX512VAES();
+            case "AVX512_VNNI":
+                return cpuFeatures.fAVX512VNNI();
+            case "FLUSH":
+                return cpuFeatures.fFLUSH();
+            case "FLUSHOPT":
+                return cpuFeatures.fFLUSHOPT();
+            case "CLWB":
+                return cpuFeatures.fCLWB();
+            case "AVX512_VBMI2":
+                return cpuFeatures.fAVX512VBMI2();
+            case "AVX512_VBMI":
+                return cpuFeatures.fAVX512VBMI();
+            case "HV":
+                return cpuFeatures.fHV();
             default:
-                throw VMError.shouldNotReachHere("Missing feature check: " + featureName);
+                unknownFeatures.add(featureName);
+                return false;
         }
     }
 
@@ -159,10 +184,14 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
 
         AMD64LibCHelper.determineCPUFeatures(cpuFeatures);
 
+        ArrayList<String> unknownFeatures = new ArrayList<>();
         for (AMD64.CPUFeature feature : AMD64.CPUFeature.values()) {
-            if (isFeaturePresent(feature.name(), cpuFeatures)) {
+            if (isFeaturePresent(feature.name(), cpuFeatures, unknownFeatures)) {
                 features.add(feature);
             }
+        }
+        if (!unknownFeatures.isEmpty()) {
+            throw VMError.shouldNotReachHere("Native image does not support the following JVMCI CPU features: " + unknownFeatures);
         }
         return features;
     }

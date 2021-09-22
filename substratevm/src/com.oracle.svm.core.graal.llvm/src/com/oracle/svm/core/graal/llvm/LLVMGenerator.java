@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.isDoubleType;
+import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.isFloatType;
+import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.isIntegerType;
+import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.isVectorType;
 import static com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.typeOf;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
@@ -66,7 +70,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -934,7 +937,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         LLVMValueRef[] callArguments = getCallArguments(args, callType, targetMethod);
 
         LLVMValueRef call;
-        boolean nativeABI = ((SubstrateCallingConventionType) callType).nativeABI;
+        boolean nativeABI = ((SubstrateCallingConventionType) callType).nativeABI();
         if (successor == null && handler == null) {
             call = buildStatepointCall(callee, nativeABI, patchpointId, callArguments);
         } else {
@@ -948,7 +951,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     LLVMValueRef[] getCallArguments(LLVMValueRef[] args, CallingConvention.Type callType, ResolvedJavaMethod targetMethod) {
         LLVMValueRef[] newArgs = args;
 
-        if (!((SubstrateCallingConventionType) callType).nativeABI && SpecialRegister.hasRegisters()) {
+        if (!((SubstrateCallingConventionType) callType).nativeABI() && SpecialRegister.hasRegisters()) {
             newArgs = new LLVMValueRef[SpecialRegister.count() + args.length];
             for (SpecialRegister reg : SpecialRegister.registers()) {
                 newArgs[reg.index] = getSpecialRegisterArgument(reg, targetMethod);
@@ -961,7 +964,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     LLVMTypeRef[] getUnknownCallArgumentTypes(LLVMTypeRef[] types, CallingConvention.Type callType) {
         LLVMTypeRef[] newTypes = types;
 
-        if (!((SubstrateCallingConventionType) callType).nativeABI && SpecialRegister.count() > 0) {
+        if (!((SubstrateCallingConventionType) callType).nativeABI() && SpecialRegister.count() > 0) {
             newTypes = new LLVMTypeRef[SpecialRegister.count() + types.length];
             for (SpecialRegister reg : SpecialRegister.registers()) {
                 newTypes[reg.index] = builder.wordType();
@@ -1365,17 +1368,17 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+    public LIRInstruction createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         throw unimplemented("the LLVM backend doesn't support diagnostic operations");
     }
 
     @Override
-    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters) {
+    public LIRInstruction createZapRegisters(Register[] zappedRegisters) {
         throw unimplemented("the LLVM backend doesn't support diagnostic operations");
     }
 
     @Override
-    public StandardOp.ZapRegistersOp createZapRegisters() {
+    public LIRInstruction createZapRegisters() {
         throw unimplemented("the LLVM backend doesn't support diagnostic operations");
     }
 
@@ -1498,6 +1501,28 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
+        public Value emitXorFP(Value a, Value b) {
+            LLVMTypeRef type = getType(a.getValueKind());
+            LIRKind resultKind = a.getValueKind(LIRKind.class);
+
+            if (isVectorType(type) || isIntegerType(type)) {
+                return emitXor(a, b);
+            }
+
+            // LLVM requires XOR operands to be integers or vectors. We need to reinterpret them
+            // as integers and then reinterpret the result again.
+            if (isFloatType(type) || isDoubleType(type)) {
+                LIRKind calculationKind = isFloatType(type) ? lirKindTool.getIntegerKind(32) : lirKindTool.getIntegerKind(64);
+                Value reinterpretedA = emitReinterpret(calculationKind, a);
+                Value reinterpretedB = emitReinterpret(calculationKind, b);
+                Value result = emitXor(reinterpretedA, reinterpretedB);
+                return emitReinterpret(resultKind, result);
+            }
+
+            throw unimplemented("the LLVM backend only supports XOR of integers, vectors and floating point numbers");
+        }
+
+        @Override
         public Value emitShl(Value a, Value b) {
             LLVMValueRef valA = getVal(a);
             LLVMValueRef shl = builder.buildShl(valA, emitIntegerConvert(getVal(b), typeOf(valA)));
@@ -1613,6 +1638,18 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         public Value emitMathSqrt(Value input) {
             LLVMValueRef sqrt = builder.buildSqrt(getVal(input));
             return new LLVMVariable(sqrt);
+        }
+
+        @Override
+        public Value emitMathSignum(Value input) {
+            LLVMValueRef val = getVal(input);
+            LLVMTypeRef type = typeOf(val);
+            assert LLVMIRBuilder.isFloatType(type) || LLVMIRBuilder.isDoubleType(type);
+
+            LLVMValueRef zero = LLVMIRBuilder.isFloatType(type) ? builder.constantFloat(0.0f) : builder.constantDouble(0.0d);
+            LLVMValueRef one = LLVMIRBuilder.isFloatType(type) ? builder.constantFloat(1.0f) : builder.constantDouble(1.0d);
+            LLVMValueRef signum = builder.buildSelect(builder.buildCompare(Condition.EQ, val, zero, true), val, builder.buildCopysign(one, val));
+            return new LLVMVariable(signum);
         }
 
         @Override

@@ -50,10 +50,19 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     }
 
     private int encodedGraphCacheCapacity;
+    private int jvmciReservedReference0Offset = -1;
 
     public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         super(config, configForRoot, new HotSpotKnownTruffleTypes(config.lastTier().providers().getMetaAccess()));
         this.graphCacheRef = new AtomicReference<>();
+    }
+
+    void setJvmciReservedReference0Offset(int jvmciReservedReference0Offset) {
+        this.jvmciReservedReference0Offset = jvmciReservedReference0Offset;
+    }
+
+    public int getJvmciReservedReference0Offset() {
+        return jvmciReservedReference0Offset;
     }
 
     @Override
@@ -65,7 +74,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        HotSpotTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification, (HotSpotKnownTruffleTypes) getKnownTruffleTypes());
+        HotSpotTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification,
+                        (HotSpotKnownTruffleTypes) getKnownTruffleTypes());
     }
 
     @SuppressWarnings("serial")

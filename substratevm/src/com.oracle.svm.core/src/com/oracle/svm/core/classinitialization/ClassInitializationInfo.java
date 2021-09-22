@@ -25,6 +25,7 @@
 package com.oracle.svm.core.classinitialization;
 
 // Checkstyle: stop
+
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -35,7 +36,9 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
 // Checkstyle: resume
@@ -49,6 +52,7 @@ import sun.misc.Unsafe;
  * state is mutable while {@link DynamicHub} must be immutable, and 2) few classes require
  * initialization at runtime so factoring out the information reduces image size.
  */
+@InternalVMMethod
 public final class ClassInitializationInfo {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
@@ -292,7 +296,7 @@ public final class ClassInitializationInfo {
         Throwable exception = null;
         try {
             /* Step 9: Next, execute the class or interface initialization method of C. */
-            info.invokeClassInitializer();
+            info.invokeClassInitializer(hub);
         } catch (Throwable ex) {
             exception = ex;
         }
@@ -370,9 +374,17 @@ public final class ClassInitializationInfo {
         }
     }
 
-    private void invokeClassInitializer() {
+    private void invokeClassInitializer(DynamicHub hub) {
         if (classInitializer != null) {
-            ((ClassInitializerFunctionPointer) classInitializer.functionPointer).invoke();
+            ClassInitializerFunctionPointer functionPointer = (ClassInitializerFunctionPointer) classInitializer.functionPointer;
+            if (functionPointer.isNull()) {
+                throw invokeClassInitializerError(hub);
+            }
+            functionPointer.invoke();
         }
+    }
+
+    private static RuntimeException invokeClassInitializerError(DynamicHub hub) {
+        throw VMError.shouldNotReachHere("No classInitializer.functionPointer for class " + hub.getName());
     }
 }

@@ -43,10 +43,8 @@ package com.oracle.truffle.sl.nodes.local;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -62,7 +60,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -125,28 +122,26 @@ public abstract class SLScopedNode extends Node {
 
     /**
      * Test if a function of that name exists. The functions are context-dependent, therefore do a
-     * context lookup via {@link CachedContext}.
+     * context lookup via {@link SLContext#getCurrent(Node)}.
      */
     @ExportMessage
     @TruffleBoundary
-    final boolean hasRootInstance(@SuppressWarnings("unused") Frame frame, @CachedContext(SLLanguage.class) ContextReference<SLContext> contextRef) {
+    final boolean hasRootInstance(@SuppressWarnings("unused") Frame frame) {
         String functionName = getRootNode().getName();
-        SLContext context = contextRef.get();
         // The instance of the current RootNode is a function of the same name.
-        return context.getFunctionRegistry().getFunction(functionName) != null;
+        return SLContext.get(this).getFunctionRegistry().getFunction(functionName) != null;
     }
 
     /**
      * Provide function instance of that name. The function is context-dependent, therefore do a
-     * context lookup via {@link CachedContext}.
+     * context lookup via {@link SLContext#getCurrent(Node)}.
      */
     @ExportMessage
     @TruffleBoundary
-    final Object getRootInstance(@SuppressWarnings("unused") Frame frame, @CachedContext(SLLanguage.class) ContextReference<SLContext> contextRef) throws UnsupportedMessageException {
+    final Object getRootInstance(@SuppressWarnings("unused") Frame frame) throws UnsupportedMessageException {
         String functionName = getRootNode().getName();
-        SLContext context = contextRef.get();
         // The instance of the current RootNode is a function of the same name.
-        Object function = context.getFunctionRegistry().getFunction(functionName);
+        Object function = SLContext.get(this).getFunctionRegistry().getFunction(functionName);
         if (function != null) {
             return function;
         } else {
@@ -788,7 +783,7 @@ public abstract class SLScopedNode extends Node {
         /**
          * Find write node, which declares variable of the given name. Search through the variables
          * declared in the block and its parents and return the first one that matches.
-         * 
+         *
          * @param member the variable name
          */
         SLWriteLocalVariableNode findWriteNode(String member) {
@@ -824,7 +819,7 @@ public abstract class SLScopedNode extends Node {
 
         /**
          * Creates a new array of visible variables.
-         * 
+         *
          * @param writeNodes all variables declarations in the scope, including parent scopes.
          * @param variableIndex index to the variables array, determining variables in the
          *            inner-most scope (from zero index up to the <code>variableIndex</code>,

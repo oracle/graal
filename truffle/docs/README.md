@@ -17,12 +17,12 @@ The Truffle bits are uploaded to [Maven central](https://mvnrepository.com/artif
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>20.3.0</version> <!-- or any later version -->
+    <version>21.2.0</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>20.3.0</version>
+    <version>21.2.0</version>
     <scope>provided</scope>
 </dependency>
 ```

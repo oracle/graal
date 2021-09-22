@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,21 @@
  */
 package org.graalvm.wasm.memory;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.memory.ByteArraySupport;
-import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.constants.Sizes;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-
 import static java.lang.Integer.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
+
+import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.memory.ByteArraySupport;
+import com.oracle.truffle.api.nodes.Node;
 
 public final class ByteArrayWasmMemory extends WasmMemory {
     /**
@@ -92,6 +94,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         try {
             this.buffer = new byte[initialSize * MEMORY_PAGE_SIZE];
         } catch (OutOfMemoryError error) {
+            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
         }
     }
@@ -100,11 +103,13 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
     }
 
-    @TruffleBoundary
-    private WasmException trapOutOfBounds(Node node, int address, long size) {
-        final String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
-                        size, address, address, byteSize());
-        return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
+    private int validateAddress(Node node, long address, int length) {
+        assert length >= 1;
+        if (address < 0 || address > Integer.MAX_VALUE) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapOutOfBounds(node, address, length);
+        }
+        return (int) address;
     }
 
     @Override
@@ -123,7 +128,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public int byteSize() {
+    public long byteSize() {
         return buffer.length;
     }
 
@@ -141,6 +146,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     @TruffleBoundary
     public synchronized boolean grow(int extraPageSize) {
         if (extraPageSize == 0) {
+            invokeGrowCallback();
             return true;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             try {
@@ -150,6 +156,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
                 final byte[] newBuffer = new byte[targetByteSize];
                 System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
                 buffer = newBuffer;
+                invokeGrowCallback();
                 return true;
             } catch (OutOfMemoryError error) {
                 throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
@@ -165,144 +172,160 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public int load_i32(Node node, int address) {
+    public int load_i32(Node node, long address) {
+        int intAddress = validateAddress(node, address, 4);
         try {
-            return ByteArraySupport.littleEndian().getInt(buffer, address);
+            return ByteArraySupport.littleEndian().getInt(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
     }
 
     @Override
-    public long load_i64(Node node, int address) {
+    public long load_i64(Node node, long address) {
+        int intAddress = validateAddress(node, address, 8);
         try {
-            return ByteArraySupport.littleEndian().getLong(buffer, address);
+            return ByteArraySupport.littleEndian().getLong(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
     }
 
     @Override
-    public float load_f32(Node node, int address) {
+    public float load_f32(Node node, long address) {
+        int intAddress = validateAddress(node, address, 4);
         try {
-            return ByteArraySupport.littleEndian().getFloat(buffer, address);
+            return ByteArraySupport.littleEndian().getFloat(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
     }
 
     @Override
-    public double load_f64(Node node, int address) {
+    public double load_f64(Node node, long address) {
+        int intAddress = validateAddress(node, address, 8);
         try {
-            return ByteArraySupport.littleEndian().getDouble(buffer, address);
+            return ByteArraySupport.littleEndian().getDouble(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
     }
 
     @Override
-    public int load_i32_8s(Node node, int address) {
+    public int load_i32_8s(Node node, long address) {
+        int intAddress = validateAddress(node, address, 1);
         try {
-            return ByteArraySupport.littleEndian().getByte(buffer, address);
+            return ByteArraySupport.littleEndian().getByte(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
     }
 
     @Override
-    public int load_i32_8u(Node node, int address) {
+    public int load_i32_8u(Node node, long address) {
+        int intAddress = validateAddress(node, address, 1);
         try {
-            return 0x0000_00ff & ByteArraySupport.littleEndian().getByte(buffer, address);
+            return 0x0000_00ff & ByteArraySupport.littleEndian().getByte(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
     }
 
     @Override
-    public int load_i32_16s(Node node, int address) {
+    public int load_i32_16s(Node node, long address) {
+        int intAddress = validateAddress(node, address, 2);
         try {
-            return ByteArraySupport.littleEndian().getShort(buffer, address);
+            return ByteArraySupport.littleEndian().getShort(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
     }
 
     @Override
-    public int load_i32_16u(Node node, int address) {
+    public int load_i32_16u(Node node, long address) {
+        int intAddress = validateAddress(node, address, 2);
         try {
-            return 0x0000_ffff & ByteArraySupport.littleEndian().getShort(buffer, address);
+            return 0x0000_ffff & ByteArraySupport.littleEndian().getShort(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
     }
 
     @Override
-    public long load_i64_8s(Node node, int address) {
+    public long load_i64_8s(Node node, long address) {
+        int intAddress = validateAddress(node, address, 1);
         try {
-            return ByteArraySupport.littleEndian().getByte(buffer, address);
+            return ByteArraySupport.littleEndian().getByte(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
     }
 
     @Override
-    public long load_i64_8u(Node node, int address) {
+    public long load_i64_8u(Node node, long address) {
+        int intAddress = validateAddress(node, address, 1);
         try {
-            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getByte(buffer, address);
+            return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getByte(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
     }
 
     @Override
-    public long load_i64_16s(Node node, int address) {
+    public long load_i64_16s(Node node, long address) {
+        int intAddress = validateAddress(node, address, 2);
         try {
-            return ByteArraySupport.littleEndian().getShort(buffer, address);
+            return ByteArraySupport.littleEndian().getShort(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
     }
 
     @Override
-    public long load_i64_16u(Node node, int address) {
+    public long load_i64_16u(Node node, long address) {
+        int intAddress = validateAddress(node, address, 2);
         try {
-            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getShort(buffer, address);
+            return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getShort(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
     }
 
     @Override
-    public long load_i64_32s(Node node, int address) {
+    public long load_i64_32s(Node node, long address) {
+        int intAddress = validateAddress(node, address, 4);
         try {
-            return ByteArraySupport.littleEndian().getInt(buffer, address);
+            return ByteArraySupport.littleEndian().getInt(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
     }
 
     @Override
-    public long load_i64_32u(Node node, int address) {
+    public long load_i64_32u(Node node, long address) {
+        int intAddress = validateAddress(node, address, 4);
         try {
-            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getInt(buffer, address);
+            return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getInt(buffer, intAddress);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
     }
 
     @Override
-    public void store_i32(Node node, int address, int value) {
+    public void store_i32(Node node, long address, int value) {
+        int intAddress = validateAddress(node, address, 4);
         try {
-            ByteArraySupport.littleEndian().putInt(buffer, address, value);
+            ByteArraySupport.littleEndian().putInt(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
     }
 
     @Override
-    public void store_i64(Node node, int address, long value) {
+    public void store_i64(Node node, long address, long value) {
+        int intAddress = validateAddress(node, address, 8);
         try {
-            ByteArraySupport.littleEndian().putLong(buffer, address, value);
+            ByteArraySupport.littleEndian().putLong(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
@@ -310,63 +333,70 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void store_f32(Node node, int address, float value) {
+    public void store_f32(Node node, long address, float value) {
+        int intAddress = validateAddress(node, address, 4);
         try {
-            ByteArraySupport.littleEndian().putFloat(buffer, address, value);
+            ByteArraySupport.littleEndian().putFloat(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
     }
 
     @Override
-    public void store_f64(Node node, int address, double value) {
+    public void store_f64(Node node, long address, double value) {
+        int intAddress = validateAddress(node, address, 8);
         try {
-            ByteArraySupport.littleEndian().putDouble(buffer, address, value);
+            ByteArraySupport.littleEndian().putDouble(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
     }
 
     @Override
-    public void store_i32_8(Node node, int address, byte value) {
+    public void store_i32_8(Node node, long address, byte value) {
+        int intAddress = validateAddress(node, address, 1);
         try {
-            ByteArraySupport.littleEndian().putByte(buffer, address, value);
+            ByteArraySupport.littleEndian().putByte(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
     }
 
     @Override
-    public void store_i32_16(Node node, int address, short value) {
+    public void store_i32_16(Node node, long address, short value) {
+        int intAddress = validateAddress(node, address, 2);
         try {
-            ByteArraySupport.littleEndian().putShort(buffer, address, value);
+            ByteArraySupport.littleEndian().putShort(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
     }
 
     @Override
-    public void store_i64_8(Node node, int address, byte value) {
+    public void store_i64_8(Node node, long address, byte value) {
+        int intAddress = validateAddress(node, address, 1);
         try {
-            ByteArraySupport.littleEndian().putByte(buffer, address, value);
+            ByteArraySupport.littleEndian().putByte(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 1);
         }
     }
 
     @Override
-    public void store_i64_16(Node node, int address, short value) {
+    public void store_i64_16(Node node, long address, short value) {
+        int intAddress = validateAddress(node, address, 2);
         try {
-            ByteArraySupport.littleEndian().putShort(buffer, address, value);
+            ByteArraySupport.littleEndian().putShort(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 2);
         }
     }
 
     @Override
-    public void store_i64_32(Node node, int address, int value) {
+    public void store_i64_32(Node node, long address, int value) {
+        int intAddress = validateAddress(node, address, 4);
         try {
-            ByteArraySupport.littleEndian().putInt(buffer, address, value);
+            ByteArraySupport.littleEndian().putInt(buffer, intAddress, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }

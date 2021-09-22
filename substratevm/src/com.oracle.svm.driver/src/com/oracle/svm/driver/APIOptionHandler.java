@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -96,41 +97,44 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private final SortedMap<String, OptionInfo> apiOptions;
+    private final Map<String, GroupInfo> groupInfos;
 
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
         if (NativeImage.IS_AOT) {
-            apiOptions = ImageSingletons.lookup(APIOptionSupport.class).options;
+            APIOptionSupport support = ImageSingletons.lookup(APIOptionSupport.class);
+            groupInfos = support.groupInfos;
+            apiOptions = support.options;
         } else {
             List<Class<? extends OptionDescriptors>> optionDescriptorsList = new ArrayList<>();
             ServiceLoader<OptionDescriptors> serviceLoader = ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader());
             for (OptionDescriptors optionDescriptors : serviceLoader) {
                 optionDescriptorsList.add(optionDescriptors.getClass());
             }
-            apiOptions = extractOptions(optionDescriptorsList);
+            groupInfos = new HashMap<>();
+            apiOptions = extractOptions(optionDescriptorsList, groupInfos);
         }
     }
 
-    static SortedMap<String, OptionInfo> extractOptions(List<Class<? extends OptionDescriptors>> optionsClasses) {
+    static SortedMap<String, OptionInfo> extractOptions(List<Class<? extends OptionDescriptors>> optionsClasses, Map<String, GroupInfo> groupInfos) {
         EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
         EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
         HostedOptionParser.collectOptions(optionsClasses, hostedOptions, runtimeOptions);
         SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
-        Map<String, List<String>> groupDefaults = new HashMap<>();
         Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances = new HashMap<>();
-        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupDefaults, groupInstances));
-        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupDefaults, groupInstances));
-        groupDefaults.forEach((groupName, defaults) -> {
-            if (defaults.size() > 1) {
+        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupInfos, groupInstances));
+        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupInfos, groupInstances));
+        groupInfos.forEach((groupName, groupInfo) -> {
+            if (groupInfo.defaultValues.size() > 1) {
                 VMError.shouldNotReachHere(String.format("APIOptionGroup %s must only have a single default (but has: %s)",
-                                groupName, String.join(", ", defaults)));
+                                groupName, String.join(", ", groupInfo.defaultValues)));
             }
         });
         return apiOptions;
     }
 
     private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor, SortedMap<String, OptionInfo> apiOptions,
-                    Map<String, List<String>> groupDefaults, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances) {
+                    Map<String, GroupInfo> groupInfos, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances) {
         try {
             Field optionField = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
             APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
@@ -155,16 +159,20 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                         try {
                             Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
-                            group = groupInstances.computeIfAbsent(groupClass, ReflectionUtil::newInstance);
+                            APIOptionGroup g = group = groupInstances.computeIfAbsent(groupClass, ReflectionUtil::newInstance);
                             String groupName = APIOption.Utils.groupName(group);
+                            GroupInfo groupInfo = groupInfos.computeIfAbsent(groupName, (n) -> new GroupInfo(g));
                             if (group.helpText() == null || group.helpText().isEmpty()) {
                                 VMError.shouldNotReachHere(String.format("APIOptionGroup %s(%s) needs to provide help text", groupClass.getName(), group.name()));
                             }
                             String groupMember = apiAnnotation.name()[0];
+                            groupInfo.supportedValues.add(groupMember);
+
                             apiOptionName = groupName + groupMember;
+
                             Boolean isEnabled = (Boolean) optionDescriptor.getOptionKey().getDefaultValue();
                             if (isEnabled) {
-                                groupDefaults.computeIfAbsent(groupName, cls -> new ArrayList<>()).add(groupMember);
+                                groupInfo.defaultValues.add(groupMember);
                                 /* Use OptionInfo.defaultValue to remember group default value */
                                 defaultValue = groupMember;
                             }
@@ -250,11 +258,22 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
+
         String translatedOption = translateOption(headArg);
         if (translatedOption != null) {
             args.poll();
             nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(translatedOption, args.argumentOrigin));
             return true;
+        } else {
+            for (Entry<String, GroupInfo> entry : groupInfos.entrySet()) {
+                String groupNameAndSeparator = entry.getKey();
+                if (headArg.startsWith(groupNameAndSeparator)) {
+                    GroupInfo groupInfo = entry.getValue();
+                    String groupName = APIOption.Utils.optionName(groupInfo.group.name());
+                    String supportedValues = "'" + String.join("', '", groupInfo.supportedValues) + "'";
+                    NativeImage.showError("'" + headArg.substring(groupNameAndSeparator.length()) + "' is not a valid value for the option " + groupName + ". Supported values are " + supportedValues);
+                }
+            }
         }
         return false;
     }
@@ -402,11 +421,25 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 }
 
+class GroupInfo {
+    APIOptionGroup group;
+    ArrayList<String> defaultValues;
+    ArrayList<String> supportedValues;
+
+    GroupInfo(APIOptionGroup group) {
+        this.group = group;
+        this.defaultValues = new ArrayList<>();
+        this.supportedValues = new ArrayList<>();
+    }
+}
+
 final class APIOptionSupport {
 
+    final Map<String, GroupInfo> groupInfos;
     final SortedMap<String, APIOptionHandler.OptionInfo> options;
 
-    APIOptionSupport(SortedMap<String, APIOptionHandler.OptionInfo> options) {
+    APIOptionSupport(Map<String, GroupInfo> groupInfos, SortedMap<String, APIOptionHandler.OptionInfo> options) {
+        this.groupInfos = groupInfos;
         this.options = options;
     }
 }
@@ -418,6 +451,8 @@ final class APIOptionFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         List<Class<? extends OptionDescriptors>> optionClasses = accessImpl.getImageClassLoader().findSubclasses(OptionDescriptors.class, true);
-        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(APIOptionHandler.extractOptions(optionClasses)));
+        Map<String, GroupInfo> groupInfos = new HashMap<>();
+        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionClasses, groupInfos);
+        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options));
     }
 }

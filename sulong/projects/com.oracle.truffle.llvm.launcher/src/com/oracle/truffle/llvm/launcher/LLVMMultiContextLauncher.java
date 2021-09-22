@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,11 @@
  */
 package com.oracle.truffle.llvm.launcher;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,16 +41,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Source;
-
 public class LLVMMultiContextLauncher extends LLVMLauncher {
 
     private static final int DEFAULT_NUMBER_OF_RUNS = 1;
 
     private final Map<String, String> multiContextEngineOptions = new HashMap<>();
     private int numOfRuns = DEFAULT_NUMBER_OF_RUNS;
+    private boolean useDebugCache = false;
 
     public static void main(String[] args) {
         new LLVMMultiContextLauncher().launch(args);
@@ -64,6 +66,9 @@ public class LLVMMultiContextLauncher extends LLVMLauncher {
                 iterator.remove();
                 engineArgs.add(option);
                 continue;
+            } else if (option.startsWith("--use-debug-cache")) {
+                iterator.remove();
+                this.useDebugCache = true;
             } else if (option.startsWith("--multi-context-runs")) {
                 iterator.remove();
                 String[] argPair = option.split("=");
@@ -87,11 +92,14 @@ public class LLVMMultiContextLauncher extends LLVMLauncher {
 
     @Override
     protected int execute(Context.Builder contextBuilder) {
-        if (numOfRuns <= 1) {
-            // Do not create the shared engine for the number of runs <= 1
-            contextBuilder.options(multiContextEngineOptions);
-        } else {
-            contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(multiContextEngineOptions).build());
+        contextBuilder.options(multiContextEngineOptions);
+        if (!useDebugCache) {
+            if (numOfRuns <= 1) {
+                // Do not create the shared engine for the number of runs <= 1
+                contextBuilder.options(multiContextEngineOptions);
+            } else {
+                contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(multiContextEngineOptions).build());
+            }
         }
         if (numOfRuns == 0) {
             // Create the context and close it right afterwards to trigger the compilation of AOT
@@ -105,7 +113,38 @@ public class LLVMMultiContextLauncher extends LLVMLauncher {
         } else {
             int ret = 0;
             for (int i = 0; i < numOfRuns; i++) {
-                ret = super.execute(contextBuilder);
+                if (!useDebugCache) {
+                    ret = super.execute(contextBuilder);
+                } else {
+                    if (i == 0) {
+                        contextBuilder.option("engine.DebugCachePreinitializeContext", "false").option("engine.DebugCacheCompile", "aot").//
+                                        option("engine.DebugTraceCache", "true").//
+                                        option("engine.DebugCacheLoad", "true").//
+                                        option("engine.DebugCacheStore", "true").//
+                                        option("engine.MultiTier", "false").//
+                                        option("llvm.AOTCacheStore", "true").//
+                                        option("engine.CompileAOTOnCreate", "false");
+                        try (Context context = contextBuilder.build()) {
+                            Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
+                            if (!library.canExecute()) {
+                                throw abort("no main function found");
+                            }
+                            Value main = library.getMember("main");
+                            if (!main.canExecute()) {
+                                throw abort("no executable main function found");
+                            }
+                        } catch (IOException e) {
+                            throw abort(String.format("Error loading file '%s' (%s)", file, e.getMessage()));
+                        }
+                    } else {
+                        contextBuilder.option("engine.DebugCacheStore", "false").//
+                                        option("engine.DebugCacheLoad", "true").//
+                                        option("llvm.AOTCacheStore", "false").//
+                                        option("llvm.AOTCacheLoad", "true").//
+                                        option("engine.CompileAOTOnCreate", "false");
+                        ret = super.execute(contextBuilder);
+                    }
+                }
             }
             return ret;
         }

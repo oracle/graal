@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
@@ -33,15 +31,6 @@ public abstract class QuickNode extends BaseQuickNode {
 
     public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
 
-    @CompilationFinal private boolean exceptionProfile;
-
-    protected final void enterExceptionProfile() {
-        if (!exceptionProfile) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptionProfile = true;
-        }
-    }
-
     protected final int top;
 
     private final int callerBCI;
@@ -49,7 +38,6 @@ public abstract class QuickNode extends BaseQuickNode {
     protected QuickNode(int top, int callerBCI) {
         this.top = top;
         this.callerBCI = callerBCI;
-        this.exceptionProfile = false;
     }
 
     @Override
@@ -57,8 +45,8 @@ public abstract class QuickNode extends BaseQuickNode {
 
     protected final StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
-            enterExceptionProfile();
-            throw getBytecodeNode().getMeta().throwNullPointerException();
+            getBytecodeNode().enterImplicitExceptionProfile();
+            throw getMeta().throwNullPointerException();
         }
         return value;
     }

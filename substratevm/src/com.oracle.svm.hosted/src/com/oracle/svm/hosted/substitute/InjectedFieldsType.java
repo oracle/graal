@@ -277,6 +277,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
         throw JVMCIError.unimplemented();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();

@@ -40,6 +40,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.CastValue;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.Variable;
@@ -48,6 +49,8 @@ import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Convert;
+import org.graalvm.compiler.lir.aarch64.AArch64MathCopySignOp;
+import org.graalvm.compiler.lir.aarch64.AArch64MathSignumOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreConstantOp;
@@ -126,7 +129,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case DWORD:
             case QWORD:
                 getLIRGen().append(new AArch64Unary.MemoryOp(isSigned, targetSize,
-                                memoryKind.getSizeInBytes() * 8, result, address, state));
+                                memoryKind.getSizeInBytes() * Byte.SIZE, result, address, state));
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
@@ -209,6 +212,31 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     public Value emitXor(Value a, Value b) {
         assert isNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.XOR, true, a, b);
+    }
+
+    @Override
+    public Value emitXorFP(Value a, Value b) {
+        assert (a.getPlatformKind() == AArch64Kind.SINGLE || a.getPlatformKind() == AArch64Kind.DOUBLE) &&
+                        a.getPlatformKind() == b.getPlatformKind();
+
+        /*
+         * Use the ASIMD XOR instruction to perform this operation. This requires casting the
+         * operands to SIMD kinds of the equivalent size.
+         */
+        LIRKind simdKind;
+        if (a.getPlatformKind() == AArch64Kind.SINGLE) {
+            simdKind = LIRKind.value(AArch64Kind.V32_BYTE);
+        } else {
+            simdKind = LIRKind.value(AArch64Kind.V64_BYTE);
+        }
+        Variable result = getLIRGen().newVariable(simdKind);
+
+        CastValue castA = new CastValue(simdKind, asAllocatable(a));
+        CastValue castB = new CastValue(simdKind, asAllocatable(b));
+        getLIRGen().append(AArch64ArithmeticOp.generateASIMDBinaryInstruction(AArch64ArithmeticOp.XOR, result, castA, castB));
+
+        // Must cast SIMD result back to appropriate FP type
+        return new CastValue(LIRKind.combine(a, b), result);
     }
 
     @Override
@@ -352,17 +380,14 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             } else {
                 constant = javaConstant.asLong();
             }
-            /* Checking sign bit of original value. */
-            boolean isNegative = (constant & (1L << (fromBits - 1))) != 0;
-            long mask = NumUtil.getNbitNumberLong(fromBits);
-            long signExtendedValue;
-            if (isNegative) {
-                /* Making sure all sign bits are set within 64-bit value. */
-                signExtendedValue = constant | ~mask;
-            } else {
-                /* All sign bits are cleared within 64-bit value. */
-                signExtendedValue = constant & mask;
-            }
+            /*
+             * Performing sign extend via a left shift followed by an arithmetic right shift. First,
+             * a left shift of (64 - fromBits) is performed to remove non-meaningful bits, and then
+             * an arithmetic right shift is used to set correctly all sign bits. Note the "toBits"
+             * size is not considered, as the constant is saved as a long value.
+             */
+            int shiftSize = 64 - fromBits;
+            long signExtendedValue = (constant << shiftSize) >> shiftSize;
             return new ConstantValue(resultKind, JavaConstant.forLong(signExtendedValue));
         }
         Variable result = getLIRGen().newVariable(resultKind);
@@ -382,47 +407,44 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    protected Variable emitBinary(ValueKind<?> resultKind, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
+    protected Variable emitBinary(LIRKind resultKind, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
         Variable result = getLIRGen().newVariable(resultKind);
-        if (isValidBinaryConstant(op, b)) {
+        emitBinary(result, op, commutative, a, b);
+        return result;
+    }
+
+    protected void emitBinary(AllocatableValue result, AArch64ArithmeticOp op, boolean commutative, Value a, Value b) {
+        AArch64Kind opKind = (AArch64Kind) result.getPlatformKind();
+        if (isValidBinaryConstant(op, opKind, b)) {
             emitBinaryConst(result, op, asAllocatable(a), asJavaConstant(b));
-        } else if (commutative && isValidBinaryConstant(op, a)) {
+        } else if (commutative && isValidBinaryConstant(op, opKind, a)) {
             emitBinaryConst(result, op, asAllocatable(b), asJavaConstant(a));
         } else {
             emitBinaryVar(result, op, asAllocatable(a), asAllocatable(b));
         }
-        return result;
     }
 
-    private void emitBinaryVar(Variable result, AArch64ArithmeticOp op, AllocatableValue a, AllocatableValue b) {
+    private void emitBinaryVar(AllocatableValue result, AArch64ArithmeticOp op, AllocatableValue a, AllocatableValue b) {
         AllocatableValue x = moveSp(a);
         AllocatableValue y = moveSp(b);
-        switch (op) {
-            case REM:
-            case UREM:
-                getLIRGen().append(new AArch64ArithmeticOp.BinaryCompositeOp(op, result, x, y));
-                break;
-            default:
-                getLIRGen().append(new AArch64ArithmeticOp.BinaryOp(op, result, x, y));
-                break;
-        }
+        getLIRGen().append(new AArch64ArithmeticOp.BinaryOp(op, result, x, y));
     }
 
-    public void emitBinaryConst(Variable result, AArch64ArithmeticOp op, AllocatableValue a, JavaConstant b) {
+    public void emitBinaryConst(AllocatableValue result, AArch64ArithmeticOp op, AllocatableValue a, JavaConstant b) {
         AllocatableValue x = moveSp(a);
         getLIRGen().append(new AArch64ArithmeticOp.BinaryConstOp(op, result, x, b));
     }
 
-    private static boolean isValidBinaryConstant(AArch64ArithmeticOp op, Value val) {
+    private static boolean isValidBinaryConstant(AArch64ArithmeticOp op, AArch64Kind opKind, Value val) {
         if (!isJavaConstant(val)) {
             return false;
         }
         JavaConstant constValue = asJavaConstant(val);
         switch (op.category) {
             case LOGICAL:
-                return isLogicalConstant(constValue);
-            case ARITHMETIC:
-                return isArithmeticConstant(constValue);
+                return isLogicalConstant(opKind, constValue);
+            case ADDSUBTRACT:
+                return isAddSubtractConstant(constValue);
             case SHIFT:
                 return true;
             case NONE:
@@ -432,26 +454,27 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    private static boolean isLogicalConstant(JavaConstant constValue) {
-        switch (constValue.getJavaKind()) {
-            case Int:
-                return AArch64MacroAssembler.isLogicalImmediate(32, constValue.asInt());
-            case Long:
-                return AArch64MacroAssembler.isLogicalImmediate(64, constValue.asLong());
+    private static boolean isLogicalConstant(AArch64Kind kind, JavaConstant constValue) {
+        long value = constValue.asLong();
+        switch (kind) {
+            case DWORD:
+                return AArch64MacroAssembler.isLogicalImmediate(32, value);
+            case QWORD:
+                return AArch64MacroAssembler.isLogicalImmediate(64, value);
             default:
-                return false;
+                throw GraalError.shouldNotReachHere();
         }
     }
 
-    protected static boolean isArithmeticConstant(JavaConstant constValue) {
-        switch (constValue.getJavaKind()) {
+    public static boolean isAddSubtractConstant(JavaConstant constValue) {
+        switch (constValue.getJavaKind().getStackKind()) {
             case Int:
             case Long:
-                return AArch64MacroAssembler.isArithmeticImmediate(constValue.asLong());
+                return AArch64MacroAssembler.isAddSubtractImmediate(constValue.asLong(), true);
             case Object:
                 return constValue.isNull();
             default:
-                return false;
+                throw GraalError.shouldNotReachHere();
         }
     }
 
@@ -492,6 +515,24 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
                         input.getPlatformKind() == AArch64Kind.SINGLE;
         return emitUnary(AArch64ArithmeticOp.FSQRT, input);
+    }
+
+    @Override
+    public Value emitMathSignum(Value input) {
+        assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
+                        input.getPlatformKind() == AArch64Kind.SINGLE;
+        Variable result = getLIRGen().newVariable(input.getValueKind());
+        getLIRGen().append(new AArch64MathSignumOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Value emitMathCopySign(Value magnitude, Value sign) {
+        assert magnitude.getPlatformKind() == AArch64Kind.DOUBLE ||
+                        magnitude.getPlatformKind() == AArch64Kind.SINGLE;
+        Variable result = getLIRGen().newVariable(magnitude.getValueKind());
+        getLIRGen().append(new AArch64MathCopySignOp(result, asAllocatable(magnitude), asAllocatable(sign)));
+        return result;
     }
 
     @Override

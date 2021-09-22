@@ -58,10 +58,10 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.code.FrameInfoEncoder;
-import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
@@ -105,6 +105,11 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
     @Override
     protected boolean stampFromValueForForcedPhis() {
         return true;
+    }
+
+    @Override
+    public boolean disallowDeoptInPlugins() {
+        return false;
     }
 
     @Override

@@ -471,7 +471,7 @@ public class EscapeAnalysisTest extends EATestBase {
     public void testPeeledLoop() {
         prepareGraph("testPeeledLoopSnippet", false);
         new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
-        new SchedulePhase(graph.getOptions()).apply(graph);
+        new SchedulePhase(graph.getOptions()).apply(graph, getDefaultHighTierContext());
     }
 
     public static void testDeoptMonitorSnippetInner(Object o2, Object t, int i) {

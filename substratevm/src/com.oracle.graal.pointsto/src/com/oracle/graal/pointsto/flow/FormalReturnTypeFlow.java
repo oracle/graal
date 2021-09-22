@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
@@ -51,7 +51,7 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new FormalReturnTypeFlow(this, methodFlows);
     }
 
@@ -61,10 +61,9 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("FormalReturn<").append(getState()).append(">");
-        return str.toString();
+    public String format(boolean withState, boolean withSource) {
+        return "Formal return from " + method.format("%H.%n(%p)") +
+                        (withSource ? " at " + formatSource() : "") +
+                        (withState ? " with state <" + getState() + ">" : "");
     }
-
 }

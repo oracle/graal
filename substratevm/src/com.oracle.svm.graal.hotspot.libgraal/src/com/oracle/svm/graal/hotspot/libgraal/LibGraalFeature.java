@@ -108,10 +108,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -303,15 +302,19 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                     Files.delete(configFilePath);
                     configFilePath = null;
                 } catch (IOException e) {
-                    System.out.printf("WARNING: Cound not delete %s: %s%n", configFilePath, e);
+                    System.out.printf("Warning: Cound not delete %s: %s%n", configFilePath, e);
                 }
             }
         }
 
         Class<?> findClass(String name) {
-            Class<?> c = loader.findClass(name).get();
+            String internalName = name;
+            if (name.startsWith("L") && name.endsWith(";")) {
+                internalName = name.substring(1, name.length() - 1);
+            }
+            Class<?> c = loader.findClass(internalName).get();
             if (c == null) {
-                throw error("Class " + name + " not found");
+                throw error("Class " + internalName + " not found");
             }
             return c;
         }
@@ -336,6 +339,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     private static void registerJNIConfiguration(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport registry, ImageClassLoader loader) {
         try (JNIConfigSource source = new JNIConfigSource(loader)) {
             Map<String, Class<?>> classes = new HashMap<>();
+            ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
             for (String line : source.lines) {
                 source.lineNo++;
                 String[] tokens = line.split(" ");
@@ -344,8 +348,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                 Class<?> clazz = classes.get(className);
                 if (clazz == null) {
                     clazz = source.findClass(className);
-                    registry.register(clazz);
-                    registry.register(Array.newInstance(clazz, 0).getClass());
+                    registry.register(condition, clazz);
+                    registry.register(condition, Array.newInstance(clazz, 0).getClass());
                     classes.put(className, clazz);
                 }
 
@@ -354,7 +358,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         source.check(tokens.length == 4, "Expected 4 tokens for a field");
                         String fieldName = tokens[2];
                         try {
-                            registry.register(false, clazz.getDeclaredField(fieldName));
+                            registry.register(condition, false, clazz.getDeclaredField(fieldName));
                         } catch (NoSuchFieldException e) {
                             throw source.error("Field %s.%s not found", clazz.getTypeName(), fieldName);
                         } catch (NoClassDefFoundError e) {
@@ -373,7 +377,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         try {
                             if ("<init>".equals(methodName)) {
                                 Constructor<?> cons = clazz.getDeclaredConstructor(parameters);
-                                registry.register(cons);
+                                registry.register(condition, false, cons);
                                 if (Throwable.class.isAssignableFrom(clazz) && !Modifier.isAbstract(clazz.getModifiers())) {
                                     if (usedInTranslatedException(parameters)) {
                                         RuntimeReflection.register(clazz);
@@ -381,7 +385,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                                     }
                                 }
                             } else {
-                                registry.register(clazz.getDeclaredMethod(methodName, parameters));
+                                registry.register(condition, false, clazz.getDeclaredMethod(methodName, parameters));
                             }
                         } catch (NoSuchMethodException e) {
                             throw source.error("Method %s.%s%s not found: %e", clazz.getTypeName(), methodName, descriptor, e);
@@ -715,14 +719,17 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
-
     @Substitute
     private static OptionValues initializeOptions() {
-        // Sanity check
-        if (!XOptions.getXmn().getPrefix().equals("-X")) {
-            throw new InternalError("Expected " + XOptions.getXmn().getPrefixAndName() + " to start with -X");
-        }
+        return HotSpotGraalOptionValuesUtil.initializeOptions();
+    }
+}
 
+final class HotSpotGraalOptionValuesUtil {
+    private static final String LIBGRAAL_PREFIX = "libgraal.";
+    private static final String LIBGRAAL_XOPTION_PREFIX = "libgraal.X";
+
+    static OptionValues initializeOptions() {
         // Parse "graal." options.
         RuntimeOptionValues options = RuntimeOptionValues.singleton();
         options.update(HotSpotGraalOptionValues.parseOptions());
@@ -740,17 +747,16 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
         EconomicMap<String, String> optionSettings = EconomicMap.create();
         for (Map.Entry<String, String> e : savedProps.entrySet()) {
             String name = e.getKey();
-            if (name.startsWith("libgraal.")) {
-                if (name.startsWith("libgraal.X")) {
-                    String[] xarg = {"-" + name.substring("libgraal.".length()) + e.getValue()};
-                    String[] unknown = XOptions.singleton().parse(xarg, false);
-                    if (unknown.length == 0) {
+            if (name.startsWith(LIBGRAAL_PREFIX)) {
+                if (name.startsWith(LIBGRAAL_XOPTION_PREFIX)) {
+                    String xarg = removePrefix(name, LIBGRAAL_XOPTION_PREFIX) + e.getValue();
+                    if (XOptions.setOption(xarg)) {
                         continue;
                     }
-                } else {
-                    String value = e.getValue();
-                    optionSettings.put(name.substring("libgraal.".length()), value);
                 }
+
+                String value = e.getValue();
+                optionSettings.put(removePrefix(name, LIBGRAAL_PREFIX), value);
             }
         }
         if (!optionSettings.isEmpty()) {
@@ -760,6 +766,11 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
             options.update(values);
         }
         return options;
+    }
+
+    private static String removePrefix(String value, String prefix) {
+        assert value.startsWith(prefix);
+        return value.substring(prefix.length());
     }
 }
 
@@ -800,13 +811,7 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
         if (LibGraalOptions.CrashAtIsFatal.getValue()) {
             LogHandler handler = ImageSingletons.lookup(LogHandler.class);
             if (handler instanceof FunctionPointerLogHandler) {
-                FunctionPointerLogHandler fpHandler = (FunctionPointerLogHandler) handler;
-                if (fpHandler.getFatalErrorFunctionPointer().isNonNull()) {
-                    try (CCharPointerHolder holder = CTypeConversion.toCString(crashMessage)) {
-                        handler.log(holder.get(), WordFactory.unsigned(crashMessage.getBytes().length));
-                    }
-                    handler.fatalError();
-                }
+                VMError.shouldNotReachHere(crashMessage);
             }
             // If changing this message, update the test for it in mx_vm_gate.py
             System.out.println("CrashAtIsFatal: no fatalError function pointer installed");

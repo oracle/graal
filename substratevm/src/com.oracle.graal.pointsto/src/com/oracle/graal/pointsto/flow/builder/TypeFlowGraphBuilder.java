@@ -35,13 +35,14 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import org.graalvm.compiler.nodes.ParameterNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.ClassUtil;
 
 public class TypeFlowGraphBuilder {
-    private final BigBang bb;
+    private final PointsToAnalysis bb;
     /**
      * The data flow sink builders are the nodes that should not be removed. They are data flow
      * sinks in the context of type flows graph that it creates, i.e., they collect useful
@@ -51,7 +52,7 @@ public class TypeFlowGraphBuilder {
      */
     private final List<TypeFlowBuilder<?>> dataFlowSinkBuilders;
 
-    public TypeFlowGraphBuilder(BigBang bb) {
+    public TypeFlowGraphBuilder(PointsToAnalysis bb) {
         this.bb = bb;
         dataFlowSinkBuilders = new ArrayList<>();
     }
@@ -138,7 +139,7 @@ public class TypeFlowGraphBuilder {
                 TypeFlow<?> flow = builder.get();
 
                 /* The retain reason is the sink from which it was reached. */
-                PointsToStats.registerTypeFlowRetainReason(bb, flow, (sinkBuilder.isBuildingAnActualParameter() ? "ActualParam=" : "") + sinkBuilder.getFlowClass().getSimpleName());
+                PointsToStats.registerTypeFlowRetainReason(bb, flow, (sinkBuilder.isBuildingAnActualParameter() ? "ActualParam=" : "") + ClassUtil.getUnqualifiedName(sinkBuilder.getFlowClass()));
 
                 /* Mark the builder as materialized. */
                 processed.add(builder);

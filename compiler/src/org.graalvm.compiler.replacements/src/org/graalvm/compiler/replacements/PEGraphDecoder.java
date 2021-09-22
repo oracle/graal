@@ -381,6 +381,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
+        public int recursiveInliningDepth(ResolvedJavaMethod method) {
+            int result = 0;
+            for (PEMethodScope cur = methodScope; cur != null; cur = cur.caller) {
+                if (method.equals(cur.method)) {
+                    result++;
+                }
+            }
+            return result;
+        }
+
+        @Override
         public IntrinsicContext getIntrinsic() {
             return PEGraphDecoder.this.getIntrinsic();
         }

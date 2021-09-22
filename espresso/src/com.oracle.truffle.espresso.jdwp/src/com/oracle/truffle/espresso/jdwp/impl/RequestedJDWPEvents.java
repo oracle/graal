@@ -105,8 +105,9 @@ public final class RequestedJDWPEvents {
                         break;
                 }
                 break;
-            case METHOD_EXIT_WITH_RETURN_VALUE:
+            case METHOD_ENTRY:
             case METHOD_EXIT:
+            case METHOD_EXIT_WITH_RETURN_VALUE:
                 MethodBreakpointInfo methodInfo = new MethodBreakpointInfo(filter);
                 methodInfo.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
@@ -118,17 +119,8 @@ public final class RequestedJDWPEvents {
                 }
                 filter.addBreakpointInfo(methodInfo);
                 break;
-            case METHOD_ENTRY:
-                BreakpointInfo info = filter.getBreakpointInfo();
-                if (info == null) {
-                    info = new MethodBreakpointInfo(filter);
-                }
-                info.addSuspendPolicy(suspendPolicy);
-                eventListener.addBreakpointRequest(filter.getRequestId(), info);
-                preFutures.add(callback.createMethodEntryBreakpointCommand(info));
-                break;
             case BREAKPOINT:
-                info = filter.getBreakpointInfo();
+                BreakpointInfo info = filter.getBreakpointInfo();
                 info.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), info);
                 postFutures.add(callback.createLineBreakpointCommand(info));

@@ -127,6 +127,49 @@ memUnitTable = {
 }
 
 
+def strip_args_with_number(strip_args, args):
+    """Removes arguments (specified in `strip_args`) from `args`.
+
+    The stripped arguments are expected to have a number value. For single character arguments (e.g. `-X`) the space
+    before the value might be omitted (e.g. `-X8`). In this case only one element is removed from `args`. Otherwise
+    (e.g. `-X 8`), two elements are removed from `args`.
+    """
+
+    if not isinstance(strip_args, list):
+        strip_args = [strip_args]
+
+    def _strip_arg_with_number_gen(_strip_arg, _args):
+        skip_next = False
+        for arg in _args:
+            if skip_next:
+                # skip value of argument
+                skip_next = False
+                continue
+            if arg.startswith(_strip_arg):
+                if arg == _strip_arg:
+                    # full match - value is the next argument `-i 10`
+                    skip_next = True
+                    continue
+                # partial match at begin - either a different option or value without space separator `-i10`
+                if len(_strip_arg) == 2 and _strip_arg.startswith('-'):
+                    # only look at single character options
+                    remainder_arg = arg[len(_strip_arg):]
+                    try:
+                        int(remainder_arg)
+                        # remainder is a number - skip the current arg
+                        continue
+                    except ValueError:
+                        # not a number - probably a different option
+                        pass
+            # add arg to result
+            yield arg
+
+    result = args
+    for strip_arg in strip_args:
+        result = _strip_arg_with_number_gen(strip_arg, result)
+    return list(result)
+
+
 class NativeImageBenchmarkMixin(object):
 
     def __init__(self):
@@ -150,17 +193,42 @@ class NativeImageBenchmarkMixin(object):
     def extra_image_build_argument(self, _, args):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
 
-    def extra_run_arg(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
+    def extra_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the final image.
 
-    def extra_agent_run_arg(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        """
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
 
-    def extra_profile_run_arg(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-profile-run-arg=', args)
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the agent run.
 
-    def extra_agent_profile_run_arg(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
+
+    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the profiling run.
+
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
+        # either use extra profile run args if set or otherwise the extra run args
+        extra_profile_run_args = parse_prefixed_args('-Dnative-image.benchmark.extra-profile-run-arg=', args) or parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
+        return image_run_args + extra_profile_run_args
+
+    def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the agent profiling run.
+
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
 
     def benchmark_output_dir(self, _, args):
         parsed_args = parse_prefixed_args('-Dnative-image.benchmark.benchmark-output-dir=', args)
@@ -197,7 +265,6 @@ def measureTimeToFirstResponse(bmSuite):
     lib = urllib()
 
     receivedNon200Responses = 0
-    mx.log("Started time-to-first-response measurements: " + url)
     for i in range(60*10000):
         time.sleep(.0001)
         if i > 0 and i % 10000 == 0:
@@ -210,8 +277,9 @@ def measureTimeToFirstResponse(bmSuite):
                 startTime = mx.get_last_subprocess_start_time()
                 finishTime = datetime.datetime.now()
                 msToFirstResponse = (finishTime - startTime).total_seconds() * 1000
-                bmSuite.timeToFirstResponseOutput = "First response received in {} ms".format(msToFirstResponse)
-                mx.log(bmSuite.timeToFirstResponseOutput)
+                currentOutput = "First response received in {} ms".format(msToFirstResponse)
+                bmSuite.timeToFirstResponseOutputs.append(currentOutput)
+                mx.log(currentOutput)
                 return
             else:
                 if receivedNon200Responses < 10:
@@ -233,9 +301,11 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     terminates and the application is killed with SIGTERM.
     """
 
+    NumMeasureTimeToFirstResponse = 10
+
     def __init__(self):
         super(BaseMicroserviceBenchmarkSuite, self).__init__()
-        self.timeToFirstResponseOutput = ''
+        self.timeToFirstResponseOutputs = []
         self.startupOutput = ''
         self.peakOutput = ''
         self.latencyOutput = ''
@@ -260,6 +330,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         if len(self.benchSuiteName().split('-', 1)) < 2:
             mx.abort("Invalid benchmark suite name: " + self.benchSuiteName())
         return self.benchSuiteName().split("-", 1)[0]
+
+    def validateReturnCode(self, retcode):
+        return retcode == 143
 
     def defaultWorkloadPath(self, benchmarkName):
         """Returns the workload configuration path.
@@ -335,20 +408,46 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
         ret_code, applicationOutput, dims = super(BaseMicroserviceBenchmarkSuite, self).runAndReturnStdOut(benchmarks, bmSuiteArgs)
-        return ret_code, self.timeToFirstResponseOutput + '\n' + self.startupOutput + '\n' + self.peakOutput + '\n' + self.latencyOutput + '\n' + applicationOutput, dims
+        result = ret_code, "\n".join(self.timeToFirstResponseOutputs) + '\n' + self.startupOutput + '\n' + self.peakOutput + '\n' + self.latencyOutput + '\n' + applicationOutput, dims
+
+        # For HotSpot, the rules are executed after every execution. So, it is necessary to reset the data to avoid duplication of datapoints.
+        if not self.inNativeMode():
+            self.timeToFirstResponseOutputs = []
+            self.startupOutput = ''
+            self.peakOutput = ''
+            self.latencyOutput = ''
+
+        return result
 
     @staticmethod
     def terminateApplication(port):
         proc = BaseMicroserviceBenchmarkSuite.waitForPort(port, 0)
         if proc:
             proc.send_signal(signal.SIGTERM)
+            # We can't use proc.wait() as this would destroy the return code for the code that started the subprocess.
+            while proc.is_running():
+                time.sleep(0.01)
             return True
         else:
             return False
 
     @staticmethod
+    def testTimeToFirstResponseInBackground(benchmarkSuite):
+        mx.log("--------------------------------------------")
+        mx.log("Started time-to-first-response measurements.")
+        mx.log("--------------------------------------------")
+        for _ in range(benchmarkSuite.NumMeasureTimeToFirstResponse):
+            measureTimeToFirstResponse(benchmarkSuite)
+            if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
+                mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
+            if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
+                mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
+
+    @staticmethod
     def testStartupPerformanceInBackground(benchmarkSuite):
-        measureTimeToFirstResponse(benchmarkSuite)
+        mx.log("-----------------------------------------")
+        mx.log("Started startup performance measurements.")
+        mx.log("-----------------------------------------")
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.testStartupPerformance()
@@ -357,6 +456,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def testPeakPerformanceInBackground(benchmarkSuite, warmup=True):
+        mx.log("--------------------------------------")
+        mx.log("Started peak performance measurements.")
+        mx.log("--------------------------------------")
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.testPeakPerformance(warmup)
@@ -365,6 +467,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def calibrateLatencyTestInBackground(benchmarkSuite):
+        mx.log("---------------------------------------------")
+        mx.log("Started calibration for latency measurements.")
+        mx.log("---------------------------------------------")
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.calibrateLatencyTest()
@@ -373,6 +478,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def testLatencyInBackground(benchmarkSuite):
+        mx.log("-----------------------------")
+        mx.log("Started latency measurements.")
+        mx.log("-----------------------------")
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.testLatency()
@@ -385,36 +493,56 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             return super(BaseMicroserviceBenchmarkSuite, self).run_stage(vm, stage, server_command, out, err, cwd, nonZeroIsFatal)
         else:
             if stage == 'run':
-                # Do all benchmarking (startup, peak, latency) on a single image that is started and shut down multiple times.
-                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
-                returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
-                if not self.validateReturnCode(returnCode):
-                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                serverCommandWithTracker = self.apply_command_mapper_hooks(server_command, vm)
 
-                serverCommandAfterHooks = self.apply_command_mapper_hooks(server_command, vm)
-                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
-                returnCode = mx.run(serverCommandAfterHooks, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                mx_benchmark.disable_tracker()
+                serverCommandWithoutTracker = self.apply_command_mapper_hooks(server_command, vm)
+                mx_benchmark.enable_tracker()
+
+                # Measure time-to-first-response multiple times (without any command mapper hooks as those affect the measurement significantly)
+                self.startDaemonThread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self])
+                for _ in range(self.NumMeasureTimeToFirstResponse):
+                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    if not self.validateReturnCode(returnCode):
+                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
+
+                # Measure startup performance (without RSS tracker)
+                self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
+                returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
-                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                    mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
+
+                # Measure peak performance (with all command mapper hooks)
+                self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
+                returnCode = mx.run(serverCommandWithTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                if not self.validateReturnCode(returnCode):
+                    mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 if self.measureLatency:
-                    threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
-                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    # Calibrate for latency measurements (without RSS tracker)
+                    self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
+                    returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
-                        mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
-                    threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
-                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    # Measure latency (without RSS tracker)
+                    self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
+                    returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
-                        mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 return returnCode
             elif stage == 'agent' or 'instrument-run' in stage:
                 # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
-                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self, False]).start()
+                self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self, False])
                 return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
             else:
                 mx.abort("Unexpected stage: " + stage)
+
+    def startDaemonThread(self, target, args):
+        thread = threading.Thread(target=target, args=args)
+        thread.setDaemon(True)
+        thread.start()
 
     def rules(self, output, benchmarks, bmSuiteArgs):
         return [
@@ -472,22 +600,34 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.measureLatency = not args.skip_latency_measurements
 
         if not self.inNativeMode():
+            datapoints = []
+            # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
             mx.disable_command_mapper_hooks()
-            threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
-            datapoints = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+            self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, [self])
+            for _ in range(self.NumMeasureTimeToFirstResponse):
+                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
             mx.enable_command_mapper_hooks()
 
-            threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
+            # Measure startup performance (without RSS tracker)
+            mx_benchmark.disable_tracker()
+            self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
+            datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+            mx_benchmark.enable_tracker()
+
+            # Measure peak performance (with all command mapper hooks)
+            self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
             datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
             if self.measureLatency:
-                mx.disable_command_mapper_hooks()
-                threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
+                # Calibrate for latency measurements (without RSS tracker)
+                mx_benchmark.disable_tracker()
+                self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
                 datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
-                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
+                # Measure latency (without RSS tracker)
+                self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
                 datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-                mx.enable_command_mapper_hooks()
+                mx_benchmark.enable_tracker()
 
             return datapoints
         else:
@@ -524,7 +664,22 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
     def testPeakPerformance(self, warmup):
         jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
         jmeterPath = os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
-        jmeterCmd = [mx.get_jdk().java, "-jar", jmeterPath, "-n", "-t", self.workloadConfigurationPath(), "-j", "/dev/stdout"] # pylint: disable=line-too-long
+        extraVMArgs = []
+        if mx.get_jdk().javaCompliance >= '9':
+            extraVMArgs += ["--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+                            "--add-opens=java.desktop/sun.swing=ALL-UNNAMED",
+                            "--add-opens=java.desktop/javax.swing.text.html=ALL-UNNAMED",
+                            "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
+                            "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                            "--add-opens=java.desktop/sun.awt.X11=ALL-UNNAMED",
+                            "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                            "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+                            "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+                            "--add-opens=java.base/java.util=ALL-UNNAMED",
+                            "--add-opens=java.base/java.text=ALL-UNNAMED"]
+        jmeterCmd = [mx.get_jdk().java] + extraVMArgs + ["-jar", jmeterPath,
+                                                         "-t", self.workloadConfigurationPath(),
+                                                         "-n", "-j", "/dev/stdout"]
         mx.log("Running JMeter: {0}".format(jmeterCmd))
         output = mx.TeeOutputCapture(mx.OutputCapture())
         mx.run(jmeterCmd, out=output, err=output)
@@ -794,9 +949,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
         actualThroughput = float(matches[0])
         if actualThroughput < expectedThroughput * 0.97 or actualThroughput > expectedThroughput * 1.03:
-            # TEMP (chaeubl)
-            print("Throughput verification failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
-            # mx.abort("Throughput verification failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
+            mx.warn("Throughput verification failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
 
     def runWrk1(self, wrkFlags):
         distro = self.getOS()

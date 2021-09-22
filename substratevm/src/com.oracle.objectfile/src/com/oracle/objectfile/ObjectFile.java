@@ -24,7 +24,10 @@
  */
 package com.oracle.objectfile;
 
+// Checkstyle: allow reflection
+
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -52,6 +55,9 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
+
+import sun.misc.Unsafe;
+import sun.nio.ch.DirectBuffer;
 
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
@@ -973,7 +979,7 @@ public abstract class ObjectFile {
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + "(" + name + ")";
+            return getClass().getName() + "(" + name + ")";
         }
 
         @Override
@@ -1270,31 +1276,42 @@ public abstract class ObjectFile {
             } finally {
                 cleanBuffer(buffer); // unmap immediately
             }
-        } catch (IOException e) {
+        } catch (IOException | ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static void cleanBuffer(ByteBuffer buffer) throws IOException {
-        // The Cleaner class returned by DirectBuffer.cleaner() was moved from to jdk.internal from
-        // sun.misc, so we need to call it reflectively to ensure binary compatibility between JDKs
-        Object cleaner;
+    private static void cleanBuffer(ByteBuffer buffer) throws ReflectiveOperationException {
         try {
-            Class<? extends ByteBuffer> bufferClass = buffer.getClass();
-            ModuleAccess.openModuleByClass(bufferClass, ObjectFile.class);
-            cleaner = getMethodAndSetAccessible(bufferClass, "cleaner").invoke(buffer);
-            Class<?> cleanerClass = cleaner.getClass();
-            ModuleAccess.openModuleByClass(cleanerClass, ObjectFile.class);
-            getMethodAndSetAccessible(cleanerClass, "clean").invoke(cleaner);
-        } catch (ReflectiveOperationException e) {
-            throw new IOException("Could not clean mapped ByteBuffer", e);
+            /*
+             * Trying to use sun.misc.Unsafe.invokeCleaner as the first approach restores forward
+             * compatibility to Java > 8. If it fails we know we are on Java 8 where we can use a
+             * non-forward compatible way of forcing to clean the ByteBuffer.
+             */
+            Method invokeCleanerMethod = Unsafe.class.getMethod("invokeCleaner", ByteBuffer.class);
+            invokeCleanerMethod.invoke(UNSAFE, buffer);
+        } catch (NoSuchMethodException e) {
+            /* On Java 8 we have to use the non-forward compatible approach. */
+            ((DirectBuffer) buffer).cleaner().clean();
         }
     }
 
-    private static Method getMethodAndSetAccessible(Class<?> clazz, String name, Class<?>... parameterTypes) throws NoSuchMethodException {
-        Method method = clazz.getMethod(name, parameterTypes);
-        method.setAccessible(true);
-        return method;
+    private static final Unsafe UNSAFE = initUnsafe();
+
+    @SuppressWarnings("restriction")
+    private static Unsafe initUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            Field theUnsafe = null;
+            try {
+                theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(null);
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
+        }
     }
 
     /*

@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
@@ -46,7 +46,6 @@ import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOf;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
@@ -61,11 +60,11 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
-    public SVMMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodFlow) {
+    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodFlow) {
         super(bb, methodFlow);
     }
 
-    public SVMMethodTypeFlowBuilder(BigBang bb, StructuredGraph graph) {
+    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
         super(bb, graph);
     }
 
@@ -211,9 +210,6 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         } else if (n instanceof CompareAndSetVMThreadLocalNode) {
             CompareAndSetVMThreadLocalNode node = (CompareAndSetVMThreadLocalNode) n;
             storeVMThreadLocal(state, node, node.getUpdate());
-        } else if (n instanceof SubstrateArraysCopyOf) {
-            SubstrateArraysCopyOf node = (SubstrateArraysCopyOf) n;
-            processArraysCopyOf(n, node.getOriginal(), node.getNewObjectArrayType(), state);
         }
     }
 

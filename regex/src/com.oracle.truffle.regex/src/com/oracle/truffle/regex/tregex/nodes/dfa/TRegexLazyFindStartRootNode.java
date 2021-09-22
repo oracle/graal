@@ -44,25 +44,30 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
 public class TRegexLazyFindStartRootNode extends RegexBodyNode {
 
+    private final boolean setIndices;
     @Child private TRegexExecutorEntryNode entryNode;
 
-    public TRegexLazyFindStartRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode backwardNode) {
+    public TRegexLazyFindStartRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode backwardNode, boolean setIndices) {
         super(language, source);
+        this.setIndices = setIndices;
         this.entryNode = insert(backwardNode);
     }
 
     @Override
     public final Object execute(VirtualFrame frame) {
         final Object[] args = frame.getArguments();
-        assert args.length == 3;
-        final Object input = args[0];
-        final int fromIndexArg = (int) args[1];
-        final int max = (int) args[2];
-        return (int) entryNode.execute(input, fromIndexArg, max, max);
+        assert args.length == 1;
+        final RegexResult receiver = (RegexResult) args[0];
+        int start = (int) entryNode.execute(receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getEnd());
+        if (setIndices) {
+            receiver.setIndices(new int[]{start, receiver.getEnd()});
+        }
+        return start;
     }
 
     @Override

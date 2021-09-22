@@ -211,7 +211,7 @@ final class HostProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyArray) {
-            Value castValue = context.asValue(value);
+            Value castValue = context.asValue(library, value);
             guestToHostCall(library, cache.arraySet, context, proxy, index, castValue);
         } else {
             throw UnsupportedMessageException.create();
@@ -289,7 +289,7 @@ final class HostProxy implements TruffleObject {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (!interop.hasArrayElements(guestValue)) {
                 throw illegalProxy(context, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
-                                context.asValue(guestValue).toString());
+                                context.asValue(library, guestValue).toString());
             }
             // Todo: Use interop to determine an array element type when the GR-5737 is resolved.
             for (int i = 0; i < interop.getArraySize(guestValue); i++) {
@@ -297,7 +297,7 @@ final class HostProxy implements TruffleObject {
                     Object element = interop.readArrayElement(guestValue, i);
                     if (!interop.isString(element)) {
                         throw illegalProxy(context, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
-                                        context.asValue(guestValue).toString());
+                                        context.asValue(library, guestValue).toString());
                     }
                 } catch (UnsupportedOperationException e) {
                     CompilerDirectives.shouldNotReachHere(e);
@@ -339,7 +339,7 @@ final class HostProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyObject) {
-            Value castValue = context.asValue(value);
+            Value castValue = context.asValue(library, value);
             guestToHostCall(library, cache.putMember, context, proxy, member, castValue);
         } else {
             throw UnsupportedMessageException.create();
@@ -560,7 +560,7 @@ final class HostProxy implements TruffleObject {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (!interop.isIterator(guestValue)) {
                 throw illegalProxy(context, "getIterator() returned an invalid value %s but must return an iterator.",
-                                context.asValue(guestValue).toString());
+                                context.asValue(library, guestValue).toString());
             }
             return guestValue;
         } else {
@@ -621,7 +621,7 @@ final class HostProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) {
         if (proxy instanceof ProxyHashMap) {
-            Value keyValue = context.asValue(key);
+            Value keyValue = context.asValue(library, key);
             return (boolean) guestToHostCall(library, cache.hasHashEntry, context, proxy, keyValue);
         } else {
             return false;
@@ -637,7 +637,7 @@ final class HostProxy implements TruffleObject {
             if (!isHashValueExisting(key, library, cache)) {
                 throw UnknownKeyException.create(key);
             }
-            Value keyValue = context.asValue(key);
+            Value keyValue = context.asValue(library, key);
             Object result = guestToHostCall(library, cache.getHashValue, context, proxy, keyValue);
             return context.toGuestValue(library, result);
         } else {
@@ -663,8 +663,8 @@ final class HostProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyHashMap) {
-            Value keyValue = this.context.asValue(key);
-            Value valueValue = this.context.asValue(value);
+            Value keyValue = this.context.asValue(library, key);
+            Value valueValue = this.context.asValue(library, value);
             guestToHostCall(library, cache.putHashEntry, this.context, proxy, keyValue, valueValue);
         } else {
             throw UnsupportedMessageException.create();
@@ -680,7 +680,7 @@ final class HostProxy implements TruffleObject {
             if (!isHashValueExisting(key, library, cache)) {
                 throw UnknownKeyException.create(key);
             }
-            Value keyValue = context.asValue(key);
+            Value keyValue = context.asValue(library, key);
             guestToHostCall(library, cache.removeHashEntry, context, proxy, keyValue);
         } else {
             throw UnsupportedMessageException.create();
@@ -697,7 +697,7 @@ final class HostProxy implements TruffleObject {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (!interop.isIterator(guestValue)) {
                 throw illegalProxy(context, "getHashEntriesIterator() returned an invalid value %s but must return an iterator.",
-                                context.asValue(guestValue).toString());
+                                context.asValue(library, guestValue).toString());
             }
             return guestValue;
         } else {
@@ -725,16 +725,18 @@ final class HostProxy implements TruffleObject {
         return System.identityHashCode(receiver.proxy);
     }
 
-    public static boolean isProxyGuestObject(TruffleObject value) {
-        return value instanceof HostProxy;
+    public static boolean isProxyGuestObject(HostLanguage language, TruffleObject value) {
+        return isProxyGuestObject(language, (Object) value);
     }
 
-    public static boolean isProxyGuestObject(Object value) {
-        return value instanceof HostProxy;
+    public static boolean isProxyGuestObject(HostLanguage language, Object value) {
+        Object unwrapped = HostLanguage.unwrapIfScoped(language, value);
+        return unwrapped instanceof HostProxy;
     }
 
-    public static Proxy toProxyHostObject(Object value) {
-        return ((HostProxy) value).proxy;
+    public static Proxy toProxyHostObject(HostLanguage language, Object value) {
+        Object v = HostLanguage.unwrapIfScoped(language, value);
+        return ((HostProxy) v).proxy;
     }
 
     public static TruffleObject toProxyGuestObject(HostContext context, Proxy receiver) {

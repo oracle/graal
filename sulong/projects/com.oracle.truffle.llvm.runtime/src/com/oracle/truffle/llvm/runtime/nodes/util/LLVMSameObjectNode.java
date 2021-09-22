@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.util;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -47,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
  *
  * For foreign objects, this node delegates to the {@link InteropLibrary#isIdentical} message.
  */
-@SuppressWarnings("deprecation") // for backwards compatibility
 @GenerateUncached
 public abstract class LLVMSameObjectNode extends LLVMNode {
 
@@ -65,6 +65,7 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
     }
 
     @Specialization(limit = "3", guards = "a != b")
+    @GenerateAOT.Exclude
     boolean doForeign(Object a, Object b,
                     @CachedLibrary("a") LLVMAsForeignLibrary aForeigns,
                     @CachedLibrary("b") LLVMAsForeignLibrary bForeigns,
@@ -77,6 +78,7 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
     }
 
     @Specialization(limit = "3", guards = "fallbackGuard(a, b, aForeigns, bForeigns)")
+    @GenerateAOT.Exclude
     boolean doNotSame(Object a, Object b,
                     @SuppressWarnings("unused") @CachedLibrary("a") LLVMAsForeignLibrary aForeigns,
                     @SuppressWarnings("unused") @CachedLibrary("b") LLVMAsForeignLibrary bForeigns) {
@@ -109,20 +111,11 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
             return true;
         }
 
-        // for backwards compatibility
-        @Specialization(limit = "3", guards = {"a != b", "references.isSame(a, b)"})
-        boolean doReferenceLibrary(Object a, Object b,
-                        @CachedLibrary("a") com.oracle.truffle.llvm.spi.ReferenceLibrary references) {
-            assert references.isSame(a, b);
-            return true;
-        }
-
-        @Specialization(limit = "3", guards = {"a != b", "!references.isSame(a, b)"})
+        @Specialization(limit = "3", guards = {"a != b"})
+        @GenerateAOT.Exclude
         boolean doIdentical(Object a, Object b,
-                        @CachedLibrary("a") com.oracle.truffle.llvm.spi.ReferenceLibrary references,
                         @CachedLibrary("a") InteropLibrary aInterop,
                         @CachedLibrary("b") InteropLibrary bInterop) {
-            assert !references.isSame(a, b);
             return aInterop.isIdentical(a, b, bInterop);
         }
     }

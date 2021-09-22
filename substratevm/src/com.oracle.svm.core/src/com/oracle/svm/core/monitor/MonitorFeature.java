@@ -59,9 +59,9 @@ public class MonitorFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            foreignCalls.register(providers, MonitorSnippets.FOREIGN_CALLS);
+            foreignCalls.register(MonitorSnippets.FOREIGN_CALLS);
         }
     }
 }

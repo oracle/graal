@@ -142,6 +142,25 @@ public final class CodeInfoAccess {
         return cast(info).getState();
     }
 
+    public static String stateToString(int codeInfoState) {
+        switch (codeInfoState) {
+            case CodeInfo.STATE_CREATED:
+                return "created";
+            case CodeInfo.STATE_CODE_CONSTANTS_LIVE:
+                return "code constants live";
+            case CodeInfo.STATE_NON_ENTRANT:
+                return "non-entrant";
+            case CodeInfo.STATE_READY_FOR_INVALIDATION:
+                return "ready for invalidation";
+            case CodeInfo.STATE_PARTIALLY_FREED:
+                return "partially freed";
+            case CodeInfo.STATE_UNREACHABLE:
+                return "unreachable";
+            default:
+                return "invalid state";
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAlive(CodeInfo info) {
         return isAliveState(cast(info).getState());
@@ -274,10 +293,22 @@ public final class CodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
-    public static void setFrameInfo(CodeInfo info, NonmovableArray<Byte> encodings, NonmovableObjectArray<Object> objectConstants,
-                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names) {
+    public static void setFrameInfo(CodeInfo info, NonmovableArray<Byte> encodings) {
         CodeInfoImpl impl = cast(info);
         impl.setFrameInfoEncodings(encodings);
+    }
+
+    public static void setCodeInfo(CodeInfo info, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding) {
+        CodeInfoImpl impl = cast(info);
+        impl.setCodeInfoIndex(index);
+        impl.setCodeInfoEncodings(encodings);
+        impl.setStackReferenceMapEncoding(referenceMapEncoding);
+    }
+
+    @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
+    public static void setEncodings(CodeInfo info, NonmovableObjectArray<Object> objectConstants,
+                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names) {
+        CodeInfoImpl impl = cast(info);
         impl.setFrameInfoObjectConstants(objectConstants);
         impl.setFrameInfoSourceClasses(sourceClasses);
         impl.setFrameInfoSourceMethodNames(sourceMethodNames);
@@ -286,13 +317,6 @@ public final class CodeInfoAccess {
             // notify the GC about the frame metadata that is now live
             Heap.getHeap().getRuntimeCodeInfoGCSupport().registerFrameMetadata(impl);
         }
-    }
-
-    public static void setCodeInfo(CodeInfo info, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding) {
-        CodeInfoImpl impl = cast(info);
-        impl.setCodeInfoIndex(index);
-        impl.setCodeInfoEncodings(encodings);
-        impl.setStackReferenceMapEncoding(referenceMapEncoding);
     }
 
     public static Log log(CodeInfo info, Log log) {
@@ -354,5 +378,25 @@ public final class CodeInfoAccess {
     private static CodeInfoImpl cast(UntetheredCodeInfo info) {
         assert isValid(info);
         return (CodeInfoImpl) info;
+    }
+
+    public static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
+        String name = allowJavaHeapAccess ? CodeInfoAccess.getName(info) : null;
+        printCodeInfo(log, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
+    }
+
+    public static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
+        log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
+                        .string(CodeInfoAccess.stateToString(state));
+        if (name != null) {
+            log.string(" - ").string(name);
+        }
+        log.string(", ip: (").zhex(codeStart).string(" - ").zhex(codeEnd).string(")");
+        log.newline();
+        /*
+         * Note that we are not trying to output the InstalledCode object. It is not a pinned
+         * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
+         * could segfault.
+         */
     }
 }

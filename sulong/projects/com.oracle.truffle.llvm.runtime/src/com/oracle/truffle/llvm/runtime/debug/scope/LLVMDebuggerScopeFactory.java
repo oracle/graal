@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -97,14 +97,18 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMScope scope, DataLayout dataLayout, LLVMContext context) {
+    private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMScopeChain scope, DataLayout dataLayout, LLVMContext context) {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
-        for (LLVMSymbol symbol : scope.values()) {
-            if (symbol.isGlobalVariable()) {
-                LLVMGlobal global = symbol.asGlobalVariable();
-                Object value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getSymbol(global), dataLayout);
-                entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
+        LLVMScopeChain next = scope;
+        while (next != null) {
+            for (LLVMSymbol symbol : next.getScope().values()) {
+                if (symbol.isGlobalVariable()) {
+                    LLVMGlobal global = symbol.asGlobalVariable();
+                    Object value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getSymbolUncached(global), dataLayout);
+                    entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
+                }
             }
+            next = next.getNext();
         }
         return entries;
     }
@@ -114,7 +118,7 @@ public final class LLVMDebuggerScopeFactory {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (LLVMGlobal global : irScope) {
             if (global.hasValidIndexAndID()) {
-                Object value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), context.getSymbol(global), dataLayout);
+                Object value = CommonNodeFactory.toGenericDebuggerValue(new PointerType(global.getPointeeType()), context.getSymbolUncached(global), dataLayout);
                 entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
             }
         }
@@ -128,7 +132,7 @@ public final class LLVMDebuggerScopeFactory {
                 return toDebuggerScope((LLVMSourceLocation.TextModule) location, dataLayout, context);
             }
         }
-        return toDebuggerScope(context.getGlobalScope(), dataLayout, context);
+        return toDebuggerScope(context.getGlobalScopeChain(), dataLayout, context);
     }
 
     @TruffleBoundary

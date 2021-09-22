@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.300.4",
   "name" : "truffle",
-  "version" : "21.3.0",
+  "version" : "22.0.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -105,9 +105,9 @@ suite = {
       "sha1": "3ce2e9d96baa6e5de18eb370efc71cbb820021fb",
     },
 
-    "TRUFFLE_ASM_7.2" : {
-      "sha1" : "03ab18f3f0409fbed479c3c1c2cccec0d1b483c1",
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.impl.asm-7.2.0.jar"],
+    "TRUFFLE_ASM_9.1" : {
+      "sha1" : "956cc657b3f1aa2c08ebbb3bbe4092aea1daf54a",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.api.impl.asm-9.1.0.jar"],
     },
 
     "TruffleJSON" : {
@@ -188,7 +188,7 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.exception",
-        "truffle:TRUFFLE_ASM_7.2",
+        "truffle:TRUFFLE_ASM_9.1",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -456,6 +456,34 @@ suite = {
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Codegen",
+    },
+
+    "com.oracle.truffle.api.staticobject": {
+      "subDir": "src",
+      "sourceDirs": ["src"],
+      "dependencies": [
+        "com.oracle.truffle.api",
+        "truffle:TRUFFLE_ASM_9.1",
+      ],
+      "checkstyle": "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "javadocType": "api",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.staticobject.test": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject",
+        "TRUFFLE_API",
+        "mx:JUNIT"
+      ],
+      "checkstyle": "com.oracle.truffle.api",
+      "javaCompliance": "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "testProject" : True,
     },
 
     "com.oracle.truffle.api.profiles" : {
@@ -860,10 +888,11 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.api* to com.oracle.truffle.regex, jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+          "com.oracle.truffle.api* to com.oracle.truffle.regex, jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.api.impl to org.graalvm.locator",
           "com.oracle.truffle.api to org.graalvm.locator, com.oracle.truffle.truffle_nfi, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+          "com.oracle.truffle.api.library to com.oracle.truffle.truffle_nfi_libffi, com.oracle.truffle.truffle_nfi",
         ],
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -896,6 +925,7 @@ suite = {
           "com.oracle.truffle.api.object",
           "com.oracle.truffle.api.utilities",
           "com.oracle.truffle.api.library",
+          "com.oracle.truffle.api.staticobject",
 
           # Qualified exports
           "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator",
@@ -915,6 +945,7 @@ suite = {
         "com.oracle.truffle.api.object.dsl",
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.host",
+        "com.oracle.truffle.api.staticobject",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK"
@@ -932,7 +963,7 @@ suite = {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi",
         "requires" : [
-          "org.graalvm.truffle",
+          "org.graalvm.truffle"
         ]
       },
       "subDir" : "src",
@@ -954,7 +985,8 @@ suite = {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
         "requiresConcealed" : {
           "org.graalvm.truffle" : [
-            "com.oracle.truffle.api"
+            "com.oracle.truffle.api",
+            "com.oracle.truffle.api.library"
           ],
         }
       },
@@ -1171,6 +1203,7 @@ suite = {
          "com.oracle.truffle.api.object.dsl.test",
          "com.oracle.truffle.object.basic.test",
          "com.oracle.truffle.nfi.test",
+         "com.oracle.truffle.api.staticobject.test",
        ],
        "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
        "distDependencies" : [

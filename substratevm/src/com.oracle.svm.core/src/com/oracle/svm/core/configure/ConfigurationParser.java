@@ -28,15 +28,28 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public abstract class ConfigurationParser {
+    public static final String CONDITIONAL_KEY = "condition";
+    public static final String TYPE_REACHABLE_KEY = "typeReachable";
+    private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
+    private final boolean strictConfiguration;
+
+    protected ConfigurationParser(boolean strictConfiguration) {
+        this.strictConfiguration = strictConfiguration;
+    }
+
     public void parseAndRegister(Path path) throws IOException {
         try (Reader reader = Files.newBufferedReader(path)) {
             parseAndRegister(reader);
@@ -61,24 +74,40 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(errorMessage);
     }
 
-    protected static void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
-        List<String> unseenRequired = new ArrayList<>(requiredAttrs);
-        for (String key : map.keySet()) {
-            boolean required = unseenRequired.remove(key);
-            if (!required && !optionalAttrs.contains(key)) {
-                List<String> supported = new ArrayList<>(requiredAttrs);
-                supported.addAll(optionalAttrs);
-                throw new JSONParserException("Unknown attribute '" + key + "' (supported attributes: " + supported + ") in resource definition");
-
-            }
-        }
+    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
+        Set<String> unseenRequired = new HashSet<>(requiredAttrs);
+        unseenRequired.removeAll(map.keySet());
         if (!unseenRequired.isEmpty()) {
-            throw new JSONParserException("Missing attribute '" + unseenRequired.get(0) + "' in " + type);
+            throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
+        }
+        Set<String> unknownAttributes = new HashSet<>(map.keySet());
+        unknownAttributes.removeAll(requiredAttrs);
+        unknownAttributes.removeAll(optionalAttrs);
+
+        if (seenUnknownAttributesByType.containsKey(type)) {
+            unknownAttributes.removeAll(seenUnknownAttributesByType.get(type));
+        }
+
+        if (unknownAttributes.size() > 0) {
+            String message = "Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
+            warnOrFail(message);
+            Set<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> new HashSet<>());
+            unknownAttributesForType.addAll(unknownAttributes);
         }
     }
 
-    protected static void checkAttributes(Map<String, Object> data, String type, List<String> requiredAttrs) {
-        checkAttributes(data, type, requiredAttrs, Collections.emptyList());
+    protected void warnOrFail(String message) {
+        if (strictConfiguration) {
+            throw new JSONParserException(message);
+        } else {
+            // Checkstyle: stop
+            System.err.println("Warning: " + message);
+            // Checkstyle: resume
+        }
+    }
+
+    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
+        checkAttributes(map, type, requiredAttrs, Collections.emptyList());
     }
 
     protected static String asString(Object value) {
@@ -115,4 +144,19 @@ public abstract class ConfigurationParser {
         }
         throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
+
+    protected ConfigurationCondition parseCondition(Map<String, Object> data) {
+        Object conditionData = data.get(CONDITIONAL_KEY);
+        if (conditionData != null) {
+            Map<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
+            Object conditionType = conditionObject.get(TYPE_REACHABLE_KEY);
+            if (conditionType instanceof String) {
+                return ConfigurationCondition.create((String) conditionType);
+            } else {
+                warnOrFail("'" + TYPE_REACHABLE_KEY + "' should be of type string");
+            }
+        }
+        return ConfigurationCondition.alwaysTrue();
+    }
+
 }

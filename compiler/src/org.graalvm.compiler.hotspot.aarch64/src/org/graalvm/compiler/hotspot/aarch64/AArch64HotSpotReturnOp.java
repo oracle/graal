@@ -25,6 +25,8 @@
 package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.lr;
+import static jdk.vm.ci.aarch64.AArch64.r0;
+import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -34,6 +36,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapStackArgumentSpaceBeforeInstruction;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
@@ -42,7 +45,7 @@ import jdk.vm.ci.meta.Value;
  * Returns from a function.
  */
 @Opcode("RETURN")
-public final class AArch64HotSpotReturnOp extends AArch64HotSpotEpilogueOp {
+public final class AArch64HotSpotReturnOp extends AArch64HotSpotEpilogueOp implements ZapStackArgumentSpaceBeforeInstruction {
 
     public static final LIRInstructionClass<AArch64HotSpotReturnOp> TYPE = LIRInstructionClass.create(AArch64HotSpotReturnOp.class);
 
@@ -62,7 +65,9 @@ public final class AArch64HotSpotReturnOp extends AArch64HotSpotEpilogueOp {
         if (result.equals(Value.ILLEGAL)) {
             return true;
         }
-        return asRegister(result).encoding == 0;
+        // The result must be in either register r0 or v0.
+        Register reg = asRegister(result);
+        return reg.equals(r0) || reg.equals(v0);
     }
 
     @Override

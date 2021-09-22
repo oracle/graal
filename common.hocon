@@ -32,15 +32,15 @@ oraclejdk8OnlyDebug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug} }}
 openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 oraclejdk11 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
-oraclejdk16 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk16} }}
+oraclejdk17 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk17} }}
 openjdk11 :         { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
 
 labsjdk-ce-11 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-11} }}
 labsjdk-ee-11 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-11} }}
-labsjdk-ce-16 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-16} }}
-labsjdk-ee-16 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-16} }}
-labsjdk-ce-16Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-16Debug} }}
-labsjdk-ee-16Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-16Debug} }}
+labsjdk-ce-17 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-17} }}
+labsjdk-ee-17 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-17} }}
+labsjdk-ce-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-17Debug} }}
+labsjdk-ee-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-17Debug} }}
 
 common : ${mx} ${deps.common} {
   catch_files : [
@@ -169,7 +169,7 @@ svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${devkits.windows-jdk11
   timelimit: "45:00"
 }
 
-svm-common-windows-jdk16: ${svm-common} ${windows-amd64} ${devkits.windows-jdk16} {
+svm-common-windows-jdk17: ${svm-common} ${windows-amd64} ${devkits.windows-jdk17} {
   timelimit: "45:00"
 }
 

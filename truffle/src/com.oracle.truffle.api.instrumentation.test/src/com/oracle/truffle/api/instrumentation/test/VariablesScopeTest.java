@@ -352,7 +352,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         ProxyLanguage language = new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.getCurrentLanguage()) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
 
                     @Node.Child private DefaultRootBlockNode block = insert(new DefaultRootBlockNode());
 

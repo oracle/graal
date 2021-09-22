@@ -60,22 +60,19 @@ GraalVM Enterprise distributions are based on Oracle JDK 8, 11, and 16.
 GraalVM Enterprise releases include all Oracle Java critical patch updates (CPUs), which are released on a regular schedule to remedy defects and known vulnerabilities.
 
 GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
-The base GraalVM binary including all components is experimental on Linux/ARM and Windows.
 The GraalVM Enterprise distribution based on Oracle JDK 16 is experimental with [several known limitations](https://docs.oracle.com/en/graalvm/enterprise/21/docs/overview/known-issues/).
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 
-## Supported Platforms
+## Certified Platforms
 
-The following are the supported platforms for GraalVM Enterprise 21:
+The following are the certified platforms for GraalVM Enterprise 21:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux on OCI 	| 6, 7, 8 	| x86 64-bit 	| [GraalVM Enterprise Installation Guide on OCI](/getting-started/oci/compute-instances/) 	|
-| Oracle Linux 	| 6, 7, 8 	| x86 64-bit, ARM 64-bit (experimental)	| [GraalVM Enterprise Installation Guide for Linux](/getting-started/installation-linux/) 	|
-| Red Hat Enterprise Linux(RHEL) 	| 6, 7, 8 	| x86 64-bit 	| [GraalVM Enterprise Installation Guide for Linux](/getting-started/installation-linux/) 	|
-| macOS 	| 10.13 (High Sierra), 10.14 (Mojave), 10.15 (Catalina), 11.2 (Big Sur)	| x86 64-bit 	| [GraalVM Enterprise Installation Guide for macOS](/getting-started/installation-macos/) 	|
-| Windows 	| 10                                                                                                  	| x86 64-bit 	| [GraalVM Enterprise Installation Guide for Windows](/getting-started/installation-windows/) 	|
-
+| Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](/getting-started/installation-linux/) 	|
+| Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](/getting-started/installation-linux/) 	|
+| macOS 	| 10.14 (Mojave), 10.15 (Catalina)	| x86 64-bit 	| [Installation Guide for macOS](/getting-started/installation-macos/) 	|
+| Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](/getting-started/installation-windows/) 	|
 
 ## Distribution Components List
 
@@ -109,7 +106,7 @@ Runtimes:
 
 * [Node.js](/reference-manual/js/) -- the Node.js 14.16.1 runtime for JavaScript
 * [Python](/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.2 compatible
+* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.3 compatible
 * [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
 * [GraalWasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
 
@@ -133,14 +130,14 @@ The following table lists supported and experimental features in GraalVM Enterpr
 
 | Feature | Linux AMD64 | Linux ARM64 | macOS | Windows |
 |--------------------|---------------|---------------|---------------|
-| Native Image | early adopter | experimental | early adopter | experimental |
-| LLVM runtime | supported | experimental | supported | not available |
-| LLVM toolchain | supported | experimental | supported | not available |
-| JavaScript | supported | experimental | supported | experimental |
-| Node.js  | supported | experimental | supported | experimental |
-| Java on Truffle | experimental | not available | experimental | experimental |
+| Native Image | early adopter | early adopter | early adopter | early adopter |
+| LLVM runtime | supported | supported | supported | not available |
+| LLVM toolchain | supported | supported | supported | not available |
+| JavaScript | supported | supported | supported | supported |
+| Node.js  | supported | supported | supported | supported |
+| Java on Truffle | experimental | experimental | experimental | experimental |
 | Python | experimental | not available | experimental | not available |
-| Ruby | experimental | not available | experimental | not available |
+| Ruby | experimental | experimental | experimental | not available |
 | R | experimental | not available | experimental | not available |
 | WebAssembly | experimental | experimental | experimental | experimental |
 

@@ -26,44 +26,33 @@ package com.oracle.svm.core.heap;
 
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.util.VMError;
 
-/**
- * Visit an object reference. The visitObjectReference method takes a Pointer as a parameter, but
- * that Pointer is *not* a pointer to an Object, but a Pointer to an object reference.
- */
+/** Visitor for object references. */
 public interface ObjectReferenceVisitor {
     /**
-     * Visit an Object reference.
+     * Visit an object reference.
      *
-     * To get the corresponding Object reference.readObject can be used.
-     *
-     * @param objRef The Object reference to be visited.
+     * @param objRef Address of object reference to visit (not address of the referenced object).
      * @param compressed True if the reference is in compressed form, false otherwise.
-     * @return True if visiting should continue, false if visiting should stop.
+     * @param holderObject The object containing the reference, or {@code null} if the reference is
+     *            not part of an object.
+     * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
-    boolean visitObjectReference(Pointer objRef, boolean compressed);
+    boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject);
 
-    /** Like visitObjectReference(Pointer), but always inlined for performance. */
+    /**
+     * @param innerOffset If the reference is a {@linkplain CodeReferenceMapDecoder derived
+     *            reference}, a positive integer that must be subtracted from the address to which
+     *            the object reference points in order to get the start of the referenced object.
+     */
+    @AlwaysInline("GC performance")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
-    default boolean visitObjectReferenceInline(Pointer objRef, boolean compressed) {
-        return visitObjectReference(objRef, compressed);
-    }
-
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
-    default boolean visitObjectReferenceInline(Pointer objRef, @SuppressWarnings("unused") int innerOffset, boolean compressed) {
-        return visitObjectReference(objRef, compressed);
-    }
-
-    /** Like visitObjectReference(Pointer), but always inlined for performance. */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
-    default boolean visitObjectReferenceInline(Pointer objRef, boolean compressed, @SuppressWarnings("unused") Object holderObject) {
-        return visitObjectReferenceInline(objRef, compressed);
-    }
-
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
-    default boolean visitObjectReferenceInline(Pointer objRef, @SuppressWarnings("unused") int innerOffset, boolean compressed, @SuppressWarnings("unused") Object holderObject) {
-        return visitObjectReferenceInline(objRef, innerOffset, compressed);
+    default boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        VMError.guarantee(innerOffset == 0, "visitor does not support derived references");
+        return visitObjectReference(objRef, compressed, holderObject);
     }
 }

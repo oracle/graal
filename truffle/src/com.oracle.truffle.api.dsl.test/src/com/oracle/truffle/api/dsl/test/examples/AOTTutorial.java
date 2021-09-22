@@ -60,7 +60,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.AOTSupport;
-import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -221,8 +221,12 @@ public class AOTTutorial {
         @TruffleBoundary
         @SuppressWarnings("unused")
         protected static double doDouble(double left, double right,
-                        @CachedLanguage AOTTestLanguage language) {
+                        @Cached("getASTLanguage()") AOTTestLanguage language) {
             return left + right;
+        }
+
+        final AOTTestLanguage getASTLanguage() {
+            return getRootNode().getLanguage(AOTTestLanguage.class);
         }
 
         /**

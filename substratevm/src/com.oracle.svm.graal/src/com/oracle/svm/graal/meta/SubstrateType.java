@@ -352,7 +352,7 @@ public class SubstrateType extends NodeClass implements SharedType {
     }
 
     @Override
-    public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
+    public SubstrateField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
         assert offset >= 0;
 
         if (rawAllInstanceFields == null) {
@@ -451,6 +451,7 @@ public class SubstrateType extends NodeClass implements SharedType {
         return SubstrateMetaAccess.singleton().lookupJavaType(Cloneable.class).isAssignableFrom(this);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         throw VMError.unimplemented();

@@ -42,7 +42,7 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
-import com.oracle.svm.core.genscavenge.HeapPolicy;
+import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapObject;
@@ -68,11 +68,12 @@ final class AlignedChunkRememberedSet {
         FirstObjectTable.initializeTable(getFirstObjectTableStart(chunk), getFirstObjectTableSize());
 
         Pointer fotStart = getFirstObjectTableStart(chunk);
+        UnsignedWord objectsStartOffset = AlignedHeapChunk.getObjectsStartOffset();
         for (ImageHeapObject obj : objects) {
             long offsetWithinChunk = obj.getOffset() - chunkPosition;
-            assert offsetWithinChunk > 0 && WordFactory.unsigned(offsetWithinChunk).aboveOrEqual(AlignedHeapChunk.getObjectsStartOffset());
+            assert offsetWithinChunk > 0 && WordFactory.unsigned(offsetWithinChunk).aboveOrEqual(objectsStartOffset);
 
-            UnsignedWord startOffset = WordFactory.unsigned(offsetWithinChunk).subtract(AlignedHeapChunk.getObjectsStartOffset());
+            UnsignedWord startOffset = WordFactory.unsigned(offsetWithinChunk).subtract(objectsStartOffset);
             UnsignedWord endOffset = startOffset.add(WordFactory.unsigned(obj.getSize()));
             FirstObjectTable.setTableForObject(fotStart, startOffset, endOffset);
             // The remembered set bit in the header will be set by the code that writes the objects.
@@ -124,7 +125,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
-    public static void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor) {
+    public static void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         Pointer cardTableStart = getCardTableStart(chunk);
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
@@ -134,7 +135,9 @@ final class AlignedChunkRememberedSet {
 
         for (UnsignedWord index = WordFactory.zero(); index.belowThan(indexLimit); index = index.add(1)) {
             if (CardTable.isDirty(cardTableStart, index)) {
-                CardTable.setClean(cardTableStart, index);
+                if (clean) {
+                    CardTable.setClean(cardTableStart, index);
+                }
 
                 Pointer ptr = FirstObjectTable.getFirstObjectImprecise(fotStart, objectsStart, objectsLimit, index);
                 Pointer cardLimit = CardTable.indexToMemoryPointer(objectsStart, index.add(1));
@@ -170,7 +173,7 @@ final class AlignedChunkRememberedSet {
     static UnsignedWord getCardTableSize() {
         // We conservatively compute the size as a fraction of the size of the entire chunk.
         UnsignedWord structSize = getStructSize();
-        UnsignedWord available = HeapPolicy.getAlignedHeapChunkSize().subtract(structSize);
+        UnsignedWord available = HeapParameters.getAlignedHeapChunkSize().subtract(structSize);
         UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(available);
         UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(requiredSize, alignment);

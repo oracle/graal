@@ -28,6 +28,8 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -42,6 +44,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.option.OptionUtils;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -154,8 +157,8 @@ public class ServiceLoaderFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         // TODO write a more sophisticated include/exclude filter to handle cases like GR-27605 ?
-        servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
-        serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
+        servicesToSkip.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServices.getValue().values()));
+        serviceProvidersToSkip.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values()));
     }
 
     @Override
@@ -307,6 +310,7 @@ public class ServiceLoaderFeature implements Feature {
                 continue;
             }
 
+            Constructor<?> nullaryConstructor;
             try {
                 /*
                  * Check if the implementation class has a nullary constructor. The
@@ -316,7 +320,7 @@ public class ServiceLoaderFeature implements Feature {
                  * service classes that don't respect the requirement. On HotSpot trying to load
                  * such a service would lead to a ServiceConfigurationError.
                  */
-                implementationClass.getDeclaredConstructor();
+                nullaryConstructor = implementationClass.getDeclaredConstructor();
             } catch (ReflectiveOperationException | NoClassDefFoundError ex) {
                 if (trace) {
                     System.out.println("  cannot resolve a nullary constructor for " + implementationClassName + ": " + ex.getMessage());
@@ -326,8 +330,20 @@ public class ServiceLoaderFeature implements Feature {
 
             /* Allow Class.forName at run time for the service implementation. */
             RuntimeReflection.register(implementationClass);
-            /* Allow reflective instantiation at run time for the service implementation. */
-            RuntimeReflection.registerForReflectiveInstantiation(implementationClass);
+            if (implementationClass.isArray() || implementationClass.isInterface() || Modifier.isAbstract(implementationClass.getModifiers())) {
+                if (trace) {
+                    System.out.println("  Warning: class cannot be instantiated (fail lazy): " + implementationClassName);
+                }
+                /*
+                 * The class cannot be instantiated. However since java.util.ServiceLoader.stream()
+                 * does not force instantiation, we must not fail eagerly. To do so, we need to
+                 * register the nullary constructor since it is accessed during stream processing.
+                 */
+                RuntimeReflection.register(nullaryConstructor);
+            } else {
+                /* Allow reflective instantiation at run time for the service implementation. */
+                RuntimeReflection.registerForReflectiveInstantiation(implementationClass);
+            }
 
             /* Add line to the new resource that will be available at run time. */
             newResourceValue.append(implementationClass.getName());

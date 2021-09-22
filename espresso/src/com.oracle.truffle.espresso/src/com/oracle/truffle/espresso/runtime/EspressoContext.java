@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -55,10 +55,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -72,6 +74,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -88,6 +91,7 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinition
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
@@ -170,11 +174,13 @@ public final class EspressoContext {
     public final EspressoOptions.VerifyMode Verify;
     public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
     public final boolean Polyglot;
+    public final boolean HotSwapAPI;
     public final boolean ExitHost;
     public final boolean EnableSignals;
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
     public final boolean EnableAgents;
+    public final int TrivialMethodSize;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -191,7 +197,6 @@ public final class EspressoContext {
     @CompilationFinal private InterpreterToVM interpreterToVM;
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
-    @CompilationFinal private JavaVersion javaVersion;
     @CompilationFinal private AgentLibraries agents;
     @CompilationFinal private NativeAccess nativeAccess;
     // endregion VM
@@ -214,11 +219,19 @@ public final class EspressoContext {
     }
 
     public int getNewKlassId() {
-        return klassIdProvider.getAndIncrement();
+        int id = klassIdProvider.getAndIncrement();
+        if (id < 0) {
+            throw EspressoError.shouldNotReachHere("Exhausted klass IDs");
+        }
+        return id;
     }
 
     public int getNewLoaderId() {
-        return loaderIdProvider.getAndIncrement();
+        int id = loaderIdProvider.getAndIncrement();
+        if (id < 0) {
+            throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
+        }
+        return id;
     }
 
     public int getBootClassLoaderID() {
@@ -258,6 +271,7 @@ public final class EspressoContext {
         this.livenessAnalysis = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
+        this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
         String multiThreadingDisabledReason = null;
         if (!env.getOptions().get(EspressoOptions.MultiThreaded)) {
             multiThreadingDisabledReason = "java.MultiThreaded option is set to false";
@@ -275,6 +289,7 @@ public final class EspressoContext {
         this.multiThreadingDisabled = multiThreadingDisabledReason;
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
+        this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
@@ -442,16 +457,16 @@ public final class EspressoContext {
 
             initVmProperties();
 
-            if (getJavaVersion().modulesEnabled()) {
-                registries.initJavaBaseModule();
-                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
-            }
-
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
                 this.nativeAccess = spawnNativeAccess();
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
+            }
+
+            if (getJavaVersion().modulesEnabled()) {
+                registries.initJavaBaseModule();
+                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
             }
 
             // TODO: link libjimage
@@ -471,18 +486,29 @@ public final class EspressoContext {
                 for (Symbol<Type> type : Arrays.asList(
                                 Type.java_lang_String,
                                 Type.java_lang_System,
+                                Type.java_lang_Class, // JDK-8069005
                                 Type.java_lang_ThreadGroup,
-                                Type.java_lang_Thread,
-                                Type.java_lang_Class,
-                                Type.java_lang_reflect_Method)) {
+                                Type.java_lang_Thread)) {
                     initializeKnownClass(type);
                 }
             }
 
+            if (meta.jdk_internal_misc_UnsafeConstants != null) {
+                initializeKnownClass(Type.jdk_internal_misc_UnsafeConstants);
+                UnsafeAccess.initializeGuestUnsafeConstants(meta);
+            }
+
+            // Create main thread as soon as Thread class is initialized.
             threadManager.createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
-                initializeKnownClass(Type.java_lang_ref_Finalizer);
+                initializeKnownClass(Type.java_lang_Object);
+
+                for (Symbol<Type> type : Arrays.asList(
+                                Type.java_lang_reflect_Method,
+                                Type.java_lang_ref_Finalizer)) {
+                    initializeKnownClass(type);
+                }
             }
 
             referenceDrainer.initReferenceDrain();
@@ -569,9 +595,7 @@ public final class EspressoContext {
         }
 
         List<String> available = new ArrayList<>();
-        // TODO(peterssen): Investigate which class loader is needed here and why.
-        ServiceLoader<NativeAccess.Provider> loader = ServiceLoader.load(NativeAccess.Provider.class, getClass().getClassLoader());
-        for (NativeAccess.Provider provider : loader) {
+        for (NativeAccess.Provider provider : NativeAccessCollector.getInstances(NativeAccess.Provider.class)) {
             available.add(provider.id());
             if (nativeBackend.equals(provider.id())) {
                 getLogger().fine("Native backend: " + nativeBackend);
@@ -607,7 +631,6 @@ public final class EspressoContext {
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
         vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
-        javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
@@ -645,7 +668,7 @@ public final class EspressoContext {
     }
 
     public JavaVersion getJavaVersion() {
-        return javaVersion;
+        return vm.getJavaVersion();
     }
 
     public Types getTypes() {
@@ -773,7 +796,7 @@ public final class EspressoContext {
             getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
             return;
         }
-        if (vm.DetachCurrentThread() != JNI_OK) {
+        if (vm.DetachCurrentThread(this) != JNI_OK) {
             throw new RuntimeException("Could not detach thread correctly");
         }
     }
@@ -816,6 +839,10 @@ public final class EspressoContext {
         if (shouldReportVMEvents) {
             eventListener.threadDied(self);
         }
+    }
+
+    public void interruptThread(StaticObject guestThread) {
+        threadManager.interruptThread(guestThread);
     }
 
     public void invalidateNoThreadStop(String message) {
@@ -979,5 +1006,14 @@ public final class EspressoContext {
 
     public void rerunclinit(ObjectKlass oldKlass) {
         jdwpContext.rerunclinit(oldKlass);
+    }
+
+    private static final ContextReference<EspressoContext> REFERENCE = ContextReference.create(EspressoLanguage.class);
+
+    /**
+     * Returns the <em>current</em>, thread-local, context.
+     */
+    public static EspressoContext get(Node node) {
+        return REFERENCE.get(node);
     }
 }

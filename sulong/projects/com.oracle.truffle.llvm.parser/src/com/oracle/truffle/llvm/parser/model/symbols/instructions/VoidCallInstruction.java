@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,9 +43,12 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
 
     private final AttributesCodeEntry paramAttr;
 
-    private VoidCallInstruction(AttributesCodeEntry paramAtt, int argCount) {
+    private final OperandBundle operandBundle;
+
+    private VoidCallInstruction(AttributesCodeEntry paramAtt, int argCount, OperandBundle operandBundle) {
         this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
         this.paramAttr = paramAtt;
+        this.operandBundle = operandBundle;
     }
 
     @Override
@@ -79,6 +82,11 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
+    public OperandBundle getOperandBundle() {
+        return operandBundle;
+    }
+
+    @Override
     public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
@@ -90,8 +98,8 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
         }
     }
 
-    public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
-        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length);
+    public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr, OperandBundle operandBundle) {
+        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length, operandBundle);
         inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
         Call.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
         return inst;

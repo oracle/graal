@@ -71,8 +71,7 @@ public class NodeCostUtil {
         Function<Block, Iterable<? extends Node>> blockToNodes;
         ControlFlowGraph cfg;
         if (fullSchedule) {
-            SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
-            schedule.apply(graph);
+            SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
             cfg = graph.getLastSchedule().getCFG();
             blockToNodes = b -> graph.getLastSchedule().getBlockToNodesMap().get(b);
         } else {

@@ -16,11 +16,13 @@ These get optimized at runtime into efficient machine code for executing loaded 
 Learn more about this framework from its [reference documentation](/graalvm-as-a-platform/language-implementation-framework/).
 
 ## Implement Your Language
+
 With the [Language API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/package-summary.html) offered by the Truffle framework, you can implement a language interpreter on top of GraalVM.
 
 To get started, proceed to [Implement Your Language](/graalvm-as-a-platform/implement-language/).
 
 ## Implement Your Tool
+
 With the [Instrument API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/package-summary.html) offered by the Truffle framework, you can create language-agnostic tools like debuggers, profilers, or other instruments on top of GraalVM.
 
 To get started, proceed to [Implement Your Tool](/graalvm-as-a-platform/implement-instrument/).

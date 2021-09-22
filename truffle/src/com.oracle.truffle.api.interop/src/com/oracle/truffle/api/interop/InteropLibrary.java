@@ -56,6 +56,7 @@ import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -76,10 +77,12 @@ import java.time.zone.ZoneRules;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.api.interop.AssertUtils.assertString;
 import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
-import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validProtocolArgument;
 import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
 import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validInteropReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
 import static com.oracle.truffle.api.interop.AssertUtils.validScope;
 import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
@@ -919,7 +922,7 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Reads the value for the specified key.
-     * 
+     *
      * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
      *             receiver with no readable hash entries supports the read operation (even though
      *             there is nothing to read), therefore it throws {@link UnknownKeyException} for
@@ -939,7 +942,7 @@ public abstract class InteropLibrary extends Library {
     /**
      * Reads the value for the specified key or returns the {@code defaultValue} when the mapping
      * for the specified key does not exist or is not readable.
-     * 
+     *
      * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
      *             receiver with no readable hash entries supports the read operation (even though
      *             there is nothing to read), therefore it returns the {@code defaultValue} for all
@@ -2141,7 +2144,7 @@ public abstract class InteropLibrary extends Library {
      * The following example shows how the {@link #hasIteratorNextElement(Object)
      * hasIteratorNextElement} message can be emulated in languages where iterators only have a next
      * method and throw an exception if there are no further elements.
-     * 
+     *
      * <pre>
      * &#64;ExportLibrary(InteropLibrary.class)
      * abstract class InteropIterator implements TruffleObject {
@@ -2875,6 +2878,51 @@ public abstract class InteropLibrary extends Library {
     static final LibraryFactory<InteropLibrary> FACTORY = LibraryFactory.resolve(InteropLibrary.class);
     static final InteropLibrary UNCACHED = FACTORY.getUncached();
 
+    /**
+     * Utility to check whether a value is a valid interop value. Interop values are all values that
+     * can flow through the language implementation freely and are intended to be used as receivers
+     * for the {@link InteropLibrary}. This method will be extended with more checked types as
+     * interop is extended with further allowed values.
+     * <p>
+     * It is not recommended to make assumptions about the types of interop values. It is
+     * recommended to use instance methods in {@link InteropLibrary} to check for interop types
+     * instead. However, it can be useful to make such assumptions for performance reasons. To
+     * verify that these assumptions continue to hold this method can be used.
+     *
+     * @since 21.3
+     */
+    @TruffleBoundary
+    public static boolean isValidValue(Object receiver) {
+        return receiver instanceof TruffleObject //
+                        || receiver instanceof Boolean //
+                        || receiver instanceof Byte  //
+                        || receiver instanceof Short //
+                        || receiver instanceof Character //
+                        || receiver instanceof Integer //
+                        || receiver instanceof Long //
+                        || receiver instanceof Float //
+                        || receiver instanceof Double //
+                        || receiver instanceof String;
+    }
+
+    /**
+     * Utility to check whether a value is a valid interop protocol value. An interop protocol value
+     * is either an {@link #isValidValue(Object) interop value} or a value that might be returned or
+     * passed as parameter by any of the methods in {@link InteropLibrary}. This can be useful to
+     * validate all values received or returned by a wrapper that uses {@link ReflectionLibrary} to
+     * delegate all interop protocol parameters and return values. This method will be extended with
+     * more checked types as interop is extended with further allowed values.
+     *
+     * @see #isValidValue(Object)
+     * @since 21.3
+     */
+    @TruffleBoundary
+    public static boolean isValidProtocolValue(Object value) {
+        return isValidValue(value) || value instanceof ByteOrder || value instanceof Instant || value instanceof ZoneId || value instanceof LocalDate ||
+                        value instanceof LocalTime || value instanceof Duration || value instanceof ExceptionType || value instanceof SourceSection || value instanceof Class<?> ||
+                        value instanceof TriState || value instanceof InteropLibrary || value instanceof Object[];
+    }
+
     static class Asserts extends InteropLibrary {
 
         @Child private InteropLibrary delegate;
@@ -2914,6 +2962,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean result = delegate.isNull(receiver);
             assert !result || notOtherType(receiver, Type.NULL);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -2949,6 +2998,7 @@ public abstract class InteropLibrary extends Library {
                 }
             }
             assert !result || notOtherType(receiver, Type.BOOLEAN);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -2963,6 +3013,7 @@ public abstract class InteropLibrary extends Library {
                 boolean result = delegate.asBoolean(receiver);
                 assert wasBoolean : violationInvariant(receiver);
                 assert notOtherType(receiver, Type.BOOLEAN);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -2984,12 +3035,13 @@ public abstract class InteropLibrary extends Library {
                 return delegate.execute(receiver, arguments);
             }
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, arguments);
             assert validArguments(receiver, arguments);
             boolean wasExecutable = delegate.isExecutable(receiver);
             try {
                 Object result = delegate.execute(receiver, arguments);
                 assert wasExecutable : violationInvariant(receiver, arguments);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof ArityException || e instanceof UnsupportedTypeException : violationInvariant(receiver, arguments);
@@ -3002,6 +3054,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isInstantiable(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isInstantiable(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -3011,12 +3064,13 @@ public abstract class InteropLibrary extends Library {
                 return delegate.instantiate(receiver, arguments);
             }
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, arguments);
             assert validArguments(receiver, arguments);
             boolean wasInstantiable = delegate.isInstantiable(receiver);
             try {
                 Object result = delegate.instantiate(receiver, arguments);
                 assert wasInstantiable : violationInvariant(receiver, arguments);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof ArityException || e instanceof UnsupportedTypeException : violationInvariant(receiver, arguments);
@@ -3041,6 +3095,7 @@ public abstract class InteropLibrary extends Library {
                 }
             }
             assert !result || notOtherType(receiver, Type.STRING);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -3054,6 +3109,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 String result = delegate.asString(receiver);
                 assert wasString : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -3067,6 +3123,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean result = delegate.isNumber(receiver);
             assert !result || notOtherType(receiver, Type.NUMBER);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -3092,6 +3149,7 @@ public abstract class InteropLibrary extends Library {
                 }
             }
             assert !fits || notOtherType(receiver, Type.NUMBER);
+            assert validProtocolReturn(receiver, fits);
             return fits;
         }
 
@@ -3117,6 +3175,7 @@ public abstract class InteropLibrary extends Library {
                 }
             }
             assert !fits || notOtherType(receiver, Type.NUMBER);
+            assert validProtocolReturn(receiver, fits);
             return fits;
         }
 
@@ -3140,6 +3199,7 @@ public abstract class InteropLibrary extends Library {
                 }
             }
             assert !fits || notOtherType(receiver, Type.NUMBER);
+            assert validProtocolReturn(receiver, fits);
             return fits;
         }
 
@@ -3161,6 +3221,7 @@ public abstract class InteropLibrary extends Library {
                 }
             }
             assert !fits || notOtherType(receiver, Type.NUMBER);
+            assert validProtocolReturn(receiver, fits);
             return fits;
         }
 
@@ -3181,6 +3242,7 @@ public abstract class InteropLibrary extends Library {
                 }
             }
             assert !fits || notOtherType(receiver, Type.NUMBER);
+            assert validProtocolReturn(receiver, fits);
             return fits;
         }
 
@@ -3201,6 +3263,7 @@ public abstract class InteropLibrary extends Library {
                 }
             }
             assert !fits || notOtherType(receiver, Type.NUMBER);
+            assert validProtocolReturn(receiver, fits);
             return fits;
         }
 
@@ -3216,6 +3279,7 @@ public abstract class InteropLibrary extends Library {
                 assert result == delegate.asLong(receiver) : violationInvariant(receiver);
                 assert result == delegate.asFloat(receiver) : violationInvariant(receiver);
                 assert result == delegate.asDouble(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -3234,6 +3298,7 @@ public abstract class InteropLibrary extends Library {
                 assert result == delegate.asLong(receiver) : violationInvariant(receiver);
                 assert result == delegate.asFloat(receiver) : violationInvariant(receiver);
                 assert result == delegate.asDouble(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -3250,6 +3315,7 @@ public abstract class InteropLibrary extends Library {
                 assert delegate.fitsInInt(receiver) : violationInvariant(receiver);
                 assert result == delegate.asLong(receiver) : violationInvariant(receiver);
                 assert result == delegate.asDouble(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -3264,6 +3330,7 @@ public abstract class InteropLibrary extends Library {
                 long result = delegate.asLong(receiver);
                 assert delegate.isNumber(receiver) : violationInvariant(receiver);
                 assert delegate.fitsInLong(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -3278,6 +3345,7 @@ public abstract class InteropLibrary extends Library {
                 float result = delegate.asFloat(receiver);
                 assert delegate.isNumber(receiver) : violationInvariant(receiver);
                 assert delegate.fitsInFloat(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -3292,6 +3360,7 @@ public abstract class InteropLibrary extends Library {
                 double result = delegate.asDouble(receiver);
                 assert delegate.isNumber(receiver) : violationInvariant(receiver);
                 assert delegate.fitsInDouble(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -3302,7 +3371,9 @@ public abstract class InteropLibrary extends Library {
         @Override
         public boolean hasMembers(Object receiver) {
             assert preCondition(receiver);
-            return delegate.hasMembers(receiver);
+            boolean result = delegate.hasMembers(receiver);
+            assert validProtocolReturn(receiver, result);
+            return result;
         }
 
         @Override
@@ -3311,13 +3382,13 @@ public abstract class InteropLibrary extends Library {
                 return delegate.readMember(receiver, identifier);
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean wasReadable = delegate.isMemberReadable(receiver, identifier);
             try {
                 Object result = delegate.readMember(receiver, identifier);
                 assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
                 assert wasReadable || isMultiThreaded(receiver) : violationInvariant(receiver, identifier);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownIdentifierException : violationPost(receiver, e);
@@ -3332,8 +3403,8 @@ public abstract class InteropLibrary extends Library {
                 return;
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
-            assert validArgument(receiver, value);
+            assert validProtocolArgument(receiver, identifier);
+            assert validInteropArgument(receiver, value);
             boolean wasWritable = (delegate.isMemberModifiable(receiver, identifier) || delegate.isMemberInsertable(receiver, identifier));
             try {
                 delegate.writeMember(receiver, identifier, value);
@@ -3352,7 +3423,7 @@ public abstract class InteropLibrary extends Library {
                 return;
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean wasRemovable = delegate.isMemberRemovable(receiver, identifier);
             try {
                 delegate.removeMember(receiver, identifier);
@@ -3371,14 +3442,15 @@ public abstract class InteropLibrary extends Library {
                 return delegate.invokeMember(receiver, identifier, arguments);
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, arguments);
             assert validArguments(receiver, arguments);
             boolean wasInvocable = delegate.isMemberInvocable(receiver, identifier);
             try {
                 Object result = delegate.invokeMember(receiver, identifier, arguments);
                 assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
                 assert wasInvocable || isMultiThreaded(receiver) : violationInvariant(receiver, identifier);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof ArityException || e instanceof UnknownIdentifierException ||
@@ -3392,9 +3464,11 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             try {
                 Object result = delegate.getMembers(receiver, internal);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
+                assert validProtocolArgument(receiver, internal);
                 assert isMultiThreaded(receiver) || assertMemberKeys(receiver, result, internal);
                 assert !delegate.hasScopeParent(receiver) || assertScopeMembers(receiver, result, delegate.getMembers(delegate.getScopeParent(receiver), internal));
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3490,81 +3564,91 @@ public abstract class InteropLibrary extends Library {
         @Override
         public boolean hasMemberReadSideEffects(Object receiver, String identifier) {
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean result = delegate.hasMemberReadSideEffects(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             assert !result || (delegate.isMemberReadable(receiver, identifier) || isMultiThreaded(receiver)) : violationInvariant(receiver, identifier);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean hasMemberWriteSideEffects(Object receiver, String identifier) {
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean result = delegate.hasMemberWriteSideEffects(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             assert !result || (delegate.isMemberWritable(receiver, identifier) || isMultiThreaded(receiver)) : violationInvariant(receiver, identifier);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isMemberReadable(Object receiver, String identifier) {
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean result = delegate.isMemberReadable(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isMemberModifiable(Object receiver, String identifier) {
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validInteropArgument(receiver, identifier);
             boolean result = delegate.isMemberModifiable(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isMemberInsertable(Object receiver, String identifier) {
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean result = delegate.isMemberInsertable(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) && !delegate.isMemberExisting(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isMemberRemovable(Object receiver, String identifier) {
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean result = delegate.isMemberRemovable(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isMemberInvocable(Object receiver, String identifier) {
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean result = delegate.isMemberInvocable(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isMemberInternal(Object receiver, String identifier) {
             assert preCondition(receiver);
-            assert validArgument(receiver, identifier);
+            assert validProtocolArgument(receiver, identifier);
             boolean result = delegate.isMemberInternal(receiver, identifier);
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean hasHashEntries(Object receiver) {
             assert preCondition(receiver);
-            return delegate.hasHashEntries(receiver);
+            boolean result = delegate.hasHashEntries(receiver);
+            assert validProtocolReturn(receiver, result);
+            return result;
         }
 
         @Override
@@ -3573,6 +3657,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 long result = delegate.getHashSize(receiver);
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3584,9 +3669,10 @@ public abstract class InteropLibrary extends Library {
         @Override
         public boolean isHashEntryReadable(Object receiver, Object key) {
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
+            assert validInteropArgument(receiver, key);
             boolean result = delegate.isHashEntryReadable(receiver, key);
             assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -3596,13 +3682,13 @@ public abstract class InteropLibrary extends Library {
                 return delegate.readHashValue(receiver, key);
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
+            assert validInteropArgument(receiver, key);
             boolean wasReadable = delegate.isHashEntryReadable(receiver, key);
             try {
                 Object result = delegate.readHashValue(receiver, key);
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
                 assert wasReadable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException : violationPost(receiver, e);
@@ -3617,12 +3703,12 @@ public abstract class InteropLibrary extends Library {
                 return delegate.readHashValueOrDefault(receiver, key, defaultValue);
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
-            assert validArgument(receiver, defaultValue);
+            assert validInteropArgument(receiver, key);
+            assert validInteropArgument(receiver, defaultValue);
             try {
                 Object result = delegate.readHashValueOrDefault(receiver, key, defaultValue);
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3633,27 +3719,30 @@ public abstract class InteropLibrary extends Library {
         @Override
         public boolean isHashEntryModifiable(Object receiver, Object key) {
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
+            assert validInteropArgument(receiver, key);
             boolean result = delegate.isHashEntryModifiable(receiver, key);
             assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isHashEntryInsertable(Object receiver, Object key) {
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
+            assert validInteropArgument(receiver, key);
             boolean result = delegate.isHashEntryInsertable(receiver, key);
             assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryExisting(receiver, key) : violationInvariant(receiver, key);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isHashEntryWritable(Object receiver, Object key) {
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
+            assert validInteropArgument(receiver, key);
             boolean result = delegate.isHashEntryWritable(receiver, key);
             assert result == (delegate.isHashEntryModifiable(receiver, key) || delegate.isHashEntryInsertable(receiver, key)) : violationInvariant(receiver, key);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -3664,8 +3753,8 @@ public abstract class InteropLibrary extends Library {
                 return;
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
-            assert validArgument(receiver, value);
+            assert validInteropArgument(receiver, key);
+            assert validInteropArgument(receiver, value);
             boolean wasWritable = delegate.isHashEntryModifiable(receiver, key) || delegate.isHashEntryInsertable(receiver, key);
             try {
                 delegate.writeHashEntry(receiver, key, value);
@@ -3681,9 +3770,10 @@ public abstract class InteropLibrary extends Library {
         @Override
         public boolean isHashEntryRemovable(Object receiver, Object key) {
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
+            assert validInteropArgument(receiver, key);
             boolean result = delegate.isHashEntryRemovable(receiver, key);
             assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -3694,7 +3784,7 @@ public abstract class InteropLibrary extends Library {
                 return;
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
+            assert validInteropArgument(receiver, key);
             boolean wasRemovable = delegate.isHashEntryRemovable(receiver, key);
             try {
                 delegate.removeHashEntry(receiver, key);
@@ -3710,10 +3800,11 @@ public abstract class InteropLibrary extends Library {
         @Override
         public boolean isHashEntryExisting(Object receiver, Object key) {
             assert preCondition(receiver);
-            assert validArgument(receiver, key);
+            assert validInteropArgument(receiver, key);
             boolean result = delegate.isHashEntryExisting(receiver, key);
             assert result == (delegate.isHashEntryReadable(receiver, key) || delegate.isHashEntryModifiable(receiver, key) || delegate.isHashEntryRemovable(receiver, key)) : violationInvariant(
                             receiver, key);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -3727,6 +3818,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getHashEntriesIterator(receiver);
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
                 assert assertIterator(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3745,6 +3837,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getHashKeysIterator(receiver);
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
                 assert assertIterator(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3763,6 +3856,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getHashValuesIterator(receiver);
                 assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
                 assert assertIterator(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3783,12 +3877,13 @@ public abstract class InteropLibrary extends Library {
                 return delegate.readArrayElement(receiver, index);
             }
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, index);
             boolean wasReadable = delegate.isArrayElementReadable(receiver, index);
             try {
                 Object result = delegate.readArrayElement(receiver, index);
                 assert delegate.hasArrayElements(receiver) : violationInvariant(receiver, index);
                 assert wasReadable || isMultiThreaded(receiver) : violationInvariant(receiver, index);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof InvalidArrayIndexException : violationPost(receiver, e);
@@ -3803,7 +3898,8 @@ public abstract class InteropLibrary extends Library {
                 return;
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, value);
+            assert validProtocolArgument(receiver, index);
+            assert validInteropArgument(receiver, value);
             boolean wasWritable = delegate.isArrayElementModifiable(receiver, index) || delegate.isArrayElementInsertable(receiver, index);
             try {
                 delegate.writeArrayElement(receiver, index, value);
@@ -3822,6 +3918,7 @@ public abstract class InteropLibrary extends Library {
                 return;
             }
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, index);
             boolean wasRemovable = delegate.isArrayElementRemovable(receiver, index);
             try {
                 delegate.removeArrayElement(receiver, index);
@@ -3839,6 +3936,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 long result = delegate.getArraySize(receiver);
                 assert delegate.hasArrayElements(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3847,34 +3945,42 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public boolean isArrayElementReadable(Object receiver, long identifier) {
+        public boolean isArrayElementReadable(Object receiver, long index) {
             assert preCondition(receiver);
-            boolean result = delegate.isArrayElementReadable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolArgument(receiver, index);
+            boolean result = delegate.isArrayElementReadable(receiver, index);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, index) : violationInvariant(receiver, index);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
-        public boolean isArrayElementModifiable(Object receiver, long identifier) {
+        public boolean isArrayElementModifiable(Object receiver, long index) {
             assert preCondition(receiver);
-            boolean result = delegate.isArrayElementModifiable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolArgument(receiver, index);
+            boolean result = delegate.isArrayElementModifiable(receiver, index);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, index) : violationInvariant(receiver, index);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
-        public boolean isArrayElementInsertable(Object receiver, long identifier) {
+        public boolean isArrayElementInsertable(Object receiver, long index) {
             assert preCondition(receiver);
-            boolean result = delegate.isArrayElementInsertable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementExisting(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolArgument(receiver, index);
+            boolean result = delegate.isArrayElementInsertable(receiver, index);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementExisting(receiver, index) : violationInvariant(receiver, index);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
-        public boolean isArrayElementRemovable(Object receiver, long identifier) {
+        public boolean isArrayElementRemovable(Object receiver, long index) {
             assert preCondition(receiver);
-            boolean result = delegate.isArrayElementRemovable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
+            assert validProtocolArgument(receiver, index);
+            boolean result = delegate.isArrayElementRemovable(receiver, index);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, index) : violationInvariant(receiver, index);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -3883,7 +3989,9 @@ public abstract class InteropLibrary extends Library {
         @Override
         public boolean hasBufferElements(Object receiver) {
             assert preCondition(receiver);
-            return delegate.hasBufferElements(receiver);
+            boolean result = delegate.hasBufferElements(receiver);
+            assert validProtocolReturn(receiver, result);
+            return result;
         }
 
         @Override
@@ -3892,6 +4000,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 final boolean result = delegate.isBufferWritable(receiver);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3905,6 +4014,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 final long result = delegate.getBufferSize(receiver);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
@@ -3915,9 +4025,11 @@ public abstract class InteropLibrary extends Library {
         @Override
         public byte readBufferByte(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, byteOffset);
             try {
                 final byte result = delegate.readBufferByte(receiver, byteOffset);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (UnsupportedMessageException e) {
                 assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
@@ -3931,6 +4043,8 @@ public abstract class InteropLibrary extends Library {
         @Override
         public void writeBufferByte(Object receiver, long byteOffset, byte value) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, byteOffset);
+            assert validProtocolArgument(receiver, value);
             try {
                 delegate.writeBufferByte(receiver, byteOffset, value);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
@@ -3947,9 +4061,12 @@ public abstract class InteropLibrary extends Library {
         @Override
         public short readBufferShort(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
             try {
                 final short result = delegate.readBufferShort(receiver, order, byteOffset);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (UnsupportedMessageException e) {
                 assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
@@ -3963,6 +4080,9 @@ public abstract class InteropLibrary extends Library {
         @Override
         public void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
+            assert validProtocolArgument(receiver, value);
             try {
                 delegate.writeBufferShort(receiver, order, byteOffset, value);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
@@ -3979,9 +4099,12 @@ public abstract class InteropLibrary extends Library {
         @Override
         public int readBufferInt(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
             try {
                 final int result = delegate.readBufferInt(receiver, order, byteOffset);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (UnsupportedMessageException e) {
                 assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
@@ -3995,6 +4118,9 @@ public abstract class InteropLibrary extends Library {
         @Override
         public void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
+            assert validProtocolArgument(receiver, value);
             try {
                 delegate.writeBufferInt(receiver, order, byteOffset, value);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
@@ -4011,9 +4137,12 @@ public abstract class InteropLibrary extends Library {
         @Override
         public long readBufferLong(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
             try {
                 final long result = delegate.readBufferLong(receiver, order, byteOffset);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (UnsupportedMessageException e) {
                 assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
@@ -4027,6 +4156,9 @@ public abstract class InteropLibrary extends Library {
         @Override
         public void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
+            assert validProtocolArgument(receiver, value);
             try {
                 delegate.writeBufferLong(receiver, order, byteOffset, value);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
@@ -4043,9 +4175,12 @@ public abstract class InteropLibrary extends Library {
         @Override
         public float readBufferFloat(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
             try {
                 final float result = delegate.readBufferFloat(receiver, order, byteOffset);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (UnsupportedMessageException e) {
                 assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
@@ -4059,6 +4194,9 @@ public abstract class InteropLibrary extends Library {
         @Override
         public void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
+            assert validProtocolArgument(receiver, value);
             try {
                 delegate.writeBufferFloat(receiver, order, byteOffset, value);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
@@ -4075,9 +4213,12 @@ public abstract class InteropLibrary extends Library {
         @Override
         public double readBufferDouble(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
             try {
                 final double result = delegate.readBufferDouble(receiver, order, byteOffset);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (UnsupportedMessageException e) {
                 assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
@@ -4091,6 +4232,9 @@ public abstract class InteropLibrary extends Library {
         @Override
         public void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException {
             assert preCondition(receiver);
+            assert validProtocolArgument(receiver, order);
+            assert validProtocolArgument(receiver, byteOffset);
+            assert validProtocolArgument(receiver, value);
             try {
                 delegate.writeBufferDouble(receiver, order, byteOffset, value);
                 assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
@@ -4132,6 +4276,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 long result = delegate.asPointer(receiver);
                 assert wasPointer : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4152,6 +4297,7 @@ public abstract class InteropLibrary extends Library {
                 assert hasDate : violationInvariant(receiver);
                 assert !delegate.isTimeZone(receiver) || delegate.isTime(receiver) : violationInvariant(receiver);
                 assert notOtherType(receiver, Type.DATE_TIME_ZONE);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4173,6 +4319,7 @@ public abstract class InteropLibrary extends Library {
                 assert hasTime : violationInvariant(receiver);
                 assert !delegate.isTimeZone(receiver) || delegate.isDate(receiver) || hasFixedTimeZone(receiver) : violationInvariant(receiver);
                 assert notOtherType(receiver, Type.DATE_TIME_ZONE);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4195,6 +4342,7 @@ public abstract class InteropLibrary extends Library {
                 assert ((delegate.isDate(receiver) || result.getRules().isFixedOffset()) && delegate.isTime(receiver)) ||
                                 (!delegate.isDate(receiver) && !delegate.isTime(receiver)) : violationInvariant(receiver);
                 assert notOtherType(receiver, Type.DATE_TIME_ZONE);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4222,6 +4370,7 @@ public abstract class InteropLibrary extends Library {
                 Duration result = delegate.asDuration(receiver);
                 assert wasDuration : violationInvariant(receiver);
                 assert notOtherType(receiver, Type.DURATION);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4244,6 +4393,7 @@ public abstract class InteropLibrary extends Library {
                                 delegate.asTimeZone(receiver)).//
                                 toInstant().equals(result) : violationInvariant(receiver);
                 assert notOtherType(receiver, Type.DATE_TIME_ZONE);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4258,6 +4408,7 @@ public abstract class InteropLibrary extends Library {
             boolean result = delegate.isDate(receiver);
             assert !delegate.isTimeZone(receiver) || (delegate.isTime(receiver) && result) || ((!delegate.isTime(receiver) || hasFixedTimeZone(receiver)) && !result) : violationInvariant(receiver);
             assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4267,6 +4418,7 @@ public abstract class InteropLibrary extends Library {
             boolean result = delegate.isTime(receiver);
             assert !delegate.isTimeZone(receiver) || ((delegate.isDate(receiver) || hasFixedTimeZone(receiver)) && result) || (!delegate.isDate(receiver) && !result) : violationInvariant(receiver);
             assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4277,6 +4429,7 @@ public abstract class InteropLibrary extends Library {
             assert !result || ((delegate.isDate(receiver) || hasFixedTimeZone(receiver)) && delegate.isTime(receiver)) ||
                             (!delegate.isDate(receiver) && !delegate.isTime(receiver)) : violationInvariant(receiver);
             assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4285,6 +4438,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean result = delegate.isDuration(receiver);
             assert !result || notOtherType(receiver, Type.DURATION);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4292,6 +4446,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isException(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isException(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4299,6 +4454,7 @@ public abstract class InteropLibrary extends Library {
         public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
             assert preCondition(receiver);
             ExceptionType result = delegate.getExceptionType(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4317,6 +4473,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 boolean result = delegate.isExceptionIncompleteSource(receiver);
                 assert !result || wasParseError : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4340,6 +4497,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 int result = delegate.getExceptionExitStatus(receiver);
                 assert wasExit : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4379,6 +4537,7 @@ public abstract class InteropLibrary extends Library {
         public boolean hasExceptionCause(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.hasExceptionCause(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4393,6 +4552,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getExceptionCause(receiver);
                 assert wasHasExceptionCause : violationInvariant(receiver);
                 assert assertException(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4411,6 +4571,7 @@ public abstract class InteropLibrary extends Library {
         public boolean hasExceptionMessage(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.hasExceptionMessage(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4425,6 +4586,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getExceptionMessage(receiver);
                 assert wasHasExceptionMessage : violationInvariant(receiver);
                 assert assertString(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4437,6 +4599,7 @@ public abstract class InteropLibrary extends Library {
         public boolean hasExceptionStackTrace(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.hasExceptionStackTrace(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4451,6 +4614,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getExceptionStackTrace(receiver);
                 assert wasHasExceptionStackTrace : violationInvariant(receiver);
                 assert verifyStackTrace(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4470,6 +4634,7 @@ public abstract class InteropLibrary extends Library {
         public boolean hasExecutableName(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.hasExecutableName(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4484,6 +4649,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getExecutableName(receiver);
                 assert wasHasExecutableName : violationInvariant(receiver);
                 assert assertString(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4510,6 +4676,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getDeclaringMetaObject(receiver);
                 assert wasHasDeclaringMetaObject : violationInvariant(receiver);
                 assert verifyDeclaringMetaObject(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4537,6 +4704,7 @@ public abstract class InteropLibrary extends Library {
             assert validNonInteropArgument(receiver, allowSideEffects);
             Object result = delegate.toDisplayString(receiver, allowSideEffects);
             assert assertString(receiver, result);
+            assert validInteropReturn(receiver, result);
             return result;
         }
 
@@ -4544,6 +4712,7 @@ public abstract class InteropLibrary extends Library {
         public boolean hasIterator(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.hasIterator(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4558,6 +4727,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getIterator(receiver);
                 assert wasHasIterator : violationInvariant(receiver);
                 assert assertIterator(receiver, result);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4578,6 +4748,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             boolean result = delegate.isIterator(receiver);
             assert !result || notOtherType(receiver, Type.ITERATOR);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4591,6 +4762,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 boolean result = delegate.hasIteratorNextElement(receiver);
                 assert wasIterator : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4609,7 +4781,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 Object result = delegate.getIteratorNextElement(receiver);
                 assert wasIterator : violationInvariant(receiver);
-                assert validReturn(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof StopIterationException : violationPost(receiver, e);
@@ -4634,6 +4806,7 @@ public abstract class InteropLibrary extends Library {
             } else {
                 assert assertHasNoSourceSection(receiver);
             }
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4657,6 +4830,7 @@ public abstract class InteropLibrary extends Library {
                 SourceSection result = delegate.getSourceLocation(receiver);
                 assert wasHasSourceLocation : violationInvariant(receiver);
                 assert result != null : violationPost(receiver, result);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4679,6 +4853,7 @@ public abstract class InteropLibrary extends Library {
             } else {
                 assert assertHasNoLanguage(receiver);
             }
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4701,7 +4876,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 Class<? extends TruffleLanguage<?>> result = delegate.getLanguage(receiver);
                 assert wasHasLanguage : violationInvariant(receiver);
-                assert result != null : violationPost(receiver, result);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4719,6 +4894,7 @@ public abstract class InteropLibrary extends Library {
             } else {
                 assert assertHasNoMetaObject(receiver);
             }
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4762,7 +4938,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getMetaObject(receiver);
                 assert wasHasMetaObject : violationInvariant(receiver);
                 assert verifyMetaObject(receiver, result);
-                assert result != null : violationPost(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4781,6 +4957,7 @@ public abstract class InteropLibrary extends Library {
                 assert assertNoMetaObject(receiver);
                 assert !result || notOtherType(receiver, Type.META_OBJECT);
             }
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4833,6 +5010,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getMetaQualifiedName(receiver);
                 assert wasMetaObject : violationInvariant(receiver);
                 assert assertString(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4852,6 +5030,7 @@ public abstract class InteropLibrary extends Library {
                 Object result = delegate.getMetaSimpleName(receiver);
                 assert wasMetaObject : violationInvariant(receiver);
                 assert assertString(receiver, result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4866,11 +5045,12 @@ public abstract class InteropLibrary extends Library {
                 return delegate.isMetaInstance(receiver, instance);
             }
             assert preCondition(receiver);
-            assert validArgument(receiver, instance);
+            assert validInteropArgument(receiver, instance);
             boolean wasMetaObject = delegate.isMetaObject(receiver);
             try {
                 boolean result = delegate.isMetaInstance(receiver, instance);
                 assert wasMetaObject : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
@@ -4882,9 +5062,10 @@ public abstract class InteropLibrary extends Library {
         @Override
         protected TriState isIdenticalOrUndefined(Object receiver, Object other) {
             assert preCondition(receiver);
-            assert validArgument(receiver, other);
+            assert validInteropArgument(receiver, other);
             TriState result = delegate.isIdenticalOrUndefined(receiver, other);
             assert verifyIsSameOrUndefined(delegate, result, receiver, other);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4911,16 +5092,18 @@ public abstract class InteropLibrary extends Library {
                 assert !delegate.hasIdentity(receiver) : violationInvariant(receiver);
                 throw e;
             }
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
         @Override
         public boolean isIdentical(Object receiver, Object other, InteropLibrary otherInterop) {
             assert preCondition(receiver);
-            assert validArgument(receiver, other);
-            assert otherInterop != null;
+            assert validInteropArgument(receiver, other);
+            assert validProtocolArgument(receiver, otherInterop);
             boolean result = delegate.isIdentical(receiver, other, otherInterop);
             assert verifyIsSame(result, receiver, other, otherInterop);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4960,6 +5143,7 @@ public abstract class InteropLibrary extends Library {
             boolean result = delegate.isScope(receiver);
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver);
             assert !result || delegate.hasLanguage(receiver) : violationInvariant(receiver);
+            assert validProtocolReturn(receiver, result);
             return result;
         }
 
@@ -4999,6 +5183,7 @@ public abstract class InteropLibrary extends Library {
                 assert hadScopeParent : violationInvariant(receiver);
                 assert delegate.isScope(receiver) : violationInvariant(receiver);
                 assert validScope(result);
+                assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);

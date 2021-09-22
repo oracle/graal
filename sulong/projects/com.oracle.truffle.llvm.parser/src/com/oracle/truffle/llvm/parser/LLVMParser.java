@@ -36,10 +36,13 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
+import com.oracle.truffle.llvm.runtime.LLVMElemPtrSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
@@ -48,10 +51,11 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class LLVMParser {
     private final Source source;
@@ -70,7 +74,7 @@ public final class LLVMParser {
 
         defineGlobals(module.getGlobalVariables(), definedGlobals, externalGlobals);
         defineFunctions(module, definedFunctions, externalFunctions, targetDataLayout);
-        defineAliases(module.getAliases());
+        defineAliases(module.getAliases(), targetDataLayout);
 
         return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, targetDataLayout, module.getTargetInformation(TargetTriple.class));
     }
@@ -102,9 +106,9 @@ public final class LLVMParser {
         }
     }
 
-    private void defineAliases(List<GlobalAlias> aliases) {
+    private void defineAliases(List<GlobalAlias> aliases, DataLayout targetDataLayout) {
         for (GlobalAlias alias : aliases) {
-            defineAlias(alias);
+            defineAlias(alias, targetDataLayout);
         }
     }
 
@@ -114,6 +118,7 @@ public final class LLVMParser {
         LLVMGlobal globalSymbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),
                         global.isExternalWeak());
         runtime.getFileScope().register(globalSymbol);
+        registerInPublicFileScope(globalSymbol);
     }
 
     private void defineFunction(FunctionSymbol functionSymbol, ModelModule model, DataLayout dataLayout) {
@@ -127,23 +132,30 @@ public final class LLVMParser {
                         functionDefinition.isExported(), runtime.getFile().getPath(), functionDefinition.isExternalWeak());
         lazyConverter.setRootFunction(llvmFunction);
         runtime.getFileScope().register(llvmFunction);
+        registerInPublicFileScope(llvmFunction);
         final boolean cxxInterop = LLVMLanguage.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
         if (cxxInterop) {
             model.getFunctionParser(functionDefinition).parseLinkageName(runtime);
         }
     }
 
-    private void defineAlias(GlobalAlias alias) {
+    private void defineAlias(GlobalAlias alias, DataLayout targetDataLayout) {
         LLVMSymbol alreadyRegisteredSymbol = runtime.getFileScope().get(alias.getName());
         if (alreadyRegisteredSymbol != null) {
             // this alias was already registered by a recursive call
             assert alreadyRegisteredSymbol instanceof LLVMAlias;
             return;
         }
-        defineAlias(alias.getName(), alias.isExported(), alias.getValue());
+        defineAlias(alias.getName(), alias.isExported(), alias.getValue(), targetDataLayout);
     }
 
-    private void defineAlias(String aliasName, boolean isAliasExported, SymbolImpl value) {
+    private void registerInPublicFileScope(LLVMSymbol symbol) {
+        if (symbol.isExported()) {
+            runtime.getPublicFileScope().register(symbol);
+        }
+    }
+
+    private void defineAlias(String aliasName, boolean isAliasExported, SymbolImpl value, DataLayout targetDataLayout) {
         if (value instanceof FunctionSymbol) {
             FunctionSymbol function = (FunctionSymbol) value;
             defineAlias(function.getName(), aliasName, isAliasExported);
@@ -152,15 +164,26 @@ public final class LLVMParser {
             defineAlias(global.getName(), aliasName, isAliasExported);
         } else if (value instanceof GlobalAlias) {
             GlobalAlias target = (GlobalAlias) value;
-            defineAlias(target);
+            defineAlias(target, targetDataLayout);
             defineAlias(target.getName(), aliasName, isAliasExported);
         } else if (value instanceof CastConstant) {
             // TODO (chaeubl): this is not perfectly accurate as we are loosing the type cast
             CastConstant cast = (CastConstant) value;
-            defineAlias(aliasName, isAliasExported, cast.getValue());
+            defineAlias(aliasName, isAliasExported, cast.getValue(), targetDataLayout);
+        } else if (value instanceof GetElementPointerConstant) {
+            GetElementPointerConstant elementPointerConstant = (GetElementPointerConstant) value;
+            defineExpressionSymbol(aliasName, isAliasExported, elementPointerConstant, targetDataLayout);
         } else {
             throw new LLVMLinkerException("Unknown alias type: " + value.getClass());
         }
+    }
+
+    private void defineExpressionSymbol(String aliasName, boolean isAliasExported, GetElementPointerConstant elementPointerConstant, DataLayout targetDataLayout) {
+        LLVMSymbol baseSymbol = runtime.getFileScope().get(elementPointerConstant.getBasePointer().toString());
+        Supplier<LLVMExpressionNode> createElemPtrNode = () -> elementPointerConstant.createNode(runtime, targetDataLayout, GetStackSpaceFactory.createAllocaFactory());
+        LLVMElemPtrSymbol expressionSymbol = new LLVMElemPtrSymbol(aliasName, runtime.getBitcodeID(), -1, isAliasExported,
+                        elementPointerConstant.getType(), baseSymbol, createElemPtrNode);
+        runtime.getFileScope().register(expressionSymbol);
     }
 
     private void defineAlias(String existingName, String newName, boolean newExported) {
@@ -168,5 +191,6 @@ public final class LLVMParser {
         LLVMSymbol aliasTarget = runtime.lookupSymbol(existingName);
         LLVMAlias aliasSymbol = new LLVMAlias(newName, aliasTarget, newExported);
         runtime.getFileScope().register(aliasSymbol);
+        registerInPublicFileScope(aliasSymbol);
     }
 }

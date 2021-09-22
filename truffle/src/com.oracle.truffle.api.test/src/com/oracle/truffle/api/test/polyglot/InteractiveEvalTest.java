@@ -152,10 +152,12 @@ public class InteractiveEvalTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    return lookupContextReference(DefaultInteractiveLanguage.class).get().getValue();
+                    return CONTEXT_REF.get(this).getValue();
                 }
             });
         }
+
+        private static final ContextReference<InteractiveContext> CONTEXT_REF = ContextReference.create(DefaultInteractiveLanguage.class);
 
     }
 
@@ -174,7 +176,7 @@ public class InteractiveEvalTest {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    InteractiveContext ic = lookupContextReference(SpecialInteractiveLanguage.class).get();
+                    InteractiveContext ic = CONTEXT_REF.get(this);
                     Object value = ic.getValue();
                     if (interactive) {
                         try {
@@ -192,6 +194,8 @@ public class InteractiveEvalTest {
                 }
             });
         }
+
+        private static final ContextReference<InteractiveContext> CONTEXT_REF = ContextReference.create(SpecialInteractiveLanguage.class);
 
         @Override
         protected boolean isVisible(InteractiveContext context, Object value) {

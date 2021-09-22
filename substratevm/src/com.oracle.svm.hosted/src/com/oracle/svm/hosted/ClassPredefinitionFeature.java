@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -55,15 +56,20 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 @AutomaticFeature
 public class ClassPredefinitionFeature implements Feature {
     private final Map<String, PredefinedClass> nameToRecord = new HashMap<>();
+    private boolean sealed = false;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess arg) {
         ImageSingletons.add(PredefinedClassesSupport.class, new PredefinedClassesSupport());
 
+        /*
+         * NOTE: loading the class predefinition configuration should be done as early as possible
+         * so that their classes are already known for other configuration (reflection, proxies).
+         */
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
         PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);
-        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry);
+        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry, ConfigurationFiles.Options.StrictConfiguration.getValue());
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
                         ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
                         ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
@@ -71,7 +77,10 @@ public class ClassPredefinitionFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        List<String> messages = new ArrayList<>();
+        sealed = true;
+
+        List<String> skipped = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
         nameToRecord.forEach((name, record) -> {
             if (record.definedClass != null) {
                 /*
@@ -92,17 +101,33 @@ public class ClassPredefinitionFeature implements Feature {
                     msg.append(first ? "" : ", ").append(superRecord.name);
                     first = false;
                 }
-                messages.add(msg.toString());
+                errors.add(msg.toString());
+            } else if (record.data == null) {
+                skipped.add(record.name);
             }
         });
-        if (!messages.isEmpty()) {
-            throw UserError.abort(messages);
+        if (!skipped.isEmpty()) {
+            int limit = 10;
+            String names = skipped.stream().limit(limit).collect(Collectors.joining(", "));
+            if (skipped.size() > limit) {
+                names += ", ...";
+            }
+            System.out.printf("Skipped %d predefined class(es) because the classpath already contains a class with the same name: %s%n", skipped.size(), names);
+        }
+        if (!errors.isEmpty()) {
+            throw UserError.abort(errors);
         }
     }
 
     private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
         @Override
         public void add(String nameInfo, String providedHash, Path basePath) {
+            if (!PredefinedClassesSupport.supportsBytecodes()) {
+                throw UserError.abort("Cannot predefine class with hash %s from %s because class predefinition is disabled. Enable this feature using option %s.",
+                                providedHash, basePath, PredefinedClassesSupport.ENABLE_BYTECODES_OPTION);
+            }
+            UserError.guarantee(!sealed, "Too late to add predefined classes. Registration must happen in a Feature before the analysis has started.");
+
             try {
                 Path path = basePath.resolve(providedHash + ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
                 byte[] data = Files.readAllBytes(path);
@@ -124,7 +149,7 @@ public class ClassPredefinitionFeature implements Feature {
                 PredefinedClass record = nameToRecord.computeIfAbsent(className, PredefinedClass::new);
                 if (record.canonicalHash != null) {
                     if (!canonicalHash.equals(record.canonicalHash)) {
-                        throw UserError.abort("More than one pre-defined class with the same name provided: " + className);
+                        throw UserError.abort("More than one predefined class with the same name provided: " + className);
                     }
                     if (record.definedClass != null) {
                         PredefinedClassesSupport.registerClass(hash, record.definedClass);
@@ -168,25 +193,24 @@ public class ClassPredefinitionFeature implements Feature {
         }
 
         private void defineClass(PredefinedClass record) {
-            if (NativeImageSystemClassLoader.singleton().forNameOrNull(record.name, false) != null) {
-                System.out.println("Warning: skipping predefined class because the classpath already provides a class with name: " + record.name);
-                return;
-            }
+            if (NativeImageSystemClassLoader.singleton().forNameOrNull(record.name, false) == null) {
+                record.definedClass = NativeImageSystemClassLoader.singleton().predefineClass(record.name, record.data, 0, record.data.length);
 
-            record.definedClass = NativeImageSystemClassLoader.singleton().predefineClass(record.name, record.data, 0, record.data.length);
-            record.data = null;
-
-            if (record.aliasHashes != null) {
-                /*
-                 * Note that we don't register the class with the canonical hash because we only use
-                 * it to unify different representations of the class (to some extent) and it is
-                 * synthetic or equal to another hash anyway.
-                 */
-                for (String hash : record.aliasHashes) {
-                    PredefinedClassesSupport.registerClass(hash, record.definedClass);
+                if (record.aliasHashes != null) {
+                    /*
+                     * Note that we don't register the class with the canonical hash because we only
+                     * use it to unify different representations of the class (to some extent) and
+                     * it is synthetic or equal to another hash anyway.
+                     */
+                    for (String hash : record.aliasHashes) {
+                        PredefinedClassesSupport.registerClass(hash, record.definedClass);
+                    }
                 }
-                record.aliasHashes = null;
             }
+            // else: will be reported as skipped
+
+            record.data = null;
+            record.aliasHashes = null;
 
             if (record.pendingSubtypes != null) {
                 for (PredefinedClass subtype : record.pendingSubtypes) {

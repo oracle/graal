@@ -28,7 +28,9 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.security.SecureClassLoader;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.jar.JarFile;
 
@@ -52,7 +54,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     public final ClassLoader defaultSystemClassLoader;
     private volatile ClassLoader nativeImageClassLoader = null;
 
-    private WeakHashMap<ClassLoader, Boolean> disallowedClassLoaders = new WeakHashMap<>();
+    private Set<ClassLoader> disallowedClassLoaders = Collections.newSetFromMap(new WeakHashMap<>());
 
     public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
         super(defaultSystemClassLoader);
@@ -76,7 +78,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
              * in the disallowedClassLoaders map to allow checking for left-over instances from
              * previous builds. See {@code SVMHost.checkType}.
              */
-            disallowedClassLoaders.put(this.nativeImageClassLoader, Boolean.TRUE);
+            disallowedClassLoaders.add(this.nativeImageClassLoader);
         }
         this.nativeImageClassLoader = nativeImageClassLoader;
     }
@@ -85,19 +87,32 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         return nativeImageClassLoader;
     }
 
+    private boolean isNativeImageClassLoader(ClassLoader current, ClassLoader c) {
+        ClassLoader loader = current;
+        do {
+            if (loader == c) {
+                return true;
+            }
+            loader = loader.getParent();
+        } while (loader != defaultSystemClassLoader);
+        return false;
+    }
+
     public boolean isNativeImageClassLoader(ClassLoader c) {
         ClassLoader loader = nativeImageClassLoader;
         if (loader == null) {
             return false;
         }
-        if (c == loader) {
-            return true;
-        }
-        return false;
+        return isNativeImageClassLoader(nativeImageClassLoader, c);
     }
 
     public boolean isDisallowedClassLoader(ClassLoader c) {
-        return disallowedClassLoaders.containsKey(c);
+        for (ClassLoader disallowedClassLoader : disallowedClassLoaders) {
+            if (isNativeImageClassLoader(disallowedClassLoader, c)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

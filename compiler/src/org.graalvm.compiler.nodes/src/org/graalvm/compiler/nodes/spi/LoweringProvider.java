@@ -70,4 +70,9 @@ public interface LoweringProvider {
      */
     boolean supportsRounding();
 
+    /**
+     * Indicates whether this target platform supports the usage of implicit (trapping) null checks.
+     */
+    boolean supportsImplicitNullChecks();
+
 }

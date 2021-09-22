@@ -133,6 +133,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         public boolean requiresValueProxies() {
             return this != AFTER_FSA;
         }
+
+        public boolean reachedGuardsStage(GuardsStage stage) {
+            return this.ordinal() >= stage.ordinal();
+        }
     }
 
     /**

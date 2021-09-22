@@ -63,6 +63,7 @@ import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
@@ -125,15 +126,17 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return SubstrateThreadLocalHandshake.SINGLETON;
     }
 
+    @Override
+    protected AbstractFastThreadLocal getFastThreadLocalImpl() {
+        return SubstrateFastThreadLocal.SINGLETON;
+    }
+
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
         truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
-            if (!SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
-                Log.log().string("Warning: TraceTruffleTransferToInterpreter cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.").newline();
-            }
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }
         installDefaultListeners();
@@ -280,7 +283,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         try {
-            doCompile(optimizedCallTarget, new SingleThreadedCompilationTask(lastTierCompilation));
+            doCompile(optimizedCallTarget, new SingleThreadedCompilationTask(optimizedCallTarget, lastTierCompilation));
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
             if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
@@ -385,9 +388,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
      */
     private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
         private final boolean lastTierCompilation;
+        private final boolean hasNextTier;
         TruffleInlining inlining = new TruffleInlining();
 
-        SingleThreadedCompilationTask(boolean lastTierCompilation) {
+        SingleThreadedCompilationTask(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
+            this.hasNextTier = !optimizedCallTarget.engine.firstTierOnly && !lastTierCompilation;
             this.lastTierCompilation = lastTierCompilation;
         }
 
@@ -407,5 +412,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             return inlining;
         }
 
+        @Override
+        public boolean hasNextTier() {
+            return hasNextTier;
+        }
+
     }
+
 }

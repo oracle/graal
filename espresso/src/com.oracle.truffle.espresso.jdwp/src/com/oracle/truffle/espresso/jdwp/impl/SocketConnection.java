@@ -219,4 +219,14 @@ public final class SocketConnection implements Runnable {
             return false;
         }
     }
+
+    public void sendVMDied(PacketStream stream) {
+        byte[] shipment = stream.prepareForShipment();
+        try {
+            writePacket(shipment);
+            socketOutput.flush();
+        } catch (Exception e) {
+            JDWP.LOGGER.fine("sending VM_DEATH packet to client failed");
+        }
+    }
 }

@@ -28,6 +28,7 @@ package com.oracle.svm.core.snippets;
 
 import java.lang.reflect.GenericSignatureFormatError;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.StackTraceUtils;
@@ -57,6 +58,8 @@ public class ImplicitExceptions {
 
     public static final SubstrateForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNullPointerException", false);
     public static final SubstrateForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOutOfBoundsException", false);
+    public static final SubstrateForeignCallDescriptor CREATE_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIntrinsicOutOfBoundsException",
+                    false);
     public static final SubstrateForeignCallDescriptor CREATE_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createClassCastException", false);
     public static final SubstrateForeignCallDescriptor CREATE_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createArrayStoreException", false);
     public static final SubstrateForeignCallDescriptor CREATE_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIllegalArgumentException", false);
@@ -65,7 +68,8 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor CREATE_ASSERTION_ERROR_OBJECT = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createAssertionErrorObject", false);
 
     public static final SubstrateForeignCallDescriptor THROW_NEW_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewNullPointerException", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewOutOfBoundsException", true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewIntrinsicOutOfBoundsException",
+                    true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewOutOfBoundsExceptionWithArgs",
                     true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewClassCastException", true);
@@ -97,9 +101,10 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor THROW_CACHED_ASSERTION_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedAssertionError", true);
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
-                    CREATE_NULL_POINTER_EXCEPTION, CREATE_OUT_OF_BOUNDS_EXCEPTION, CREATE_CLASS_CAST_EXCEPTION, CREATE_ARRAY_STORE_EXCEPTION, CREATE_ILLEGAL_ARGUMENT_EXCEPTION,
+                    CREATE_NULL_POINTER_EXCEPTION, CREATE_OUT_OF_BOUNDS_EXCEPTION, CREATE_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION, CREATE_CLASS_CAST_EXCEPTION, CREATE_ARRAY_STORE_EXCEPTION,
+                    CREATE_ILLEGAL_ARGUMENT_EXCEPTION,
                     CREATE_DIVISION_BY_ZERO_EXCEPTION, CREATE_ASSERTION_ERROR_NULLARY, CREATE_ASSERTION_ERROR_OBJECT,
-                    THROW_NEW_NULL_POINTER_EXCEPTION, THROW_NEW_OUT_OF_BOUNDS_EXCEPTION, THROW_NEW_CLASS_CAST_EXCEPTION, THROW_NEW_ARRAY_STORE_EXCEPTION, THROW_NEW_ARITHMETIC_EXCEPTION,
+                    THROW_NEW_NULL_POINTER_EXCEPTION, THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION, THROW_NEW_CLASS_CAST_EXCEPTION, THROW_NEW_ARRAY_STORE_EXCEPTION, THROW_NEW_ARITHMETIC_EXCEPTION,
                     THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS, THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS, THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS, THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS,
                     THROW_NEW_DIVISION_BY_ZERO_EXCEPTION, THROW_NEW_ASSERTION_ERROR_NULLARY, THROW_NEW_ASSERTION_ERROR_OBJECT,
                     GET_CACHED_NULL_POINTER_EXCEPTION, GET_CACHED_OUT_OF_BOUNDS_EXCEPTION, GET_CACHED_CLASS_CAST_EXCEPTION, GET_CACHED_ARRAY_STORE_EXCEPTION, GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION,
@@ -128,7 +133,7 @@ public class ImplicitExceptions {
     }
 
     private static void vmErrorIfImplicitExceptionsAreFatal() {
-        if (implicitExceptionsAreFatal.get() > 0 || ExceptionUnwind.exceptionsAreFatal()) {
+        if ((implicitExceptionsAreFatal.get() > 0 || ExceptionUnwind.exceptionsAreFatal()) && !SubstrateDiagnostics.isFatalErrorHandlingThread()) {
             throw VMError.shouldNotReachHere("Implicit exception thrown in code where such exceptions are fatal errors");
         }
     }
@@ -138,6 +143,13 @@ public class ImplicitExceptions {
     private static NullPointerException createNullPointerException() {
         vmErrorIfImplicitExceptionsAreFatal();
         return new NullPointerException();
+    }
+
+    /** Foreign call: {@link #CREATE_OUT_OF_BOUNDS_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static ArrayIndexOutOfBoundsException createIntrinsicOutOfBoundsException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return new ArrayIndexOutOfBoundsException();
     }
 
     /** Foreign call: {@link #CREATE_OUT_OF_BOUNDS_EXCEPTION}. */
@@ -202,11 +214,22 @@ public class ImplicitExceptions {
         throw new NullPointerException();
     }
 
-    /** Foreign call: {@link #THROW_NEW_OUT_OF_BOUNDS_EXCEPTION}. */
+    /** Foreign call: {@link #THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
-    private static void throwNewOutOfBoundsException() {
+    private static void throwNewIntrinsicOutOfBoundsException() {
         vmErrorIfImplicitExceptionsAreFatal();
         throw new ArrayIndexOutOfBoundsException();
+    }
+
+    /** Foreign call: {@link #THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwNewIntrinsicOutOfBoundsExceptionWithArgs(int index, int length) {
+        vmErrorIfImplicitExceptionsAreFatal();
+        /*
+         * JDK 11 added the length to the error message, we can do that for all Java versions to be
+         * consistent.
+         */
+        throw new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length);
     }
 
     /** Foreign call: {@link #THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS}. */

@@ -35,6 +35,7 @@ import java.util.Map;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 
 import com.oracle.truffle.tools.chromeinspector.types.Script;
@@ -46,9 +47,11 @@ public final class ScriptsHandler implements LoadSourceListener {
     private final Map<String, Integer> uniqueSourceNames = new HashMap<>();
     private final List<LoadScriptListener> listeners = new ArrayList<>();
     private final boolean reportInternal;
+    private final TruffleInstrument.Env env;
     private volatile DebuggerSession debuggerSession;
 
-    public ScriptsHandler(boolean reportInternal) {
+    ScriptsHandler(TruffleInstrument.Env env, boolean reportInternal) {
+        this.env = env;
         this.reportInternal = reportInternal;
     }
 
@@ -136,12 +139,16 @@ public final class ScriptsHandler implements LoadSourceListener {
         String path = source.getPath();
         if (path != null) {
             if (source.getURI().isAbsolute()) {
-                return new File(path).toPath().toUri().toString();
+                return source.getURI().toString();
             } else {
-                if (File.separatorChar == '/') {
-                    return path;
-                } else {
-                    return path.replace(File.separatorChar, '/');
+                try {
+                    return env.getTruffleFile(path).getAbsoluteFile().toUri().toString();
+                } catch (SecurityException ex) {
+                    if (File.separatorChar == '/') {
+                        return path;
+                    } else {
+                        return path.replace(File.separatorChar, '/');
+                    }
                 }
             }
         }

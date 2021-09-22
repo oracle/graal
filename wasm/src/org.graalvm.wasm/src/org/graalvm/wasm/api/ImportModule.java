@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,13 @@ import org.graalvm.collections.Pair;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import java.util.HashMap;
@@ -54,9 +58,9 @@ import java.util.Map;
 
 public class ImportModule extends BuiltinModule {
     private final HashMap<String, Pair<WasmFunction, Object>> functions;
-    private final HashMap<String, Memory> memories;
-    private final HashMap<String, Table> tables;
-    private final HashMap<String, Object> globals;
+    private final HashMap<String, WasmMemory> memories;
+    private final HashMap<String, WasmTable> tables;
+    private final HashMap<String, WasmGlobal> globals;
 
     public ImportModule() {
         this.functions = new HashMap<>();
@@ -67,27 +71,31 @@ public class ImportModule extends BuiltinModule {
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null));
+        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), functions.size());
         for (Map.Entry<String, Pair<WasmFunction, Object>> entry : functions.entrySet()) {
             final String functionName = entry.getKey();
             final Pair<WasmFunction, Object> info = entry.getValue();
             final WasmFunction function = info.getLeft();
             final SymbolTable.FunctionType type = function.type();
-            defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
+            if (info.getRight() instanceof WasmFunctionInstance) {
+                defineExportedFunction(instance, functionName, type.paramTypes(), type.returnTypes(), (WasmFunctionInstance) info.getRight());
+            } else {
+                defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
+            }
         }
-        for (Map.Entry<String, Memory> entry : memories.entrySet()) {
+        for (Map.Entry<String, WasmMemory> entry : memories.entrySet()) {
             final String memoryName = entry.getKey();
-            final Memory memory = entry.getValue();
-            defineExternalMemory(instance, memoryName, memory.wasmMemory());
+            final WasmMemory memory = entry.getValue();
+            defineExternalMemory(instance, memoryName, memory);
         }
-        for (Map.Entry<String, Table> entry : tables.entrySet()) {
+        for (Map.Entry<String, WasmTable> entry : tables.entrySet()) {
             final String tableName = entry.getKey();
-            final Table table = entry.getValue();
-            defineExternalTable(instance, tableName, table.wasmTable());
+            final WasmTable table = entry.getValue();
+            defineExternalTable(instance, tableName, table);
         }
-        for (Map.Entry<String, Object> entry : globals.entrySet()) {
+        for (Map.Entry<String, WasmGlobal> entry : globals.entrySet()) {
             final String globalName = entry.getKey();
-            final Object global = entry.getValue();
+            final WasmGlobal global = entry.getValue();
             defineExternalGlobal(instance, globalName, global);
         }
         return instance;
@@ -97,15 +105,15 @@ public class ImportModule extends BuiltinModule {
         functions.put(name, info);
     }
 
-    public void addMemory(String name, Memory memory) {
+    public void addMemory(String name, WasmMemory memory) {
         memories.put(name, memory);
     }
 
-    public void addTable(String name, Table table) {
+    public void addTable(String name, WasmTable table) {
         tables.put(name, table);
     }
 
-    public void addGlobal(String name, Object global) {
+    public void addGlobal(String name, WasmGlobal global) {
         globals.put(name, global);
     }
 }

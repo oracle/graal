@@ -242,7 +242,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod);
+            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod, true);
         }
     }
 

@@ -60,7 +60,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.impl.Field;
@@ -68,11 +67,13 @@ import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupInstanceFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -87,7 +88,7 @@ public class EspressoInterop extends BaseInterop {
 
     public static Meta getMeta() {
         CompilerAsserts.neverPartOfCompilation();
-        return EspressoLanguage.getCurrentContext().getMeta();
+        return EspressoContext.get(null).getMeta();
     }
 
     static Object unwrapForeign(Object receiver) {
@@ -595,7 +596,7 @@ public class EspressoInterop extends BaseInterop {
                 String s = interopLibrary.asString(value);
                 if (s.length() != 1) {
                     error.enter();
-                    String message = "Expected a string of length 1 as an element of char array, got " + s;
+                    String message = EspressoError.format("Expected a string of length 1 as an element of char array, got %s", s);
                     throw UnsupportedTypeException.create(new Object[]{value}, message);
                 }
                 charValue = s.charAt(0);
@@ -952,6 +953,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @TruffleBoundary
     static Object getMembers(StaticObject receiver,
                     @SuppressWarnings("unused") boolean includeInternal) {
         receiver.checkNotForeign();

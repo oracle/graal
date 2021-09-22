@@ -25,6 +25,7 @@ tar -xzf graalvm-ce-java<version>-linux-amd64-<version>.tar.gz
   export JAVA_HOME=/path/to/<graalvm>
   ```
 5. To check whether the installation was successful, run the `java -version` command.
+
 Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.
 
 For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/21/docs/getting-started/installation-linux/).
@@ -35,16 +36,16 @@ The base distribution of GraalVM Community Edition for Linux (AMD64) platforms i
 The base installation can be extended with:
 
 Tools/Utilities:
-* [Native Image](/reference-manual/native-image/) -- a technology to compile an application ahead-of-time into a native executable
-* [LLVM toolchain](/reference-manual/llvm/Compiling/#llvm-toolchain-for-compiling-cc) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime
-* [Java on Truffle](/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
+*  [Native Image](/reference-manual/native-image/) -- a technology to compile an application ahead-of-time into a native executable
+*  [LLVM toolchain](/reference-manual/llvm/Compiling/#llvm-toolchain-for-compiling-cc) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime
+*  [Java on Truffle](/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
 
 Runtimes:
-* [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible
-* [Python](/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.2 compatible
-* [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
-* [Wasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
+*  [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible
+*  [Python](/reference-manual/python/) -- Python 3.8.5 compatible
+*  [Ruby](/reference-manual/ruby/) -- Ruby 2.7.2 compatible
+*  [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
+*  [Wasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
 ​
 These runtimes are not part of the GraalVM Community base distribution and must be installed separately.
 

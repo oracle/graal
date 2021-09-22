@@ -51,6 +51,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 /**
  * The singleton holder of runtime options.
@@ -80,7 +81,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
     public void set(String optionName, Object value) {
-        if (setXOption(optionName)) {
+        if (XOptions.setOption(optionName)) {
             return;
         }
         if (!RuntimeOptionValues.singleton().getAllOptionNames().contains(optionName)) {
@@ -93,7 +94,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             if (desc.getOptionValueType().isAssignableFrom(valueType)) {
                 RuntimeOptionValues.singleton().update(desc.getOptionKey(), value);
             } else {
-                throw new RuntimeException("Invalid type of option '" + optionName + "': required " + desc.getOptionValueType().getSimpleName() + ", provided " + valueType);
+                throw new RuntimeException("Invalid type of option '" + optionName + "': required " + ClassUtil.getUnqualifiedName(desc.getOptionValueType()) + ", provided " + valueType);
             }
         }
     }
@@ -125,6 +126,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
                 }
                 builder.help(helpMsg);
                 builder.deprecated(descriptor.isDeprecated());
+                builder.deprecationMessage(descriptor.getDeprecationMessage());
                 graalvmDescriptors.add(builder.build());
             }
         }
@@ -143,7 +145,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         Class<T> clazz = (Class<T>) descriptor.getOptionValueType();
         OptionType<T> type;
         if (clazz.isEnum()) {
-            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(c.getSimpleName(), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
+            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(ClassUtil.getUnqualifiedName(c), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
         } else if (clazz == Long.class) {
             type = (OptionType<T>) LONG_OPTION_TYPE;
         } else {
@@ -182,27 +184,6 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         }
 
         return Long.parseLong(valueString) * scale;
-    }
-
-    /*
-     * Parse from an `-X` option, from a name and a value (e.g., from "mx2g"). Returns true if
-     * successful, false otherwise. Throws an exception if the option was recognized, but the value
-     * was not a number.
-     */
-    private static boolean setXOption(String keyAndValue) {
-        /* A hack to parse `-X` options from a String value. */
-        for (XOptions.XFlag xFlag : XOptions.singleton().getXFlags()) {
-            if (keyAndValue.startsWith(xFlag.getName())) {
-                final String valueString = keyAndValue.substring(xFlag.getName().length());
-                try {
-                    XOptions.singleton().parseFromValueString(xFlag, valueString);
-                    return true;
-                } catch (NumberFormatException nfe) {
-                    throw new RuntimeException("Invalid option '" + xFlag.getPrefixAndName() + valueString + "' does not specify a valid number.");
-                }
-            }
-        }
-        return false;
     }
 }
 

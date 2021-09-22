@@ -43,9 +43,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
@@ -62,14 +60,12 @@ import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
@@ -114,8 +110,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
-import com.oracle.svm.core.graal.jdk.ObjectCloneWithExceptionNode;
-import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfWithExceptionNode;
+import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.LazyConstantNode;
@@ -146,6 +141,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
@@ -188,7 +184,6 @@ public class SubstrateGraphBuilderPlugins {
         registerUnsafePlugins(metaAccess, plugins, snippetReflection, parsingReason);
         registerKnownIntrinsicsPlugins(plugins);
         registerStackValuePlugins(snippetReflection, plugins);
-        registerArraysPlugins(plugins);
         registerArrayPlugins(plugins, snippetReflection, parsingReason);
         registerClassPlugins(plugins, snippetReflection);
         registerEdgesPlugins(metaAccess, plugins);
@@ -371,6 +366,16 @@ public class SubstrateGraphBuilderPlugins {
              */
             List<Class<?>> classList = new ArrayList<>();
             FixedNode successor = unwrapNode(newArray.next());
+            /*
+             * In a case when we are creating a proxy, which contains a method with a class
+             * (initialized at runtime) as a parameter, a successor node will not be StoreIndexNode,
+             * so we need to skip initialization nodes.
+             */
+            if (successor instanceof EnsureClassInitializedNode) {
+                AbstractBeginNode classInitializedNode = ((EnsureClassInitializedNode) successor).next();
+                VMError.guarantee(classInitializedNode != null);
+                successor = classInitializedNode.next();
+            }
             while (successor instanceof StoreIndexedNode) {
                 StoreIndexedNode store = (StoreIndexedNode) successor;
                 assert getDeoptProxyOriginalValue(store.array()).equals(newArray);
@@ -502,7 +507,7 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
-                b.addPush(JavaKind.Object, new ObjectCloneWithExceptionNode(MacroParams.of(b, targetMethod, object)));
+                b.addPush(JavaKind.Object, new SubstrateObjectCloneWithExceptionNode(MacroParams.of(b, targetMethod, object)));
                 return true;
             }
         });
@@ -672,26 +677,12 @@ public class SubstrateGraphBuilderPlugins {
         return true;
     }
 
-    private static final Function<CoreProviders, JavaConstant> primitiveStaticFieldBaseConstant = new Function<CoreProviders, JavaConstant>() {
-        @Override
-        public JavaConstant apply(CoreProviders providers) {
-            return StaticFieldsSupport.dataAvailable() ? SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticPrimitiveFields()) : null;
-        }
-    };
-    private static final Function<CoreProviders, JavaConstant> objectStaticFieldBaseConstant = new Function<CoreProviders, JavaConstant>() {
-        @Override
-        public JavaConstant apply(CoreProviders providers) {
-            return StaticFieldsSupport.dataAvailable() ? SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticObjectFields()) : null;
-        }
-    };
-
     private static boolean processStaticFieldBase(GraphBuilderContext b, Field targetField, boolean isSunMiscUnsafe) {
         if (!isValidField(targetField, isSunMiscUnsafe)) {
             return false;
         }
 
-        b.addPush(JavaKind.Object, LazyConstantNode.create(StampFactory.objectNonNull(),
-                        targetField.getType().isPrimitive() ? primitiveStaticFieldBaseConstant : objectStaticFieldBaseConstant, b));
+        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(targetField.getType().isPrimitive()));
         return true;
     }
 
@@ -722,46 +713,6 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-    }
-
-    private static void registerArraysPlugins(InvocationPlugins plugins) {
-
-        Registration r = new Registration(plugins, Arrays.class).setAllowOverwrite(true);
-
-        r.register2("copyOf", Object[].class, int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode original, ValueNode newLength) {
-                ValueNode nonNullOriginal = b.nullCheckedValue(original);
-
-                /* Get the class from the original node. */
-                GetClassNode originalArrayType = b.add(new GetClassNode(original.stamp(NodeView.DEFAULT), nonNullOriginal));
-
-                ValueNode originalLength = b.add(ArrayLengthNode.create(nonNullOriginal, b.getConstantReflection()));
-                Stamp stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp().join(nonNullOriginal.stamp(NodeView.DEFAULT));
-
-                b.addPush(JavaKind.Object, new SubstrateArraysCopyOfWithExceptionNode(stamp, nonNullOriginal, originalLength, newLength, originalArrayType, b.bci()));
-                return true;
-            }
-        });
-
-        r.register3("copyOf", Object[].class, int.class, Class.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode original, ValueNode newLength, ValueNode newArrayType) {
-                Stamp stamp;
-                if (newArrayType.isConstant()) {
-                    ResolvedJavaType newType = b.getConstantReflection().asJavaType(newArrayType.asConstant());
-                    stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(newType));
-                } else {
-                    stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp();
-                }
-
-                ValueNode nonNullOriginal = b.nullCheckedValue(original);
-                ValueNode originalLength = b.add(ArrayLengthNode.create(nonNullOriginal, b.getConstantReflection()));
-                b.addPush(JavaKind.Object, new SubstrateArraysCopyOfWithExceptionNode(stamp, nonNullOriginal, originalLength, newLength, newArrayType, b.bci()));
-                return true;
-            }
-        });
-
     }
 
     private static void registerKnownIntrinsicsPlugins(InvocationPlugins plugins) {
@@ -960,7 +911,7 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerEdgesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Edges.class).setAllowOverwrite(true);
         for (Class<?> c : new Class<?>[]{Node.class, NodeList.class}) {
-            r.register2("get" + c.getSimpleName() + "Unsafe", Node.class, long.class, new InvocationPlugin() {
+            r.register2("get" + ClassUtil.getUnqualifiedName(c) + "Unsafe", Node.class, long.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset) {
                     b.addPush(JavaKind.Object, new UnsafePartitionLoadNode(node, offset, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
@@ -968,7 +919,7 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
 
-            r.register3("put" + c.getSimpleName() + "Unsafe", Node.class, long.class, c, new InvocationPlugin() {
+            r.register3("put" + ClassUtil.getUnqualifiedName(c) + "Unsafe", Node.class, long.class, c, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset, ValueNode value) {
                     b.add(new UnsafePartitionStoreNode(node, offset, value, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
@@ -1139,7 +1090,7 @@ public class SubstrateGraphBuilderPlugins {
         return result;
     }
 
-    private static void checkParameterUsage(boolean condition, GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, String message) {
+    public static void checkParameterUsage(boolean condition, GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, String message) {
         if (condition) {
             return;
         }

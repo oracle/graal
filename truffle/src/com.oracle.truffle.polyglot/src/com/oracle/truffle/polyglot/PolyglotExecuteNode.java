@@ -60,7 +60,7 @@ abstract class PolyglotExecuteNode extends Node {
 
     private static final Object[] EMPTY = new Object[0];
 
-    private final ToGuestValuesNode toGuests = ToGuestValuesNode.create();
+    @Child private ToGuestValuesNode toGuests = ToGuestValuesNode.create();
 
     public final Object execute(PolyglotLanguageContext languageContext, Object function, Object functionArgsObject) {
         return execute(languageContext, function, functionArgsObject, Object.class, Object.class, Object.class, null);

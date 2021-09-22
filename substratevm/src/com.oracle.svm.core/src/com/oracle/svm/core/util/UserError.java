@@ -26,6 +26,9 @@ package com.oracle.svm.core.util;
 
 import java.util.Collections;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -33,11 +36,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * SVM mechanism for handling user errors and warnings that should be reported to the command line.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class UserError {
 
     /**
      * UserException type for all errors that should be reported to the SVM users.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static class UserException extends Error {
         static final long serialVersionUID = 75431290632980L;
         private final Iterable<String> messages;

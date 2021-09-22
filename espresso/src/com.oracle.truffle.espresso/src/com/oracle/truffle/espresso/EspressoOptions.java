@@ -336,7 +336,11 @@ public final class EspressoOptions {
 
     @Option(help = "Enable polyglot support in Espresso.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> Polyglot = new OptionKey<>(true);
+    public static final OptionKey<Boolean> Polyglot = new OptionKey<>(false);
+
+    @Option(help = "Enable hotspot extension API.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> HotSwapAPI = new OptionKey<>(false);
 
     @Option(help = "Expose the <JavaVM> binding.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
@@ -431,6 +435,10 @@ public final class EspressoOptions {
     @Option(help = "Enables java agents. Support is currently very limited.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> EnableAgents = new OptionKey<>(false);
+
+    @Option(help = "Maximum bytecode size (in bytes) for a method to be considered trivial.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Integer> TrivialMethodSize = new OptionKey<>(18);
 
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);

@@ -1,0 +1,336 @@
+From 7e0de29b16a2731bfbe0498143bb9e6bb2784640 Mon Sep 17 00:00:00 2001
+From: Loic Ottet <loic.ottet@oracle.com>
+Date: Wed, 12 Feb 2020 14:04:45 +0100
+Subject: [PATCH 2/3] [GR-21145][Statepoints] Mark statepoint instructions as
+ clobbering LR on AArch64
+
+---
+ llvm/lib/Target/AArch64/AArch64.h             |  2 +
+ .../Target/AArch64/AArch64ClobberLRPass.cpp   | 71 +++++++++++++++++++
+ .../Target/AArch64/AArch64TargetMachine.cpp   |  3 +
+ llvm/lib/Target/AArch64/CMakeLists.txt        |  1 +
+ llvm/test/CodeGen/AArch64/O0-pipeline.ll      |  1 +
+ llvm/test/CodeGen/AArch64/O3-pipeline.ll      |  1 +
+ .../AArch64/statepoint-call-lowering.ll       | 66 ++++++++++++-----
+ 7 files changed, 128 insertions(+), 17 deletions(-)
+ create mode 100644 llvm/lib/Target/AArch64/AArch64ClobberLRPass.cpp
+
+diff --git a/llvm/lib/Target/AArch64/AArch64.h b/llvm/lib/Target/AArch64/AArch64.h
+index d2170a99e0a2..5a035f567975 100644
+--- a/llvm/lib/Target/AArch64/AArch64.h
++++ b/llvm/lib/Target/AArch64/AArch64.h
+@@ -64,6 +64,7 @@ FunctionPass *createAArch64PostLegalizerLowering();
+ FunctionPass *createAArch64PostSelectOptimize();
+ FunctionPass *createAArch64StackTaggingPass(bool IsOptNone);
+ FunctionPass *createAArch64StackTaggingPreRAPass();
++FunctionPass *createAArch64ClobberLRPass();
+ 
+ void initializeAArch64A53Fix835769Pass(PassRegistry&);
+ void initializeAArch64A57FPLoadBalancingPass(PassRegistry&);
+@@ -93,6 +94,7 @@ void initializeLDTLSCleanupPass(PassRegistry&);
+ void initializeSVEIntrinsicOptsPass(PassRegistry&);
+ void initializeAArch64StackTaggingPass(PassRegistry&);
+ void initializeAArch64StackTaggingPreRAPass(PassRegistry&);
++void initializeAArch64ClobberLRPass(PassRegistry&);
+ } // end namespace llvm
+ 
+ #endif
+diff --git a/llvm/lib/Target/AArch64/AArch64ClobberLRPass.cpp b/llvm/lib/Target/AArch64/AArch64ClobberLRPass.cpp
+new file mode 100644
+index 000000000000..91b1a5423275
+--- /dev/null
++++ b/llvm/lib/Target/AArch64/AArch64ClobberLRPass.cpp
+@@ -0,0 +1,71 @@
++//===- AArch64ClobberLRPass.cpp - Expand pseudo instructions --------------===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++//
++// This file contains a pass that sets LR as implicit-def for statepoints,
++// patchpoints and stackmap instrinsics. This is needed as these instructions
++// are defined globally with no knowledge of AArch64-specific requirements.
++// As these intrinsics are lowered to calls after the register allocator runs,
++// it is necessary to specify that they clobber the link register beforehand.
++//
++//===----------------------------------------------------------------------===//
++
++#include "AArch64.h"
++#include "AArch64RegisterInfo.h"
++#include "AArch64Subtarget.h"
++#include "llvm/CodeGen/MachineFunction.h"
++#include "llvm/CodeGen/MachineFunctionPass.h"
++#include "llvm/CodeGen/MachineInstr.h"
++#include "llvm/Support/Debug.h"
++#include "llvm/Support/raw_ostream.h"
++#include "llvm/Pass.h"
++
++using namespace llvm;
++
++#define DEBUG_TYPE "aarch64-dead-defs"
++
++#define AARCH64_CLOBBER_LR_NAME "AArch64 statepoint LR clobbering pass"
++
++namespace {
++struct AArch64ClobberLR : public MachineFunctionPass {
++public:
++  static char ID;
++
++  AArch64ClobberLR() : MachineFunctionPass(ID) {
++    initializeAArch64ClobberLRPass(*PassRegistry::getPassRegistry());
++  }
++
++  bool runOnMachineFunction(MachineFunction &MF) override;
++
++  StringRef getPassName() const override { return AARCH64_CLOBBER_LR_NAME; }
++};
++}
++
++char AArch64ClobberLR::ID = 0;
++
++INITIALIZE_PASS(AArch64ClobberLR, "aarch64-clobber-lr",
++                AARCH64_CLOBBER_LR_NAME, false, false)
++
++bool AArch64ClobberLR::runOnMachineFunction(MachineFunction &MF) {
++  auto TRI = MF.getSubtarget().getRegisterInfo();
++  bool Modified = false;
++  for (MachineBasicBlock &MBB : MF) {
++    for (MachineInstr &MI : MBB) {
++      if (MI.getOpcode() == TargetOpcode::STACKMAP ||
++        MI.getOpcode() == TargetOpcode::PATCHPOINT ||
++        MI.getOpcode() == TargetOpcode::STATEPOINT) {
++        MI.addRegisterDefined(AArch64::LR, TRI);
++        Modified = true;
++      }
++    }
++  }
++  return Modified;
++}
++
++FunctionPass *llvm::createAArch64ClobberLRPass() {
++  return new AArch64ClobberLR();
++}
+\ No newline at end of file
+diff --git a/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp b/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp
+index bec1758a931b..19b7592da1f7 100644
+--- a/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp
++++ b/llvm/lib/Target/AArch64/AArch64TargetMachine.cpp
+@@ -197,6 +197,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeAArch64Target() {
+   initializeAArch64SLSHardeningPass(*PR);
+   initializeAArch64StackTaggingPass(*PR);
+   initializeAArch64StackTaggingPreRAPass(*PR);
++  initializeAArch64ClobberLRPass(*PR);
+ }
+ 
+ //===----------------------------------------------------------------------===//
+@@ -621,6 +622,8 @@ void AArch64PassConfig::addPreRegAlloc() {
+     // be register coalescer friendly.
+     addPass(&PeepholeOptimizerID);
+   }
++
++  addPass(createAArch64ClobberLRPass());
+ }
+ 
+ void AArch64PassConfig::addPostRegAlloc() {
+diff --git a/llvm/lib/Target/AArch64/CMakeLists.txt b/llvm/lib/Target/AArch64/CMakeLists.txt
+index 0e9503baf180..0b30680739be 100644
+--- a/llvm/lib/Target/AArch64/CMakeLists.txt
++++ b/llvm/lib/Target/AArch64/CMakeLists.txt
+@@ -42,6 +42,7 @@ add_llvm_target(AArch64CodeGen
+   AArch64BranchTargets.cpp
+   AArch64CallingConvention.cpp
+   AArch64CleanupLocalDynamicTLSPass.cpp
++  AArch64ClobberLRPass.cpp
+   AArch64CollectLOH.cpp
+   AArch64CondBrTuning.cpp
+   AArch64ConditionalCompares.cpp
+diff --git a/llvm/test/CodeGen/AArch64/O0-pipeline.ll b/llvm/test/CodeGen/AArch64/O0-pipeline.ll
+index 7d2caec7f3cc..3e7f4d5f3317 100644
+--- a/llvm/test/CodeGen/AArch64/O0-pipeline.ll
++++ b/llvm/test/CodeGen/AArch64/O0-pipeline.ll
+@@ -46,6 +46,7 @@
+ ; CHECK-NEXT:       AArch64 Instruction Selection
+ ; CHECK-NEXT:       Finalize ISel and expand pseudo-instructions
+ ; CHECK-NEXT:       Local Stack Slot Allocation
++; CHECK-NEXT:       AArch64 statepoint LR clobbering pass
+ ; CHECK-NEXT:       Eliminate PHI nodes for register allocation
+ ; CHECK-NEXT:       Two-Address instruction pass
+ ; CHECK-NEXT:       Fast Register Allocator
+diff --git a/llvm/test/CodeGen/AArch64/O3-pipeline.ll b/llvm/test/CodeGen/AArch64/O3-pipeline.ll
+index 28753d646b85..710164ddc041 100644
+--- a/llvm/test/CodeGen/AArch64/O3-pipeline.ll
++++ b/llvm/test/CodeGen/AArch64/O3-pipeline.ll
+@@ -133,6 +133,7 @@
+ ; CHECK-NEXT:       Peephole Optimizations
+ ; CHECK-NEXT:       Remove dead machine instructions
+ ; CHECK-NEXT:       AArch64 Dead register definitions
++; CHECK-NEXT:       AArch64 statepoint LR clobbering pass
+ ; CHECK-NEXT:       Detect Dead Lanes
+ ; CHECK-NEXT:       Process Implicit Definitions
+ ; CHECK-NEXT:       Remove unreachable machine basic blocks
+diff --git a/llvm/test/CodeGen/AArch64/statepoint-call-lowering.ll b/llvm/test/CodeGen/AArch64/statepoint-call-lowering.ll
+index da35684a09a6..ee9d83f76178 100644
+--- a/llvm/test/CodeGen/AArch64/statepoint-call-lowering.ll
++++ b/llvm/test/CodeGen/AArch64/statepoint-call-lowering.ll
+@@ -18,9 +18,13 @@ declare void @varargf(i32, ...)
+ define i1 @test_i1_return() gc "statepoint-example" {
+ ; CHECK-LABEL: test_i1_return:
+ ; CHECK:       // %bb.0: // %entry
++; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    .cfi_offset w30, -16
+ ; CHECK-NEXT:    bl return_i1
+-; CHECK-NEXT:  .Ltmp2:
++; CHECK-NEXT:  .Ltmp0:
+ ; CHECK-NEXT:    and w0, w0, #0x1
++; CHECK-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
+ ; CHECK-NEXT:    ret
+ ; This is just checking that a i1 gets lowered normally when there's no extra
+ ; state arguments to the statepoint
+@@ -33,8 +37,12 @@ entry:
+ define i32 @test_i32_return() gc "statepoint-example" {
+ ; CHECK-LABEL: test_i32_return:
+ ; CHECK:       // %bb.0: // %entry
++; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    .cfi_offset w30, -16
+ ; CHECK-NEXT:    bl return_i32
+-; CHECK-NEXT:  .Ltmp3:
++; CHECK-NEXT:  .Ltmp1:
++; CHECK-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
+ ; CHECK-NEXT:    ret
+ entry:
+   %safepoint_token = tail call token (i64, i32, i32 ()*, i32, i32, ...) @llvm.experimental.gc.statepoint.p0f_i32f(i64 0, i32 0, i32 ()* @return_i32, i32 0, i32 0, i32 0, i32 0)
+@@ -45,8 +53,12 @@ entry:
+ define i32* @test_i32ptr_return() gc "statepoint-example" {
+ ; CHECK-LABEL: test_i32ptr_return:
+ ; CHECK:       // %bb.0: // %entry
++; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    .cfi_offset w30, -16
+ ; CHECK-NEXT:    bl return_i32ptr
+-; CHECK-NEXT:  .Ltmp4:
++; CHECK-NEXT:  .Ltmp2:
++; CHECK-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
+ ; CHECK-NEXT:    ret
+ entry:
+   %safepoint_token = tail call token (i64, i32, i32* ()*, i32, i32, ...) @llvm.experimental.gc.statepoint.p0f_p0i32f(i64 0, i32 0, i32* ()* @return_i32ptr, i32 0, i32 0, i32 0, i32 0)
+@@ -57,8 +69,12 @@ entry:
+ define float @test_float_return() gc "statepoint-example" {
+ ; CHECK-LABEL: test_float_return:
+ ; CHECK:       // %bb.0: // %entry
++; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    .cfi_offset w30, -16
+ ; CHECK-NEXT:    bl return_float
+-; CHECK-NEXT:  .Ltmp5:
++; CHECK-NEXT:  .Ltmp3:
++; CHECK-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
+ ; CHECK-NEXT:    ret
+ entry:
+   %safepoint_token = tail call token (i64, i32, float ()*, i32, i32, ...) @llvm.experimental.gc.statepoint.p0f_f32f(i64 0, i32 0, float ()* @return_float, i32 0, i32 0, i32 0, i32 0)
+@@ -69,8 +85,12 @@ entry:
+ define %struct @test_struct_return() gc "statepoint-example" {
+ ; CHECK-LABEL: test_struct_return:
+ ; CHECK:       // %bb.0: // %entry
++; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    .cfi_offset w30, -16
+ ; CHECK-NEXT:    bl return_struct
+-; CHECK-NEXT:  .Ltmp6:
++; CHECK-NEXT:  .Ltmp4:
++; CHECK-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
+ ; CHECK-NEXT:    ret
+ entry:
+   %safepoint_token = tail call token (i64, i32, %struct ()*, i32, i32, ...) @llvm.experimental.gc.statepoint.p0f_structf(i64 0, i32 0, %struct ()* @return_struct, i32 0, i32 0, i32 0, i32 0)
+@@ -81,13 +101,14 @@ entry:
+ define i1 @test_relocate(i32 addrspace(1)* %a) gc "statepoint-example" {
+ ; CHECK-LABEL: test_relocate:
+ ; CHECK:       // %bb.0: // %entry
+-; CHECK-NEXT:    sub sp, sp, #16 // =16
++; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
+ ; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    .cfi_offset w30, -16
+ ; CHECK-NEXT:    str x0, [sp, #8]
+ ; CHECK-NEXT:    bl return_i1
+-; CHECK-NEXT:  .Ltmp7:
++; CHECK-NEXT:  .Ltmp5:
+ ; CHECK-NEXT:    and w0, w0, #0x1
+-; CHECK-NEXT:    add sp, sp, #16 // =16
++; CHECK-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
+ ; CHECK-NEXT:    ret
+ ; Check that an ununsed relocate has no code-generation impact
+ entry:
+@@ -100,10 +121,14 @@ entry:
+ define void @test_void_vararg() gc "statepoint-example" {
+ ; CHECK-LABEL: test_void_vararg:
+ ; CHECK:       // %bb.0: // %entry
++; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    .cfi_offset w30, -16
+ ; CHECK-NEXT:    mov w0, #42
+ ; CHECK-NEXT:    mov w1, #43
+ ; CHECK-NEXT:    bl varargf
+-; CHECK-NEXT:  .Ltmp8:
++; CHECK-NEXT:  .Ltmp6:
++; CHECK-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
+ ; CHECK-NEXT:    ret
+ ; Check a statepoint wrapping a *void* returning vararg function works
+ entry:
+@@ -116,9 +141,13 @@ entry:
+ define i1 @test_i1_return_patchable() gc "statepoint-example" {
+ ; CHECK-LABEL: test_i1_return_patchable:
+ ; CHECK:       // %bb.0: // %entry
++; CHECK-NEXT:    str x30, [sp, #-16]! // 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_def_cfa_offset 16
++; CHECK-NEXT:    .cfi_offset w30, -16
+ ; CHECK-NEXT:    nop
+-; CHECK-NEXT:  .Ltmp9:
++; CHECK-NEXT:  .Ltmp7:
+ ; CHECK-NEXT:    and w0, w0, #0x1
++; CHECK-NEXT:    ldr x30, [sp], #16 // 8-byte Folded Reload
+ ; CHECK-NEXT:    ret
+ ; A patchable variant of test_i1_return
+ entry:
+@@ -141,7 +170,7 @@ define i1 @test_cross_bb(i32 addrspace(1)* %a, i1 %external_cond) gc "statepoint
+ ; CHECK-NEXT:    mov w20, w1
+ ; CHECK-NEXT:    str x0, [sp, #8]
+ ; CHECK-NEXT:    bl return_i1
+-; CHECK-NEXT:  .Ltmp10:
++; CHECK-NEXT:  .Ltmp8:
+ ; CHECK-NEXT:    tbz w20, #0, .LBB8_2
+ ; CHECK-NEXT:  // %bb.1: // %left
+ ; CHECK-NEXT:    mov w19, w0
+@@ -176,18 +205,21 @@ declare void @consume_attributes(i32, i8* nest, i32, %struct2* byval(%struct2))
+ define void @test_attributes(%struct2* byval(%struct2) %s) gc "statepoint-example" {
+ ; CHECK-LABEL: test_attributes:
+ ; CHECK:       // %bb.0: // %entry
+-; CHECK-NEXT:    sub sp, sp, #32 // =32
+-; CHECK-NEXT:    .cfi_def_cfa_offset 32
+-; CHECK-NEXT:    ldr x8, [sp, #48]
+-; CHECK-NEXT:    ldr q0, [sp, #32]
++; CHECK-NEXT:    sub sp, sp, #48 // =48
++; CHECK-NEXT:    str x30, [sp, #32] // 8-byte Folded Spill
++; CHECK-NEXT:    .cfi_def_cfa_offset 48
++; CHECK-NEXT:    .cfi_offset w30, -16
++; CHECK-NEXT:    ldr x8, [sp, #64]
++; CHECK-NEXT:    ldr q0, [sp, #48]
+ ; CHECK-NEXT:    mov w0, #42
+ ; CHECK-NEXT:    mov w1, #17
+ ; CHECK-NEXT:    mov x18, xzr
+ ; CHECK-NEXT:    str x8, [sp, #16]
+ ; CHECK-NEXT:    str q0, [sp]
+ ; CHECK-NEXT:    bl consume_attributes
+-; CHECK-NEXT:  .Ltmp11:
+-; CHECK-NEXT:    add sp, sp, #32 // =32
++; CHECK-NEXT:  .Ltmp9:
++; CHECK-NEXT:    ldr x30, [sp, #32] // 8-byte Folded Reload
++; CHECK-NEXT:    add sp, sp, #48 // =48
+ ; CHECK-NEXT:    ret
+ entry:
+ ; Check that arguments with attributes are lowered correctly.
+-- 
+2.31.1
+

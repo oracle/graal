@@ -22,28 +22,34 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.plugins.jdkcaches.JDKCacheRedefinitionPlugin;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
-public class Target_java_beans_ThreadGroupContext {
+public final class Target_java_beans_ThreadGroupContext {
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    public static void init(
-                    @Host(Class.class) StaticObject context,
-                    // Checkstyle: stop
-                    @GuestCall(target = "java_beans_ThreadGroupContext_init", original = true) DirectCallNode original,
-                    // Checkstyle: resume
-                    @InjectMeta Meta meta) {
+    abstract static class Init extends SubstitutionNode {
 
-        // for class redefinition we need to collect details about beans
-        JDKCacheRedefinitionPlugin plugin = meta.getContext().lookup(JDKCacheRedefinitionPlugin.class);
-        if (plugin != null) {
-            plugin.registerThreadGroupContext(context);
+        abstract void execute(@JavaType(Class.class) StaticObject context);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Class.class) StaticObject context,
+                        @Bind("getContext()") EspressoContext espressoContext,
+                        @Cached("create(espressoContext.getMeta().java_beans_ThreadGroupContext_init.getCallTargetNoSubstitution())") DirectCallNode original) {
+            // for class redefinition we need to collect details about beans
+            JDKCacheRedefinitionPlugin plugin = espressoContext.lookup(JDKCacheRedefinitionPlugin.class);
+            if (plugin != null) {
+                plugin.registerThreadGroupContext(context);
+            }
+            // call original method
+            original.call(context);
         }
-        // call original method
-        original.call(context);
     }
 }

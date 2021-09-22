@@ -93,6 +93,7 @@ final class PolyglotContextConfig {
     final ClassLoader hostClassLoader;
     private final List<PolyglotInstrument> configuredInstruments;
     final HostAccess hostAccess;
+    final boolean allowValueSharing;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
@@ -100,7 +101,7 @@ final class PolyglotContextConfig {
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
-                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess) {
+                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -124,6 +125,7 @@ final class PolyglotContextConfig {
         this.timeZone = timeZone;
         this.limits = limits;
         this.logLevels = new HashMap<>(engine.logLevels);
+        this.allowValueSharing = allowValueSharing;
         List<PolyglotInstrument> instruments = null;
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);

@@ -29,7 +29,6 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.io.PrintWriter;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -37,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -73,7 +73,6 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 @AutomaticFeature
 public class ClassInitializationFeature implements GraalFeature {
 
-    public static final String REPORTS_PATH = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
     private ClassInitializationSupport classInitializationSupport;
     private AnalysisUniverse universe;
     private AnalysisMetaAccess metaAccess;
@@ -146,8 +145,8 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, EnsureClassInitializedSnippets.FOREIGN_CALLS);
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(EnsureClassInitializedSnippets.FOREIGN_CALLS);
     }
 
     @Override
@@ -189,7 +188,7 @@ public class ClassInitializationFeature implements GraalFeature {
         try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
-            String path = REPORTS_PATH;
+            String path = SubstrateOptions.reportsPath();
             assert classInitializationSupport.checkDelayedInitialization();
 
             TypeInitializerGraph initGraph = new TypeInitializerGraph(universe);
@@ -203,6 +202,18 @@ public class ClassInitializationFeature implements GraalFeature {
 
             if (SubstrateOptions.TraceClassInitialization.hasBeenSet()) {
                 reportTrackedClassInitializationTraces(path);
+            }
+
+            if (ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses.getValue()) {
+                List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
+                                .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
+                                .map(Class::getTypeName)
+                                .collect(Collectors.toList());
+                if (!unspecifiedClasses.isEmpty()) {
+                    System.err.println("The following classes have unspecified initialization policy:" + System.lineSeparator() + String.join(System.lineSeparator(), unspecifiedClasses));
+                    UserError.abort("To fix the error either specify the initialization policy for given classes or set %s",
+                                    SubstrateOptionsParser.commandArgument(ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses, "-"));
+                }
             }
         }
     }

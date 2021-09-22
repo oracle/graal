@@ -48,9 +48,7 @@ import static javax.lang.model.element.Modifier.STATIC;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.lang.model.element.Element;
@@ -79,26 +77,28 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
     @Override
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, NodeData node) {
-        Map<String, CodeVariableElement> libraryConstants = new LinkedHashMap<>();
-        List<CodeTypeElement> rootTypes = createImpl(context, node, libraryConstants);
+        StaticConstants constants = new StaticConstants();
+        List<CodeTypeElement> rootTypes = createImpl(context, node, constants);
         if (rootTypes != null) {
             if (rootTypes.size() != 1) {
                 throw new AssertionError();
             }
-            rootTypes.get(0).addAll(libraryConstants.values());
+            rootTypes.get(0).addAll(constants.libraries.values());
+            rootTypes.get(0).addAll(constants.contextReferences.values());
+            rootTypes.get(0).addAll(constants.languageReferences.values());
         }
         return rootTypes;
     }
 
-    private static List<CodeTypeElement> createImpl(ProcessorContext context, NodeData node, Map<String, CodeVariableElement> libraryConstants) {
+    private static List<CodeTypeElement> createImpl(ProcessorContext context, NodeData node, StaticConstants constants) {
         List<CodeTypeElement> enclosedTypes = new ArrayList<>();
         for (NodeData childNode : node.getEnclosingNodes()) {
-            List<CodeTypeElement> type = createImpl(context, childNode, libraryConstants);
+            List<CodeTypeElement> type = createImpl(context, childNode, constants);
             if (type != null) {
                 enclosedTypes.addAll(type);
             }
         }
-        List<CodeTypeElement> generatedNodes = generateNodes(context, node, libraryConstants);
+        List<CodeTypeElement> generatedNodes = generateNodes(context, node, constants);
         if (!generatedNodes.isEmpty() || !enclosedTypes.isEmpty()) {
             CodeTypeElement type;
             if (generatedNodes.isEmpty()) {
@@ -266,7 +266,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         return resolveNodeId(nodeType) + NODE_SUFFIX;
     }
 
-    private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node, Map<String, CodeVariableElement> libraryConstants) {
+    private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node, StaticConstants constants) {
         if (!node.needsFactory()) {
             return Collections.emptyList();
         }
@@ -278,7 +278,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             return Arrays.asList(type);
         }
 
-        type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, libraryConstants).create(type);
+        type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, constants).create(type);
 
         return Arrays.asList(type);
     }

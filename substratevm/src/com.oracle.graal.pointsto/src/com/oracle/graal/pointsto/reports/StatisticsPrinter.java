@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -41,31 +42,31 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class StatisticsPrinter {
 
-    public static void print(BigBang bigbang, String path, String reportName) {
-        StatisticsPrinter printer = new StatisticsPrinter(bigbang);
-        Consumer<PrintWriter> consumer = writer -> printer.printStats(writer);
+    public static void print(BigBang bb, String reportsPath, String reportName) {
+        StatisticsPrinter printer = new StatisticsPrinter(bb);
+        Consumer<PrintWriter> consumer = printer::printStats;
         String description = "analysis results stats";
-        if (AnalysisReportsOptions.AnalysisStatisticsFile.hasBeenSet(bigbang.getOptions())) {
-            final File file = new File(AnalysisReportsOptions.AnalysisStatisticsFile.getValue(bigbang.getOptions())).getAbsoluteFile();
+        if (AnalysisReportsOptions.AnalysisStatisticsFile.hasBeenSet(bb.getOptions())) {
+            final File file = new File(AnalysisReportsOptions.AnalysisStatisticsFile.getValue(bb.getOptions())).getAbsoluteFile();
             ReportUtils.report(description, file.toPath(), consumer);
         } else {
-            ReportUtils.report(description, path + File.separatorChar + "reports", "analysis_stats_" + reportName, "json", consumer);
+            ReportUtils.report(description, reportsPath, "analysis_stats_" + reportName, "json", consumer);
         }
     }
 
-    private final BigBang bigbang;
+    private final BigBang bb;
 
-    public StatisticsPrinter(BigBang bigbang) {
-        this.bigbang = bigbang;
+    public StatisticsPrinter(BigBang bb) {
+        this.bb = bb;
     }
 
     /** Print analysis statistics as JSON formatted String. */
     private void printStats(PrintWriter out) {
 
-        int[] reachableTypes = getNumReachableTypes(bigbang);
-        int[] reachableMethods = getNumReachableMethods(bigbang);
-        int[] reachableFields = getNumReachableFields(bigbang);
-        long[] typeChecksStats = getTypeCheckStats(bigbang);
+        int[] reachableTypes = getNumReachableTypes(bb);
+        int[] reachableMethods = getNumReachableMethods(bb);
+        int[] reachableFields = getNumReachableFields(bb);
+        long[] typeChecksStats = getTypeCheckStats(bb);
 
         beginObject(out);
 
@@ -80,12 +81,7 @@ public final class StatisticsPrinter {
         print(out, "app_type_checks", typeChecksStats[2]);
         print(out, "app_removable_type_checks", typeChecksStats[3]);
 
-        print(out, "typeflow_time_ms", bigbang.typeFlowTimer.getTotalTime());
-        print(out, "objects_time_ms", bigbang.checkObjectsTimer.getTotalTime());
-        print(out, "features_time_ms", bigbang.processFeaturesTimer.getTotalTime());
-        print(out, "total_analysis_time_ms", bigbang.analysisTimer.getTotalTime());
-
-        printLast(out, "total_memory_bytes", bigbang.analysisTimer.getTotalMemory());
+        bb.printTimerStatistics(out);
 
         endObject(out);
     }
@@ -100,15 +96,15 @@ public final class StatisticsPrinter {
         return out.format("{%n");
     }
 
-    private static void print(PrintWriter out, String key, long value) {
+    public static void print(PrintWriter out, String key, long value) {
         out.format("%s\"%s\": %d,%n", INDENT, key, value);
     }
 
-    private static void print(PrintWriter out, String key, double value) {
+    public static void print(PrintWriter out, String key, double value) {
         out.format("%s\"%s\": %.2f,%n", INDENT, key, value);
     }
 
-    private static void printLast(PrintWriter out, String key, long value) {
+    public static void printLast(PrintWriter out, String key, long value) {
         out.format("%s\"%s\": %d%n", INDENT, key, value);
     }
 
@@ -155,12 +151,17 @@ public final class StatisticsPrinter {
     }
 
     private static long[] getTypeCheckStats(BigBang bb) {
+        if (!(bb instanceof PointsToAnalysis)) {
+            /*- Type check stats are only available if points-to analysis is on. */
+            return new long[4];
+        }
+        PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
         long totalFilters = 0;
         long totalRemovableFilters = 0;
         long appTotalFilters = 0;
         long appTotalRemovableFilters = 0;
 
-        for (AnalysisMethod method : bb.getUniverse().getMethods()) {
+        for (AnalysisMethod method : pointsToAnalysis.getUniverse().getMethods()) {
 
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = method.getTypeFlow();
@@ -171,8 +172,8 @@ public final class StatisticsPrinter {
                     totalFilters++;
                     InstanceOfTypeFlow originalInstanceOf = entry.getValue();
 
-                    boolean isSaturated = methodFlow.isSaturated(bb, originalInstanceOf);
-                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(bb, originalInstanceOf);
+                    boolean isSaturated = methodFlow.isSaturated(pointsToAnalysis, originalInstanceOf);
+                    TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pointsToAnalysis, originalInstanceOf);
                     if (!isSaturated && instanceOfTypeState.typesCount() < 2) {
                         totalRemovableFilters++;
                     }

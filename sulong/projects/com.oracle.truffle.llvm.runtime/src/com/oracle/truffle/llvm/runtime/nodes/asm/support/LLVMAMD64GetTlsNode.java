@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64GetTlsNode extends LLVMExpressionNode {
 
     @Specialization
-    public Object doGetTLS(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-        return ctx.getThreadLocalStorage();
+    public Object doGetTLS() {
+        return getContext().getThreadLocalStorage();
     }
 }

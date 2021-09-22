@@ -36,14 +36,14 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
@@ -76,6 +76,12 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
          * </ol>
          */
         OUT_OF_BOUNDS(2, ArrayIndexOutOfBoundsException.class),
+
+        /**
+         * Represents a {@link ArrayIndexOutOfBoundsException} in an intrinsic. No arguments are
+         * allowed.
+         */
+        INTRINSIC_OUT_OF_BOUNDS(0, ArrayIndexOutOfBoundsException.class),
 
         /**
          * Represents a {@link ClassCastException}. Two arguments are required:

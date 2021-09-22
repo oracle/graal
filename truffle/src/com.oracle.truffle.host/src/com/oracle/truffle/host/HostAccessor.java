@@ -51,6 +51,7 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.RootNode;
 
 final class HostAccessor extends Accessor {
 
@@ -102,22 +103,22 @@ final class HostAccessor extends Accessor {
 
         @Override
         public boolean isDisconnectedHostProxy(Object value) {
-            return HostProxy.isProxyGuestObject(value);
+            return HostProxy.isProxyGuestObject(null, value);
         }
 
         @Override
         public boolean isDisconnectedHostObject(Object obj) {
-            return HostObject.isInstance(obj);
+            return HostObject.isInstance(null, obj);
         }
 
         @Override
         public Object unboxDisconnectedHostObject(Object hostValue) {
-            return HostObject.valueOf(hostValue);
+            return HostObject.valueOf(null, hostValue);
         }
 
         @Override
         public Object unboxDisconnectedHostProxy(Object hostValue) {
-            return HostProxy.toProxyHostObject(hostValue);
+            return HostProxy.toProxyHostObject(null, hostValue);
         }
 
         @Override
@@ -147,6 +148,16 @@ final class HostAccessor extends Accessor {
         @Override
         public boolean isPrimitiveTarget(Class<?> c) {
             return HostToTypeNode.isPrimitiveTarget(c);
+        }
+
+        @Override
+        public boolean isGuestToHostRootNode(RootNode root) {
+            return root instanceof GuestToHostRootNode;
+        }
+
+        @Override
+        public boolean isHostLanguage(Class<?> languageClass) {
+            return languageClass == HostLanguage.class;
         }
     }
 

@@ -53,8 +53,10 @@ import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.Invoke;
@@ -96,6 +98,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
@@ -367,10 +370,9 @@ public final class GraalFeature implements Feature {
         Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
-        runtimeConfigBuilder = ImageSingletons.lookup(RuntimeGraalSetup.class)
-                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
-                                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider())
-                        .build();
+        runtimeConfigBuilder = ImageSingletons.lookup(RuntimeGraalSetup.class).createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(),
+                        config.getMetaAccess(),
+                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider()).build();
         RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
@@ -739,12 +741,27 @@ public final class GraalFeature implements Feature {
 
     private static void registerDeoptEntries(CallTreeNode node) {
         for (FrameState frameState : node.graph.getNodes(FrameState.TYPE)) {
-            if (node.level > 0 && frameState.hasExactlyOneUsage() && frameState.usages().first() == node.graph.start()) {
-                /*
-                 * During method inlining, the FrameState associated with the StartNode disappears.
-                 * Therefore, this frame state cannot be a deoptimization target.
-                 */
-                continue;
+            if (frameState.hasExactlyOneUsage()) {
+                Node usage = frameState.usages().first();
+                if (node.level > 0 && usage == node.graph.start()) {
+                    /*
+                     * During method inlining, the FrameState associated with the StartNode
+                     * disappears. Therefore, this frame state cannot be a deoptimization target.
+                     */
+                    continue;
+                } else if (usage instanceof Invoke && ((Invoke) usage).stateAfter() == frameState) {
+                    /*
+                     * If the FrameState is followed immediately by a dead end, then this state can
+                     * never be reached and does not need to be registered.
+                     */
+                    FixedNode next = ((Invoke) usage).next();
+                    while (next instanceof AbstractBeginNode) {
+                        next = ((AbstractBeginNode) next).next();
+                    }
+                    if (next instanceof LoweredDeadEndNode) {
+                        continue;
+                    }
+                }
             }
 
             /*

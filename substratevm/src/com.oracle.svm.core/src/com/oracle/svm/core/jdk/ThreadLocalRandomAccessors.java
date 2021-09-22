@@ -27,9 +27,12 @@ package com.oracle.svm.core.jdk;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(java.util.concurrent.ThreadLocalRandom.class)
 final class Target_java_util_concurrent_ThreadLocalRandom {
@@ -42,8 +45,15 @@ final class Target_java_util_concurrent_ThreadLocalRandom {
     private static AtomicLong seeder;
 
     @Alias
+    @TargetElement(onlyWith = JDK16OrEarlier.class)
     static native long mix64(long z);
 
+}
+
+@TargetClass(className = "jdk.internal.util.random.RandomSupport", onlyWith = JDK17OrLater.class)
+final class Target_jdk_internal_util_random_RandomSupport {
+    @Alias
+    static native long mixMurmur64(long z);
 }
 
 public class ThreadLocalRandomAccessors extends RandomAccessors {
@@ -62,6 +72,10 @@ public class ThreadLocalRandomAccessors extends RandomAccessors {
 
     @Override
     long mix64(long l) {
-        return Target_java_util_concurrent_ThreadLocalRandom.mix64(l);
+        if (JavaVersionUtil.JAVA_SPEC < 17) {
+            return Target_java_util_concurrent_ThreadLocalRandom.mix64(l);
+        } else {
+            return Target_jdk_internal_util_random_RandomSupport.mixMurmur64(l);
+        }
     }
 }

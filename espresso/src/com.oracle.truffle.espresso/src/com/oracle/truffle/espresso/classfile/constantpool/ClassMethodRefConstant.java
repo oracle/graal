@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
-import java.util.logging.Level;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -184,12 +183,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
-                context.getLogger().log(Level.WARNING,
-                                "Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
-                                                " throws IllegalAccessError");
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
-            }
+            MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, method, meta);
 
             if (!method.isPolySignatureIntrinsic()) {
                 method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());

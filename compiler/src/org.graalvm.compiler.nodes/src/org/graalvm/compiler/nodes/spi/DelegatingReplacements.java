@@ -41,10 +41,11 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * A convenience class when want to subclass and override just a portion of the Replacements API.
+ * A convenience class for overriding just a portion of the Replacements API.
  */
 public class DelegatingReplacements implements Replacements {
     protected final Replacements delegate;
@@ -150,5 +151,10 @@ public class DelegatingReplacements implements Replacements {
     @Override
     public <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass) {
         return delegate.getSnippetTemplateCache(templatesClass);
+    }
+
+    @Override
+    public JavaKind getWordKind() {
+        return delegate.getWordKind();
     }
 }

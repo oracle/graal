@@ -170,7 +170,7 @@ public class CompilationResultBuilder {
     private EconomicMap<LIRInstruction, Integer> lirPositions;
     /**
      * This flag is for setting the
-     * {@link CompilationResultBuilder#labelWithinRange(LIRInstruction, Label, int)} into a
+     * {@link CompilationResultBuilder#labelWithinLIRRange(LIRInstruction, Label, int)} into a
      * conservative mode and always answering false.
      */
     private boolean conservativeLabelOffsets = false;
@@ -272,10 +272,10 @@ public class CompilationResultBuilder {
     }
 
     /**
-     * Calls {@link CompilationResult#close()} on {@link #compilationResult}.
+     * Calls {@link CompilationResult#close(OptionValues)} on {@link #compilationResult}.
      */
     protected void closeCompilationResult() {
-        compilationResult.close();
+        compilationResult.close(options);
     }
 
     public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {
@@ -525,7 +525,7 @@ public class CompilationResultBuilder {
     public AbstractAddress asAddress(Value value) {
         assert isStackSlot(value);
         StackSlot slot = asStackSlot(value);
-        int size = slot.getPlatformKind().getSizeInBytes() * 8;
+        int size = slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         return asm.makeAddress(size, frameMap.getRegisterConfig().getFrameRegister(), frameMap.offsetForStackSlot(slot));
     }
 
@@ -670,30 +670,31 @@ public class CompilationResultBuilder {
     }
 
     /**
-     * Answers the code generator whether the jump from instruction to label is within disp LIR
-     * instructions.
+     * Determines whether the distance from the LIR instruction to the label is within
+     * maxLIRDistance LIR instructions.
      *
-     * @param disp Maximum number of LIR instructions between label and instruction
+     * @param maxLIRDistance Maximum number of LIR instructions between label and instruction
      */
-    public boolean labelWithinRange(LIRInstruction instruction, Label label, int disp) {
+    public boolean labelWithinLIRRange(LIRInstruction instruction, Label label, int maxLIRDistance) {
         if (conservativeLabelOffsets) {
+            /* Conservatively assume distance is too far. */
             return false;
         }
         Integer labelPosition = labelBindLirPositions.get(label);
         Integer instructionPosition = lirPositions.get(instruction);
-        boolean result;
         if (labelPosition != null && instructionPosition != null) {
-            result = Math.abs(labelPosition - instructionPosition) < disp;
+            /* If both LIR positions are known, then check distance between instructions. */
+            return Math.abs(labelPosition - instructionPosition) < maxLIRDistance;
         } else {
-            result = false;
+            /* Otherwise, it is not possible to make an estimation. */
+            return false;
         }
-        return result;
     }
 
     /**
      * Sets this CompilationResultBuilder into conservative mode. If set,
-     * {@link CompilationResultBuilder#labelWithinRange(LIRInstruction, Label, int)} always returns
-     * false.
+     * {@link CompilationResultBuilder#labelWithinLIRRange(LIRInstruction, Label, int)} always
+     * returns false.
      */
     public void setConservativeLabelRanges() {
         this.conservativeLabelOffsets = true;

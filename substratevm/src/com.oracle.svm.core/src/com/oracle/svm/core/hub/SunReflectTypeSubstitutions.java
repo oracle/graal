@@ -27,16 +27,17 @@ package com.oracle.svm.core.hub;
 //Checkstyle: allow reflection
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Type;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
@@ -46,11 +47,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
 import sun.reflect.generics.reflectiveObjects.WildcardTypeImpl;
 import sun.reflect.generics.tree.FieldTypeSignature;
@@ -75,27 +74,23 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeVariableBoundsComputer.class) //
     private Object[] boundsJDK11OrLater;
 
-    /* The bounds value is cached. The boundASTs field is not used at run time. */
-    @Delete //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private FieldTypeSignature[] boundASTs;
-
     @Alias GenericDeclaration genericDeclaration;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeVariableAnnotationsComputer.class) //
     Annotation[] annotations;
 
-    @Substitute
-    @SuppressWarnings("unused")
-    private Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl(GenericDeclaration decl, String n, FieldTypeSignature[] bs, GenericsFactory f) {
-        throw VMError.shouldNotReachHere("sun.reflect.generics.reflectiveObjects.TypeVariableImpl constructor was removed. " +
-                        "All the TypeVariableImpl objects should be allocated at image build time and cached in the native image heap.");
-    }
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeVariableAnnotatedBoundsComputer.class) //
+    AnnotatedType[] annotatedBounds;
 
     @Substitute
     public Type[] getBounds() {
         Type[] result = JavaVersionUtil.JAVA_SPEC <= 8 ? boundsJDK8OrEarlier : (Type[]) boundsJDK11OrLater;
         return result.clone();
+    }
+
+    @Substitute
+    public AnnotatedType[] getAnnotatedBounds() {
+        return annotatedBounds;
     }
 
     /** Reason for substitutions: disable access checks in original method. */
@@ -139,11 +134,18 @@ class TypeVariableBoundsComputer implements RecomputeFieldValue.CustomFieldValue
     }
 }
 
+class TypeVariableAnnotatedBoundsComputer implements CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        return GuardedBoundsAccess.getAnnotatedBounds((TypeVariableImpl<?>) receiver);
+    }
+}
+
 class TypeVariableAnnotationsComputer implements CustomFieldValueComputer {
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return ((TypeVariableImpl<?>) receiver).getAnnotations();
+        return GuardedAnnotationAccess.getAnnotations((TypeVariableImpl<?>) receiver);
     }
 }
 
@@ -173,22 +175,6 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
     @RecomputeFieldValue(kind = Kind.Custom, declClass = WildcardTypeImplLowerBoundsComputer.class) //
     @TargetElement(name = "lowerBounds", onlyWith = JDK11OrLater.class) //
     private Object[] lowerBoundsJDK11OrLater;
-
-    /* The upperBounds value is cached. The upperBoundASTs field is not used at run time. */
-    @Delete //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private FieldTypeSignature[] upperBoundASTs;
-    /* The lowerBounds value is cached. The lowerBoundASTs field is not used at run time. */
-    @Delete //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private FieldTypeSignature[] lowerBoundASTs;
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl(FieldTypeSignature[] ubs, FieldTypeSignature[] lbs, GenericsFactory f) {
-        throw VMError.shouldNotReachHere("sun.reflect.generics.reflectiveObjects.WildcardTypeImpl constructor was removed." +
-                        "All the WildcardTypeImpl objects should be allocated at image build time and cached in the native image heap.");
-    }
 
     @Substitute
     public Type[] getUpperBounds() {
@@ -310,6 +296,19 @@ class GuardedBoundsAccess {
              * conservatively return the upper bound.
              */
             return new Type[]{Object.class};
+        }
+    }
+
+    static AnnotatedType[] getAnnotatedBounds(TypeVariableImpl<?> receiver) {
+        try {
+            return receiver.getAnnotatedBounds();
+        } catch (TypeNotPresentException | MalformedParameterizedTypeException e) {
+            /*
+             * This computer is used to compute the value of the TypeVariableImpl.annotatedBounds
+             * injected field. The original method calls TypeVariableImpl.getBounds() and if no
+             * bounds are present it returns an empty array.
+             */
+            return new AnnotatedType[0];
         }
     }
 }

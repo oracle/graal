@@ -38,7 +38,7 @@ Native Image for GraalVM Community Edition is licensed under the [GPL 2 with Cla
 
 Native Image for GraalVM Enterprise Edition is available as an Early Adopter feature.
 Early Adopter features are subject to ongoing development, testing, and modification.
-For more information, check the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition]https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
+For more information, check the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
 ## Install Native Image
 

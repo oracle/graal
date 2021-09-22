@@ -65,6 +65,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -88,7 +89,7 @@ public class InfoTreeBuilder {
 
         String name;
         if (codeCtx.getDirectives() != null) {
-            name = codeCtx.getDirectives().getClass().getSimpleName();
+            name = ClassUtil.getUnqualifiedName(codeCtx.getDirectives().getClass());
         } else {
             StringBuilder nameBuilder = new StringBuilder();
             String sep = "";
@@ -493,7 +494,7 @@ public class InfoTreeBuilder {
         assert type.getAnnotation(annotationClass) != null;
 
         if (!type.isInterface() || !nativeLibs.isPointerBase(type)) {
-            nativeLibs.addError("Annotation @" + annotationClass.getSimpleName() + " can only be used on an interface that extends " + PointerBase.class.getSimpleName(), type);
+            nativeLibs.addError("Annotation @" + ClassUtil.getUnqualifiedName(annotationClass) + " can only be used on an interface that extends " + PointerBase.class.getSimpleName(), type);
             return false;
         }
         return true;

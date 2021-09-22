@@ -60,11 +60,6 @@ public final class SubstrateNarrowOopStamp extends NarrowOopStamp {
     @Override
     public Constant readConstant(MemoryAccessProvider memoryAccessProvider, Constant base, long displacement) {
         JavaConstant constant = ((SubstrateMemoryAccessProvider) memoryAccessProvider).readNarrowObjectConstant(base, displacement, getEncoding());
-        /*
-         * Hosted memory provider does not handle the reading of stable array (i.e. base describes
-         * an array constant), thus we may see null here as the constant, which is fine according to
-         * the java doc
-         */
         assert constant == null || ((CompressibleConstant) constant).isCompressed();
         return constant;
     }

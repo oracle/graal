@@ -23,9 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,10 +38,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
-public class StackWalk {
+public final class StackWalk {
     // -1 and 0 are reserved values.
     private final AtomicLong walkerIds = new AtomicLong(1);
 
@@ -111,9 +108,9 @@ public class StackWalk {
      *         {@code java.lang.StackStreamFactory.AbstractStackWalker#doStackWalk(long, int, int, int,
      *         int)} .
      */
-    public StaticObject fetchFirstBatch(@Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
+    public StaticObject fetchFirstBatch(@JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
                     int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
+                    @JavaType(Object[].class) StaticObject frames,
                     Meta meta) {
         assert synchronizedConstants(meta);
         FrameWalker fw = new FrameWalker(meta, mode);
@@ -136,10 +133,10 @@ public class StackWalk {
      * @return The position in the buffer at the end of fetching.
      */
     public int fetchNextBatch(
-                    @SuppressWarnings("unused") @Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
+                    @SuppressWarnings("unused") @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
                     long mode, long anchor,
                     int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
+                    @JavaType(Object[].class) StaticObject frames,
                     Meta meta) {
         assert synchronizedConstants(meta);
         FrameWalker fw = getAnchored(anchor);
@@ -184,7 +181,7 @@ public class StackWalk {
         private int depth = 0;
         private int decoded = 0;
 
-        private static final int LOCATE_CALLSTACKWALk = 0;
+        private static final int LOCATE_CALLSTACKWALK = 0;
         private static final int LOCATE_STACK_BEGIN = 1;
         private static final int LOCATE_FROM = 2;
         private static final int PROCESS = 3;
@@ -209,7 +206,7 @@ public class StackWalk {
         }
 
         public void clear() {
-            state = LOCATE_CALLSTACKWALk;
+            state = LOCATE_CALLSTACKWALK;
             depth = 0;
             decoded = 0;
         }
@@ -267,11 +264,11 @@ public class StackWalk {
         @SuppressWarnings("fallthrough")
         @Override
         public Integer visitFrame(FrameInstance frameInstance) {
-            EspressoRootNode root = VM.getEspressoRootFromFrame(frameInstance);
+            EspressoRootNode root = VM.getEspressoRootFromFrame(frameInstance, meta.getContext());
             Method m = root == null ? null : root.getMethod();
             if (m != null) {
                 switch (state) {
-                    case LOCATE_CALLSTACKWALk:
+                    case LOCATE_CALLSTACKWALK:
                         if (!isCallStackWalk(m)) {
                             break;
                         }
@@ -325,12 +322,13 @@ public class StackWalk {
 
         private void tryProcessFrame(FrameInstance frameInstance, Method m, int index) {
             if (getCallerClass(mode) || skipHiddenFrames(mode)) {
-                if ((m.getModifiers() & ACC_LAMBDA_FORM_HIDDEN) != 0) {
+                if (m.isHidden()) {
+                    // Skip hidden frames.
                     return;
                 }
             }
-            if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && ((m.getModifiers() & ACC_CALLER_SENSITIVE) != 0)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
+            if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && m.isCallerSensitive()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive " + m.getNameAsString() + " method");
             }
             processFrame(frameInstance, m, index);
             decoded++;
@@ -359,7 +357,8 @@ public class StackWalk {
             StaticObject memberName = meta.java_lang_StackFrameInfo_memberName.getObject(frame);
             Target_java_lang_invoke_MethodHandleNatives.plantResolvedMethod(memberName, m, m.getRefKind(), meta);
             meta.java_lang_invoke_MemberName_clazz.setObject(memberName, m.getDeclaringKlass().mirror());
-            meta.java_lang_StackFrameInfo_bci.setInt(frame, VM.getEspressoRootFromFrame(frameInstance).readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
+            EspressoRootNode rootNode = VM.getEspressoRootFromFrame(frameInstance, meta.getContext());
+            meta.java_lang_StackFrameInfo_bci.setInt(frame, rootNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
         }
     }
 }

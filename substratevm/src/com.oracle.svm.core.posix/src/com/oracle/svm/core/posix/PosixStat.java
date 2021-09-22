@@ -44,8 +44,8 @@ public final class PosixStat {
             LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
             result = LinuxStat.fstat64(fd, stat);
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            DarwinStat.stat64 stat = StackValue.get(DarwinStat.stat64.class);
-            result = DarwinStat.fstat64(fd, stat);
+            DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
+            result = DarwinStat.fstat(fd, stat);
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }
@@ -62,8 +62,8 @@ public final class PosixStat {
                 size = stat.st_size();
             }
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            DarwinStat.stat64 stat = StackValue.get(DarwinStat.stat64.class);
-            if (DarwinStat.NoTransitions.fstat64(fd, stat) == 0) {
+            DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
+            if (DarwinStat.NoTransitions.fstat(fd, stat) == 0) {
                 size = stat.st_size();
             }
         }

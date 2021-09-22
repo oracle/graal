@@ -44,7 +44,9 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.option.APIOption;
@@ -52,7 +54,6 @@ import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
@@ -188,14 +189,10 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            if (!SubstrateUtil.HOSTED) {
-                XOptions.getXss().setValue(newValue);
-            }
-        }
-    };
+    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
+
+    @Option(help = "The size of each internal thread stack, in bytes.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Long> InternalThreadStackSize = new HostedOptionKey<>(2L * 1024 * 1024);
 
     @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
     public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(1024);
@@ -434,6 +431,9 @@ public class SubstrateOptions {
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
 
+    @Option(help = "Determines if a null region is present between the heap base and the image heap.", type = Expert)//
+    public static final HostedOptionKey<Boolean> UseNullRegion = new HostedOptionKey<>(true);
+
     @Option(help = "The interval in minutes between watchdog checks (0 disables the watchdog)", type = OptionType.Expert)//
     public static final HostedOptionKey<Integer> DeadlockWatchdogInterval = new HostedOptionKey<>(10);
     @Option(help = "Exit the image builder VM after printing call stacks", type = OptionType.Expert)//
@@ -572,4 +572,52 @@ public class SubstrateOptions {
 
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
     public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
+
+    public static String reportsPath() {
+        return Paths.get(Paths.get(Path.getValue()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();
+    }
+
+    public static class ReportingSupport {
+        String reportsPath;
+
+        public ReportingSupport(String reportingPath) {
+            this.reportsPath = reportingPath;
+        }
+    }
+
+    @Option(help = "Define PageSize of a machine that runs the image. The default = 0 (== same as host machine page size)")//
+    protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
+
+    public static int getPageSize() {
+        int value = PageSize.getValue();
+        if (value == 0) {
+            return hostPageSize;
+        }
+        return value;
+    }
+
+    private static int hostPageSize = getHostPageSize();
+
+    private static int getHostPageSize() {
+        try {
+            return GraalUnsafeAccess.getUnsafe().pageSize();
+        } catch (IllegalArgumentException e) {
+            return 4096;
+        }
+    }
+
+    @Option(help = "Specifies how many details are printed for certain diagnostic thunks, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +
+                    "A value of 1 will result in the maximum amount of information, higher values will print less information. " +
+                    "By default, the most detailed output is enabled for all diagnostic thunks. Wildcards (*) are supported in the name of the diagnostic thunk.", type = Expert)//
+    public static final RuntimeOptionKey<String> DiagnosticDetails = new RuntimeOptionKey<String>("") {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            SubstrateDiagnostics.updateInitialInvocationCounts(newValue);
+        }
+    };
+
+    @APIOption(name = "configure-reflection-metadata")//
+    @Option(help = "Limit method reflection metadata to configuration entries instead of including it for all reachable methods")//
+    public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
 }

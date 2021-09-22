@@ -188,6 +188,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             }
             crb.blockComment("[method prologue]");
 
+            // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::build_frame
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
@@ -236,6 +237,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             final int totalFrameSize = frameMap.totalFrameSize();
 
             crb.blockComment("[method epilogue]");
+            // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::leave_frame
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 int wordSize = 8;
                 Register scratch = sc.getRegister();
@@ -358,7 +360,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
                     masm.adrpAdd(scratch);
-                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
                     Label noCall = new Label();
                     masm.cbz(64, scratch, noCall);
                     AArch64Call.directJmp(crb, masm, getForeignCalls().lookupForeignCall(WRONG_METHOD_HANDLER));

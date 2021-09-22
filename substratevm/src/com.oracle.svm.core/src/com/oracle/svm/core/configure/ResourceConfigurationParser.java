@@ -26,17 +26,20 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
+
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.util.json.JSONParser;
-import com.oracle.svm.core.util.json.JSONParserException;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final ResourcesRegistry registry;
 
-    public <T> ResourceConfigurationParser(ResourcesRegistry registry) {
+    public ResourceConfigurationParser(ResourcesRegistry registry, boolean strictConfiguration) {
+        super(strictConfiguration);
         this.registry = registry;
     }
 
@@ -56,64 +59,47 @@ public class ResourceConfigurationParser extends ConfigurationParser {
                 resourcesObject = pair.getValue();
             } else if ("bundles".equals(pair.getKey())) {
                 bundlesObject = pair.getValue();
-            } else {
-                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: resources, bundles) in resource definition");
             }
         }
         if (resourcesObject != null) {
             if (resourcesObject instanceof Map) { // New format
-                Object includesObject = null;
-                Object excludesObject = null;
-                for (Map.Entry<String, Object> pair : ((Map<String, Object>) resourcesObject).entrySet()) {
-                    if ("includes".equals(pair.getKey())) {
-                        includesObject = pair.getValue();
-                    } else if ("excludes".equals(pair.getKey())) {
-                        excludesObject = pair.getValue();
-                    } else {
-                        throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: includes, excludes) in resource definition");
-                    }
-                }
+                Map<String, Object> resourcesObjectMap = (Map<String, Object>) resourcesObject;
+                checkAttributes(resourcesObjectMap, "resource descriptor object", Collections.singleton("includes"), Collections.singleton("excludes"));
+                Object includesObject = resourcesObjectMap.get("includes");
+                Object excludesObject = resourcesObjectMap.get("excludes");
 
                 List<Object> includes = asList(includesObject, "Attribute 'includes' must be a list of resources");
                 for (Object object : includes) {
-                    parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'includes' list");
+                    parseStringEntry(object, "pattern", registry::addResources, "resource descriptor object", "'includes' list");
                 }
 
                 if (excludesObject != null) {
                     List<Object> excludes = asList(excludesObject, "Attribute 'excludes' must be a list of resources");
                     for (Object object : excludes) {
-                        parseEntry(object, "pattern", registry::ignoreResources, "resource descriptor object", "'excludes' list");
+                        parseStringEntry(object, "pattern", registry::ignoreResources, "resource descriptor object", "'excludes' list");
                     }
                 }
             } else { // Old format: may be deprecated in future versions
                 List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
                 for (Object object : resources) {
-                    parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
+                    parseStringEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
                 }
             }
         }
         if (bundlesObject != null) {
             List<Object> bundles = asList(bundlesObject, "Attribute 'bundles' must be a list of bundles");
             for (Object object : bundles) {
-                parseEntry(object, "name", registry::addResourceBundles, "bundle descriptor object", "'bundles' list");
+                parseStringEntry(object, "name", registry::addResourceBundles, "bundle descriptor object", "'bundles' list");
             }
         }
     }
 
-    private static void parseEntry(Object data, String valueKey, Consumer<String> registry, String expectedType, String parentType) {
+    private void parseStringEntry(Object data, String valueKey, BiConsumer<ConfigurationCondition, String> resourceRegistry, String expectedType, String parentType) {
         Map<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
-        Object valueObject = null;
-        for (Map.Entry<String, Object> pair : resource.entrySet()) {
-            if (valueKey.equals(pair.getKey())) {
-                valueObject = pair.getValue();
-            } else {
-                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: '" + valueKey + "') in " + expectedType);
-            }
-        }
-        if (valueObject == null) {
-            throw new JSONParserException("Missing attribute '" + valueKey + "' in " + expectedType);
-        }
+        checkAttributes(resource, "resource and resource bundle descriptor object", Collections.singletonList(valueKey), Collections.singletonList(CONDITIONAL_KEY));
+        ConfigurationCondition condition = parseCondition(resource);
+        Object valueObject = resource.get(valueKey);
         String value = asString(valueObject, valueKey);
-        registry.accept(value);
+        resourceRegistry.accept(condition, value);
     }
 }

@@ -27,41 +27,37 @@ package com.oracle.svm.hosted;
 import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 
 public class NativeImageOptions {
 
     public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
 
-    @Option(help = "Comma separated list of CPU features that will be used for image generation. " +
-                    "The specific options available are platform dependent. " +
-                    "For AMD64, SSE and SSE2 are enabled by default. Available features are: " +
-                    "CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE3, SSSE3, SSE4A, SSE4_1, " +
-                    "SSE4_2, POPCNT, LZCNT, TSC, TSCINV, AVX, AVX2, AES, ERMS, CLMUL, BMI1, " +
-                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW, AVX512VL, " +
-                    "SHA, FMA. On AArch64, no features are enabled by default. Available features " +
-                    "are: FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
-                    "A53MAC", type = User)//
+    @Option(help = "Comma separated list of CPU features that will be enabled while building the " +
+                    "target executable, irrespective of whether they are supported by the hosted " +
+                    "environment. Note that enabling features not present within the target environment " +
+                    "may result in application crashes. The specific options available are target " +
+                    "platform dependent. See --list-cpu-features for feature list.", type = User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
-
-    @Option(help = "Define PageSize of a machine that runs the image. The default = 0 (== same as host machine page size)")//
-    protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
     @Option(help = "Print information about classes, methods, and fields that are present in the native image")//
     public static final HostedOptionKey<Boolean> PrintUniverse = new HostedOptionKey<>(false);
@@ -81,7 +77,7 @@ public class NativeImageOptions {
     @Option(help = "Print the sizes of the native image heap as the image is built")//
     public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(false);
 
-    @Option(help = "Print features-specific information")//
+    @Option(help = "Print a list of active features")//
     public static final HostedOptionKey<Boolean> PrintFeatures = new HostedOptionKey<>(false);
 
     @Option(help = "Directory for temporary files generated during native image generation. If this option is specified, the temporary files are not deleted so that you can inspect them after native image generation")//
@@ -181,6 +177,23 @@ public class NativeImageOptions {
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);
 
+    @Option(help = "Sets the dir where diagnostic information is dumped.")//
+    public static final HostedOptionKey<String> DiagnosticsDir = new HostedOptionKey<>(
+                    Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString());
+
+    @Option(help = "Enables the diagnostic mode.")//
+    public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<Boolean>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                ClassInitializationOptions.PrintClassInitialization.update(values, true);
+                SubstitutionReportFeature.Options.ReportPerformedSubstitutions.update(values, true);
+                SubstrateOptions.DumpTargetInfo.update(values, true);
+                PrintFeatures.update(values, true);
+            }
+        }
+    };
+
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
         if (maxNumberOfThreads < 0) {
@@ -200,23 +213,5 @@ public class NativeImageOptions {
             throw UserError.abort("Number of analysis threads can't be larger than NumberOfThreads. Set the NumberOfAnalysisThreads flag to a positive value smaller than NumberOfThreads.");
         }
         return analysisThreads;
-    }
-
-    public static int getPageSize() {
-        int value = PageSize.getValue();
-        if (value == 0) {
-            return hostPageSize;
-        }
-        return value;
-    }
-
-    private static int hostPageSize = getHostPageSize();
-
-    private static int getHostPageSize() {
-        try {
-            return GraalUnsafeAccess.getUnsafe().pageSize();
-        } catch (IllegalArgumentException e) {
-            return 4096;
-        }
     }
 }

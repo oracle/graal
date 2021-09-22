@@ -26,12 +26,12 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -220,8 +220,8 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
      *         method fails.
      */
     @Substitution
-    public static @Host(Object.class) StaticObject invoke0(@Host(java.lang.reflect.Method.class) StaticObject guestMethod, @Host(Object.class) StaticObject receiver,
-                    @Host(Object[].class) StaticObject args, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
+                    @JavaType(Object[].class) StaticObject args, @Inject Meta meta) {
         StaticObject curMethod = guestMethod;
 
         Method reflectedMethod = null;
@@ -244,8 +244,8 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         return result;
     }
 
-    public static @Host(Object.class) StaticObject callMethodReflectively(Meta meta, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args, Method m,
-                    Klass klass, @Host(Class[].class) StaticObject parameterTypes) {
+    public static @JavaType(Object.class) StaticObject callMethodReflectively(Meta meta, @JavaType(Object.class) StaticObject receiver, @JavaType(Object[].class) StaticObject args, Method m,
+                    Klass klass, @JavaType(Class[].class) StaticObject parameterTypes) {
         // Klass should be initialized if method is static, and could be delayed until method
         // invocation, according to specs. However, JCK tests that it is indeed always initialized
         // before doing anything, even if the method to be invoked is from another class.

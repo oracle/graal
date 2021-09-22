@@ -27,10 +27,10 @@ package com.oracle.svm.graal.isolated;
 import java.lang.reflect.Array;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -132,8 +132,14 @@ public final class IsolatedGraalUtils {
     }
 
     public static byte[] encodeRuntimeOptionValues() {
-        UnmodifiableEconomicMap<OptionKey<?>, Object> map = RuntimeOptionValues.singleton().getMap();
-        return map.isEmpty() ? null : OptionValuesEncoder.encode(map);
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create(RuntimeOptionValues.singleton().getMap());
+        /*
+         * All compilation isolates should use the same folder for debug dumps, to avoid confusion
+         * of users. Always setting the DumpPath option in the compilation isolates is the easiest
+         * way to achieve that.
+         */
+        map.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()));
+        return OptionValuesEncoder.encode(map);
     }
 
     public static int getNullableArrayLength(Object array) {

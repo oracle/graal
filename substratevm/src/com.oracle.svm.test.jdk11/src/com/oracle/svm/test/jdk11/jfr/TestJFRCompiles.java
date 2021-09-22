@@ -30,7 +30,7 @@ import jdk.jfr.Recording;
 
 import org.junit.Test;
 
-public class TestJFRCompiles {
+public class TestJFRCompiles extends JFRTest {
 
     @Test
     public void test() throws Exception {

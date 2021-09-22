@@ -45,6 +45,9 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * Base class for nodes that intrinsify {@link System#arraycopy}.
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_64)
 public class BasicArrayCopyNode extends AbstractMemoryCheckpoint implements ArrayCopy {
 

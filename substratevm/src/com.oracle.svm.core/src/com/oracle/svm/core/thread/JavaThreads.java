@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.oracle.svm.core.ProfilingSampler;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -70,6 +71,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -166,6 +168,20 @@ public abstract class JavaThreads {
 
     public static void setThreadStatus(Thread thread, int threadStatus) {
         JavaContinuations.LoomCompatibilityUtil.setThreadStatus(toTarget(thread), threadStatus);
+    }
+
+    /**
+     * Safe method to check whether a thread has been interrupted.
+     *
+     * Use instead of {@link Thread#isInterrupted()}, which is not {@code final} and can be
+     * overridden with code that does locking or performs other actions that are unsafe especially
+     * in VM-internal contexts.
+     */
+    public static boolean isInterrupted(Thread thread) {
+        if (JavaVersionUtil.JAVA_SPEC >= 14) {
+            return toTarget(thread).interruptedJDK14OrLater;
+        }
+        return toTarget(thread).interrupted;
     }
 
     protected static AtomicReference<ParkEvent> getUnsafeParkEvent(Thread thread) {
@@ -274,6 +290,34 @@ public abstract class JavaThreads {
         } finally {
             VMThreads.THREAD_MUTEX.unlock();
         }
+    }
+
+    /**
+     * Returns the thread size requested for this thread; otherwise, if there are no expectations,
+     * then returns 0.
+     */
+    public static long getRequestedThreadSize(Thread thread) {
+        /* Return a stack size based on parameters and command line flags. */
+        long stackSize;
+        long threadSpecificStackSize = JavaContinuations.LoomCompatibilityUtil.getStackSize(toTarget(thread));
+        if (threadSpecificStackSize != 0) {
+            /* If the user set a thread stack size at thread creation, then use that. */
+            stackSize = threadSpecificStackSize;
+        } else {
+            /* If the user set a thread stack size on the command line, then use that. */
+            stackSize = SubstrateOptions.StackSize.getValue();
+        }
+
+        if (stackSize != 0) {
+            /*
+             * Add the yellow+red zone size: This area of the stack is not accessible to the user's
+             * Java code, so it would be surprising if we gave the user less stack space to use than
+             * explicitly requested. In particular, a size less than the yellow+red size would lead
+             * to an immediate StackOverflowError.
+             */
+            stackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
+        }
+        return stackSize;
     }
 
     /**
@@ -706,7 +750,7 @@ public abstract class JavaThreads {
     static void park() {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        if (thread.isInterrupted()) { // avoid state changes and synchronization
+        if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
         /*
@@ -729,7 +773,7 @@ public abstract class JavaThreads {
     static void park(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        if (thread.isInterrupted()) { // avoid state changes and synchronization
+        if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
         /*
@@ -786,7 +830,7 @@ public abstract class JavaThreads {
          * the interrupted check because if not, the interrupt code will not assign one and the
          * wakeup will be lost, too.
          */
-        if (thread.isInterrupted()) {
+        if (isInterrupted(thread)) {
             return; // likely leaves a stale unpark which will be reset before the next sleep()
         }
         final int oldStatus = JavaThreads.getThreadStatus(thread);
@@ -881,7 +925,7 @@ public abstract class JavaThreads {
                             if (thread != null) {
                                 final String name = thread.getName();
                                 final Thread.State status = thread.getState();
-                                final boolean interruptedStatus = thread.isInterrupted();
+                                final boolean interruptedStatus = isInterrupted(thread);
                                 trace.string("  thread.getName(): ").string(name)
                                                 .string("  interruptedStatus: ").bool(interruptedStatus)
                                                 .string("  getState(): ").string(status.name());

@@ -30,11 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -46,6 +43,7 @@ import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -56,7 +54,6 @@ import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefineListener;
@@ -67,8 +64,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class ClassRedefinition {
-
-    @CompilationFinal static volatile RedefineAssumption current = new RedefineAssumption();
 
     private static final Object redefineLock = new Object();
     private static volatile boolean locked = false;
@@ -101,21 +96,6 @@ public final class ClassRedefinition {
         this.redefineListener = listener;
     }
 
-    public static void lock() {
-        synchronized (redefineLock) {
-            check();
-            locked = true;
-        }
-    }
-
-    public static void unlock() {
-        synchronized (redefineLock) {
-            check();
-            locked = false;
-            redefineLock.notifyAll();
-        }
-    }
-
     public static void begin() {
         synchronized (redefineLock) {
             while (locked) {
@@ -128,14 +108,12 @@ public final class ClassRedefinition {
             // the redefine thread is privileged
             redefineThread = Thread.currentThread();
             locked = true;
-            current.assumption.invalidate();
         }
     }
 
     public static void end() {
         synchronized (redefineLock) {
             locked = false;
-            current = new RedefineAssumption();
             redefineThread = null;
             redefineLock.notifyAll();
         }
@@ -153,19 +131,14 @@ public final class ClassRedefinition {
         redefineListener.postRedefinition(changedKlasses);
     }
 
-    private static class RedefineAssumption {
-        private final Assumption assumption = Truffle.getRuntime().createAssumption();
-    }
-
     public static void check() {
-        RedefineAssumption ra = current;
-        if (!ra.assumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        CompilerAsserts.neverPartOfCompilation();
+        // block until redefinition is done
+        if (locked) {
             if (redefineThread == Thread.currentThread()) {
                 // let the redefine thread pass
                 return;
             }
-            // block until redefinition is done
             synchronized (redefineLock) {
                 while (locked) {
                     try {
@@ -175,15 +148,13 @@ public final class ClassRedefinition {
                     }
                 }
             }
-            // re-check in case a new redefinition was kicked off
-            check();
         }
     }
 
     public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
         for (HotSwapClassInfo hotSwapInfo : classInfos) {
-            KlassRef klass = hotSwapInfo.getKlass();
+            ObjectKlass klass = hotSwapInfo.getKlass();
             if (klass == null) {
                 // New anonymous inner class
                 result.add(new ChangePacket(hotSwapInfo, ClassChange.NEW_CLASS));
@@ -194,20 +165,16 @@ public final class ClassRedefinition {
             ParserKlass newParserKlass = null;
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
-            if (klass instanceof ObjectKlass) {
-                StaticObject loader = ((ObjectKlass) klass).getDefiningClassLoader();
-                parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), loader, "L" + hotSwapInfo.getName() + ";", context);
-                if (hotSwapInfo.isPatched()) {
-                    byte[] patched = hotSwapInfo.getPatchedBytes();
-                    newParserKlass = parserKlass;
-                    // we detect changes against the patched bytecode
-                    parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), loader, "L" + hotSwapInfo.getNewName() + ";", context);
-                }
-                classChange = detectClassChanges(parserKlass, (ObjectKlass) klass, detectedChange, newParserKlass);
-            } else {
-                // array or primitive klass, should never happen
-                classChange = ClassChange.INVALID;
+            StaticObject loader = klass.getDefiningClassLoader();
+            Types types = klass.getContext().getTypes();
+            parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), loader, types.fromName(hotSwapInfo.getName()), context);
+            if (hotSwapInfo.isPatched()) {
+                byte[] patched = hotSwapInfo.getPatchedBytes();
+                newParserKlass = parserKlass;
+                // we detect changes against the patched bytecode
+                parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), loader, types.fromName(hotSwapInfo.getNewName()), context);
             }
+            classChange = detectClassChanges(parserKlass, klass, detectedChange, newParserKlass);
             result.add(new ChangePacket(hotSwapInfo, newParserKlass != null ? newParserKlass : parserKlass, classChange, detectedChange));
         }
         return result;

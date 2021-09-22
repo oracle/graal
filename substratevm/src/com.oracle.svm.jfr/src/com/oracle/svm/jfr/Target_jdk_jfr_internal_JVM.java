@@ -34,14 +34,19 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK14OrEarlier;
+import com.oracle.svm.core.jdk.JDK14OrLater;
 import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK16OrEarlier;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
+import jdk.jfr.internal.handlers.EventHandler;
 
 // Checkstyle: allow synchronization.
 @SuppressWarnings({"static-method", "unused"})
@@ -52,9 +57,11 @@ public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: resume
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private volatile boolean recording;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
+    private volatile boolean recording;
 
     /** See {@link JVM#registerNatives}. */
     @Substitute
@@ -85,6 +92,13 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().endRecording();
     }
 
+    /** See {@link JVM#isRecording}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    public boolean isRecording() {
+        return SubstrateJVM.get().unsafeIsRecording();
+    }
+
     /** See {@link JVM#getAllEventClasses}. */
     @Substitute
     public List<Class<? extends Event>> getAllEventClasses() {
@@ -100,13 +114,14 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getClassId}. Intrinsified on HotSpot. */
     @Substitute
     public static long getClassId(Class<?> clazz) {
-        return getClassIdNonIntrinsic(clazz);
+        return SubstrateJVM.get().getClassId(clazz);
     }
 
     /** See {@link JVM#getClassIdNonIntrinsic}. */
     @Substitute
+    @TargetElement(onlyWith = JDK16OrEarlier.class)
     public static long getClassIdNonIntrinsic(Class<?> clazz) {
-        return SubstrateJVM.get().getClassId(clazz);
+        return getClassId(clazz);
     }
 
     /** See {@link JVM#getPid}. */
@@ -271,6 +286,29 @@ public final class Target_jdk_jfr_internal_JVM {
         return 1;
     }
 
+    /** See {@link JVM#getChunkStartNanos}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class)
+    public long getChunkStartNanos() {
+        return SubstrateJVM.get().getChunkStartNanos();
+    }
+
+    /** See {@link JVM#setHandler}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
+        // eventHandler fields should all be set at compile time so this method
+        // should never be reached at runtime
+        throw VMError.shouldNotReachHere("eventHandler does not exist for: " + eventClass);
+    }
+
+    /** See {@link JVM#getHandler}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
+        return SubstrateJVM.getHandler(eventClass);
+    }
+
     /** See {@link JVM#getTypeId}. */
     @Substitute
     public long getTypeId(Class<?> clazz) {
@@ -338,5 +376,41 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     public boolean shouldRotateDisk() {
         return SubstrateJVM.get().shouldRotateDisk();
+    }
+
+    /** See {@link JVM#flush}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public void flush() {
+        // Temporarily do nothing. This is used for JFR streaming.
+    }
+
+    /** See {@link JVM#include}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public void include(Thread thread) {
+        // Temporarily do nothing. This is used for JFR streaming.
+    }
+
+    /** See {@link JVM#exclude}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public void exclude(Thread thread) {
+        // Temporarily do nothing. This is used for JFR streaming.
+    }
+
+    /** See {@link JVM#isExcluded}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public boolean isExcluded(Thread thread) {
+        // Temporarily do nothing. This is used for JFR streaming.
+        return false;
+    }
+
+    /** See {@link JVM#markChunkFinal}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK14OrLater.class) //
+    public void markChunkFinal() {
+        // Temporarily do nothing. This is used for JFR streaming.
     }
 }

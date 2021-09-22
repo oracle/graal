@@ -30,11 +30,12 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
@@ -91,8 +92,8 @@ class JfrLogConfiguration {
     private static void verifySelections(JfrLogSelection[] selections) {
         for (JfrLogSelection selection : selections) {
             if (!selection.matchesATagSet) {
-                throw UserError.abort("No tag set matches tag combination %s for FlightRecorderLogging",
-                                selection.tags.toString().toLowerCase() + (selection.wildcard ? "*" : ""));
+                throw new IllegalArgumentException("No tag set matches tag combination " +
+                                selection.tags.toString().toLowerCase() + (selection.wildcard ? "*" : "") + " for FlightRecorderLogging");
             }
         }
     }
@@ -110,6 +111,29 @@ class JfrLogConfiguration {
         result.put(LogTag.JFR_EVENT, EnumSet.of(JfrLogTag.JFR, JfrLogTag.EVENT));
         result.put(LogTag.JFR_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SETTING));
         result.put(LogTag.JFR_DCMD, EnumSet.of(JfrLogTag.JFR, JfrLogTag.DCMD));
+
+        // JDK16 support
+        if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            try {
+                LogTag jfrSystemStreaming = Enum.valueOf(LogTag.class, "JFR_SYSTEM_STREAMING");
+                LogTag jfrSystemThrottle = Enum.valueOf(LogTag.class, "JFR_SYSTEM_THROTTLE");
+                result.put(jfrSystemStreaming, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.STREAMING));
+                result.put(jfrSystemThrottle, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.THROTTLE));
+            } catch (IllegalArgumentException | NullPointerException e) {
+                throw VMError.shouldNotReachHere("Should be defined", e);
+            }
+        }
+
+        // JDK17 support
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            try {
+                LogTag jfrStart = Enum.valueOf(LogTag.class, "JFR_START");
+                result.put(jfrStart, EnumSet.of(JfrLogTag.JFR, JfrLogTag.START));
+            } catch (IllegalArgumentException | NullPointerException e) {
+                throw VMError.shouldNotReachHere("Should be defined", e);
+            }
+        }
+
         return result;
     }
 
@@ -138,7 +162,7 @@ class JfrLogConfiguration {
                 try {
                     level = JfrLogLevel.valueOf(value.toUpperCase());
                 } catch (IllegalArgumentException | NullPointerException e) {
-                    throw UserError.abort(e, "Invalid log level '%s' for FlightRecorderLogging.", value);
+                    throw new IllegalArgumentException("Invalid log level '" + value + "' for FlightRecorderLogging.", e);
                 }
                 tagsStr = str.substring(0, equalsIndex);
             } else {
@@ -158,7 +182,7 @@ class JfrLogConfiguration {
                 try {
                     tags.add(JfrLogTag.valueOf(s.toUpperCase()));
                 } catch (IllegalArgumentException | NullPointerException e) {
-                    throw UserError.abort(e, "Invalid log tag '%s' for FlightRecorderLogging.", s);
+                    throw new IllegalArgumentException("Invalid log tag '" + s + "' for FlightRecorderLogging.", e);
                 }
             }
             return new JfrLogSelection(tags, level, wildcard);

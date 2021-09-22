@@ -51,6 +51,7 @@ final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
     private final int spaceOffsetAt;
     private final int offsetToPreviousChunkAt;
     private final int offsetToNextChunkAt;
+    private final RememberedSet rememberedSet = RememberedSet.get();
 
     HostedImageHeapChunkWriter(ByteBuffer heapBuffer, long layoutToBufferOffsetAddend) {
         buffer = heapBuffer;
@@ -94,13 +95,13 @@ final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
     @Override
     public void enableRememberedSetForAlignedChunk(int chunkPosition, List<ImageHeapObject> objects) {
         int chunkOffset = getChunkOffsetInBuffer(chunkPosition);
-        RememberedSet.get().enableRememberedSetForAlignedChunk(new HostedByteBufferPointer(buffer, chunkOffset), chunkPosition, objects);
+        rememberedSet.enableRememberedSetForAlignedChunk(new HostedByteBufferPointer(buffer, chunkOffset), chunkPosition, objects);
     }
 
     @Override
     public void enableRememberedSetForUnalignedChunk(int chunkPosition) {
         int chunkOffset = getChunkOffsetInBuffer(chunkPosition);
-        RememberedSet.get().enableRememberedSetForUnalignedChunk(new HostedByteBufferPointer(buffer, chunkOffset));
+        rememberedSet.enableRememberedSetForUnalignedChunk(new HostedByteBufferPointer(buffer, chunkOffset));
     }
 
     static void putObjectReference(ByteBuffer buffer, int offset, long value) {

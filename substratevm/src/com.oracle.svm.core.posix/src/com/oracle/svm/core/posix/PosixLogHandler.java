@@ -79,7 +79,7 @@ public class PosixLogHandler implements LogHandler {
 
     @Override
     public void fatalError() {
-        if (SubstrateDiagnostics.isInProgress()) {
+        if (SubstrateDiagnostics.isFatalErrorHandlingInProgress()) {
             // Delay the shutdown a bit if another thread has something important to report.
             VMThreads.singleton().nativeSleep(3000);
         }

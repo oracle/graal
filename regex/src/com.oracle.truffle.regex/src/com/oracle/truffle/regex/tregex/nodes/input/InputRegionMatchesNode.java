@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class InputRegionMatchesNode extends Node {
@@ -74,38 +73,38 @@ public abstract class InputRegionMatchesNode extends Node {
         return ArrayUtils.regionEqualsWithOrMask(input, fromIndex1, match, fromIndex2, length, mask);
     }
 
-    @Specialization(guards = "mask == null")
-    public boolean doTruffleObjBytes(TruffleObject input, int fromIndex1, byte[] match, int fromIndex2, int length, @SuppressWarnings("unused") Object mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask == null"})
+    public boolean doTruffleObjBytes(Object input, int fromIndex1, byte[] match, int fromIndex2, int length, @SuppressWarnings("unused") Object mask,
                     @Cached InputLengthNode lengthNode,
                     @Cached InputReadNode charAtNode) {
         return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, null, lengthNode, charAtNode);
     }
 
-    @Specialization(guards = "mask != null")
-    public boolean doTruffleObjBytesMask(TruffleObject input, int fromIndex1, byte[] match, int fromIndex2, int length, byte[] mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask != null"})
+    public boolean doTruffleObjBytesMask(Object input, int fromIndex1, byte[] match, int fromIndex2, int length, byte[] mask,
                     @Cached InputLengthNode lengthNode,
                     @Cached InputReadNode charAtNode) {
         assert match.length == mask.length;
         return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, mask, lengthNode, charAtNode);
     }
 
-    @Specialization(guards = "mask == null")
-    public boolean doTruffleObjString(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, @SuppressWarnings("unused") Object mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask == null"})
+    public boolean doTruffleObjString(Object input, int fromIndex1, String match, int fromIndex2, int length, @SuppressWarnings("unused") Object mask,
                     @Cached InputLengthNode lengthNode,
                     @Cached InputReadNode charAtNode) {
         return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, null, lengthNode, charAtNode);
     }
 
-    @Specialization(guards = "mask != null")
-    public boolean doTruffleObjStringMask(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, String mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask != null"})
+    public boolean doTruffleObjStringMask(Object input, int fromIndex1, String match, int fromIndex2, int length, String mask,
                     @Cached InputLengthNode lengthNode,
                     @Cached InputReadNode charAtNode) {
         assert match.length() == mask.length();
         return regionMatchesTruffleObj(input, fromIndex1, match, fromIndex2, length, mask, lengthNode, charAtNode);
     }
 
-    @Specialization(guards = "mask == null")
-    public boolean doTruffleObjTruffleObj(TruffleObject input, int fromIndex1, TruffleObject match, int fromIndex2, int length, @SuppressWarnings("unused") Object mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "neitherByteArrayNorString(match)", "mask == null"})
+    public boolean doTruffleObjTruffleObj(Object input, int fromIndex1, Object match, int fromIndex2, int length, @SuppressWarnings("unused") Object mask,
                     @Cached InputLengthNode lengthNode1,
                     @Cached InputReadNode charAtNode1,
                     @Cached InputLengthNode lengthNode2,
@@ -121,7 +120,7 @@ public abstract class InputRegionMatchesNode extends Node {
         return true;
     }
 
-    private static boolean regionMatchesTruffleObj(TruffleObject input, int fromIndex1, byte[] match, int fromIndex2, int length, byte[] mask,
+    private static boolean regionMatchesTruffleObj(Object input, int fromIndex1, byte[] match, int fromIndex2, int length, byte[] mask,
                     InputLengthNode lengthNode,
                     InputReadNode charAtNode) {
         if (fromIndex1 + length > lengthNode.execute(input) || fromIndex2 + length > match.length) {
@@ -135,7 +134,7 @@ public abstract class InputRegionMatchesNode extends Node {
         return true;
     }
 
-    private static boolean regionMatchesTruffleObj(TruffleObject input, int fromIndex1, String match, int fromIndex2, int length, String mask,
+    private static boolean regionMatchesTruffleObj(Object input, int fromIndex1, String match, int fromIndex2, int length, String mask,
                     InputLengthNode lengthNode,
                     InputReadNode charAtNode) {
         if (fromIndex1 + length > lengthNode.execute(input) || fromIndex2 + length > match.length()) {
@@ -147,5 +146,9 @@ public abstract class InputRegionMatchesNode extends Node {
             }
         }
         return true;
+    }
+
+    protected static boolean neitherByteArrayNorString(Object obj) {
+        return !(obj instanceof byte[]) && !(obj instanceof String);
     }
 }

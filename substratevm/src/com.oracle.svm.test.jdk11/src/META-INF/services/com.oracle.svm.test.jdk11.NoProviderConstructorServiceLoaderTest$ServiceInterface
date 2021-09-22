@@ -1,0 +1,2 @@
+com.oracle.svm.test.jdk11.NoProviderConstructorServiceLoaderTest$ProperService
+com.oracle.svm.test.jdk11.NoProviderConstructorServiceLoaderTest$NoProviderConstructorService

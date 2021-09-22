@@ -265,6 +265,20 @@
       {
         "name" : "checkPermission",
         "parameterTypes" : []
+      },
+      {
+        "name" : "getLogManager",
+        "justification" : "substituted method has hook to install shutdown hook.",
+        "parameterTypes" : []
+      }
+    ]
+  },
+  {
+    "name": "java.lang.Class",
+    "methods": [
+      {
+        "name": "forName",
+        "justification": "Only classes that were present during the image build (on the classpath or predefined classes) can be accessed."
       }
     ]
   }

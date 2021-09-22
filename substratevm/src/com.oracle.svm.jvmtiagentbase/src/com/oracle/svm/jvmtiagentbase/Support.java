@@ -253,10 +253,12 @@ public final class Support {
         return false;
     }
 
-    public static JNIObjectHandle handleException(JNIEnvironment localEnv) {
+    public static JNIObjectHandle handleException(JNIEnvironment localEnv, boolean clear) {
         if (jniFunctions().getExceptionCheck().invoke(localEnv)) {
             JNIObjectHandle exception = jniFunctions().getExceptionOccurred().invoke(localEnv);
-            jniFunctions().getExceptionClear().invoke(localEnv);
+            if (clear) {
+                jniFunctions().getExceptionClear().invoke(localEnv);
+            }
             return exception;
         }
         return nullHandle();

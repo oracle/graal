@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.util.Collection;
@@ -49,15 +48,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Source;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
@@ -77,18 +74,10 @@ final class PolyglotLanguageInstance implements VMObject {
     final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
     private volatile OptionValuesImpl firstOptionValues;
     private volatile boolean multiContextInitialized;
-    private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per language instance.");
+    final Map<Class<?>, ClassLoader> staticObjectClassLoaders = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = new ConcurrentHashMap<>();
 
-    /**
-     * Direct language lookups in the current language.
-     */
-    private final LanguageReference<TruffleLanguage<Object>> directLanguageSupplier;
-
-    /**
-     * Direct context lookups in the current language.
-     */
-    private final ContextReference<Object> directContextSupplier;
-
+    final WeakAssumedValue<PolyglotLanguageContext> singleLanguageContext = new WeakAssumedValue<>("single language context");
     // effectively final
     List<LanguageContextLocal<?>> contextLocals;
     List<LanguageContextThreadLocal<?>> contextThreadLocals;
@@ -108,27 +97,6 @@ final class PolyglotLanguageInstance implements VMObject {
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
-
-        boolean mayBeUsedInInnerContext = language.cache.getPolicy() != ContextPolicy.EXCLUSIVE;
-        boolean currentExclusive = language.getEffectiveContextPolicy(language) == ContextPolicy.EXCLUSIVE;
-
-        Assumption useDirectSingleContext = currentExclusive ? null : singleContext;
-        Assumption useInnerContext = mayBeUsedInInnerContext ? language.engine.noInnerContexts : null;
-
-        if (language.engine.conservativeContextReferences) {
-            this.directContextSupplier = language.getConservativeContextReference();
-        } else {
-            if (useDirectSingleContext == null && useInnerContext == null) {
-                // no checks can use direct reference
-                this.directContextSupplier = PolyglotReferences.createAlwaysSingleContext(language, currentExclusive);
-            } else {
-                this.directContextSupplier = PolyglotReferences.createAssumeSingleContext(language,
-                                useInnerContext,
-                                useDirectSingleContext,
-                                language.getContextReference(), currentExclusive);
-            }
-        }
-        this.directLanguageSupplier = PolyglotReferences.createAlwaysSingleLanguage(language, this);
         PolyglotValueDispatch.createDefaultValues(getImpl(), this, this.valueCache);
     }
 
@@ -170,8 +138,8 @@ final class PolyglotLanguageInstance implements VMObject {
         if (!language.engine.singleContext.isValid() && language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
             if (!multiContextInitialized) {
                 multiContextInitialized = true;
-                language.engine.initializeMultiContext(null);
-                this.singleContext.invalidate();
+                language.engine.initializeMultiContext();
+                this.singleLanguageContext.invalidate();
                 LANGUAGE.initializeMultiContext(spi);
             }
         }
@@ -179,57 +147,6 @@ final class PolyglotLanguageInstance implements VMObject {
 
     PolyglotSourceCache getSourceCache() {
         return sourceCache;
-    }
-
-    /**
-     * Direct context references can safely be shared within one AST of a language.
-     */
-    ContextReference<Object> getDirectContextSupplier() {
-        return directContextSupplier;
-    }
-
-    /**
-     * Looks up the context reference to use for a foreign language AST.
-     */
-    ContextReference<Object> lookupContextSupplier(PolyglotLanguage sourceLanguage) {
-        assert language != sourceLanguage;
-        ContextReference<Object> ref;
-        switch (language.getEffectiveContextPolicy(sourceLanguage)) {
-            case EXCLUSIVE:
-                ref = PolyglotReferences.createAssumeSingleContext(language, language.engine.noInnerContexts, null,
-                                language.getContextReference(), true);
-                break;
-            case REUSE:
-            case SHARED:
-                ref = this.language.getContextReference();
-                break;
-            default:
-                throw shouldNotReachHere();
-        }
-        return ref;
-    }
-
-    /**
-     * Direct language references can safely be shared within one AST of a language.
-     */
-    LanguageReference<TruffleLanguage<Object>> getDirectLanguageReference() {
-        return directLanguageSupplier;
-    }
-
-    /**
-     * Looks up the language reference to use for a foreign language AST.
-     */
-    LanguageReference<TruffleLanguage<Object>> lookupLanguageSupplier(PolyglotLanguage sourceLanguage) {
-        assert language != sourceLanguage;
-        switch (language.getEffectiveContextPolicy(sourceLanguage)) {
-            case EXCLUSIVE:
-                return PolyglotReferences.createAssumeSingleLanguage(language, this, language.singleInstance, language.getLanguageReference());
-            case REUSE:
-            case SHARED:
-                return this.language.getLanguageReference();
-            default:
-                throw shouldNotReachHere();
-        }
     }
 
     void listCachedSources(Collection<Source> sources) {

@@ -189,7 +189,8 @@ public class VMThreadMTFeature implements GraalFeature {
         if (isVolatile) {
             b.add(new MembarNode(MemoryBarriers.JMM_PRE_VOLATILE_READ));
         }
-        b.addPush(targetMethod.getSignature().getReturnKind(), new LoadVMThreadLocalNode(b.getMetaAccess(), threadLocalInfo, threadNode, BarrierType.NONE));
+        boolean allowFloatingReads = !isVolatile && threadLocalInfo.allowFloatingReads;
+        b.addPush(targetMethod.getSignature().getReturnKind(), new LoadVMThreadLocalNode(b.getMetaAccess(), threadLocalInfo, threadNode, BarrierType.NONE, allowFloatingReads));
         if (isVolatile) {
             b.add(new MembarNode(MemoryBarriers.JMM_POST_VOLATILE_READ));
         }

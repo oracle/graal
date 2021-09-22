@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,11 @@
  */
 package com.oracle.graal.pointsto.api;
 
+import java.lang.reflect.AnnotatedElement;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -36,8 +38,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -106,11 +107,7 @@ public interface HostVM {
 
     void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
 
-    void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
-
-    default AnalysisParsedGraph parseBytecode(BigBang bb, AnalysisMethod analysisMethod) {
-        return AnalysisParsedGraph.parseBytecode(bb, analysisMethod);
-    }
+    void methodBeforeTypeFlowCreationHook(PointsToAnalysis bb, AnalysisMethod method, StructuredGraph graph);
 
     default boolean hasNeverInlineDirective(@SuppressWarnings("unused") ResolvedJavaMethod method) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */
@@ -125,5 +122,10 @@ public interface HostVM {
     @SuppressWarnings("unused")
     default boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
         return false;
+    }
+
+    @SuppressWarnings("unused")
+    default boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
+        return true;
     }
 }

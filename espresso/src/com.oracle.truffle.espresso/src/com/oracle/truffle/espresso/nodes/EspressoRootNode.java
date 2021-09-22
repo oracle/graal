@@ -203,7 +203,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         getMonitorStack(frame).enter(monitor);
     }
 
-    private MonitorStack getMonitorStack(Frame frame) {
+    protected MonitorStack getMonitorStack(Frame frame) {
         Object frameResult = FrameUtil.getObjectSafe(frame, monitorSlot);
         assert frameResult instanceof MonitorStack;
         return (MonitorStack) frameResult;
@@ -349,5 +349,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                 return result;
             }
         }
+    }
+
+    @Override
+    protected final boolean isTrivial() {
+        return !methodNode.getMethod().isSynchronized() && methodNode.isTrivial();
     }
 }

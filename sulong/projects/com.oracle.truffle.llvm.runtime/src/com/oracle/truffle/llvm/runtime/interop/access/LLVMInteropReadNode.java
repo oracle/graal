@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -116,6 +116,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         abstract Object execute(Object identifier, AccessLocation location, ForeignToLLVMType accessType);
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         Object readMember(String name, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
@@ -134,6 +135,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
 
         @Specialization(guards = "isLocationTypeNullOrSameSize(location, accessType)", limit = "3")
+        @GenerateAOT.Exclude
         Object readArrayElementTypeMatch(long identifier, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
@@ -153,6 +155,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
 
         @Specialization(guards = {"!isLocationTypeNullOrSameSize(location, accessType)", "locationType.isI8()", "accessTypeSizeInBytes > 1"}, limit = "3")
+        @GenerateAOT.Exclude
         Object readArrayElementFromI8(long identifier, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
@@ -238,7 +241,6 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
 
         @Fallback
         Object fallback(@SuppressWarnings("unused") long value, ForeignToLLVMType accessType) {
-            CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, "Unexpected access type %s", accessType);
         }
 

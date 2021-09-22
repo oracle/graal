@@ -505,7 +505,7 @@ final class DITypeExtractor implements MetadataVisitor {
             SymbolImpl symbol = MDValue.getIfInstance(mdSubprogram.getFunction());
             if (symbol != null && symbol instanceof FunctionDefinition) {
                 FunctionDefinition function = (FunctionDefinition) symbol;
-                final DataLayout dataLayout = LLVMLanguage.getLanguage().getDefaultDataLayout();
+                final DataLayout dataLayout = LLVMLanguage.get(null).getDefaultDataLayout();
                 LLVMSourceType llvmSourceReturnType = LLVMSourceTypeFactory.resolveType(function.getType().getReturnType(), dataLayout);
                 List<LLVMSourceType> typeList = new ArrayList<>();
                 typeList.add(llvmSourceReturnType);

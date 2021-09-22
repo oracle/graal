@@ -52,4 +52,28 @@ public interface VersionFilter {
             return version.java8OrEarlier();
         }
     }
+
+    final class Java11OrEarlier implements VersionFilter {
+        public static final Java11OrEarlier INSTANCE = new Java11OrEarlier();
+
+        private Java11OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java11OrEarlier();
+        }
+    }
+
+    final class Java13OrEarlier implements VersionFilter {
+        public static final Java13OrEarlier INSTANCE = new Java13OrEarlier();
+
+        private Java13OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java13OrEarlier();
+        }
+    }
 }

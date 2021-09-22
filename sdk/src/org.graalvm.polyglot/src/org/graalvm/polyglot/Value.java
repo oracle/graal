@@ -146,6 +146,17 @@ import org.graalvm.polyglot.proxy.Proxy;
  * program whether a particular number represents metres, miles, or mass. Naive objects are easy to
  * understand and to work with, at the cost of ignoring some aspects of reality.
  *
+ * <h3>Scoped Values</h3>
+ *
+ * In the case of a guest-to-host callback, a value may be passed as a parameter. These values may
+ * represent objects that are only valid during the invocation of the callback function, i.e. they
+ * are scoped, with the scope being the callback function. If enabled via the corresponding settings
+ * in {@link HostAccess}, such values are released when the function returns, with all future
+ * invocations of value operations throwing an exception.
+ *
+ * If an embedder wishes to extend the scope of the value beyond the callback's return, the value
+ * can be {@linkplain Value#pin() pinned}, such that it is not released automatically.
+ *
  * @see Context
  * @see Engine
  * @see PolyglotException
@@ -2044,6 +2055,21 @@ public final class Value extends AbstractValue {
         return Engine.getImpl().asValue(o);
     }
 
+    /**
+     * Pins a scoped value such that it can be used beyond the scope of a scoped host method call.
+     * Pinning is an idempotent operation, i.e. pinning an already pinned value just results in a
+     * pinned value again.
+     *
+     * Trying to pin a value that is not scoped will not cause an effect. Trying to pin a scoped
+     * value that has already been released will raise a {@link IllegalStateException}.
+     *
+     * @throws IllegalStateException if the method scope of the value was finished
+     * @see HostAccess#SCOPED
+     * @since 21.3
+     */
+    public void pin() {
+        dispatch.pin(this.context, receiver);
+    }
 }
 
 abstract class AbstractValue {

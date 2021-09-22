@@ -31,7 +31,7 @@ import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
@@ -53,7 +53,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder {
 
-    public StaticAnalysisResultsBuilder(BigBang bb, Universe converter) {
+    public StaticAnalysisResultsBuilder(PointsToAnalysis bb, Universe converter) {
         super(bb, converter);
     }
 

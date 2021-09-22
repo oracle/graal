@@ -418,17 +418,19 @@ class JMHNativeImageBenchmarkMixin(mx_sdk_benchmark.NativeImageBenchmarkMixin):
         # JMH does HotSpot-specific field offset checks in class initializers
         return ['--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal'] + super(JMHNativeImageBenchmarkMixin, self).extra_image_build_argument(benchmark, args)
 
-    def extra_run_arg(self, benchmark, args):
+    def extra_run_arg(self, benchmark, args, image_run_args):
         # JMH does not support forks with native-image. In the distant future we can capture this case.
-        return ['-f0'] + super(JMHNativeImageBenchmarkMixin, self).extra_run_arg(benchmark, args)
+        return ['-f0'] + super(JMHNativeImageBenchmarkMixin, self).extra_run_arg(benchmark, args, image_run_args)
 
-    def extra_agent_run_arg(self, benchmark, args):
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
         # Don't waste time and energy collecting reflection config.
-        return ['-f0', '-wi', '1', '-i1'] + super(JMHNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args)
+        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        return ['-f0', '-wi', '1', '-i1'] + mx_sdk_benchmark.strip_args_with_number(['-wi', '-i'], user_args)
 
-    def extra_profile_run_arg(self, benchmark, args):
+    def extra_profile_run_arg(self, benchmark, args, image_run_args):
         # Don't waste time profiling the same code but still wait for compilation on HotSpot.
-        return ['-f0', '-wi', '1', '-i5'] + super(JMHNativeImageBenchmarkMixin, self).extra_profile_run_arg(benchmark, args)
+        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        return ['-f0', '-wi', '1', '-i5'] + mx_sdk_benchmark.strip_args_with_number(['-wi', '-i'], user_args)
 
     def benchmarkName(self):
         return self.name()

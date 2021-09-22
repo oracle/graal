@@ -52,7 +52,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.ref.WeakReference;
 import java.net.URI;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
@@ -245,7 +244,6 @@ public abstract class TruffleLanguage<C> {
 
     // get and isFinal are frequent operations -> cache the engine access call
     @CompilationFinal LanguageInfo languageInfo;
-    @CompilationFinal ContextReference<Object> reference;
     @CompilationFinal Object polyglotLanguageInstance;
 
     List<ContextThreadLocal<?>> contextThreadLocals;
@@ -308,14 +306,6 @@ public abstract class TruffleLanguage<C> {
          * @since 0.8 or earlier
          */
         String version() default "inherit";
-
-        /**
-         * @since 0.8 or earlier
-         * @deprecated split up MIME types into {@link #characterMimeTypes() character} and
-         *             {@link #byteMimeTypes() byte} based MIME types.
-         */
-        @Deprecated
-        String[] mimeType() default {};
 
         /**
          * Returns the default MIME type of this language. The default MIME type allows embedders
@@ -553,9 +543,9 @@ public abstract class TruffleLanguage<C> {
      * here-in provided <code>env</code> and adjust itself according to parameters provided by the
      * <code>env</code> object.
      * <p>
-     * The context created by this method is accessible using {@link #getCurrentContext(Class)}. An
-     * {@link IllegalStateException} is thrown if the context is tried to be accessed while the
-     * createContext method is executed.
+     * The context created by this method is accessible using {@link ContextReference context
+     * references}. An {@link IllegalStateException} is thrown if the context is tried to be
+     * accessed while the createContext method is executed.
      * <p>
      * This method shouldn't perform any complex operations. The runtime system is just being
      * initialized and for example making
@@ -1488,28 +1478,6 @@ public abstract class TruffleLanguage<C> {
         return null;
     }
 
-    /**
-     * @deprecated in 19.3 as this method is inefficient in many situations. The most efficient
-     *             context lookup can be achieved knowing the current AST in which it is used. As
-     *             this method does not know the current {@link Node node} it must be unnecessarily
-     *             conservative about the lookup and therefore inefficient. More efficient context
-     *             reference versions are available for fast-paths by calling
-     *             {@link Node#lookupContextReference(Class)} or for slow-paths
-     *             {@link TruffleLanguage#getCurrentContext(Class)}. Truffle DSL has support for
-     *             context lookup with {@link com.oracle.truffle.api.dsl.CachedContext
-     *             CachedContext} that uses the most efficient lookup automatically.
-     *
-     * @since 0.25
-     */
-    @SuppressWarnings("unchecked")
-    @Deprecated
-    public final ContextReference<C> getContextReference() {
-        if (reference == null) {
-            throw new IllegalStateException("TruffleLanguage instance is not initialized. Cannot get the current context reference.");
-        }
-        return (ContextReference<C>) reference;
-    }
-
     CallTarget parse(Source source, String... argumentNames) {
         ParsingRequest request = new ParsingRequest(source, argumentNames);
         CallTarget target;
@@ -1542,18 +1510,11 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language instance for the current {@link Thread thread}. If a {@link Node
-     * node} is accessible then {@link Node#lookupLanguageReference(Class)} should be used instead.
-     * Throws an {@link IllegalStateException} if the language is not yet initialized or not
-     * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
-     * a compilation final value.
-     *
-     * @param <T> the language type
-     * @param languageClass the exact language class needs to be provided for the lookup.
-     * @see Node#lookupLanguageReference(Class)
-     * @see com.oracle.truffle.api.dsl.CachedLanguage
      * @since 0.27
+     * @deprecated in 21.3, use static final context references instead. See
+     *             {@link ContextReference} for the new intended usage.
      */
+    @Deprecated
     protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
         try {
             return LanguageAccessor.engineAccess().getCurrentLanguage(languageClass);
@@ -1564,19 +1525,11 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the current language context entered on the current thread. If a {@link Node node} is
-     * accessible then {@link Node#lookupContextReference(Class)} should be used instead. An
-     * {@link IllegalStateException} is thrown if the language is not yet initialized or not
-     * executing on this thread. If invoked on the fast-path then <code>languageClass</code> must be
-     * a compilation final value.
-     *
-     * @param <C> the context type
-     * @param <T> the language type
-     * @param languageClass the exact language class needs to be provided for the lookup.
-     * @see Node#lookupContextReference(Class)
-     * @see com.oracle.truffle.api.dsl.CachedContext
      * @since 0.27
+     * @deprecated in 21.3, use static final context references instead. See
+     *             {@link LanguageReference} for the new intended usage.
      */
+    @Deprecated
     protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
         try {
             return ENGINE.getCurrentContext(languageClass);
@@ -1657,14 +1610,14 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Creates a new context thread local reference for this Truffle language. Context thread locals
-     * for languages allow to store additional top-level values for each context and thread. The
+     * for languages allow storing additional top-level values for each context and thread. The
      * factory may be invoked on any thread other than the thread of the context thread local value.
      * <p>
      * Context thread local references must be created during the invocation in the
      * {@link TruffleLanguage} constructor. Calling this method at a later point in time will throw
      * an {@link IllegalStateException}. For each registered {@link TruffleLanguage} subclass it is
      * required to always produce the same number of context thread local references. The values
-     * produces by the factory must not be <code>null</code> and use a stable exact value type for
+     * produced by the factory must not be <code>null</code> and use a stable exact value type for
      * each instance of a registered language class. If the return value of the factory is not
      * stable or <code>null</code> then an {@link IllegalStateException} is thrown. These
      * restrictions allow the Truffle runtime to read the value more efficiently.
@@ -2203,7 +2156,7 @@ public abstract class TruffleLanguage<C> {
          */
         public Object asGuestValue(Object hostObject) {
             try {
-                return LanguageAccessor.engineAccess().toGuestValue(hostObject, polyglotLanguageContext);
+                return LanguageAccessor.engineAccess().toGuestValue(null, hostObject, polyglotLanguageContext);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2845,7 +2798,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return new TruffleFile(fs, fs.fileSystem.parsePath(uri));
             } catch (UnsupportedOperationException e) {
-                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+                throw e;
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
@@ -2904,7 +2857,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return new TruffleFile(fs, fs.fileSystem.parsePath(uri));
             } catch (UnsupportedOperationException e) {
-                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+                throw e;
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
@@ -3500,7 +3453,19 @@ public abstract class TruffleLanguage<C> {
          *     }
          * });
          * </pre>
-         *
+         * <p>
+         * By default thread-local actions are executed once per configured thread and do not repeat
+         * themselves. If a ThreadLocalAction is configured to be
+         * {@link ThreadLocalAction#ThreadLocalAction(boolean, boolean, boolean) recurring} then the
+         * action will automatically be rescheduled in the same configuration until it is
+         * {@link Future#cancel(boolean) cancelled}. For recurring actions, an invocation of
+         * {@link Future#get()} will only wait for the first action to to be performed.
+         * {@link Future#isDone()} will return <code>true</code> only if the action was canceled.
+         * Canceling a recurring action will result in the current event being canceled and no
+         * further events being submitted. Using recurring events should be preferred over
+         * submitting the event again for the current thread while performing the thread-local
+         * action as recurring events are also resubmitted in case all threads leave and later
+         * reenter.
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
@@ -3516,6 +3481,7 @@ public abstract class TruffleLanguage<C> {
          * @see TruffleSafepoint
          * @since 21.1
          */
+        // Note keep the javadoc in sync with TruffleInstrument.Env.submitThreadLocal
         public Future<Void> submitThreadLocal(Thread[] threads, ThreadLocalAction action) {
             return submitThreadLocalInternal(threads, action, true);
         }
@@ -3709,14 +3675,17 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Represents a reference to the language to be stored in an AST. A reference can be accessed
-     * using {@link Node#lookupLanguageReference(Class)} and the current language can be accessed
-     * using the {@link LanguageReference#get()} method of the returned reference.
+     * Represents a reference to the current language instance. The current language is a thread
+     * local value that potentially changes when polyglot context is entered or left. Language
+     * references are created using {@link #create(Class)} and are intended to be stored in static
+     * final fields and accessed at runtime using {@link LanguageReference#get(Node)} with the
+     * current {@link Node}, if available, as parameter.
      * <p>
-     * The current language might vary between {@link RootNode#execute(VirtualFrame) executions} if
-     * the reference is used with interoperability APIs in the AST of a foreign language.
+     * Example intended usage:
      *
-     * @since 19.0
+     * See {@link ContextReference} for a full usage example.
+     *
+     * @since 0.25 revised in 21.3
      */
     @SuppressWarnings("rawtypes")
     public abstract static class LanguageReference<L extends TruffleLanguage> {
@@ -3730,29 +3699,119 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns the current language of the current execution context. If a context is accessed
-         * during {@link TruffleLanguage#createContext(Env) context creation} or in the language
-         * class constructor an {@link IllegalStateException} is thrown. This methods is designed to
-         * be called safely from compiled code paths.
-         * <p>
-         * The current language might vary between {@link RootNode#execute(VirtualFrame) executions}
-         * if the reference is used with interoperability APIs in the AST of a foreign language.
-         *
          * @since 19.0
+         * @deprecated in 21.3, use {@link #get(Node)} instead.
          */
+        @Deprecated
         public abstract L get();
+
+        /**
+         * Returns the current language instance associated with the current thread. An enclosing
+         * node should be provided as parameter if available, otherwise <code>null</code> may be
+         * provided. This method is designed to be called safely from compiled code paths. In order
+         * to maximize efficiency in compiled code paths, a partial evaluation constant and adopted
+         * node should be passed as parameter. If this is the case then the return context will get
+         * constant folded in compiled code paths if there is a only single context instance for the
+         * enclosing engine or lookup location/node.
+         * <p>
+         * The current language will not change for {@link RootNode#execute(VirtualFrame)
+         * executions} of {@link RootNode roots} of the current language. For roots of other
+         * languages, e.g. if invoked through the interoperability protocol, the language might
+         * change between consecutive executions. It is recommended to *not* cache values of the
+         * language in the AST to reduce footprint. Getting it through a language reference will
+         * either constant fold or be very efficient in compiled code paths.
+         * <p>
+         * If a context is accessed during {@link TruffleLanguage#createContext(Env) context
+         * creation}, on an unknown Thread, or in the language class constructor an
+         * {@link IllegalStateException} is thrown.
+         *
+         * @see ContextReference for a full usage example
+         * @since 21.3
+         */
+        public abstract L get(Node node);
+
+        /**
+         * Creates a new instance of a langauge reference for an registered language. Throws
+         * {@link IllegalArgumentException} if the provided language class is not
+         * {@link Registration registered}. Guaranteed to always return the same context reference
+         * for a given language class.
+         * <p>
+         * See {@link LanguageReference} for a usage example.
+         *
+         * @since 21.3
+         */
+        public static <T extends TruffleLanguage<?>> LanguageReference<T> create(Class<T> languageClass) {
+            Objects.requireNonNull(languageClass);
+            return LanguageAccessor.ENGINE.createLanguageReference(null, languageClass);
+        }
 
     }
 
     /**
-     * Represents a reference to the current context to be stored in an AST. A reference can be
-     * accessed using {@link Node#lookupContextReference(Class)} and the current context can be
-     * accessed using the {@link ContextReference#get()} method of the returned reference.
+     * Represents a reference to the current context. The current context is a thread local value
+     * that changes when polyglot context is entered or left. Context references are created using
+     * {@link #create(Class)} and are intended to be stored in static final fields and accessed at
+     * runtime using {@link ContextReference#get(Node)} with the current {@link Node}, if available,
+     * as parameter.
      * <p>
-     * The current context might vary between {@link RootNode#execute(VirtualFrame) executions} if
-     * resources or code is shared between multiple contexts.
+     * Example intended usage:
      *
-     * @since 0.25
+     * <pre>
+     * public final class MyContext  {
+     *
+     *     private static final ContextReference&lt;MyContext&gt; REFERENCE =
+     *                    ContextReference.create(MyLanguage.class);
+     *
+     *     public static MyContext get(Node node) {
+     *          return REFERENCE.get(node);
+     *     }
+     * }
+     *
+     * &#64;Registration(...)
+     * public final class MyLanguage extends TruffleLanguage<MyContext> {
+     *
+     *    // ...
+     *
+     *    private static final LanguageReference&lt;MyLanguage&gt; REFERENCE =
+     *                   LanguageReference.create(MyLanguage.class);
+     *
+     *    public static MyLanguage get(Node node) {
+     *         return REFERENCE.get(node);
+     *    }
+     * }
+     *
+     * public final class MyLanguageNode extends Node {
+     *
+     *     // ...
+     *     public Object execute(VirtualFrame frame) {
+     *         MyContext currentContext = getContext();
+     *         MyLanguage currentLanguage = getLanguage();
+     *
+     *         // use context or language on the fast-path
+     *
+     *         // references can also be used behind the boundary
+     *         exampleBoundary();
+     *     }
+     *
+     *     &#64;TruffleBoundary
+     *     public void exampleBoundary() {
+     *        MyLanguage currentLanguage = MyLanguage.get(null);
+     *        MyContext currentContext = MyContext.get(null);
+     *
+     *        // use context or language on the slow-path
+     *     }
+     *
+     *     public final MyLanguage getLanguage() {
+     *         return MyLanguage.get(this);
+     *     }
+     *
+     *     public final MyContext getContext() {
+     *         return MyContext.get(this);
+     *     }
+     * }
+     * </pre>
+     *
+     * @since 0.25 revised in 21.3
      */
     public abstract static class ContextReference<C> {
 
@@ -3765,18 +3824,51 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns the current language context of the current execution context. If a context is
-         * accessed during {@link TruffleLanguage#createContext(Env) context creation} or in the
-         * language class constructor an {@link IllegalStateException} is thrown. This methods is
-         * designed to be called safely from compiled code paths.
-         * <p>
-         * The current context might vary between {@link RootNode#execute(VirtualFrame) executions}
-         * if resources or code is shared between multiple contexts.
-         *
          * @since 0.25
+         * @deprecated in 21.3, use {@link #get(Node)} instead.
          */
         @SuppressWarnings("unchecked")
+        @Deprecated
         public abstract C get();
+
+        /**
+         * Returns the current language context associated with the current thread. An enclosing
+         * node should be provided as parameter if available, otherwise <code>null</code> may be
+         * provided. This method is designed to be called safely from compiled code paths. In order
+         * to maximize efficiency in compiled code paths, a partial evaluation constant and adopted
+         * node should be passed as parameter. If this is the case then the return context will get
+         * constant folded in compiled code paths if there is a only single language instance for
+         * the enclosing engine or lookup location/node.
+         * <p>
+         * The current context might vary between {@link RootNode#execute(VirtualFrame) executions}
+         * if resources or code is {@link ContextPolicy#SHARED shared} between multiple contexts or
+         * when used as part of an InteropLibrary export. It is recommended to *not* cache values of
+         * the context in the AST to reduce footprint. Getting it through a context reference will
+         * either constant fold or be very efficient in compiled code paths.
+         * <p>
+         * If a context is accessed during {@link TruffleLanguage#createContext(Env) context
+         * creation}, on an unknown Thread, or in the language class constructor an
+         * {@link IllegalStateException} is thrown.
+         *
+         * @see ContextReference for a full usage example
+         * @since 21.3
+         */
+        public abstract C get(Node node);
+
+        /**
+         * Creates a new instance of a context reference for an registered language. Throws
+         * {@link IllegalArgumentException} if the provided language class is not
+         * {@link Registration registered}. Guaranteed to always return the same context reference
+         * for a given language class.
+         * <p>
+         * See {@link ContextReference} for a usage example.
+         *
+         * @since 21.3
+         */
+        public static <T extends TruffleLanguage<C>, C> ContextReference<C> create(Class<T> languageClass) {
+            Objects.requireNonNull(languageClass);
+            return LanguageAccessor.ENGINE.createContextReference(null, languageClass);
+        }
     }
 
     /**
@@ -4109,7 +4201,6 @@ class TruffleLanguageSnippets {
         }
     }
     // END: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
-
 
 
 }

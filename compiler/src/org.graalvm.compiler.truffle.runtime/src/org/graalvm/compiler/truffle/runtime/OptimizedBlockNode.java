@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -313,15 +313,21 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 if (newBlockSize <= maxBlockSize) {
                     currentBlockSize = newBlockSize;
                 } else {
-                    if (blockRanges == null) {
-                        blockRanges = new int[8];
-                        blockSizes = new int[8];
-                    } else if (currentBlockIndex >= blockRanges.length) {
-                        blockRanges = Arrays.copyOf(blockRanges, blockRanges.length * 2);
-                        blockSizes = Arrays.copyOf(blockSizes, blockSizes.length * 2);
+                    /*
+                     * If the first child already exceeds the limit, there are no previous elements
+                     * to create a partial block from.
+                     */
+                    if (i > 0) {
+                        if (blockRanges == null) {
+                            blockRanges = new int[8];
+                            blockSizes = new int[8];
+                        } else if (currentBlockIndex >= blockRanges.length) {
+                            blockRanges = Arrays.copyOf(blockRanges, blockRanges.length * 2);
+                            blockSizes = Arrays.copyOf(blockSizes, blockSizes.length * 2);
+                        }
+                        blockSizes[currentBlockIndex] = currentBlockSize;
+                        blockRanges[currentBlockIndex++] = i;
                     }
-                    blockSizes[currentBlockIndex] = currentBlockSize;
-                    blockRanges[currentBlockIndex++] = i;
                     currentBlockSize = childCount;
                 }
             }
@@ -521,7 +527,11 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 SourceSection startSection = elements[startIndex].getSourceSection();
                 SourceSection endSection = elements[endIndex - 1].getSourceSection();
                 if (startSection != null && endSection != null && startSection.getSource().equals(endSection.getSource())) {
-                    section = startSection.getSource().createSection(startSection.getStartLine(), startSection.getStartColumn(), endSection.getEndLine(), endSection.getEndColumn());
+                    if (startSection.getCharIndex() <= endSection.getCharEndIndex()) {
+                        section = startSection.getSource().createSection(startSection.getStartLine(), startSection.getStartColumn(), endSection.getEndLine(), endSection.getEndColumn());
+                    } else {
+                        section = startSection;
+                    }
                 } else if (startSection != null) {
                     section = startSection;
                 } else {

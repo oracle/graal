@@ -122,16 +122,31 @@ final class AssertUtils {
                         formatValue(receiver), formatValue(arg));
     }
 
-    static boolean validReturn(Object receiver, Object arg) {
-        assert isInteropValue(arg) : violationReturn(receiver, arg);
+    static boolean validInteropReturn(Object receiver, Object arg) {
+        assert InteropLibrary.isValidValue(arg) : violationReturn(receiver, arg);
         return true;
     }
 
-    static boolean validArgument(Object receiver, Object arg) {
+    static boolean validProtocolReturn(Object receiver, Object arg) {
+        assert InteropLibrary.isValidProtocolValue(arg) : violationReturn(receiver, arg);
+        return true;
+    }
+
+    static boolean validInteropArgument(Object receiver, Object arg) {
         if (arg == null) {
             throw new NullPointerException(violationArgument(receiver, arg));
         }
-        if (!isInteropValue(arg)) {
+        if (!InteropLibrary.isValidValue(arg)) {
+            throw new ClassCastException(violationArgument(receiver, arg));
+        }
+        return true;
+    }
+
+    static boolean validProtocolArgument(Object receiver, Object arg) {
+        if (arg == null) {
+            throw new NullPointerException(violationArgument(receiver, arg));
+        }
+        if (!InteropLibrary.isValidProtocolValue(arg)) {
             throw new ClassCastException(violationArgument(receiver, arg));
         }
         return true;
@@ -161,16 +176,10 @@ final class AssertUtils {
                         formatValue(receiver), formatValue(arg));
     }
 
-    @SuppressWarnings("deprecation")
-    static boolean isInteropValue(Object o) {
-        return o instanceof com.oracle.truffle.api.TruffleException || o instanceof TruffleObject || o instanceof Boolean || o instanceof Byte || o instanceof Short || o instanceof Integer ||
-                        o instanceof Long || o instanceof Float || o instanceof Double || o instanceof Character || o instanceof String;
-    }
-
     static boolean validArguments(Object receiver, Object[] args) {
         assert args != null : violationPre(receiver);
         for (Object arg : args) {
-            assert validArgument(receiver, arg);
+            assert validInteropArgument(receiver, arg);
         }
         return true;
     }

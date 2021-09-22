@@ -41,6 +41,7 @@
 package org.graalvm.wasm.benchmark;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
@@ -75,7 +76,7 @@ public abstract class WasmCompilationBenchmarkSuiteBase {
 
         @Setup(Level.Invocation)
         public void setupInvocation() {
-            final Context.Builder contextBuilder = Context.newBuilder("wasm");
+            final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
             contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,wasi_snapshot_preview1");
             context = contextBuilder.build();
         }

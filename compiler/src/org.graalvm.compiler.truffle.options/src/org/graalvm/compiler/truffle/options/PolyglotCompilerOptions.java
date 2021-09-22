@@ -261,10 +261,6 @@ public final class PolyglotCompilerOptions {
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> SingleTierCompilationThreshold = new OptionKey<>(1000);
 
-    @Option(help = "Deprecated: use FirstTierCompilationThreshold and LastTierCompilationThreshold, or SingleTierCompilationThreshold if multi-tier compilation is disabled.",
-            category = OptionCategory.EXPERT, deprecated = true)
-    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);
-
     @Option(help = "Minimum number of calls before a call target is compiled", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(3);
 
@@ -348,20 +344,23 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print information for splitting decisions.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
 
-    @Option(help = "Print stack trace on assumption invalidation", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraceAssumptions = new OptionKey<>(false);
-
-    @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
-
     @Option(help = "Print Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompilationStatistics = new OptionKey<>(false);
 
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompilationStatisticDetails = new OptionKey<>(false);
 
+    @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
+
     @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
+
+    @Option(help = "Print stack trace on assumption invalidation", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceAssumptions = new OptionKey<>(false);
+
+    @Option(help = "Print stack trace when deoptimizing a frame from the stack with FrameInstance#getFrame(READ_WRITE|MATERIALIZE).", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceDeoptimizeFrame = new OptionKey<>(false);
 
     private static final String EXPANSION_VALUES = "Accepted values are:%n" +
                     "    true - Collect data for the default tier 'truffleTier'.%n" +
@@ -389,14 +388,14 @@ public final class PolyglotCompilerOptions {
 
     // Inlining
 
+    @Option(help = "Restrict inlined methods to ','-separated list of includes (or excludes prefixed with '~').", category = OptionCategory.INTERNAL)
+    public static final OptionKey<String> InlineOnly = new OptionKey<>(null, OptionType.defaultType(String.class));
+
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
-
-    @Option(help = "Perform a set of optimizations on each explored call target during inlining.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> InliningTruffleTierOnExpand = new OptionKey<>(true);
 
     // Splitting
 
@@ -431,7 +430,8 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> OSR = new OptionKey<>(true);
 
     @Option(help = "Number of loop iterations until on-stack-replacement compilation is triggered.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(100000);
+    // Note: default value is a multiple of the bytecode OSR polling interval.
+    public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(100352);
 
     @Option(help = "Enable partial compilation for BlockNode.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> PartialBlockCompilation = new OptionKey<>(true);
@@ -514,7 +514,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraversingQueueWeightingBothTiers = new OptionKey<>(true);
 
     @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
+    public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(false);
+
+    @Option(help = "Controls how much of a priority should be given to first tier compilations.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Double > TraversingQueueFirstTierBonus = new OptionKey<>(15.0);
 
     @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);

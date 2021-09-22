@@ -269,6 +269,9 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<CoreProviders> {
             if (loopEx.detectCounted()) {
                 return ifNode == loopEx.counted().getLimitTest();
             }
+            if (loopEx.canBecomeLimitTestAfterFloatingReads(ifNode)) {
+                return true;
+            }
         }
         return false;
     }

@@ -249,6 +249,33 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     }
 
     /**
+     * Reverse the byte-order (endianess) of each element.
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void revVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        switch (eSize) {
+            case Byte:
+                // nothing to do - only 1 byte
+                break;
+            case HalfWord:
+                masm.neon.rev16VV(size, dst, src);
+                break;
+            case Word:
+                masm.neon.rev32VV(size, ElementSize.Byte, dst, src);
+                break;
+            case DoubleWord:
+                masm.neon.rev64VV(size, ElementSize.Byte, dst, src);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+    }
+
+    /**
      * C7.2.207 Bitwise not.<br>
      * <p>
      * Preferred alias for bitwise not (NOT).

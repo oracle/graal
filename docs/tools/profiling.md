@@ -82,25 +82,37 @@ algorithm.
 3. Run `js primes.js --cpusampler` to enable CPU sampling. CPU Sampler should print output for the example application as follows:
     ```shell
     js primes.js --cpusampler
-    Computed 5000 prime numbers. The last 5 are 48563,48571,48589,48593,48611.
-    ---------------------------------------------------------------------------------------------------
-    Sampling Histogram. Recorded 1184 samples with period 1ms
-      Self Time: Time spent on the top of the stack.
-      Total Time: Time the location spent on the stack.
-      Opt %: Percent of time spent in compiled and therfore non-interpreted code.
-    ---------------------------------------------------------------------------------------------------
-     Name        |      Total Time     |  Opt % ||       Self Time     |  Opt % | Location
-    ---------------------------------------------------------------------------------------------------
-     next        |       1216ms  98.5% |  87.9% ||       1063ms  85.9% |  99.0% | primes.js~31-37:564-770
-     accept      |        159ms  11.2% |  22.7% ||        155ms  12.5% |  14.8% | primes.js~13-22:202-439
-     :program    |       1233ms 100.0% |   0.0% ||         18ms   1.5% |   0.0% | primes.js~1-47:0-1024
-     constructor |          1ms   0.1% |   0.0% ||          1ms   0.1% |   0.0% | primes.js~7-23:72-442
-    ---------------------------------------------------------------------------------------------------
 
+    Computed 5000 prime numbers. The last 5 are 48563,48571,48589,48593,48611.
+    ----------------------------------------------------------------------------------------------------
+    Sampling Histogram. Recorded 825 samples with period 10ms.
+      Self Time: Time spent on the top of the stack.
+      Total Time: Time spent somewhere on the stack.
+    ----------------------------------------------------------------------------------------------------
+    Thread[main,5,main]
+     Name              |             Total Time    ||              Self Time    || Location             
+    ----------------------------------------------------------------------------------------------------
+     accept            |             7330ms  88.8% ||             7330ms  88.8% || primes.js~13-22:191-419
+     :program          |             8250ms 100.0% ||              420ms   5.1% || primes.js~1-46:0-982
+     next              |             7820ms  94.8% ||              250ms   3.0% || primes.js~31-37:537-737
+     DivisibleByFilter |              440ms   5.3% ||              240ms   2.9% || primes.js~7-23:66-421
+     AcceptFilter      |               20ms   0.2% ||               10ms   0.1% || primes.js~1-5:0-63
+     Primes            |               20ms   0.2% ||                0ms   0.0% || primes.js~25-38:424-739
+    ----------------------------------------------------------------------------------------------------
     ```
-    The sampler prints an execution time histogram for each JavaScript function.
-    By default, CPU sampling takes a sample every single millisecond. From the
-    result, we can see that roughly 96% of the time is spent
+    By default the sampler prints an execution time histogram for each JavaScript function.
+    You can produce a flame graph in SVG format by doing 
+    ```shell
+    js primes.js --cpusampler --cpusampler.Output=flamegraph --cpusampler.OutputFile=primes.svg
+    ```
+    which should produce something like this
+    
+    ![](img/profiler_flamegraph.png)
+    
+    You can zoom into the graph by clicking on elements.
+
+    By default, CPU sampling takes a sample every 10 milliseconds. From the
+    result, we can see that roughly 89% of the time is spent
     in the `DivisibleByFilter.accept` function.
 
     ```javascript
@@ -115,42 +127,9 @@ algorithm.
         return true;
     }
     ```
-    Now you can find out more about this function by filtering the samples, and
-    include statements in the profile in addition to methods.
+    Now use the CPU Tracer to collect execution counts of each statement:
 
-4. Run `js primes.js --cpusampler --cpusampler.Mode=statements --cpusampler.FilterRootName=*accept`
-to collect statement samples for all functions that end with `accept`:
-    ```shell
-    js primes.js --cpusampler --cpusampler.Mode=statements --cpusampler.FilterRootName=*accept
-    Computed 5000 prime numbers. The last 5 are 48563,48571,48589,48593,48611.
-    ----------------------------------------------------------------------------------------------------
-    Sampling Histogram. Recorded 1567 samples with period 1ms
-      Self Time: Time spent on the top of the stack.
-      Total Time: Time the location spent on the stack.
-      Opt %: Percent of time spent in compiled and therfore non-interpreted code.
-    ----------------------------------------------------------------------------------------------------
-     Name         |      Total Time     |  Opt % ||       Self Time     |  Opt % | Location
-    ----------------------------------------------------------------------------------------------------
-     accept~16-18 |        436ms  27.8% |  94.3% ||        435ms  27.8% |  94.5% | primes.js~16-18:275-348
-     accept~15    |        432ms  27.6% |  97.0% ||        432ms  27.6% |  97.0% | primes.js~15:245-258
-     accept~19    |        355ms  22.7% |  95.5% ||        355ms  22.7% |  95.5% | primes.js~19:362-381
-     accept~17    |          1ms   0.1% |   0.0% ||          1ms   0.1% |   0.0% | primes.js~17:322-334
-    ----------------------------------------------------------------------------------------------------
-
-    ```
-    Roughly 30% of the time is spent in this _if condition_:
-    ```javascript
-    if (n % filter.number === 0) {
-        return false;
-    }
-
-    ```
-    The _if condition_ contains an expensive modulo operation, which might
-    explain the runtime of the statement.
-
-    Now use CPU Tracer to collect execution counts of each statement:
-
-5. Run `js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=*accept`
+4. Run `js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=*accept`
 to collect execution counts for all statements in methods ending with `accept`:
     ```shell
     js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=*accept
@@ -179,7 +158,7 @@ to collect execution counts for all statements in methods ending with `accept`:
     information. Tracing histograms often provides insights into the behavior
     of the algorithm that needs optimization.
 
-6. Run `js primes.js --experimental-options --memtracer` to display source code locations and
+5. Run `js primes.js --experimental-options --memtracer` to display source code locations and
 counts of reported allocations. Note that the Memory Tracer tool for capturing allocations is currently an
 experimental feature in GraalVM. As such, `--memtracer` must
 be preceded by the `--experimental-options` command line option.
@@ -231,7 +210,7 @@ program roots, for example, `Math.*`. The default is &lowast;.
     - `exclude_inlined_roots`: samples roots excluding inlined functions (enabled by default)
     - `roots`: samples roots including inlined functions
     - `statements`: samples all statements
-- `--cpusampler.Output=<Output>`: prints a `histogram` or `calltree` as output.
+- `--cpusampler.Output=<Output>`: prints a `histogram`, `calltree`, `json`, or `flamegraph` as output.
 The default is `histogram`.
 - `--cpusampler.Period=<Long>`: specifies the period, in milliseconds, to
 sample the stack.

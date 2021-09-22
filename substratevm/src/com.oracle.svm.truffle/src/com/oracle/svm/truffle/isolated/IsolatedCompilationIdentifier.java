@@ -58,6 +58,11 @@ final class IsolatedCompilationIdentifier extends IsolatedObjectProxy<TruffleCom
     }
 
     @Override
+    public String toString() {
+        return toString(Verbosity.DETAILED);
+    }
+
+    @Override
     public String toString(Verbosity verbosity) {
         int ordinal = verbosity.ordinal();
         if (descriptions[ordinal] == null) {

@@ -46,16 +46,16 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -77,13 +77,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class InlineBeforeAnalysis {
 
     public static class Options {
-        @Option(help = "Experimental: Inline methods before static analysis")//
-        public static final OptionKey<Boolean> InlineBeforeAnalysis = new OptionKey<>(false);
+        @Option(help = "Inline methods before static analysis")//
+        public static final OptionKey<Boolean> InlineBeforeAnalysis = new OptionKey<>(true);
     }
 
     @SuppressWarnings("try")
-    public static StructuredGraph decodeGraph(BigBang bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
-        DebugContext.Description description = new DebugContext.Description(method, method.getClass().getSimpleName() + ":" + method.getId());
+    public static StructuredGraph decodeGraph(PointsToAnalysis bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
+        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
 
         StructuredGraph result = new StructuredGraph.Builder(bb.getOptions(), debug)
@@ -128,17 +128,34 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             super(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
 
             if (caller == null) {
+                /*
+                 * The root method that we are decoding, i.e., inlining into. No policy, because the
+                 * whole method must of course be decoded.
+                 */
+                policyScope = null;
+            } else if (caller.caller == null) {
+                /*
+                 * The first level of method inlining, i.e., the top scope from the inlining policy
+                 * point of view.
+                 */
                 policyScope = policy.createTopScope();
+                if (graph.getDebug().isLogEnabled()) {
+                    graph.getDebug().logv(repeat("  ", inliningDepth) + "createTopScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
+                }
             } else {
+                /* Nested inlining. */
                 policyScope = policy.openCalleeScope((cast(caller)).policyScope);
+                if (graph.getDebug().isLogEnabled()) {
+                    graph.getDebug().logv(repeat("  ", inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
+                }
             }
         }
     }
 
-    private final BigBang bb;
+    private final PointsToAnalysis bb;
     private final InlineBeforeAnalysisPolicy<S> policy;
 
-    InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
+    InlineBeforeAnalysisGraphDecoder(PointsToAnalysis bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
         super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, bb.getProviders(), null,
                         bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
@@ -146,6 +163,10 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true);
         this.bb = bb;
         this.policy = policy;
+
+        if (graph.getDebug().isLogEnabled()) {
+            graph.getDebug().logv("InlineBeforeAnalysis: decoding " + graph.method().format("%H.%n(%p)"));
+        }
     }
 
     @Override
@@ -159,21 +180,6 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
                     boolean trackNodeSourcePosition) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         return aMethod.ensureGraphParsed(bb).getEncodedGraph();
-    }
-
-    @Override
-    protected LoopScope tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-        for (PEMethodScope cur = methodScope; cur != null; cur = cur.caller) {
-            if (targetMethod.equals(cur.method)) {
-                /*
-                 * Prevent recursive inlining. We need to do this here and not in the inlinig policy
-                 * because only here we have the MethodScope chain.
-                 */
-                return null;
-            }
-        }
-        return super.tryInline(methodScope, loopScope, invokeData, callTarget);
     }
 
     @Override
@@ -207,8 +213,16 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
 
     private void maybeAbortInlining(MethodScope ms, Node node) {
         InlineBeforeAnalysisMethodScope methodScope = cast(ms);
-        if (!methodScope.inliningAborted && methodScope.isInlinedMethod() && !policy.processNode(methodScope.policyScope, node)) {
-            methodScope.inliningAborted = true;
+        if (!methodScope.inliningAborted && methodScope.isInlinedMethod()) {
+            if (graph.getDebug().isLogEnabled()) {
+                graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "  node " + node + ": " + methodScope.policyScope);
+            }
+            if (!policy.processNode(methodScope.policyScope, node)) {
+                if (graph.getDebug().isLogEnabled()) {
+                    graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "    abort!");
+                }
+                methodScope.inliningAborted = true;
+            }
         }
     }
 
@@ -236,8 +250,12 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         InvokeData invokeData = inlineScope.invokeData;
 
         if (inlineScope.inliningAborted) {
-            policy.abortCalleeScope(callerScope.policyScope, inlineScope.policyScope);
-
+            if (graph.getDebug().isLogEnabled()) {
+                graph.getDebug().logv(repeat("  ", callerScope.inliningDepth) + "  aborted " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
+            }
+            if (callerScope.policyScope != null) {
+                policy.abortCalleeScope(callerScope.policyScope, inlineScope.policyScope);
+            }
             killControlFlowNodes(inlineScope, invokeData.invokePredecessor.next());
             assert invokeData.invokePredecessor.next() == null : "Successor must have been a fixed node created in the aborted scope, which is deleted now";
             invokeData.invokePredecessor.setNext(invokeData.invoke.asNode());
@@ -254,10 +272,24 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             return;
         }
 
-        policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
+        if (graph.getDebug().isLogEnabled()) {
+            graph.getDebug().logv(repeat("  ", callerScope.inliningDepth) + "  committed " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
+        }
+        if (callerScope.policyScope != null) {
+            policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
+        }
         ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined();
 
         super.finishInlining(inlineScope);
+    }
+
+    /* String.repeat is only available in JDK 11 and later, so need to do our own. */
+    private static String repeat(String s, int count) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            result.append(s);
+        }
+        return result.toString();
     }
 
     /**

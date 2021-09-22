@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -32,17 +33,23 @@ import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
-public abstract class BaseQuickNode extends Node implements BciProvider, InstrumentableNode {
+public abstract class BaseQuickNode extends Node implements BciProvider, InstrumentableNode, ContextAccess {
 
     public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
 
     public final boolean isInstrumentable() {
         return true;
+    }
+
+    public final EspressoContext getContext() {
+        return EspressoContext.get(this);
     }
 
     @Override
@@ -65,7 +72,7 @@ public abstract class BaseQuickNode extends Node implements BciProvider, Instrum
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @SuppressWarnings("static-method")
     public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
         return getBytecodeNode().getScope(frame, nodeEnter);

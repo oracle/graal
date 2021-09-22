@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.agent;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -120,6 +121,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         boolean configurationWithOrigins = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
+        boolean trackReflectionMetadata = true;
 
         String[] tokens = !options.isEmpty() ? options.split(",") : new String[0];
         for (String token : tokens) {
@@ -188,6 +190,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 build = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.equals("experimental-configuration-with-origins")) {
                 configurationWithOrigins = true;
+            } else if (token.equals("track-reflection-metadata")) {
+                trackReflectionMetadata = true;
+            } else if (token.startsWith("track-reflection-metadata=")) {
+                trackReflectionMetadata = Boolean.parseBoolean(getTokenValue(token));
             } else {
                 return usage(1, "unknown option: '" + token + "'.");
             }
@@ -242,13 +248,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 if (!Files.exists(configOutputDirPath)) {
                     Files.createDirectories(configOutputDirPath);
                 }
-                Function<IOException, Exception> handler = e -> {
-                    if (e instanceof NoSuchFileException) {
-                        warn("file " + ((NoSuchFileException) e).getFile() + " for merging could not be found, skipping");
-                        return null;
-                    }
-                    return e; // rethrow
-                };
                 if (experimentalOmitClasspathConfig) {
                     ignoreConfigFromClasspath(jvmti, omittedConfigs);
                 }
@@ -272,6 +271,16 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     tracer = writer;
                     tracingResultWriter = writer;
                 } else {
+                    Function<IOException, Exception> handler = e -> {
+                        if (e instanceof NoSuchFileException) {
+                            warn("file " + ((NoSuchFileException) e).getFile() + " for merging could not be found, skipping");
+                            return null;
+                        } else if (e instanceof FileNotFoundException) {
+                            warn("could not open configuration file: " + e);
+                            return null;
+                        }
+                        return e; // rethrow
+                    };
                     TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                     mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
                                     mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestinationDirs, shouldExcludeClassesWithHash, handler), omittedConfigProcessor);
@@ -302,7 +311,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         }
 
         try {
-            BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier, experimentalClassLoaderSupport, experimentalClassDefineSupport);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
+                            experimentalClassLoaderSupport, experimentalClassDefineSupport, trackReflectionMetadata);
         } catch (Throwable t) {
             return error(3, t.toString());
         }
@@ -321,11 +331,11 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     }
 
     private static void warn(String message) {
-        inform("WARNING: " + message);
+        inform("Warning: " + message);
     }
 
     private static <T> T error(T result, String message) {
-        inform("ERROR: " + message);
+        inform("Error: " + message);
         return result;
     }
 

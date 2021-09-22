@@ -46,6 +46,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
+import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -57,7 +58,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 
 /**
  * Generated method for accessing a field via JNI. An accessor is specific to the {@link JavaKind
@@ -108,7 +108,7 @@ import jdk.vm.ci.meta.Signature;
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
  *      Functions</a>
  */
-public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
+public class JNIFieldAccessorMethod extends NonBytecodeStaticMethod {
 
     public static class Factory {
         public JNIFieldAccessorMethod create(JavaKind kind, boolean isSetter, boolean isStatic, ResolvedJavaType generatedMethodClass, ConstantPool constantPool,
@@ -120,12 +120,9 @@ public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
     protected final JavaKind fieldKind;
     protected final boolean isSetter;
     protected final boolean isStatic;
-    protected final ResolvedJavaType declaringClass;
-    protected final ConstantPool constantPool;
-    protected final String name;
-    protected final Signature signature;
 
     protected JNIFieldAccessorMethod(JavaKind fieldKind, boolean isSetter, boolean isStatic, ResolvedJavaType declaringClass, ConstantPool constantPool, MetaAccessProvider metaAccess) {
+        super(createName(fieldKind, isSetter, isStatic), declaringClass, createSignature(fieldKind, isSetter, metaAccess), constantPool);
         if (!EnumSet.of(JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short,
                         JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double).contains(fieldKind)) {
 
@@ -134,13 +131,9 @@ public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
         this.fieldKind = fieldKind;
         this.isSetter = isSetter;
         this.isStatic = isStatic;
-        this.declaringClass = declaringClass;
-        this.constantPool = constantPool;
-        this.name = createName();
-        this.signature = createSignature(metaAccess);
     }
 
-    private String createName() {
+    private static String createName(JavaKind fieldKind, boolean isSetter, boolean isStatic) {
         StringBuilder sb = new StringBuilder(32);
         if (isSetter) {
             sb.append("Set");
@@ -155,7 +148,7 @@ public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
         return sb.toString();
     }
 
-    private SimpleSignature createSignature(MetaAccessProvider metaAccess) {
+    private static SimpleSignature createSignature(JavaKind fieldKind, boolean isSetter, MetaAccessProvider metaAccess) {
         Class<?> valueClass = fieldKind.toJavaClass();
         if (fieldKind.isObject()) {
             valueClass = JNIObjectHandle.class;
@@ -184,9 +177,9 @@ public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
 
-        ValueNode vmThread = kit.loadLocal(0, signature.getParameterKind(0));
+        ValueNode vmThread = kit.loadLocal(0, getSignature().getParameterKind(0));
         kit.append(CEntryPointEnterNode.enter(vmThread));
-        List<ValueNode> arguments = kit.loadArguments(signature.toParameterTypes(null));
+        List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
 
         ValueNode returnValue = buildGraphBody(kit, arguments, state, providers.getMetaAccess());
 
@@ -228,26 +221,6 @@ public class JNIFieldAccessorMethod extends JNIGeneratedMethod {
             }
         }
         return returnValue;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Signature getSignature() {
-        return signature;
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return declaringClass;
-    }
-
-    @Override
-    public ConstantPool getConstantPool() {
-        return constantPool;
     }
 
     public CEntryPointData createEntryPointData() {

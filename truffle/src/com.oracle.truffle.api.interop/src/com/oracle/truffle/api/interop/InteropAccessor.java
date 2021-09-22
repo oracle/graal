@@ -63,7 +63,7 @@ final class InteropAccessor extends Accessor {
     }
 
     private static boolean checkInteropTypeImpl(Object obj) {
-        if (AssertUtils.isInteropValue(obj)) {
+        if (InteropLibrary.isValidValue(obj)) {
             return true;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -96,11 +96,6 @@ final class InteropAccessor extends Accessor {
         @Override
         public void checkInteropType(Object result) {
             InteropAccessor.checkInteropType(result);
-        }
-
-        @Override
-        public boolean isInteropType(Object result) {
-            return AssertUtils.isInteropValue(result);
         }
 
         @Override

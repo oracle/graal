@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
@@ -56,16 +55,40 @@ abstract class Generation {
     public abstract Log report(Log log, boolean traceHeapChunks);
 
     /**
-     * Promote an Object to this Generation, either by HeapChunk motion or copying. If the original
-     * is copied, a forwarding pointer to the new Object is left in place of the original Object.
+     * Promote an Object to this Generation, typically by copying and leaving a forwarding pointer
+     * to the new Object in place of the original Object. If the object cannot be promoted due to
+     * insufficient capacity, returns {@code null}.
      *
      * This turns an Object from white to grey: the object is in this Generation, but has not yet
      * had its interior pointers visited.
      *
-     * @param original The original Object to be promoted.
-     * @param header The header of the object that should be promoted.
-     * @return The promoted Object, either the original if promotion was done by HeapChunk motion,
-     *         or a new Object if promotion was done by copying.
+     * @return a reference to the promoted object, which is different to the original reference if
+     *         promotion was done by copying, or {@code null} if there was insufficient capacity in
+     *         this generation.
      */
-    protected abstract Object promoteObject(Object original, UnsignedWord header);
+    protected abstract Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace);
+
+    /**
+     * Promote an Object to this Generation, typically by HeapChunk motion. If the object cannot be
+     * promoted due to insufficient capacity, returns {@code null}.
+     *
+     * This turns an Object from white to grey: the object is in this Generation, but has not yet
+     * had its interior pointers visited.
+     *
+     * @return a reference to the promoted object, which is the same as the original if the object
+     *         was promoted through HeapChunk motion, or {@code null} if there was insufficient
+     *         capacity in this generation.
+     */
+    protected abstract Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace);
+
+    /**
+     * Promote a HeapChunk from its original space to the appropriate space in this generation if
+     * there is sufficient capacity.
+     *
+     * This turns all the Objects in the chunk from white to grey: the objects are in the target
+     * Space, but have not yet had their interior pointers visited.
+     *
+     * @return true on success, false if the there was insufficient capacity.
+     */
+    protected abstract boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace);
 }

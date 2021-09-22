@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -67,32 +66,30 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNode {
 
         public abstract void executeWithTarget(LLVMPointer receiver, long offset, Object value);
 
-        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+        @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected void doAddress(LLVMNativePointer addr, long offset, Object value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putPointer(this, addr.asNative() + offset, toNative.executeWithTarget(value));
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+            getLanguage().getLLVMMemory().putPointer(this, addr.asNative() + offset, toNative.executeWithTarget(value));
         }
 
-        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        @Specialization(guards = "isAutoDerefHandle(addr)")
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, Object value,
                         @Cached LLVMToPointerNode toPointer,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             doManaged(getReceiver.execute(addr), offset, value, toPointer, nativeWrite);
         }
 
-        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        @Specialization(guards = "isAutoDerefHandle(addr)")
         protected static void doDerefAddress(long addr, long offset, Object value,
                         @Cached LLVMToPointerNode toPointer,
-                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                         @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             doManaged(getReceiver.execute(addr), offset, value, toPointer, nativeWrite);
         }
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         protected static void doManaged(LLVMManagedPointer addr, long offset, Object value,
                         @Cached LLVMToPointerNode toPointer,
                         @CachedLibrary("addr.getObject()") LLVMManagedWriteLibrary nativeWrite) {
@@ -100,39 +97,36 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNode {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doAddress(LLVMNativePointer addr, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                    @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putPointer(this, addr, toNative.executeWithTarget(value));
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+        getLanguage().getLLVMMemory().putPointer(this, addr, toNative.executeWithTarget(value));
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doAddress(long addr, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                    @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putPointer(this, addr, toNative.executeWithTarget(value));
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+        getLanguage().getLLVMMemory().putPointer(this, addr, toNative.executeWithTarget(value));
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)")
+    @Specialization(guards = "isAutoDerefHandle(addr)")
     protected static void doOpDerefHandle(LLVMNativePointer addr, Object value,
                     @Cached LLVMToPointerNode toPointer,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         doManaged(getReceiver.execute(addr), value, toPointer, nativeWrite);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)")
+    @Specialization(guards = "isAutoDerefHandle(addr)")
     protected static void doDerefAddress(long addr, Object value,
                     @Cached LLVMToPointerNode toPointer,
-                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         doManaged(getReceiver.execute(addr), value, toPointer, nativeWrite);
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     protected static void doManaged(LLVMManagedPointer address, Object value,
                     @Cached LLVMToPointerNode toPointer,
                     @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {

@@ -50,9 +50,11 @@ import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
+import com.oracle.truffle.host.HostMethodScope.ScopedObject;
 import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 
 public class HostLanguageService extends AbstractHostService {
@@ -123,34 +125,34 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public Object toGuestValue(Object hostContext, Object hostValue) {
+    public Object toGuestValue(Object hostContext, Object hostValue, boolean asValue) {
         HostContext context = (HostContext) hostContext;
         assert validHostValue(hostValue, context) : "polyglot unboxing should be a no-op at this point.";
-
         if (HostContext.isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
             return HostProxy.toProxyGuestObject(context, (Proxy) hostValue);
+        } else if (!asValue && hostValue instanceof ScopedObject) {
+            return ((ScopedObject) hostValue).unwrapForGuest();
         } else if (hostValue instanceof TruffleObject) {
             return hostValue;
         } else if (hostValue instanceof Class) {
             return HostObject.forClass((Class<?>) hostValue, context);
         } else if (hostValue == null) {
             return HostObject.NULL;
-        } else if (hostValue.getClass().isArray()) {
-            return HostObject.forObject(hostValue, context);
         } else {
-            return HostInteropReflect.asTruffleViaReflection(hostValue, context);
+            return HostObject.forObject(hostValue, context);
         }
     }
 
     private boolean validHostValue(Object hostValue, HostContext context) {
-        Object unboxed = language.access.toGuestValue(context.internalContext, null, hostValue);
-        return unboxed == null || unboxed == hostValue;
+        Object unboxed = language.access.toGuestValue(context.internalContext, hostValue);
+        return unboxed == hostValue;
     }
 
     @Override
-    public boolean isHostValue(Object obj) {
+    public boolean isHostValue(Object value) {
+        Object obj = HostLanguage.unwrapIfScoped(language, value);
         return (obj instanceof HostObject) ||
                         (obj instanceof HostFunction) ||
                         (obj instanceof HostException) ||
@@ -159,12 +161,12 @@ public class HostLanguageService extends AbstractHostService {
 
     @Override
     public Object unboxHostObject(Object hostValue) {
-        return HostObject.valueOf(hostValue);
+        return HostObject.valueOf(language, hostValue);
     }
 
     @Override
     public Object unboxProxyObject(Object hostValue) {
-        return HostProxy.toProxyHostObject(hostValue);
+        return HostProxy.toProxyHostObject(language, hostValue);
     }
 
     @Override
@@ -192,24 +194,25 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public boolean isHostFunction(Object obj) {
-        return HostFunction.isInstance(obj);
+    public boolean isHostFunction(Object value) {
+        return HostFunction.isInstance(language, value);
     }
 
     @Override
-    public boolean isHostObject(Object obj) {
-        return HostObject.isInstance(obj);
+    public boolean isHostObject(Object value) {
+        return HostObject.isInstance(language, value);
     }
 
     @Override
     public boolean isHostProxy(Object value) {
-        return HostProxy.isProxyGuestObject(value);
+        return HostProxy.isProxyGuestObject(language, value);
     }
 
     @Override
     public boolean isHostSymbol(Object obj) {
-        if (HostObject.isHostObjectInstance(obj)) {
-            return ((HostObject) obj).isStaticClass();
+        Object o = HostLanguage.unwrapIfScoped(language, obj);
+        if (o instanceof HostObject) {
+            return ((HostObject) o).isStaticClass();
         }
         return false;
     }
@@ -231,13 +234,29 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public Object migrateHostObject(Object newContext, Object value) {
-        return HostObject.withContext(value, (HostContext) newContext);
-    }
-
-    @Override
-    public Object migrateHostProxy(Object newContext, Object value) {
-        return HostProxy.withContext(value, (HostContext) newContext);
+    public Object migrateValue(Object targetContext, Object value, Object valueContext) {
+        assert targetContext != valueContext;
+        if (value instanceof TruffleObject) {
+            assert value instanceof TruffleObject;
+            if (HostObject.isInstance(language, value)) {
+                return HostObject.withContext(language, value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
+            } else if (value instanceof HostProxy) {
+                return HostProxy.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
+            } else if (valueContext == null) {
+                /*
+                 * The only way this can happen is with Value.asValue(TruffleObject). If it happens
+                 * otherwise, its wrong.
+                 */
+                assert value instanceof TruffleObject;
+                return value;
+            } else {
+                // cannot migrate
+                return null;
+            }
+        } else {
+            assert InteropLibrary.isValidValue(value);
+            return value;
+        }
     }
 
     @Override
@@ -261,6 +280,11 @@ public class HostLanguageService extends AbstractHostService {
         } else {
             return -1;
         }
+    }
+
+    @Override
+    public void pin(Object receiver) {
+        HostMethodScope.pin(receiver);
     }
 
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {

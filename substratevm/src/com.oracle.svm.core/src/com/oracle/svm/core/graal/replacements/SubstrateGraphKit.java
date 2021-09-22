@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -70,7 +71,7 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -81,11 +82,9 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -149,8 +148,8 @@ public class SubstrateGraphKit extends GraphKit {
         return append(LoadFieldNode.create(null, object, field));
     }
 
-    public ValueNode createLoadIndexed(ValueNode array, int index, JavaKind kind) {
-        ValueNode loadIndexed = LoadIndexedNode.create(null, array, ConstantNode.forInt(index, getGraph()), null, kind, getMetaAccess(), getConstantReflection());
+    public ValueNode createLoadIndexed(ValueNode array, int index, JavaKind kind, GuardingNode boundsCheck) {
+        ValueNode loadIndexed = LoadIndexedNode.create(null, array, ConstantNode.forInt(index, getGraph()), boundsCheck, kind, getMetaAccess(), getConstantReflection());
         if (loadIndexed instanceof FixedNode) {
             return append((FixedNode) loadIndexed);
         }
@@ -161,8 +160,8 @@ public class SubstrateGraphKit extends GraphKit {
         return append(new StoreIndexedNode(array, ConstantNode.forInt(index, getGraph()), null, null, kind, value));
     }
 
-    public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind, MetaAccessProvider metaAccess) {
-        return append(new UnboxNode(boxed, targetKind, metaAccess));
+    public ValueNode createUnboxing(ValueNode boxed, JavaKind targetKind) {
+        return append(new UnboxNode(boxed, targetKind, getMetaAccess()));
     }
 
     public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
@@ -199,7 +198,7 @@ public class SubstrateGraphKit extends GraphKit {
         JavaKind cReturnKind = javaReturnKind.getStackKind();
         JavaType returnType = signature.getReturnType(null);
         Stamp returnStamp = returnStamp(returnType, cReturnKind);
-        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, SubstrateCallingConventionType.NativeCall);
+        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, SubstrateCallingConventionKind.Native);
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
@@ -227,21 +226,22 @@ public class SubstrateGraphKit extends GraphKit {
         return getLoweringProvider().implicitLoadConvertWithBooleanCoercionIfNecessary(getGraph(), asKind(returnType), result);
     }
 
-    public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, CallingConvention.Type callType) {
+    public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, SubstrateCallingConventionKind callKind) {
         assert arguments.size() == signature.getParameterCount(false);
-        assert callType != SubstrateCallingConventionType.NativeCall : "return kind and stamp would be incorrect";
+        assert callKind != SubstrateCallingConventionKind.Native : "return kind and stamp would be incorrect";
         JavaKind returnKind = signature.getReturnKind();
         Stamp returnStamp = returnStamp(signature.getReturnType(null), returnKind);
-        return createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, returnKind, callType);
+        return createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, returnKind, callKind);
     }
 
-    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind, CallingConvention.Type callType) {
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+                    SubstrateCallingConventionKind callKind) {
         frameState.clearStack();
 
         int bci = bci();
         CallTargetNode callTarget = getGraph().add(
                         new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
-                                        callType, InvokeKind.Static));
+                                        callKind.toType(true), InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         // Insert framestate.

@@ -68,6 +68,7 @@ meth public com.oracle.truffle.api.nodes.Node getInstrumentedNode()
 meth public com.oracle.truffle.api.source.SourceSection getInstrumentedSourceSection()
 meth public java.lang.Object getNodeObject()
 meth public java.lang.RuntimeException createError(java.lang.RuntimeException)
+ anno 0 java.lang.Deprecated()
 meth public java.lang.String toString()
 meth public java.lang.ThreadDeath createUnwind(java.lang.Object)
 meth public java.lang.ThreadDeath createUnwind(java.lang.Object,com.oracle.truffle.api.instrumentation.EventBinding<?>)
@@ -111,8 +112,15 @@ meth public abstract com.oracle.truffle.api.instrumentation.ExecutionEventNode c
 CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Ignore
 innr public abstract interface static !annotation IncomingConverter
 innr public abstract interface static !annotation OutgoingConverter
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper$Ignore
+ outer com.oracle.truffle.api.instrumentation.GenerateWrapper
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper$IncomingConverter
@@ -227,11 +235,12 @@ innr public abstract interface static SourcePredicate
 innr public final Builder
 innr public final static IndexRange
 meth public boolean includes(com.oracle.truffle.api.nodes.Node)
+meth public boolean includes(com.oracle.truffle.api.nodes.RootNode,com.oracle.truffle.api.source.SourceSection,java.util.Set<java.lang.Class<?>>)
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder newBuilder()
 supr java.lang.Object
-hfds expressions
-hcls EventFilterExpression,Not
+hfds TAGGED_NODE_CACHE,expressions
+hcls EventFilterExpression,Not,TaggedNode
 
 CLSS public final com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder
  outer com.oracle.truffle.api.instrumentation.SourceSectionFilter
@@ -446,9 +455,11 @@ innr public abstract interface static !annotation Children
 intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
 meth protected final <%0 extends com.oracle.truffle.api.TruffleLanguage> com.oracle.truffle.api.TruffleLanguage$LanguageReference<{%%0}> lookupLanguageReference(java.lang.Class<{%%0}>)
+ anno 0 java.lang.Deprecated()
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
 meth protected final <%0 extends java.lang.Object, %1 extends com.oracle.truffle.api.TruffleLanguage<{%%0}>> com.oracle.truffle.api.TruffleLanguage$ContextReference<{%%0}> lookupContextReference(java.lang.Class<{%%1}>)
+ anno 0 java.lang.Deprecated()
 meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
 meth protected final void reportPolymorphicSpecialize()
@@ -473,7 +484,7 @@ meth public java.lang.String getDescription()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds GIL_LOCK,UNCACHED_CONTEXT_REFERENCES,UNCACHED_LANGUAGE_REFERENCES,parent
+hfds GIL_LOCK,parent
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
  anno 0 java.lang.annotation.Inherited()

@@ -37,8 +37,8 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 @TargetClass(java.lang.reflect.Proxy.class)
 final class Target_java_lang_reflect_Proxy {
@@ -51,7 +51,7 @@ final class Target_java_lang_reflect_Proxy {
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class) //
     private static Class<?> getProxyClass0(@SuppressWarnings("unused") ClassLoader loader, Class<?>... interfaces) {
-        return ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(interfaces);
+        return ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(loader, interfaces);
     }
 
     /** We have our own proxy cache so mark the original one as deleted. */
@@ -63,7 +63,7 @@ final class Target_java_lang_reflect_Proxy {
     @TargetElement(onlyWith = JDK11OrLater.class)
     @SuppressWarnings("unused")
     private static Constructor<?> getProxyConstructor(Class<?> caller, ClassLoader loader, Class<?>... interfaces) {
-        final Class<?> cl = ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(interfaces);
+        final Class<?> cl = ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(loader, interfaces);
         try {
             final Constructor<?> cons = cl.getConstructor(InvocationHandler.class);
             if (!Modifier.isPublic(cl.getModifiers())) {

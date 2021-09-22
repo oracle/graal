@@ -85,6 +85,8 @@ public enum Failure {
     LIMIT_EXCEEDED(Type.INVALID, "limit exceeded"),
     MEMORY_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 65536 pages (4GiB)"),
     ALIGNMENT_LARGER_THAN_NATURAL(Type.INVALID, "alignment must not be larger than natural"),
+    UNEXPECTED_END_OF_BLOCK(Type.INVALID, "cannot exit unspecified block"),
+
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
     TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),

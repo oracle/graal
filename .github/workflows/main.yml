@@ -82,6 +82,10 @@ jobs:
               PRIMARY: "substratevm"
           - env:
               JDK: "labsjdk-ce-11"
+              GATE: "hellomodule"
+              PRIMARY: "substratevm"
+          - env:
+              JDK: "labsjdk-ce-11"
               GATE: "style,fullbuild"
               PRIMARY: "compiler"
           - env:

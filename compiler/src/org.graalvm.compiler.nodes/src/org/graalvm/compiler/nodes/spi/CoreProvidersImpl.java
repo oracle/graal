@@ -42,10 +42,11 @@ public class CoreProvidersImpl implements CoreProviders {
     protected final PlatformConfigurationProvider platformConfigurationProvider;
     protected final MetaAccessExtensionProvider metaAccessExtensionProvider;
     protected final LoopsDataProvider loopsDataProvider;
+    protected final WordVerification wordVerification;
 
     protected CoreProvidersImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, LoweringProvider lowerer,
                     Replacements replacements, StampProvider stampProvider, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfigurationProvider,
-                    MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
+                    MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider, WordVerification wordVerification) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
@@ -56,6 +57,7 @@ public class CoreProvidersImpl implements CoreProviders {
         this.platformConfigurationProvider = platformConfigurationProvider;
         this.metaAccessExtensionProvider = metaAccessExtensionProvider;
         this.loopsDataProvider = loopsDataProvider;
+        this.wordVerification = wordVerification;
     }
 
     @Override
@@ -108,21 +110,26 @@ public class CoreProvidersImpl implements CoreProviders {
         return loopsDataProvider;
     }
 
+    @Override
+    public WordVerification getWordVerification() {
+        return wordVerification;
+    }
+
     public CoreProvidersImpl copyWith(ConstantReflectionProvider substitution) {
         assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
         return new CoreProvidersImpl(metaAccess, substitution, constantFieldProvider, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider,
-                        loopsDataProvider);
+                        loopsDataProvider, wordVerification);
     }
 
     public CoreProvidersImpl copyWith(ConstantFieldProvider substitution) {
         assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
         return new CoreProvidersImpl(metaAccess, constantReflection, substitution, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider,
-                        loopsDataProvider);
+                        loopsDataProvider, wordVerification);
     }
 
     public CoreProvidersImpl copyWith(Replacements substitution) {
         assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
         return new CoreProvidersImpl(metaAccess, constantReflection, constantFieldProvider, lowerer, substitution, stampProvider, foreignCalls, platformConfigurationProvider,
-                        metaAccessExtensionProvider, loopsDataProvider);
+                        metaAccessExtensionProvider, loopsDataProvider, wordVerification);
     }
 }

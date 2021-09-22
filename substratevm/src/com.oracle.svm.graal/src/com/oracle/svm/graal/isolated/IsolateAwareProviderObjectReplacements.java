@@ -33,11 +33,7 @@ import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
 public final class IsolateAwareProviderObjectReplacements extends GraalProviderObjectReplacements {
     private final SnippetReflectionProvider snippetReflection;
 
-    public IsolateAwareProviderObjectReplacements(AnalysisMetaAccess aMetaAccess) {
-        this(aMetaAccess, new IsolateAwareMetaAccess());
-    }
-
-    private IsolateAwareProviderObjectReplacements(AnalysisMetaAccess aMetaAccess, IsolateAwareMetaAccess sMetaAccess) {
+    public IsolateAwareProviderObjectReplacements(AnalysisMetaAccess aMetaAccess, IsolateAwareMetaAccess sMetaAccess) {
         super(sMetaAccess, new SubstrateConstantFieldProvider(aMetaAccess), new IsolateAwareConstantReflectionProvider(sMetaAccess));
         this.snippetReflection = new IsolateAwareSnippetReflectionProvider();
     }

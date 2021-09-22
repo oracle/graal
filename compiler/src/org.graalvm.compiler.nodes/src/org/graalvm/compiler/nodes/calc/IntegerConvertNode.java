@@ -119,7 +119,11 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp, StructuredGraph graph, NodeView view) {
-        ValueNode convert = convert(input, stamp, false, view);
+        return convert(input, stamp, false, graph, view);
+    }
+
+    public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend, StructuredGraph graph, NodeView view) {
+        ValueNode convert = convert(input, stamp, zeroExtend, view);
         if (!convert.isAlive()) {
             assert !convert.isDeleted();
             convert = graph.addOrUniqueWithInputs(convert);

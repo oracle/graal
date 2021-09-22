@@ -69,37 +69,43 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_builtin_unit = 1;
     public static final int DW_ABBREV_CODE_class_unit1 = 2;
     public static final int DW_ABBREV_CODE_class_unit2 = 3;
-    public static final int DW_ABBREV_CODE_array_unit = 4;
+    public static final int DW_ABBREV_CODE_class_unit3 = 4;
+    public static final int DW_ABBREV_CODE_array_unit = 5;
     /* Level 1 DIEs. */
-    public static final int DW_ABBREV_CODE_primitive_type = 5;
-    public static final int DW_ABBREV_CODE_void_type = 6;
-    public static final int DW_ABBREV_CODE_object_header = 7;
-    public static final int DW_ABBREV_CODE_class_layout1 = 8;
-    public static final int DW_ABBREV_CODE_class_layout2 = 9;
-    public static final int DW_ABBREV_CODE_class_pointer = 10;
-    public static final int DW_ABBREV_CODE_method_location = 11;
-    public static final int DW_ABBREV_CODE_static_field_location = 12;
-    public static final int DW_ABBREV_CODE_array_layout = 13;
-    public static final int DW_ABBREV_CODE_array_pointer = 14;
-    public static final int DW_ABBREV_CODE_interface_layout = 15;
-    public static final int DW_ABBREV_CODE_interface_pointer = 16;
-    public static final int DW_ABBREV_CODE_indirect_layout = 17;
-    public static final int DW_ABBREV_CODE_indirect_pointer = 18;
+    public static final int DW_ABBREV_CODE_primitive_type = 6;
+    public static final int DW_ABBREV_CODE_void_type = 7;
+    public static final int DW_ABBREV_CODE_object_header = 8;
+    public static final int DW_ABBREV_CODE_class_layout1 = 9;
+    public static final int DW_ABBREV_CODE_class_layout2 = 10;
+    public static final int DW_ABBREV_CODE_class_pointer = 11;
+    public static final int DW_ABBREV_CODE_method_location = 12;
+    public static final int DW_ABBREV_CODE_abstract_inline_method = 13;
+    public static final int DW_ABBREV_CODE_static_field_location = 14;
+    public static final int DW_ABBREV_CODE_array_layout = 15;
+    public static final int DW_ABBREV_CODE_array_pointer = 16;
+    public static final int DW_ABBREV_CODE_interface_layout = 17;
+    public static final int DW_ABBREV_CODE_interface_pointer = 18;
+    public static final int DW_ABBREV_CODE_indirect_layout = 19;
+    public static final int DW_ABBREV_CODE_indirect_pointer = 20;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_declaration1 = 19;
-    public static final int DW_ABBREV_CODE_method_declaration2 = 20;
-    public static final int DW_ABBREV_CODE_field_declaration1 = 21;
-    public static final int DW_ABBREV_CODE_field_declaration2 = 22;
-    public static final int DW_ABBREV_CODE_field_declaration3 = 23;
-    public static final int DW_ABBREV_CODE_field_declaration4 = 24;
-    public static final int DW_ABBREV_CODE_header_field = 25;
-    public static final int DW_ABBREV_CODE_array_data_type = 26;
-    public static final int DW_ABBREV_CODE_super_reference = 27;
-    public static final int DW_ABBREV_CODE_interface_implementor = 28;
+    public static final int DW_ABBREV_CODE_method_declaration = 21;
+    public static final int DW_ABBREV_CODE_method_declaration_static = 22;
+    public static final int DW_ABBREV_CODE_field_declaration1 = 23;
+    public static final int DW_ABBREV_CODE_field_declaration2 = 24;
+    public static final int DW_ABBREV_CODE_field_declaration3 = 25;
+    public static final int DW_ABBREV_CODE_field_declaration4 = 26;
+    public static final int DW_ABBREV_CODE_header_field = 27;
+    public static final int DW_ABBREV_CODE_array_data_type = 28;
+    public static final int DW_ABBREV_CODE_super_reference = 29;
+    public static final int DW_ABBREV_CODE_interface_implementor = 30;
+    /* Level 2+K DIEs (where inline depth K >= 0) */
+    public static final int DW_ABBREV_CODE_inlined_subroutine = 31;
+    public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 32;
     /* Level 3 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 29;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 30;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 31;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 33;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 34;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 35;
+
     /*
      * Define all the Dwarf tags we need for our DIEs.
      */
@@ -116,6 +122,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_TAG_subprogram = 0x2e;
     public static final int DW_TAG_variable = 0x34;
     public static final int DW_TAG_unspecified_type = 0x3b;
+    public static final int DW_TAG_inlined_subroutine = 0x1d;
 
     /*
      * Define all the Dwarf attributes we need for our DIEs.
@@ -131,6 +138,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_AT_language = 0x13;
     public static final int DW_AT_comp_dir = 0x1b;
     public static final int DW_AT_containing_type = 0x1d;
+    public static final int DW_AT_inline = 0x20;
+    public static final int DW_AT_abstract_origin = 0x31;
     public static final int DW_AT_accessibility = 0x32;
     public static final int DW_AT_artificial = 0x34;
     public static final int DW_AT_data_member_location = 0x38;
@@ -145,6 +154,9 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_AT_specification = 0x47;
     public static final int DW_AT_type = 0x49;
     public static final int DW_AT_data_location = 0x50;
+    public static final int DW_AT_use_UTF8 = 0x53;
+    public static final int DW_AT_call_file = 0x58;
+    public static final int DW_AT_call_line = 0x59;
     public static final int DW_AT_object_pointer = 0x64;
 
     /*
@@ -157,6 +169,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
     @SuppressWarnings("unused") public static final int DW_FORM_data8 = 0x7;
     @SuppressWarnings("unused") private static final int DW_FORM_string = 0x8;
     @SuppressWarnings("unused") public static final int DW_FORM_block1 = 0x0a;
+    @SuppressWarnings("unused") public static final int DW_FORM_ref1 = 0x11;
+    @SuppressWarnings("unused") public static final int DW_FORM_ref2 = 0x12;
+    @SuppressWarnings("unused") public static final int DW_FORM_ref4 = 0x13;
+    @SuppressWarnings("unused") public static final int DW_FORM_ref8 = 0x14;
     public static final int DW_FORM_ref_addr = 0x10;
     public static final int DW_FORM_data1 = 0x0b;
     public static final int DW_FORM_flag = 0xc;
@@ -180,6 +196,13 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * Value for DW_AT_language attribute with form DATA1.
      */
     public static final byte DW_LANG_Java = 0xb;
+    /*
+     * Values for {@link DW_AT_inline} attribute with form DATA1.
+     */
+    @SuppressWarnings("unused") public static final byte DW_INL_not_inlined = 0;
+    public static final byte DW_INL_inlined = 1;
+    @SuppressWarnings("unused") public static final byte DW_INL_declared_not_inlined = 2;
+    @SuppressWarnings("unused") public static final byte DW_INL_declared_inlined = 3;
 
     /*
      * DW_AT_Accessibility attribute values.
@@ -435,6 +458,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
          * Map from method names to info section index for the field declaration.
          */
         private HashMap<String, Integer> methodDeclarationIndex;
+        /**
+         * Map from method names to info section index for the field declaration.
+         */
+        private HashMap<String, Integer> abstractInlineMethodIndex;
 
         DwarfClassProperties(StructureTypeEntry entry) {
             super(entry);
@@ -447,6 +474,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.lineSectionSize = -1;
             fieldDeclarationIndex = null;
             methodDeclarationIndex = null;
+            abstractInlineMethodIndex = null;
         }
     }
 
@@ -659,7 +687,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
             classProperties.fieldDeclarationIndex = fieldDeclarationIndex = new HashMap<>();
         }
         if (fieldDeclarationIndex.get(fieldName) != null) {
-            assert fieldDeclarationIndex.get(fieldName) == pos;
+            assert fieldDeclarationIndex.get(fieldName) == pos : entry.getTypeName() + fieldName;
         } else {
             fieldDeclarationIndex.put(fieldName, pos);
         }
@@ -670,8 +698,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
         classProperties = lookupClassProperties(entry);
         assert classProperties.getTypeEntry() == entry;
         HashMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
-        assert fieldDeclarationIndex != null;
-        assert fieldDeclarationIndex.get(fieldName) != null;
+        assert fieldDeclarationIndex != null : fieldName;
+        assert fieldDeclarationIndex.get(fieldName) != null : entry.getTypeName() + fieldName;
         return fieldDeclarationIndex.get(fieldName);
     }
 
@@ -684,7 +712,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
             classProperties.methodDeclarationIndex = methodDeclarationIndex = new HashMap<>();
         }
         if (methodDeclarationIndex.get(methodName) != null) {
-            assert methodDeclarationIndex.get(methodName) == pos;
+            assert methodDeclarationIndex.get(methodName) == pos : classEntry.getTypeName() + methodName;
         } else {
             methodDeclarationIndex.put(methodName, pos);
         }
@@ -695,8 +723,33 @@ public class DwarfDebugInfo extends DebugInfoBase {
         classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
         HashMap<String, Integer> methodDeclarationIndex = classProperties.methodDeclarationIndex;
-        assert methodDeclarationIndex != null;
-        assert methodDeclarationIndex.get(methodName) != null;
+        assert methodDeclarationIndex != null : classEntry.getTypeName() + methodName;
+        assert methodDeclarationIndex.get(methodName) != null : classEntry.getTypeName() + methodName;
         return methodDeclarationIndex.get(methodName);
+    }
+
+    public void setAbstractInlineMethodIndex(ClassEntry classEntry, String methodName, int pos) {
+        DwarfClassProperties classProperties;
+        classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        HashMap<String, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
+        if (abstractInlineMethodIndex == null) {
+            classProperties.abstractInlineMethodIndex = abstractInlineMethodIndex = new HashMap<>();
+        }
+        if (abstractInlineMethodIndex.get(methodName) != null) {
+            assert abstractInlineMethodIndex.get(methodName) == pos : classEntry.getTypeName() + methodName;
+        } else {
+            abstractInlineMethodIndex.put(methodName, pos);
+        }
+    }
+
+    public int getAbstractInlineMethodIndex(ClassEntry classEntry, String methodName) {
+        DwarfClassProperties classProperties;
+        classProperties = lookupClassProperties(classEntry);
+        assert classProperties.getTypeEntry() == classEntry;
+        HashMap<String, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
+        assert abstractInlineMethodIndex != null : classEntry.getTypeName() + methodName;
+        assert abstractInlineMethodIndex.get(methodName) != null : classEntry.getTypeName() + methodName;
+        return abstractInlineMethodIndex.get(methodName);
     }
 }

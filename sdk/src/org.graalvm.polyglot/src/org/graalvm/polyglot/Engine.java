@@ -46,6 +46,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
@@ -108,6 +109,8 @@ import org.graalvm.polyglot.management.ExecutionEvent;
  */
 public final class Engine implements AutoCloseable {
 
+    private static volatile Throwable initializationException;
+
     final AbstractEngineDispatch dispatch;
     final Object receiver;
     final Engine currentAPI;
@@ -136,7 +139,7 @@ public final class Engine implements AutoCloseable {
          * Performs context pre-initialization.
          *
          * NOTE: this method is called reflectively by downstream projects
-         * (com.oracle.svm.truffle.TruffleFeature).
+         * (com.oracle.svm.truffle.TruffleBaseFeature).
          */
         @SuppressWarnings("unused")
         private static void preInitializeEngine() {
@@ -147,7 +150,7 @@ public final class Engine implements AutoCloseable {
          * Clears the pre-initialized engine.
          *
          * NOTE: this method is called reflectively by downstream projects
-         * (com.oracle.svm.truffle.TruffleFeature).
+         * (com.oracle.svm.truffle.TruffleBaseFeature).
          */
         @SuppressWarnings("unused")
         private static void resetPreInitializedEngine() {
@@ -317,7 +320,19 @@ public final class Engine implements AutoCloseable {
     }
 
     static AbstractPolyglotImpl getImpl() {
-        return ImplHolder.IMPL;
+        try {
+            return ImplHolder.IMPL;
+        } catch (NoClassDefFoundError e) {
+            // Workaround for https://bugs.openjdk.java.net/browse/JDK-8048190
+            Throwable cause = initializationException;
+            if (cause != null && e.getCause() == null) {
+                e.initCause(cause);
+            }
+            throw e;
+        } catch (Throwable e) {
+            initializationException = e;
+            throw e;
+        }
     }
 
     /*
@@ -700,6 +715,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isMethodScopingEnabled(HostAccess access) {
+            return access.isMethodScopingEnabled();
+        }
+
+        @Override
+        public boolean isMethodScoped(HostAccess access, Executable e) {
+            return access.isMethodScoped(e);
+        }
+
+        @Override
         public List<Object> getTargetMappings(HostAccess access) {
             return access.getTargetMappings();
         }
@@ -758,7 +783,6 @@ public final class Engine implements AutoCloseable {
         public String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
             return access.validate(languages);
         }
-
     }
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;

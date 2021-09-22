@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -48,7 +47,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
-import java.nio.ByteBuffer;
 
 abstract class ClosureArgumentNode extends Node {
 
@@ -92,7 +90,7 @@ abstract class ClosureArgumentNode extends Node {
         }
 
         @Specialization
-        Object doBuffer(ByteBuffer arg,
+        Object doBuffer(NativeArgumentBuffer.Pointer arg,
                         @CachedLibrary("type") NativeArgumentLibrary nativeArguments) {
             NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct(arg, 0);
             return nativeArguments.deserialize(type, buffer);
@@ -103,9 +101,8 @@ abstract class ClosureArgumentNode extends Node {
     abstract static class ObjectClosureArgumentNode extends ClosureArgumentNode {
 
         @Specialization(guards = "arg == null")
-        Object doNull(@SuppressWarnings("unused") Object arg,
-                        @CachedLanguage LibFFILanguage language) {
-            return NativePointer.create(language, 0);
+        Object doNull(@SuppressWarnings("unused") Object arg) {
+            return NativePointer.create(LibFFILanguage.get(this), 0);
         }
 
         @Fallback

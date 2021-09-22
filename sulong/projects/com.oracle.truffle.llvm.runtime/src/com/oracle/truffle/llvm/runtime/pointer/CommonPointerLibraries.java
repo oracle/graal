@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -64,12 +64,9 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
-@SuppressWarnings({"static-method", "deprecation"})
-
-// implements deprecated ReferenceLibrary for backwards compatibility
+@ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 1)
+@ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 2)
+@SuppressWarnings({"static-method"})
 abstract class CommonPointerLibraries {
     @ExportMessage
     static boolean isReadable(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
@@ -439,25 +436,6 @@ abstract class CommonPointerLibraries {
                 exception.enter();
                 throw InvalidArrayIndexException.create(idx);
             }
-        }
-    }
-
-    @ExportMessage
-    static class IsSame {
-
-        @Specialization
-        static boolean doNative(LLVMPointerImpl receiver, LLVMPointerImpl other,
-                        @Cached LLVMAddressEqualsNode.Operation equals) {
-            return equals.executeWithTarget(receiver, other);
-        }
-
-        /**
-         * @param receiver
-         * @param other
-         */
-        @Fallback
-        static boolean doOther(LLVMPointerImpl receiver, Object other) {
-            return false;
         }
     }
 

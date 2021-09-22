@@ -46,8 +46,10 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.EnvType;
 import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
@@ -55,7 +57,7 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 class LibFFIContext {
 
     final LibFFILanguage language;
-    Env env;
+    @CompilationFinal Env env;
 
     final TruffleLogger attachThreadLogger;
 
@@ -314,4 +316,10 @@ class LibFFIContext {
     private static native long lookup(long nativeContext, long library, String name);
 
     static native void freeLibrary(long library);
+
+    private static final ContextReference<LibFFIContext> REFERENCE = ContextReference.create(LibFFILanguage.class);
+
+    static LibFFIContext get(Node node) {
+        return REFERENCE.get(node);
+    }
 }

@@ -134,19 +134,6 @@ public final class DebuggerConnection implements Commands {
     }
 
     @Override
-    public Callable<Void> createMethodEntryBreakpointCommand(BreakpointInfo info) {
-        return new Callable<Void>() {
-            @Override
-            public Void call() {
-                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_METHOD_ENTRY_BREAKPOINT, info.getFilter());
-                debuggerCommand.setBreakpointInfo(info);
-                addBlocking(debuggerCommand);
-                return null;
-            }
-        };
-    }
-
-    @Override
     public Callable<Void> createExceptionBreakpoint(BreakpointInfo info) {
         return new Callable<Void>() {
             @Override
@@ -170,9 +157,6 @@ public final class DebuggerConnection implements Commands {
                     switch (debuggerCommand.kind) {
                         case SUBMIT_LINE_BREAKPOINT:
                             controller.submitLineBreakpoint(debuggerCommand);
-                            break;
-                        case SUBMIT_METHOD_ENTRY_BREAKPOINT:
-                            controller.submitMethodEntryBreakpoint(debuggerCommand);
                             break;
                         case SUBMIT_EXCEPTION_BREAKPOINT:
                             controller.submitExceptionBreakpoint(debuggerCommand);

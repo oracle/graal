@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -370,14 +371,13 @@ public final class JNIFunctions {
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);
             } else {
-                String message = clazz.getName() + '.' + name + signature;
-                JNINativeLinkage l = JNIReflectionDictionary.singleton().getClosestLinkage(declaringClass, name, signature);
-                if (l != null) {
-                    message += " (found closely matching JNI-accessible method: " +
-                                    MetaUtil.internalNameToJava(l.getDeclaringClassName(), true, false) +
-                                    "." + l.getName() + l.getDescriptor() + ")";
-                }
-                throw new NoSuchMethodError(message);
+                /*
+                 * It happens that libraries register arbitrary Java native methods from their
+                 * native code. If during analysis, we didn't reach some of those JNI methods (see
+                 * com.oracle.svm.jni.hosted.JNINativeCallWrapperSubstitutionProcessor.lookup and
+                 * com.oracle.svm.jni.access.JNIAccessFeature.duringAnalysis) we shouldn't fail:
+                 * those native methods can never be invoked.
+                 */
             }
 
             p = p.add(SizeOf.get(JNINativeMethod.class));
@@ -826,11 +826,21 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @NeverInline("Access of caller frame.")
     static void FatalError(JNIEnvironment env, CCharPointer message) {
-        Log log = Log.log().autoflush(true);
-        log.string("Fatal error reported via JNI: ").string(message).newline();
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateDiagnostics.print(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        CodePointer callerIP = KnownIntrinsics.readReturnAddress();
+        LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
+        Log log = Log.enterFatalContext(logHandler, callerIP, CTypeConversion.toJavaString(message), null);
+        if (log != null) {
+            try {
+                log.string("Fatal error reported via JNI: ").string(message).newline();
+                VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+                SubstrateDiagnostics.printFatalError(log, KnownIntrinsics.readCallerStackPointer(), callerIP);
+            } catch (Throwable ignored) {
+                /*
+                 * Ignore exceptions reported during error reporting, we are going to exit anyway.
+                 */
+            }
+        }
+        logHandler.fatalError();
     }
 
     /*

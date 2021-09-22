@@ -46,7 +46,7 @@ The `--engine.TraceCompilation` command prints a line each time a method is comp
 [engine] opt done     EqualityConstraint.execute                                  |AST   17|Tier      2|Time  152( 143+9   )ms|Inlined   2Y   0N|IR   266/  300|CodeSize   1010|Addr 0x7f60068c82d0|Src octane-deltablue.js:528
 ```
 
-The `--engine.TraceCompilationDetail` command prints a line when compilation is queued, started, or completed:
+The `--engine.TraceCompilationDetails` command prints a line when compilation is queued, started, or completed:
 
 ```shell
 [engine] opt queued   BinaryConstraint.output                                     |AST   19|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416|QueueSize      0|Time 1725905750
@@ -105,27 +105,6 @@ The `--engine.TraceSplitting` command prints guest-language splitting decisions:
 ```shell
 [engine] split   0-4310d43-1     Strength                                                    |ASTSize       6/    6 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |SourceSection /Users/christianhumer/graal/4dev/js-benchmarks/octane-deltablue.js~139:4062-4089
 [engine] split   1-4b0d79fc-1     Strength                                                    |ASTSize       6/    6 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |SourceSection /Users/christianhumer/graal/4dev/js-benchmarks/octane-deltablue.js~140:4119-4150
-```
-
-The `--engine.TraceTransferToInterpreter` command prints a stack trace on explicit internal invalidations:
-
-```shell
-[engine] transferToInterpreter at
-  BinaryConstraint.output(../../../../4dev/js-benchmarks/octane-deltablue.js:416)
-    Constraint.satisfy(../../../../4dev/js-benchmarks/octane-deltablue.js:183)
-    Planner.incrementalAdd(../../../../4dev/js-benchmarks/octane-deltablue.js:597) <split-609bcfb6>
-    Constraint.addConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:165) <split-7d94beb9>
-    UnaryConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:219) <split-560348e6>
-    Function.prototype.call(<builtin>:1) <split-1df8b5b8>
-    EditConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:315) <split-23202fce>
-    ...
-  com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate(CompilerDirectives.java:90)
-    com.oracle.truffle.js.nodes.access.PropertyCacheNode.deoptimize(PropertyCacheNode.java:1269)
-    com.oracle.truffle.js.nodes.access.PropertyGetNode.getValueOrDefault(PropertyGetNode.java:305)
-    com.oracle.truffle.js.nodes.access.PropertyGetNode.getValueOrUndefined(PropertyGetNode.java:191)
-    com.oracle.truffle.js.nodes.access.PropertyNode.executeWithTarget(PropertyNode.java:153)
-    com.oracle.truffle.js.nodes.access.PropertyNode.execute(PropertyNode.java:140)
-    ...
 ```
 
 
@@ -462,14 +441,101 @@ Note: Specialization statistics require a recompilation of the interpeter.
  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
-The `--vm.XX:+TraceDeoptimization` command prints deoptimization events, whether the code is compiled by Truffle or conventional compilers (the output of HotSpot and native images may vary for this flag):
+## Controlling What Is Compiled
+
+To make the best use of the former options, limit what is compiled to the methods that you are interested in.
+
+* `--engine.CompileOnly=foo` restricts compilation to methods with `foo` in their name. Use this in combination with returning a value or taking parameters to avoid code being compiled away.
+
+* `--engine.CompileImmediately` compiles methods as soon as they are run.
+
+* `--engine.BackgroundCompilation=false` compiles synchronously, which can simplify things.
+
+* `--engine.Inlining=false` disables inlining which can make code easier to understand.
+
+* `--engine.OSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
+
+* `--engine.Compilation=false` turns off Truffle compilation all together.
+
+## Debugging Deoptimizations
+
+Sometimes compiled code deoptimizes (goes from Truffle compiled code back to the interpreter) unexpectedly.
+These are some ways to investigate why the code is deoptimized.
+It is very important for performance to avoid repeated deoptimizations.
+
+The `--engine.TraceCompilation` option shows deoptimizations with an `[engine] opt deopt` prefix, which is useful to evaluate if many deoptimizations happen.
+However, it shows no other details.
+
+Materializing a frame with `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)` from the stack causes deoptimizations (but no invalidation).
+These deoptimizations can be traced with `--engine.TraceDeoptimizeFrame`.
+
+When using native images, you need to build the native image with `-H:+IncludeNodeSourcePositions` to enable stack traces for deoptimizations.
+These are disabled by default to save on image size.
+
+On natives images, `--engine.TraceTransferToInterpreter` prints an accurate stack trace for any deoptimization, it is effectively the same as `--vm.XX:+TraceDeoptimization --engine.NodeSourcePositions`.
+This is often the most efficient way to find where a deoptimization comes from thanks to the stracktrace.
+
+```shell
+[Deoptimization initiated
+    name: String#[]
+    sp: 0x7ffd7b992710  ip: 0x7f26a8d8079f
+    reason: TransferToInterpreter  action: InvalidateReprofile
+    debugId: 25  speculation: jdk.vm.ci.meta.SpeculationLog$NoSpeculationReason@13dbed9e
+    stack trace that triggered deoptimization:
+        at org.truffleruby.core.string.StringNodesFactory$StringSubstringPrimitiveNodeFactory$StringSubstringPrimitiveNodeGen.execute(StringNodesFactory.java:12760)
+        at org.truffleruby.core.string.StringNodes$GetIndexNode.substring(StringNodes.java:836)
+        at org.truffleruby.core.string.StringNodes$GetIndexNode.getIndex(StringNodes.java:650)
+        at org.truffleruby.core.string.StringNodesFactory$GetIndexNodeFactory$GetIndexNodeGen.execute(StringNodesFactory.java:1435)
+        at org.truffleruby.language.RubyCoreMethodRootNode.execute(RubyCoreMethodRootNode.java:53)
+        at org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.executeRootNode(OptimizedCallTarget.java:632)
+        at org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot(OptimizedCallTarget.java:603)
+[Deoptimization of frame
+    name: String#[]
+    sp: 0x7ffd7b992710  ip: 0x7f26a8d8079f
+    stack trace where execution continues:
+        at org.truffleruby.core.string.StringNodesFactory$StringSubstringPrimitiveNodeFactory$StringSubstringPrimitiveNodeGen.execute(StringNodesFactory.java:12760) bci 99  return address 0x4199a1d
+        at org.truffleruby.core.string.StringNodes$GetIndexNode.substring(StringNodes.java:836) bci 32 duringCall  return address 0x41608e0
+        at org.truffleruby.core.string.StringNodes$GetIndexNode.getIndex(StringNodes.java:650) bci 25 duringCall  return address 0x415f197
+        at org.truffleruby.core.string.StringNodesFactory$GetIndexNodeFactory$GetIndexNodeGen.execute(StringNodesFactory.java:1435) bci 109 duringCall  return address 0x4182391
+        at org.truffleruby.language.RubyCoreMethodRootNode.execute(RubyCoreMethodRootNode.java:53) bci 14 duringCall  return address 0x4239a29
+        at org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.executeRootNode(OptimizedCallTarget.java:632) bci 9 duringCall  return address 0x3f1c4c9
+        at org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot(OptimizedCallTarget.java:603) bci 37 duringCall  return address 0x3f1d965
+]
+]
+```
+
+On HotSpot, `--engine.TraceTransferToInterpreter` prints a stack trace only for explicit deoptimizations via `CompilerDirectives.transferToInterpreterAndInvalidate()` or `CompilerDirectives.transferToInterpreter()`.
+The reported location can be incorrect if the deoptimization was caused by something else.
+In that case it will report the stracktrace of the next `CompilerDirectives.transferToInterpreter*` call even though it is not the cause.
+
+```shell
+[engine] transferToInterpreter at
+  BinaryConstraint.output(../../../../4dev/js-benchmarks/octane-deltablue.js:416)
+    Constraint.satisfy(../../../../4dev/js-benchmarks/octane-deltablue.js:183)
+    Planner.incrementalAdd(../../../../4dev/js-benchmarks/octane-deltablue.js:597) <split-609bcfb6>
+    Constraint.addConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:165) <split-7d94beb9>
+    UnaryConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:219) <split-560348e6>
+    Function.prototype.call(<builtin>:1) <split-1df8b5b8>
+    EditConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:315) <split-23202fce>
+    ...
+  com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate(CompilerDirectives.java:90)
+    com.oracle.truffle.js.nodes.access.PropertyCacheNode.deoptimize(PropertyCacheNode.java:1269)
+    com.oracle.truffle.js.nodes.access.PropertyGetNode.getValueOrDefault(PropertyGetNode.java:305)
+    com.oracle.truffle.js.nodes.access.PropertyGetNode.getValueOrUndefined(PropertyGetNode.java:191)
+    com.oracle.truffle.js.nodes.access.PropertyNode.executeWithTarget(PropertyNode.java:153)
+    com.oracle.truffle.js.nodes.access.PropertyNode.execute(PropertyNode.java:140)
+    ...
+```
+
+On HotSpot, `--vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+DebugNonSafepoints --vm.XX:+TraceDeoptimization` prints all deoptimization events (but no stacktraces), whether the code is compiled by Truffle or conventional compilers.
+The `TraceDeoptimization` option might require using a `fastdebug` JDK.
 
 ```shell
 Uncommon trap   bci=9 pc=0x00000001097f2235, relative_pc=501, method=com.oracle.truffle.js.nodes.access.PropertyNode.executeInt(Ljava/lang/Object;Ljava/lang/Object;)I, debug_id=0
 Uncommon trap occurred in org.graalvm.compiler.truffle.runtime.OptimizedCallTarget::profiledPERoot compiler=JVMCI compile_id=2686 (JVMCI: installed code name=BinaryConstraint.output#2)  (@0x00000001097f2235) thread=5891 reason=transfer_to_interpreter action=reinterpret unloaded_class_index=-1 debug_id=0
 ```
 
-The `--vm.XX:+TraceDeoptimizationDetails` command prints more information (only available for native images):
+Finally, on native images, `--vm.XX:+TraceDeoptimizationDetails` prints additional information:
 
 ```shell
 [Deoptimization initiated
@@ -490,21 +556,24 @@ The `--vm.XX:+TraceDeoptimizationDetails` command prints more information (only 
 ]
 ```
 
-## Controlling What Is Compiled
+You might notice the presence of a `debugId` or `debug_id` in the output of these options.
+This id might only be set if you also enable dumping, e.g., via `--vm.Dgraal.Dump=Truffle:1` (see below).
+In that case, the debug id will correspond to the id of a node in the IGV graph.
+First, open the first phase of the relevant compilation.
+That id can be searched via `id=NUMBER` in IGV's `Search in Nodes` search box,
+then selecting `Open Search for node NUMBER in Node Searches window`,
+and then clicking the `Search in following phases` button.
 
-To make the best use of the former options, limit what is compiled to the methods that you are interested in.
+## Debugging Invalidations
 
-* `--engine.CompileOnly=foo` restricts compilation to methods with `foo` in their name. Use this in combination with returning a value or taking parameters to avoid code being compiled away.
+Invalidations happen when a compiled CallTarget is thrown away.
 
-* `--engine.CompileImmediately` compiles methods as soon as they are run.
+The most common causes are:
+* An explicit `CompilerDirectives.transferToInterpreterAndInvalidate()` (an internal invalidation)
+* One of the `Assumption` used by that CallTarget has been invalidated (an external invalidation).
+  Use `--engine.TraceAssumptions` to trace those with more details.
 
-* `--engine.BackgroundCompilation=false` compiles synchronously, which can simplify things.
-
-* `--engine.Inlining=false` disables inlining which can make code easier to understand.
-
-* `--engine.OSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
-
-* `--engine.Compilation=false` turns off Truffle compilation all together.
+The `--engine.TraceCompilation` option also shows CallTarget invalidations with an `[engine] opt inv.` prefix.
 
 ## Ideal Graph Visualizer
 

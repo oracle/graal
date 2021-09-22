@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -64,6 +65,7 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
      */
     @ExplodeLoop
     @Specialization(guards = {"isVirtual(virtualIndex)", "type==typeHash"})
+    @GenerateAOT.Exclude
     Object doVirtualCallCached(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type,
                     Method method, long virtualIndex, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop,
@@ -85,6 +87,7 @@ public abstract class LLVMInteropMethodInvokeNode extends LLVMNode {
      */
     @ExplodeLoop
     @Specialization(guards = "isVirtual(virtualIndex)", replaces = "doVirtualCallCached")
+    @GenerateAOT.Exclude
     Object doVirtualCall(LLVMPointer receiver, String methodName, LLVMInteropType.Clazz type, Method method, long virtualIndex, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Cached LLVMInteropVtableAccessNode vtableAccessNode)

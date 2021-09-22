@@ -200,25 +200,29 @@ This is how you can run a polyglot application by using the examples from above:
 polyglot --jvm polyglot.js polyglot.R polyglot.rb
 ```
 
-We have also included a basic experimental shell for multiple languages called
-the _Polyglot Shell_. It is useful to quickly test the interactivity of
-languages implemented with the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/).
+We have also included a basic experimental shell for multiple languages called the _Polyglot Shell_.
+It is useful to quickly test the interactivity of languages implemented with the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/).
 This is how you can start it:
 
 ```shell
 polyglot --jvm --shell
-GraalVM MultiLanguage Shell 21.1.0
+```
+
+If you have installed all optional languages packs to the core GraalVM installation, then the Polyglot Shell will look like:
+```shell
+GraalVM MultiLanguage Shell 21.2.0
 Copyright (c) 2013-2021, Oracle and/or its affiliates
 Java version 1.8|11
-JavaScript version 21.1.0
+JavaScript version  21.2.0
 Python version 3.8.5
 R version 4.0.3
-Ruby version 2.7.2
+Ruby version 2.7.3
 Usage:
   Use Ctrl+n to switch language and Ctrl+d to exit.
   Enter -usage to get a list of available commands.
-java>
+js>
 ```
+
 Note: The `polyglot` launcher and the _Polyglot Shell_ are experimental features in GraalVM.
 
 ## Polyglot Options

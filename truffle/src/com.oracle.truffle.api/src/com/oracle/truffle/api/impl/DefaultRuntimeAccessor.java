@@ -42,6 +42,9 @@ package com.oracle.truffle.api.impl;
 
 import java.util.function.Function;
 
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -81,6 +84,26 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public void onLoopCount(Node source, int iterations) {
             // do nothing
+        }
+
+        @Override
+        public boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode) {
+            return false;
+        }
+
+        @Override
+        public Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
+            return null;
+        }
+
+        @Override
+        public void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
+            // do nothing
+        }
+
+        @Override
+        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -218,6 +241,12 @@ final class DefaultRuntimeAccessor extends Accessor {
         public Object getFieldValue(Object resolvedJavaField, Object obj) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public AbstractFastThreadLocal getContextThreadLocal() {
+            return DefaultContextThreadLocal.SINGLETON;
+        }
+
     }
 
 }

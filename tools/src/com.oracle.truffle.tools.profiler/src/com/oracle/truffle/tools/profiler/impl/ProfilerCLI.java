@@ -24,15 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionType;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -46,6 +37,16 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
+
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 abstract class ProfilerCLI {
 
@@ -80,6 +81,7 @@ abstract class ProfilerCLI {
 
                         }
                     });
+    public static final String UNKNOWN = "<Unknown>";
 
     static SourceSectionFilter buildFilter(boolean roots, boolean statements, boolean calls, boolean internals,
                     Object[] filterRootName, Object[] filterFile, String filterMimeType, String filterLanguage) {
@@ -133,10 +135,13 @@ abstract class ProfilerCLI {
 
     // custom version of SourceSection#getShortDescription
     static String getShortDescription(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return UNKNOWN;
+        }
         if (sourceSection.getSource() == null) {
             // TODO the source == null branch can be removed if the deprecated
             // SourceSection#createUnavailable has be removed.
-            return "<Unknown>";
+            return UNKNOWN;
         }
         StringBuilder b = new StringBuilder();
         if (sourceSection.getSource().getPath() == null) {
@@ -157,6 +162,9 @@ abstract class ProfilerCLI {
     }
 
     static String formatIndices(SourceSection sourceSection, boolean needsColumnSpecifier) {
+        if (sourceSection == null) {
+            return UNKNOWN;
+        }
         StringBuilder b = new StringBuilder();
         boolean singleLine = sourceSection.getStartLine() == sourceSection.getEndLine();
         if (singleLine) {

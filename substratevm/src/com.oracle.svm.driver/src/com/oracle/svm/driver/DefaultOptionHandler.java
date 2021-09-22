@@ -25,16 +25,25 @@
 package com.oracle.svm.driver;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import jdk.vm.ci.runtime.JVMCI;
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
+
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -55,6 +64,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     boolean useDebugAttach = false;
+    boolean disableAtFiles = false;
 
     private static void singleArgumentCheck(ArgumentQueue args, String arg) {
         if (!args.isEmpty()) {
@@ -133,6 +143,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClassModuleArgParts[1]);
                 }
                 nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + mainClassModuleArgParts[0]);
+                nativeImage.setModuleOptionMode(true);
                 return true;
             case "--configurations-path":
                 args.poll();
@@ -190,6 +201,32 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError(headArg + " requires resource regular expression");
                 }
                 nativeImage.addExcludeConfig(Pattern.compile(excludeJar), Pattern.compile(excludeConfig));
+                return true;
+            case "--diagnostics-mode":
+                args.poll();
+                nativeImage.setDiagnostics(true);
+                nativeImage.addPlainImageBuilderArg("-H:+DiagnosticsMode");
+                nativeImage.addPlainImageBuilderArg("-H:DiagnosticsDir=" + nativeImage.diagnosticsDir);
+                System.out.println("# Diagnostics mode enabled: image-build reports are saved to " + nativeImage.diagnosticsDir);
+                return true;
+            case "--list-cpu-features":
+                args.poll();
+                Architecture arch = JVMCI.getRuntime().getHostJVMCIBackend().getTarget().arch;
+                if (arch instanceof AMD64) {
+                    nativeImage.showMessage("All AMD64 CPUFeatures: " + Arrays.toString(AMD64.CPUFeature.values()));
+                    nativeImage.showNewline();
+                    nativeImage.showMessage("Host machine AMD64 CPUFeatures: " + ((AMD64) arch).getFeatures().toString());
+                } else {
+                    nativeImage.showMessage("All AArch64 CPUFeatures: " + Arrays.toString(AArch64.CPUFeature.values()));
+                    nativeImage.showNewline();
+                    nativeImage.showMessage("Host machine AArch64 CPUFeatures: " + ((AArch64) arch).getFeatures().toString());
+                }
+                nativeImage.showNewline();
+                System.exit(0);
+                return true;
+            case "--disable-@files":
+                args.poll();
+                disableAtFiles = true;
                 return true;
         }
 
@@ -277,7 +314,219 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             return true;
         }
+        if (headArg.startsWith("@") && !disableAtFiles) {
+            args.poll();
+            headArg = headArg.substring(1);
+            Path argFile = Paths.get(headArg);
+            NativeImage.NativeImageArgsProcessor processor = nativeImage.new NativeImageArgsProcessor(argFile.toString());
+            readArgFile(argFile).forEach(processor::accept);
+            List<String> leftoverArgs = processor.apply(false);
+            if (leftoverArgs.size() > 0) {
+                NativeImage.showError("Found unrecognized options while parsing argument file '" + argFile + "':\n" + String.join("\n", leftoverArgs));
+            }
+            return true;
+        }
         return false;
+    }
+
+    // Ported from JDK11's java.base/share/native/libjli/args.c
+    enum PARSER_STATE {
+        FIND_NEXT,
+        IN_COMMENT,
+        IN_QUOTE,
+        IN_ESCAPE,
+        SKIP_LEAD_WS,
+        IN_TOKEN
+    }
+
+    class CTX_ARGS {
+        PARSER_STATE state;
+        int cptr;
+        int eob;
+        char quoteChar;
+        List<String> parts;
+        String options;
+    }
+
+    // Ported from JDK11's java.base/share/native/libjli/args.c
+    private List<String> readArgFile(Path file) {
+        List<String> arguments = new ArrayList<>();
+        // Use of the at sign (@) to recursively interpret files isn't supported.
+        arguments.add("--disable-@files");
+
+        String options = null;
+        try {
+            options = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            NativeImage.showError("Error reading argument file", e);
+        }
+
+        CTX_ARGS ctx = new CTX_ARGS();
+        ctx.state = PARSER_STATE.FIND_NEXT;
+        ctx.parts = new ArrayList<>(4);
+        ctx.quoteChar = '"';
+        ctx.cptr = 0;
+        ctx.eob = options.length();
+        ctx.options = options;
+
+        String token = nextToken(ctx);
+        while (token != null) {
+            arguments.add(token);
+            token = nextToken(ctx);
+        }
+
+        // remaining partial token
+        if (ctx.state == PARSER_STATE.IN_TOKEN || ctx.state == PARSER_STATE.IN_QUOTE) {
+            if (ctx.parts.size() != 0) {
+                token = String.join("", ctx.parts);
+                arguments.add(token);
+            }
+        }
+        return arguments;
+    }
+
+    // Ported from JDK11's java.base/share/native/libjli/args.c
+    @SuppressWarnings("fallthrough")
+    private static String nextToken(CTX_ARGS ctx) {
+        int nextc = ctx.cptr;
+        int eob = ctx.eob;
+        int anchor = nextc;
+        String token;
+
+        for (; nextc < eob; nextc++) {
+            char ch = ctx.options.charAt(nextc);
+
+            // Skip white space characters
+            if (ctx.state == PARSER_STATE.FIND_NEXT || ctx.state == PARSER_STATE.SKIP_LEAD_WS) {
+                while (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\f') {
+                    nextc++;
+                    if (nextc >= eob) {
+                        return null;
+                    }
+                    ch = ctx.options.charAt(nextc);
+                }
+                ctx.state = (ctx.state == PARSER_STATE.FIND_NEXT) ? PARSER_STATE.IN_TOKEN : PARSER_STATE.IN_QUOTE;
+                anchor = nextc;
+                // Deal with escape sequences
+            } else if (ctx.state == PARSER_STATE.IN_ESCAPE) {
+                // concatenation directive
+                if (ch == '\n' || ch == '\r') {
+                    ctx.state = PARSER_STATE.SKIP_LEAD_WS;
+                } else {
+                    // escaped character
+                    char[] escaped = new char[2];
+                    escaped[1] = '\0';
+                    switch (ch) {
+                        case 'n':
+                            escaped[0] = '\n';
+                            break;
+                        case 'r':
+                            escaped[0] = '\r';
+                            break;
+                        case 't':
+                            escaped[0] = '\t';
+                            break;
+                        case 'f':
+                            escaped[0] = '\f';
+                            break;
+                        default:
+                            escaped[0] = ch;
+                            break;
+                    }
+                    ctx.parts.add(String.valueOf(escaped));
+                    ctx.state = PARSER_STATE.IN_QUOTE;
+                }
+                // anchor to next character
+                anchor = nextc + 1;
+                continue;
+                // ignore comment to EOL
+            } else if (ctx.state == PARSER_STATE.IN_COMMENT) {
+                while (ch != '\n' && ch != '\r') {
+                    nextc++;
+                    if (nextc >= eob) {
+                        return null;
+                    }
+                    ch = ctx.options.charAt(nextc);
+                }
+                anchor = nextc + 1;
+                ctx.state = PARSER_STATE.FIND_NEXT;
+                continue;
+            }
+
+            assert (ctx.state != PARSER_STATE.IN_ESCAPE);
+            assert (ctx.state != PARSER_STATE.FIND_NEXT);
+            assert (ctx.state != PARSER_STATE.SKIP_LEAD_WS);
+            assert (ctx.state != PARSER_STATE.IN_COMMENT);
+
+            switch (ch) {
+                case ' ':
+                case '\t':
+                case '\f':
+                    if (ctx.state == PARSER_STATE.IN_QUOTE) {
+                        continue;
+                    }
+                    // fall through
+                case '\n':
+                case '\r':
+                    if (ctx.parts.size() == 0) {
+                        token = ctx.options.substring(anchor, nextc);
+                    } else {
+                        ctx.parts.add(ctx.options.substring(anchor, nextc));
+                        token = String.join("", ctx.parts);
+                        ctx.parts = new ArrayList<>();
+                    }
+                    ctx.cptr = nextc + 1;
+                    ctx.state = PARSER_STATE.FIND_NEXT;
+                    return token;
+                case '#':
+                    if (ctx.state == PARSER_STATE.IN_QUOTE) {
+                        continue;
+                    }
+                    ctx.state = PARSER_STATE.IN_COMMENT;
+                    anchor = nextc + 1;
+                    break;
+                case '\\':
+                    if (ctx.state != PARSER_STATE.IN_QUOTE) {
+                        continue;
+                    }
+                    ctx.parts.add(ctx.options.substring(anchor, nextc));
+                    ctx.state = PARSER_STATE.IN_ESCAPE;
+                    // anchor after backslash character
+                    anchor = nextc + 1;
+                    break;
+                case '\'':
+                case '"':
+                    if (ctx.state == PARSER_STATE.IN_QUOTE && ctx.quoteChar != ch) {
+                        // not matching quote
+                        continue;
+                    }
+                    // partial before quote
+                    if (anchor != nextc) {
+                        ctx.parts.add(ctx.options.substring(anchor, nextc));
+                    }
+                    // anchor after quote character
+                    anchor = nextc + 1;
+                    if (ctx.state == PARSER_STATE.IN_TOKEN) {
+                        ctx.quoteChar = ch;
+                        ctx.state = PARSER_STATE.IN_QUOTE;
+                    } else {
+                        ctx.state = PARSER_STATE.IN_TOKEN;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        assert (nextc == eob);
+        // Only need partial token, not comment or whitespaces
+        if (ctx.state == PARSER_STATE.IN_TOKEN || ctx.state == PARSER_STATE.IN_QUOTE) {
+            if (anchor < nextc) {
+                // not yet return until end of stream, we have part of a token.
+                ctx.parts.add(ctx.options.substring(anchor, nextc));
+            }
+        }
+        return null;
     }
 
     private void processClasspathArgs(String cpArgs) {

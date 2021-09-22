@@ -53,29 +53,29 @@ class WindowsRegisterDumperFeature implements Feature {
 
 public class WindowsRegisterDumper implements RegisterDumper {
     @Override
-    public void dumpRegisters(Log log, Context context) {
-        dumpRegisters(log, (CONTEXT) context);
+    public void dumpRegisters(Log log, Context context, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
+        dumpRegisters(log, (CONTEXT) context, printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
     }
 
-    private static void dumpRegisters(Log log, CONTEXT context) {
-        dumpReg(log, "RAX ", context.Rax());
-        dumpReg(log, "RBX ", context.Rbx());
-        dumpReg(log, "RCX ", context.Rcx());
-        dumpReg(log, "RDX ", context.Rdx());
-        dumpReg(log, "RBP ", context.Rbp());
-        dumpReg(log, "RSI ", context.Rsi());
-        dumpReg(log, "RDI ", context.Rdi());
-        dumpReg(log, "RSP ", context.Rsp());
-        dumpReg(log, "R8  ", context.R8());
-        dumpReg(log, "R9  ", context.R9());
-        dumpReg(log, "R10 ", context.R10());
-        dumpReg(log, "R11 ", context.R11());
-        dumpReg(log, "R12 ", context.R12());
-        dumpReg(log, "R13 ", context.R13());
-        dumpReg(log, "R14 ", context.R14());
-        dumpReg(log, "R15 ", context.R15());
-        dumpReg(log, "EFL ", context.EFlags());
-        dumpReg(log, "RIP ", context.Rip());
+    private static void dumpRegisters(Log log, CONTEXT context, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
+        dumpReg(log, "RAX ", context.Rax(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "RBX ", context.Rbx(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "RCX ", context.Rcx(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "RDX ", context.Rdx(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "RBP ", context.Rbp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "RSI ", context.Rsi(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "RDI ", context.Rdi(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "RSP ", context.Rsp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "R8  ", context.R8(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "R9  ", context.R9(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "R10 ", context.R10(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "R11 ", context.R11(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "R12 ", context.R12(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "R13 ", context.R13(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "R14 ", context.R14(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "R15 ", context.R15(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "EFL ", context.EFlags(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "RIP ", context.Rip(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
     }
 
     @Override

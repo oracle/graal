@@ -54,13 +54,13 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -87,7 +87,7 @@ final class HostContext {
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
     private boolean hostLookupAllowed;
-
+    final TruffleLanguage.Env env;
     final AbstractHostAccess access;
 
     @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
@@ -105,9 +105,10 @@ final class HostContext {
         }
     };
 
-    HostContext(HostLanguage hostLanguage) {
+    HostContext(HostLanguage hostLanguage, TruffleLanguage.Env env) {
         this.language = hostLanguage;
         this.access = hostLanguage.access;
+        this.env = env;
     }
 
     /*
@@ -252,33 +253,22 @@ final class HostContext {
         }
     }
 
-    Value asValue(Object value) {
-        return language.access.toValue(internalContext, value);
+    Value asValue(Node node, Object value) {
+        // make language lookup fold if possible
+        HostLanguage l = HostLanguage.get(node);
+        return l.access.toValue(internalContext, value);
     }
 
     Object toGuestValue(Class<?> receiver) {
         return HostObject.forClass(receiver, this);
     }
 
-    Object toGuestValue(Node parentNode, Object hostValue) {
-        Object result = language.access.toGuestValue(internalContext, parentNode, hostValue);
-        if (result != null) {
-            return result;
-        } else if (isGuestPrimitive(hostValue)) {
-            return hostValue;
-        } else if (hostValue instanceof Proxy) {
-            return HostProxy.toProxyGuestObject(this, (Proxy) hostValue);
-        } else if (hostValue instanceof TruffleObject) {
-            return hostValue;
-        } else if (hostValue instanceof Class) {
-            return HostObject.forClass((Class<?>) hostValue, this);
-        } else if (hostValue == null) {
-            return HostObject.NULL;
-        } else if (hostValue.getClass().isArray()) {
-            return HostObject.forObject(hostValue, this);
-        } else {
-            return HostInteropReflect.asTruffleViaReflection(hostValue, this);
-        }
+    Object toGuestValue(Node node, Object hostValue) {
+        HostLanguage l = HostLanguage.get(node);
+        HostContext context = HostContext.get(node);
+        assert context == this;
+        Object result = l.access.toGuestValue(context.internalContext, hostValue);
+        return l.service.toGuestValue(context, result, false);
     }
 
     static boolean isGuestPrimitive(Object receiver) {
@@ -287,6 +277,12 @@ final class HostContext {
                         || receiver instanceof Boolean || receiver instanceof Character //
                         || receiver instanceof Byte || receiver instanceof Short //
                         || receiver instanceof String;
+    }
+
+    private static final ContextReference<HostContext> REFERENCE = ContextReference.create(HostLanguage.class);
+
+    static HostContext get(Node node) {
+        return REFERENCE.get(node);
     }
 
     @GenerateUncached

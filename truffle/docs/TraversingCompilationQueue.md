@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Approach to the Compilation Queue
+permalink: /graalvm-as-a-platform/language-implementation-framework/TraversingCompilationQueue/
+---
 # Truffle Approach to the Compilation Queue
 
 As of version 21.2.0 Truffle has a new approach to compilation queueing.
@@ -5,14 +11,14 @@ This document gives motivation and an overview of this approach.
 
 ## What is a Compilation queue?
 
-During execution of guest code each Truffle call target counts how many times it was executed as well as how many loop iterations happened during those executions (i.e. the target's "call and loop count"). 
+During execution of guest code each Truffle call target counts how many times it was executed as well as how many loop iterations happened during those executions (i.e. the target's "call and loop count").
 Once this counter reaches a certain threshold the call target is deemed "hot" and scheduled for compilation.
 In order to minimize the impact this has on the execution of the guest code the notion that the target should be compiled is made concrete as a [compilation task](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/CompilationTask.java) and placed into a [compilation queue](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/BackgroundCompileQueue.java) to await compilation.
 The Truffle runtime spawns several compiler threads (`--engine.CompilerThreads`) that take tasks from the queue and compile the specified call targets.
 
 The initial implementation of the compilation queue in Truffle was a straightforward FIFO queue.
-This approach has important limitations with respect to warmup characteristics of the guest code execution. 
-Namely, not all call targets are equally important to compile. 
+This approach has important limitations with respect to warmup characteristics of the guest code execution.
+Namely, not all call targets are equally important to compile.
 The aim is to identify targets which account for more execution time and compile them first, thus reaching better performance sooner.
 Since call targets are queued for compilation when a counter reaches a certain threshold a FIFO queue would compile targets in order of reaching that threshold, which in practise does not correlate to actual execution time.
 
@@ -47,8 +53,8 @@ Every time a compiler thread requests the next compilation task the queue will t
 
 A task's priority is [determined based on several factors](https://github.com/oracle/graal/blob/c7c061b3230852e9582badf788b3dab74a809ca9/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/CompilationTask.java#L209).
 
-For starters, targets scheduled for [first-tier compilation](https://medium.com/graalvm/multi-tier-compilation-in-graalvm-5fbc65f92402) (i.e. first-tier tasks) always have higher priority than second-tier tasks. 
-The rational behind this is that performance difference between executing code in the interpreter and executing it in first-tier compiled code is much greater then the difference between tier-one and tier-two compiled code, meaning that we get more benefit from compiling these targets sooner. 
+For starters, targets scheduled for [first-tier compilation](https://medium.com/graalvm/multi-tier-compilation-in-graalvm-5fbc65f92402) (i.e. first-tier tasks) always have higher priority than second-tier tasks.
+The rational behind this is that performance difference between executing code in the interpreter and executing it in first-tier compiled code is much greater then the difference between tier-one and tier-two compiled code, meaning that we get more benefit from compiling these targets sooner.
 Also, first-tier compilations are usually take less time, thus one compiler thread can finish multiple first-tier compilations in the same time it takes to complete one second-tier compilation.
 This approach has been shown to underperform in certain scenarios and might be improved upon in the coming versions.
 
@@ -57,7 +63,7 @@ For example, if a call target get first-tier compiled, then gets invalidated for
 The reasoning is that if it was previously compiled, it is obviously important and should not be penalized more than necessary by its invalidation.
 
 Finally, if the two previous conditions can't differentiate the priority between two tasks we give priority to the task with the higher "weight".
-The weight is a function of the target's call and loop count and time. 
+The weight is a function of the target's call and loop count and time.
 It is defined as a product of the target's call and loop count with the rate at which that call and loop count has grown in the past 1ms.
 Using the target's call and loop count as a proxy for amount of time spent executing that call target, this metric aims to balance total time spent executing that call target with the recent growth of that time.
 This gives a priority boost to targets that are currently "very hot" when comparing to targets that were "hot" but are not being executed a lot currently.
@@ -73,7 +79,7 @@ This does not have a significant performance impact as long as the size of the q
 This means that in order to always choose the highest priority task in a reasonable about of time we need to ensure that the queue does not grow indefinitely.
 
 This is achieved by an approach we call ["dynamic compilation thresholds"](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/DynamicThresholdsQueue.java).
-Simply put, dynamic compilation thresholds means that the compilation threshold (the one each call target's call and loop count is compared against when determining whether to compile it) may change over time depending on the state of the queue. 
+Simply put, dynamic compilation thresholds means that the compilation threshold (the one each call target's call and loop count is compared against when determining whether to compile it) may change over time depending on the state of the queue.
 If the queue is overloaded we aim to increase the compilation thresholds to reduce the number of incoming compilation tasks, i.e. targets need to be "more hot" to get scheduled for compilation.
 On the other hand, if the queue is close to empty, we can reduce the compilation thresholds to allow more targets to get scheduled for compilation, i.e. the compilation threads are in danger of idling so let's give them even "less hot" targets to compile.
 

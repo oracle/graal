@@ -29,10 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -55,18 +53,16 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
      * @see #executeGeneric(Object, Object, Object, Object, Object, Object)
      */
     @Specialization
-    protected long doOp(LLVMNativePointer addr, long len, long prot, long flags, long fildes, long off,
-                    @CachedLanguage LLVMLanguage language) {
+    protected long doOp(LLVMNativePointer addr, long len, long prot, long flags, long fildes, long off) {
         if (mapAnonymousProfile.profile((flags & LLVMAMD64Memory.MAP_ANONYMOUS) != 0)) {
-            LLVMNativePointer ptr = language.getLLVMMemory().allocateMemory(this, len);
+            LLVMNativePointer ptr = getLanguage().getLLVMMemory().allocateMemory(this, len);
             return ptr.asNative();
         }
         return -LLVMAMD64Error.ENOMEM;
     }
 
     @Specialization
-    protected long doOp(long addr, long len, long prot, long flags, long fildes, long off,
-                    @CachedLanguage LLVMLanguage language) {
-        return doOp(LLVMNativePointer.create(addr), len, prot, flags, fildes, off, language);
+    protected long doOp(long addr, long len, long prot, long flags, long fildes, long off) {
+        return doOp(LLVMNativePointer.create(addr), len, prot, flags, fildes, off);
     }
 }

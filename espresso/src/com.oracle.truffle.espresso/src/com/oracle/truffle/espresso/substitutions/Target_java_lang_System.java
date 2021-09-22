@@ -64,15 +64,15 @@ public final class Target_java_lang_System {
 
     // endregion Profile values
 
-    @Substitution
-    public static int identityHashCode(@Host(Object.class) StaticObject self) {
+    @Substitution(isTrivial = true)
+    public static int identityHashCode(@JavaType(Object.class) StaticObject self) {
         SYSTEM_IDENTITY_HASH_CODE_COUNT.inc();
         return VM.JVM_IHashCode(self);
     }
 
     @Substitution
-    public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length,
-                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
+    public static void arraycopy(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
             doArrayCopy(src, srcPos, dest, destPos, length, meta, profiler);
@@ -105,7 +105,7 @@ public final class Target_java_lang_System {
      *  D - ArrayStoreException
      *      if an element in the src array could not be stored into the dest array because of a type mismatch
      */
-    private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length,
+    private static void doArrayCopy(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
                     Meta meta, SubstitutionProfiler profiler) {
         if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
             throw throwNullPointerEx(meta, profiler);
@@ -248,13 +248,13 @@ public final class Target_java_lang_System {
     }
 
     @TruffleBoundary(allowInlining = true)
-    @Substitution
+    @Substitution(isTrivial = true)
     public static long currentTimeMillis() {
         return System.currentTimeMillis();
     }
 
     @TruffleBoundary(allowInlining = true)
-    @Substitution
+    @Substitution(isTrivial = true)
     public static long nanoTime() {
         return System.nanoTime();
     }

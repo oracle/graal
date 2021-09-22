@@ -54,13 +54,14 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 
+import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
-import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 
@@ -197,7 +198,7 @@ final class EarlyClassInitializerAnalysis {
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
             ResolvedJavaMethod clinitMethod = b.getGraph().method();
-            if (type.isInitialized() || type.isArray() || type.equals(clinitMethod.getDeclaringClass())) {
+            if (!EnsureClassInitializedNode.needsRuntimeInitialization(clinitMethod.getDeclaringClass(), type)) {
                 return false;
             }
             if (classInitializationSupport.computeInitKindAndMaybeInitializeClass(ConfigurableClassInitialization.getJavaClass(type), true, analyzedClasses) != InitKind.RUN_TIME) {
@@ -227,10 +228,8 @@ final class ClassInitializerHasSideEffectsException extends GraalBailoutExceptio
 final class AbortOnRecursiveInliningPlugin implements InlineInvokePlugin {
     @Override
     public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod original, ValueNode[] arguments) {
-        for (GraphBuilderContext parent = b.getParent(); parent != null; parent = parent.getParent()) {
-            if (parent.getMethod().equals(original)) {
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            }
+        if (b.recursiveInliningDepth(original) > 0) {
+            return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         if (original.getCode() == null) {
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;

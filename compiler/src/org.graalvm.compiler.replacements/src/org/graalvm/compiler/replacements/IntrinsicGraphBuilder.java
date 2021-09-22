@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
+
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -63,7 +65,6 @@ import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -145,6 +146,9 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
             Stamp stamp;
             if (kind == JavaKind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.object(TypeReference.createWithoutAssumptions((ResolvedJavaType) type));
+            } else if (kind.getStackKind() != kind) {
+                assert kind.getStackKind() == JavaKind.Int;
+                stamp = StampFactory.forKind(JavaKind.Int);
             } else {
                 stamp = StampFactory.forKind(kind);
             }
@@ -258,7 +262,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     @Override
     public void setStateAfter(StateSplit sideEffect) {
         assert sideEffect.hasSideEffect();
-        FrameState stateAfter = getGraph().add(new FrameState(BytecodeFrame.AFTER_BCI));
+        FrameState stateAfter = getGraph().add(new FrameState(AFTER_BCI));
         sideEffect.setStateAfter(stateAfter);
     }
 
@@ -323,17 +327,31 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         // processed without special handling.
         assert !plugin.isDecorator() : plugin;
         NodeSourcePosition position = graph.trackNodeSourcePosition() ? NodeSourcePosition.placeholder(method) : null;
-        try (DebugCloseable context = graph.withNodeSourcePosition(position)) {
-            Receiver receiver = method.isStatic() ? null : this;
-            if (plugin.execute(this, method, receiver, arguments)) {
-                assert (returnValue != null) == (method.getSignature().getReturnKind() != JavaKind.Void) : method;
-                assert lastInstr != null : "ReturnNode must be linked into control flow";
-                append(new ReturnNode(returnValue));
-                mergeUnwinds();
-                return graph;
+        try (DebugContext.Scope scope = graph.getDebug().scope("BuildGraph", graph)) {
+            try (DebugCloseable context = graph.withNodeSourcePosition(position)) {
+                Receiver receiver = method.isStatic() ? null : this;
+                if (plugin.execute(this, method, receiver, arguments)) {
+                    assert (returnValue != null) == (method.getSignature().getReturnKind() != JavaKind.Void) : method;
+                    assert lastInstr != null : "ReturnNode must be linked into control flow";
+                    append(new ReturnNode(returnValue));
+                    mergeUnwinds();
+                    return graph;
+                }
+                return null;
             }
-            return null;
+        } catch (Throwable t) {
+            throw graph.getDebug().handle(t);
         }
+    }
+
+    @Override
+    public FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode retVal) {
+        return getGraph().add(new FrameState(AFTER_BCI));
+    }
+
+    @Override
+    public boolean canMergeIntrinsicReturns() {
+        return true;
     }
 
     @Override

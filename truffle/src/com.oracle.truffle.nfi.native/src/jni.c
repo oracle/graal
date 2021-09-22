@@ -60,7 +60,7 @@ static void cacheFFIType(JNIEnv *env, jclass nativeSimpleType, jobject context, 
     jfieldID enumField = (*env)->GetStaticFieldID(env, nativeSimpleType, enumName, "Lcom/oracle/truffle/nfi/backend/spi/types/NativeSimpleType;");
     jobject enumValue = (*env)->GetStaticObjectField(env, nativeSimpleType, enumField);
 
-    (*env)->CallVoidMethod(env, context, initializeSimpleType, enumValue, type->size, type->alignment, (jlong) type);
+    (*env)->CallVoidMethod(env, context, initializeSimpleType, enumValue, type->size, type->alignment, (jlong)(intptr_t)type);
 }
 
 static void initializeFlag(JNIEnv *env, jclass LibFFIContext, jobject context, const char *name, int value) {
@@ -108,6 +108,9 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     ret->LibFFIContext_releaseClosureRef = (*env)->GetMethodID(env, LibFFIContext, "releaseClosureRef", "(J)V");
     ret->LibFFIContext_getClosureObject = (*env)->GetMethodID(env, LibFFIContext, "getClosureObject", "(J)Ljava/lang/Object;");
 
+    ret->NativeArgumentBuffer_Pointer = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/backend/libffi/NativeArgumentBuffer$Pointer"));
+    ret->NativeArgumentBuffer_Pointer_pointer = (*env)->GetFieldID(env, ret->NativeArgumentBuffer_Pointer, "pointer", "J");
+
     ret->Object = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/Object"));
     ret->String = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/String"));
     ret->UnsatisfiedLinkError = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/backend/libffi/NFIUnsatisfiedLinkError"));
@@ -154,11 +157,11 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
 
     initialize_intrinsics(ret);
 
-    return (jlong) ret;
+    return (jlong)(intptr_t)ret;
 }
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_disposeNativeContext(JNIEnv *env, jclass clazz, jlong context) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
 
     (*env)->DeleteGlobalRef(env, ctx->LibFFIContext);
 
@@ -169,6 +172,8 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_
 
     (*env)->DeleteGlobalRef(env, ctx->NativeString);
 
+    (*env)->DeleteGlobalRef(env, ctx->NativeArgumentBuffer_Pointer);
+
     (*env)->DeleteGlobalRef(env, ctx->Object);
     (*env)->DeleteGlobalRef(env, ctx->String);
     (*env)->DeleteGlobalRef(env, ctx->UnsatisfiedLinkError);
@@ -177,21 +182,21 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_
 }
 
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_initializeNativeEnv(JNIEnv *env, jclass clazz, jlong context) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
 
     struct __TruffleEnvInternal *ret = (struct __TruffleEnvInternal *) malloc(sizeof(*ret));
     ret->functions = &truffleNativeAPI;
     ret->context = ctx;
     ret->jniEnv = env;
 
-    return (jlong) ret;
+    return (jlong)(intptr_t)ret;
 }
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NativeAllocation_free(JNIEnv *env, jclass self, jlong pointer) {
-    free((void*) pointer);
+    free((void*)(intptr_t)pointer);
 }
 
 JNIEXPORT jstring JNICALL Java_com_oracle_truffle_nfi_backend_libffi_NativeString_toJavaString(JNIEnv *env, jclass self, jlong pointer) {
-    const char *str = (const char *) pointer;
+    const char *str = (const char *)(intptr_t)pointer;
     return (*env)->NewStringUTF(env, str);
 }

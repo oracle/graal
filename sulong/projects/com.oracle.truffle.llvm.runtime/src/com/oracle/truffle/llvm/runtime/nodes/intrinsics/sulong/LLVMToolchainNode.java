@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,12 +35,10 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -53,9 +51,8 @@ public abstract class LLVMToolchainNode extends LLVMIntrinsic {
 
         @Specialization
         protected Object doOp(Object name,
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                         @Cached LLVMReadStringNode readString) {
-            TruffleFile path = getToolPath(ctx.getToolchain(), readString.executeWithTarget(name));
+            TruffleFile path = getToolPath(getContext().getToolchain(), readString.executeWithTarget(name));
             if (path == null) {
                 return LLVMNativePointer.createNull();
             }
@@ -73,9 +70,8 @@ public abstract class LLVMToolchainNode extends LLVMIntrinsic {
 
         @Specialization
         protected Object doOp(Object path,
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                         @Cached LLVMReadStringNode readString) {
-            List<TruffleFile> paths = getPaths(ctx.getToolchain(), readString.executeWithTarget(path));
+            List<TruffleFile> paths = getPaths(getContext().getToolchain(), readString.executeWithTarget(path));
             if (paths == null) {
                 return LLVMNativePointer.createNull();
             }
@@ -97,8 +93,8 @@ public abstract class LLVMToolchainNode extends LLVMIntrinsic {
     public abstract static class LLVMToolchainIdentifierNode extends LLVMToolchainNode {
 
         @Specialization
-        protected Object doOp(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-            return LLVMManagedPointer.create(ctx.getToolchain().getIdentifier());
+        protected Object doOp() {
+            return LLVMManagedPointer.create(getContext().getToolchain().getIdentifier());
         }
 
     }

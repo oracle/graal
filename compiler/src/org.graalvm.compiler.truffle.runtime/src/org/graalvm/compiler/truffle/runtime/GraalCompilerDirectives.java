@@ -31,15 +31,16 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
  */
 public class GraalCompilerDirectives {
     /**
-     * Returns a boolean value indicating whether the method is executed in the first tier Truffle
-     * compilation.
+     * Returns a boolean value indicating whether the method is executed in a compiled tier which
+     * can be replaced with a higher tier (e.g. a first tier compilation can be replaced with a
+     * second tier compilation).
      *
      * {@link PolyglotCompilerOptions#MultiTier}
      *
      * @return {@code true} when executed in the first tier Truffle compilation, {@code false}
      *         otherwise.
      */
-    public static boolean inFirstTier() {
+    public static boolean hasNextTier() {
         return false;
     }
 }
