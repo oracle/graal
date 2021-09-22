@@ -1972,7 +1972,18 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (Types.isPrimitive(type)) {
             result = null;
         } else {
-            result = meta.resolveSymbolOrNull(type, loader, JVM_GetProtectionDomain(caller));
+            StaticObject protectionDomain;
+            // If loader is null, shouldn't call ClassLoader.checkPackageAccess; otherwise get
+            // NPE. Put it in another way, the bootstrap class loader has all permission and
+            // thus no checkPackageAccess equivalence in the VM class loader.
+            // The caller is also passed as NULL by the java code if there is no security
+            // manager to avoid the performance cost of getting the calling class.
+            if (!StaticObject.isNull(caller) && !StaticObject.isNull(loader)) {
+                protectionDomain = JVM_GetProtectionDomain(caller);
+            } else {
+                protectionDomain = StaticObject.NULL;
+            }
+            result = meta.resolveSymbolOrNull(type, loader, protectionDomain);
         }
         if (result == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, NativeUtils.interopPointerToString(namePtr));
