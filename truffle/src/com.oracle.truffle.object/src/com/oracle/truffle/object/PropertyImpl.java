@@ -249,12 +249,12 @@ public class PropertyImpl extends Property {
 
     private void setSlowCase(DynamicObject store, Object value) {
         ShapeImpl oldShape = (ShapeImpl) store.getShape();
-        oldShape.getLayout().getStrategy().propertySetFallback(this, store, value, oldShape);
+        oldShape.getLayoutStrategy().propertySetFallback(this, store, value, oldShape);
     }
 
     private void setWithShapeSlowCase(DynamicObject store, Object value, Shape currentShape, Shape nextShape) {
         ShapeImpl oldShape = (ShapeImpl) currentShape;
-        oldShape.getLayout().getStrategy().propertySetWithShapeFallback(this, store, value, oldShape, (ShapeImpl) nextShape);
+        oldShape.getLayoutStrategy().propertySetWithShapeFallback(this, store, value, oldShape, (ShapeImpl) nextShape);
     }
 
     /** @since 0.17 or earlier */

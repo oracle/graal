@@ -563,7 +563,7 @@ public abstract class ShapeImpl extends Shape {
     public ShapeImpl addProperty(Property property) {
         assert isValid();
 
-        return layout.getStrategy().addProperty(this, property);
+        return getLayoutStrategy().addProperty(this, property);
     }
 
     /** @since 0.17 or earlier */
@@ -588,14 +588,14 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int propertyFlags) {
-        return layout.getStrategy().defineProperty(this, key, value, propertyFlags, null);
+        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, null);
     }
 
     /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int propertyFlags, LocationFactory locationFactory) {
-        return layout.getStrategy().defineProperty(this, key, value, propertyFlags, locationFactory);
+        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, locationFactory);
     }
 
     /** @since 0.17 or earlier */
@@ -907,7 +907,7 @@ public abstract class ShapeImpl extends Shape {
     public final ShapeImpl removeProperty(Property prop) {
         onPropertyTransition(prop);
 
-        return layout.getStrategy().removeProperty(this, prop);
+        return getLayoutStrategy().removeProperty(this, prop);
     }
 
     /** @since 0.17 or earlier */
@@ -920,7 +920,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public final BaseAllocator allocator() {
-        return layout.getStrategy().createAllocator(this);
+        return getLayoutStrategy().createAllocator(this);
     }
 
     /**
@@ -934,7 +934,7 @@ public abstract class ShapeImpl extends Shape {
         assert oldProperty.getKey().equals(newProperty.getKey());
         onPropertyTransition(oldProperty);
 
-        return layout.getStrategy().replaceProperty(this, oldProperty, newProperty);
+        return getLayoutStrategy().replaceProperty(this, oldProperty, newProperty);
     }
 
     /**
@@ -1038,6 +1038,10 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final LayoutImpl getLayout() {
         return layout;
+    }
+
+    public final LayoutStrategy getLayoutStrategy() {
+        return getLayout().getStrategy();
     }
 
     /** @since 0.17 or earlier */
@@ -1151,7 +1155,7 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final ShapeImpl reservePrimitiveExtensionArray() {
         if (layout.hasPrimitiveExtensionArray() && !hasPrimitiveArray()) {
-            return layout.getStrategy().addPrimitiveExtensionArray(this);
+            return getLayoutStrategy().addPrimitiveExtensionArray(this);
         }
         return this;
     }

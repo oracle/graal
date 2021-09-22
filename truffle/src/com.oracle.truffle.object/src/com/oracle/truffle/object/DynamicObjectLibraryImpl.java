@@ -279,7 +279,7 @@ abstract class DynamicObjectLibraryImpl {
 
     @TruffleBoundary
     static boolean updateShapeImpl(DynamicObject object) {
-        return ((ShapeImpl) object.getShape()).getLayout().getStrategy().updateShape(object);
+        return ((ShapeImpl) object.getShape()).getLayoutStrategy().updateShape(object);
     }
 
     @ExportMessage
@@ -338,12 +338,12 @@ abstract class DynamicObjectLibraryImpl {
                 if (Flags.isSetExisting(putFlags)) {
                     return false;
                 } else {
-                    LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                    LayoutStrategy strategy = oldShape.getLayoutStrategy();
                     newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), null, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             } else if (Flags.isUpdateFlags(putFlags) && Flags.getPropertyFlags(putFlags) != existingProperty.getFlags()) {
-                LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                LayoutStrategy strategy = oldShape.getLayoutStrategy();
                 newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), null, existingProperty, putFlags);
                 property = newShape.getProperty(key);
             } else {
@@ -351,7 +351,7 @@ abstract class DynamicObjectLibraryImpl {
                     newShape = oldShape;
                     property = existingProperty;
                 } else {
-                    LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                    LayoutStrategy strategy = oldShape.getLayoutStrategy();
                     newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), null, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
@@ -380,7 +380,7 @@ abstract class DynamicObjectLibraryImpl {
 
     static RemovePlan prepareRemove(ShapeImpl shapeBefore, ShapeImpl shapeAfter) {
         assert !shapeBefore.isShared();
-        LayoutStrategy strategy = shapeBefore.getLayout().getStrategy();
+        LayoutStrategy strategy = shapeBefore.getLayoutStrategy();
         List<Move> moves = new ArrayList<>();
         boolean canMoveInPlace = shapeAfter.getObjectArrayCapacity() <= shapeBefore.getObjectArrayCapacity() &&
                         shapeAfter.getPrimitiveArrayCapacity() <= shapeBefore.getPrimitiveArrayCapacity();
@@ -1514,7 +1514,7 @@ abstract class DynamicObjectLibraryImpl {
                     return oldShape;
                 } else {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
-                    LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                    LayoutStrategy strategy = oldShape.getLayoutStrategy();
                     return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, null, putFlags);
                 }
             }
@@ -1522,7 +1522,7 @@ abstract class DynamicObjectLibraryImpl {
             if (Flags.isUpdateFlags(putFlags)) {
                 if (Flags.getPropertyFlags(putFlags) != property.getFlags()) {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
-                    LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                    LayoutStrategy strategy = oldShape.getLayoutStrategy();
                     return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, null, putFlags);
                 }
             }
@@ -1531,13 +1531,13 @@ abstract class DynamicObjectLibraryImpl {
             if (!location.isDeclared() && !location.canSet(value)) {
                 // generalize
                 assert oldShape == ACCESS.getShape(object);
-                LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                LayoutStrategy strategy = oldShape.getLayoutStrategy();
                 ShapeImpl newShape = strategy.definePropertyGeneralize(oldShape, property, value, null, putFlags);
                 assert newShape != oldShape;
                 return newShape;
             } else if (location.isDeclared()) {
                 // redefine declared
-                LayoutStrategy strategy = oldShape.layout.getStrategy();
+                LayoutStrategy strategy = oldShape.getLayoutStrategy();
                 return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), null, putFlags);
             } else {
                 // set existing
