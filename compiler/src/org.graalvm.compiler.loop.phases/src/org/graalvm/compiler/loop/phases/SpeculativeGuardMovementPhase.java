@@ -41,13 +41,13 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
-import org.graalvm.compiler.nodes.ShortCircuitOrNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
+import org.graalvm.compiler.nodes.ShortCircuitOrNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
@@ -421,7 +421,6 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                 return false; // the bound must be loop invariant and schedulable above the loop.
             }
 
-            LoopBeginNode loopBeginNode = loopEx.loopBegin();
             CountedLoopInfo countedLoop = loopEx.counted();
 
             if (profilingInfo != null && !(profilingInfo instanceof DefaultProfilingInfo)) {
