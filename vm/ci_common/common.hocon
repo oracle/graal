@@ -358,8 +358,8 @@ deploy_graalvm_linux_amd64: {
   ] ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
-    ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
-    ${upload_file_sizes}
+    # ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
+    # ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
     [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
@@ -377,8 +377,8 @@ deploy_graalvm_linux_aarch64: {
   ] ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
-    ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
-    ${upload_file_sizes}
+    # ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
+    # ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
   ]
@@ -390,8 +390,8 @@ deploy_graalvm_base_darwin_amd64: {
   run: ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
-    ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
-    ${upload_file_sizes}
+    # ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
+    # ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
   ]
@@ -414,8 +414,8 @@ deploy_graalvm_base_windows_amd64: {
     [set-export, VM_ENV, "${VM_ENV}-win"]
     ${mx_vm_common} [graalvm-show]
     ${mx_vm_common} [build]
-    ${mx_vm_common} ${record_file_sizes}
-    ${upload_file_sizes}
+    # ${mx_vm_common} ${record_file_sizes}
+    # ${upload_file_sizes}
     ${mx_vm_common} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
   ]
@@ -438,8 +438,8 @@ deploy_graalvm_plus_ruby: {
     [set-export, VM_ENV, "${VM_ENV}-ruby"]
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
-    ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
-    ${upload_file_sizes}
+    # ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
+    # ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
     [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
