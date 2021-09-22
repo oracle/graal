@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -280,32 +280,32 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
         index = 0;
         PRIMITIVE_FIELD_LOCATIONS = new BasicLongFieldLocation[]{new BasicLongFieldLocation(index++) {
             @Override
-            public long getLong(DynamicObject store, boolean condition) {
+            public long getLong(DynamicObject store, boolean guard) {
                 return ((DynamicObjectBasic) store).primitive1;
             }
 
             @Override
-            public void setLong(DynamicObject store, long value, boolean condition) {
+            public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
                 ((DynamicObjectBasic) store).primitive1 = value;
             }
         }, new BasicLongFieldLocation(index++) {
             @Override
-            public long getLong(DynamicObject store, boolean condition) {
+            public long getLong(DynamicObject store, boolean guard) {
                 return ((DynamicObjectBasic) store).primitive2;
             }
 
             @Override
-            public void setLong(DynamicObject store, long value, boolean condition) {
+            public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
                 ((DynamicObjectBasic) store).primitive2 = value;
             }
         }, new BasicLongFieldLocation(index++) {
             @Override
-            public long getLong(DynamicObject store, boolean condition) {
+            public long getLong(DynamicObject store, boolean guard) {
                 return ((DynamicObjectBasic) store).primitive3;
             }
 
             @Override
-            public void setLong(DynamicObject store, long value, boolean condition) {
+            public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
                 ((DynamicObjectBasic) store).primitive3 = value;
             }
         }};
@@ -313,42 +313,42 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
         index = 0;
         OBJECT_FIELD_LOCATIONS = new BasicObjectFieldLocation[]{new BasicObjectFieldLocation(index++) {
             @Override
-            public Object get(DynamicObject store, boolean condition) {
+            public Object get(DynamicObject store, boolean guard) {
                 return ((DynamicObjectBasic) store).object1;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value, boolean condition) {
+            public void set(DynamicObject store, Object value, boolean guard, boolean init) {
                 ((DynamicObjectBasic) store).object1 = value;
             }
         }, new BasicObjectFieldLocation(index++) {
             @Override
-            public Object get(DynamicObject store, boolean condition) {
+            public Object get(DynamicObject store, boolean guard) {
                 return ((DynamicObjectBasic) store).object2;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value, boolean condition) {
+            public void set(DynamicObject store, Object value, boolean guard, boolean init) {
                 ((DynamicObjectBasic) store).object2 = value;
             }
         }, new BasicObjectFieldLocation(index++) {
             @Override
-            public Object get(DynamicObject store, boolean condition) {
+            public Object get(DynamicObject store, boolean guard) {
                 return ((DynamicObjectBasic) store).object3;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value, boolean condition) {
+            public void set(DynamicObject store, Object value, boolean guard, boolean init) {
                 ((DynamicObjectBasic) store).object3 = value;
             }
         }, new BasicObjectFieldLocation(index++) {
             @Override
-            public Object get(DynamicObject store, boolean condition) {
+            public Object get(DynamicObject store, boolean guard) {
                 return ((DynamicObjectBasic) store).object4;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value, boolean condition) {
+            public void set(DynamicObject store, Object value, boolean guard, boolean init) {
                 ((DynamicObjectBasic) store).object4 = value;
             }
         }};
