@@ -41,6 +41,30 @@
 
 package org.graalvm.collections;
 
+/**
+ * Thread-safe and lock-free prefix-tree implementation in which keys are sequences of 64-bit values, and the
+ * values are 64-bit values.
+ * The LockFreePrefixTree supports  the same operations as the PrefixTree as follows:
+ * <p>
+* The LockFreePrefixTree  supports a single operation {@code root}, which returns the root node. The nodes
+ * support the following operations: {@code at} to obtain a child node, {@code value} to obtain the
+ * value at the current node, {@code setValue} to atomically set the value and {@code incValue} to
+ * atomically increment the value.
+ * <p>
+ *
+ * The LockFreePrefix tree  represents a Tree of  nodes of class{@code Node}, with each node having a key
+ * and an atomic reference array of children. The underlying {@code children} structure is represented at as
+ * a LinearArray if the number of children is under a threshhold and represented by hash once the threshhold is reached.
+ *
+ * Any additions or accesses to the datastructure are done over the {@code at} function. The {@code at} function take a key
+ * value as a paramter and either returns an already existing node or inserts a new node and returns it. The function may
+ * cause the underlyin AtomicReferenceArray to grow in size, either with {@code tryResizeLinear} or {@code tryResizeHash}.
+ * Insertion of new nodes is always done with CAS operation, to ensure atomic updates and guarantee progress of atleast
+ * a single thread in the execution. Addtionally, any growth operations appear atomically, as we perform a CAS with the
+ * refernce to the Array.
+ *
+ * */
+
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -124,9 +148,8 @@ public class LockFreePrefixTree {
                         // Children array is full, we need to resize.
                         tryResizeLinear(children0);
                     }
-
                 } else {
-                    // Children0 instanceof HashChildren.
+                    // children0 instanceof HashChildren.
                     Node newChild = getOrAddHash(key, children0);
                     if (newChild != null) {
                         return newChild;
@@ -138,9 +161,35 @@ public class LockFreePrefixTree {
             }
         }
 
+        // Postcondition: if return value is null, then no subsequent mutations will be done on the
+        // array object ( the children array is full)
+        private Node getOrAddLinear(long key, AtomicReferenceArray<Node> childrenArray) {
+            for (int i = 0; i < childrenArray.length(); i++) {
+                Node child = read(childrenArray, i);
+                if (child == null) {
+                    Node newChild = new Node(key);
+                    if (cas(childrenArray, i, null, newChild)) {
+                        return newChild;
+                    } else {
+                        // We need to check if the failed CAS was due to another thread inserting
+                        // this key.
+                        Node child1 = read(childrenArray, i);
+                        if (child1.getKey() == key) {
+                            return child1;
+                        } else {
+                            continue;
+                        }
+                    }
+                } else if (child.getKey() == key) {
+                    return child;
+                }
+            }
+            // Array is full, triggers resize.
+            return null;
+        }
+
         // Precondition: childrenArray is full.
         private void tryResizeLinear(AtomicReferenceArray<Node> childrenArray) {
-
             AtomicReferenceArray<Node> newChildrenArray;
             if (childrenArray.length() < MAX_LINEAR_NODE_SIZE) {
                 newChildrenArray = new LinearChildren(2 * childrenArray.length());
@@ -217,31 +266,6 @@ public class LockFreePrefixTree {
                     cas(childrenHash, i, null, FROZEN_NODE);
                 }
             }
-        }
-
-        private Node getOrAddLinear(long key, AtomicReferenceArray<Node> childrenArray) {
-            for (int i = 0; i < childrenArray.length(); i++) {
-                Node child = read(childrenArray, i);
-                if (child == null) {
-                    Node newChild = new Node(key);
-                    if (cas(childrenArray, i, null, newChild)) {
-                        return newChild;
-                    } else {
-                        // We need to check if the failed CAS was due to another thread inserting
-                        // this key.
-                        Node child1 = read(childrenArray, i);
-                        if (child1.getKey() == key) {
-                            return child1;
-                        } else {
-                            continue;
-                        }
-                    }
-                } else if (child.getKey() == key) {
-                    return child;
-                }
-            }
-            // Array is full, triggers resize.
-            return null;
         }
 
         private boolean cas(AtomicReferenceArray<Node> childrenArray, int i, Node expected, Node updated) {
