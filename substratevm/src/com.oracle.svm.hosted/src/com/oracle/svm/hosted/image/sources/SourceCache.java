@@ -94,7 +94,7 @@ public class SourceCache {
      * Create the source cache.
      */
     protected SourceCache() {
-        basePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
+        basePath = SubstrateOptions.getDebugInfoSourceCacheRootAsAbsolutePath();
         srcRoots = new ArrayList<>();
         specialSrcRoots = new HashMap<>();
         addJDKSources();

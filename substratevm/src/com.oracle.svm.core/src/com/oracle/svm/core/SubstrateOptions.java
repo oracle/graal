@@ -476,9 +476,23 @@ public class SubstrateOptions {
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
 
-    public static Path getDebugInfoSourceCacheRoot() {
+    /**
+     * Returns {@link SubstrateOptions#DebugInfoSourceCacheRoot} as an absolute path, by resolving
+     * it on {@link SubstrateOptions#Path} if it's not already an absolute path.
+     *
+     * @return the source cache root as an absolute path
+     */
+    public static Path getDebugInfoSourceCacheRootAsAbsolutePath() {
         try {
             return Paths.get(Path.getValue()).resolve(DebugInfoSourceCacheRoot.getValue());
+        } catch (InvalidPathException ipe) {
+            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
+        }
+    }
+
+    public static Path getDebugInfoSourceCacheRoot() {
+        try {
+            return Paths.get(DebugInfoSourceCacheRoot.getValue());
         } catch (InvalidPathException ipe) {
             throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
         }

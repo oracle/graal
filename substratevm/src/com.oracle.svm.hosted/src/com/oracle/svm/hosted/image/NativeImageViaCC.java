@@ -461,7 +461,7 @@ public abstract class NativeImageViaCC extends NativeImage {
                 }
 
                 if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
-                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRootAsAbsolutePath());
                     if (OS.getCurrent() == OS.WINDOWS) {
                         BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
                     } else {

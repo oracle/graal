@@ -87,6 +87,7 @@ import jdk.vm.ci.meta.Signature;
 class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private final DebugContext debugContext;
     private final NativeImageCodeCache codeCache;
+    private final Path cachePath;
     @SuppressWarnings("unused") private final NativeImageHeap heap;
     boolean useHeapBase;
     int compressShift;
@@ -101,6 +102,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         super();
         this.debugContext = debugContext;
         this.codeCache = codeCache;
+        this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
         this.heap = heap;
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
@@ -235,8 +237,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
         return javaType.toJavaName();
     }
-
-    private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
     private abstract class NativeImageDebugFileInfo implements DebugFileInfo {
         private Path fullFilePath;

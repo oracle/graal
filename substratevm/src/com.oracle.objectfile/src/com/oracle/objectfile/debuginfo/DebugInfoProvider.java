@@ -82,8 +82,10 @@ public interface DebugInfoProvider {
         Path filePath();
 
         /**
-         * @return a relative path to the source cache containing the cached source file of a file
-         *         element or {@code null} if sources are not available.
+         * @return the path to the source cache containing the cached source file of a file element
+         *         or {@code null} if sources are not available. Relative paths to the target
+         *         directory are preferred over absolute paths, to make it easier to move the binary
+         *         and the cache directory around.
          */
         Path cachePath();
     }
