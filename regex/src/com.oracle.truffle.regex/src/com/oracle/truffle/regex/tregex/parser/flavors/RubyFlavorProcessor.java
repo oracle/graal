@@ -1088,10 +1088,18 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     private CodePointSet getUnicodeCharClass(char className) {
+        if (inSource.getEncoding() == Encodings.ASCII) {
+            return ASCII_CHAR_CLASSES.get(className);
+        }
+
         return trimToEncoding(UNICODE_CHAR_CLASSES.get(className));
     }
 
     private CodePointSet getUnicodePosixCharClass(String className) {
+        if (inSource.getEncoding() == Encodings.ASCII) {
+            return ASCII_POSIX_CHAR_CLASSES.get(className);
+        }
+
         return trimToEncoding(UNICODE_POSIX_CHAR_CLASSES.get(className));
     }
 
