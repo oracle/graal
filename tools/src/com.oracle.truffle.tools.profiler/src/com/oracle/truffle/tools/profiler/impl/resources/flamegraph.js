@@ -120,7 +120,7 @@ function zoom_child(sample) {
     let name = name_for_sample(sample);
     let source = source_for_sample(sample);
 
-    title.textContent = name + "\n" +
+    title.textContent = name + " (" + languageNames[sample.l] + ")\n" +
         "Self samples: " + (sample.i + sample.c) + " (" + (100 * (sample.c + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
         "Total samples: " + (sample.h) + " (" + (100 * (sample.h + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
         "Source location: " + source + ":" + sample.fl + "\n";
