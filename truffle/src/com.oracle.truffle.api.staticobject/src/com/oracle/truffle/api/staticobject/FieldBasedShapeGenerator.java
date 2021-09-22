@@ -84,10 +84,11 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
     StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
         Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties, storageClassName);
         Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
-        Object[] resolvedFields = PRECISE_TYPES ? SomAccessor.RUNTIME.getResolvedFields(generatedStorageClass, true, false) : null;
         HashMap<String, Integer> offsets;
         if (PRECISE_TYPES) {
-            offsets = new HashMap<>();
+            // We need to resolve fields without triggering class loading, linking, and initialization
+            Object[] resolvedFields = SomAccessor.RUNTIME.getResolvedFields(generatedStorageClass, true, false);
+            offsets = new HashMap<>(resolvedFields.length);
             for (Object resolvedField : resolvedFields) {
                 offsets.put(SomAccessor.RUNTIME.getFieldName(resolvedField), SomAccessor.RUNTIME.getFieldOffset(resolvedField));
             }
