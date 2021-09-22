@@ -1,10 +1,10 @@
 package com.oracle.svm.core;
 
-import org.graalvm.collections.LockFreePrefixTree;
+import org.graalvm.collections.PrefixTree;
 
 public interface ProfilingSampler {
 
     void registerSampler();
 
-    LockFreePrefixTree prefixTree();
+    PrefixTree prefixTree();
 }
