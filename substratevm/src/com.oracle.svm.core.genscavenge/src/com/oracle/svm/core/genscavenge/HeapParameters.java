@@ -156,6 +156,10 @@ public final class HeapParameters {
         RuntimeOptionValues.singleton().update(SubstrateGCOptions.MinHeapSize, value.rawValue());
     }
 
+    public static void setMaximumHeapFree(UnsignedWord bytes) {
+        RuntimeOptionValues.singleton().update(SubstrateGCOptions.MaxHeapFree, bytes.rawValue());
+    }
+
     static int getMaximumYoungGenerationSizePercent() {
         int result = Options.MaximumYoungGenerationSizePercent.getValue();
         VMError.guarantee((result >= 0) && (result <= 100), "MaximumYoungGenerationSizePercent should be in [0 ..100]");

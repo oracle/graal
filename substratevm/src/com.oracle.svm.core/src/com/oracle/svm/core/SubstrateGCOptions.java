@@ -82,4 +82,7 @@ public class SubstrateGCOptions {
             }
         }
     };
+
+    @Option(help = "The maximum free bytes reserved for allocations, in bytes (0 for automatic according to GC policy).", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L);
 }
