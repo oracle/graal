@@ -544,7 +544,7 @@ public class EspressoInterop extends BaseInterop {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
-                return receiver.<Object[]> unwrap()[(int) index];
+                return receiver.<StaticObject[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);

@@ -148,6 +148,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
+        assert klass.getComponentType().isPrimitive() || array instanceof StaticObject[];
         StaticObject newObj = klass.getEspressoLanguage().getArrayShape().getFactory().create(klass);
         EspressoLanguage.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
