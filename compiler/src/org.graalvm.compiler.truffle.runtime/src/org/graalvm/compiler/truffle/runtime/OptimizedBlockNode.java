@@ -320,10 +320,18 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                     if (i > 0) {
                         if (blockRanges == null) {
                             blockRanges = new int[8];
-                            blockSizes = new int[8];
+                            /*
+                             * blockSizes array needs one more slot than blockRanges because of the
+                             * assignment below the for-loop.
+                             */
+                            blockSizes = new int[blockRanges.length + 1];
                         } else if (currentBlockIndex >= blockRanges.length) {
                             blockRanges = Arrays.copyOf(blockRanges, blockRanges.length * 2);
-                            blockSizes = Arrays.copyOf(blockSizes, blockSizes.length * 2);
+                            /*
+                             * blockSizes array needs one more slot than blockRanges because of the
+                             * assignment below the for-loop.
+                             */
+                            blockSizes = Arrays.copyOf(blockSizes, blockRanges.length + 1);
                         }
                         blockSizes[currentBlockIndex] = currentBlockSize;
                         blockRanges[currentBlockIndex++] = i;
