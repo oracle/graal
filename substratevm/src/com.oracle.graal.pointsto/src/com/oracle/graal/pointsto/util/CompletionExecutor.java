@@ -70,6 +70,7 @@ public class CompletionExecutor {
     private BigBang bb;
     private Timing timing;
     private Object vmConfig;
+    private final Thread startingThread;
 
     public interface Timing {
         long getPrintIntervalNanos();
@@ -91,6 +92,7 @@ public class CompletionExecutor {
         postedOperations = new LongAdder();
         completedOperations = new LongAdder();
         postedBeforeStart = new ArrayList<>();
+        startingThread = Thread.currentThread();
     }
 
     public void init() {
@@ -142,6 +144,11 @@ public class CompletionExecutor {
             case UNUSED:
                 throw JVMCIError.shouldNotReachHere();
             case BEFORE_START:
+                /*
+                 * The postedBeforeStart list is not thread safe. Make sure that it is only updated
+                 * from the same thread that created the executor.
+                 */
+                assert Thread.currentThread() == startingThread;
                 postedBeforeStart.add(command);
                 break;
             case STARTED:
