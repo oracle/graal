@@ -24,8 +24,9 @@
  */
 package com.oracle.graal.reachability;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
 public interface MethodSummaryProvider {
-    MethodSummary getSummary(AnalysisMethod method);
+    MethodSummary getSummary(BigBang bigBang, AnalysisMethod method);
 }

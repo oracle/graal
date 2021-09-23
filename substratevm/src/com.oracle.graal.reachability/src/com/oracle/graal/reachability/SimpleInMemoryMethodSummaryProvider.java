@@ -24,15 +24,118 @@
  */
 package com.oracle.graal.reachability;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.java.NewInstanceNode;
+import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.util.GuardedAnnotationAccess;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvider {
-    @Override
-    public MethodSummary getSummary(AnalysisMethod method) {
-        for (Node node : method.getAnalyzedGraph().getNodes()) {
 
+    private final AnalysisUniverse universe;
+
+    public SimpleInMemoryMethodSummaryProvider(AnalysisUniverse universe) {
+        this.universe = universe;
+    }
+
+    @Override
+    public MethodSummary getSummary(BigBang bb, AnalysisMethod method) {
+        // todo clean this up
+// System.out.println("Making a summary for " + method.format("%H.%n(%p)"));
+// System.out.println("1 Analyzed graph: " + method.getAnalyzedGraph());
+        if (method.isIntrinsicMethod()) {
+            System.err.println("this is intrinsic: " + method);
+            return MethodSummary.EMPTY;
         }
-        throw new RuntimeException("unfinished");
+        AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
+        if (analysisParsedGraph.getEncodedGraph() == null) {
+            System.err.println("Encoded empty for " + method);
+            return MethodSummary.EMPTY;
+        }
+        if (GuardedAnnotationAccess.isAnnotationPresent(method, Node.NodeIntrinsic.class)) {
+            System.err.println("parsing an intrinsic: " + method);
+            return MethodSummary.EMPTY;
+        }
+// System.out.println("2 Analyzed graph: " + method.getAnalyzedGraph());
+// System.out.println("analysis parsed graph " + analysisParsedGraph);
+// System.out.println("Encoded graph " + analysisParsedGraph.getEncodedGraph());
+        StructuredGraph decoded = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
+// StructuredGraph decoded = analysisParsedGraph.graph;
+// System.out.println("decoded " + decoded);
+        if (decoded == null) {
+            throw AnalysisError.shouldNotReachHere("Failed to decode a graph for " + method.format("%H.%n(%p)"));
+        }
+        List<AnalysisType> accessedTypes = new ArrayList<>();
+        List<AnalysisType> instantiatedTypes = new ArrayList<>();
+        List<AnalysisField> accessedFields = new ArrayList<>();
+        List<AnalysisMethod> invokedMethods = new ArrayList<>();
+        List<AnalysisMethod> implementationInvokedMethods = new ArrayList<>();
+        List<JavaConstant> embeddedConstants = new ArrayList<>();
+        for (Node n : decoded.getNodes()) {
+            if (n instanceof NewInstanceNode) {
+                NewInstanceNode node = (NewInstanceNode) n;
+                instantiatedTypes.add(universe.lookup(node.instanceClass()));
+            } else if (n instanceof NewArrayNode) {
+                NewArrayNode node = (NewArrayNode) n;
+                instantiatedTypes.add(universe.lookup(node.elementType()).getArrayClass());
+            } else if (n instanceof NewMultiArrayNode) {
+                NewMultiArrayNode node = (NewMultiArrayNode) n;
+                ResolvedJavaType type = node.type();
+                for (int i = 0; i < node.dimensionCount(); i++) {
+                    instantiatedTypes.add(universe.lookup(type));
+                    type = type.getComponentType();
+                }
+            } else if (n instanceof ConstantNode) {
+                ConstantNode node = (ConstantNode) n;
+                if (!(node.getValue() instanceof JavaConstant)) {
+                    /*
+                     * The bytecode parser sometimes embeds low-level VM constants for types into
+                     * the high-level graph. Since these constants are the result of type lookups,
+                     * these types are already marked as reachable. Eventually, the bytecode parser
+                     * should be changed to only use JavaConstant.
+                     */
+                    continue;
+                }
+                embeddedConstants.add(((JavaConstant) node.getValue()));
+            } else if (n instanceof InstanceOfNode) {
+                InstanceOfNode node = (InstanceOfNode) n;
+                accessedTypes.add(universe.lookup(node.type().getType()));
+            } else if (n instanceof AccessFieldNode) {
+                AccessFieldNode node = (AccessFieldNode) n;
+                accessedFields.add(universe.lookup(node.field()));
+            } else if (n instanceof Invoke) {
+                Invoke node = (Invoke) n;
+                CallTargetNode.InvokeKind kind = node.getInvokeKind();
+                if (kind.isDirect()) {
+                    implementationInvokedMethods.add(universe.lookup(node.getTargetMethod()));
+                } else {
+                    invokedMethods.add(universe.lookup(node.getTargetMethod()));
+                }
+            }
+        }
+        MethodSummary summary = new MethodSummary(invokedMethods.toArray(new AnalysisMethod[0]), implementationInvokedMethods.toArray(new AnalysisMethod[0]),
+                        accessedTypes.toArray(new AnalysisType[0]),
+                        instantiatedTypes.toArray(new AnalysisType[0]), accessedFields.toArray(new AnalysisField[0]), embeddedConstants.toArray(new JavaConstant[0]));
+// System.out.println("Made a summary " + summary);
+        return summary;
     }
 }

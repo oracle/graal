@@ -34,6 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -65,6 +66,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final List<DebugHandlersFactory> debugHandlerFactories;
     private final HeapScanningPolicy heapScanningPolicy;
     private final Replacements replacements;
+    protected final CompletionExecutor executor;
 
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures) {
@@ -76,6 +78,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.providers = providers;
         this.hostVM = hostVM;
         this.executorService = executorService;
+        this.executor = new CompletionExecutor(this, executorService, heartbeatCallback);
+        this.executor.init(null);
         this.heartbeatCallback = heartbeatCallback;
         this.unsupportedFeatures = unsupportedFeatures;
         this.replacements = providers.getReplacements();
@@ -197,7 +201,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     protected void schedule(Runnable task) {
-        executorService.submit(task);
+        executor.execute((d) -> task.run());
+        // executorService.submit(task);
     }
 
     @Override

@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
@@ -38,6 +39,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -101,13 +103,21 @@ public final class AnalysisParsedGraph {
                 return optimizeAndEncode(bb, method, graph, false);
             }
 
-            InvocationPlugin plugin = bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
-            if (plugin != null && !plugin.inlineOnly()) {
-                Bytecode code = new ResolvedJavaMethodBytecode(method);
-                graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders(), code).buildGraph(plugin);
-                if (graph != null) {
-                    return optimizeAndEncode(bb, method, graph, true);
+            HostedProviders providers = bb.getProviders();
+            GraphBuilderConfiguration.Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
+            if (graphBuilderPlugins != null) {
+                InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();
+                InvocationPlugin plugin = invocationPlugins.lookupInvocation(method);
+                if (plugin != null && !plugin.inlineOnly()) {
+                    Bytecode code = new ResolvedJavaMethodBytecode(method);
+                    graph = new SubstrateIntrinsicGraphBuilder(options, debug, bb.getProviders(), code).buildGraph(plugin);
+                    if (graph != null) {
+                        return optimizeAndEncode(bb, method, graph, true);
+                    }
                 }
+            } else {
+                // todo what to do?
+                System.err.println("errr??");
             }
 
             if (method.getCode() == null) {

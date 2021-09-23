@@ -33,12 +33,14 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.options.OptionValues;
 
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
@@ -97,25 +99,71 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         if (!method.isStatic()) {
             markTypeInstantiated(method.getDeclaringClass());
         }
-        markMethodImplementationInvoked(method);
+        markMethodImplementationInvoked(method, new RuntimeException().getStackTrace());
         return method;
     }
 
-    private void markMethodImplementationInvoked(AnalysisMethod method) {
+    private void markMethodImplementationInvoked(AnalysisMethod method, Object reason) {
         if (!method.registerAsImplementationInvoked(null)) {
             return;
         }
+        method.setReason(reason);
         schedule(() -> onMethodImplementationInvoked(method));
     }
 
+    private static final Set<AnalysisMethod> processed = ConcurrentHashMap.newKeySet();
+    private static final Set<String> processed2 = ConcurrentHashMap.newKeySet();
+
     private void onMethodImplementationInvoked(AnalysisMethod method) {
-        MethodSummary summary = methodSummaryProvider.getSummary(method);
-        for (AnalysisMethod invokedMethod : summary.invokedMethods) {
-            markMethodInvoked(invokedMethod);
+        if (!processed.add(method)) {
+// System.err.println("Method " + method + " has already been processed");
+            return;
         }
-        for (AnalysisType type : summary.instantiatedTypes) {
-            markTypeInstantiated(type);
+        if (!processed2.add(method.getQualifiedName())) {
+// System.err.println("Method " + method + " has already been processed");
+            return;
         }
+        if (method.isNative()) {
+            return;
+        }
+        try {
+            MethodSummary summary = methodSummaryProvider.getSummary(this, method);
+            for (AnalysisMethod invokedMethod : summary.invokedMethods) {
+                markMethodInvoked(invokedMethod);
+            }
+            for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
+                markMethodImplementationInvoked(invokedMethod, method);
+            }
+            for (AnalysisType type : summary.accessedTypes) {
+                markTypeAccessed(type);
+            }
+            for (AnalysisType type : summary.instantiatedTypes) {
+                markTypeInstantiated(type);
+            }
+            for (AnalysisField field : summary.accessedFields) {
+                markFieldAccessed(field);
+            }
+            for (JavaConstant constant : summary.embeddedConstants) {
+                if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+                    // todo heap initiate scanning
+                    markTypeInstantiated(metaAccess.lookupJavaType(constant.getClass()));
+                }
+            }
+        } catch (Throwable ex) {
+            System.err.println("Failed to provide a summary for " + method.format("%H.%n(%p)"));
+            System.err.println(ex + " " + ex.getMessage());
+            System.err.println("Parsing reason: " + method.getReason());
+            ex.printStackTrace();
+        }
+    }
+
+    private void markFieldAccessed(AnalysisField field) {
+        field.registerAsAccessed();
+    }
+
+    private void markTypeAccessed(AnalysisType type) {
+        // todo double check whether all necessary logic is in
+        type.registerAsReachable();
     }
 
     private void markTypeInstantiated(AnalysisType type) {
@@ -126,8 +174,9 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         while (current != null) {
             Set<AnalysisMethod> invokedMethods = current.getInvokedMethods();
             for (AnalysisMethod method : invokedMethods) {
-                AnalysisMethod implementationInvokedMethod = type.resolveMethod(method, current);
-                markMethodImplementationInvoked(implementationInvokedMethod);
+                AnalysisMethod implementationInvokedMethod = type.resolveConcreteMethod(method, current);
+                markMethodImplementationInvoked(implementationInvokedMethod, type); // todo better
+                                                                                    // reason
             }
             current = current.getSuperclass();
         }
@@ -144,20 +193,25 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         AnalysisType clazz = method.getDeclaringClass();
         Set<AnalysisType> instantiatedSubtypes = clazz.getInstantiatedSubtypes();
         for (AnalysisType subtype : instantiatedSubtypes) {
-            AnalysisMethod resolvedMethod = subtype.resolveMethod(method, clazz);
-            markMethodImplementationInvoked(resolvedMethod);
+            AnalysisMethod resolvedMethod = subtype.resolveConcreteMethod(method, clazz);
+            markMethodImplementationInvoked(resolvedMethod, method); // todo better reason
         }
     }
 
     @Override
     public boolean finish() throws InterruptedException {
-        while (true) {
-            boolean quiescent = executorService.awaitQuiescence(100, TimeUnit.MILLISECONDS);
-            if (quiescent) {
-                break;
-            }
+        if (!executor.isStarted()) {
+            executor.start();
         }
-        return false;
+        executor.complete();
+        return true;
+// while (true) {
+// boolean quiescent = executorService.awaitQuiescence(100, TimeUnit.MILLISECONDS);
+// if (quiescent) {
+// break;
+// }
+// }
+// return false;
     }
 
     @Override
@@ -177,6 +231,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     @Override
     public TypeState getAllSynchronizedTypeState() {
+        // todo don't overapproximate so much
         return objectType.getTypeFlow(this, true).getState();
     }
 }

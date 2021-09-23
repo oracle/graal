@@ -32,6 +32,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.Collection;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -100,6 +101,8 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * overridden methods in subclasses, as well as this method if it is non-abstract.
      */
     protected AnalysisMethod[] implementations;
+
+    private Object reason;
 
     public AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         this.wrapped = wrapped;
@@ -618,5 +621,16 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     public void setAnalyzedGraph(StructuredGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
+    }
+
+    public void setReason(Object reason) {
+        this.reason = reason;
+    }
+
+    public String getReason() {
+        if (reason instanceof StackTraceElement[]) {
+            return Arrays.toString(((StackTraceElement[]) reason));
+        }
+        return reason.toString();
     }
 }

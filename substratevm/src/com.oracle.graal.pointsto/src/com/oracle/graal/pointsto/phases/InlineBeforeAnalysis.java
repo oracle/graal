@@ -28,6 +28,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -82,7 +83,7 @@ public class InlineBeforeAnalysis {
     }
 
     @SuppressWarnings("try")
-    public static StructuredGraph decodeGraph(PointsToAnalysis bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
+    public static StructuredGraph decodeGraph(BigBang bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
 
@@ -94,7 +95,7 @@ public class InlineBeforeAnalysis {
 
         try (DebugContext.Scope s = debug.scope("InlineBeforeAnalysis", result)) {
 
-            if (bb.strengthenGraalGraphs() && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
+            if (((bb instanceof PointsToAnalysis) && ((PointsToAnalysis) bb).strengthenGraalGraphs()) && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
                 InlineBeforeAnalysisGraphDecoder<?> decoder = new InlineBeforeAnalysisGraphDecoder<>(bb, bb.getHostVM().inlineBeforeAnalysisPolicy(), result);
                 decoder.decode(method, false, result.trackNodeSourcePosition());
             } else {
@@ -152,10 +153,10 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         }
     }
 
-    private final PointsToAnalysis bb;
+    private final BigBang bb;
     private final InlineBeforeAnalysisPolicy<S> policy;
 
-    InlineBeforeAnalysisGraphDecoder(PointsToAnalysis bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
+    InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
         super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, bb.getProviders(), null,
                         bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},

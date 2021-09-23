@@ -1041,7 +1041,8 @@ public class NativeImageGenerator {
                         aSnippetReflection, aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
         if (NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
-            return new NativeImageReachabilityAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SimpleInMemoryMethodSummaryProvider());
+            return new NativeImageReachabilityAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
+                            new SimpleInMemoryMethodSummaryProvider(aUniverse));
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures());
     }
