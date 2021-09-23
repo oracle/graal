@@ -209,7 +209,7 @@ public class GeneratorUtils {
             builder.startStatement();
             builder.startSuperCall();
             for (VariableElement parameter : superConstructor.getParameters()) {
-                method.addParameter(new CodeVariableElement(parameter.asType(), parameter.getSimpleName().toString()));
+                method.addParameter(CodeVariableElement.clone(parameter));
                 builder.string(parameter.getSimpleName().toString());
             }
             builder.end(); // super
