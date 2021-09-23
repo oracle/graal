@@ -1838,7 +1838,9 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def renaissanceIterations(self):
         benchmarks = _renaissanceConfig.copy()
         if self.version() == "0.9.0":
-            del benchmarks["scala-doku"]  # was introduced in 0.10.0
+            # benchmark was introduced in 0.10.0
+            del benchmarks["scala-doku"]
+
         if mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"]:
             # JDK17 support for Spark benchmarks was added in 0.13.0
             # See: https://github.com/renaissance-benchmarks/renaissance/issues/295
@@ -1851,10 +1853,17 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
 
-        if mx.get_arch() != "amd64":
+        if mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance >= '11':
             # GR-33879
             # JNA libraries needed are currently limited to amd64: https://github.com/renaissance-benchmarks/renaissance/issues/153
             del benchmarks["db-shootout"]
+
+        if self.version() in ["0.9.0", "0.10.0", "0.11.0"]:
+            if mx.get_jdk().javaCompliance >= '11':
+                del benchmarks["neo4j-analytics"]
+        else:
+            if mx.get_jdk().javaCompliance < '11' or mx.get_jdk().javaCompliance >= '15':
+                del benchmarks["neo4j-analytics"]
         return benchmarks
 
     def version(self):
