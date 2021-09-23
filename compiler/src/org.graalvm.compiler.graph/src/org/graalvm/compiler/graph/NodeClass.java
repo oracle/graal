@@ -1254,14 +1254,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public void applySuccessors(Node node, EdgeVisitor consumer) {
-        applyEdges(node, consumer, this.successorIteration);
+        applyEdges(node, consumer, this.successorIteration, successors);
     }
 
     public void applyInputs(Node node, EdgeVisitor consumer) {
-        applyEdges(node, consumer, this.inputsIteration);
+        applyEdges(node, consumer, this.inputsIteration, inputs);
     }
 
-    private static void applyEdges(Node node, EdgeVisitor consumer, long mask) {
+    private static void applyEdges(Node node, EdgeVisitor consumer, long mask, Edges edges) {
+        int index = 0;
         long myMask = mask;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
@@ -1270,13 +1271,14 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 if (curNode != null) {
                     Node newNode = consumer.apply(node, curNode);
                     if (newNode != curNode) {
-                        Edges.putNodeUnsafe(node, offset, newNode);
+                        edges.putNodeUnsafeChecked(node, offset, newNode, index);
                     }
                 }
             } else {
                 applyHelper(node, consumer, offset);
             }
             myMask >>>= NEXT_EDGE;
+            index++;
         }
     }
 
@@ -1356,21 +1358,22 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public boolean replaceFirstInput(Node node, Node key, Node replacement) {
-        return replaceFirstEdge(node, key, replacement, this.inputsIteration);
+        return replaceFirstEdge(node, key, replacement, this.inputsIteration, inputs);
     }
 
     public boolean replaceFirstSuccessor(Node node, Node key, Node replacement) {
-        return replaceFirstEdge(node, key, replacement, this.successorIteration);
+        return replaceFirstEdge(node, key, replacement, this.successorIteration, successors);
     }
 
-    public static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask) {
+    public static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask, Edges edges) {
+        int index = 0;
         long myMask = mask;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
                 Object curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode == key) {
-                    Edges.putNodeUnsafe(node, offset, replacement);
+                    edges.putNodeUnsafeChecked(node, offset, replacement, index);
                     return true;
                 }
             } else {
@@ -1380,6 +1383,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 }
             }
             myMask >>>= NEXT_EDGE;
+            index++;
         }
         return false;
     }
