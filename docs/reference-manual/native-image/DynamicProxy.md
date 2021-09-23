@@ -90,9 +90,9 @@ For the exceptional cases where the analysis cannot discover the interface array
 
 ## Manual Configuration
 
-Dynamic proxy classes can be generated at native image build time by specifying the list of interfaces that they implement. Native Image provides two options for this purpose: `-H:DynamicProxyConfigurationFiles=<comma-separated-config-files>` and `-H:DynamicProxyConfigurationResources=<comma-separated-config-resources>`.
+Dynamic proxy classes can be generated at native image build time by specifying the list of interfaces that they implement.
+Native Image provides two options for that: `-H:DynamicProxyConfigurationFiles=<comma-separated-config-files>` and `-H:DynamicProxyConfigurationResources=<comma-separated-config-resources>`. These options accept JSON files whose structure is an array of arrays of fully qualified interface names. For example:
 
-These options accept JSON files whose structure is an array of arrays of fully qualified interface names. For example:
 ```json
 [
     ["java.lang.AutoCloseable", "java.util.Comparator"],
@@ -100,6 +100,8 @@ These options accept JSON files whose structure is an array of arrays of fully q
     ["java.util.List"]
 ]
 ```
+
+Note that the order of the specified proxy interfaces is significant: two requests for a `Proxy` class with the same combination of interfaces but in a different order will result in two distinct behaviours (for more detailed information, refer to [`Proxy Class `javadoc](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/reflect/Proxy.html).
 
 The `java.lang.reflect.Proxy` API also allows creation of a dynamic proxy that does not implement any user provided interfaces. Therefore the following is a valid configuration:
 ```json
