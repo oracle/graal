@@ -157,7 +157,6 @@ public class LockFreePrefixTreeTest {
     @Test
     public void largeMultithreaded() {
         final LockFreePrefixTree tree = new LockFreePrefixTree();
-
         final int parallelism = 8;
         inParallel(parallelism, threadIndex -> {
             for (long i = 1L; i < 2048L; i++) {
@@ -168,7 +167,6 @@ public class LockFreePrefixTreeTest {
                 }
             }
         });
-
         for (int t = 0; t < parallelism; t++) {
             for (long i = 1L; i < 2048L; i++) {
                 LockFreePrefixTree.Node first = tree.root().at(t * 2048L + i);
@@ -187,27 +185,6 @@ public class LockFreePrefixTreeTest {
             for (long i = 1L; i < 14L; i++) {
                 final LockFreePrefixTree.Node child = node.at(i);
                 verifyValue(child, depth - 1, parallelism);
-            }
-        }
-    }
-
-    private void fillDeepTree(LockFreePrefixTree.Node node, int depth, int numChildren) {
-        if (depth == 0) {
-            node.incrementAndGet();
-        } else {
-            for (int i = 1; i <= numChildren; i++) {
-                node.at(i);
-                fillDeepTree(node.at(i), depth - 1, numChildren);
-            }
-        }
-    }
-
-    private void checkDeepTree(LockFreePrefixTree.Node node, int depth, int numChildren, int parallelism) {
-        if (depth == 0) {
-            Assert.assertEquals(parallelism, node.value());
-        } else {
-            for (long i = 1L; i <= numChildren; i++) {
-                checkDeepTree(node.at(i), depth - 1, numChildren, parallelism);
             }
         }
     }
@@ -235,8 +212,27 @@ public class LockFreePrefixTreeTest {
                 }
             }
         });
-
         verifyValue(tree.root(), depth, parallelism);
+    }
+
+    private void fillDeepTree(LockFreePrefixTree.Node node, int depth, int numChildren) {
+        if (depth == 0) {
+            node.incrementAndGet();
+        } else {
+            for (int i = 1; i <= numChildren; i++) {
+                fillDeepTree(node.at(i), depth - 1, numChildren);
+            }
+        }
+    }
+
+    private void checkDeepTree(LockFreePrefixTree.Node node, int depth, int numChildren, int parallelism) {
+        if (depth == 0) {
+            Assert.assertEquals(parallelism, node.value());
+        } else {
+            for (long i = 1L; i <= numChildren; i++) {
+                checkDeepTree(node.at(i), depth - 1, numChildren, parallelism);
+            }
+        }
     }
 
     @Test
@@ -251,7 +247,6 @@ public class LockFreePrefixTreeTest {
                 fillDeepTree(tree.root(), depth, numChildren);
             }
         });
-
         checkDeepTree(tree.root(), depth, numChildren, parallelism);
     }
 
@@ -273,10 +268,9 @@ public class LockFreePrefixTreeTest {
     @Test
     public void manyMultiThreaded() {
         final LockFreePrefixTree tree = new LockFreePrefixTree();
-
         int parallelism = 8;
-        int multiplier = 1;
-        long batch = 100L;
+        int multiplier = 1024;
+        long batch = 2000L;
         inParallel(parallelism, new Consumer<Integer>() {
             @Override
             public void accept(Integer threadIndex) {

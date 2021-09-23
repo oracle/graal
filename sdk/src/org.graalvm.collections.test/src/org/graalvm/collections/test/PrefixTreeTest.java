@@ -163,9 +163,9 @@ public class PrefixTreeTest {
     @Test
     public void deepMultiThreaded() {
         final PrefixTree tree = new PrefixTree();
-        final int depth = 2;
+        final int depth = 6;
 
-        final int parallelism = 2;
+        final int parallelism = 8;
         inParallel(parallelism, new Consumer<Integer>() {
             @Override
             public void accept(Integer threadIndex) {
@@ -183,9 +183,8 @@ public class PrefixTreeTest {
                 }
             }
         });
-
         verifyValue(tree.root(), depth, parallelism);
-// Assert.assertEquals("The root node has 13 children.", 26, tree.root().seqlockValue());
+        Assert.assertEquals("The root node has 13 children.", 26, tree.root().seqlockValue());
     }
 
     @Test
