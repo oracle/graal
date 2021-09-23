@@ -33,15 +33,19 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -54,11 +58,15 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
@@ -73,6 +81,8 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -81,6 +91,8 @@ import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -93,8 +105,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NonSnippetLowerings {
 
+    public static final SnippetRuntime.SubstrateForeignCallDescriptor REPORT_VERIFY_TYPES_ERROR = SnippetRuntime.findForeignCall(
+                    NonSnippetLowerings.class, "reportVerifyTypesError", false, LocationIdentity.any());
+
     private final RuntimeConfiguration runtimeConfig;
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
+
+    final boolean verifyTypes = SubstrateOptions.VerifyTypes.getValue();
 
     @SuppressWarnings("unused")
     protected NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options, Iterable<DebugHandlersFactory> factories,
@@ -250,12 +267,53 @@ public abstract class NonSnippetLowerings {
                 SharedMethod method = (SharedMethod) callTarget.targetMethod();
                 JavaType[] signature = method.getSignature().toParameterTypes(callTarget.isStatic() ? null : method.getDeclaringClass());
                 CallingConvention.Type callType = method.getCallingConventionKind().toType(true);
-
                 InvokeKind invokeKind = callTarget.invokeKind();
                 SharedMethod[] implementations = method.getImplementations();
+
+                if (verifyTypes && !callTarget.isStatic() && receiver.getStackKind() == JavaKind.Object && !((SharedMethod) graph.method()).isUninterruptible()) {
+                    /*
+                     * Verify that the receiver is an instance of the class that declares the call
+                     * target method. To avoid that the new type check floats above a deoptimization
+                     * entry point, we need to anchor the receiver to the control flow. To avoid
+                     * that Graal optimizes away the InstanceOfNode immediately, we need an
+                     * OpaqueNode that removes all type information from the receiver. Then we wire
+                     * up an IfNode that leads to a ForeignCallNode in case the verification fails.
+                     */
+                    FixedValueAnchorNode anchoredReceiver = graph.add(new FixedValueAnchorNode(receiver));
+                    graph.addBeforeFixed(node, anchoredReceiver);
+                    ValueNode opaqueReceiver = graph.unique(new OpaqueNode(anchoredReceiver));
+                    TypeReference declaringClass = TypeReference.createTrustedWithoutAssumptions(method.getDeclaringClass());
+                    LogicNode instanceOf = graph.addOrUniqueWithInputs(InstanceOfNode.create(declaringClass, opaqueReceiver));
+                    BeginNode passingBegin = graph.add(new BeginNode());
+                    BeginNode failingBegin = graph.add(new BeginNode());
+                    IfNode ifNode = graph.add(new IfNode(instanceOf, passingBegin, failingBegin, BranchProbabilityNode.EXTREMELY_FAST_PATH_PROFILE));
+
+                    ((FixedWithNextNode) node.predecessor()).setNext(ifNode);
+                    passingBegin.setNext(node);
+
+                    String errorMessage;
+                    if (SubstrateUtil.HOSTED) {
+                        errorMessage = "Invoke " + invokeKind + " of " + method.format("%H.%n(%p)%r");
+                        errorMessage += System.lineSeparator() + "  declaringClass = " + declaringClass;
+                        if (implementations.length == 0 || implementations.length > 10) {
+                            errorMessage += System.lineSeparator() + "  implementations.length = " + implementations.length;
+                        } else {
+                            for (int i = 0; i < implementations.length; i++) {
+                                errorMessage += System.lineSeparator() + "  implementations[" + i + "] = " + implementations[i].format("%H.%n(%p)%r");
+                            }
+                        }
+                    } else {
+                        errorMessage = "Invoke (method name not added because message must be a compile-time constant)";
+                    }
+                    ConstantNode errorConstant = ConstantNode.forConstant(tool.getConstantReflection().forString(errorMessage), tool.getMetaAccess(), graph);
+                    ForeignCallNode reportError = graph.add(new ForeignCallNode(REPORT_VERIFY_TYPES_ERROR, opaqueReceiver, errorConstant));
+                    reportError.setStateAfter(invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), node.getStackKind()));
+                    failingBegin.setNext(reportError);
+                    reportError.setNext(graph.add(new LoweredDeadEndNode()));
+                }
+
                 LoadHubNode hub = null;
                 CallTargetNode loweredCallTarget;
-
                 if (invokeKind.isDirect() || implementations.length == 1) {
                     SharedMethod targetMethod = method;
                     if (!invokeKind.isDirect()) {
@@ -352,4 +410,10 @@ public abstract class NonSnippetLowerings {
         }
     }
 
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void reportVerifyTypesError(Object object, String message) {
+        throw VMError.shouldNotReachHere("VerifyTypes: object=" + (object == null ? "null" : object.getClass().getTypeName()) +
+                        System.lineSeparator() + message +
+                        System.lineSeparator() + "VerifyTypes found a type error");
+    }
 }
