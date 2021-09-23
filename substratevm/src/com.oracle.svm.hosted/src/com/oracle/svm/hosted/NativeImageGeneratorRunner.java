@@ -137,6 +137,9 @@ public class NativeImageGeneratorRunner {
                 /* InterruptImageBuilding without explicit reason is exit code 3 */
                 exitStatus = 3;
             }
+        } catch (Throwable err) {
+            reportFatalError(err);
+            exitStatus = 1;
         } finally {
             uninstallNativeImageClassLoader();
             Thread.currentThread().setContextClassLoader(applicationClassLoader);
@@ -497,7 +500,7 @@ public class NativeImageGeneratorRunner {
      * @param e error to be reported.
      */
     protected static void reportFatalError(Throwable e) {
-        System.err.print("Fatal error:");
+        System.err.print("Fatal error: ");
         e.printStackTrace();
     }
 
