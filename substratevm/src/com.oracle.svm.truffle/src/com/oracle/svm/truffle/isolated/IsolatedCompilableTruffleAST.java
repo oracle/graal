@@ -153,16 +153,16 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return isTrivial0(IsolatedCompileContext.get().getClient(), handle);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<SpeculationLog> getCompilationSpeculationLog0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         SpeculationLog log = compilable.getCompilationSpeculationLog();
         return IsolatedCompileClient.get().hand(log);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void onCompilationFailed0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
                     CompilerHandle<Supplier<String>> serializedExceptionHandle, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
 
@@ -173,30 +173,30 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         IsolatedCompileClient.get().unhand(compilableHandle).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<String> getReasonAndStackTrace0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CompilerHandle<Supplier<String>> reasonAndStackTraceHandle) {
 
         Supplier<String> supplier = IsolatedCompileContext.get().unhand(reasonAndStackTraceHandle);
         return IsolatedCompileContext.get().createStringInClient(supplier.get());
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<String> getName0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         String name = IsolatedCompileClient.get().unhand(compilableHandle).getName();
         return IsolatedCompileClient.get().createStringInCompiler(name);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static int getNonTrivialNodeCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         return compilable.getNonTrivialNodeCount();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<IsolatedTruffleCallNode[]> getCallNodes0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         TruffleCallNode[] nodes = compilable.getCallNodes();
@@ -209,8 +209,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<IsolatedTruffleCallNode[]> getCallNodes1(@SuppressWarnings("unused") CompilerIsolateThread compiler, WordPointer nodeHandleArray, int length) {
 
         IsolatedTruffleCallNode[] nodes = new IsolatedTruffleCallNode[length];
@@ -221,15 +221,15 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return IsolatedCompileContext.get().hand(nodes);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static int getCallCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         return compilable.getCallCount();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean cancelCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle, ClientHandle<String> reasonHandle) {
         final IsolatedCompileClient isolatedCompileClient = IsolatedCompileClient.get();
         final SubstrateCompilableTruffleAST compilable = isolatedCompileClient.unhand(compilableHandle);
@@ -237,16 +237,16 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return compilable.cancelCompilation(reason);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void dequeueInlined0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         final IsolatedCompileClient isolatedCompileClient = IsolatedCompileClient.get();
         final SubstrateCompilableTruffleAST compilable = isolatedCompileClient.unhand(handle);
         compilable.dequeueInlined();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isSameOrSplit0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle, ClientHandle<SubstrateCompilableTruffleAST> otherHandle) {
 
@@ -255,15 +255,15 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return compilable.isSameOrSplit(other);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static int getKnownCallSiteCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
         return compilable.getKnownCallSiteCount();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<Assumption> getNodeRewritingAssumption0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
         JavaConstant assumptionConstant = ast.getNodeRewritingAssumptionConstant();
@@ -271,8 +271,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return IsolatedCompileClient.get().hand(assumption);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<Assumption> getValidRootAssumption0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
         JavaConstant assumptionConstant = ast.getValidRootAssumptionConstant();
@@ -280,8 +280,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         return IsolatedCompileClient.get().hand(assumption);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isTrivial0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(handle);
         return compilable.isTrivial();

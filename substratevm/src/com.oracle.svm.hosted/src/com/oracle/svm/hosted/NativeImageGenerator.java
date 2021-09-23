@@ -55,6 +55,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -1059,16 +1060,26 @@ public class NativeImageGenerator {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
         for (Method m : loader.findAnnotatedMethods(CEntryPoint.class)) {
             if (!Modifier.isStatic(m.getModifiers())) {
                 throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().getName(), m.getName());
             }
 
-            boolean include = true;
+            Class<? extends BooleanSupplier> cEntryPointIncludeClass = m.getAnnotation(CEntryPoint.class).include();
+            boolean include = ReflectionUtil.newInstance(cEntryPointIncludeClass).getAsBoolean();
             CEntryPointOptions options = m.getAnnotation(CEntryPointOptions.class);
             if (options != null) {
-                include = ReflectionUtil.newInstance(options.include()).getAsBoolean();
+                Class<? extends BooleanSupplier> cEntryPointOptionsIncludeClass = options.include();
+                if (cEntryPointOptionsIncludeClass != CEntryPointOptions.AlwaysIncluded.class) {
+                    if (cEntryPointIncludeClass != CEntryPoint.AlwaysIncluded.class) {
+                        throw UserError.abort(
+                                        "The 'include' attribute for entry point method %s.%s is specified both in 'CEntryPoint' and 'CEntryPointOptions' annotations. Remove the deprecated 'CEntryPointOptions#include' attribute.",
+                                        m.getDeclaringClass().getName(), m.getName());
+                    }
+                    include = ReflectionUtil.newInstance(cEntryPointOptionsIncludeClass).getAsBoolean();
+                }
             }
             if (include) {
                 entryPoints.put(m, CEntryPointData.create(m));

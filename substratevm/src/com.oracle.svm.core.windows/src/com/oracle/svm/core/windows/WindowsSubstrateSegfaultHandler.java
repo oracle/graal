@@ -44,7 +44,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NotIncludedAutomatically;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
@@ -89,8 +88,8 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     private static final CEntryPointLiteral<CFunctionPointer> HANDLER_LITERAL = CEntryPointLiteral.create(WindowsSubstrateSegfaultHandler.class,
                     "handler", ErrHandlingAPI.EXCEPTION_POINTERS.class);
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly, include = NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
     @RestrictHeapAccess(access = NO_HEAP_ACCESS, reason = "We have yet to enter the isolate.")
     private static int handler(ErrHandlingAPI.EXCEPTION_POINTERS exceptionInfo) {

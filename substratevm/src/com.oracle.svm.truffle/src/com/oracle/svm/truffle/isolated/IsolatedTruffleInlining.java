@@ -94,8 +94,8 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
         addInlinedTarget0(IsolatedCompileContext.get().getClient(), handle, targetHandle);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<TruffleCallNode> findCallNode0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<? extends TruffleInliningData> inliningHandle, ClientHandle<?> callNodeConstantHandle) {
 
@@ -105,8 +105,8 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
         return IsolatedCompileClient.get().hand(callNode);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<TruffleSourceLanguagePosition> getPosition0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<? extends TruffleInliningData> inliningHandle, ClientHandle<?> callNodeConstantHandle) {
 
@@ -120,8 +120,8 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
                         position.getLineNumber(), position.getOffsetStart(), position.getOffsetEnd(), position.getNodeId());
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void addTargetToDequeue0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<? extends TruffleInliningData> providerHandle,
                     ClientHandle<SubstrateCompilableTruffleAST> targetHandle) {
@@ -130,8 +130,8 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
         truffleInliningData.addTargetToDequeue(isolatedCompileClient.unhand(targetHandle));
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void addInlinedTarget0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<? extends TruffleInliningData> providerHandle,
                     ClientHandle<SubstrateCompilableTruffleAST> targetHandle) {
@@ -140,31 +140,31 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
         truffleInliningData.addInlinedTarget(isolatedCompileClient.unhand(targetHandle));
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void setCallCount0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<? extends TruffleInliningData> handle, int count) {
         TruffleInliningData truffleInliningData = IsolatedCompileClient.get().unhand(handle);
         truffleInliningData.setCallCount(count);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void setInlinedCallCount0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<? extends TruffleInliningData> handle, int count) {
         TruffleInliningData truffleInliningData = IsolatedCompileClient.get().unhand(handle);
         truffleInliningData.setInlinedCallCount(count);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static int countInlinedCalls0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<? extends TruffleInliningData> handle) {
         TruffleInliningData truffleInliningData = IsolatedCompileClient.get().unhand(handle);
         return truffleInliningData.countInlinedCalls();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<TruffleSourceLanguagePosition> createPositionInCompiler(@SuppressWarnings("unused") CompilerIsolateThread compiler,
                     ClientHandle<TruffleSourceLanguagePosition> positionHandle, int lineNumber, int offsetStart, int offsetEnd, int nodeId) {
 

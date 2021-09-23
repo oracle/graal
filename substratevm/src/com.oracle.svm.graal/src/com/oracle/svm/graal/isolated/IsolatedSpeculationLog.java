@@ -159,20 +159,20 @@ public final class IsolatedSpeculationLog extends IsolatedObjectProxy<Speculatio
         throw VMError.shouldNotReachHere("not required");
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void collectFailedSpeculations0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SpeculationLog> logHandle) {
         IsolatedCompileClient.get().unhand(logHandle).collectFailedSpeculations();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean hasSpeculations0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SpeculationLog> logHandle) {
         return IsolatedCompileClient.get().unhand(logHandle).hasSpeculations();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean maySpeculate0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SpeculationLog> logHandle, PointerBase arrayData, int length) {
         byte[] bytes = new byte[length];
         ByteBuffer.wrap(bytes).put(CTypeConversion.asByteBuffer(arrayData, length));
@@ -180,8 +180,8 @@ public final class IsolatedSpeculationLog extends IsolatedObjectProxy<Speculatio
         return log.maySpeculate(new EncodedSpeculationReason(bytes));
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<SpeculationReason> speculate0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SpeculationLog> logHandle, PointerBase arrayData, int length) {
         byte[] bytes = new byte[length];
         ByteBuffer.wrap(bytes).put(CTypeConversion.asByteBuffer(arrayData, length));
