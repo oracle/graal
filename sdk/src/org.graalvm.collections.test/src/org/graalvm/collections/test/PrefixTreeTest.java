@@ -50,7 +50,6 @@ public class PrefixTreeTest {
     @Test
     public void smallAlphabet() {
         PrefixTree tree = new PrefixTree();
-        System.out.println(tree.root());
         tree.root().at(2L).at(12L).at(18L).setValue(42);
         tree.root().at(2L).at(12L).at(19L).setValue(43);
         tree.root().at(2L).at(12L).at(20L).setValue(44);
