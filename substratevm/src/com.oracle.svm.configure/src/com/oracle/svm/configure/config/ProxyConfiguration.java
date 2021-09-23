@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -37,7 +38,7 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 
 public class ProxyConfiguration implements ConfigurationBase {
-    private final ConcurrentHashMap.KeySetView<ConditionalElement<List<String>>, Boolean> interfaceLists = ConcurrentHashMap.newKeySet();
+    private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();
 
     public ProxyConfiguration() {
     }

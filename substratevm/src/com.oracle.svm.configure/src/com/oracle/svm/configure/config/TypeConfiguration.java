@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -40,29 +39,18 @@ import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.util.VMError;
 
 public class TypeConfiguration implements ConfigurationBase {
+    public static TypeConfiguration copyAndSubtract(TypeConfiguration config, TypeConfiguration toSubtract) {
+        TypeConfiguration copy = new TypeConfiguration();
+        config.types.forEach((key, type) -> {
+            ConfigurationType subtractType = toSubtract.types.get(key);
+            copy.types.compute(key, (k, v) -> ConfigurationType.copyAndSubtract(type, subtractType));
+        });
+        return copy;
+    }
+
     private final ConcurrentMap<ConditionalElement<String>, ConfigurationType> types = new ConcurrentHashMap<>();
 
     public TypeConfiguration() {
-    }
-
-    public TypeConfiguration(TypeConfiguration other) {
-        for (Map.Entry<ConditionalElement<String>, ConfigurationType> entry : other.types.entrySet()) {
-            types.put(entry.getKey(), new ConfigurationType(entry.getValue()));
-        }
-    }
-
-    public void removeAll(TypeConfiguration other) {
-        for (Map.Entry<ConditionalElement<String>, ConfigurationType> typeEntry : other.types.entrySet()) {
-            types.computeIfPresent(typeEntry.getKey(), (key, value) -> {
-                if (value.equals(typeEntry.getValue())) {
-                    return null;
-                }
-                assert value.getCondition().equals(typeEntry.getValue().getCondition());
-                assert value.getQualifiedJavaName().equals(typeEntry.getValue().getQualifiedJavaName());
-                value.removeAll(typeEntry.getValue());
-                return value.isEmpty() ? null : value;
-            });
-        }
     }
 
     public ConfigurationType get(ConfigurationCondition condition, String qualifiedJavaName) {
