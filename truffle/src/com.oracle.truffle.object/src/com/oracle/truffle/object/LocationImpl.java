@@ -446,6 +446,7 @@ public abstract class LocationImpl extends Location {
 
     /** Not using AlwaysValidAssumption.INSTANCE in order not to pollute profiles. */
     protected static Assumption alwaysValidAssumption() {
+        assert ALWAYS_VALID_ASSUMPTION.isValid();
         return ALWAYS_VALID_ASSUMPTION;
     }
 
