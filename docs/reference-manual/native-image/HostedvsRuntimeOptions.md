@@ -6,8 +6,7 @@ permalink: /reference-manual/native-image/HostedvsRuntimeOptions/
 ---
 # Native Image Hosted and Runtime Options
 
-Along with all the options listed in the [Options](Options.md)
-guide,  Native Image also distinguishes hosted and runtime options.
+Along with all the options listed in the [Options](Options.md) guide, Native Image also distinguishes hosted and runtime options.
 
 * Hosted options: configure a native image build, i.e., influence what is put into the image and how the image is built.
 These are set using the prefix `-H:` on the command line.
@@ -19,15 +18,11 @@ For developer documentation on how to define and use options, read the documenta
 ## List of Useful Options
 
 ### Graph Dumping
-Native Image re-used the GraalVM options for graph dumping, logging, counters,
-and everything else in the GraalVM debug environment. These GraalVM options can
-be used both as hosted options (if you want to dump graphs of the native image
-builder), and as runtime options (if you want to dump graphs during dynamic
+Native Image re-used the GraalVM options for graph dumping, logging, counters, and everything else in the GraalVM debug environment.
+These GraalVM options can be used both as hosted options (if you want to dump graphs of the native image builder), and as runtime options (if you want to dump graphs during dynamic
 compilation at runtime).
 
-The GraalVM compiler options that work as expected include `Dump`, `DumpOnError`, `Log`,
-`MethodFilter`, and the options to specify file names and ports for the dump
-handlers.
+The GraalVM compiler options that work as expected include `Dump`, `DumpOnError`, `Log`, `MethodFilter`, and the options to specify file names and ports for the dump handlers.
 
 For example:
 * To dump the compiler graphs of the native image builder: `-H:Dump= -H:MethodFilter=ClassName.MethodName`.

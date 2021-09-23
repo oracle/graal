@@ -19,7 +19,9 @@ If an application is not optimizable, then a so-called fallback image is generat
 
 ## Class Metadata Features (Require Configuration)
 
-The following features generally require the configuration at image build time in order to use the closed-world optimization. This configuration ensures that the minimum amount of space necessary is used in the native image binary.
+The following features generally require the configuration at image build time in order to use the closed-world optimization.
+This configuration ensures that the minimum amount of space necessary is used in the native image binary.
+
 If one of the following features is used without providing a configuration at image build time, a fallback image is generated.
 
 ### Dynamic Class Loading
@@ -47,7 +49,8 @@ For more details, read the [Dynamic Proxies support](DynamicProxy.md) guide.
 
 ### JNI (Java Native Interface)
 Native code may access Java objects, classes, methods and fields by name, in a similar way to using the reflection API in Java code.
-For the same reasons, any Java artifacts accessed by name via JNI must be specified during a native image generation in a [configuration file](BuildConfiguration.md). For more details, read the [JNI Implementation](JNI.md) guide.
+For the same reasons, any Java artifacts accessed by name via JNI must be specified during a native image generation in a [configuration file](BuildConfiguration.md).
+For more details, read the [JNI Implementation](JNI.md) guide.
 
 As an alternative, and in addition to JNI, Native Image provides its own native interface that is much simpler than JNI and with lower overhead.
 It allows calls between Java and C, and access of C data structures from Java code.
@@ -56,8 +59,8 @@ For more details, read the [JavaDoc of the package `org.graalvm.nativeimage.c` a
 
 ### Serialization
 Java serialization requires class metadata information in order to function and must be specified during a native image generation in a [configuration file](BuildConfiguration.md).
-However, Java serialization has been a persistent source of security vulnerabilities. The Java architects have announced that the existing serialization mechanism will be replaced
-with a new mechanism avoiding these problems in the near future.
+However, Java serialization has been a persistent source of security vulnerabilities.
+The Java architects have announced that the existing serialization mechanism will be replaced with a new mechanism avoiding these problems in the near future.
 
 ## Features Incompatible with Closed-World Optimization
 
@@ -80,16 +83,12 @@ Native Image implements some Java features in a different way than the Java HotS
 
 ### Signal Handlers
 
-Registering a signal handler requires to start a new thread that handles the
-signal and invokes the shutdown hooks. By default, no signal handlers are
-registered when building a native image, unless they are registered explicitly by the user.
-For example, it is not recommended to register the default signal
-handlers when building a shared library, but it is desirable to include
-signal handlers when building native images for containerized environments, like
-Docker containers.
+Registering a signal handler requires to start a new thread that handles the signal and invokes the shutdown hooks.
+By default, no signal handlers are registered when building a native image, unless they are registered explicitly by the user.
+For example, it is not recommended to register the default signal handlers when building a shared library, but it is desirable to include signal handlers when building native images for containerized environments, like Docker containers.
 
-To register the default signal handlers, pass the `--install-exit-handlers` option to the
-`native-image` builder. This option gives you the same signal handlers as a JVM does.
+To register the default signal handlers, pass the `--install-exit-handlers` option to the `native-image` builder.
+This option gives you the same signal handlers as a JVM does.
 
 ### Class Initializers
 By default, classes are initialized at image run time.
@@ -99,8 +98,7 @@ Class initialization behaviour can be adjusted using the options `--initialize-
 See `native-image --help` for details.
 Classes of the JDK class libraries are handled for you and do not need special consideration from the user.
 
-Native Image users should be aware that class initialization at image build time
-may break specific assumptions in existing code.
+Native Image users should be aware that class initialization at image build time may break specific assumptions in existing code.
 For example, files loaded in a class initializer may not be in the same place at image build time as at image run time.
 Also, certain objects such as a file descriptors or running threads must not be stored into a native image binary.
 If such objects are reachable at image build time, image generation fails with an error.

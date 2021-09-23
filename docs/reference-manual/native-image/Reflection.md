@@ -15,7 +15,7 @@ Examining and accessing program elements through `java.lang.reflect.*` or loadin
 Native Image tries to resolve the target elements through a static analysis that detects calls to the Reflection API.
 Where the analysis fails, the program elements reflectively accessed at run time must be specified using a manual configuration.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
+See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md/#assisted-configuration-of-native-image-builds).
 
 ## Automatic Detection
 
@@ -144,7 +144,7 @@ Conditional configuration is the *preferred* way to specify reflection configura
 
 If a `condition` is omitted, the element is always included. When the same `condition` is used for two distinct elements in two configuration entries, both elements will be included when the condition is satisfied. When a configuration entry should be enabled if one of several types are reachable, it is necessary to add two configuration entries: one entry for each condition.
 
-When used with [assisted configuration](BuildConfiguration.md#assisted-configuration-of-native-image-builds), conditional entries of existing configuration will not be fused with agent-collected entries as agent-collected entries.
+When used with [assisted configuration](BuildConfiguration.md/#assisted-configuration-of-native-image-builds), conditional entries of existing configuration will not be fused with agent-collected entries as agent-collected entries.
 
 ### Configuration with Features
 
@@ -165,7 +165,8 @@ class RuntimeReflectionRegistrationFeature implements Feature {
   }
 }
 ```
-To activate the custom feature `--features=<fully qualified name of RuntimeReflectionRegistrationFeature class>` needs to be passed to native-image. [Native Image Build Configuration](BuildConfiguration.md) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
+To activate the custom feature `--features=<fully qualified name of RuntimeReflectionRegistrationFeature class>` needs to be passed to native-image.
+[Native Image Build Configuration](BuildConfiguration.md) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
 
 ### Use of Reflection during Native Image Generation
 Reflection can be used without restrictions during a native image generation, for example, in static initializers.

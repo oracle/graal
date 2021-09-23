@@ -12,11 +12,12 @@ Dynamic proxy classes are generated from a list of interfaces.
 Native Image does not provide machinery for generating and interpreting bytecodes at run time.
 Therefore all dynamic proxy classes need to be generated at native image build time.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
+See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md/#assisted-configuration-of-native-image-builds).
 
 ## Automatic Detection
 
-Native Image employs a simple static analysis that detects calls to `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)` and `java.lang.reflect.Proxy.getProxyClass(ClassLoader, Class<?>[])`, then tries to determine the list of interfaces that define dynamic proxies automatically. Given the list of interfaces, Native Image generates proxy classes at image build time and adds them to the native image heap.
+Native Image employs a simple static analysis that detects calls to `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)` and `java.lang.reflect.Proxy.getProxyClass(ClassLoader, Class<?>[])`, then tries to determine the list of interfaces that define dynamic proxies automatically.
+Given the list of interfaces, Native Image generates proxy classes at image build time and adds them to the native image heap.
 In addition to generating the dynamic proxy class, the constructor of the generated class that takes a `java.lang.reflect.InvocationHandler` argument, i.e., the one reflectively invoked by `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)`, is registered for reflection so that dynamic proxy instances can be allocated at run time.
 
 The analysis is limited to situations where the list of interfaces comes from a constant array or an array that is allocated in the same method.
