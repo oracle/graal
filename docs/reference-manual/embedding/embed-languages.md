@@ -31,7 +31,7 @@ beneath each code example to choose between JavaScript, R, Ruby, and Python.
 Ensure you set up GraalVM before you begin.
 
 ## Compile and Run a Polyglot Application
-GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/).
+GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](../../graalvm-as-a-platform/truffle/README.md).
 These languages are henceforth referenced as **guest languages**.
 
 Complete the steps in this section to create a sample polyglot
@@ -543,12 +543,12 @@ public class Main {
     public static void main(String[] args) {
         try (Context outer = Context.newBuilder()
                                    .allowAllAccess(true)
-                               .build()) {            
+                               .build()) {
             outer.eval("js", "inner = Java.type('org.graalvm.polyglot.Context').create()");
             outer.eval("js", "value = inner.eval('js', '({data:42})')");
             int result = outer.eval("js", "value.data").asInt();
             outer.eval("js", "inner.close()");
-            
+
             System.out.println("Valid " + (result == 42));
         }
     }

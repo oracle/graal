@@ -14,7 +14,7 @@ That means it can only run a Java program once it has been compiled to Java byte
 In the GraalVM family, this is similar to WebAssembly or the LLVM interpreter: while both can run C programs, they have to be complied by a C compiler first.
 
 ### Does Java running on Truffle run on HotSpot too?
-Like other languages implemented with the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/), it can run both as a native image or on top of HotSpot.
+Like other languages implemented with the [Truffle framework](../../graalvm-as-a-platform/truffle/README.md), it can run both as a native image or on top of HotSpot.
 Running on top of HotSpot is currently only possible on Linux.
 We plan to extend this capability to macOS and Windows platforms also.
 

@@ -14,7 +14,7 @@ The JVM passes bytecode to the GraalVM compiler, which compiles that to the mach
 
 GraalVM's dynamic compiler can improve the efficiency and the speed of applications written in Java, Scala, Kotlin, or other JVM languages through unique approaches to code analysis and optimization.
 For example, it assures performance advantages for highly abstracted programs due to its ability to remove costly object allocations.
-To learn more, go to the [Compiler](/reference-manual/compiler/) page.
+To learn more, go to the [Compiler](../compiler.md) page.
 The open source compiler's code is available on [GitHub](https://github.com/oracle/graal/tree/master/compiler).
 
 ## Compiler Operating Modes
