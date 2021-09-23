@@ -33,12 +33,14 @@ import java.util.Optional;
 
 public final class AllocatedBytesMetric implements Metric {
 
-    private static Optional<Double> readFromSocket() {
-        try (Socket s = new Socket("localhost", 6666)) {
+    private double allocatedBefore;
+
+    private static double readFromSocket() {
+        try (Socket s = new Socket("localhost", 8877)) {
             DataInputStream in = new DataInputStream(s.getInputStream());
-            return Optional.of(in.readDouble());
+            return in.readDouble();
         } catch (IOException e) {
-            return Optional.empty();
+            throw new IllegalStateException("IO exception during reading from socket.");
         }
     }
 
@@ -61,11 +63,11 @@ public final class AllocatedBytesMetric implements Metric {
 
     @Override
     public void beforeIteration(boolean warmup, int iteration, Config config) {
-        readFromSocket();
+        allocatedBefore = readFromSocket();
     }
 
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
-        return readFromSocket();
+        return Optional.of(readFromSocket() - allocatedBefore);
     }
 }
