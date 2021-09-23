@@ -1873,7 +1873,7 @@ public class NativeImage {
              * substitutions of kind ${<argName>} -> <argValue> on resultVal.
              */
             for (String argNameValue : optionArg.split(",")) {
-                String[] splitted = argNameValue.split(":");
+                String[] splitted = argNameValue.split(":", 2);
                 if (splitted.length == 2) {
                     String argName = splitted[0];
                     String argValue = splitted[1];
