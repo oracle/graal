@@ -524,7 +524,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         Node prev;
         do {
             prev = node;
-            node = node.getParent();
+            node = node.parent;
         } while (node != null);
 
         if (prev instanceof RootNode) {
