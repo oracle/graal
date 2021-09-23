@@ -257,11 +257,11 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
@@ -2281,15 +2281,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
         Field field = getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
         if (field.isRemoved()) {
-            // we're OK with a slow path here with full re-resolution on each hit,
-            // because we're executing obsolete, but still active code.
-            // try if there's a fully compatible new field
-            CompilerDirectives.transferToInterpreter();
-            try {
-                field = getConstantPool().resolvedFieldAtNoCache(getMethod().getDeclaringKlass(), cpi);
-            } catch (EspressoException e) {
-                // no fully compatible field found, but allow old code to use old fields
-            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ClassRedefinition.check();
+            field = getConstantPool().resolveFieldAndUpdate(getMethod().getDeclaringKlass(), cpi, field);
         }
         return field;
     }

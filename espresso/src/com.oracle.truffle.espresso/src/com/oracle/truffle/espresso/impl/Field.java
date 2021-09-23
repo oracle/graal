@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -49,6 +51,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Field extends Member<Type> implements FieldRef {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
+    private static ArrayList<Field> currentSyntheticFields;
 
     final LinkedField linkedField;
     private final ObjectKlass holder;
@@ -63,15 +66,19 @@ public final class Field extends Member<Type> implements FieldRef {
     private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
 
     public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool) {
-        this(holder, linkedField, pool, false);
+        this(holder, linkedField, pool, false, false);
     }
 
     public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isAddedField) {
+        this(holder, linkedField, pool, isAddedField, false);
+    }
+
+    public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isAddedField, boolean isSynthetic) {
         this.linkedField = linkedField;
         this.holder = holder;
         this.pool = pool;
         this.isAddedField = isAddedField;
-        if (isAddedField) {
+        if (isAddedField && !isSynthetic) {
             StaticShape.Builder shapeBuilder = StaticShape.newBuilder(getDeclaringKlass().getEspressoLanguage());
             shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), isFinalFlagSet());
             this.extensionShape = shapeBuilder.build(ExtensionFieldObject.FieldStorageObject.class, ExtensionFieldObject.ExtensionFieldObjectFactory.class);
@@ -85,10 +92,6 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public Symbol<Type> getType() {
         return linkedField.getType();
-    }
-
-    public boolean isExtensionField() {
-        return getName() == Name.staticExtensionFieldName;
     }
 
     public void removeByRedefintion() {
@@ -196,6 +199,27 @@ public final class Field extends Member<Type> implements FieldRef {
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
+
+    // region Synthetic fields used by class redefinition
+    public static synchronized Field createSyntheticFrom(Field field) {
+        Field syntheticField = new Field(field.holder, field.linkedField, field.pool, true, true);
+        syntheticField.setCompatibleField(field);
+        if (currentSyntheticFields == null) {
+            currentSyntheticFields = new ArrayList<>(1);
+        }
+        currentSyntheticFields.add(syntheticField);
+        return syntheticField;
+    }
+
+    public static synchronized void clearSyntheticFields() {
+        if (currentSyntheticFields != null) {
+            for (Field field : currentSyntheticFields) {
+                field.removeByRedefintion();
+            }
+            currentSyntheticFields.clear();
+        }
+    }
+    // endregion Synthetic fields used by class redefinition
 
     // region Field accesses
 
@@ -1154,6 +1178,10 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public boolean hasCompatibleField() {
         return compatibleField != null;
+    }
+
+    public Field getCompatibleField() {
+        return compatibleField;
     }
 
     public StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> getExtensionShape() {

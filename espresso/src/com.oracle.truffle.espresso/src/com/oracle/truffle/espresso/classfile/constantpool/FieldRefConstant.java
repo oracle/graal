@@ -46,6 +46,10 @@ public interface FieldRefConstant extends MemberRefConstant {
         return new Indexes(classIndex, nameAndTypeIndex);
     }
 
+    static Resolvable.ResolvedConstant createSynthetic(Field field) {
+        return new Resolved(field);
+    }
+
     @Override
     default Tag tag() {
         return Tag.FIELD_REF;

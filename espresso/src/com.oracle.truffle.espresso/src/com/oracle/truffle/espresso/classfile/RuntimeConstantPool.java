@@ -27,6 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
@@ -35,6 +36,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class RuntimeConstantPool extends ConstantPool {
@@ -128,10 +130,32 @@ public final class RuntimeConstantPool extends ConstantPool {
         return ((Field) resolved.value());
     }
 
-    public Field resolvedFieldAtNoCache(Klass accessingKlass, int index) {
+    public Field resolveFieldAndUpdate(Klass accessingKlass, int index, Field field) {
         CompilerAsserts.neverPartOfCompilation();
-        Resolvable.ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index, "field");
-        return ((Field) resolved.value());
+        try {
+            Resolvable.ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index, "field");
+            // a compatible field was found, so update the entry
+            synchronized (this) {
+                constants[index] = resolved;
+            }
+            return ((Field) resolved.value());
+        } catch (EspressoException e) {
+            Field realField = field;
+            if (realField.hasCompatibleField()) {
+                realField = realField.getCompatibleField();
+            }
+            // A new compatible field was not found, but we still allow
+            // obsolete code to use the latest known resolved field.
+            // To avoid a de-opt loop here, we create a synthetic compatible
+            // field that actually uses the latest known resolved field
+            // underneath.
+            synchronized (this) {
+                Field syntheticField = Field.createSyntheticFrom(realField);
+                Resolvable.ResolvedConstant resolved = FieldRefConstant.createSynthetic(syntheticField);
+                constants[index] = resolved;
+                return syntheticField;
+            }
+        }
     }
 
     public Method resolvedMethodAt(Klass accessingKlass, int index) {
