@@ -566,7 +566,7 @@ abstract class DynamicObjectLibraryImpl {
         }
     }
 
-    static class Generic extends KeyCacheEntry {
+    static final class Generic extends KeyCacheEntry {
         private static final Generic INSTANCE = new Generic();
 
         Generic() {
@@ -696,7 +696,7 @@ abstract class DynamicObjectLibraryImpl {
      * The generic case is used if the number of property keys accessed overflows the limit of the
      * polymorphic inline cache.
      */
-    static class AnyKey extends KeyCacheNode {
+    static final class AnyKey extends KeyCacheNode {
 
         @Child private KeyCacheEntry keyCache;
 
@@ -1169,7 +1169,7 @@ abstract class DynamicObjectLibraryImpl {
             }
         }
 
-        static class ExistingKeyIdentity extends ExistingKey {
+        static final class ExistingKeyIdentity extends ExistingKey {
             ExistingKeyIdentity(Object key, Property property, KeyCacheEntry next) {
                 super(key, property, next);
             }
@@ -1185,7 +1185,7 @@ abstract class DynamicObjectLibraryImpl {
             }
         }
 
-        static class MissingKeyIdentity extends MissingKey {
+        static final class MissingKeyIdentity extends MissingKey {
             MissingKeyIdentity(Object key, KeyCacheEntry next) {
                 super(key, next);
             }
