@@ -216,7 +216,7 @@ This brings the visual Java tooling to VS Code.
 
 ![VisualVM and VS Code Integration](images/vscode_visualvm.png)
 
-To get started, you need to get the latest stable GraalVM release using the **Download & Install GraalVM** action from the **Gr** activity view, as described in the [Installation and Setup](README.md#installation-and-setup) section.
+To get started, you need to get the latest stable GraalVM release using the **Download & Install GraalVM** action from the **Gr** activity view, as described in the [Installation and Setup](#installation-and-setup) section.
 Make sure the GraalVM is set as **active**.
 
 Once a GraalVM installation is set as active, the Command Palette contains the following commands related to VisualVM:
@@ -552,7 +552,7 @@ Once the `solargraph` gem is installed, the Ruby Language Server is automaticall
 
 ### Additional Editor Features
 
-Since the easy writing of [polyglot](https://www.graalvm.org/docs/reference-manual/polyglot) applications is one of the defining features of GraalVM, the code completion invoked inside JavaScript sources provides items for `Polyglot.eval(...)`, `Polyglot.evalFile(...)`, and `Java.type(...)` calls.
+Since the easy writing of [polyglot applications](https://www.graalvm.org/reference-manual/polyglot-programming/) is one of the defining features of GraalVM, the code completion invoked inside JavaScript sources provides items for `Polyglot.eval(...)`, `Polyglot.evalFile(...)`, and `Java.type(...)` calls.
 
 ![Image Code Completion](images/code-completion-js.png)
 
