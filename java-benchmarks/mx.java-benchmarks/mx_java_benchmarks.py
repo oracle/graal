@@ -1850,6 +1850,11 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["movie-lens"]
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
+
+        if mx.get_arch() != "amd64":
+            # GR-33879
+            # JNA libraries needed are currently limited to amd64: https://github.com/renaissance-benchmarks/renaissance/issues/153
+            del benchmarks["db-shootout"]
         return benchmarks
 
     def version(self):
@@ -1895,7 +1900,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
-        return sorted(_renaissanceConfig.keys())
+        return [b for b, it in self.renaissanceIterations().items() if it != -1]
 
     def successPatterns(self):
         return []
