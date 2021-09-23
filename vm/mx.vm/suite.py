@@ -235,6 +235,13 @@ suite = {
             ],
             "maven" : False,
         },
+        "POLYBENCH_INSTRUMENTS_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Profiler support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.vm/polybench-instruments.properties",
+            },
+        },
         "PMH": {
             "subDir": "src",
             "dependencies": [

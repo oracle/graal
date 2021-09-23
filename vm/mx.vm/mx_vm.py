@@ -119,6 +119,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     third_party_license_files=[],
     dependencies=['Truffle', 'Polybench Launcher'],
     truffle_jars=['vm:POLYBENCH_INSTRUMENTS'],
+    support_distributions=['vm:POLYBENCH_INSTRUMENTS_SUPPORT'],
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
