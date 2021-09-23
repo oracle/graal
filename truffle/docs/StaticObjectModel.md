@@ -222,7 +222,7 @@ public void wrongShape(TruffleLanguage<?> language) {
 ```
 
 While these checks are often useful, they might be redundant if the language implementation already performs them, for example using a verifier.
-While the first type of checks (on property type) is very efficient and cannot be disabled, the second type of checks (on the shape) is computationally expensive and can be disabled via a command line argument: 
+While the first type of checks (on property type) is very efficient and cannot be disabled, the second type of checks (on the shape) is computationally expensive and can be disabled via a command line argument:
 ```
 --experimental-options --engine.RelaxStaticObjectSafetyChecks=true
 ```
