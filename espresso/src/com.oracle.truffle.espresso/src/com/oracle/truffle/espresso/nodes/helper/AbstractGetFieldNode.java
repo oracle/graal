@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -43,7 +44,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class AbstractGetFieldNode extends Node {
+public abstract class AbstractGetFieldNode extends Node implements ContextAccess {
     final Field field;
 
     final String fieldName;
