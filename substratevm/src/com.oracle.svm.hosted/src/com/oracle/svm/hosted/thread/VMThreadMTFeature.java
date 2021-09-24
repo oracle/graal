@@ -238,7 +238,7 @@ public class VMThreadMTFeature implements GraalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
-        List<VMThreadLocalInfo> sortedThreadLocalInfos = threadLocalCollector.sortThreadLocals(config);
+        List<VMThreadLocalInfo> sortedThreadLocalInfos = threadLocalCollector.sortThreadLocals();
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
         int nextOffset = 0;
         for (VMThreadLocalInfo info : sortedThreadLocalInfos) {

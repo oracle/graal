@@ -61,7 +61,7 @@ public class NoAllocationVerifier implements AutoCloseable {
         throw VMError.shouldNotReachHere(ERROR_MSG);
     }
 
-    private static final FastThreadLocalObject<NoAllocationVerifier> openVerifiers = FastThreadLocalFactory.createObject(NoAllocationVerifier.class);
+    private static final FastThreadLocalObject<NoAllocationVerifier> openVerifiers = FastThreadLocalFactory.createObject(NoAllocationVerifier.class, "NoAllocationVerifier.openVerifiers");
 
     /**
      * Create an opened instance.

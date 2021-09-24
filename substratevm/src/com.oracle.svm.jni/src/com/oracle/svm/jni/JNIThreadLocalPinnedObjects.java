@@ -47,7 +47,8 @@ public class JNIThreadLocalPinnedObjects {
         }
     }
 
-    private static final FastThreadLocalObject<PinnedObjectListNode> pinnedObjectsListHead = FastThreadLocalFactory.createObject(PinnedObjectListNode.class);
+    private static final FastThreadLocalObject<PinnedObjectListNode> pinnedObjectsListHead = FastThreadLocalFactory.createObject(PinnedObjectListNode.class,
+                    "JNIThreadLocalPinnedObjects.pinnedObjectsListHead");
 
     public static <T extends PointerBase> T pinArrayAndGetAddress(Object array) {
         PinnedObject pin = PinnedObject.create(array);

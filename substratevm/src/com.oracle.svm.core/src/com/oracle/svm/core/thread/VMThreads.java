@@ -138,17 +138,17 @@ public abstract class VMThreads {
      * The next element in the linked list of {@link IsolateThread}s. A thread points to itself with
      * this field after being removed from the linked list.
      */
-    public static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord();
-    private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord();
-    protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord();
-    public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord();
+    public static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord("VMThreads.nextTL");
+    private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
+    protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
+    public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord("VMThreads.IsolateTL");
     /** The highest stack address. */
-    public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord();
+    public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord("VMThreads.StackBase");
     /**
      * The lowest stack address. Note that this value does not necessarily match the value that is
      * used for the stack overflow check.
      */
-    public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord();
+    public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord("VMThreads.StackEnd");
 
     private static final int STATE_UNINITIALIZED = 1;
     private static final int STATE_INITIALIZING = 2;
@@ -206,7 +206,7 @@ public abstract class VMThreads {
      * Stores the unaligned memory address returned by calloc, so that we can properly free the
      * memory again.
      */
-    private static final FastThreadLocalWord<Pointer> unalignedIsolateThreadMemoryTL = FastThreadLocalFactory.createWord();
+    private static final FastThreadLocalWord<Pointer> unalignedIsolateThreadMemoryTL = FastThreadLocalFactory.createWord("VMThreads.unalignedIsolateThreadMemoryTL");
 
     /**
      * Allocate native memory for a {@link IsolateThread}. The returned memory must be initialized
@@ -611,7 +611,7 @@ public abstract class VMThreads {
     public static class StatusSupport {
 
         /** The status of a {@link IsolateThread}. */
-        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
+        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt("StatusSupport.statusTL").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
         /**
          * Boolean flag whether safepoints are disabled. This is a separate thread local in addition
@@ -620,7 +620,7 @@ public abstract class VMThreads {
          * detached, or a fatal error occurred and we are printing diagnostics before killing the
          * VM.
          */
-        private static final FastThreadLocalInt safepointsDisabledTL = FastThreadLocalFactory.createInt();
+        private static final FastThreadLocalInt safepointsDisabledTL = FastThreadLocalFactory.createInt("StatusSupport.safepointsDisabledTL");
 
         /** An illegal thread state for places where we need to pass a value. */
         public static final int STATUS_ILLEGAL = -1;
@@ -834,7 +834,7 @@ public abstract class VMThreads {
     public static class ActionOnTransitionToJavaSupport {
 
         /** The actions to be performed. */
-        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt();
+        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt("ActionOnTransitionToJavaSupport.actionTL");
 
         /** The thread does not need to take any action. */
         private static final int NO_ACTION = 0;
@@ -878,7 +878,7 @@ public abstract class VMThreads {
      */
     public static class ActionOnExitSafepointSupport {
 
-        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt();
+        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt("ActionOnExitSafepointSupport.actionTL");
         private static final int NO_ACTION = 0;
         /**
          * The thread needs to start execution from a different stack, used for preempting a
@@ -887,8 +887,8 @@ public abstract class VMThreads {
         private static final int SWITCH_STACK = NO_ACTION + 1;
 
         /** Target of stack switching. */
-        private static final FastThreadLocalWord<Pointer> returnSP = FastThreadLocalFactory.createWord();
-        private static final FastThreadLocalWord<CodePointer> returnIP = FastThreadLocalFactory.createWord();
+        private static final FastThreadLocalWord<Pointer> returnSP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnSP");
+        private static final FastThreadLocalWord<CodePointer> returnIP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnIP");
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isActionPending() {

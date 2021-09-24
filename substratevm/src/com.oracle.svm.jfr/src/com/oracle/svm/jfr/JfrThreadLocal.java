@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-import com.oracle.svm.core.thread.VMOperation;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -38,6 +37,7 @@ import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -63,11 +63,12 @@ import jdk.jfr.internal.EventWriter;
  * modify the buffers of other threads).
  */
 public class JfrThreadLocal implements ThreadListener {
-    private static final FastThreadLocalObject<Target_jdk_jfr_internal_EventWriter> javaEventWriter = FastThreadLocalFactory.createObject(Target_jdk_jfr_internal_EventWriter.class);
-    private static final FastThreadLocalWord<JfrBuffer> javaBuffer = FastThreadLocalFactory.createWord();
-    private static final FastThreadLocalWord<JfrBuffer> nativeBuffer = FastThreadLocalFactory.createWord();
-    private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord();
-    private static final FastThreadLocalLong traceId = FastThreadLocalFactory.createLong();
+    private static final FastThreadLocalObject<Target_jdk_jfr_internal_EventWriter> javaEventWriter = FastThreadLocalFactory.createObject(Target_jdk_jfr_internal_EventWriter.class,
+                    "JfrThreadLocal.javaEventWriter");
+    private static final FastThreadLocalWord<JfrBuffer> javaBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBuffer");
+    private static final FastThreadLocalWord<JfrBuffer> nativeBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBuffer");
+    private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
+    private static final FastThreadLocalLong traceId = FastThreadLocalFactory.createLong("JfrThreadLocal.traceId");
 
     private long threadLocalBufferSize;
 

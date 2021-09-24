@@ -36,7 +36,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 public class JNIThreadOwnedMonitors {
 
     @SuppressWarnings("rawtypes") //
-    private static final FastThreadLocalObject<IdentityHashMap> ownedMonitors = FastThreadLocalFactory.createObject(IdentityHashMap.class);
+    private static final FastThreadLocalObject<IdentityHashMap> ownedMonitors = FastThreadLocalFactory.createObject(IdentityHashMap.class, "JNIThreadOwnedMonitors.ownedMonitors");
 
     @SuppressWarnings("unchecked")
     private static IdentityHashMap<Object, Integer> mutableMap() {
