@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -245,6 +246,15 @@ public class BinaryGraphPrinter implements
             Object block = getBlockForNode(node, nodeToBlocks);
             if (block != null) {
                 props.put("nodeToBlock", block);
+            }
+        }
+
+        if (info.cfg != null) {
+            if (node instanceof LoopBeginNode) {
+                // check if cfg is up to date
+                if (info.cfg.getLocalLoopFrequencyData().containsKey((LoopBeginNode) node)) {
+                    props.put("localLoopFrequency", info.cfg.localLoopFrequency((LoopBeginNode) node));
+                }
             }
         }
 

@@ -1031,7 +1031,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         cleanupFinalGraph();
-        ComputeLoopFrequenciesClosure.compute(graph);
     }
 
     protected BciBlockMapping generateBlockMap() {

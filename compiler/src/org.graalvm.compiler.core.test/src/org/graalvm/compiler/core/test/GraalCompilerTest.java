@@ -70,7 +70,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -266,23 +265,6 @@ public abstract class GraalCompilerTest extends GraalTest {
              */
             iter = ret.getHighTier().findPhase(CanonicalizerPhase.class);
         }
-        iter.add(new Phase() {
-
-            @Override
-            protected void run(StructuredGraph graph) {
-                ComputeLoopFrequenciesClosure.compute(graph);
-            }
-
-            @Override
-            public float codeSizeIncrease() {
-                return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
-            }
-
-            @Override
-            protected CharSequence getName() {
-                return "ComputeLoopFrequenciesPhase";
-            }
-        });
         ret.getHighTier().appendPhase(new Phase() {
 
             @Override

@@ -204,7 +204,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
         int unrollFactor = loopBegin.getUnrollFactor();
         if (unrollFactor == 1) {
-            double loopFrequency = loopBegin.loopFrequency();
+            double loopFrequency = loop.localLoopFrequency();
             if (loopBegin.isSimpleLoop() && loopFrequency < 5.0) {
                 loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s frequency too low %s ", loopBegin, loopFrequency);
                 return false;
@@ -239,7 +239,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     @Override
     public boolean shouldTryUnswitch(LoopEx loop) {
         LoopBeginNode loopBegin = loop.loopBegin();
-        double loopFrequency = loopBegin.loopFrequency();
+        double loopFrequency = loop.localLoopFrequency();
         if (loopFrequency <= 1.0) {
             return false;
         }
@@ -285,7 +285,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         int inBranchTotal = branchNodes.count();
 
         CountingClosure stateNodesCount = new CountingClosure();
-        double loopFrequency = loop.loopBegin().loopFrequency();
+        double loopFrequency = loop.localLoopFrequency();
         OptionValues options = loop.loopBegin().getOptions();
         int maxDiff = Options.LoopUnswitchTrivial.getValue(options) + (int) (Options.LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0 + phis));
 
