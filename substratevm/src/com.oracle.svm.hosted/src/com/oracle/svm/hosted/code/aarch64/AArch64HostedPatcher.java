@@ -96,8 +96,9 @@ class SingleInstructionHostedPatcher extends CompilationResult.CodeAnnotation im
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        annotation.patch(codePos, relative, code);
+    public void patch(int compStart, int relative, byte[] code) {
+        long startAddress = ((long) compStart) + annotation.instructionPosition;
+        annotation.patch(startAddress, relative, code);
     }
 
     @Override
@@ -145,8 +146,9 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        macroInstruction.patch(codePos, relative, code);
+    public void patch(int compStart, int relative, byte[] code) {
+        long startAddress = ((long) compStart) + macroInstruction.instructionPosition;
+        macroInstruction.patch(startAddress, relative, code);
     }
 
     @Override
@@ -175,8 +177,9 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        macroInstruction.patch(codePos, relative, code);
+    public void patch(int compStart, int relative, byte[] code) {
+        long startAddress = ((long) compStart) + macroInstruction.instructionPosition;
+        macroInstruction.patch(startAddress, relative, code);
     }
 
     @Override
@@ -241,8 +244,9 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        annotation.patch(codePos, relative, code);
+    public void patch(int compStart, int relative, byte[] code) {
+        /* Patching a move sequence would hardcode an absolute value, not a pc-relative value. */
+        throw VMError.shouldNotReachHere();
     }
 
     @Override
