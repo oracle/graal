@@ -256,13 +256,13 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException, FinalLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
             if (!canStore(value)) {
                 if (init) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw new UnsupportedOperationException();
                 } else {
-                    throw finalLocation();
+                    throw incompatibleLocation();
                 }
             }
         }

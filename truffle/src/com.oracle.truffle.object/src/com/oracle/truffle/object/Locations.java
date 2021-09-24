@@ -44,7 +44,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -107,13 +106,13 @@ public abstract class Locations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException, FinalLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
             if (!canStore(value)) {
                 if (init) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw new UnsupportedOperationException();
                 } else {
-                    throw finalLocation();
+                    throw incompatibleLocation();
                 }
             }
         }
