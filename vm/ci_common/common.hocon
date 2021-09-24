@@ -141,7 +141,6 @@ fastr_darwin: ${fastr} {
   environment:  {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
     FASTR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
-    GNUR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre2/pcre2-10.37/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
