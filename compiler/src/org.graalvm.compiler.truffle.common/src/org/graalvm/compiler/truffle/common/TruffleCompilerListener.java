@@ -172,8 +172,8 @@ public interface TruffleCompilerListener {
      * @deprecated use {@link #onCompilationRetry(CompilableTruffleAST, int)}
      */
     @Deprecated
-    default void onCompilationRetry(CompilableTruffleAST compilable) {
-        onCompilationRetry(compilable, 0);
+    @SuppressWarnings("unused")
+    default void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
     }
 
     /**
@@ -183,6 +183,7 @@ public interface TruffleCompilerListener {
      * @param compilable the Truffle AST which is going to be re-compiled.
      * @param tier Which compilation tier is in question.
      */
-    default void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
+    default void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+        onCompilationRetry(compilable, task.tier());
     }
 }

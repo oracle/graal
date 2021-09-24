@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Singl
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
@@ -88,7 +89,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
         final int[] compilationCount = {0};
         GraalTruffleRuntimeListener listener = new GraalTruffleRuntimeListener() {
             @Override
-            public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
+            public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
                 compilationCount[0]++;
             }
         };

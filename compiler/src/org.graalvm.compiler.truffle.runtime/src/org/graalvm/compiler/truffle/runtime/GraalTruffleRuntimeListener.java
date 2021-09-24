@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Map;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 
@@ -133,8 +134,8 @@ public interface GraalTruffleRuntimeListener {
      *            the queue.
      */
     @SuppressWarnings({"unused", "deprecated"})
-    default void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
-        onCompilationStarted(target, tier);
+    default void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
+        onCompilationStarted(target, task.tier());
     }
 
     /**

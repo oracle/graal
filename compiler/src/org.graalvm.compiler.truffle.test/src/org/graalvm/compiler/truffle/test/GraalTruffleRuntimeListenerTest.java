@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
@@ -373,7 +374,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
 
         @Override
-        public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
+        public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
             if (isImportant(target)) {
                 waitForInitialTarget();
                 events.add(EventType.COMPILATION_STARTED);

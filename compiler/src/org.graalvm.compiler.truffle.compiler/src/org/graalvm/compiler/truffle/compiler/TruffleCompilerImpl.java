@@ -698,7 +698,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         @Override
         protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues compilerOptions, PrintStream logStream) {
-            listener.onCompilationRetry(compilable, task.tier());
+            listener.onCompilationRetry(compilable, task);
             return createDebugContext(compilerOptions, compilationId, compilable, logStream);
         }
 

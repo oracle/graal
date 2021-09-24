@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
@@ -131,19 +132,19 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
+    public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
         if (target.engine.traceCompilationDetails) {
             log(target, String.format(START_FORMAT,
                             target.id,
                             target.getName(),
-                            tier,
-                            (int) weight,
-                            rate,
+                            task.tier(),
+                            (int) task.weight(),
+                            task.rate(),
                             runtime.getCompilationQueueSize(),
-                            queueChange >= 0 ? '+' : '-',
-                            Math.abs(queueChange),
+                            task.queueChange() >= 0 ? '+' : '-',
+                            Math.abs(task.queueChange()),
                             FixedPointMath.toDouble(runtime.compilationThresholdScale()),
-                            time / 1000,
+                            task.time() / 1000,
                             formatSourceSection(target.getRootNode().getSourceSection()),
                             System.nanoTime()));
         }

@@ -28,6 +28,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
@@ -80,8 +81,8 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
-        invokeListeners((l) -> l.onCompilationStarted(target, tier, time, weight, rate, queueChange));
+    public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
+        invokeListeners((l) -> l.onCompilationStarted(target, task));
     }
 
     @Override
@@ -167,8 +168,8 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
-        onCompilationQueued((OptimizedCallTarget) compilable, tier);
-        onCompilationStarted((OptimizedCallTarget) compilable, tier, 0, 0, 0, 0);
+    public void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+        onCompilationQueued((OptimizedCallTarget) compilable, task.tier());
+        onCompilationStarted((OptimizedCallTarget) compilable, (CompilationTask) task);
     }
 }
