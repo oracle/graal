@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,45 +40,54 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.nfi.ConvertTypeNode.OptimizedConvertTypeNode;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-final class NFIType {
+@ExportLibrary(InteropLibrary.class)
+final class NFIPointer implements TruffleObject {
 
-    final TypeCachedState cachedState;
-    final Object backendType;
+    final long raw;
 
-    final Object runtimeData;
+    private static final NFIPointer NULL = new NFIPointer(0);
 
-    NFIType(TypeCachedState cachedState, Object backendType) {
-        this(cachedState, backendType, null);
+    public static NFIPointer nullPtr() {
+        return NULL;
     }
 
-    NFIType(TypeCachedState cachedState, Object backendType, Object runtimeData) {
-        this.cachedState = cachedState;
-        this.backendType = backendType;
-        this.runtimeData = runtimeData;
+    public static NFIPointer create(long raw) {
+        return new NFIPointer(raw);
     }
 
-    static class TypeCachedState {
+    private NFIPointer(long raw) {
+        this.raw = raw;
+    }
 
-        final int managedArgCount;
+    @ExportMessage
+    boolean isNull() {
+        return raw == 0;
+    }
 
-        final NodeFactory<? extends ConvertTypeNode> toNativeFactory;
-        final NodeFactory<? extends ConvertTypeNode> fromNativeFactory;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isPointer() {
+        return true;
+    }
 
-        TypeCachedState(int managedArgCount, NodeFactory<? extends ConvertTypeNode> toNative, NodeFactory<? extends ConvertTypeNode> fromNative) {
-            this.managedArgCount = managedArgCount;
-            this.toNativeFactory = toNative;
-            this.fromNativeFactory = fromNative;
-        }
+    @ExportMessage
+    long asPointer() {
+        return raw;
+    }
 
-        OptimizedConvertTypeNode createToNative() {
-            return new OptimizedConvertTypeNode(this, toNativeFactory.createNode());
-        }
-
-        OptimizedConvertTypeNode createFromNative() {
-            return new OptimizedConvertTypeNode(this, fromNativeFactory.createNode());
+    @ExportMessage
+    @TruffleBoundary
+    String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        if (isNull()) {
+            return "NULL";
+        } else {
+            return String.format("0x%08x", raw);
         }
     }
 }

@@ -40,74 +40,63 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.ConvertTypeNodeFactory.ConvertFromNativeNodeGen;
-import com.oracle.truffle.nfi.ConvertTypeNodeFactory.ConvertToNativeNodeGen;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 
 @GenerateAOT
 abstract class ConvertTypeNode extends Node {
 
-    abstract Object execute(NFIType type, Object value);
+    abstract Object execute(NFIType type, Object value) throws UnsupportedTypeException;
 
-    static OptimizedConvertTypeNode createOptimizedToNative(TypeCachedState state) {
-        ConvertTypeImplNode impl = ConvertToNativeNodeGen.create();
-        return new OptimizedConvertTypeNode(state, impl);
-    }
-
-    static OptimizedConvertTypeNode createOptimizedFromNative(TypeCachedState state) {
-        ConvertTypeImplNode impl = ConvertFromNativeNodeGen.create();
-        return new OptimizedConvertTypeNode(state, impl);
-    }
-
-    static class OptimizedConvertTypeNode extends ConvertTypeNode {
+    static final class OptimizedConvertTypeNode extends ConvertTypeNode {
 
         final TypeCachedState typeState;
-        @Child ConvertTypeImplNode convert;
+        @Child ConvertTypeNode convertImpl;
 
-        OptimizedConvertTypeNode(TypeCachedState typeState, ConvertTypeImplNode convert) {
+        OptimizedConvertTypeNode(TypeCachedState typeState, ConvertTypeNode convertImpl) {
             this.typeState = typeState;
-            this.convert = convert;
+            this.convertImpl = convertImpl;
         }
 
         @Override
-        Object execute(NFIType type, Object value) {
-            assert typeState == type.cachedState;
-            return convert.execute(typeState, type, value);
-        }
-    }
-
-    abstract static class ConvertTypeImplNode extends ConvertTypeNode {
-
-        abstract Object execute(TypeCachedState typeState, NFIType type, Object value);
-
-        @Override
-        final Object execute(NFIType type, Object value) {
-            return execute(type.cachedState, type, value);
+        Object execute(NFIType type, Object value) throws UnsupportedTypeException {
+            assert type.cachedState == typeState;
+            return convertImpl.execute(type, value);
         }
     }
 
     @GenerateUncached
-    abstract static class ConvertToNativeNode extends ConvertTypeImplNode {
+    abstract static class ConvertToNativeNode extends ConvertTypeNode {
 
-        @Specialization
-        Object doConvert(TypeCachedState typeState, NFIType type, Object value,
-                        @CachedLibrary(limit = "3") NFITypeLibrary library) {
-            return library.convertToNative(typeState, type, value);
+        @Specialization(guards = "type.cachedState == convertImpl.typeState")
+        Object doCached(NFIType type, Object value,
+                        @Cached("type.cachedState.createToNative()") OptimizedConvertTypeNode convertImpl) throws UnsupportedTypeException {
+            return convertImpl.execute(type, value);
+        }
+
+        @Specialization(replaces = "doCached")
+        Object doGeneric(NFIType type, Object value) throws UnsupportedTypeException {
+            return type.cachedState.toNativeFactory.getUncachedInstance().execute(type, value);
         }
     }
 
     @GenerateUncached
-    abstract static class ConvertFromNativeNode extends ConvertTypeImplNode {
+    abstract static class ConvertFromNativeNode extends ConvertTypeNode {
 
-        @Specialization
-        Object doConvert(TypeCachedState typeState, NFIType type, Object value,
-                        @CachedLibrary(limit = "3") NFITypeLibrary library) {
-            return library.convertFromNative(typeState, type, value);
+        @Specialization(guards = "type.cachedState == convertImpl.typeState")
+        Object doCached(NFIType type, Object value,
+                        @Cached("type.cachedState.createFromNative()") OptimizedConvertTypeNode convertImpl) throws UnsupportedTypeException {
+            return convertImpl.execute(type, value);
+        }
+
+        @Specialization(replaces = "doCached")
+        Object doGeneric(NFIType type, Object value) throws UnsupportedTypeException {
+            return type.cachedState.fromNativeFactory.getUncachedInstance().execute(type, value);
         }
     }
 }
