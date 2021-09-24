@@ -58,6 +58,7 @@ import com.oracle.truffle.nfi.test.parser.backend.NFITestBackend.ArrayType;
 import com.oracle.truffle.nfi.test.parser.backend.TestCallInfo;
 import com.oracle.truffle.nfi.test.parser.backend.TestSignature;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
+import java.util.Arrays;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
@@ -124,10 +125,17 @@ public class ParseSignatureTest {
         }
     }
 
+    static Object[] mkArgs(int count) {
+        Object[] ret = new Object[count];
+        // 0 is compatible with all numeric types
+        Arrays.fill(ret, 0);
+        return ret;
+    }
+
     protected static TestSignature getSignature(CallTarget parsedSignature, int argCount) {
         Object ret = parsedSignature.call();
         try {
-            TestCallInfo info = (TestCallInfo) SignatureLibrary.getUncached().call(ret, testSymbol, new Object[argCount]);
+            TestCallInfo info = (TestCallInfo) SignatureLibrary.getUncached().call(ret, testSymbol, mkArgs(argCount));
             return info.signature;
         } catch (InteropException ex) {
             throw new AssertionError(ex);
