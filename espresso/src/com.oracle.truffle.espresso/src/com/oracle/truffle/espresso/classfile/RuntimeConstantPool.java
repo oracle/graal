@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.NeedsFreshResolutionException;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.impl.Field;
@@ -127,7 +128,16 @@ public final class RuntimeConstantPool extends ConstantPool {
 
     public Field resolvedFieldAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "field");
-        return ((Field) resolved.value());
+        try {
+            return ((Field) resolved.value());
+        } catch (NeedsFreshResolutionException e) {
+            // clear the constants cache and re-resolve
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                constants[index] = null;
+            }
+            return resolvedFieldAt(accessingKlass, index);
+        }
     }
 
     public Field resolveFieldAndUpdate(Klass accessingKlass, int index, Field field) {
