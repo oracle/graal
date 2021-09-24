@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 import java.util.Objects;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -201,6 +202,7 @@ public interface FieldRefConstant extends MemberRefConstant {
             if (assumption.isValid()) {
                 throw failure;
             } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new NeedsFreshResolutionException();
             }
         }
