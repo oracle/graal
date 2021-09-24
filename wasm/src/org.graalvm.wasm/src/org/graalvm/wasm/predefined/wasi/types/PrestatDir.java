@@ -56,7 +56,7 @@ public final class PrestatDir {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 4;
+    public static final int BYTES = 4;
 
     /** Reads the length of the directory name for use with {@code fd_prestat_dir_name}. */
     public static int readPrNameLen(Node node, WasmMemory memory, int address) {

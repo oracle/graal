@@ -56,7 +56,7 @@ public final class SubscriptionU {
     }
 
     /** Size of this structure, in bytes. */
-    public static int CONTENTSOFFSET = 8;
+    public static final int CONTENTSOFFSET = 8;
 
     /** Reads union tag. */
     public static Eventtype readTag(Node node, WasmMemory memory, int address) {

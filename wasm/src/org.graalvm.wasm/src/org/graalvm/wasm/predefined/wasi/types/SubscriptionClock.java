@@ -56,7 +56,7 @@ public final class SubscriptionClock {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 32;
+    public static final int BYTES = 32;
 
     /** Reads the clock against which to compare the timestamp. */
     public static Clockid readId(Node node, WasmMemory memory, int address) {
