@@ -562,5 +562,5 @@ def wasm(args, **kwargs):
         "TRUFFLE_API",
         "org.graalvm.wasm",
         "org.graalvm.wasm.launcher",
-    ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:AGENTSCRIPT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+    ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
     return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, **kwargs)

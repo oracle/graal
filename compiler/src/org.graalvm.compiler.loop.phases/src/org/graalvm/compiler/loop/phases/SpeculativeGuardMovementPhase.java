@@ -429,7 +429,7 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                     // additional compare and short-circuit-or introduced in optimizeCompare
                     loopFreqThreshold += 2;
                 }
-                if (!loopBeginNode.isCompilerInverted()) {
+                if (!isInverted(loopEx)) {
                     if (!(countedLoop.getBodyIVStart() instanceof ConstantNode && countedLoop.getLimit() instanceof ConstantNode)) {
                         // additional compare and short-circuit-or for loop enter check
                         loopFreqThreshold++;
@@ -444,7 +444,7 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
             }
 
             Loop<Block> l = guardAnchorBlock.getLoop();
-            if (iv.getLoop().loopBegin().isCompilerInverted()) {
+            if (isInverted(loopEx)) {
                 // guard is anchored outside the loop but the condition might still be in the loop
                 l = iv.getLoop().loop();
             }

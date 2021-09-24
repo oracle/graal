@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
@@ -810,6 +811,13 @@ public final class Meta implements ContextAccess {
             java_lang_module_ModuleFinder_compose = null;
         }
 
+        jdk_internal_module_ModuleLoaderMap_Modules = diff() //
+                        .klass(VERSION_17_OR_HIGHER, Type.jdk_internal_module_ModuleLoaderMap_Modules) //
+                        .notRequiredKlass();
+        jdk_internal_module_ModuleLoaderMap_Modules_clinit = diff() //
+                        .method(ALL, Name._clinit_, Signature._void) //
+                        .notRequiredMethod(jdk_internal_module_ModuleLoaderMap_Modules);
+
         interopDispatch = new InteropKlassesDispatch(this);
     }
 
@@ -1301,6 +1309,8 @@ public final class Meta implements ContextAccess {
     // Module system
     public final ObjectKlass jdk_internal_module_ModuleLoaderMap;
     public final Method jdk_internal_module_ModuleLoaderMap_bootModules;
+    public final ObjectKlass jdk_internal_module_ModuleLoaderMap_Modules;
+    public final Method jdk_internal_module_ModuleLoaderMap_Modules_clinit;
     public final ObjectKlass jdk_internal_module_SystemModuleFinders;
     public final Method jdk_internal_module_SystemModuleFinders_of;
     public final Method jdk_internal_module_SystemModuleFinders_ofSystem;
@@ -1635,7 +1645,7 @@ public final class Meta implements ContextAccess {
     }
 
     /**
-     * Initializes and throws an exception of the given guest klass.
+     * Initializes and throws an exception of the given guest klass with the given message.
      *
      * <p>
      * A guest instance is allocated and initialized by calling the
@@ -1644,13 +1654,14 @@ public final class Meta implements ContextAccess {
      *
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
+     * @param message the message to be used when initializing the exception
      */
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
         throw throwException(initExceptionWithMessage(exceptionKlass, message));
     }
 
     /**
-     * Initializes and throws an exception of the given guest klass.
+     * Initializes and throws an exception of the given guest klass with the given message.
      *
      * <p>
      * A guest instance is allocated and initialized by calling the
@@ -1659,9 +1670,27 @@ public final class Meta implements ContextAccess {
      *
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
+     * @param message the message to be used when initializing the exception
      */
     public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
+    }
+
+    /**
+     * Initializes and throws an exception of the given guest klass with the given message.
+     *
+     * <p>
+     * A guest instance is allocated and initialized by calling the
+     * {@link Throwable#Throwable(String) constructor with message}. The given guest class must have
+     * such constructor declared.
+     *
+     * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
+     *            Throwable}.
+     * @param msgFormat the {@linkplain java.util.Formatter format string} to be used to construct
+     *            the message used when initializing the exception
+     */
+    public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String msgFormat, Object... args) {
+        throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(EspressoError.format(msgFormat, args)));
     }
 
     /**
@@ -1853,6 +1882,7 @@ public final class Meta implements ContextAccess {
         return klass;
     }
 
+    @TruffleBoundary
     public String toHostString(StaticObject str) {
         if (StaticObject.isNull(str)) {
             return null;
@@ -1868,6 +1898,7 @@ public final class Meta implements ContextAccess {
         return str.getKlass().getMeta().toHostString(str);
     }
 
+    @TruffleBoundary
     public StaticObject toGuestString(Symbol<?> hostString) {
         if (hostString == null) {
             return StaticObject.NULL;
@@ -1875,6 +1906,7 @@ public final class Meta implements ContextAccess {
         return toGuestString(hostString.toString());
     }
 
+    @TruffleBoundary
     public StaticObject toGuestString(String hostString) {
         if (hostString == null) {
             return StaticObject.NULL;

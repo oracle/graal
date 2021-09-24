@@ -51,6 +51,10 @@ public final class IDGenerater {
         public int getId() {
             return id;
         }
+
+        public boolean same(BitcodeID other) {
+            return this.id == other.getId();
+        }
     }
 
     private final class IDReference extends PhantomReference<BitcodeID> {
@@ -109,5 +113,4 @@ public final class IDGenerater {
         add(ref);
         return bitcodeID;
     }
-
 }

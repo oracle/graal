@@ -50,6 +50,7 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisContext;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
@@ -185,6 +186,10 @@ public class LIRCompilerBackend {
         PostAllocationOptimizationContext postAllocOptContext = new PostAllocationOptimizationContext(lirGen);
         lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, postAllocOptContext);
         debug.dump(DebugContext.BASIC_LEVEL, lirGenRes.getLIR(), "After PostAllocationOptimizationStage");
+
+        FinalCodeAnalysisContext finalCodeAnalysisContext = new FinalCodeAnalysisContext(lirGen);
+        lirSuites.getFinalCodeAnalysisStage().apply(target, lirGenRes, finalCodeAnalysisContext);
+        debug.dump(DebugContext.BASIC_LEVEL, lirGenRes.getLIR(), "After FinalCodeAnalysisStage");
 
         return lirGenRes;
     }

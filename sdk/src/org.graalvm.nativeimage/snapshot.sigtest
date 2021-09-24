@@ -114,6 +114,10 @@ CLSS public abstract interface !annotation java.lang.annotation.Target
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.annotation.ElementType[] value()
 
+CLSS public abstract interface java.util.function.BooleanSupplier
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract boolean getAsBoolean()
+
 CLSS public final org.graalvm.nativeimage.CurrentIsolate
 meth public static org.graalvm.nativeimage.Isolate getIsolate()
 meth public static org.graalvm.nativeimage.IsolateThread getCurrentThread()
@@ -457,12 +461,21 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CE
 innr public abstract interface static !annotation IsolateContext
 innr public abstract interface static !annotation IsolateThreadContext
 innr public final static !enum Builtin
+innr public final static AlwaysIncluded
 innr public final static FatalExceptionHandler
+innr public final static NotIncludedAutomatically
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.Class<? extends java.util.function.BooleanSupplier> include()
 meth public abstract !hasdefault java.lang.Class<?> exceptionHandler()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String[] documentation()
 meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CEntryPoint$Builtin builtin()
+
+CLSS public final static org.graalvm.nativeimage.c.function.CEntryPoint$AlwaysIncluded
+ outer org.graalvm.nativeimage.c.function.CEntryPoint
+intf java.util.function.BooleanSupplier
+meth public boolean getAsBoolean()
+supr java.lang.Object
 
 CLSS public final static !enum org.graalvm.nativeimage.c.function.CEntryPoint$Builtin
  outer org.graalvm.nativeimage.c.function.CEntryPoint
@@ -492,6 +505,12 @@ CLSS public abstract interface static !annotation org.graalvm.nativeimage.c.func
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
 intf java.lang.annotation.Annotation
+
+CLSS public final static org.graalvm.nativeimage.c.function.CEntryPoint$NotIncludedAutomatically
+ outer org.graalvm.nativeimage.c.function.CEntryPoint
+intf java.util.function.BooleanSupplier
+meth public boolean getAsBoolean()
+supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.c.function.CEntryPointLiteral<%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer>
 meth public !varargs static <%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer> org.graalvm.nativeimage.c.function.CEntryPointLiteral<{%%0}> create(java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
@@ -904,6 +923,7 @@ meth public !varargs static void register(boolean,java.lang.reflect.Field[])
  anno 0 java.lang.Deprecated()
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
+meth public !varargs static void registerAsQueried(java.lang.reflect.Executable[])
 meth public !varargs static void register(java.lang.reflect.Field[])
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object

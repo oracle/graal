@@ -99,15 +99,6 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
     }
 
     @Override
-    public ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit) {
-        if (arrayCopyLookup != null) {
-            return arrayCopyLookup.lookupCheckcastArraycopyDescriptor(uninit);
-        } else {
-            throw VMError.unsupportedFeature("Fast checkcast ArrayCopy not supported yet.");
-        }
-    }
-
-    @Override
     public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation) {
         if (arrayCopyLookup != null) {
             return arrayCopyLookup.lookupArraycopyDescriptor(kind, aligned, disjoint, uninit, killedLocation);

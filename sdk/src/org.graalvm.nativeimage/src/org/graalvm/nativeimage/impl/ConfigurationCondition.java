@@ -46,7 +46,7 @@ public final class ConfigurationCondition implements Comparable<ConfigurationCon
     private final String typeName;
     private static final ConfigurationCondition OBJECT_REACHABLE = new ConfigurationCondition(Object.class.getTypeName());
 
-    public static ConfigurationCondition objectReachable() {
+    public static ConfigurationCondition alwaysTrue() {
         return OBJECT_REACHABLE;
     }
 
@@ -86,5 +86,10 @@ public final class ConfigurationCondition implements Comparable<ConfigurationCon
     @Override
     public int compareTo(ConfigurationCondition o) {
         return this.typeName.compareTo(o.typeName);
+    }
+
+    @Override
+    public String toString() {
+        return "[typeReachable: \"" + typeName + "\"" + "]";
     }
 }

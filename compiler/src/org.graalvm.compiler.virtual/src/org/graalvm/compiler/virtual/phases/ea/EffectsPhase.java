@@ -95,7 +95,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                     schedule = null;
                     cfg = ControlFlowGraph.compute(graph, true, true, false, false);
                 } else {
-                    new SchedulePhase(strategy).apply(graph, false);
+                    new SchedulePhase(strategy).apply(graph, context, false);
                     schedule = graph.getLastSchedule();
                     cfg = schedule.getCFG();
                 }

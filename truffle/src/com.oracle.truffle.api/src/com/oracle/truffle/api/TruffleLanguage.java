@@ -244,7 +244,6 @@ public abstract class TruffleLanguage<C> {
 
     // get and isFinal are frequent operations -> cache the engine access call
     @CompilationFinal LanguageInfo languageInfo;
-    @CompilationFinal ContextReference<Object> reference;
     @CompilationFinal Object polyglotLanguageInstance;
 
     List<ContextThreadLocal<?>> contextThreadLocals;
@@ -1479,23 +1478,6 @@ public abstract class TruffleLanguage<C> {
         return null;
     }
 
-    /**
-     * @deprecated in 19.3 as this method is inefficient in many situations. Use context references
-     *             as described {@link ContextReference here}.
-     *
-     * @since 0.25
-     */
-    @SuppressWarnings("unchecked")
-    @Deprecated
-    public final ContextReference<C> getContextReference() {
-        ContextReference<Object> ref = this.reference;
-        if (ref == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            reference = ref = ContextReference.create(getClass());
-        }
-        return (ContextReference<C>) reference;
-    }
-
     CallTarget parse(Source source, String... argumentNames) {
         ParsingRequest request = new ParsingRequest(source, argumentNames);
         CallTarget target;
@@ -1628,14 +1610,14 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Creates a new context thread local reference for this Truffle language. Context thread locals
-     * for languages allow to store additional top-level values for each context and thread. The
+     * for languages allow storing additional top-level values for each context and thread. The
      * factory may be invoked on any thread other than the thread of the context thread local value.
      * <p>
      * Context thread local references must be created during the invocation in the
      * {@link TruffleLanguage} constructor. Calling this method at a later point in time will throw
      * an {@link IllegalStateException}. For each registered {@link TruffleLanguage} subclass it is
      * required to always produce the same number of context thread local references. The values
-     * produces by the factory must not be <code>null</code> and use a stable exact value type for
+     * produced by the factory must not be <code>null</code> and use a stable exact value type for
      * each instance of a registered language class. If the return value of the factory is not
      * stable or <code>null</code> then an {@link IllegalStateException} is thrown. These
      * restrictions allow the Truffle runtime to read the value more efficiently.

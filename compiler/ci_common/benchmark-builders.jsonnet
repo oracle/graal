@@ -147,7 +147,7 @@
 
   // intensive weekly benchmarking
   local weekly_forks_builds = std.flattenArrays([
-    cc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.libgraal + suite)
+    bc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.libgraal + suite, subdir='compiler')
   for jdk in amd64_jdks
   for suite in bench.groups.weekly_forks_suites
   if suite.is_jdk_supported(jdk.jdk_version)

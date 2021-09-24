@@ -25,12 +25,14 @@
 package com.oracle.svm.configure.trace;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Reader;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
@@ -61,8 +63,7 @@ public class TraceProcessor extends AbstractProcessor {
     public TypeConfiguration getJniConfiguration() {
         TypeConfiguration result = jniProcessor.getConfiguration();
         if (omittedConfigProcessor != null) {
-            result = new TypeConfiguration(result);
-            result.removeAll(omittedConfigProcessor.jniProcessor.getConfiguration());
+            result = TypeConfiguration.copyAndSubtract(result, omittedConfigProcessor.jniProcessor.getConfiguration());
         }
         return result;
     }
@@ -70,8 +71,7 @@ public class TraceProcessor extends AbstractProcessor {
     public TypeConfiguration getReflectionConfiguration() {
         TypeConfiguration result = reflectionProcessor.getConfiguration();
         if (omittedConfigProcessor != null) {
-            result = new TypeConfiguration(result);
-            result.removeAll(omittedConfigProcessor.reflectionProcessor.getConfiguration());
+            result = TypeConfiguration.copyAndSubtract(result, omittedConfigProcessor.reflectionProcessor.getConfiguration());
         }
         return result;
     }
@@ -175,9 +175,9 @@ public class TraceProcessor extends AbstractProcessor {
                     break;
             }
         } catch (Exception e) {
-            StackTraceElement stackTraceElement = e.getStackTrace()[0];
-            logWarning("Error processing trace entry: " + e.toString() +
-                            " (at " + stackTraceElement.getClassName() + ":" + stackTraceElement.getLineNumber() + ") : " + entry.toString());
+            StringWriter stackTrace = new StringWriter();
+            e.printStackTrace(new PrintWriter(stackTrace));
+            logWarning("Error processing trace entry " + entry.toString() + ": " + stackTrace);
         }
     }
 

@@ -26,11 +26,18 @@ package com.oracle.svm.reflect.hosted;
 
 //Checkstyle: allow reflection
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -41,21 +48,31 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
-import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
+
+import sun.reflect.annotation.TypeAnnotation;
+import sun.reflect.annotation.TypeAnnotationParser;
 
 public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport {
 
@@ -71,6 +88,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Field> reflectionFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private Set<Executable> queriedMethods;
 
     private final Set<Class<?>> processedClasses = new HashSet<>();
 
@@ -79,6 +97,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public ReflectionDataBuilder(FeatureAccessImpl access) {
         arrayReflectionData = getArrayReflectionData();
         accessors = new ReflectionDataAccessors(access);
+        queriedMethods = SubstrateOptions.ConfigureReflectionMetadata.getValue() ? ConcurrentHashMap.newKeySet() : null;
     }
 
     private static DynamicHub.ReflectionData getArrayReflectionData() {
@@ -123,14 +142,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void register(ConfigurationCondition condition, Executable... methods) {
+    public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods) {
         checkNotSealed();
-        registerConditionalConfiguration(condition, () -> registerMethods(methods));
+        if (queriedOnly && !SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
+            throw UserError.abort("Found manual reflection metadata configuration. Please use --configure-reflection-metadata to enable this behavior.");
+        }
+        registerConditionalConfiguration(condition, () -> registerMethods(queriedOnly, methods));
     }
 
-    private void registerMethods(Executable[] methods) {
+    private void registerMethods(boolean queriedOnly, Executable[] methods) {
         for (Executable method : methods) {
-            if (reflectionMethods.add(method)) {
+            boolean added = queriedOnly ? queriedMethods.add(method) : reflectionMethods.add(method);
+            if (added) {
                 modifiedClasses.add(method.getDeclaringClass());
             }
         }
@@ -161,6 +184,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         processReachableTypes(access);
         processRegisteredElements(access);
+        processMethodMetadata(access);
     }
 
     /*
@@ -201,6 +225,126 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     processedClasses.add(originalClass);
                     access.requireAnalysisIteration();
                 }
+            }
+        }
+    }
+
+    protected void processMethodMetadata(DuringAnalysisAccessImpl access) {
+        if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
+            /* Trigger creation of the AnalysisMethod objects needed to store metadata */
+            Set<Executable> newQueriedMethods = new HashSet<>();
+            for (Executable method : queriedMethods) {
+                if (!SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
+                    access.getMetaAccess().lookupJavaMethod(method);
+                    registerMetadataForReflection(access, method);
+                    newQueriedMethods.add(method);
+                }
+            }
+            queriedMethods = newQueriedMethods;
+        } else {
+            for (AnalysisMethod method : access.getUniverse().getMethods()) {
+                /*
+                 * Methods generated by Graal and class initialization methods have no reflection
+                 * method.
+                 */
+                if (method.isReachable() && method.hasJavaMethod()) {
+                    registerMetadataForReflection(access, method.getJavaMethod());
+                }
+            }
+        }
+    }
+
+    private static final Method parseAllTypeAnnotations = ReflectionUtil.lookupMethod(TypeAnnotationParser.class, "parseAllTypeAnnotations", AnnotatedElement.class);
+
+    private void registerMetadataForReflection(DuringAnalysisAccessImpl access, Executable reflectMethod) {
+        /*
+         * Reflection signature parsing will try to instantiate classes via Class.forName().
+         */
+        makeTypeReachable(access, reflectMethod.getDeclaringClass(), false);
+        for (TypeVariable<?> type : reflectMethod.getTypeParameters()) {
+            makeTypeReachable(access, type, true);
+        }
+        for (Type paramType : reflectMethod.getGenericParameterTypes()) {
+            makeTypeReachable(access, paramType, true);
+        }
+        if (reflectMethod instanceof Method) {
+            makeTypeReachable(access, ((Method) reflectMethod).getGenericReturnType(), true);
+        }
+        for (Type exceptionType : reflectMethod.getGenericExceptionTypes()) {
+            makeTypeReachable(access, exceptionType, true);
+        }
+
+        /*
+         * Enable runtime parsing of annotations
+         */
+        for (Annotation annotation : GuardedAnnotationAccess.getDeclaredAnnotations(reflectMethod)) {
+            makeTypeReachable(access, annotation.annotationType(), false);
+        }
+        for (Annotation[] parameterAnnotations : reflectMethod.getParameterAnnotations()) {
+            for (Annotation parameterAnnotation : parameterAnnotations) {
+                makeTypeReachable(access, parameterAnnotation.annotationType(), false);
+            }
+        }
+        try {
+            for (TypeAnnotation typeAnnotation : (TypeAnnotation[]) parseAllTypeAnnotations.invoke(null, reflectMethod)) {
+                // Checkstyle: allow direct annotation access
+                makeTypeReachable(access, typeAnnotation.getAnnotation().annotationType(), false);
+                // Checkstyle: disallow direct annotation access
+            }
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw GraalError.shouldNotReachHere();
+        }
+    }
+
+    private static final Set<Type> seenTypes = new HashSet<>();
+
+    @SuppressWarnings("unchecked")
+    private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type, boolean needsClassForName) {
+        if (type == null || seenTypes.contains(type)) {
+            return;
+        }
+        seenTypes.add(type);
+        if (type instanceof Class<?>) {
+            Class<?> clazz = (Class<?>) type;
+            if (access.getMetaAccess().lookupJavaType(clazz).registerAsReachable()) {
+                access.requireAnalysisIteration();
+            }
+
+            if (needsClassForName) {
+                if (ClassForNameSupport.forNameOrNull(clazz.getName(), null) == null) {
+                    access.requireAnalysisIteration();
+                }
+                ClassForNameSupport.registerClass(clazz);
+            }
+
+            if (clazz.isAnnotation()) {
+                /*
+                 * Parsing annotation data in reflection classes requires being able to instantiate
+                 * all annotation types at runtime.
+                 */
+                ImageSingletons.lookup(AnnotationTypeSupport.class).createInstance((Class<? extends Annotation>) clazz);
+                ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(clazz);
+            }
+        } else if (type instanceof TypeVariable<?>) {
+            for (Type bound : ((TypeVariable<?>) type).getBounds()) {
+                makeTypeReachable(access, bound, needsClassForName);
+            }
+        } else if (type instanceof GenericArrayType) {
+            makeTypeReachable(access, ((GenericArrayType) type).getGenericComponentType(), needsClassForName);
+        } else if (type instanceof ParameterizedType) {
+            ParameterizedType parameterizedType = (ParameterizedType) type;
+            for (Type actualType : parameterizedType.getActualTypeArguments()) {
+                makeTypeReachable(access, actualType, needsClassForName);
+            }
+            makeTypeReachable(access, parameterizedType.getRawType(), needsClassForName);
+            makeTypeReachable(access, parameterizedType.getOwnerType(), needsClassForName);
+        } else if (type instanceof WildcardType) {
+            WildcardType wildcardType = (WildcardType) type;
+            for (Type lowerBound : wildcardType.getLowerBounds()) {
+                makeTypeReachable(access, lowerBound, needsClassForName);
+            }
+            for (Type upperBound : wildcardType.getUpperBounds()) {
+                makeTypeReachable(access, upperBound, needsClassForName);
             }
         }
     }
@@ -449,6 +593,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
         }
         return result.toArray(EMPTY_CLASSES);
+    }
+
+    @Override
+    public Set<Executable> getQueriedOnlyMethods() {
+        return queriedMethods;
     }
 
     static final class ReflectionDataAccessors {

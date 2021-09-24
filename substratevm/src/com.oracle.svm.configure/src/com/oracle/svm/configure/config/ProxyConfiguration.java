@@ -28,33 +28,37 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.configure.ConditionalElement;
 
 public class ProxyConfiguration implements ConfigurationBase {
-    private final ConcurrentHashMap.KeySetView<List<String>, Boolean> interfaceLists = ConcurrentHashMap.newKeySet();
+    private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();
 
     public ProxyConfiguration() {
     }
 
     public ProxyConfiguration(ProxyConfiguration other) {
-        for (List<String> interfaceList : other.interfaceLists) {
-            interfaceLists.add(new ArrayList<>(interfaceList));
+        for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
+            interfaceLists.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
         }
     }
 
-    public void add(List<String> interfaceList) {
-        interfaceLists.add(interfaceList);
+    public void add(ConfigurationCondition condition, List<String> interfaceList) {
+        interfaceLists.add(new ConditionalElement<>(condition, interfaceList));
     }
 
-    public boolean contains(List<String> interfaceList) {
-        return interfaceLists.contains(interfaceList);
+    public boolean contains(ConfigurationCondition condition, List<String> interfaceList) {
+        return interfaceLists.contains(new ConditionalElement<>(condition, interfaceList));
     }
 
-    public boolean contains(String... interfaces) {
-        return contains(Arrays.asList(interfaces));
+    public boolean contains(ConfigurationCondition condition, String... interfaces) {
+        return contains(condition, Arrays.asList(interfaces));
     }
 
     public void removeAll(ProxyConfiguration other) {
@@ -63,29 +67,25 @@ public class ProxyConfiguration implements ConfigurationBase {
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        List<String[]> lists = new ArrayList<>(interfaceLists.size());
-        for (List<String> list : interfaceLists) {
-            lists.add(list.toArray(new String[0]));
-        }
-        lists.sort((a, b) -> {
-            int c = 0;
-            for (int i = 0; c == 0 && i < a.length && i < b.length; i++) {
-                c = a[i].compareTo(b[i]);
-            }
-            return (c != 0) ? c : (a.length - b.length);
-        });
+        List<ConditionalElement<List<String>>> lists = new ArrayList<>(interfaceLists.size());
+        lists.addAll(interfaceLists);
+        lists.sort(ConditionalElement.comparator(ProxyConfiguration::compareList));
 
         writer.append('[');
         writer.indent();
         String prefix = "";
-        for (String[] list : lists) {
-            writer.append(prefix).newline().append('[');
+        for (ConditionalElement<List<String>> list : lists) {
+            writer.append(prefix).newline();
+            writer.append('{').indent().newline();
+            ConfigurationConditionPrintable.printConditionAttribute(list.getCondition(), writer);
+            writer.quote("interfaces").append(":").append('[');
             String typePrefix = "";
-            for (String type : list) {
+            for (String type : list.getElement()) {
                 writer.append(typePrefix).quote(type);
                 typePrefix = ",";
             }
             writer.append(']');
+            writer.append('}').unindent().newline();
             prefix = ",";
         }
         writer.unindent().newline();
@@ -95,6 +95,16 @@ public class ProxyConfiguration implements ConfigurationBase {
     @Override
     public boolean isEmpty() {
         return interfaceLists.isEmpty();
+    }
+
+    private static <T extends Comparable<T>> int compareList(List<T> l1, List<T> l2) {
+        for (int i = 0; i < l1.size() && i < l2.size(); i++) {
+            int c = l1.get(i).compareTo(l2.get(i));
+            if (c != 0) {
+                return c;
+            }
+        }
+        return l1.size() - l2.size();
     }
 
 }

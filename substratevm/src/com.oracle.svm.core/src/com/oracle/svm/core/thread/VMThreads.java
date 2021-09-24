@@ -573,18 +573,22 @@ public abstract class VMThreads {
         return THREAD_MUTEX.isOwner();
     }
 
-    public static boolean printLocationInfo(Log log, UnsignedWord value) {
+    public static boolean printLocationInfo(Log log, UnsignedWord value, boolean allowUnsafeOperations) {
         for (IsolateThread thread = firstThreadUnsafe(); thread.isNonNull(); thread = nextThread(thread)) {
             if (thread.equal(value)) {
                 log.string("is a thread");
                 return true;
             }
 
-            UnsignedWord stackBase = StackBase.get(thread);
-            UnsignedWord stackEnd = StackEnd.get(thread);
-            if (value.belowOrEqual(stackBase) && value.aboveOrEqual(stackEnd)) {
-                log.string("points into the stack for thread ").zhex(thread);
-                return true;
+            if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
+                // If we are not at a safepoint, then it is unsafe to access thread locals of
+                // another thread as the IsolateThread could be freed at any time.
+                UnsignedWord stackBase = StackBase.get(thread);
+                UnsignedWord stackEnd = StackEnd.get(thread);
+                if (value.belowThan(stackBase) && value.aboveOrEqual(stackEnd)) {
+                    log.string("points into the stack for thread ").zhex(thread);
+                    return true;
+                }
             }
 
             if (SubstrateOptions.MultiThreaded.getValue()) {

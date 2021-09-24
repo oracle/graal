@@ -54,7 +54,7 @@ JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle() {
   V(AttachCurrentThreadAsDaemon)
 
 
-JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *)) {
+JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *, void*)) {
 
   MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(*moka_env));
  
@@ -71,8 +71,12 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetc
   java_vm_functions->reserved1 = MOKA_RISTRETTO;
   java_vm_functions->reserved2 = NULL;
 
+  // Store the MokapotEnv* in the JNIEnv*.
+  struct JNINativeInterface_* tmp = (struct JNINativeInterface_*) *env;
+  tmp->reserved1 = (void*) moka_env;
+
   #define INIT__(name) \
-      functions->name = fetch_by_name(#name);
+      functions->name = fetch_by_name(#name, (void*)&name);
   VM_METHOD_LIST(INIT__)
   #undef INIT_
 
@@ -81,7 +85,7 @@ JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetc
   tls_moka_env = moka_env;
 
   #define INIT_VM__(name) \
-      java_vm_functions->name = fetch_by_name(#name);
+      java_vm_functions->name = fetch_by_name(#name, NULL);
 
   JNI_INVOKE_INTERFACE_METHODS(INIT_VM__)
   #undef INIT_VM__
@@ -1891,6 +1895,8 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **pen
     vmInterface->AttachCurrentThreadAsDaemon = AttachCurrentThreadAsDaemon;
 
     *vm = vmInterface;
+    // MOKA_LATTE and MOKA_AMERICANO JavaVM structs point to each other via reserved2.
+    ((struct JNIInvokeInterface_ *) espressoJavaVM->functions)->reserved2 = (void*) vm;
 
     add_java_vm(vm);
     *vm_ptr = vm;

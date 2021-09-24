@@ -48,7 +48,7 @@ public class SerializationProcessor extends AbstractProcessor {
     @Override
     void processEntry(Map<String, ?> entry) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
-        ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult) {
             return;
         }

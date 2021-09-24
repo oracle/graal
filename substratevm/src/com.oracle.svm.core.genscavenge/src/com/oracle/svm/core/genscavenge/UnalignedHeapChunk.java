@@ -98,6 +98,7 @@ public final class UnalignedHeapChunk {
         HeapChunk.initialize(chunk, UnalignedHeapChunk.getObjectStart(chunk), chunkSize);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectStart(UnalignedHeader that) {
         return HeapChunk.asPointer(that).add(getObjectStartOffset());
     }

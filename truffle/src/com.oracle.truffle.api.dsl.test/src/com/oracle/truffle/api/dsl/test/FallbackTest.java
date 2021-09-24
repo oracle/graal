@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.array;
 import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
 import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -76,6 +77,7 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptio
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.ImplicitCastInFallbackNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.InvertedGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
@@ -766,6 +768,45 @@ public class FallbackTest extends AbstractPolyglotTest {
                                         "Specify the @CachedLibrary(limit=\"...\") attribute and remove the receiver expression to use an dispatched library instead.")//
                         @CachedLibrary("arg0") InteropLibrary node) {
             return "f0";
+        }
+
+    }
+
+    /*
+     * Test for GR-33857.
+     */
+    @Test
+    public void testInvertedStaticGuard() {
+        setupEnv();
+        InvertedGuardNode node;
+
+        node = adoptNode(InvertedGuardNodeGen.create()).get();
+
+        assertEquals("f", node.execute(42L));
+        assertEquals("f", node.execute(42L));
+    }
+
+    @SuppressWarnings("unused")
+    abstract static class InvertedGuardNode extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization(guards = {"dynamicGuard(arg0)", "staticGuard()"})
+        protected String s0(long arg0) {
+            return "s0";
+        }
+
+        static boolean staticGuard() {
+            return false;
+        }
+
+        static boolean dynamicGuard(long arg0) {
+            return arg0 == 42;
+        }
+
+        @Fallback
+        protected String f(Object arg0) {
+            return "f";
         }
 
     }

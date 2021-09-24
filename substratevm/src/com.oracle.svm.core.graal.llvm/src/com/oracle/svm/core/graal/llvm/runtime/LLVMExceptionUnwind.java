@@ -82,8 +82,8 @@ public class LLVMExceptionUnwind {
      * from which it will get extracted after the landingpad instruction (see
      * NodeLLVMBuilder.emitReadExceptionObject).
      */
-    @CEntryPoint
-    @CEntryPointOptions(include = IncludeForLLVMOnly.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = IncludeForLLVMOnly.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     @SuppressWarnings("unused")
     public static int personality(int version, int action, IsolateThread thread, _Unwind_Exception unwindException, _Unwind_Context context) {
         Pointer ip = getIP(context);

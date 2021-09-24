@@ -116,6 +116,6 @@ public class CalleeSavedRegisters {
      * provided frame really has callee saved registers, since that cannot be checked automatically.
      */
     @SuppressWarnings("unused")
-    public void dumpRegisters(Log log, Pointer callerSP, boolean printLocationInfo, boolean allowJavaHeapAccess) {
+    public void dumpRegisters(Log log, Pointer callerSP, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
     }
 }

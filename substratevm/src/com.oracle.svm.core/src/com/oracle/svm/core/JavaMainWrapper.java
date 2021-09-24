@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.log.Log;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -170,13 +171,13 @@ public class JavaMainWrapper {
              */
             RuntimeSupport.getRuntimeSupport().shutdown();
 
-            Counter.logValues();
+            Counter.logValues(Log.log());
         }
         return exitCode;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterCreateIsolateWithCArgumentsPrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterCreateIsolateWithCArgumentsPrologue.class)
     @SuppressWarnings("unused")
     public static int run(int argc, CCharPointerPointer argv) {
         return runCore();

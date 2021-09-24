@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk8.reflect;
 
 import java.lang.reflect.Executable;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -39,8 +40,8 @@ import com.oracle.svm.core.reflect.SubstrateReflectionAccessorFactory;
 
 final class SubstrateReflectionAccessorFactoryJDK8 implements SubstrateReflectionAccessorFactory {
     @Override
-    public SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer) {
-        return new SubstrateMethodAccessorJDK8(member, invokeFunctionPointer, invokeSpecialFunctionPointer);
+    public SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer) {
+        return new SubstrateMethodAccessorJDK8(member, invokeFunctionPointer);
     }
 
     @Override
@@ -52,14 +53,19 @@ final class SubstrateReflectionAccessorFactoryJDK8 implements SubstrateReflectio
 @AutomaticFeature
 final class SubstrateReflectionAccessorFactoryJDK8Feature implements Feature {
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC == 8;
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(SubstrateReflectionAccessorFactory.class, new SubstrateReflectionAccessorFactoryJDK8());
     }
 }
 
 final class SubstrateMethodAccessorJDK8 extends SubstrateMethodAccessor implements sun.reflect.MethodAccessor {
-    SubstrateMethodAccessorJDK8(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer) {
-        super(member, invokeFunctionPointer, invokeSpecialFunctionPointer);
+    SubstrateMethodAccessorJDK8(Executable member, CFunctionPointer invokeFunctionPointer) {
+        super(member, invokeFunctionPointer);
     }
 }
 

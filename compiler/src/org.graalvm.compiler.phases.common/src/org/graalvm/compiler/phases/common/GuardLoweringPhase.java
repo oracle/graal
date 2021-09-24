@@ -110,7 +110,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
     protected void run(StructuredGraph graph, CoreProviders context) {
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
-            schedulePhase.apply(graph);
+            schedulePhase.apply(graph, context);
             ScheduleResult schedule = graph.getLastSchedule();
 
             for (Block block : schedule.getCFG().getBlocks()) {

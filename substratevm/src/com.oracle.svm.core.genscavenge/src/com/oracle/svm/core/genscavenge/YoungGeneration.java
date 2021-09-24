@@ -62,6 +62,7 @@ public final class YoungGeneration extends Generation {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getMaxSurvivorSpaces() {
         return maxSurvivorSpaces;
     }
@@ -118,11 +119,13 @@ public final class YoungGeneration extends Generation {
         return eden;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Space getSurvivorToSpaceAt(int index) {
         assert index >= 0 && index < maxSurvivorSpaces : "Survivor index should be between 0 and NumberOfSurvivorSpaces";
         return survivorToSpaces[index];
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Space getSurvivorFromSpaceAt(int index) {
         assert index >= 0 && index < maxSurvivorSpaces : "Survivor index should be between 0 and NumberOfSurvivorSpaces";
         return survivorFromSpaces[index];

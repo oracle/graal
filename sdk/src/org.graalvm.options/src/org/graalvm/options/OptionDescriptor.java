@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,7 +96,7 @@ public final class OptionDescriptor {
     }
 
     /**
-     * Returns the deprecation reason and the recommended fix.
+     * Returns the deprecation reason and the recommended fix. For newlines, use <code>%n</code>.
      *
      * @since 20.1.0
      */
@@ -133,7 +133,8 @@ public final class OptionDescriptor {
     }
 
     /**
-     * Returns a human-readable description on how to use the option.
+     * Returns a human-readable description on how to use the option. For newlines, use
+     * <code>%n</code>.
      *
      * @since 19.0
      */

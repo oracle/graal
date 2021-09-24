@@ -29,7 +29,7 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.VMInspection;
+import com.oracle.svm.core.VMInspectionOptions;
 
 /**
  * Used to include/exclude JFR feature and substitutions.
@@ -41,7 +41,7 @@ public class JfrEnabled implements BooleanSupplier {
     }
 
     public static boolean get() {
-        return VMInspection.isEnabled() && jvmVersionSupported() && osSupported();
+        return VMInspectionOptions.AllowVMInspection.getValue() && jvmVersionSupported() && osSupported();
     }
 
     private static boolean jvmVersionSupported() {

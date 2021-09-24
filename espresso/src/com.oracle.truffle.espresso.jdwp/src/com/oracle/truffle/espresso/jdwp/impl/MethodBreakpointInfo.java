@@ -31,9 +31,13 @@ import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 public final class MethodBreakpointInfo extends AbstractBreakpointInfo implements MethodHook {
 
     private MethodRef[] methods = new MethodRef[0];
+    private final boolean isMethodEntry;
+    private final boolean isMethodExit;
 
     public MethodBreakpointInfo(RequestFilter filter) {
         super(filter);
+        this.isMethodEntry = filter.getEventKind() == RequestedJDWPEvents.METHOD_ENTRY;
+        this.isMethodExit = filter.getEventKind() == RequestedJDWPEvents.METHOD_EXIT || filter.getEventKind() == RequestedJDWPEvents.METHOD_EXIT_WITH_RETURN_VALUE;
     }
 
     public void addMethod(MethodRef method) {
@@ -52,11 +56,11 @@ public final class MethodBreakpointInfo extends AbstractBreakpointInfo implement
 
     @Override
     public boolean onMethodEnter(@SuppressWarnings("unused") MethodRef method, @SuppressWarnings("unused") MethodVariable[] variables) {
-        return true;
+        return isMethodEntry;
     }
 
     @Override
     public boolean onMethodExit(@SuppressWarnings("unused") MethodRef method, @SuppressWarnings("unused") Object returnValue) {
-        return true;
+        return isMethodExit;
     }
 }

@@ -30,63 +30,61 @@ import java.lang.reflect.Constructor;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class ReflectiveNewInstanceMethod extends ReflectionMethod {
+public class ReflectiveNewInstanceMethod extends NonBytecodeStaticMethod {
 
     private final Constructor<?> constructor;
 
     public ReflectiveNewInstanceMethod(String name, ResolvedJavaMethod prototype, Constructor<?> constructor) {
-        super(name, prototype);
+        super(name, prototype.getDeclaringClass(), prototype.getSignature(), prototype.getConstantPool());
         this.constructor = constructor;
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        HostedGraphKit graphKit = new HostedGraphKit(ctx, providers, method);
-
-        ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(constructor.getDeclaringClass());
-
-        graphKit.emitEnsureInitializedCall(type);
-
-        ResolvedJavaMethod cons = providers.getMetaAccess().lookupJavaMethod(constructor);
-        Class<?>[] argTypes = constructor.getParameterTypes();
-
-        ValueNode ret = graphKit.append(createNewInstanceNode(type));
-
-        ValueNode[] args = new ValueNode[argTypes.length + 1];
-        args[0] = ret;
+    public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod m, HostedProviders providers, Purpose purpose) {
+        ReflectionGraphKit graphKit = new ReflectionGraphKit(ctx, providers, m);
 
         ValueNode argumentArray = graphKit.loadLocal(0, JavaKind.Object);
-        fillArgsArray(graphKit, argumentArray, 1, args, argTypes);
+        /* Clear all locals, so that they are not alive and spilled at method calls. */
+        graphKit.getFrameState().clearLocals();
 
-        createJavaCall(graphKit, cons, ret, args);
+        ResolvedJavaMethod targetMethod = providers.getMetaAccess().lookupJavaMethod(constructor);
+        graphKit.emitEnsureInitializedCall(targetMethod.getDeclaringClass());
+
+        Class<?>[] argTypes = constructor.getParameterTypes();
+        ValueNode[] args = new ValueNode[argTypes.length + 1];
+        args[0] = graphKit.append(createNewInstanceNode(targetMethod.getDeclaringClass()));
+        graphKit.fillArgsArray(argumentArray, 1, args, argTypes);
+
+        InvokeWithExceptionNode invoke = graphKit.createJavaCallWithException(InvokeKind.Special, targetMethod, args);
+        graphKit.exceptionPart();
+        graphKit.branchToInvocationTargetException(graphKit.exceptionObject());
+        graphKit.endInvokeWithException();
+        graphKit.createReturn(args[0], JavaKind.Object);
+
+        graphKit.emitIllegalArgumentException(constructor, null, argumentArray);
+        graphKit.emitInvocationTargetException();
+        processInvoke(graphKit, invoke);
 
         return graphKit.finalizeGraph();
     }
 
-    protected void createJavaCall(HostedGraphKit graphKit, ResolvedJavaMethod cons, ValueNode ret, ValueNode[] args) {
-        graphKit.createJavaCallWithException(InvokeKind.Special, cons, args);
-
-        graphKit.noExceptionPart();
-        graphKit.createReturn(ret, JavaKind.Object);
-
-        graphKit.exceptionPart();
-        graphKit.throwInvocationTargetException(graphKit.exceptionObject());
-
-        graphKit.endInvokeWithException();
-    }
-
     protected ValueNode createNewInstanceNode(ResolvedJavaType type) {
         return new NewInstanceNode(type, true);
+    }
+
+    @SuppressWarnings("unused")
+    protected void processInvoke(ReflectionGraphKit graphKit, InvokeWithExceptionNode invoke) {
     }
 }

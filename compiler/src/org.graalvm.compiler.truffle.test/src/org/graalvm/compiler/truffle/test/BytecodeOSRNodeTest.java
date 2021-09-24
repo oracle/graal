@@ -60,7 +60,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
     // 20s timeout
-    @Rule public TestRule timeout = new Timeout(20, TimeUnit.SECONDS);
+    @Rule public TestRule timeout = new Timeout(30, TimeUnit.SECONDS);
 
     private int osrThreshold;
 

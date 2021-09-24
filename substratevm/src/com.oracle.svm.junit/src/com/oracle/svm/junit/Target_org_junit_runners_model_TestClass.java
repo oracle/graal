@@ -28,12 +28,11 @@ package com.oracle.svm.junit;
 
 import java.lang.reflect.Constructor;
 
-import com.oracle.svm.core.annotate.Alias;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.Assert;
 import org.junit.runners.model.TestClass;
 
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
@@ -41,18 +40,20 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(className = "org.junit.runners.model.TestClass", onlyWith = JUnitFeature.IsEnabled.class)
 public final class Target_org_junit_runners_model_TestClass {
 
     public static final class OnlyConstructorComputer implements CustomFieldValueComputer {
-
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            TestClass clazz = (TestClass) receiver;
-            if (clazz.getJavaClass() != null) {
-                Constructor<?> constructor = clazz.getOnlyConstructor();
+            TestClass testClass = (TestClass) receiver;
+            if (testClass.getJavaClass() != null) {
+                /* Make sure Class.forName works because Description.getTestClass can use it. */
+                RuntimeReflection.register(testClass.getJavaClass());
+                Constructor<?> constructor = testClass.getOnlyConstructor();
                 RuntimeReflection.register(constructor);
                 return constructor;
             } else {

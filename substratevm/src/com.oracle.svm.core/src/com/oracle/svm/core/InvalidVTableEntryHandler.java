@@ -68,7 +68,7 @@ public final class InvalidVTableEntryHandler {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
         Log log = Log.enterFatalContext(logHandler, callerIP, MSG, null);
         if (log != null) {
-            SubstrateDiagnostics.print(log, callerSP, callerIP, WordFactory.nullPointer(), true);
+            SubstrateDiagnostics.printFatalError(log, callerSP, callerIP, WordFactory.nullPointer(), true);
             log.string(MSG).newline();
         }
         logHandler.fatalError();

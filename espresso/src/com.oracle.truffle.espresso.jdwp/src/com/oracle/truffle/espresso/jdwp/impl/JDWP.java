@@ -1105,10 +1105,28 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob<?>.JobResult<?> result = job.getResult();
-                            writeMethodResult(reply, context, result);
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
-                            connection.handleReply(packet, commandResult);
+                            try {
+                                ThreadJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
+                            } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
+                                reply.errorCode(ErrorCodes.INTERNAL);
+                                // Checkstyle: stop allow error output
+                                if (entered) {
+                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
+                                } else {
+                                    System.err.println("Internal Espresso error: " + t.getMessage());
+                                }
+                                t.printStackTrace();
+                                // Checkstyle: resume allow error output
+                            } finally {
+                                connection.handleReply(packet, commandResult);
+                                if (entered) {
+                                    controller.leaveTruffleContext();
+                                }
+                            }
                         }
                     }).start();
                 } catch (Throwable t) {
@@ -1269,10 +1287,28 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob<?>.JobResult<?> result = job.getResult();
-                            writeMethodResult(reply, context, result);
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
-                            connection.handleReply(packet, commandResult);
+                            try {
+                                ThreadJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
+                            } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
+                                reply.errorCode(ErrorCodes.INTERNAL);
+                                // Checkstyle: stop allow error output
+                                if (entered) {
+                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
+                                } else {
+                                    System.err.println("Internal Espresso error: " + t.getMessage());
+                                }
+                                t.printStackTrace();
+                                // Checkstyle: resume allow error output
+                            } finally {
+                                connection.handleReply(packet, commandResult);
+                                if (entered) {
+                                    controller.leaveTruffleContext();
+                                }
+                            }
                         }
                     }).start();
                 } catch (Throwable t) {
@@ -1749,10 +1785,28 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob<?>.JobResult<?> result = job.getResult();
-                            writeMethodResult(reply, context, result);
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
-                            connection.handleReply(packet, commandResult);
+                            try {
+                                ThreadJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
+                            } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
+                                reply.errorCode(ErrorCodes.INTERNAL);
+                                // Checkstyle: stop allow error output
+                                if (entered) {
+                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
+                                } else {
+                                    System.err.println("Internal Espresso error: " + t.getMessage());
+                                }
+                                t.printStackTrace();
+                                // Checkstyle: resume allow error output
+                            } finally {
+                                connection.handleReply(packet, commandResult);
+                                if (entered) {
+                                    controller.leaveTruffleContext();
+                                }
+                            }
                         }
                     }).start();
                 } catch (Throwable t) {
@@ -2974,31 +3028,24 @@ public final class JDWP {
     }
 
     private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob<?>.JobResult<?> result) {
-        try {
-            if (result.getException() != null) {
-                LOGGER.fine(() -> "method threw exception");
-                reply.writeByte(TagConstants.OBJECT);
-                reply.writeLong(0);
-                reply.writeByte(TagConstants.OBJECT);
-                Object guestException = context.getGuestException(result.getException());
-                reply.writeLong(context.getIds().getIdAsLong(guestException));
-            } else {
-                Object value = context.toGuest(result.getResult());
-                if (value != null) {
-                    byte tag = context.getTag(value);
-                    writeValue(tag, value, reply, true, context);
-                } else { // return value is null
-                    reply.writeByte(TagConstants.OBJECT);
-                    reply.writeLong(0);
-                }
-                // no exception, so zero object ID
+        if (result.getException() != null) {
+            reply.writeByte(TagConstants.OBJECT);
+            reply.writeLong(0);
+            reply.writeByte(TagConstants.OBJECT);
+            Object guestException = context.getGuestException(result.getException());
+            reply.writeLong(context.getIds().getIdAsLong(guestException));
+        } else {
+            Object value = context.toGuest(result.getResult());
+            if (value != null) {
+                byte tag = context.getTag(value);
+                writeValue(tag, value, reply, true, context);
+            } else { // return value is null
                 reply.writeByte(TagConstants.OBJECT);
                 reply.writeLong(0);
             }
-        } catch (Throwable t) {
-            LOGGER.warning(() -> "Internal Espresso error: " + t);
-            LOGGER.throwing(JDWP.class.getName(), "writeMethodResult", t);
-            reply.errorCode(ErrorCodes.INTERNAL);
+            // no exception, so zero object ID
+            reply.writeByte(TagConstants.OBJECT);
+            reply.writeLong(0);
         }
     }
 

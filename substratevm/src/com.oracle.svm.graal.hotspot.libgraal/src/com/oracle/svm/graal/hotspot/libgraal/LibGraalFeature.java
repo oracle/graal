@@ -339,7 +339,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     private static void registerJNIConfiguration(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport registry, ImageClassLoader loader) {
         try (JNIConfigSource source = new JNIConfigSource(loader)) {
             Map<String, Class<?>> classes = new HashMap<>();
-            ConfigurationCondition condition = ConfigurationCondition.objectReachable();
+            ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
             for (String line : source.lines) {
                 source.lineNo++;
                 String[] tokens = line.split(" ");
@@ -377,7 +377,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         try {
                             if ("<init>".equals(methodName)) {
                                 Constructor<?> cons = clazz.getDeclaredConstructor(parameters);
-                                registry.register(condition, cons);
+                                registry.register(condition, false, cons);
                                 if (Throwable.class.isAssignableFrom(clazz) && !Modifier.isAbstract(clazz.getModifiers())) {
                                     if (usedInTranslatedException(parameters)) {
                                         RuntimeReflection.register(clazz);
@@ -385,7 +385,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                                     }
                                 }
                             } else {
-                                registry.register(condition, clazz.getDeclaredMethod(methodName, parameters));
+                                registry.register(condition, false, clazz.getDeclaredMethod(methodName, parameters));
                             }
                         } catch (NoSuchMethodException e) {
                             throw source.error("Method %s.%s%s not found: %e", clazz.getTypeName(), methodName, descriptor, e);

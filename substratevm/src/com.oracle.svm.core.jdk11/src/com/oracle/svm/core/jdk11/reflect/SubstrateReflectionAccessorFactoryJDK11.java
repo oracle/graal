@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk11.reflect;
 
 import java.lang.reflect.Executable;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -39,8 +40,8 @@ import com.oracle.svm.core.reflect.SubstrateReflectionAccessorFactory;
 
 final class SubstrateReflectionAccessorFactoryJDK11 implements SubstrateReflectionAccessorFactory {
     @Override
-    public SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer) {
-        return new SubstrateMethodAccessorJDK11(member, invokeFunctionPointer, invokeSpecialFunctionPointer);
+    public SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer) {
+        return new SubstrateMethodAccessorJDK11(member, invokeFunctionPointer);
     }
 
     @Override
@@ -52,14 +53,19 @@ final class SubstrateReflectionAccessorFactoryJDK11 implements SubstrateReflecti
 @AutomaticFeature
 final class SubstrateReflectionAccessorFactoryJDK11Feature implements Feature {
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC >= 11;
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(SubstrateReflectionAccessorFactory.class, new SubstrateReflectionAccessorFactoryJDK11());
     }
 }
 
 final class SubstrateMethodAccessorJDK11 extends SubstrateMethodAccessor implements jdk.internal.reflect.MethodAccessor {
-    SubstrateMethodAccessorJDK11(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer) {
-        super(member, invokeFunctionPointer, invokeSpecialFunctionPointer);
+    SubstrateMethodAccessorJDK11(Executable member, CFunctionPointer invokeFunctionPointer) {
+        super(member, invokeFunctionPointer);
     }
 }
 

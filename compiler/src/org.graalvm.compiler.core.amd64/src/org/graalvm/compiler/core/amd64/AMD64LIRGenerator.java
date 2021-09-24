@@ -764,4 +764,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(lengthReg, length);
         append(new AMD64ZeroMemoryOp(asAddressValue(address), lengthReg));
     }
+
+    public boolean supportsCPUFeature(AMD64.CPUFeature feature) {
+        return ((AMD64) target().arch).getFeatures().contains(feature);
+    }
+
+    public boolean supportsCPUFeature(String feature) {
+        try {
+            return ((AMD64) target().arch).getFeatures().contains(AMD64.CPUFeature.valueOf(feature));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
 }

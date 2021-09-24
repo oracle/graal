@@ -35,7 +35,7 @@ import com.oracle.svm.configure.json.JsonWriter;
 
 final class ConfigurationConditionPrintable {
     static void printConditionAttribute(ConfigurationCondition condition, JsonWriter writer) throws IOException {
-        if (!condition.equals(ConfigurationCondition.objectReachable())) {
+        if (!condition.equals(ConfigurationCondition.alwaysTrue())) {
             writer.quote(CONDITIONAL_KEY).append(":{");
             writer.quote(TYPE_REACHABLE_KEY).append(':').quote(condition.getTypeName());
             writer.append("},").newline();

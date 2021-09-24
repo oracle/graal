@@ -24,16 +24,17 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ResourcesRegistry;
 
 @AutomaticFeature
 class CharsetSubstitutionsFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Class<?> clazz = access.findClassByName("java.lang.CharacterName");
-        access.registerReachabilityHandler(a -> ImageSingletons.lookup(ResourcesRegistry.class).addResources("java/lang/uniName.dat"), clazz);
+        ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.create("java.lang.CharacterName"), "java/lang/uniName.dat");
     }
 }

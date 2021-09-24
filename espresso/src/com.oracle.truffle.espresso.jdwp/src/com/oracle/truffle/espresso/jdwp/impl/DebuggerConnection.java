@@ -134,19 +134,6 @@ public final class DebuggerConnection implements Commands {
     }
 
     @Override
-    public Callable<Void> createMethodEntryBreakpointCommand(BreakpointInfo info) {
-        return new Callable<Void>() {
-            @Override
-            public Void call() {
-                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_METHOD_ENTRY_BREAKPOINT, info.getFilter());
-                debuggerCommand.setBreakpointInfo(info);
-                addBlocking(debuggerCommand);
-                return null;
-            }
-        };
-    }
-
-    @Override
     public Callable<Void> createExceptionBreakpoint(BreakpointInfo info) {
         return new Callable<Void>() {
             @Override
@@ -170,9 +157,6 @@ public final class DebuggerConnection implements Commands {
                     switch (debuggerCommand.kind) {
                         case SUBMIT_LINE_BREAKPOINT:
                             controller.submitLineBreakpoint(debuggerCommand);
-                            break;
-                        case SUBMIT_METHOD_ENTRY_BREAKPOINT:
-                            controller.submitMethodEntryBreakpoint(debuggerCommand);
                             break;
                         case SUBMIT_EXCEPTION_BREAKPOINT:
                             controller.submitExceptionBreakpoint(debuggerCommand);
@@ -603,8 +587,16 @@ public final class DebuggerConnection implements Commands {
                 }
                 handleReply(packet, result);
             } catch (Throwable t) {
-                JDWP.LOGGER.warning(() -> "[Internal error]: " + t.getClass());
-                JDWP.LOGGER.throwing(DebuggerConnection.class.getName(), "processPacket", t);
+                if (entered) {
+                    // we can only use the Truffle logger if we were able to enter the context
+                    JDWP.LOGGER.warning(() -> "[Internal error]");
+                    JDWP.LOGGER.throwing(DebuggerConnection.class.getName(), "processPacket", t);
+                } else {
+                    // Checkstyle: stop allow error output
+                    System.out.println("[internal error]: " + t.getMessage());
+                    t.printStackTrace();
+                    // Checkstyle: resume allow error output
+                }
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.errorCode(ErrorCodes.INTERNAL);
                 handleReply(packet, new CommandResult(reply));

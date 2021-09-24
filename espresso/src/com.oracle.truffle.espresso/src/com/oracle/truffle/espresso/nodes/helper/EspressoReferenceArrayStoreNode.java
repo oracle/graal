@@ -28,16 +28,19 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOfFactory;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class EspressoReferenceArrayStoreNode extends Node {
-    @Child TypeCheckNode typeCheck;
+public final class EspressoReferenceArrayStoreNode extends Node {
+
+    @Child InstanceOf.Dynamic instanceOfDynamic;
     @CompilationFinal boolean noOutOfBoundEx = true;
     @CompilationFinal boolean noArrayStoreEx = true;
 
     public EspressoReferenceArrayStoreNode() {
-        this.typeCheck = TypeCheckNodeGen.create();
+        this.instanceOfDynamic = InstanceOfFactory.DynamicNodeGen.create();
     }
 
     public void arrayStore(EspressoContext context, StaticObject value, int index, StaticObject array) {
@@ -46,7 +49,7 @@ public class EspressoReferenceArrayStoreNode extends Node {
             Meta meta = context.getMeta();
             throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
-        if (!StaticObject.isNull(value) && !typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
+        if (!StaticObject.isNull(value) && !instanceOfDynamic.execute(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
             enterArrayStoreEx();
             Meta meta = context.getMeta();
             throw meta.throwException(meta.java_lang_ArrayStoreException);

@@ -25,8 +25,8 @@ builds += [
   ${oraclejdk8} ${svm-common-darwin-gate} ${gate-svm-js} {
     name: "gate-svm-darwin-js"
   }
-  ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
-    name: "gate-svm-build-ee-11"
+  ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} {
+    name: "gate-svm-build-ce-11"
     downloads: {
       "MUSL_LIBS": {
         "name": "musl-libs",
@@ -43,7 +43,7 @@ builds += [
       ${svm-cmd-gate} ["build,helloworld,test,maven,nativeimagehelp,muslcbuild"]
     ]
   }
-  ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
+  ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} {
     name: "gate-svm-modules-basic"
     run: [
       ${svm-cmd-gate} ["build,hellomodule,test"]

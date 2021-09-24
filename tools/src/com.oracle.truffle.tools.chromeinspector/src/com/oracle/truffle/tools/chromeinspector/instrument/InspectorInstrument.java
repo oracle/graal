@@ -78,7 +78,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     private static final int DEFAULT_PORT = 9229;
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);
-    private static final String HELP_URL = "https://www.graalvm.org/docs/tools/chrome-debugger";
+    private static final String HELP_URL = "https://www.graalvm.org/tools/chrome-debugger";
 
     private Server server;
     private ConnectionWatcher connectionWatcher;

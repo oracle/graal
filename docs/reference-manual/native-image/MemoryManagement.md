@@ -48,7 +48,7 @@ Note: The maximum heap size is only the upper limit for the Java heap and not ne
 
 The *Serial GC* is optimized for low footprint and small Java heap sizes.
 If no other GC is specified, the Serial GC will be used implicitly as the default on both GraalVM Community and Enterprise Edition.
-Since GraalVM 20.3, it is also possible to explicitly enable the Serial GC by passing the option `--gc=serial` to the native image builder.
+It is also possible to explicitly enable the Serial GC by passing the option `--gc=serial` to the native image builder.
 
 ```shell
 # Build a native image that uses the serial GC with default settings
@@ -74,6 +74,9 @@ If the same image is executed on a machine that has 32GB of RAM, the maximum Jav
 Note that this is just the maximum value.
 Depending on the application, the amount of actually used Java heap memory can be much lower.
 To override this default behavior, either specify a value for `-XX:MaximumHeapSizePercent` or explicitly set the maximum [Java heap size](#java-heap-size).
+
+Be mindful that the GC needs some extra memory when performing a garbage collection (2x of the maximum heap size is the worst case, usually, it is significantly less).
+Therefore, the resident set size, RSS, can increase temporarily during a garbage collection which can be an issue in any environment with memory constraints (such as a container).
 
 ### Performance Tuning
 

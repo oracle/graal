@@ -48,4 +48,11 @@ public @interface GenerateNativeEnv {
      * Prepend the native env pointer to the signature.
      */
     boolean prependEnv() default false;
+
+    /**
+     * Indicates whether the methods in this class should generate code for
+     * {@link CallableFromNative#invokeDirect(Object, Object[])}. This prevents methods that are not
+     * expected to be directly bound to a java native method to mess with SVM reachability analysis.
+     */
+    boolean reachableForAutoSubstitution() default false;
 }

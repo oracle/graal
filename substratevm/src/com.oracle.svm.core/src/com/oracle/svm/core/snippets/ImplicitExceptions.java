@@ -133,7 +133,7 @@ public class ImplicitExceptions {
     }
 
     private static void vmErrorIfImplicitExceptionsAreFatal() {
-        if ((implicitExceptionsAreFatal.get() > 0 || ExceptionUnwind.exceptionsAreFatal()) && !SubstrateDiagnostics.isInProgressByCurrentThread()) {
+        if ((implicitExceptionsAreFatal.get() > 0 || ExceptionUnwind.exceptionsAreFatal()) && !SubstrateDiagnostics.isFatalErrorHandlingThread()) {
             throw VMError.shouldNotReachHere("Implicit exception thrown in code where such exceptions are fatal errors");
         }
     }

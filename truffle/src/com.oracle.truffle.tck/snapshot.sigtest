@@ -58,10 +58,8 @@ meth protected void initializeContext({com.oracle.truffle.api.TruffleLanguage%0}
 meth protected void initializeMultiThreading({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected void initializeMultipleContexts()
 meth protected void initializeThread({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Thread)
-meth public final com.oracle.truffle.api.TruffleLanguage$ContextReference<{com.oracle.truffle.api.TruffleLanguage%0}> getContextReference()
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds contextLocals,contextThreadLocals,languageInfo,polyglotLanguageInstance,reference
+hfds contextLocals,contextThreadLocals,languageInfo,polyglotLanguageInstance
 
 CLSS public abstract interface static com.oracle.truffle.api.TruffleLanguage$Provider
  outer com.oracle.truffle.api.TruffleLanguage
@@ -87,8 +85,6 @@ meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String[] byteMimeTypes()
 meth public abstract !hasdefault java.lang.String[] characterMimeTypes()
 meth public abstract !hasdefault java.lang.String[] dependentLanguages()
-meth public abstract !hasdefault java.lang.String[] mimeType()
- anno 0 java.lang.Deprecated()
 meth public abstract java.lang.String name()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedBy

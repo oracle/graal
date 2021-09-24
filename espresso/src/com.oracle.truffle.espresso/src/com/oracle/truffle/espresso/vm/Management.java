@@ -552,7 +552,7 @@ public final class Management extends NativeEnv {
                     profiler.profile(2);
                     throw meta.throwNullPointerException();
                 }
-                getLogger().fine("GetVMGlobals: " + meta.toHostString(entry));
+                getLogger().fine(() -> "GetVMGlobals: " + meta.toHostString(entry));
             }
         }
         return 0;

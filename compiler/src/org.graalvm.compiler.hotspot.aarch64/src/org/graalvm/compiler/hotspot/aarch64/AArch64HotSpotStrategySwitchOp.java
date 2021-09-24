@@ -40,14 +40,14 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.Value;
 
 final class AArch64HotSpotStrategySwitchOp extends AArch64ControlFlow.StrategySwitchOp {
     public static final LIRInstructionClass<AArch64HotSpotStrategySwitchOp> TYPE = LIRInstructionClass.create(AArch64HotSpotStrategySwitchOp.class);
 
-    AArch64HotSpotStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch, Function<Condition, AArch64Assembler.ConditionFlag> converter) {
-        super(TYPE, strategy, keyTargets, defaultTarget, key, scratch, converter);
+    AArch64HotSpotStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, Function<Condition, AArch64Assembler.ConditionFlag> converter) {
+        super(TYPE, strategy, keyTargets, defaultTarget, key, converter);
     }
 
     @Override
@@ -65,14 +65,15 @@ final class AArch64HotSpotStrategySwitchOp extends AArch64ControlFlow.StrategySw
         protected void emitComparison(Constant c) {
             if (c instanceof HotSpotMetaspaceConstant) {
                 HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) c;
+                crb.recordInlineDataInCode(meta);
                 if (meta.isCompressed()) {
-                    crb.recordInlineDataInCode(meta);
-                    // masm.cmpl(keyRegister, 0xDEADDEAD);
                     throw GraalError.unimplemented();
                 } else {
-                    crb.recordInlineDataInCode(meta);
-                    masm.movNativeAddress(asRegister(scratch), 0x0000_DEAD_DEAD_DEADL);
-                    masm.cmp(64, keyRegister, asRegister(scratch));
+                    try (AArch64MacroAssembler.ScratchRegister scratchRegister = masm.getScratchRegister()) {
+                        Register scratch = scratchRegister.getRegister();
+                        masm.movNativeAddress(scratch, 0x0000_DEAD_DEAD_DEADL);
+                        masm.cmp(64, keyRegister, scratch);
+                    }
                 }
             } else {
                 super.emitComparison(c);

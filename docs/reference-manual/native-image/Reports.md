@@ -151,3 +151,16 @@ The call tree report name has the structure `call_tree_<image_name>_<date_time>.
 The object tree report name has the structure: `object_tree_<image_name>_<date_time>.txt`.
 The image name is the name of the generated image, which can be set with the `-H:Name=<name>` option.
 The `<date_time>` is in the `yyyyMMdd_HHmmss` format.
+
+#### CSV files
+
+The reports include a number of CSV files containing raw data for methods and their relationships.
+The aim of these files is to make it enable this raw data to be easily imported into graph databases.
+Graph databases can provide the following functionality:
+
+* Sophisticated graphical visualization of the call tree graph that provide a different perspective compared to text-based formats.
+* Ability to execute complex queries that can for example show a subset of the tree that causes certain code path to be included in the call tree analysis.
+This querying functionality is crucial in making big analysis call trees manageable.
+
+The process to import the files into graph databases is specific to each database.
+Please follow the instructions provided by the graph database providers to find out how to import them.

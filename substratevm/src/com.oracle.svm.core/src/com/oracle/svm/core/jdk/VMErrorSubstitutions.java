@@ -131,7 +131,7 @@ public class VMErrorSubstitutions {
                     log.newline();
                 }
 
-                SubstrateDiagnostics.print(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+                SubstrateDiagnostics.printFatalError(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
 
                 /*
                  * Print the error message again, so that the most important bit of information

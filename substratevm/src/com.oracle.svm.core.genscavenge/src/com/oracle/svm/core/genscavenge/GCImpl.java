@@ -1065,7 +1065,7 @@ public final class GCImpl implements GC {
     }
 
     /**
-     * Do whatever is necessary if a collection occurred since the a call to
+     * Do whatever is necessary if a collection occurred since the call to
      * {@link #possibleCollectionPrologue()}. Note that this method may get called by several
      * threads for the same collection.
      */

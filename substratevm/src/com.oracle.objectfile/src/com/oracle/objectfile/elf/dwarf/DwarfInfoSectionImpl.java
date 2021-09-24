@@ -1359,19 +1359,21 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert callerSubrange != null;
         int callLine = callerSubrange.getLine();
         assert callLine >= -1 : callLine;
+        Integer fileIndex;
         if (callLine == -1) {
             log(context, "  Unable to retrieve call line for inlined method %s", range.getFullMethodName());
-            /* continue with line 0 as we must insert a tree node */
+            /* continue with line 0 and fileIndex 1 as we must insert a tree node */
             callLine = 0;
-        }
-        Integer fileIndex;
-        if (callerSubrange == range) {
             fileIndex = 1;
         } else {
-            FileEntry subFileEntry = callerSubrange.getFileEntry();
-            assert subFileEntry != null;
-            fileIndex = classEntry.localFilesIdx(subFileEntry);
-            assert fileIndex != null;
+            if (callerSubrange == range) {
+                fileIndex = 1;
+            } else {
+                FileEntry subFileEntry = callerSubrange.getFileEntry();
+                assert subFileEntry != null : callerSubrange.getClassName() + "." + callerSubrange.getMethodName() + "(" + callerSubrange.getFileName() + ":" + callLine + ")";
+                fileIndex = classEntry.localFilesIdx(subFileEntry);
+                assert fileIndex != null;
+            }
         }
         final int code;
         if (range.isLeaf()) {

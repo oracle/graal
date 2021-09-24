@@ -1,7 +1,7 @@
 
 # GraalWasm
 
-GraalWasm is a WebAssembly engine implemented in the GraalVM.
+GraalWasm is a WebAssembly engine implemented in GraalVM.
 It can interpret and compile WebAssembly programs in the binary format,
 or be embedded into other programs.
 
@@ -15,7 +15,7 @@ Feedback, bug reports, and open-source contributions are welcome!
 ### Prerequisites
 
 - Python 3 (required by `mx`)
-- git (to download, update, and locate repositories)
+- GIT (to download, update, and locate repositories)
 - A [JVMCI-enabled JDK 8](https://github.com/graalvm/graal-jvmci-8/releases) or a newer JDK version (JDK 9+)
 - GCC for translating C files
 
@@ -24,32 +24,32 @@ Feedback, bug reports, and open-source contributions are welcome!
 To build GraalWasm, you need to follow the standard workflow for Graal projects.
 We summarize the basic steps below:
 
-1. Create a new folder where your repositories `mx` and `graal` should be located
+1. Create a new folder where your repositories `mx` and `graal` should be located:
 ```bash
 $ mkdir graalvm
 $ cd graalvm
 ```
-2. Clone `mx` and add it to the PATH
+2. Clone `mx` and add it to the `PATH`:
 
 ```bash
 $ git clone https://github.com/graalvm/mx.git
 $ export PATH=$PWD/mx:$PATH
 ```
 
-3. Clone the `graal` repository and enter the wasm directory.
+3. Clone the `graal` repository and enter the wasm directory:
 
 ```bash
 $ git clone https://github.com/oracle/graal.git
 $ cd graal/wasm
 ```
 
-4. Set JAVA_HOME
+4. Set `JAVA_HOME`:
 
 ```bash
 $ export JAVA_HOME=[path to JDK]
 ```
 
-5. Build the project
+5. Build the project:
 ```bash
 $ mx --dy /truffle,/compiler build
 ```
@@ -65,7 +65,7 @@ which contains the GraalWasm implementation.
 The `build` command will also create the `wasm-tests.jar`, which contains the main test cases. To run these tests, the WebAssembly binary toolkit is needed.
 
 1. Download the binary of the [WebAssembly binary toolkit(wabt)](https://github.com/WebAssembly/wabt) and extract it.
-2. Set `WABT_DIR`
+2. Set `WABT_DIR`:
 
 ```bash
 $ export WABT_DIR=[path to wabt]/bin
@@ -98,7 +98,7 @@ This command results in the following output:
 Running: BranchBlockSuite (4/16 tests - you have enabled filters)
 --------------------------------------------------------------------------------
 Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@7b1d7fff
-😍😍😍😍                                       
+😍😍😍😍
 Finished running: BranchBlockSuite
 🍀 4/4 Wasm tests passed.
 ```
@@ -114,7 +114,7 @@ To compile these programs, you will need to install additional dependencies on y
 To build these additional tests and benchmarks, you need to:
 
 1. Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html). We currently test against Emscripten **1.39.13**.
-   
+
 ```bash
 $ cd [preferred emsdk install location]
 
@@ -134,21 +134,21 @@ $ ./emsdk activate [version number]
 $ source ./emsdk_env.sh
 ```
 
-2. Set `EMCC_DIR` and `GCC_DIR`
+2. Set `EMCC_DIR` and `GCC_DIR`:
 
 ```bash
 $ export EMCC_DIR=[path to emsdk]/upstream/emscripten
 $ export GCC_DIR=[path to gcc (usually /usr/bin)]
 ```
 
-3. Run `emscripten-init`
+3. Run `emscripten-init`:
 
 ```bash
 $ cd grallvm/graal/wasm
 $ mx emscripten-init ~/.emscripten [path to emsdk] --local
 ```
 
-4. Build with additional dependencies
+4. Build with additional dependencies:
 
 ```bash
 $ mx --dy /truffle,/compiler build --all
@@ -177,7 +177,7 @@ This will result in the following output:
 Running: CSuite (1 tests)
 --------------------------------------------------------------------------------
 Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@368239c8
-😍                 
+😍
 Finished running: CSuite
 🍀 1/1 Wasm tests passed.
 ```
@@ -194,9 +194,9 @@ The GraalWasm project includes a custom JMH-based benchmark suite,
 which is capable of running WebAssembly benchmark programs.
 The benchmark programs consist of several special functions,
 most notably `benchmarkRun`, which runs the body of the benchmark.
-The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` Mx project.
+The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` MX project.
 
-For the benchmarks to run `NODE_DIR` has to be set. You can use the node version that is part of emscripten, for example:
+For the benchmarks to run `NODE_DIR` has to be set. You can use the node version that is part of Emscripten, for example:
 
 ```bash
 $ export NODE_DIR=[path to emsdk]/node/14.15.5_64bit/bin
@@ -256,7 +256,7 @@ If downloading GraalWasm as a separate GraalVM component,
 you can download it as follows (replace JDK and GraalVM versions with appropriate values):
 
 ```bash
-$ graalvm-ce-java8-19.3.0/bin/gu install --force -L wasm-installable-java8-linux-<version>.jar
+$ graalvm-ce-java8-21.2.0/bin/gu install --force -L wasm-installable-java8-linux-<version>.jar
 ```
 
 This will install a launcher, which runs WebAssembly modules.
@@ -314,5 +314,4 @@ mainFunction.execute();
 ```
 
 For more polyglot-related examples, consult the documentation at the
-[GraalVM website](https://www.graalvm.org/docs/reference-manual/polyglot/).
-
+[GraalVM website](https://www.graalvm.org/reference-manual/polyglot-programming/).

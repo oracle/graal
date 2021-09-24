@@ -216,5 +216,5 @@ public abstract class Heap {
      * If the passed value is within the Java heap, this method prints some information about that
      * value and returns true. Otherwise, the method returns false.
      */
-    public abstract boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess);
+    public abstract boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
 }

@@ -397,6 +397,9 @@ public final class RegexOptions {
                 throw optionsSyntaxErrorUnexpectedValue(iVal, Encodings.ALL_NAMES);
             }
             switch (src.charAt(iVal)) {
+                case 'A':
+                    encoding = Encodings.ASCII;
+                    return expectValue(iVal, Encodings.ASCII.getName(), Encodings.ALL_NAMES);
                 case 'B':
                     encoding = Encodings.LATIN_1;
                     return expectValue(iVal, "BYTES", Encodings.ALL_NAMES);

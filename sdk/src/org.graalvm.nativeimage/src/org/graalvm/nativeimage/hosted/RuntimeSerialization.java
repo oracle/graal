@@ -61,7 +61,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).register(ConfigurationCondition.objectReachable(), classes);
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).register(ConfigurationCondition.alwaysTrue(), classes);
     }
 
     /**
@@ -76,7 +76,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.objectReachable(), clazz, customTargetConstructorClazz);
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
     }
 
     private RuntimeSerialization() {

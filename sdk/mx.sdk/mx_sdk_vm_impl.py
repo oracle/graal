@@ -2149,8 +2149,9 @@ def _gen_gu_manifest(components, formatter, bundled=False):
     dependencies = sorted(dependencies)
     if dependencies:
         manifest["Require-Bundle"] = ','.join(("org.graalvm." + d for d in dependencies))
-    if isinstance(main_component, mx_sdk.GraalVmLanguage):
-        _wd_base = join('jre', 'languages') if _src_jdk_version < 9 else 'languages'
+    if isinstance(main_component, (mx_sdk.GraalVmLanguage, mx_sdk.GraalVmTool)):
+        _component_type_base = 'languages' if isinstance(main_component, mx_sdk.GraalVmLanguage) else 'tools'
+        _wd_base = join('jre', _component_type_base) if _src_jdk_version < 9 else _component_type_base
         manifest["x-GraalVM-Working-Directories"] = join(_wd_base, main_component.dir_name)
 
     post_install_msg = None
@@ -2678,13 +2679,18 @@ def has_svm_launchers(components, fatalIfMissing=False):
     return all((has_svm_launcher(component, fatalIfMissing=fatalIfMissing) for component in components))
 
 
-def get_native_image_locations(name, image_name):
-    libgraal_libs = [l for l in _get_library_configs(get_component(name)) if image_name in basename(l.destination)]
+def get_native_image_locations(name, image_name, fatal_if_missing=True):
+    c = name if isinstance(name, mx_sdk.GraalVmComponent) else get_component(name)
+    configs = _get_library_configs(c) + _get_launcher_configs(c)
+    libgraal_libs = [l for l in configs if image_name in basename(l.destination)]
     if libgraal_libs:
         library_config = libgraal_libs[0]
         dist = get_final_graalvm_distribution()
         source_type = 'skip' if _skip_libraries(library_config) else 'dependency'
-        return join(graalvm_output_root(), dist.find_single_source_location(source_type + ':' + GraalVmLibrary.project_name(library_config)))
+        source_location = dist.find_single_source_location(
+            source_type + ':' + GraalVmLibrary.project_name(library_config), fatal_if_missing=fatal_if_missing)
+        if source_location:
+            return join(graalvm_output_root(), source_location)
     return None
 
 

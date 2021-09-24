@@ -581,7 +581,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         str.append(TAB_2).append("}\n");
 
         if (h.nameProvider != null) {
-            str.append(generateNameProviders(targetMethodName, h));
+            str.append(generateNameProviders(h.guestMethodName, h));
         }
 
         if (h.versionFilter != null) {
@@ -639,7 +639,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             str.append(TAB_2).append("return ").append(extractInvocation(targetClass, argIndex, helper));
         }
         str.append(TAB_1).append("}\n");
-        str.append("}");
         return str.toString();
     }
 }

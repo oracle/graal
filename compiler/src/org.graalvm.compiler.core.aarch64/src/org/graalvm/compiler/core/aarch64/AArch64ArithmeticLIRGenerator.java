@@ -427,15 +427,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     private void emitBinaryVar(AllocatableValue result, AArch64ArithmeticOp op, AllocatableValue a, AllocatableValue b) {
         AllocatableValue x = moveSp(a);
         AllocatableValue y = moveSp(b);
-        switch (op) {
-            case REM:
-            case UREM:
-                getLIRGen().append(new AArch64ArithmeticOp.BinaryCompositeOp(op, result, x, y));
-                break;
-            default:
-                getLIRGen().append(new AArch64ArithmeticOp.BinaryOp(op, result, x, y));
-                break;
-        }
+        getLIRGen().append(new AArch64ArithmeticOp.BinaryOp(op, result, x, y));
     }
 
     public void emitBinaryConst(AllocatableValue result, AArch64ArithmeticOp op, AllocatableValue a, JavaConstant b) {

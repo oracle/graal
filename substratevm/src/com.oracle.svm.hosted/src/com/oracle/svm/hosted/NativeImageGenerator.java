@@ -55,6 +55,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -192,6 +193,7 @@ import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
+import com.oracle.svm.core.graal.word.SubstrateWordOperationPlugins;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
@@ -443,7 +445,7 @@ public class NativeImageGenerator {
                 architecture = new AArch64(features, AArch64CPUFeatureAccess.enabledAArch64Flags());
             }
             assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
-            int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers.
+            int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: r0 and v0.
             return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: %s", platform.getClass().getTypeName());
@@ -1058,16 +1060,26 @@ public class NativeImageGenerator {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
         for (Method m : loader.findAnnotatedMethods(CEntryPoint.class)) {
             if (!Modifier.isStatic(m.getModifiers())) {
                 throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().getName(), m.getName());
             }
 
-            boolean include = true;
+            Class<? extends BooleanSupplier> cEntryPointIncludeClass = m.getAnnotation(CEntryPoint.class).include();
+            boolean include = ReflectionUtil.newInstance(cEntryPointIncludeClass).getAsBoolean();
             CEntryPointOptions options = m.getAnnotation(CEntryPointOptions.class);
             if (options != null) {
-                include = ReflectionUtil.newInstance(options.include()).getAsBoolean();
+                Class<? extends BooleanSupplier> cEntryPointOptionsIncludeClass = options.include();
+                if (cEntryPointOptionsIncludeClass != CEntryPointOptions.AlwaysIncluded.class) {
+                    if (cEntryPointIncludeClass != CEntryPoint.AlwaysIncluded.class) {
+                        throw UserError.abort(
+                                        "The 'include' attribute for entry point method %s.%s is specified both in 'CEntryPoint' and 'CEntryPointOptions' annotations. Remove the deprecated 'CEntryPointOptions#include' attribute.",
+                                        m.getDeclaringClass().getName(), m.getName());
+                    }
+                    include = ReflectionUtil.newInstance(cEntryPointOptionsIncludeClass).getAsBoolean();
+                }
             }
             if (include) {
                 entryPoints.put(m, CEntryPointData.create(m));
@@ -1109,7 +1121,7 @@ public class NativeImageGenerator {
                     TargetDescription target) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
-        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(providers.getSnippetReflection(), providers.getWordTypes());
+        WordOperationPlugin wordOperationPlugin = new SubstrateWordOperationPlugins(providers.getSnippetReflection(), providers.getWordTypes());
 
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         plugins.appendInlineInvokePlugin(replacements);
@@ -1375,7 +1387,7 @@ public class NativeImageGenerator {
              * Even though this is a verification phase, we want it enabled all the time and not
              * just when assertions are enabled.
              */
-            lirSuites.getPostAllocationOptimizationStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
         }
 
         /* Add phases that just perform assertion checking. */
@@ -1388,7 +1400,7 @@ public class NativeImageGenerator {
         LIRSuites lirSuites = GraalConfiguration.instance().createFirstTierLIRSuites(hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton());
 
         if (hosted) {
-            lirSuites.getPostAllocationOptimizationStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyCFunctionReferenceMapsLIRPhase());
         }
 
         /* Add phases that just perform assertion checking. */
@@ -1398,7 +1410,7 @@ public class NativeImageGenerator {
 
     private static boolean addAssertionLIRPhases(LIRSuites lirSuites, boolean hosted) {
         if (hosted) {
-            lirSuites.getPostAllocationOptimizationStage().appendPhase(new VerifyDeoptFrameStatesLIRPhase());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyDeoptFrameStatesLIRPhase());
         }
         return true;
     }

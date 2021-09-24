@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,31 +86,37 @@ public class GraalFrameInstance implements FrameInstance {
         return frame;
     }
 
+    @TruffleBoundary
     @Override
     public Frame getFrame(FrameAccess access) {
         return getFrameFrom(callTargetFrame, access);
     }
 
+    @TruffleBoundary
     @Override
     public boolean isVirtualFrame() {
         return callTargetFrame.isVirtual(FRAME_INDEX);
     }
 
+    @TruffleBoundary
     @Override
     public int getCompilationTier() {
         return ((CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).getTier();
     }
 
+    @TruffleBoundary
     @Override
     public boolean isCompilationRoot() {
         return ((CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).isCompilationRoot();
     }
 
+    @TruffleBoundary
     @Override
     public CallTarget getCallTarget() {
         return (CallTarget) callTargetFrame.getLocal(CALL_TARGET_INDEX);
     }
 
+    @TruffleBoundary
     @Override
     public final Node getCallNode() {
         if (callNodeFrame != null) {

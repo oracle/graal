@@ -585,7 +585,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected Object getScope(LLVMContext context) {
-        return context.getGlobalScope();
+        return context.getGlobalScopeChain();
     }
 
     @Override

@@ -5038,12 +5038,12 @@ public class FlatNodeGenFactory {
         }
 
         CodeTree assertion = null; // overrule with assertion
-        if (mode.isFastPath() || mode.isGuardFallback()) {
+        if (mode.isFastPath()) {
             if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard()) {
                 assertion = CodeTreeBuilder.createBuilder().startAssert().tree(expressionCode).end().build();
                 expressionCode = null;
             }
-        } else {
+        } else if (mode.isSlowPath() || mode.isUncached()) {
             if (guard.isConstantTrueInSlowPath(context, mode.isUncached())) {
                 assertion = CodeTreeBuilder.createBuilder().startStatement().string("// assert ").tree(expressionCode).end().build();
                 expressionCode = null;

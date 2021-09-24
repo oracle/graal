@@ -293,10 +293,22 @@ public final class CodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
-    public static void setFrameInfo(CodeInfo info, NonmovableArray<Byte> encodings, NonmovableObjectArray<Object> objectConstants,
-                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names) {
+    public static void setFrameInfo(CodeInfo info, NonmovableArray<Byte> encodings) {
         CodeInfoImpl impl = cast(info);
         impl.setFrameInfoEncodings(encodings);
+    }
+
+    public static void setCodeInfo(CodeInfo info, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding) {
+        CodeInfoImpl impl = cast(info);
+        impl.setCodeInfoIndex(index);
+        impl.setCodeInfoEncodings(encodings);
+        impl.setStackReferenceMapEncoding(referenceMapEncoding);
+    }
+
+    @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
+    public static void setEncodings(CodeInfo info, NonmovableObjectArray<Object> objectConstants,
+                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names) {
+        CodeInfoImpl impl = cast(info);
         impl.setFrameInfoObjectConstants(objectConstants);
         impl.setFrameInfoSourceClasses(sourceClasses);
         impl.setFrameInfoSourceMethodNames(sourceMethodNames);
@@ -305,13 +317,6 @@ public final class CodeInfoAccess {
             // notify the GC about the frame metadata that is now live
             Heap.getHeap().getRuntimeCodeInfoGCSupport().registerFrameMetadata(impl);
         }
-    }
-
-    public static void setCodeInfo(CodeInfo info, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding) {
-        CodeInfoImpl impl = cast(info);
-        impl.setCodeInfoIndex(index);
-        impl.setCodeInfoEncodings(encodings);
-        impl.setStackReferenceMapEncoding(referenceMapEncoding);
     }
 
     public static Log log(CodeInfo info, Log log) {

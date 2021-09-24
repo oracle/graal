@@ -24,27 +24,29 @@
  */
 package com.oracle.svm.configure.config;
 
+import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
+
 public final class FieldInfo {
     private static final FieldInfo[] FINAL_NOT_WRITABLE_CACHE;
     static {
-        ConfigurationMemberKind[] values = ConfigurationMemberKind.values();
+        ConfigurationMemberDeclaration[] values = ConfigurationMemberDeclaration.values();
         FINAL_NOT_WRITABLE_CACHE = new FieldInfo[values.length];
-        for (ConfigurationMemberKind value : values) {
+        for (ConfigurationMemberDeclaration value : values) {
             FINAL_NOT_WRITABLE_CACHE[value.ordinal()] = new FieldInfo(value, false);
         }
     }
 
-    static FieldInfo get(ConfigurationMemberKind kind, boolean finalButWritable) {
+    static FieldInfo get(ConfigurationMemberDeclaration kind, boolean finalButWritable) {
         if (finalButWritable) { // assumed to be rare
             return new FieldInfo(kind, finalButWritable);
         }
         return FINAL_NOT_WRITABLE_CACHE[kind.ordinal()];
     }
 
-    private final ConfigurationMemberKind kind;
+    private final ConfigurationMemberDeclaration kind;
     private final boolean finalButWritable;
 
-    private FieldInfo(ConfigurationMemberKind kind, boolean finalButWritable) {
+    private FieldInfo(ConfigurationMemberDeclaration kind, boolean finalButWritable) {
         this.kind = kind;
         this.finalButWritable = finalButWritable;
     }
@@ -66,7 +68,7 @@ public final class FieldInfo {
         return get(kind, newFinalButWritable);
     }
 
-    public ConfigurationMemberKind getKind() {
+    public ConfigurationMemberDeclaration getKind() {
         return kind;
     }
 

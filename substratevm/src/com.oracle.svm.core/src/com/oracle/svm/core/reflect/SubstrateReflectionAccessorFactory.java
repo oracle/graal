@@ -31,7 +31,7 @@ import java.lang.reflect.Executable;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 public interface SubstrateReflectionAccessorFactory {
-    SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer, CFunctionPointer invokeSpecialFunctionPointer);
+    SubstrateMethodAccessor createMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer);
 
     SubstrateConstructorAccessor createConstructorAccessor(Executable member, CFunctionPointer newInstanceFunctionPointer);
 }

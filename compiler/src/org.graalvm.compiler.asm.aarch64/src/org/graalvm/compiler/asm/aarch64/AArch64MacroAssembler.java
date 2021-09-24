@@ -95,6 +95,16 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         lastImmLoadStoreEncoding = null;
     }
 
+    /**
+     * Retrieves pc relative offset between current position and provided bound label.
+     */
+    public int getPCRelativeOffset(Label label) {
+        assert label.isBound();
+        int offset = label.position() - position();
+        assert (offset & 0x3) == 0 : "unexpected alignment";
+        return offset;
+    }
+
     private static class AArch64MemoryEncoding {
         private AArch64Address address;
         private Register result;
@@ -414,7 +424,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      */
     public void mov(int size, Register dst, Register src) {
-        if (dst.equals(sp) || src.equals(sp)) {
+        if (dst.equals(src)) {
+            /* No action necessary */
+        } else if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);
         } else {
             orr(size, dst, zr, src);
@@ -1238,40 +1250,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 % src2. Signed.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or the stackpointer.
-     * @param n numerator. General purpose register. May not be null or the stackpointer.
-     * @param d denominator. General purpose register. Divisor May not be null or the stackpointer.
-     */
-    public void rem(int size, Register dst, Register n, Register d) {
-        assert (!dst.equals(sp) && !n.equals(sp) && !d.equals(sp));
-        // There is no irem or similar instruction. Instead we use the relation:
-        // n % d = n - Floor(n / d) * d if nd >= 0
-        // n % d = n - Ceil(n / d) * d else
-        // Which is equivalent to n - TruncatingDivision(n, d) * d
-        super.sdiv(size, dst, n, d);
-        super.msub(size, dst, dst, d, n);
-    }
-
-    /**
-     * dst = src1 % src2. Unsigned.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or the stackpointer.
-     * @param n numerator. General purpose register. May not be null or the stackpointer.
-     * @param d denominator. General purpose register. Divisor May not be null or the stackpointer.
-     */
-    public void urem(int size, Register dst, Register n, Register d) {
-        // There is no irem or similar instruction. Instead we use the relation:
-        // n % d = n - Floor(n / d) * d
-        // Which is equivalent to n - TruncatingDivision(n, d) * d
-        super.udiv(size, dst, n, d);
-        super.msub(size, dst, dst, d, n);
-    }
-
-    /**
      * Compare instructions are add/subtract instructions and so support unsigned 12-bit immediate
      * values (optionally left-shifted by 12).
      *
@@ -1349,12 +1327,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
      * @param src general purpose register. May not be null or stackpointer.
-     * @param shift amount by which src is rotated. The value depends on the instruction variant, it
-     *            can be 0 to (size - 1).
+     * @param shiftAmt amount by which src is rotated. The value depends on the instruction variant,
+     *            it can be 0 to (size - 1).
      */
-    public void ror(int size, Register dst, Register src, int shift) {
-        assert (0 <= shift && shift <= (size - 1));
-        super.extr(size, dst, src, src, shift);
+    public void ror(int size, Register dst, Register src, long shiftAmt) {
+        int clampedShift = clampShiftAmt(size, shiftAmt);
+        if (clampedShift != 0 || !dst.equals(src)) {
+            super.extr(size, dst, src, src, clampedShift);
+        }
     }
 
     /**
@@ -1651,73 +1631,24 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Sets overflow flag according to result of x * y.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stack-pointer.
-     * @param x general purpose register. May not be null or stackpointer.
-     * @param y general purpose register. May not be null or stackpointer.
-     */
-    public void mulvs(int size, Register dst, Register x, Register y) {
-        try (ScratchRegister sc1 = getScratchRegister();
-                        ScratchRegister sc2 = getScratchRegister()) {
-            switch (size) {
-                case 64: {
-                    // Be careful with registers: it's possible that x, y, and dst are the same
-                    // register.
-                    Register temp1 = sc1.getRegister();
-                    Register temp2 = sc2.getRegister();
-                    mul(64, temp1, x, y);     // Result bits 0..63
-                    smulh(64, temp2, x, y);  // Result bits 64..127
-                    // Top is pure sign ext
-                    subs(64, zr, temp2, temp1, ShiftType.ASR, 63);
-                    // Copy all 64 bits of the result into dst
-                    mov(64, dst, temp1);
-                    mov(temp1, 0x80000000);
-                    // Develop 0 (EQ), or 0x80000000 (NE)
-                    csel(32, temp1, temp1, zr, ConditionFlag.NE);
-                    compare(32, temp1, 1);
-                    // 0x80000000 - 1 => VS
-                    break;
-                }
-                case 32: {
-                    Register temp1 = sc1.getRegister();
-                    smaddl(temp1, x, y, zr);
-                    // Copy the low 32 bits of the result into dst
-                    mov(32, dst, temp1);
-                    subs(64, zr, temp1, temp1, ExtendType.SXTW, 0);
-                    // NE => overflow
-                    mov(temp1, 0x80000000);
-                    // Develop 0 (EQ), or 0x80000000 (NE)
-                    csel(32, temp1, temp1, zr, ConditionFlag.NE);
-                    compare(32, temp1, 1);
-                    // 0x80000000 - 1 => VS
-                    break;
-                }
-            }
-        }
-    }
-
-    /**
      * When patching up Labels we have to know what kind of code to generate.
      */
-    public enum PatchLabelKind {
-        BRANCH_CONDITIONALLY(0x0),
-        BRANCH_UNCONDITIONALLY(0x1),
-        BRANCH_NONZERO(0x2),
-        BRANCH_ZERO(0x3),
-        BRANCH_BIT_NONZERO(0x4),
-        BRANCH_BIT_ZERO(0x5),
-        JUMP_ADDRESS(0x6),
-        ADR(0x7);
+    private enum PatchLabelKind { // (AArch64 instruction)
+        BRANCH_CONDITIONALLY(0x0), // (B.cond)
+        BRANCH_UNCONDITIONALLY(0x1), // (B)
+        COMPARE_REG_BRANCH_NONZERO(0x2), // (CBNZ)
+        COMPARE_REG_BRANCH_ZERO(0x3), // (CBZ)
+        TEST_BIT_BRANCH_NONZERO(0x4), // (TBNZ)
+        TEST_BIT_BRANCH_ZERO(0x5), // (TBZ)
+        ADR(0x6); // (ADR)
 
         /**
-         * Offset by which additional information for branch conditionally, branch zero and branch
-         * non zero has to be shifted.
+         * Offset by which additional information encoded within the instruction to be patched must
+         * be shifted by.
          */
-        public static final int INFORMATION_OFFSET = 5;
+        static final int INFORMATION_OFFSET = 5;
 
-        public final int encoding;
+        final int encoding;
 
         PatchLabelKind(int encoding) {
             this.encoding = encoding;
@@ -1726,8 +1657,17 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         /**
          * @return PatchLabelKind with given encoding.
          */
-        private static PatchLabelKind fromEncoding(int encoding) {
+        static PatchLabelKind fromEncoding(int encoding) {
             return values()[encoding & NumUtil.getNbitNumberInt(INFORMATION_OFFSET)];
+        }
+
+        static int encode(PatchLabelKind patchKind, int extraInformation) {
+            assert NumUtil.isUnsignedNbit(32 - INFORMATION_OFFSET, extraInformation);
+            return patchKind.encoding | (extraInformation << INFORMATION_OFFSET);
+        }
+
+        static int decodeExtraInformation(int encoding) {
+            return encoding >>> INFORMATION_OFFSET;
         }
 
     }
@@ -1735,12 +1675,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void adr(Register dst, Label label) {
         // TODO Handle case where offset is too large for a single jump instruction
         if (label.isBound()) {
-            int offset = label.position() - position();
-            super.adr(dst, offset);
+            super.adr(dst, getPCRelativeOffset(label));
         } else {
             label.addPatchAt(position(), this);
-            // Encode condition flag so that we know how to patch the instruction later
-            emitInt(PatchLabelKind.ADR.encoding | dst.encoding << PatchLabelKind.INFORMATION_OFFSET);
+            int extraInformation = dst.encoding;
+            emitInt(PatchLabelKind.encode(PatchLabelKind.ADR, extraInformation));
         }
     }
 
@@ -1753,15 +1692,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void cbnz(int size, Register cmp, Label label) {
         // TODO Handle case where offset is too large for a single jump instruction
+        assert size == 32 || size == 64;
         if (label.isBound()) {
-            int offset = label.position() - position();
-            super.cbnz(size, cmp, offset);
+            super.cbnz(size, cmp, getPCRelativeOffset(label));
         } else {
             label.addPatchAt(position(), this);
-            int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 1);
-            int sizeEncoding = (size == 64 ? 1 : 0) << PatchLabelKind.INFORMATION_OFFSET;
-            // Encode condition flag so that we know how to patch the instruction later
-            emitInt(PatchLabelKind.BRANCH_NONZERO.encoding | regEncoding | sizeEncoding);
+            int regEncoding = cmp.encoding << 1;
+            int sizeEncoding = size == 64 ? 1 : 0;
+            int extraInformation = regEncoding | sizeEncoding;
+            emitInt(PatchLabelKind.encode(PatchLabelKind.COMPARE_REG_BRANCH_NONZERO, extraInformation));
         }
     }
 
@@ -1774,15 +1713,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void cbz(int size, Register cmp, Label label) {
         // TODO Handle case where offset is too large for a single jump instruction
+        assert size == 32 || size == 64;
         if (label.isBound()) {
-            int offset = label.position() - position();
-            super.cbz(size, cmp, offset);
+            super.cbz(size, cmp, getPCRelativeOffset(label));
         } else {
             label.addPatchAt(position(), this);
-            int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 1);
-            int sizeEncoding = (size == 64 ? 1 : 0) << PatchLabelKind.INFORMATION_OFFSET;
-            // Encode condition flag so that we know how to patch the instruction later
-            emitInt(PatchLabelKind.BRANCH_ZERO.encoding | regEncoding | sizeEncoding);
+            int regEncoding = cmp.encoding << 1;
+            int sizeEncoding = size == 64 ? 1 : 0;
+            int extraInformation = regEncoding | sizeEncoding;
+            emitInt(PatchLabelKind.encode(PatchLabelKind.COMPARE_REG_BRANCH_ZERO, extraInformation));
         }
     }
 
@@ -1796,13 +1735,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void tbnz(Register cmp, int uimm6, Label label) {
         assert NumUtil.isUnsignedNbit(6, uimm6);
         if (label.isBound()) {
-            int offset = label.position() - position();
-            super.tbnz(cmp, uimm6, offset);
+            super.tbnz(cmp, uimm6, getPCRelativeOffset(label));
         } else {
             label.addPatchAt(position(), this);
-            int indexEncoding = uimm6 << PatchLabelKind.INFORMATION_OFFSET;
-            int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 6);
-            emitInt(PatchLabelKind.BRANCH_BIT_NONZERO.encoding | indexEncoding | regEncoding);
+            int regEncoding = cmp.encoding << 6;
+            int extraInformation = regEncoding | uimm6;
+            emitInt(PatchLabelKind.encode(PatchLabelKind.TEST_BIT_BRANCH_NONZERO, extraInformation));
         }
     }
 
@@ -1816,13 +1754,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void tbz(Register cmp, int uimm6, Label label) {
         assert NumUtil.isUnsignedNbit(6, uimm6);
         if (label.isBound()) {
-            int offset = label.position() - position();
-            super.tbz(cmp, uimm6, offset);
+            super.tbz(cmp, uimm6, getPCRelativeOffset(label));
         } else {
             label.addPatchAt(position(), this);
-            int indexEncoding = uimm6 << PatchLabelKind.INFORMATION_OFFSET;
-            int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 6);
-            emitInt(PatchLabelKind.BRANCH_BIT_ZERO.encoding | indexEncoding | regEncoding);
+            int regEncoding = cmp.encoding << 6;
+            int extraInformation = regEncoding | uimm6;
+            emitInt(PatchLabelKind.encode(PatchLabelKind.TEST_BIT_BRANCH_ZERO, extraInformation));
         }
     }
 
@@ -1835,12 +1772,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void branchConditionally(ConditionFlag condition, Label label) {
         // TODO Handle case where offset is too large for a single jump instruction
         if (label.isBound()) {
-            int offset = label.position() - position();
-            super.b(condition, offset);
+            super.b(condition, getPCRelativeOffset(label));
         } else {
             label.addPatchAt(position(), this);
-            // Encode condition flag so that we know how to patch the instruction later
-            emitInt(PatchLabelKind.BRANCH_CONDITIONALLY.encoding | condition.encoding << PatchLabelKind.INFORMATION_OFFSET);
+            int extraInformation = condition.encoding;
+            emitInt(PatchLabelKind.encode(PatchLabelKind.BRANCH_CONDITIONALLY, extraInformation));
         }
     }
 
@@ -1862,12 +1798,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void jmp(Label label) {
         // TODO Handle case where offset is too large for a single jump instruction
+        /*
+         * Note if this code is changed to potentially generate more than a single instruction, then
+         * the JumpTable code within AArch64ControlFlow must also be altered.
+         */
         if (label.isBound()) {
-            int offset = label.position() - position();
-            super.b(offset);
+            super.b(getPCRelativeOffset(label));
         } else {
             label.addPatchAt(position(), this);
-            emitInt(PatchLabelKind.BRANCH_UNCONDITIONALLY.encoding);
+            emitInt(PatchLabelKind.encode(PatchLabelKind.BRANCH_UNCONDITIONALLY, 0));
         }
     }
 
@@ -1995,67 +1934,54 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * Patches jump targets when label gets bound.
      */
     @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        int instruction = getInt(branch);
-        int branchOffset = jumpTarget - branch;
+    protected void patchJumpTarget(int patchPos, int jumpTarget) {
+        final int instruction = getInt(patchPos);
+        final int pcRelativeOffset = jumpTarget - patchPos;
         PatchLabelKind type = PatchLabelKind.fromEncoding(instruction);
+        final int extraInformation = PatchLabelKind.decodeExtraInformation(instruction);
         switch (type) {
             case BRANCH_CONDITIONALLY:
-                ConditionFlag cf = ConditionFlag.fromEncoding(instruction >>> PatchLabelKind.INFORMATION_OFFSET);
-                super.b(cf, branchOffset, branch);
+                ConditionFlag condition = ConditionFlag.fromEncoding(extraInformation);
+                super.b(condition, pcRelativeOffset, patchPos);
                 break;
             case BRANCH_UNCONDITIONALLY:
-                super.b(branchOffset, branch);
+                super.b(pcRelativeOffset, patchPos);
                 break;
-            case JUMP_ADDRESS:
-                int offset = instruction >>> PatchLabelKind.INFORMATION_OFFSET;
-                emitInt(jumpTarget - offset, branch);
-                break;
-            case BRANCH_NONZERO:
-            case BRANCH_ZERO: {
-                int information = instruction >>> PatchLabelKind.INFORMATION_OFFSET;
-                int sizeEncoding = information & 1;
-                int regEncoding = information >>> 1;
+            case COMPARE_REG_BRANCH_NONZERO:
+            case COMPARE_REG_BRANCH_ZERO: {
+                if (!NumUtil.isSignedNbit(21, pcRelativeOffset)) {
+                    throw new BranchTargetOutOfBoundsException(true, "Branch target %d out of bounds", pcRelativeOffset);
+                }
+                int regEncoding = extraInformation >>> 1;
+                int sizeEncoding = extraInformation & 1;
                 Register reg = AArch64.cpuRegisters.get(regEncoding);
                 // 1 => 64; 0 => 32
-                int size = sizeEncoding * 32 + 32;
-                if (!NumUtil.isSignedNbit(21, branchOffset)) {
-                    throw new BranchTargetOutOfBoundsException(true, "Branch target %d out of bounds", branchOffset);
-                }
-                switch (type) {
-                    case BRANCH_NONZERO:
-                        super.cbnz(size, reg, branchOffset, branch);
-                        break;
-                    case BRANCH_ZERO:
-                        super.cbz(size, reg, branchOffset, branch);
-                        break;
+                int size = sizeEncoding == 1 ? 64 : 32;
+                if (type == PatchLabelKind.COMPARE_REG_BRANCH_NONZERO) {
+                    super.cbnz(size, reg, pcRelativeOffset, patchPos);
+                } else {
+                    super.cbz(size, reg, pcRelativeOffset, patchPos);
                 }
                 break;
             }
-            case BRANCH_BIT_NONZERO:
-            case BRANCH_BIT_ZERO: {
-                int information = instruction >>> PatchLabelKind.INFORMATION_OFFSET;
-                int sizeEncoding = information & NumUtil.getNbitNumberInt(6);
-                int regEncoding = information >>> 6;
-                Register reg = AArch64.cpuRegisters.get(regEncoding);
-                if (!NumUtil.isSignedNbit(16, branchOffset)) {
-                    throw new BranchTargetOutOfBoundsException(true, "Branch target %d out of bounds", branchOffset);
+            case TEST_BIT_BRANCH_NONZERO:
+            case TEST_BIT_BRANCH_ZERO: {
+                if (!NumUtil.isSignedNbit(16, pcRelativeOffset)) {
+                    throw new BranchTargetOutOfBoundsException(true, "Branch target %d out of bounds", pcRelativeOffset);
                 }
-                switch (type) {
-                    case BRANCH_BIT_NONZERO:
-                        super.tbnz(reg, sizeEncoding, branchOffset, branch);
-                        break;
-                    case BRANCH_BIT_ZERO:
-                        super.tbz(reg, sizeEncoding, branchOffset, branch);
-                        break;
+                int uimm6 = extraInformation & NumUtil.getNbitNumberInt(6);
+                int regEncoding = extraInformation >>> 6;
+                Register reg = AArch64.cpuRegisters.get(regEncoding);
+                if (type == PatchLabelKind.TEST_BIT_BRANCH_NONZERO) {
+                    super.tbnz(reg, uimm6, pcRelativeOffset, patchPos);
+                } else {
+                    super.tbz(reg, uimm6, pcRelativeOffset, patchPos);
                 }
                 break;
             }
             case ADR: {
-                int information = instruction >>> PatchLabelKind.INFORMATION_OFFSET;
-                int regEncoding = information;
-                Register reg = AArch64.cpuRegisters.get(regEncoding);
-                super.adr(reg, branchOffset, branch);
+                Register reg = AArch64.cpuRegisters.get(extraInformation);
+                super.adr(reg, pcRelativeOffset, patchPos);
                 break;
             }
             default:

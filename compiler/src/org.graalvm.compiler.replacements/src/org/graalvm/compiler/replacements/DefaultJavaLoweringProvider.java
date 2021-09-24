@@ -208,6 +208,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, factories, providers, snippetReflection, target));
     }
 
+    @Override
+    public boolean supportsImplicitNullChecks() {
+        return target.implicitNullCheckLimit > 0;
+    }
+
     public final TargetDescription getTarget() {
         return target;
     }
@@ -619,6 +624,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
+        }
+        ValueNode object = loadHubOrNullNode.getValue();
+        if (object.isConstant() && !object.asJavaConstant().isNull()) {
+            /*
+             * Special case: insufficient canonicalization was run since the last lowering, if we
+             * are loading the hub from a constant we want to still fold it.
+             */
+            ValueNode synonym = LoadHubNode.findSynonym(object, loadHubOrNullNode.stamp(NodeView.DEFAULT), tool.getMetaAccess(), tool.getConstantReflection());
+            if (synonym != null) {
+                loadHubOrNullNode.replaceAtUsagesAndDelete(graph.maybeAddOrUnique(synonym));
+                return;
+            }
         }
         final FixedWithNextNode predecessor = tool.lastFixedNode();
         final ValueNode value = loadHubOrNullNode.getValue();

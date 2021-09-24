@@ -174,10 +174,11 @@ final class WeakAssumedValue<T> {
         }
 
         V get() {
-            if (reference == null) {
+            TruffleWeakReference<V> ref = reference;
+            if (ref == null) {
                 return null;
             }
-            return reference.get();
+            return ref.get();
         }
     }
 

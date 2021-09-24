@@ -77,6 +77,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         void exit(Block b, V value);
     }
 
+    public static ControlFlowGraph computeForSchedule(StructuredGraph graph) {
+        return compute(graph, true, true, true, false);
+    }
+
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
         cfg.identifyBlocks();

@@ -496,4 +496,9 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
     }
+
+    @Override
+    public boolean hasJavaMethod() {
+        return OriginalMethodProvider.hasJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
+    }
 }

@@ -24,7 +24,10 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.RootNode;
+
 import jdk.vm.ci.code.stack.InspectedFrame;
 
 /**
@@ -40,21 +43,33 @@ public final class GraalOSRFrameInstance extends GraalFrameInstance {
         this.osrFrame = osrFrame;
     }
 
+    @TruffleBoundary
     @Override
     public Frame getFrame(FrameAccess access) {
-        return getFrameFrom(osrFrame, access);
+        Frame materializedOSRFrame = getFrameFrom(osrFrame, access);
+        if (getOSRRootNode() instanceof OptimizedOSRLoopNode.LoopOSRRootNode) {
+            return (Frame) materializedOSRFrame.getArguments()[0];
+        }
+        return materializedOSRFrame;
     }
 
+    private RootNode getOSRRootNode() {
+        return ((OptimizedCallTarget) osrFrame.getLocal(GraalFrameInstance.CALL_TARGET_INDEX)).getRootNode();
+    }
+
+    @TruffleBoundary
     @Override
     public boolean isVirtualFrame() {
         return osrFrame.isVirtual(FRAME_INDEX);
     }
 
+    @TruffleBoundary
     @Override
     public int getCompilationTier() {
         return ((CompilationState) osrFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).getTier();
     }
 
+    @TruffleBoundary
     @Override
     public boolean isCompilationRoot() {
         return ((CompilationState) osrFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).isCompilationRoot();
