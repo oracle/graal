@@ -271,7 +271,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastRate = rate(count, elapsed);
         lastTime = currentTime;
         lastCount = count;
-        double weight = lastRate * lastCount;
+        double weight = (1 + lastRate) * lastCount;
         if (engineData.traversingFirstTierPriority) {
             lastWeight = weight;
         } else {
@@ -296,7 +296,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
 
     private double rate(int count, long elapsed) {
         lastRate = ((double) count - lastCount) / elapsed;
-        return 1.0 + (Double.isNaN(lastRate) ? 0 : lastRate);
+        return (Double.isNaN(lastRate) ? 0 : lastRate);
     }
 
     public int targetHighestCompiledTier() {

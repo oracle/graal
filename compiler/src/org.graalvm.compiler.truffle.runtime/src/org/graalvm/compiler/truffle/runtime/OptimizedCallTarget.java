@@ -329,7 +329,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
     volatile List<OptimizedCallTarget> blockCompilations;
-    private final int id;
+    public final int id;
     private static final AtomicInteger idCounter = new AtomicInteger(0);
 
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
@@ -997,7 +997,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (result == null) {
             result = rootNode.toString();
             if (sourceCallTarget != null) {
-                result += " <split-" + Integer.toHexString(hashCode()) + ">";
+                result += " <split-" + id + ">";
             }
             nameCache = result;
         }
@@ -1686,9 +1686,5 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     boolean isOSR() {
         return rootNode instanceof BaseOSRRootNode;
-    }
-
-    public int id() {
-        return id;
     }
 }
