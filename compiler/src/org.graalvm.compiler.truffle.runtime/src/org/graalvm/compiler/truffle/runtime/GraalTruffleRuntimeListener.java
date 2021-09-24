@@ -132,8 +132,9 @@ public interface GraalTruffleRuntimeListener {
      * @param queueChange how has starting this compilation impacted the number of compilations in
      *            the queue.
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "deprecated"})
     default void onCompilationStarted(OptimizedCallTarget target, int tier, long time, double weight, double rate, int queueChange) {
+        onCompilationStarted(target, tier);
     }
 
     /**
