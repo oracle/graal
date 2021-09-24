@@ -55,12 +55,12 @@ suite = {
         },
         "RENAISSANCE_HARNESS_v0.12" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.12.0.tar.gz"],
-            "sha1" : "c061f62ce6f2758ec30b92e69f20f14b93e34b35",
+            "sha1" : "84592bedd6f0afa842aadb8813d395317b1fa385",
             "packedResource": True,
         },
         "RENAISSANCE_HARNESS_v0.13" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.13.0.tar.gz"],
-            "sha1" : "ca32c080016c5659bbf3eddc184e14b742769372",
+            "sha1" : "8edc1db5c7ea977e2a9c037b5324bb4cbee40082",
             "packedResource": True,
         },
         "DACAPO_SVM" : {
