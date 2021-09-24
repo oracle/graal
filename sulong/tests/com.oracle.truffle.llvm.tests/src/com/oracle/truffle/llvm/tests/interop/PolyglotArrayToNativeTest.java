@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -166,6 +167,7 @@ public class PolyglotArrayToNativeTest extends PolyglotArrayTestBase {
         }
 
         @ExportMessage
+        @TruffleBoundary
         Object getNativeType() {
             try {
                 Object[] result = new Object[1];
