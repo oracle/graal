@@ -86,7 +86,7 @@ public class AMD64HostedPatcher extends CompilationResult.CodeAnnotation impleme
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
+    public void patch(int compStart, int relative, byte[] code) {
         int curValue = relative - (annotation.nextInstructionPosition - annotation.instructionPosition);
 
         for (int i = 0; i < annotation.operandSize; i++) {

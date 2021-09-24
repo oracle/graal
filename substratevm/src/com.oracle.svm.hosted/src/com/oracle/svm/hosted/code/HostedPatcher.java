@@ -34,11 +34,19 @@ import jdk.vm.ci.code.site.Reference;
 public interface HostedPatcher {
     /**
      * Create relocation for the binary file.
+     *
+     * @param ref value instruction sequence should refer to
+     * @param relocs buffer of added relocation site information
+     * @param compStart codecache-relative starting position this method's machine code
      */
     void relocate(Reference ref, RelocatableBuffer relocs, int compStart);
 
     /**
      * Patch the code buffer.
+     *
+     * @param compStart codecache-relative starting position this method's machine code
+     * @param relative pc-relative offset
+     * @param code machine code generated for this method
      */
-    void patch(int codePos, int relative, byte[] code);
+    void patch(int compStart, int relative, byte[] code);
 }

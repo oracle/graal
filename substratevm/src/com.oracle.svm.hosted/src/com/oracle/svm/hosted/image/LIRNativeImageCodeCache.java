@@ -188,7 +188,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     // Patch a PC-relative call.
                     // This code handles the case of section-local calls only.
                     int pcDisplacement = callTargetStart - (compStart + call.pcOffset);
-                    patches.get(call.pcOffset).patch(call.pcOffset, pcDisplacement, compilation.getTargetCode());
+                    patches.get(call.pcOffset).patch(compStart, pcDisplacement, compilation.getTargetCode());
                 }
             }
             for (DataPatch dataPatch : compilation.getDataPatches()) {
