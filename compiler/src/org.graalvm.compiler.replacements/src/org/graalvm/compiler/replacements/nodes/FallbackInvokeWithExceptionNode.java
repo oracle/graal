@@ -39,12 +39,12 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * Placeholder for a fallback call from a {@link MacroStateSplitWithExceptionNode}.
+ * Placeholder for a fallback call from a {@link MacroWithExceptionNode}.
  *
  * The {@link #fallbackFunctionCall()} intrinsic can be used in snippets that lower a
- * {@link MacroStateSplitWithExceptionNode}. The {@link FallbackInvokeWithExceptionNode} will be
- * replaced with the {@linkplain MacroStateSplitWithExceptionNode#createInvoke original call} of the
- * macro node. This can be useful for handling exceptional and/or slow path cases.
+ * {@link MacroWithExceptionNode}. The {@link FallbackInvokeWithExceptionNode} will be replaced with
+ * the {@linkplain MacroWithExceptionNode#createInvoke original call} of the macro node. This can be
+ * useful for handling exceptional and/or slow path cases.
  *
  * Currently, only one {@link FallbackInvokeWithExceptionNode} is allowed per snippet.
  */

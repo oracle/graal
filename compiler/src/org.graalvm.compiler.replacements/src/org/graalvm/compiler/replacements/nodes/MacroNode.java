@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -61,6 +62,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
 
     public static final NodeClass<MacroNode> TYPE = NodeClass.create(MacroNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
+    @OptionalInput(InputType.State) protected FrameState stateAfter;
 
     protected final int bci;
     protected final ResolvedJavaMethod callerMethod;
@@ -154,8 +156,32 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return invokeKind;
     }
 
-    protected FrameState stateAfter() {
-        return null;
+    @Override
+    public FrameState stateAfter() {
+        return stateAfter;
+    }
+
+    @Override
+    public void setStateAfter(FrameState x) {
+        assert x == null || x.isAlive() : "frame state must be in a graph";
+        updateUsages(stateAfter, x);
+        stateAfter = x;
+    }
+
+    @Override
+    public final boolean hasSideEffect() {
+        return true;
+    }
+
+    /**
+     * Returns {@link LocationIdentity#any()}. This node needs to kill any location because it might
+     * get {@linkplain #replaceWithInvoke() replaced with an invoke} and
+     * {@link InvokeNode#getKilledLocationIdentity()} kills {@link LocationIdentity#any()} and the
+     * kill location must not get broader.
+     */
+    @Override
+    public final LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 
     @Override

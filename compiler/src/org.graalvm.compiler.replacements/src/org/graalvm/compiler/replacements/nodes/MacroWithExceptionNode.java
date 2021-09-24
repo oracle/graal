@@ -40,11 +40,9 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.word.LocationIdentity;
 
@@ -52,12 +50,12 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * This duplicates a {@link MacroStateSplitNode} using {@link WithExceptionNode} as a base class.
+ * This duplicates a {@link MacroNode} using {@link WithExceptionNode} as a base class.
  *
  * See the documentation of {@link MacroInvokable} for more information.
  *
  * @see MacroInvokable
- * @see MacroStateSplitNode
+ * @see MacroNode
  */
 //@formatter:off
 @NodeInfo(cycles = CYCLES_UNKNOWN,
@@ -65,9 +63,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
           size = SIZE_UNKNOWN,
           sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
 //@formatter:on
-public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode implements MacroInvokable, StateSplit, SingleMemoryKill {
+public abstract class MacroWithExceptionNode extends WithExceptionNode implements MacroInvokable {
 
-    public static final NodeClass<MacroStateSplitWithExceptionNode> TYPE = NodeClass.create(MacroStateSplitWithExceptionNode.class);
+    public static final NodeClass<MacroWithExceptionNode> TYPE = NodeClass.create(MacroWithExceptionNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
@@ -77,7 +75,7 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
     protected final InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
-    protected MacroStateSplitWithExceptionNode(NodeClass<? extends MacroStateSplitWithExceptionNode> c, MacroParams p) {
+    protected MacroWithExceptionNode(NodeClass<? extends MacroWithExceptionNode> c, MacroParams p) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);
         this.bci = p.bci;
@@ -134,10 +132,6 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
         }
     }
 
-    public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.any();
-    }
-
     protected InvokeWithExceptionNode createInvoke() {
         return createInvoke(this);
     }
@@ -175,10 +169,15 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
     }
 
     @Override
-    public boolean hasSideEffect() {
+    public final boolean hasSideEffect() {
         return true;
     }
 
+    /**
+     * @see MacroNode#getKilledLocationIdentity()
+     *
+     *      FIXME: make this final once [GR-32638] is fixed
+     */
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();

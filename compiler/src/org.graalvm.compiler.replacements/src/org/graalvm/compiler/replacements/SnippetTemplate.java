@@ -172,7 +172,7 @@ import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
 import org.graalvm.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
-import org.graalvm.compiler.replacements.nodes.MacroStateSplitWithExceptionNode;
+import org.graalvm.compiler.replacements.nodes.MacroWithExceptionNode;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.util.CollectionsUtil;
 import org.graalvm.word.LocationIdentity;
@@ -1708,10 +1708,10 @@ public class SnippetTemplate {
             }
 
             if (fallbackInvoke != null) {
-                GraalError.guarantee(replacee instanceof MacroStateSplitWithExceptionNode, "%s can only be used in snippets replacing %s", FallbackInvokeWithExceptionNode.class.getSimpleName(),
-                                MacroStateSplitWithExceptionNode.class.getSimpleName());
+                GraalError.guarantee(replacee instanceof MacroWithExceptionNode, "%s can only be used in snippets replacing %s", FallbackInvokeWithExceptionNode.class.getSimpleName(),
+                                MacroWithExceptionNode.class.getSimpleName());
                 WithExceptionNode fallbackInvokeNode = (WithExceptionNode) duplicates.get(fallbackInvoke);
-                MacroStateSplitWithExceptionNode macroNode = (MacroStateSplitWithExceptionNode) replacee;
+                MacroWithExceptionNode macroNode = (MacroWithExceptionNode) replacee;
                 // create fallback invoke
                 InvokeWithExceptionNode invoke = macroNode.createInvoke(returnValue);
                 // replace placeholder
