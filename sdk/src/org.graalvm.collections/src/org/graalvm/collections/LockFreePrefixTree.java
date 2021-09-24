@@ -139,7 +139,6 @@ public class LockFreePrefixTree {
         @SuppressWarnings("unchecked")
         public Node at(long key) {
             ensureChildren();
-
             while (true) {
                 AtomicReferenceArray<Node> children0 = readChildren();
                 if (children0 instanceof LinearChildren) {
