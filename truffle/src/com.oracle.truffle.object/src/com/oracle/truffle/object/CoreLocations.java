@@ -48,7 +48,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -100,12 +99,12 @@ abstract class CoreLocations {
         }
 
         @Override
-        default void setInt(DynamicObject store, int value, Shape shape) throws FinalLocationException {
+        default void setInt(DynamicObject store, int value, Shape shape) {
             setInt(store, value, store.getShape() == shape, false);
         }
 
         @Override
-        default void setInt(DynamicObject store, int value) throws FinalLocationException {
+        default void setInt(DynamicObject store, int value) {
             setInt(store, value, false, false);
         }
 
@@ -136,12 +135,12 @@ abstract class CoreLocations {
         }
 
         @Override
-        default void setLong(DynamicObject store, long value, Shape shape) throws FinalLocationException {
+        default void setLong(DynamicObject store, long value, Shape shape) {
             setLong(store, value, store.getShape() == shape, false);
         }
 
         @Override
-        default void setLong(DynamicObject store, long value) throws FinalLocationException {
+        default void setLong(DynamicObject store, long value) {
             setLong(store, value, false, false);
         }
 
@@ -172,12 +171,12 @@ abstract class CoreLocations {
         }
 
         @Override
-        default void setDouble(DynamicObject store, double value, Shape shape) throws FinalLocationException {
+        default void setDouble(DynamicObject store, double value, Shape shape) {
             setDouble(store, value, store.getShape() == shape, false);
         }
 
         @Override
-        default void setDouble(DynamicObject store, double value) throws FinalLocationException {
+        default void setDouble(DynamicObject store, double value) {
             setDouble(store, value, false, false);
         }
 
@@ -206,12 +205,12 @@ abstract class CoreLocations {
         }
 
         @Override
-        default void setBoolean(DynamicObject store, boolean value, Shape shape) throws FinalLocationException {
+        default void setBoolean(DynamicObject store, boolean value, Shape shape) {
             setBoolean(store, value, store.getShape() == shape, false);
         }
 
         @Override
-        default void setBoolean(DynamicObject store, boolean value) throws FinalLocationException {
+        default void setBoolean(DynamicObject store, boolean value) {
             setBoolean(store, value, false, false);
         }
 

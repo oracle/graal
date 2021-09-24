@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
@@ -86,7 +85,7 @@ public abstract class LocationImpl extends Location {
 
     /** @since 0.17 or earlier */
     @Override
-    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
+    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException {
         set(store, value, checkShape(store, shape), false);
     }
 
@@ -155,16 +154,15 @@ public abstract class LocationImpl extends Location {
      * @param guard the result of the shape check guarding this property write or {@code false}.
      * @param init if true, this is the initial assignment of a property location; ignore final.
      * @throws IncompatibleLocationException if the value cannot be stored in this storage location.
-     * @throws FinalLocationException if the property location is effectively final and init=false.
      * @see #setSafe(DynamicObject, Object, boolean, boolean)
      */
-    protected abstract void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException, FinalLocationException;
+    protected abstract void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException;
 
     /**
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setIntSafe(DynamicObject, int, boolean, boolean)
      */
-    protected void setInt(DynamicObject store, int value, boolean guard, boolean init) throws IncompatibleLocationException, FinalLocationException {
+    protected void setInt(DynamicObject store, int value, boolean guard, boolean init) throws IncompatibleLocationException {
         set(store, value, guard, init);
     }
 
@@ -172,7 +170,7 @@ public abstract class LocationImpl extends Location {
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setLongSafe(DynamicObject, long, boolean, boolean)
      */
-    protected void setLong(DynamicObject store, long value, boolean guard, boolean init) throws IncompatibleLocationException, FinalLocationException {
+    protected void setLong(DynamicObject store, long value, boolean guard, boolean init) throws IncompatibleLocationException {
         set(store, value, guard, init);
     }
 
@@ -180,7 +178,7 @@ public abstract class LocationImpl extends Location {
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setDoubleSafe(DynamicObject, double, boolean, boolean)
      */
-    protected void setDouble(DynamicObject store, double value, boolean guard, boolean init) throws IncompatibleLocationException, FinalLocationException {
+    protected void setDouble(DynamicObject store, double value, boolean guard, boolean init) throws IncompatibleLocationException {
         set(store, value, guard, init);
     }
 
@@ -194,11 +192,7 @@ public abstract class LocationImpl extends Location {
     /** @since 0.17 or earlier */
     @Override
     protected final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
-        try {
-            set(store, value, false, true);
-        } catch (FinalLocationException e) {
-            throw shouldNotHappen(e);
-        }
+        set(store, value, false, true);
     }
 
     /** @since 0.17 or earlier */
@@ -332,7 +326,7 @@ public abstract class LocationImpl extends Location {
     protected final void setSafe(DynamicObject store, Object value, boolean guard, boolean init) {
         try {
             set(store, value, guard, init);
-        } catch (IncompatibleLocationException | FinalLocationException e) {
+        } catch (IncompatibleLocationException e) {
             throw shouldNotHappen(e);
         }
     }
@@ -343,7 +337,7 @@ public abstract class LocationImpl extends Location {
     protected final void setIntSafe(DynamicObject store, int value, boolean guard, boolean init) {
         try {
             setInt(store, value, guard, init);
-        } catch (IncompatibleLocationException | FinalLocationException e) {
+        } catch (IncompatibleLocationException e) {
             throw shouldNotHappen(e);
         }
     }
@@ -354,7 +348,7 @@ public abstract class LocationImpl extends Location {
     protected final void setLongSafe(DynamicObject store, long value, boolean guard, boolean init) {
         try {
             setLong(store, value, guard, init);
-        } catch (IncompatibleLocationException | FinalLocationException e) {
+        } catch (IncompatibleLocationException e) {
             throw shouldNotHappen(e);
         }
     }
@@ -365,7 +359,7 @@ public abstract class LocationImpl extends Location {
     protected final void setDoubleSafe(DynamicObject store, double value, boolean guard, boolean init) {
         try {
             setDouble(store, value, guard, init);
-        } catch (IncompatibleLocationException | FinalLocationException e) {
+        } catch (IncompatibleLocationException e) {
             throw shouldNotHappen(e);
         }
     }
