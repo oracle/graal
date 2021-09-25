@@ -85,17 +85,21 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
 
             for (int i = 0; i < ROOT_CLASSES.length; i++) {
                 Class<?> rootClass = ROOT_CLASSES[i];
-                try {
-                    rootNodes[i] = (AbstractRootNode) rootClass.getConstructor().newInstance();
-                } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
-                    throw new AssertionError(e);
-                }
+                rootNodes[i] = createRootNode(rootClass);
                 callTargets[i] = Truffle.getRuntime().createCallTarget(rootNodes[i]);
                 directCallNodes[i] = Truffle.getRuntime().createDirectCallNode(callTargets[i]);
             }
 
             this.frame = Truffle.getRuntime().createVirtualFrame(singleArg, rootNodes[0].getFrameDescriptor());
             indirectCall = Truffle.getRuntime().createIndirectCallNode();
+        }
+
+        protected static AbstractRootNode createRootNode(Class<?> rootClass) {
+            try {
+                return (AbstractRootNode) rootClass.getConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
+                throw new AssertionError(e);
+            }
         }
 
         @TearDown
@@ -133,7 +137,8 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
         @Setup(Level.Invocation)
         public void setup() {
             for (int i = 0; i < TARGETS; i++) {
-                callTargets[i] = Truffle.getRuntime().createCallTarget(rootNodes[i % rootNodes.length]);
+                AbstractRootNode rootNode = createRootNode(ROOT_CLASSES[i % ROOT_CLASSES_LENGTH]);
+                callTargets[i] = Truffle.getRuntime().createCallTarget(rootNode);
             }
         }
 
@@ -178,20 +183,6 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
             sum += (int) callNode.call(state.callTargets[i], state.singleArg);
         }
         return sum;
-    }
-
-    @State(Scope.Thread)
-    public static class CallTargetCreateState extends BenchmarkState {
-
-        final CallTarget[] callTargets = new CallTarget[TARGETS];
-
-        @Setup(Level.Invocation)
-        public void setup() {
-            for (int i = 0; i < TARGETS; i++) {
-                callTargets[i] = Truffle.getRuntime().createCallTarget(rootNodes[i % rootNodes.length]);
-            }
-        }
-
     }
 
     @Benchmark

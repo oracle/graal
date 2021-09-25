@@ -153,8 +153,6 @@ public abstract class Accessor {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
-        public abstract void setCallTarget(RootNode rootNode, RootCallTarget callTarget);
-
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
         public abstract RootNode cloneUninitialized(RootNode rootNode);
@@ -968,6 +966,8 @@ public abstract class Accessor {
                 throw new AssertionError("Invalid permission to create runtime support.");
             }
         }
+
+        public abstract RootCallTarget newCallTarget(RootNode rootNode);
 
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
