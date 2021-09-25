@@ -71,7 +71,7 @@ public class DeoptTester {
 
     private static final Set<Long> handledPCs = new HashSet<>();
 
-    private static final FastThreadLocalInt inDeoptTest = FastThreadLocalFactory.createInt();
+    private static final FastThreadLocalInt inDeoptTest = FastThreadLocalFactory.createInt("DeoptTester.inDeoptTest");
 
     private static final StackFrameVisitor collectPcVisitor = new StackFrameVisitor() {
 

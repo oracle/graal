@@ -113,7 +113,7 @@ public class ImplicitExceptions {
                     THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION, THROW_CACHED_ARITHMETIC_EXCEPTION, THROW_CACHED_ASSERTION_ERROR,
     };
 
-    private static final FastThreadLocalInt implicitExceptionsAreFatal = FastThreadLocalFactory.createInt();
+    private static final FastThreadLocalInt implicitExceptionsAreFatal = FastThreadLocalFactory.createInt("ImplicitExceptions.implicitExceptionsAreFatal");
 
     /**
      * Switch the current thread into a mode where implicit exceptions such as NullPointerException

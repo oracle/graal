@@ -100,7 +100,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * This is only used for preempting a continuation in the experimental Loom JDK support. There's
      * performance impact in this solution.
      */
-    protected static final FastThreadLocalInt lockedMonitors = FastThreadLocalFactory.createInt();
+    protected static final FastThreadLocalInt lockedMonitors = FastThreadLocalFactory.createInt("MultiThreadedMonitorSupport.lockedMonitors");
 
     protected static void onMonitorLocked() {
         if (JavaContinuations.useLoom()) {

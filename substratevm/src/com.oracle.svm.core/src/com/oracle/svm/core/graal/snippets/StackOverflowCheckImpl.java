@@ -100,7 +100,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class StackOverflowCheckImpl implements StackOverflowCheck {
     // The stack boundary for the stack overflow check
-    public static final FastThreadLocalWord<UnsignedWord> stackBoundaryTL = FastThreadLocalFactory.createWord().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
+    public static final FastThreadLocalWord<UnsignedWord> stackBoundaryTL = FastThreadLocalFactory.createWord("StackOverflowCheckImpl.stackBoundaryTL").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
     /**
      * Stores a counter how often the yellow zone has been made available, so that the yellow zone
@@ -108,7 +108,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
      * 0 is the default value of thread local variables, so disallowing 0 as a valid value allows us
      * to to detect error in the state transitions.
      */
-    static final FastThreadLocalInt yellowZoneStateTL = FastThreadLocalFactory.createInt();
+    static final FastThreadLocalInt yellowZoneStateTL = FastThreadLocalFactory.createInt("StackOverflowCheckImpl.yellowZoneStateTL");
     static final int STATE_UNINITIALIZED = 0;
     static final int STATE_YELLOW_ENABLED = 1;
 

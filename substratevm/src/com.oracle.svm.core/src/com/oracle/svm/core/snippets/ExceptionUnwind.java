@@ -68,7 +68,7 @@ public abstract class ExceptionUnwind {
                     UNWIND_EXCEPTION_WITH_CALLEE_SAVED_REGISTERS
     };
 
-    public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
+    public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class, "ExceptionUnwind.currentException");
 
     @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
     static boolean exceptionsAreFatal() {

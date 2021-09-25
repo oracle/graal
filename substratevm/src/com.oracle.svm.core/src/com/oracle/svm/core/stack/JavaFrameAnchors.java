@@ -36,7 +36,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
  */
 public class JavaFrameAnchors {
 
-    private static final FastThreadLocalWord<JavaFrameAnchor> lastAnchor = FastThreadLocalFactory.createWord().setMaxOffset(FastThreadLocal.BYTE_OFFSET);
+    private static final FastThreadLocalWord<JavaFrameAnchor> lastAnchor = FastThreadLocalFactory.createWord("JavaFrameAnchors.lastAnchor").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     public static void pushFrameAnchor(JavaFrameAnchor anchor) {
         anchor.setPreviousAnchor(lastAnchor.get());

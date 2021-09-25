@@ -49,7 +49,8 @@ public final class FastThreadLocalBytes<T extends PointerBase> extends FastThrea
     private final IntSupplier sizeSupplier;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    FastThreadLocalBytes(IntSupplier sizeSupplier) {
+    FastThreadLocalBytes(IntSupplier sizeSupplier, String name) {
+        super(name);
         this.sizeSupplier = sizeSupplier;
     }
 

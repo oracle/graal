@@ -112,7 +112,8 @@ public final class ThreadLocalAllocation {
      * Don't read this value directly, use the {@link Uninterruptible} accessor methods instead.
      * This is necessary to avoid races between the GC and code that accesses or modifies the TLAB.
      */
-    private static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getTlabDescriptorSize).setMaxOffset(FastThreadLocal.BYTE_OFFSET);
+    private static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getTlabDescriptorSize, "ThreadLocalAllocation.regularTLAB")
+                    .setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     private ThreadLocalAllocation() {
     }

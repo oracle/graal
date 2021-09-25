@@ -217,7 +217,7 @@ public class VMThreadSTFeature implements GraalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
-        List<VMThreadLocalInfo> sortedThreadLocalInfos = threadLocalCollector.sortThreadLocals(config);
+        List<VMThreadLocalInfo> sortedThreadLocalInfos = threadLocalCollector.sortThreadLocals();
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
         int nextObject = 0;
         int nextPrimitive = 0;

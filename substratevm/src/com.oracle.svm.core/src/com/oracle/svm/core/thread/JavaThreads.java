@@ -86,7 +86,7 @@ public abstract class JavaThreads {
     }
 
     /** The {@link java.lang.Thread} for the {@link IsolateThread}. */
-    static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class).setMaxOffset(FastThreadLocal.BYTE_OFFSET);
+    static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "JavaThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     /**
      * The number of running non-daemon threads. The initial value accounts for the main thread,

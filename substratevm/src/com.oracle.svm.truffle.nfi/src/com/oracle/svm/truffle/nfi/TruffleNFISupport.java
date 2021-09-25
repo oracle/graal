@@ -47,7 +47,7 @@ public abstract class TruffleNFISupport {
 
     static final Charset UTF8 = Charset.forName("utf8");
 
-    private static final FastThreadLocalObject<LocalNativeScope> currentScope = FastThreadLocalFactory.createObject(LocalNativeScope.class);
+    private static final FastThreadLocalObject<LocalNativeScope> currentScope = FastThreadLocalFactory.createObject(LocalNativeScope.class, "TruffleNFISupport.currentScope");
 
     private final ObjectHandles globalHandles;
     private final ObjectHandles closureHandles;
