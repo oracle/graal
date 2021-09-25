@@ -1077,7 +1077,7 @@ public abstract class AArch64Assembler extends Assembler {
     /**
      * Returns the log2 size of the number of bytes expected to be transferred.
      */
-    protected static int getLog2TransferSize(int bitMemoryTransferSize) {
+    public static int getLog2TransferSize(int bitMemoryTransferSize) {
         switch (bitMemoryTransferSize) {
             case 8:
                 return 0;
